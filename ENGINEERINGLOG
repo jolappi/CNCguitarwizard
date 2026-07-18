@@ -1,0 +1,14 @@
+# Engineering Log
+
+## 2026-07-18
+
+### Architecture
+
+Decision:
+Core is independent from all CAD backends.
+
+Reason:
+Allows FreeCAD to be replaced or supplemented later without changing geometry calculations.
+
+Status:
+Accepted
