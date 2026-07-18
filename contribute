@@ -1,0 +1,7 @@
+In finnish
+Kaikki uusi koodi dokumentoidaan.
+Kaikille uusille ominaisuuksille kirjoitetaan testit.
+Ei kovakoodattuja mittoja.
+Kaikki mitat millimetreinä.
+Uudet CAM-toiminnot eivät saa rikkoa vanhoja koneprofiileja.
+Kaikki muutokset käyvät validatorin läpi.
