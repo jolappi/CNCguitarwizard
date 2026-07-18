@@ -8,3 +8,7 @@ Initial project structure
 - Tool library
 - Validation framework
 - Documentation skeleton
+
+Quality over speed.
+
+Every commit should improve the project. Never sacrifice stability for progress.
