@@ -1,0 +1,12 @@
+README
+pyproject.toml
+src/cncguitarwizard/__init__.py
+src/cncguitarwizard/__main__.py
+src/cncguitarwizard/version.py
+src/cncguitarwizard.egg-info/PKG-INFO
+src/cncguitarwizard.egg-info/SOURCES.txt
+src/cncguitarwizard.egg-info/dependency_links.txt
+src/cncguitarwizard.egg-info/top_level.txt
+src/cncguitarwizard/core/__init__.py
+src/cncguitarwizard/core/metadata.py
+src/cncguitarwizard/core/project.py

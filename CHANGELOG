@@ -1,13 +1,12 @@
 # Changelog
 
-## v0.1.0-alpha1
+## v0.1.0-alpha2
 
 ### Added
-- Initial project structure
-- Project dataclasses
-- Version management
-- Metadata
-- Build ID
+
+- Project root dataclass
+- Project metadata dataclass
+- Initial project unit test
 
 ### Changed
 - —

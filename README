@@ -1,4 +1,35 @@
-Run with python CNCguitarwizard.py
+## Development
+
+```bash
+git clone ...
+
+cd CNCguitarwizard
+
+python -m venv .venv
+
+source .venv/bin/activate
+# Windows:
+# .venv\Scripts\activate
+
+python -m pip install -e .
+
+pytest
+
+python -m cncguitarwizard
+```
+
+## Development Setup
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+
+python -m pip install --upgrade pip
+python -m pip install -e .
+
+python -m pytest
+python -m cncguitarwizard
+```
 
 Initial project structure
 

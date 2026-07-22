@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cncguitarwizard"
+version = "0.1.0-alpha1"
+description = "Open source parametric guitar CAD/CAM platform"
+readme = "README.md"
+requires-python = ">=3.11"
+
+authors = [
+    {name = "OW"}
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
