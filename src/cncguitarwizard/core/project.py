@@ -6,8 +6,11 @@ from dataclasses import dataclass, field
 
 from .metadata import ProjectMetadata
 
+from .neck import NeckParameters
+
 
 @dataclass(slots=True)
+
 class Project:
     """
     Root object for CNCguitarwizard.
@@ -16,6 +19,7 @@ class Project:
     """
 
     metadata: ProjectMetadata = field(default_factory=ProjectMetadata)
+    neck: NeckParameters = field(default_factory=NeckParameters)
 
     # Added in future commits
     # parameters
