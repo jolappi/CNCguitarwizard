@@ -17,6 +17,7 @@ from cncguitarwizard.geometry.neck import (
     HeadstockPlan,
     NeckOutline,
     NeckSideProfile,
+    TunerLayout,
 )
 from cncguitarwizard.geometry.primitives import Line2D, Point2D
 from cncguitarwizard.render.svg import SVGRenderer
@@ -61,6 +62,11 @@ def make_headstock_plan() -> HeadstockPlan:
     return HeadstockPlan(150.0, 42.0, 30.0, 65.0, 40.0)
 
 
+def make_tuner_layout() -> TunerLayout:
+    """Return the Prototype001 symmetric tuner-hole layout."""
+    return TunerLayout(make_headstock_plan())
+
+
 @pytest.mark.parametrize(
     ("geometry", "snapshot_name"),
     [
@@ -75,6 +81,7 @@ def make_headstock_plan() -> HeadstockPlan:
         (make_fretboard_cross_section(), "fretboard_cross_section.svg"),
         (make_headstock_plan(), "headstock_plan.svg"),
         (HeadstockAngleReference(150.0, 8.0), "headstock_angle.svg"),
+        (make_tuner_layout(), "tuner_layout.svg"),
     ],
 )
 def test_svg_renderer_matches_geometry_snapshot(
@@ -88,6 +95,7 @@ def test_svg_renderer_matches_geometry_snapshot(
         | FretboardSideProfile
         | HeadstockAngleReference
         | HeadstockPlan
+        | TunerLayout
         | NeckOutline
         | NeckSideProfile
     ),
@@ -112,6 +120,7 @@ def test_svg_renderer_matches_geometry_snapshot(
         make_fretboard_cross_section(),
         make_headstock_plan(),
         HeadstockAngleReference(150.0, 8.0),
+        make_tuner_layout(),
     ],
 )
 def test_svg_renderer_returns_well_formed_xml(
@@ -125,6 +134,7 @@ def test_svg_renderer_returns_well_formed_xml(
         | FretboardSideProfile
         | HeadstockAngleReference
         | HeadstockPlan
+        | TunerLayout
         | NeckOutline
         | NeckSideProfile
     ),

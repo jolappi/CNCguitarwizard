@@ -48,6 +48,10 @@ The modern 3+3 headstock reference followed with a 150 mm tapered plan and an
 8-degree side angle. The shape widens through a 65 mm shoulder and narrows to
 a 40 mm tip without copying a manufacturer-specific outline.
 
+Six 10 mm tuner holes were added in a symmetric 3+3 layout. Automated checks
+now protect the headstock edges, nut, tip, and neighboring holes before the
+layout can proceed to a manufacturing backend.
+
 ## Documentation
 
 - Added public package reference with API tables, examples, and diagrams.

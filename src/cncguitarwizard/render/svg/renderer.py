@@ -18,6 +18,7 @@ from ...geometry.neck import (
     HeadstockPlan,
     NeckOutline,
     NeckSideProfile,
+    TunerLayout,
 )
 from ...geometry.primitives import Line2D, Point2D
 
@@ -31,6 +32,7 @@ RenderableGeometry: TypeAlias = (
     | FretboardSideProfile
     | HeadstockAngleReference
     | HeadstockPlan
+    | TunerLayout
     | NeckOutline
     | NeckSideProfile
 )
@@ -98,6 +100,8 @@ class SVGRenderer:
                 '<line class="headstock-angle-reference" ',
                 1,
             )
+        elif isinstance(geometry, TunerLayout):
+            element = self._render_tuner_layout(geometry)
         elif isinstance(geometry, NeckOutline):
             element = self._render_neck_outline(geometry)
         elif isinstance(geometry, NeckSideProfile):
@@ -160,6 +164,18 @@ class SVGRenderer:
                 geometry.reference_line.start,
                 geometry.reference_line.end,
             )
+        if isinstance(geometry, TunerLayout):
+            radius = geometry.hole_diameter / 2.0
+            outline_points = geometry.headstock.boundary
+            hole_bounds = tuple(
+                Point2D(hole.center.x + x_offset, hole.center.y + y_offset)
+                for hole in geometry.holes
+                for x_offset, y_offset in (
+                    (-radius, -radius),
+                    (radius, radius),
+                )
+            )
+            return (*outline_points, *hole_bounds)
         if isinstance(geometry, NeckOutline):
             return geometry.boundary
         if isinstance(geometry, NeckSideProfile):
@@ -240,6 +256,24 @@ class SVGRenderer:
             for point in points
         )
         return f'<polygon class="{class_name}" points="{coordinates}"/>'
+
+    @staticmethod
+    def _render_tuner_layout(layout: TunerLayout) -> str:
+        """Return a headstock outline and six circular tuner holes."""
+        outline = SVGRenderer._render_polygon(
+            layout.headstock.boundary,
+            "headstock-plan",
+        )
+        holes = "\n".join(
+            (
+                f'<circle class="tuner-hole {hole.side}" '
+                f'cx="{SVGRenderer._format_number(hole.center.x)}" '
+                f'cy="{SVGRenderer._format_number(hole.center.y)}" '
+                f'r="{SVGRenderer._format_number(hole.diameter / 2.0)}"/>'
+            )
+            for hole in layout.holes
+        )
+        return f'<g class="tuner-layout">\n{outline}\n{holes}\n</g>'
 
     @staticmethod
     def _format_number(value: float) -> str:

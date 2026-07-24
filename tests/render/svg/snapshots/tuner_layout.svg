@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="-160 -42.5 170 85">
+<g class="tuner-layout">
+<polygon class="headstock-plan" points="0,21 0,-21 -30,-32.5 -150,-20 -150,20 -30,32.5"/>
+<circle class="tuner-hole bass" cx="-60" cy="21" r="5"/>
+<circle class="tuner-hole bass" cx="-95" cy="18" r="5"/>
+<circle class="tuner-hole bass" cx="-130" cy="15" r="5"/>
+<circle class="tuner-hole treble" cx="-60" cy="-21" r="5"/>
+<circle class="tuner-hole treble" cx="-95" cy="-18" r="5"/>
+<circle class="tuner-hole treble" cx="-130" cy="-15" r="5"/>
+</g>
+</svg>
