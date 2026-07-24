@@ -5,6 +5,12 @@ complete CNCguitarwizard neck. Its defaults reproduce the locked 24-inch,
 24-fret design, while individual fields remain configurable through
 `dataclasses.replace`.
 
+`first_fret_thickness=17.0` and `twelfth_fret_thickness=19.0` are complete
+centerline thicknesses including the 6 mm fretboard. The generated neck-wood
+depths are therefore 11 mm and 13 mm. `heel_thickness=20.0` remains a wood
+dimension below the fretboard, giving 26 mm total center thickness at the
+heel.
+
 ```python
 from dataclasses import replace
 from pathlib import Path

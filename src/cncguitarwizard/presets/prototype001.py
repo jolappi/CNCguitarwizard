@@ -35,7 +35,12 @@ class Prototype001Geometry:
 
 @dataclass(frozen=True, slots=True)
 class Prototype001Parameters:
-    """Define the complete first CNCguitarwizard neck in millimetres."""
+    """Define the complete first CNCguitarwizard neck in millimetres.
+
+    First- and twelfth-fret thicknesses are total centerline dimensions from
+    the playing surface to the neck back. Heel thickness describes neck wood
+    below the separate fretboard, matching the specified 20 mm + fretboard.
+    """
 
     scale_length: float = 609.6
     fret_count: int = 24
@@ -79,10 +84,16 @@ class Prototype001Parameters:
             self.heel_width,
             self.heel_length,
         )
+        first_fret_wood_thickness = (
+            self.first_fret_thickness - self.fretboard_thickness
+        )
+        twelfth_fret_wood_thickness = (
+            self.twelfth_fret_thickness - self.fretboard_thickness
+        )
         neck_surface = NeckBackSurface(
             outline,
-            self.first_fret_thickness,
-            self.twelfth_fret_thickness,
+            first_fret_wood_thickness,
+            twelfth_fret_wood_thickness,
             self.heel_thickness,
             profile_sample_count=self.profile_sample_count,
             segments_per_region=self.segments_per_region,

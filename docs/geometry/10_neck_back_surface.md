@@ -28,6 +28,11 @@ surface = NeckBackSurface(
 )
 ```
 
+`NeckBackSurface` itself describes wood below the fretboard. The
+Prototype001 preset converts the requested total 17 mm and 19 mm dimensions
+to 11 mm and 13 mm wood depths by subtracting its 6 mm fretboard. The heel
+remains 20 mm of wood as originally specified.
+
 The default mesh contains eight longitudinal segments in each reference
 region and 33 points across every D-profile section. It is intended as a
 deterministic interchange surface. The FreeCAD backend uses these rows as

@@ -36,6 +36,10 @@ Run the generated file inside FreeCAD. It:
 3. places the result in a `Part::Feature`;
 4. recomputes the document.
 
+Every loft and boolean operation is checked with FreeCAD's `isNull()` and
+`isValid()` methods. A failed operation reports its stage, such as
+`truss-rod cut`, `fret-slot cut`, or `headstock-to-neck fusion`.
+
 The fretboard exporter follows the same process, closing every radiused
 section against its flat underside.
 
@@ -122,6 +126,11 @@ source = exporter.render_neck_assembly(
 Each slot follows the sampled 430 mm playing-surface radius instead of using
 a single flat-bottomed box. The backend validates scale length, fret count,
 slot positions, and remaining material below the 2.7 mm slot floor.
+Each cut uses one continuous closed profile across the fretboard, avoiding
+the invalid internal seams produced by fusing many small cutter prisms.
+The cutter extends 0.2 mm above the playing surface and 1 mm beyond both
+fretboard edges. These overcuts avoid coincident boolean faces without
+changing the requested 2.7 mm finished slot depth.
 
 ## Current limitations
 

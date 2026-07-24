@@ -251,7 +251,15 @@ class FreeCADScriptExporter:
             "        vectors = [App.Vector(x, y, z) for x, y, z in points]\n"
             "        vectors.append(vectors[0])\n"
             "        sections.append(Part.makePolygon(vectors))\n"
-            "    return Part.makeLoft(sections, True, False, False)\n\n"
+            "    shape = Part.makeLoft(sections, True, False, False)\n"
+            "    return require_shape(shape, \"loft\")\n\n"
+            "def require_shape(shape, operation):\n"
+            '    """Reject null or invalid FreeCAD operation results."""\n'
+            "    if shape.isNull():\n"
+            "        raise RuntimeError(f\"{operation} produced a null shape\")\n"
+            "    if not shape.isValid():\n"
+            "        raise RuntimeError(f\"{operation} produced an invalid shape\")\n"
+            "    return shape\n\n"
             f'document = App.newDocument("{document_name}")\n'
             "neck_shape = make_loft(NECK_SECTION_POINTS)\n"
             f"{truss_rod_source}"
@@ -288,7 +296,10 @@ class FreeCADScriptExporter:
             tuner_chamfer_depth,
         )
         feature_source = (
-            "neck_shape = neck_shape.fuse(headstock_shape)\n"
+            "neck_shape = require_shape(\n"
+            "    neck_shape.fuse(headstock_shape),\n"
+            '    "headstock-to-neck fusion",\n'
+            ")\n"
             "neck_feature.Shape = neck_shape\n"
             if join_to_neck
             else (
@@ -348,7 +359,10 @@ class FreeCADScriptExporter:
             "        cutter_start,\n"
             "        tuner_axis,\n"
             "    )\n"
-            "    headstock_shape = headstock_shape.cut(cutter)\n"
+            "    headstock_shape = require_shape(\n"
+            "        headstock_shape.cut(cutter),\n"
+            '        "tuner-hole cut",\n'
+            "    )\n"
             "    if tuner_chamfer_depth > 0.0:\n"
             "        chamfer = Part.makeCone(\n"
             "            diameter / 2.0 + tuner_chamfer_depth,\n"
@@ -357,7 +371,10 @@ class FreeCADScriptExporter:
             "            top_center,\n"
             "            tuner_axis,\n"
             "        )\n"
-            "        headstock_shape = headstock_shape.cut(chamfer)\n"
+            "        headstock_shape = require_shape(\n"
+            "            headstock_shape.cut(chamfer),\n"
+            '            "tuner chamfer cut",\n'
+            "        )\n"
         )
 
     @staticmethod
@@ -373,30 +390,42 @@ class FreeCADScriptExporter:
         return (
             f"fret_slot_width = {slot_width}\n"
             f"fret_slot_depth = {slot_depth}\n"
-            "for surface_row in FRET_SURFACE_ROWS:\n"
+            "fret_slot_surface_overcut = 0.2\n"
+            "fret_slot_side_overcut = 1.0\n"
+            "for fret_index, surface_row in enumerate(\n"
+            "    FRET_SURFACE_ROWS,\n"
+            "    start=1,\n"
+            "):\n"
             "    position = surface_row[0][0]\n"
-            "    slot_segments = []\n"
-            "    for first, second in zip(surface_row, surface_row[1:]):\n"
-            "        first_y, first_z = first[1], first[2]\n"
-            "        second_y, second_z = second[1], second[2]\n"
-            "        profile = [\n"
-            "            App.Vector(position - fret_slot_width / 2.0, "
-            "first_y, first_z),\n"
-            "            App.Vector(position - fret_slot_width / 2.0, "
-            "second_y, second_z),\n"
-            "            App.Vector(position - fret_slot_width / 2.0, "
-            "second_y, second_z - fret_slot_depth),\n"
-            "            App.Vector(position - fret_slot_width / 2.0, "
-            "first_y, first_z - fret_slot_depth),\n"
-            "        ]\n"
-            "        profile.append(profile[0])\n"
-            "        face = Part.Face(Part.makePolygon(profile))\n"
-            "        slot_segments.append("
-            "face.extrude(App.Vector(fret_slot_width, 0.0, 0.0)))\n"
-            "    slot_shape = slot_segments[0]\n"
-            "    for segment in slot_segments[1:]:\n"
-            "        slot_shape = slot_shape.fuse(segment)\n"
-            "    fretboard_shape = fretboard_shape.cut(slot_shape)\n"
+            "    profile_x = position - fret_slot_width / 2.0\n"
+            "    first = surface_row[0]\n"
+            "    last = surface_row[-1]\n"
+            "    extended_row = [\n"
+            "        (first[0], first[1] - fret_slot_side_overcut, first[2]),\n"
+            "        *surface_row,\n"
+            "        (last[0], last[1] + fret_slot_side_overcut, last[2]),\n"
+            "    ]\n"
+            "    profile = [\n"
+            "        App.Vector(\n"
+            "            profile_x,\n"
+            "            y,\n"
+            "            z + fret_slot_surface_overcut,\n"
+            "        )\n"
+            "        for _, y, z in extended_row\n"
+            "    ]\n"
+            "    profile.extend(\n"
+            "        App.Vector(profile_x, y, z - fret_slot_depth)\n"
+            "        for _, y, z in reversed(extended_row)\n"
+            "    )\n"
+            "    profile.append(profile[0])\n"
+            "    slot_face = Part.Face(Part.makePolygon(profile))\n"
+            "    slot_shape = slot_face.extrude(\n"
+            "        App.Vector(fret_slot_width, 0.0, 0.0)\n"
+            "    )\n"
+            "    fretboard_shape = require_shape(\n"
+            "        fretboard_shape.cut(slot_shape).removeSplitter(),\n"
+            '        f"fret-slot cut {fret_index}",\n'
+            "    )\n"
         )
 
     @staticmethod
@@ -414,7 +443,10 @@ class FreeCADScriptExporter:
             "truss_rod_shape = Part.makeBox("
             f"{channel.length}, {channel.width}, {channel.depth}, "
             f"App.Vector({start}, {lateral_start}, {vertical_start}))\n"
-            "neck_shape = neck_shape.cut(truss_rod_shape)\n"
+            "neck_shape = require_shape(\n"
+            "    neck_shape.cut(truss_rod_shape),\n"
+            '    "truss-rod cut",\n'
+            ")\n"
         )
 
     def write_script(self, path: Path, source: str) -> None:
@@ -433,9 +465,7 @@ class FreeCADScriptExporter:
     @staticmethod
     def _close_neck_row(row: tuple[Point3D, ...]) -> tuple[Point3D, ...]:
         """Close one neck-back section across the fretboard underside."""
-        first = row[0]
-        last = row[-1]
-        return (*row, Point3D(last.x, last.y, 0.0), Point3D(first.x, first.y, 0.0))
+        return row
 
     @staticmethod
     def _close_fretboard_row(row: tuple[Point3D, ...]) -> tuple[Point3D, ...]:
@@ -474,9 +504,19 @@ class FreeCADScriptExporter:
             "    vectors = [App.Vector(x, y, z) for x, y, z in points]\n"
             "    vectors.append(vectors[0])\n"
             "    return Part.makePolygon(vectors)\n\n"
+            "def require_shape(shape, operation):\n"
+            '    """Reject null or invalid FreeCAD operation results."""\n'
+            "    if shape.isNull():\n"
+            "        raise RuntimeError(f\"{operation} produced a null shape\")\n"
+            "    if not shape.isValid():\n"
+            "        raise RuntimeError(f\"{operation} produced an invalid shape\")\n"
+            "    return shape\n\n"
             f'document = App.newDocument("{document_name}")\n'
             "sections = [closed_wire(points) for points in SECTION_POINTS]\n"
-            "shape = Part.makeLoft(sections, True, False, False)\n"
+            "shape = require_shape(\n"
+            "    Part.makeLoft(sections, True, False, False),\n"
+            '    "loft",\n'
+            ")\n"
             f'feature = document.addObject("Part::Feature", "{object_name}")\n'
             "feature.Shape = shape\n"
             "document.recompute()\n"

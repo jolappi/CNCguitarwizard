@@ -43,6 +43,32 @@ Prototype001 now has a one-command build workflow. It creates matching
 FreeCAD macro and Python scripts plus a JSON report containing the complete
 parameter set, version, timestamp, target files, and script checksum.
 
+The normal build now executes FreeCAD and verifies that both `.FCStd` and
+`.step` exist before reporting success. Script-only generation is explicit,
+and failed or incomplete FreeCAD runs produce a build workflow error.
+
+FreeCAD execution now always records its command, exit code, stdout, and
+stderr in `freecad.log`. The JSON report persists `pending`, `failed`, or
+`complete` state, so an interrupted build cannot resemble a successful one.
+
+Neck loft sections no longer repeat their existing `Z = 0` edge points.
+Removing those zero-length polygon edges fixes FreeCAD's initial `Null shape`
+failure. Generated scripts now validate and identify every loft and boolean
+result.
+
+Radius-following fret slots now use one continuous cutter solid per fret.
+This removes the internal coplanar seams that caused FreeCAD to report an
+invalid shape during the first fret-slot boolean operation.
+
+Fret-slot cutters now cross the playing surface and both fretboard edges with
+small controlled overcuts. This avoids coincident OpenCASCADE boolean faces,
+and diagnostics identify the exact fret number if a cut still fails.
+
+Prototype001 now interprets the 17 mm and 19 mm neck dimensions correctly as
+totals including the 6 mm fretboard. Its neck-wood depths are 11 mm and 13 mm,
+while the heel remains the specified 20 mm of wood plus fretboard. Builds also
+remove stale FCStd and STEP targets before FreeCAD execution.
+
 The geometry package was introduced as the backend-independent foundation for
 instrument geometry.
 

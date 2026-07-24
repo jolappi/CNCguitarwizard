@@ -4,7 +4,10 @@ from dataclasses import FrozenInstanceError, replace
 
 import pytest
 
-from cncguitarwizard.geometry.exceptions import HeadstockGeometryError
+from cncguitarwizard.geometry.exceptions import (
+    HeadstockGeometryError,
+    NeckGeometryError,
+)
 from cncguitarwizard.presets import Prototype001Parameters
 
 
@@ -19,6 +22,19 @@ def test_default_preset_builds_every_locked_component() -> None:
     assert geometry.neck_outline.heel_length == 63.0
     assert geometry.fretboard_surface.radius == 430.0
     assert geometry.fretboard_surface.center_thickness == 6.0
+    assert geometry.neck_surface.first_fret_thickness == 11.0
+    assert geometry.neck_surface.twelfth_fret_thickness == 13.0
+    assert (
+        geometry.neck_surface.first_fret_thickness
+        + geometry.fretboard_surface.center_thickness
+        == 17.0
+    )
+    assert (
+        geometry.neck_surface.twelfth_fret_thickness
+        + geometry.fretboard_surface.center_thickness
+        == 19.0
+    )
+    assert geometry.neck_surface.final_fret_thickness == 20.0
     assert geometry.truss_rod_channel.length == 440.0
     assert geometry.headstock.thickness == 16.0
     assert len(geometry.tuner_layout.holes) == 6
@@ -41,6 +57,14 @@ def test_preset_rejects_unsupported_headstock_thickness() -> None:
         replace(
             Prototype001Parameters(),
             headstock_thickness=13.9,
+        ).build()
+
+
+def test_preset_rejects_fretboard_thicker_than_neck_total() -> None:
+    with pytest.raises(NeckGeometryError):
+        replace(
+            Prototype001Parameters(),
+            first_fret_thickness=5.0,
         ).build()
 
 

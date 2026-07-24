@@ -122,10 +122,10 @@ def test_complete_prototype_can_be_rendered_with_one_export_call(
     )
 
     ast.parse(source)
-    assert "neck_shape = neck_shape.cut(truss_rod_shape)" in source
-    assert "fretboard_shape = fretboard_shape.cut(slot_shape)" in source
-    assert "headstock_shape = headstock_shape.cut(cutter)" in source
-    assert "neck_shape = neck_shape.fuse(headstock_shape)" in source
+    assert "neck_shape.cut(truss_rod_shape)" in source
+    assert "fretboard_shape.cut(slot_shape)" in source
+    assert "headstock_shape.cut(cutter)" in source
+    assert "neck_shape.fuse(headstock_shape)" in source
     assert (
         f'Part.export([neck_feature, fretboard_feature], "{step_path}")'
         in source
@@ -147,6 +147,35 @@ def test_neck_script_contains_one_section_for_each_surface_row() -> None:
     assert isinstance(assignment, ast.Assign)
     assert isinstance(assignment.value, ast.List)
     assert len(assignment.value.elts) == len(surface.mesh.rows)
+    first_section = assignment.value.elts[0]
+    assert isinstance(first_section, ast.List)
+    assert len(first_section.elts) == surface.profile_sample_count
+
+
+def test_neck_sections_do_not_repeat_existing_top_edge_points() -> None:
+    surface = make_neck_surface()
+    source = FreeCADScriptExporter().render_neck_back(surface)
+    module = ast.parse(source)
+    assignment = next(
+        node
+        for node in module.body
+        if isinstance(node, ast.Assign)
+        and isinstance(node.targets[0], ast.Name)
+        and node.targets[0].id == "SECTION_POINTS"
+    )
+
+    assert isinstance(assignment.value, ast.List)
+    for section in assignment.value.elts:
+        assert isinstance(section, ast.List)
+        coordinates = [ast.literal_eval(point) for point in section.elts]
+        assert all(
+            first != second
+            for first, second in zip(
+                coordinates,
+                coordinates[1:],
+                strict=False,
+            )
+        )
 
 
 def test_fretboard_sections_close_at_the_flat_underside() -> None:
@@ -252,7 +281,8 @@ def test_neck_assembly_can_cut_the_truss_rod_channel() -> None:
         "440.0, 6.0, 9.0, App.Vector(12.0, -3.0, -9.0))"
         in source
     )
-    assert "neck_shape = neck_shape.cut(truss_rod_shape)" in source
+    assert "neck_shape.cut(truss_rod_shape)" in source
+    assert '"truss-rod cut"' in source
     assert source.index("neck_shape.cut") < source.index(
         "neck_feature.Shape = neck_shape"
     )
@@ -280,9 +310,14 @@ def test_neck_assembly_can_cut_radius_following_fret_slots() -> None:
     assert "FRET_SURFACE_ROWS = " in source
     assert "fret_slot_width = 0.6" in source
     assert "fret_slot_depth = 2.7" in source
-    assert "for surface_row in FRET_SURFACE_ROWS:" in source
-    assert "face.extrude(App.Vector(fret_slot_width, 0.0, 0.0))" in source
-    assert "fretboard_shape = fretboard_shape.cut(slot_shape)" in source
+    assert "fret_slot_surface_overcut = 0.2" in source
+    assert "fret_slot_side_overcut = 1.0" in source
+    assert "for fret_index, surface_row in enumerate(" in source
+    assert "for _, y, z in reversed(extended_row)" in source
+    assert "slot_face = Part.Face(Part.makePolygon(profile))" in source
+    assert "slot_shape = slot_face.extrude(" in source
+    assert "fretboard_shape.cut(slot_shape)" in source
+    assert 'f"fret-slot cut {fret_index}"' in source
 
 
 def test_neck_assembly_omits_fret_slot_cuts_by_default() -> None:
@@ -336,7 +371,8 @@ def test_headstock_can_be_joined_to_the_neck_for_manufacturing(
         step_path=step_path,
     )
 
-    assert "neck_shape = neck_shape.fuse(headstock_shape)" in source
+    assert "neck_shape.fuse(headstock_shape)" in source
+    assert '"headstock-to-neck fusion"' in source
     assert source.count("neck_feature.Shape = neck_shape") == 2
     assert "headstock_feature = document.addObject" not in source
     assert (
@@ -366,11 +402,13 @@ def test_headstock_can_receive_six_normal_tuner_holes() -> None:
     assert len(assignment.value.elts) == 6
     assert "cutter = Part.makeCylinder(" in source
     assert "diameter / 2.0" in source
-    assert "headstock_shape = headstock_shape.cut(cutter)" in source
+    assert "headstock_shape.cut(cutter)" in source
+    assert '"tuner-hole cut"' in source
     assert "tuner_chamfer_depth = 0.2" in source
     assert "chamfer = Part.makeCone(" in source
     assert "diameter / 2.0 + tuner_chamfer_depth" in source
-    assert "headstock_shape = headstock_shape.cut(chamfer)" in source
+    assert "headstock_shape.cut(chamfer)" in source
+    assert '"tuner chamfer cut"' in source
 
 
 def test_tuner_chamfer_can_be_disabled() -> None:

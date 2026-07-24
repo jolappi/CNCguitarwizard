@@ -12,7 +12,7 @@ from cncguitarwizard.version import (
     PROJECT_NAME,
     __version__,
 )
-from cncguitarwizard.workflows import build_prototype001
+from cncguitarwizard.workflows import FreeCADExecutionError, build_prototype001
 
 
 def _create_parser() -> argparse.ArgumentParser:
@@ -28,6 +28,16 @@ def _create_parser() -> argparse.ArgumentParser:
         type=Path,
         default=Path("build"),
         help="Output directory (default: ./build).",
+    )
+    build_parser.add_argument(
+        "--scripts-only",
+        action="store_true",
+        help="Create FreeCAD scripts without executing FreeCAD.",
+    )
+    build_parser.add_argument(
+        "--freecad-command",
+        type=Path,
+        help="Explicit path to freecadcmd or FreeCADCmd.",
     )
     return parser
 
@@ -58,12 +68,25 @@ def main(argv: Sequence[str] | None = None) -> None:
         return
 
     if arguments.command == "build-prototype001":
-        result = build_prototype001(arguments.output)
+        try:
+            result = build_prototype001(
+                arguments.output,
+                run_freecad=not arguments.scripts_only,
+                freecad_command=arguments.freecad_command,
+            )
+        except FreeCADExecutionError as error:
+            parser.error(str(error))
         print("Prototype001 build package created.")
         print(f"Output: {result.output_directory}")
         print(f"Macro:  {result.macro_path.name}")
         print(f"Python: {result.python_path.name}")
         print(f"Report: {result.report_path.name}")
+        print(f"Log:    {result.freecad_log_path.name}")
+        if arguments.scripts_only:
+            print("FCStd and STEP will be created when a script runs in FreeCAD.")
+        else:
+            print(f"FCStd:  {result.fcstd_path.name}")
+            print(f"STEP:   {result.step_path.name}")
 
 
 if __name__ == "__main__":
