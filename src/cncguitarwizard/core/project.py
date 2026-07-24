@@ -3,14 +3,13 @@ Root project object.
 """
 
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 
 from .metadata import ProjectMetadata
-
 from .neck import NeckParameters
 
 
 @dataclass(slots=True)
-
 class Project:
     """
     Root object for CNCguitarwizard.
@@ -30,7 +29,4 @@ class Project:
 
     def touch(self) -> None:
         """Update modification timestamp."""
-
-        from datetime import datetime
-
-        self.metadata.modified = datetime.utcnow()
+        self.metadata.modified = datetime.now(UTC)

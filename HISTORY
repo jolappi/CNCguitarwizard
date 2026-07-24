@@ -1,3 +1,55 @@
+## Geometry Engine
+
+The geometry package was introduced as the backend-independent foundation for
+instrument geometry.
+
+- Added immutable `Point2D`, `Vector2D`, and `Line2D` primitives.
+- Introduced the guitar neck `Centerline` model.
+- Added finite, positive scale-length validation for centerline geometry.
+- Added `distance`, `midpoint`, and `interpolate` geometry utilities.
+- Extended `Vector2D` with dot, cross, angle, and perpendicular operations.
+- Added immutable point translation, rotation, and mirror transformations.
+- Added equal-temperament fret positions and centerline-derived fret lines.
+- Added tapered fretboard outlines from centerline and endpoint widths.
+- Added dependency-free SVG rendering with geometry snapshots.
+- Added an immutable neck model and fluent neck builder.
+- Added unit tests for primitive behavior, validation, and centerline geometry.
+
+## Fretboard Generator
+
+Fret positions were combined with the tapered fretboard outline for the first
+time. The engine now produces bounded slot segments whose lengths follow the
+fretboard taper, providing a backend-independent foundation for drawings and
+future CAM operations.
+
+The SVG backend was then extended to render the complete fretboard and its
+bounded slots together. This created the first combined visual preview of the
+fretboard geometry.
+
+SVG previews now derive their view box from the rendered geometry. Models of
+different dimensions fit the viewport automatically while retaining a
+configurable model-space margin.
+
+## Neck Generator
+
+The first top-view neck outline was generated from the locked Prototype001
+dimensions. It combines a 42 mm nut, a 56 mm width at fret 24, and a 63 mm
+parallel bolt-on heel without manual CAD sketching.
+
+The longitudinal wood profile followed next, introducing the 17 mm first-fret,
+19 mm twelfth-fret, and 20 mm heel thickness references while keeping the
+fretboard as a separate future geometry layer.
+
+## Documentation
+
+- Added public package reference with API tables, examples, and diagrams.
+- Updated README, roadmap, and architecture documentation.
+
+## Continuous Integration
+
+- Added cached Python 3.12 GitHub Actions checks for pytest, Ruff, and mypy.
+- Configured pytest warnings to fail the CI build.
+
 ## Step 2
 
 The first core object was implemented.
@@ -8,3 +60,32 @@ forming the backbone of CNCguitarwizard.
 2026-07-18 – Lift Off
 
 The first runnable version of CNCguitarwizard was created. The project's architecture, philosophy and development principles were established before geometry generation began.
+──────────────────────────────
+
+History
+
+Introduced:
+v0.1.0
+
+Related commits:
+
+feat(geometry): add centerline
+
+Related modules:
+
+geometry/centerline.py
+
+Tests:
+
+tests/geometry/test_centerline.py
+
+──────────────────────────────
+
+## Internal Project Lore
+
+The term "Digidust" was coined during the development of the first geometry modules.
+
+Just like sawdust appears when wood is shaped,
+Digidust appears when mathematics becomes geometry.
+
+It reminds us that every tiny calculation is part of building a real instrument.

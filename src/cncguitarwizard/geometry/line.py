@@ -1,16 +1,5 @@
-from dataclasses import dataclass
+"""Compatibility import for :class:`geometry.primitives.Line2D`."""
 
-from .point import Point2D
+from .primitives import Line2D
 
-
-@dataclass(slots=True, frozen=True)
-class Line2D:
-    start: Point2D
-    end: Point2D
-
-    @property
-    def length(self) -> float:
-        return (
-            ((self.end.x - self.start.x) ** 2)
-            + ((self.end.y - self.start.y) ** 2)
-        ) ** 0.5
+__all__ = ["Line2D"]

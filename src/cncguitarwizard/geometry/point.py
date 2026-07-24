@@ -1,7 +1,5 @@
-from dataclasses import dataclass
+"""Compatibility import for :class:`geometry.primitives.Point2D`."""
 
+from .primitives import Point2D
 
-@dataclass(slots=True, frozen=True)
-class Point2D:
-    x: float
-    y: float
+__all__ = ["Point2D"]

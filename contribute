@@ -5,3 +5,5 @@ Ei kovakoodattuja mittoja.
 Kaikki mitat millimetreinä.
 Uudet CAM-toiminnot eivät saa rikkoa vanhoja koneprofiileja.
 Kaikki muutokset käyvät validatorin läpi.
+
+Every commit must leave the project in a runnable state.

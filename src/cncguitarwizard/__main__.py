@@ -1,11 +1,12 @@
 from cncguitarwizard.version import (
-    __version__,
-    PROJECT_NAME,
-    PROJECT_MARK,
     MOTTO,
+    PROJECT_MARK,
+    PROJECT_NAME,
+    __version__,
 )
 
-def main():
+
+def main() -> None:
     print("=" * 60)
     print(f" {PROJECT_NAME}")
     print(f" {PROJECT_MARK}")

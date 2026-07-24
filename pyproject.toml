@@ -7,10 +7,17 @@ name = "cncguitarwizard"
 version = "0.1.0-alpha1"
 description = "Open source parametric guitar CAD/CAM platform"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 
 authors = [
     {name = "OW"}
+]
+
+[project.optional-dependencies]
+dev = [
+    "mypy>=1.11",
+    "pytest>=8.3",
+    "ruff>=0.6",
 ]
 
 [tool.setuptools]
@@ -18,3 +25,15 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+
+[tool.mypy]
+files = ["src"]
+python_version = "3.12"
+strict = true

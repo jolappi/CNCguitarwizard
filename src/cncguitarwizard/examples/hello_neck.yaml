@@ -1,0 +1,12 @@
+project:
+  name: Hello Neck
+
+neck:
+  scale_length: 609.6
+  fret_count: 24
+
+  nut_width: 42.0
+  heel_width: 63.0
+
+  first_fret_thickness: 17.0
+  twelfth_fret_thickness: 19.0

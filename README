@@ -1,3 +1,43 @@
+# CNCguitarwizard
+
+CNCguitarwizard is an open-source Python foundation for designing guitar
+necks, fretboards, and CNC-ready geometry. The current release provides
+immutable geometry, fret and fretboard calculations, a fluent neck builder,
+and dependency-free SVG rendering.
+
+```mermaid
+flowchart LR
+    Builder["NeckBuilder"] --> Geometry["Immutable geometry"]
+    Geometry --> Render["SVGRenderer"]
+```
+
+## Quick Start
+
+```python
+from cncguitarwizard.builder import NeckBuilder
+from cncguitarwizard.render.svg import SVGRenderer
+
+neck = (
+    NeckBuilder()
+    .scale_length(609.6)
+    .nut_width(42.0)
+    .bridge_width(63.0)
+    .build()
+)
+
+svg = SVGRenderer().render(neck.fretboard)
+```
+
+## Documentation
+
+- [Public package reference](docs/reference/01_public_packages.md)
+- [Geometry](docs/geometry/01_primitives.md)
+- [Fretboard](docs/geometry/02_fretboard.md)
+- [Neck builder](docs/builder/01_neck_builder.md)
+- [SVG rendering](docs/render/01_svg.md)
+- [Architecture](ARCHITECTURE)
+- [Roadmap](ROADMAP)
+
 ## Development
 
 ```bash
@@ -31,15 +71,13 @@ python -m pytest
 python -m cncguitarwizard
 ```
 
-Initial project structure
+Run the full quality gate before completing a change:
 
-- Configuration system
-- Parameter dictionary
-- Machine profile
-- Tool library
-- Validation framework
-- Documentation skeleton
+```bash
+python -m pytest
+ruff check .
+mypy
+```
 
-Quality over speed.
-
-Every commit should improve the project. Never sacrifice stability for progress.
+GitHub Actions runs the same pytest, Ruff, and mypy checks on every push and
+pull request. Python warnings fail the test step.
