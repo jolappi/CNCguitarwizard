@@ -23,6 +23,7 @@ from cncguitarwizard.geometry.neck import (
     TrussRodChannel,
     TunerLayout,
 )
+from cncguitarwizard.presets import Prototype001Parameters
 
 
 def make_neck_surface() -> NeckBackSurface:
@@ -109,6 +110,26 @@ def test_generated_freecad_source_is_valid_python(
     ast.parse(source)
     assert "Part.makeLoft(sections, True, False, False)" in source
     assert "document.recompute()" in source
+
+
+def test_complete_prototype_can_be_rendered_with_one_export_call(
+    tmp_path: Path,
+) -> None:
+    step_path = tmp_path / "Prototype001.step"
+    source = FreeCADScriptExporter().render_prototype001(
+        Prototype001Parameters().build(),
+        step_path=step_path,
+    )
+
+    ast.parse(source)
+    assert "neck_shape = neck_shape.cut(truss_rod_shape)" in source
+    assert "fretboard_shape = fretboard_shape.cut(slot_shape)" in source
+    assert "headstock_shape = headstock_shape.cut(cutter)" in source
+    assert "neck_shape = neck_shape.fuse(headstock_shape)" in source
+    assert (
+        f'Part.export([neck_feature, fretboard_feature], "{step_path}")'
+        in source
+    )
 
 
 def test_neck_script_contains_one_section_for_each_surface_row() -> None:

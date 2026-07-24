@@ -16,6 +16,7 @@ from ...geometry.neck import (
     TunerLayout,
 )
 from ...geometry.primitives import Point3D
+from ...presets import Prototype001Geometry
 from .exceptions import FreeCADBackendError
 
 _VALID_IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
@@ -56,6 +57,39 @@ class FreeCADScriptExporter:
             object_name,
             fcstd_path,
             step_path,
+        )
+
+    def render_prototype001(
+        self,
+        geometry: Prototype001Geometry,
+        join_headstock_to_neck: bool = True,
+        fcstd_path: Path | None = None,
+        step_path: Path | None = None,
+    ) -> str:
+        """Return a complete FreeCAD script from one Prototype001 model.
+
+        Args:
+            geometry: Fully built Prototype001 geometry bundle.
+            join_headstock_to_neck: Fuse headstock and neck for manufacturing.
+            fcstd_path: Optional destination for the FreeCAD document.
+            step_path: Optional destination for the combined STEP export.
+
+        Returns:
+            Standalone Python source for execution inside FreeCAD.
+        """
+        return self.render_neck_assembly(
+            geometry.neck_surface,
+            geometry.fretboard_surface,
+            truss_rod_channel=geometry.truss_rod_channel,
+            headstock=geometry.headstock,
+            tuner_layout=geometry.tuner_layout,
+            tuner_chamfer_depth=geometry.tuner_chamfer_depth,
+            join_headstock_to_neck=join_headstock_to_neck,
+            fret_layout=geometry.fret_layout,
+            fret_slot_width=geometry.fret_slot_width,
+            fret_slot_depth=geometry.fret_slot_depth,
+            fcstd_path=fcstd_path,
+            step_path=step_path,
         )
 
     def render_fretboard(

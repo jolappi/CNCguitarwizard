@@ -35,6 +35,10 @@ The FreeCAD assembly exporter can optionally fuse the angled headstock into
 the neck back for manufacturing output. Separate-object inspection remains
 available, and incompatible nut widths are rejected before source generation.
 
+The Prototype001 preset now provides one immutable parameter source for the
+complete neck. It builds every current geometry component and feeds them to a
+one-call FreeCAD export without coupling the core model to a CAD backend.
+
 The geometry package was introduced as the backend-independent foundation for
 instrument geometry.
 
