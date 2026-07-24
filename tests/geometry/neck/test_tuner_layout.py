@@ -56,6 +56,20 @@ def test_layout_is_immutable() -> None:
         layout.hole_diameter = 9.0
 
 
+def test_layout_reports_the_minimum_side_edge_clearance() -> None:
+    layout = TunerLayout(
+        make_headstock(),
+        station_distances=(55.0, 85.0, 115.0),
+        side_offsets=(16.0, 13.0, 10.0),
+        minimum_edge_clearance=8.0,
+    )
+
+    assert layout.minimum_side_edge_clearance == pytest.approx(
+        8.645833,
+        abs=0.000001,
+    )
+
+
 @pytest.mark.parametrize(
     "create_layout",
     [

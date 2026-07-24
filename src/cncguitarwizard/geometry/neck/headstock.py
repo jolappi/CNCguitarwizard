@@ -379,3 +379,13 @@ class TunerLayout:
                 raise HeadstockGeometryError(
                     "Tuner holes violate the requested hole-to-hole clearance."
                 )
+
+    @property
+    def minimum_side_edge_clearance(self) -> float:
+        """Return the least wood between a hole and a headstock side edge."""
+        return min(
+            self._half_width_at(-hole.center.x)
+            - abs(hole.center.y)
+            - hole.diameter / 2.0
+            for hole in self.holes
+        )

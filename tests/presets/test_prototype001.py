@@ -38,6 +38,13 @@ def test_default_preset_builds_every_locked_component() -> None:
     assert geometry.truss_rod_channel.length == 440.0
     assert geometry.headstock.thickness == 16.0
     assert len(geometry.tuner_layout.holes) == 6
+    assert geometry.tuner_layout.station_distances == (55.0, 85.0, 115.0)
+    assert geometry.tuner_layout.side_offsets == (16.0, 13.0, 10.0)
+    assert geometry.tuner_layout.minimum_side_edge_clearance >= 8.0
+    assert geometry.tuner_layout.minimum_side_edge_clearance == pytest.approx(
+        8.645833,
+        abs=0.000001,
+    )
     assert len(geometry.fret_layout.slots) == 24
     assert geometry.fret_slot_width == 0.6
     assert geometry.fret_slot_depth == 2.7

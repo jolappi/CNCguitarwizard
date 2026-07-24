@@ -66,6 +66,10 @@ class Prototype001Parameters:
     headstock_angle: float = 8.0
     headstock_thickness: float = 16.0
     tuner_hole_diameter: float = 10.0
+    tuner_station_distances: tuple[float, float, float] = (55.0, 85.0, 115.0)
+    tuner_side_offsets: tuple[float, float, float] = (16.0, 13.0, 10.0)
+    tuner_edge_clearance: float = 8.0
+    tuner_hole_clearance: float = 10.0
     tuner_chamfer_depth: float = 0.2
     profile_sample_count: int = 33
     segments_per_region: int = 8
@@ -144,6 +148,10 @@ class Prototype001Parameters:
         tuner_layout = TunerLayout(
             headstock_plan,
             hole_diameter=self.tuner_hole_diameter,
+            station_distances=self.tuner_station_distances,
+            side_offsets=self.tuner_side_offsets,
+            minimum_edge_clearance=self.tuner_edge_clearance,
+            minimum_hole_clearance=self.tuner_hole_clearance,
         )
         return Prototype001Geometry(
             outline,

@@ -38,7 +38,7 @@ Building the preset creates and cross-validates:
 - 24 radius-following fret slots;
 - the 440 × 6 × 9 mm truss-rod channel;
 - the 8-degree, 14–16 mm thick headstock;
-- the six-hole 3+3 tuner layout.
+- the six-hole 3+3 tuner layout with at least about 8 mm of side-edge wood.
 
 The FreeCAD convenience export applies all current manufacturing features and
 joins the headstock to the neck by default. Core geometry remains independent

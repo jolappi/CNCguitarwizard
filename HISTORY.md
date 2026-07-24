@@ -69,6 +69,10 @@ totals including the 6 mm fretboard. Its neck-wood depths are 11 mm and 13 mm,
 while the heel remains the specified 20 mm of wood plus fretboard. Builds also
 remove stale FCStd and STEP targets before FreeCAD execution.
 
+Prototype001 tuner stations moved to 55, 85, and 115 mm with 16, 13, and
+10 mm centerline offsets. This leaves at least 8.646 mm of wood between every
+10 mm hole edge and the tapered headstock side.
+
 The geometry package was introduced as the backend-independent foundation for
 instrument geometry.
 
