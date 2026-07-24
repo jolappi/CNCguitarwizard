@@ -52,6 +52,10 @@ Six 10 mm tuner holes were added in a symmetric 3+3 layout. Automated checks
 now protect the headstock edges, nut, tip, and neighboring holes before the
 layout can proceed to a manufacturing backend.
 
+The centered 440 × 6 × 9 mm double-action truss-rod channel was added with a
+heel-side adjustment reference. Its fit is checked against the complete neck
+outline before geometry is accepted.
+
 ## Documentation
 
 - Added public package reference with API tables, examples, and diagrams.

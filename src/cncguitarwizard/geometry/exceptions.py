@@ -23,3 +23,7 @@ class NeckGeometryError(GeometryException):
 
 class HeadstockGeometryError(GeometryException):
     """Raised when headstock geometry cannot be constructed safely."""
+
+
+class TrussRodGeometryError(GeometryException):
+    """Raised when truss-rod geometry cannot be constructed safely."""

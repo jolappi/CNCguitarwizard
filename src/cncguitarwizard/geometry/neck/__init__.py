@@ -9,6 +9,7 @@ from .headstock import (
 )
 from .outline import NeckOutline
 from .side_profile import NeckSideProfile
+from .truss_rod import TrussRodChannel
 
 __all__ = [
     "Centerline",
@@ -18,4 +19,5 @@ __all__ = [
     "NeckSideProfile",
     "TunerHole",
     "TunerLayout",
+    "TrussRodChannel",
 ]

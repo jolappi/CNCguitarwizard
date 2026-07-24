@@ -18,6 +18,7 @@ from ...geometry.neck import (
     HeadstockPlan,
     NeckOutline,
     NeckSideProfile,
+    TrussRodChannel,
     TunerLayout,
 )
 from ...geometry.primitives import Line2D, Point2D
@@ -33,6 +34,7 @@ RenderableGeometry: TypeAlias = (
     | HeadstockAngleReference
     | HeadstockPlan
     | TunerLayout
+    | TrussRodChannel
     | NeckOutline
     | NeckSideProfile
 )
@@ -102,6 +104,11 @@ class SVGRenderer:
             )
         elif isinstance(geometry, TunerLayout):
             element = self._render_tuner_layout(geometry)
+        elif isinstance(geometry, TrussRodChannel):
+            element = self._render_polygon(
+                geometry.top_boundary,
+                "truss-rod-channel",
+            )
         elif isinstance(geometry, NeckOutline):
             element = self._render_neck_outline(geometry)
         elif isinstance(geometry, NeckSideProfile):
@@ -176,6 +183,8 @@ class SVGRenderer:
                 )
             )
             return (*outline_points, *hole_bounds)
+        if isinstance(geometry, TrussRodChannel):
+            return geometry.top_boundary
         if isinstance(geometry, NeckOutline):
             return geometry.boundary
         if isinstance(geometry, NeckSideProfile):

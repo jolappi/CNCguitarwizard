@@ -17,6 +17,7 @@ from cncguitarwizard.geometry.neck import (
     HeadstockPlan,
     NeckOutline,
     NeckSideProfile,
+    TrussRodChannel,
     TunerLayout,
 )
 from cncguitarwizard.geometry.primitives import Line2D, Point2D
@@ -67,6 +68,18 @@ def make_tuner_layout() -> TunerLayout:
     return TunerLayout(make_headstock_plan())
 
 
+def make_truss_rod_channel() -> TrussRodChannel:
+    """Return the Prototype001 centered truss-rod channel."""
+    return TrussRodChannel(
+        make_neck_outline(),
+        12.0,
+        440.0,
+        6.0,
+        9.0,
+        adjustment_side="heel",
+    )
+
+
 @pytest.mark.parametrize(
     ("geometry", "snapshot_name"),
     [
@@ -82,6 +95,7 @@ def make_tuner_layout() -> TunerLayout:
         (make_headstock_plan(), "headstock_plan.svg"),
         (HeadstockAngleReference(150.0, 8.0), "headstock_angle.svg"),
         (make_tuner_layout(), "tuner_layout.svg"),
+        (make_truss_rod_channel(), "truss_rod.svg"),
     ],
 )
 def test_svg_renderer_matches_geometry_snapshot(
@@ -96,6 +110,7 @@ def test_svg_renderer_matches_geometry_snapshot(
         | HeadstockAngleReference
         | HeadstockPlan
         | TunerLayout
+        | TrussRodChannel
         | NeckOutline
         | NeckSideProfile
     ),
@@ -121,6 +136,7 @@ def test_svg_renderer_matches_geometry_snapshot(
         make_headstock_plan(),
         HeadstockAngleReference(150.0, 8.0),
         make_tuner_layout(),
+        make_truss_rod_channel(),
     ],
 )
 def test_svg_renderer_returns_well_formed_xml(
@@ -135,6 +151,7 @@ def test_svg_renderer_returns_well_formed_xml(
         | HeadstockAngleReference
         | HeadstockPlan
         | TunerLayout
+        | TrussRodChannel
         | NeckOutline
         | NeckSideProfile
     ),
