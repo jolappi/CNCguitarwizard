@@ -8,8 +8,13 @@ import pytest
 
 from cncguitarwizard.backends.freecad import FreeCADScriptExporter
 from cncguitarwizard.backends.freecad.exceptions import FreeCADBackendError
-from cncguitarwizard.geometry.fretboard import FretboardSurface
+from cncguitarwizard.geometry.fretboard import (
+    Fretboard,
+    FretboardSurface,
+    FretLayout,
+)
 from cncguitarwizard.geometry.neck import (
+    Centerline,
     NeckBackSurface,
     NeckOutline,
     TrussRodChannel,
@@ -46,6 +51,22 @@ def make_truss_rod_channel(
         depth,
         adjustment_side="heel",
     )
+
+
+def make_fret_layout(
+    scale_length: float = 609.6,
+    fret_count: int = 24,
+) -> FretLayout:
+    """Return a fret layout aligned with the Prototype001 surface."""
+    final_fret_fraction = 1.0 - 2.0 ** (-fret_count / 12.0)
+    bridge_width = 42.0 + (56.0 - 42.0) / final_fret_fraction
+    fretboard = Fretboard(
+        scale_length,
+        42.0,
+        bridge_width,
+        Centerline(scale_length),
+    )
+    return FretLayout(fretboard, fret_count)
 
 
 @pytest.mark.parametrize(
@@ -141,10 +162,8 @@ def test_neck_assembly_creates_two_separate_features(tmp_path: Path) -> None:
     assert 'document.addObject("Part::Feature", "Fretboard")' in source
     assert "neck_shape = make_loft(NECK_SECTION_POINTS)" in source
     assert "neck_feature.Shape = neck_shape" in source
-    assert (
-        "fretboard_feature.Shape = make_loft("
-        "FRETBOARD_SECTION_POINTS)" in source
-    )
+    assert "fretboard_shape = make_loft(FRETBOARD_SECTION_POINTS)" in source
+    assert "fretboard_feature.Shape = fretboard_shape" in source
     assert (
         f'Part.export([neck_feature, fretboard_feature], "{step_path}")'
         in source
@@ -205,6 +224,33 @@ def test_neck_assembly_omits_truss_rod_cut_by_default() -> None:
     assert "neck_shape.cut" not in source
 
 
+def test_neck_assembly_can_cut_radius_following_fret_slots() -> None:
+    source = FreeCADScriptExporter().render_neck_assembly(
+        make_neck_surface(),
+        make_fretboard_surface(),
+        fret_layout=make_fret_layout(),
+        fret_slot_width=0.6,
+        fret_slot_depth=2.7,
+    )
+
+    assert "FRET_SURFACE_ROWS = " in source
+    assert "fret_slot_width = 0.6" in source
+    assert "fret_slot_depth = 2.7" in source
+    assert "for surface_row in FRET_SURFACE_ROWS:" in source
+    assert "face.extrude(App.Vector(fret_slot_width, 0.0, 0.0))" in source
+    assert "fretboard_shape = fretboard_shape.cut(slot_shape)" in source
+
+
+def test_neck_assembly_omits_fret_slot_cuts_by_default() -> None:
+    source = FreeCADScriptExporter().render_neck_assembly(
+        make_neck_surface(),
+        make_fretboard_surface(),
+    )
+
+    assert "FRET_SURFACE_ROWS" not in source
+    assert "fretboard_shape.cut" not in source
+
+
 def test_exporter_rejects_unsafe_names_and_file_suffixes(
     tmp_path: Path,
 ) -> None:
@@ -254,4 +300,28 @@ def test_neck_assembly_rejects_an_incompatible_truss_rod_channel() -> None:
                 surface.neck_outline,
                 depth=17.0,
             ),
+        )
+
+
+def test_neck_assembly_rejects_incompatible_fret_slots() -> None:
+    exporter = FreeCADScriptExporter()
+
+    with pytest.raises(FreeCADBackendError):
+        exporter.render_neck_assembly(
+            make_neck_surface(),
+            make_fretboard_surface(),
+            fret_layout=make_fret_layout(scale_length=610.0),
+        )
+    with pytest.raises(FreeCADBackendError):
+        exporter.render_neck_assembly(
+            make_neck_surface(),
+            make_fretboard_surface(),
+            fret_layout=make_fret_layout(fret_count=22),
+        )
+    with pytest.raises(FreeCADBackendError):
+        exporter.render_neck_assembly(
+            make_neck_surface(),
+            make_fretboard_surface(),
+            fret_layout=make_fret_layout(),
+            fret_slot_depth=6.0,
         )

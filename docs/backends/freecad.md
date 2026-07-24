@@ -74,10 +74,27 @@ the requested depth leaves wood below the channel floor. The current
 subtraction models the specified 440 × 6 × 9 mm straight channel; a separate
 spokewheel access pocket will follow once its hardware dimensions are known.
 
+An aligned `FretLayout` enables the 24 fret-slot cuts:
+
+```python
+source = exporter.render_neck_assembly(
+    neck_surface,
+    fretboard_surface,
+    fret_layout=fret_layout,
+    fret_slot_width=0.6,
+    fret_slot_depth=2.7,
+)
+```
+
+Each slot follows the sampled 430 mm playing-surface radius instead of using
+a single flat-bottomed box. The backend validates scale length, fret count,
+slot positions, and remaining material below the 2.7 mm slot floor.
+
 ## Current limitations
 
 - The generated loft uses sampled polygon sections rather than exact B-spline
   or circular wires.
 - Neck-to-headstock and neck-to-heel transition surfaces are not included.
-- Fret-slot cuts are not yet applied.
+- Fret slots follow the sampled polygon surface rather than an exact circular
+  sweep.
 - Scripts must be visually inspected in FreeCAD before any CAM work.

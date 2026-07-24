@@ -12,6 +12,10 @@ The assembly exporter can optionally subtract the validated rectangular
 truss-rod channel from the neck solid. It rejects mismatched outlines and
 channels that would consume the full neck depth.
 
+The fretboard solid can now receive all 24 validated fret-slot cuts. Their
+0.6 mm wide, 2.7 mm deep cutting geometry follows the sampled 430 mm playing
+surface radius and preserves material beneath every slot.
+
 The geometry package was introduced as the backend-independent foundation for
 instrument geometry.
 
