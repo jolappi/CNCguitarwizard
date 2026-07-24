@@ -17,7 +17,7 @@ class NeckBackSurface:
     """Generate a loft-ready mesh through the neck profile references.
 
     The longitudinal surface passes exactly through the nut, fret 1, fret 12,
-    and final-fret reference stations. Each of the three intervals is divided
+    final fret, and heel-end reference stations. Each interval is divided
     into the same configurable number of segments.
 
     Args:
@@ -54,8 +54,15 @@ class NeckBackSurface:
         first_position = fret_positions[0].distance_from_nut
         twelfth_position = fret_positions[11].distance_from_nut
         final_position = fret_positions[-1].distance_from_nut
+        heel_end_position = final_position + self.neck_outline.heel_length
         station_positions = self._build_station_positions(
-            (0.0, first_position, twelfth_position, final_position)
+            (
+                0.0,
+                first_position,
+                twelfth_position,
+                final_position,
+                heel_end_position,
+            )
         )
         rows = tuple(
             self._build_profile_row(position)
@@ -121,7 +128,7 @@ class NeckBackSurface:
 
     def _build_station_positions(
         self,
-        references: tuple[float, float, float, float],
+        references: tuple[float, ...],
     ) -> tuple[float, ...]:
         """Return ordered stations including every thickness reference."""
         positions: list[float] = []
@@ -166,6 +173,8 @@ class NeckBackSurface:
 
     def _width_at(self, position: float) -> float:
         """Return linearly tapered width at a longitudinal position."""
+        if position >= self.neck_outline.last_fret_position:
+            return self.neck_outline.heel_width
         fraction = position / self.neck_outline.last_fret_position
         return (
             self.neck_outline.nut_width
@@ -182,6 +191,8 @@ class NeckBackSurface:
         twelfth_position = self.station_positions_reference(12)
         final_position = self.neck_outline.last_fret_position
 
+        if position >= final_position:
+            return self.final_fret_thickness
         if position <= first_position:
             return self.first_fret_thickness
         if position <= twelfth_position:

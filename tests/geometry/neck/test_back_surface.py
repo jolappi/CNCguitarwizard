@@ -32,6 +32,10 @@ def test_surface_contains_all_locked_reference_stations() -> None:
     assert surface.station_positions_reference(1) in surface.station_positions
     assert surface.station_positions_reference(12) in surface.station_positions
     assert surface.neck_outline.last_fret_position in surface.station_positions
+    assert surface.station_positions[-1] == pytest.approx(
+        surface.neck_outline.last_fret_position
+        + surface.neck_outline.heel_length
+    )
 
 
 def test_surface_center_depths_match_reference_thicknesses() -> None:
@@ -50,14 +54,15 @@ def test_surface_center_depths_match_reference_thicknesses() -> None:
     assert rows_by_position[surface.neck_outline.last_fret_position][
         center_index
     ].z == pytest.approx(-20.0)
+    assert surface.mesh.rows[-1][center_index].z == pytest.approx(-20.0)
 
 
 def test_surface_mesh_has_expected_resolution() -> None:
     surface = make_surface()
 
-    assert len(surface.station_positions) == 7
-    assert surface.mesh.vertex_count == 7 * 5
-    assert surface.mesh.face_count == 6 * 4
+    assert len(surface.station_positions) == 9
+    assert surface.mesh.vertex_count == 9 * 5
+    assert surface.mesh.face_count == 8 * 4
 
 
 def test_surface_rows_follow_the_neck_taper() -> None:
@@ -68,6 +73,21 @@ def test_surface_rows_follow_the_neck_taper() -> None:
 
     assert nut_width == pytest.approx(42.0)
     assert final_width == pytest.approx(56.0)
+
+
+def test_heel_rows_remain_parallel_and_constant_depth() -> None:
+    surface = make_surface()
+    final_fret_index = surface.station_positions.index(
+        surface.neck_outline.last_fret_position
+    )
+    center_index = surface.profile_sample_count // 2
+
+    for row in surface.mesh.rows[final_fret_index:]:
+        width = row[-1].y - row[0].y
+        assert width == pytest.approx(surface.neck_outline.heel_width)
+        assert row[center_index].z == pytest.approx(
+            -surface.final_fret_thickness
+        )
 
 
 def test_surface_is_immutable() -> None:

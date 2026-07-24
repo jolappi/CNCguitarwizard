@@ -16,6 +16,10 @@ The fretboard solid can now receive all 24 validated fret-slot cuts. Their
 0.6 mm wide, 2.7 mm deep cutting geometry follows the sampled 430 mm playing
 surface radius and preserves material beneath every slot.
 
+The three-dimensional neck-back surface now continues beyond fret 24 through
+the complete 63 mm bolt-on heel. Heel width and wood depth remain constant at
+56 mm and 20 mm, so FreeCAD exports no longer stop at the final fret.
+
 The geometry package was introduced as the backend-independent foundation for
 instrument geometry.
 
