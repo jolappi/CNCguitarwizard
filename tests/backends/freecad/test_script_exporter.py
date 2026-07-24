@@ -83,6 +83,31 @@ def test_exporter_writes_python_and_macro_files(tmp_path: Path) -> None:
     assert destination.read_text(encoding="utf-8") == source
 
 
+def test_script_can_save_fcstd_and_export_step(tmp_path: Path) -> None:
+    fcstd_path = tmp_path / "Prototype001_Neck.FCStd"
+    step_path = tmp_path / "Prototype001_Neck.step"
+
+    source = FreeCADScriptExporter().render_neck_back(
+        make_neck_surface(),
+        fcstd_path=fcstd_path,
+        step_path=step_path,
+    )
+
+    assert f'document.saveAs("{fcstd_path}")' in source
+    assert f'Part.export([feature], "{step_path}")' in source
+    assert source.index("document.recompute()") < source.index(
+        "document.saveAs"
+    )
+    assert source.index("document.saveAs") < source.index("Part.export")
+
+
+def test_script_omits_output_commands_when_paths_are_not_given() -> None:
+    source = FreeCADScriptExporter().render_neck_back(make_neck_surface())
+
+    assert "document.saveAs" not in source
+    assert "Part.export" not in source
+
+
 def test_exporter_rejects_unsafe_names_and_file_suffixes(
     tmp_path: Path,
 ) -> None:
@@ -95,3 +120,13 @@ def test_exporter_rejects_unsafe_names_and_file_suffixes(
         )
     with pytest.raises(FreeCADBackendError):
         exporter.write_script(tmp_path / "neck.txt", "source")
+    with pytest.raises(FreeCADBackendError):
+        exporter.render_neck_back(
+            make_neck_surface(),
+            fcstd_path=tmp_path / "neck.step",
+        )
+    with pytest.raises(FreeCADBackendError):
+        exporter.render_neck_back(
+            make_neck_surface(),
+            step_path=tmp_path / "neck.stl",
+        )

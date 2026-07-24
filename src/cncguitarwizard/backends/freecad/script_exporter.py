@@ -28,6 +28,8 @@ class FreeCADScriptExporter:
         surface: NeckBackSurface,
         document_name: str = "CNCguitarwizard",
         object_name: str = "NeckBack",
+        fcstd_path: Path | None = None,
+        step_path: Path | None = None,
     ) -> str:
         """Return a FreeCAD script that lofts the neck-back solid.
 
@@ -35,18 +37,28 @@ class FreeCADScriptExporter:
             surface: Backend-independent neck-back surface.
             document_name: FreeCAD document identifier.
             object_name: FreeCAD object identifier.
+            fcstd_path: Optional destination for the FreeCAD document.
+            step_path: Optional destination for the STEP model.
 
         Returns:
             Standalone Python source for execution inside FreeCAD.
         """
         rows = tuple(self._close_neck_row(row) for row in surface.mesh.rows)
-        return self._render_loft_script(rows, document_name, object_name)
+        return self._render_loft_script(
+            rows,
+            document_name,
+            object_name,
+            fcstd_path,
+            step_path,
+        )
 
     def render_fretboard(
         self,
         surface: FretboardSurface,
         document_name: str = "CNCguitarwizard",
         object_name: str = "Fretboard",
+        fcstd_path: Path | None = None,
+        step_path: Path | None = None,
     ) -> str:
         """Return a FreeCAD script that lofts the fretboard solid.
 
@@ -54,12 +66,20 @@ class FreeCADScriptExporter:
             surface: Backend-independent fretboard playing surface.
             document_name: FreeCAD document identifier.
             object_name: FreeCAD object identifier.
+            fcstd_path: Optional destination for the FreeCAD document.
+            step_path: Optional destination for the STEP model.
 
         Returns:
             Standalone Python source for execution inside FreeCAD.
         """
         rows = tuple(self._close_fretboard_row(row) for row in surface.mesh.rows)
-        return self._render_loft_script(rows, document_name, object_name)
+        return self._render_loft_script(
+            rows,
+            document_name,
+            object_name,
+            fcstd_path,
+            step_path,
+        )
 
     def write_script(self, path: Path, source: str) -> None:
         """Write generated FreeCAD source using UTF-8 encoding.
@@ -93,16 +113,24 @@ class FreeCADScriptExporter:
         rows: tuple[tuple[Point3D, ...], ...],
         document_name: str,
         object_name: str,
+        fcstd_path: Path | None,
+        step_path: Path | None,
     ) -> str:
         """Return common FreeCAD loft source for closed section rows."""
         self._validate_identifier(document_name, "document")
         self._validate_identifier(object_name, "object")
+        self._validate_output_path(fcstd_path, {".fcstd"}, "FreeCAD")
+        self._validate_output_path(step_path, {".step", ".stp"}, "STEP")
         serialized_rows = json.dumps(
             [
                 [[point.x, point.y, point.z] for point in row]
                 for row in rows
             ],
             separators=(",", ":"),
+        )
+        output_commands = self._render_output_commands(
+            fcstd_path,
+            step_path,
         )
 
         return (
@@ -121,7 +149,25 @@ class FreeCADScriptExporter:
             f'feature = document.addObject("Part::Feature", "{object_name}")\n'
             "feature.Shape = shape\n"
             "document.recompute()\n"
+            f"{output_commands}"
         )
+
+    @staticmethod
+    def _render_output_commands(
+        fcstd_path: Path | None,
+        step_path: Path | None,
+    ) -> str:
+        """Return optional FreeCAD document and STEP export commands."""
+        commands: list[str] = []
+        if fcstd_path is not None:
+            path_literal = json.dumps(str(fcstd_path))
+            commands.append(f"document.saveAs({path_literal})")
+        if step_path is not None:
+            path_literal = json.dumps(str(step_path))
+            commands.append(f"Part.export([feature], {path_literal})")
+        if not commands:
+            return ""
+        return "\n".join(commands) + "\n"
 
     @staticmethod
     def _validate_identifier(value: str, label: str) -> None:
@@ -129,4 +175,17 @@ class FreeCADScriptExporter:
         if not _VALID_IDENTIFIER.fullmatch(value):
             raise FreeCADBackendError(
                 f"FreeCAD {label} name must be a valid identifier."
+            )
+
+    @staticmethod
+    def _validate_output_path(
+        path: Path | None,
+        allowed_suffixes: set[str],
+        label: str,
+    ) -> None:
+        """Reject output paths with a format-specific invalid suffix."""
+        if path is not None and path.suffix.lower() not in allowed_suffixes:
+            suffixes = " or ".join(sorted(allowed_suffixes))
+            raise FreeCADBackendError(
+                f"{label} output path must use a {suffixes} suffix."
             )

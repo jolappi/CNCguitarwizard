@@ -1,5 +1,9 @@
 ## Geometry Engine
 
+Generated FreeCAD scripts can optionally save an editable `.FCStd` document
+and export their solid as `.step` or `.stp`. Output suffixes are validated
+before source generation.
+
 The geometry package was introduced as the backend-independent foundation for
 instrument geometry.
 
