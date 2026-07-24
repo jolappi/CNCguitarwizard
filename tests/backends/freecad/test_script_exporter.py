@@ -108,6 +108,52 @@ def test_script_omits_output_commands_when_paths_are_not_given() -> None:
     assert "Part.export" not in source
 
 
+def test_neck_assembly_creates_two_separate_features(tmp_path: Path) -> None:
+    step_path = tmp_path / "Prototype001_Assembly.step"
+
+    source = FreeCADScriptExporter().render_neck_assembly(
+        make_neck_surface(),
+        make_fretboard_surface(),
+        step_path=step_path,
+    )
+
+    ast.parse(source)
+    assert 'document.addObject("Part::Feature", "NeckBack")' in source
+    assert 'document.addObject("Part::Feature", "Fretboard")' in source
+    assert "neck_feature.Shape = make_loft(NECK_SECTION_POINTS)" in source
+    assert (
+        "fretboard_feature.Shape = make_loft("
+        "FRETBOARD_SECTION_POINTS)" in source
+    )
+    assert (
+        f'Part.export([neck_feature, fretboard_feature], "{step_path}")'
+        in source
+    )
+
+
+def test_neck_assembly_serializes_both_surface_row_sets() -> None:
+    neck_surface = make_neck_surface()
+    fretboard_surface = make_fretboard_surface()
+    source = FreeCADScriptExporter().render_neck_assembly(
+        neck_surface,
+        fretboard_surface,
+    )
+    module = ast.parse(source)
+    assignments = {
+        node.targets[0].id: node.value
+        for node in module.body
+        if isinstance(node, ast.Assign)
+        and isinstance(node.targets[0], ast.Name)
+    }
+
+    neck_rows = assignments["NECK_SECTION_POINTS"]
+    fretboard_rows = assignments["FRETBOARD_SECTION_POINTS"]
+    assert isinstance(neck_rows, ast.List)
+    assert isinstance(fretboard_rows, ast.List)
+    assert len(neck_rows.elts) == len(neck_surface.mesh.rows)
+    assert len(fretboard_rows.elts) == len(fretboard_surface.mesh.rows)
+
+
 def test_exporter_rejects_unsafe_names_and_file_suffixes(
     tmp_path: Path,
 ) -> None:
@@ -129,4 +175,11 @@ def test_exporter_rejects_unsafe_names_and_file_suffixes(
         exporter.render_neck_back(
             make_neck_surface(),
             step_path=tmp_path / "neck.stl",
+        )
+    with pytest.raises(FreeCADBackendError):
+        exporter.render_neck_assembly(
+            make_neck_surface(),
+            make_fretboard_surface(),
+            neck_object_name="Neck",
+            fretboard_object_name="Neck",
         )

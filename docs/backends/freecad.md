@@ -39,6 +39,25 @@ Run the generated file inside FreeCAD. It:
 The fretboard exporter follows the same process, closing every radiused
 section against its flat underside.
 
+## Neck assembly
+
+`render_neck_assembly()` places the neck back and fretboard in one FreeCAD
+document as separate `Part::Feature` objects:
+
+```python
+source = exporter.render_neck_assembly(
+    neck_surface,
+    fretboard_surface,
+    fcstd_path=Path("/output/Prototype001.FCStd"),
+    step_path=Path("/output/Prototype001.step"),
+)
+```
+
+The editable FreeCAD document preserves both objects separately. A requested
+STEP file exports both solids together, without applying a boolean union.
+This makes the joint at the shared `Z = 0` plane easy to inspect before later
+manufacturing operations are introduced.
+
 ## Current limitations
 
 - The generated loft uses sampled polygon sections rather than exact B-spline

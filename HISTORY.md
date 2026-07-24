@@ -4,6 +4,10 @@ Generated FreeCAD scripts can optionally save an editable `.FCStd` document
 and export their solid as `.step` or `.stp`. Output suffixes are validated
 before source generation.
 
+The FreeCAD backend can now generate a single neck assembly document. The
+neck back and fretboard remain separate solids, while an optional STEP export
+contains both objects for fit inspection.
+
 The geometry package was introduced as the backend-independent foundation for
 instrument geometry.
 
