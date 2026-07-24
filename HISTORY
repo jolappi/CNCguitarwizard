@@ -40,6 +40,10 @@ The longitudinal wood profile followed next, introducing the 17 mm first-fret,
 19 mm twelfth-fret, and 20 mm heel thickness references while keeping the
 fretboard as a separate future geometry layer.
 
+The separate fretboard geometry was then added with a 6 mm center thickness
+and a true 430 mm circular cross-section. The model now exposes the calculated
+surface sagitta and remaining edge thickness for manufacturing checks.
+
 ## Documentation
 
 - Added public package reference with API tables, examples, and diagrams.

@@ -5,7 +5,12 @@ from xml.etree import ElementTree
 
 import pytest
 
-from cncguitarwizard.geometry.fretboard import Fretboard, FretLayout
+from cncguitarwizard.geometry.fretboard import (
+    Fretboard,
+    FretboardCrossSection,
+    FretboardSideProfile,
+    FretLayout,
+)
 from cncguitarwizard.geometry.neck import Centerline, NeckOutline, NeckSideProfile
 from cncguitarwizard.geometry.primitives import Line2D, Point2D
 from cncguitarwizard.render.svg import SVGRenderer
@@ -35,6 +40,16 @@ def make_neck_side_profile() -> NeckSideProfile:
     return NeckSideProfile(609.6, 24, 17.0, 19.0, 20.0, 63.0)
 
 
+def make_fretboard_side_profile() -> FretboardSideProfile:
+    """Return the Prototype001 fretboard centerline side profile."""
+    return FretboardSideProfile(609.6, 24, 6.0)
+
+
+def make_fretboard_cross_section() -> FretboardCrossSection:
+    """Return the Prototype001 widest fretboard cross-section."""
+    return FretboardCrossSection(56.0, 430.0, 6.0, sample_count=5)
+
+
 @pytest.mark.parametrize(
     ("geometry", "snapshot_name"),
     [
@@ -45,6 +60,8 @@ def make_neck_side_profile() -> NeckSideProfile:
         (make_fret_layout(), "fret_layout.svg"),
         (make_neck_outline(), "neck_outline.svg"),
         (make_neck_side_profile(), "neck_side_profile.svg"),
+        (make_fretboard_side_profile(), "fretboard_side_profile.svg"),
+        (make_fretboard_cross_section(), "fretboard_cross_section.svg"),
     ],
 )
 def test_svg_renderer_matches_geometry_snapshot(
@@ -54,6 +71,8 @@ def test_svg_renderer_matches_geometry_snapshot(
         | Centerline
         | Fretboard
         | FretLayout
+        | FretboardCrossSection
+        | FretboardSideProfile
         | NeckOutline
         | NeckSideProfile
     ),
@@ -74,6 +93,8 @@ def test_svg_renderer_matches_geometry_snapshot(
         make_fret_layout(),
         make_neck_outline(),
         make_neck_side_profile(),
+        make_fretboard_side_profile(),
+        make_fretboard_cross_section(),
     ],
 )
 def test_svg_renderer_returns_well_formed_xml(
@@ -83,6 +104,8 @@ def test_svg_renderer_returns_well_formed_xml(
         | Centerline
         | Fretboard
         | FretLayout
+        | FretboardCrossSection
+        | FretboardSideProfile
         | NeckOutline
         | NeckSideProfile
     ),

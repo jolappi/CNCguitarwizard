@@ -6,7 +6,12 @@ import math
 from dataclasses import dataclass
 from typing import TypeAlias
 
-from ...geometry.fretboard import Fretboard, FretLayout
+from ...geometry.fretboard import (
+    Fretboard,
+    FretboardCrossSection,
+    FretboardSideProfile,
+    FretLayout,
+)
 from ...geometry.neck import Centerline, NeckOutline, NeckSideProfile
 from ...geometry.primitives import Line2D, Point2D
 
@@ -16,6 +21,8 @@ RenderableGeometry: TypeAlias = (
     | Centerline
     | Fretboard
     | FretLayout
+    | FretboardCrossSection
+    | FretboardSideProfile
     | NeckOutline
     | NeckSideProfile
 )
@@ -62,6 +69,16 @@ class SVGRenderer:
             element = self._render_fretboard(geometry)
         elif isinstance(geometry, FretLayout):
             element = self._render_fret_layout(geometry)
+        elif isinstance(geometry, FretboardSideProfile):
+            element = self._render_polygon(
+                geometry.boundary,
+                "fretboard-side-profile",
+            )
+        elif isinstance(geometry, FretboardCrossSection):
+            element = self._render_polygon(
+                geometry.boundary,
+                "fretboard-cross-section",
+            )
         elif isinstance(geometry, NeckOutline):
             element = self._render_neck_outline(geometry)
         elif isinstance(geometry, NeckSideProfile):
@@ -115,6 +132,8 @@ class SVGRenderer:
                 for line in (*geometry.fretboard.outline, *geometry.slots)
                 for point in (line.start, line.end)
             )
+        if isinstance(geometry, (FretboardSideProfile, FretboardCrossSection)):
+            return geometry.boundary
         if isinstance(geometry, NeckOutline):
             return geometry.boundary
         if isinstance(geometry, NeckSideProfile):
@@ -176,22 +195,25 @@ class SVGRenderer:
     @staticmethod
     def _render_neck_outline(outline: NeckOutline) -> str:
         """Return a polygon element for a top-view neck outline."""
-        coordinates = " ".join(
-            f"{SVGRenderer._format_number(point.x)},"
-            f"{SVGRenderer._format_number(point.y)}"
-            for point in outline.boundary
-        )
-        return f'<polygon class="neck-outline" points="{coordinates}"/>'
+        return SVGRenderer._render_polygon(outline.boundary, "neck-outline")
 
     @staticmethod
     def _render_neck_side_profile(profile: NeckSideProfile) -> str:
         """Return a polygon element for a longitudinal neck profile."""
+        return SVGRenderer._render_polygon(
+            profile.boundary,
+            "neck-side-profile",
+        )
+
+    @staticmethod
+    def _render_polygon(points: tuple[Point2D, ...], class_name: str) -> str:
+        """Return a classed SVG polygon for a sequence of boundary points."""
         coordinates = " ".join(
             f"{SVGRenderer._format_number(point.x)},"
             f"{SVGRenderer._format_number(point.y)}"
-            for point in profile.boundary
+            for point in points
         )
-        return f'<polygon class="neck-side-profile" points="{coordinates}"/>'
+        return f'<polygon class="{class_name}" points="{coordinates}"/>'
 
     @staticmethod
     def _format_number(value: float) -> str:
