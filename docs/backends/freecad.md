@@ -61,6 +61,10 @@ manufacturing operations are introduced.
 The neck-back loft includes the full parallel 63 mm heel after fret 24. Its
 width remains 56 mm and its wood depth remains 20 mm through the heel end.
 
+Passing a `HeadstockSolid` adds the modern tapered headstock as a third
+`Part::Feature`. Its configurable 14–16 mm thickness is extruded normal to
+the 8-degree face, and the optional STEP output includes all three solids.
+
 An existing `TrussRodChannel` can be applied as a rectangular subtraction
 from the neck solid:
 

@@ -15,6 +15,9 @@ from cncguitarwizard.geometry.fretboard import (
 )
 from cncguitarwizard.geometry.neck import (
     Centerline,
+    HeadstockAngleReference,
+    HeadstockPlan,
+    HeadstockSolid,
     NeckBackSurface,
     NeckOutline,
     TrussRodChannel,
@@ -67,6 +70,15 @@ def make_fret_layout(
         Centerline(scale_length),
     )
     return FretLayout(fretboard, fret_count)
+
+
+def make_headstock(thickness: float = 16.0) -> HeadstockSolid:
+    """Return the angled Prototype001 headstock solid."""
+    return HeadstockSolid(
+        HeadstockPlan(150.0, 42.0, 30.0, 65.0, 40.0),
+        HeadstockAngleReference(150.0, 8.0),
+        thickness,
+    )
 
 
 @pytest.mark.parametrize(
@@ -251,6 +263,34 @@ def test_neck_assembly_omits_fret_slot_cuts_by_default() -> None:
     assert "fretboard_shape.cut" not in source
 
 
+def test_neck_assembly_can_include_an_angled_headstock() -> None:
+    source = FreeCADScriptExporter().render_neck_assembly(
+        make_neck_surface(),
+        make_fretboard_surface(),
+        headstock=make_headstock(),
+    )
+
+    assert "HEADSTOCK_BOUNDARY = " in source
+    assert "headstock_face.extrude(" in source
+    assert 'document.addObject("Part::Feature", "Headstock")' in source
+    assert "headstock_feature.Shape = headstock_shape" in source
+
+
+def test_headstock_is_included_in_step_export(tmp_path: Path) -> None:
+    step_path = tmp_path / "Prototype001.step"
+    source = FreeCADScriptExporter().render_neck_assembly(
+        make_neck_surface(),
+        make_fretboard_surface(),
+        headstock=make_headstock(14.0),
+        step_path=step_path,
+    )
+
+    assert (
+        "Part.export([neck_feature, fretboard_feature, headstock_feature], "
+        f'"{step_path}")' in source
+    )
+
+
 def test_exporter_rejects_unsafe_names_and_file_suffixes(
     tmp_path: Path,
 ) -> None:
@@ -279,6 +319,13 @@ def test_exporter_rejects_unsafe_names_and_file_suffixes(
             make_fretboard_surface(),
             neck_object_name="Neck",
             fretboard_object_name="Neck",
+        )
+    with pytest.raises(FreeCADBackendError):
+        exporter.render_neck_assembly(
+            make_neck_surface(),
+            make_fretboard_surface(),
+            headstock=make_headstock(),
+            headstock_object_name="NeckBack",
         )
 
 

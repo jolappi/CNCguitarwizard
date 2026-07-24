@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from ...geometry.fretboard import FretboardSurface, FretLayout
-from ...geometry.neck import NeckBackSurface, TrussRodChannel
+from ...geometry.neck import HeadstockSolid, NeckBackSurface, TrussRodChannel
 from ...geometry.primitives import Point3D
 from .exceptions import FreeCADBackendError
 
@@ -89,7 +89,9 @@ class FreeCADScriptExporter:
         document_name: str = "CNCguitarwizard",
         neck_object_name: str = "NeckBack",
         fretboard_object_name: str = "Fretboard",
+        headstock_object_name: str = "Headstock",
         truss_rod_channel: TrussRodChannel | None = None,
+        headstock: HeadstockSolid | None = None,
         fret_layout: FretLayout | None = None,
         fret_slot_width: float = 0.6,
         fret_slot_depth: float = 2.7,
@@ -107,7 +109,9 @@ class FreeCADScriptExporter:
             document_name: FreeCAD document identifier.
             neck_object_name: FreeCAD identifier for the neck object.
             fretboard_object_name: FreeCAD identifier for the fretboard.
+            headstock_object_name: FreeCAD identifier for the headstock.
             truss_rod_channel: Optional rectangular channel cut from the neck.
+            headstock: Optional angled headstock solid.
             fret_layout: Optional bounded fret slots cut into the fretboard.
             fret_slot_width: Width of each fret slot in millimetres.
             fret_slot_depth: Vertical slot depth below the playing surface.
@@ -120,9 +124,15 @@ class FreeCADScriptExporter:
         self._validate_identifier(document_name, "document")
         self._validate_identifier(neck_object_name, "neck object")
         self._validate_identifier(fretboard_object_name, "fretboard object")
+        self._validate_identifier(headstock_object_name, "headstock object")
         if neck_object_name == fretboard_object_name:
             raise FreeCADBackendError(
                 "Neck and fretboard object names must be different."
+            )
+        object_names = (neck_object_name, fretboard_object_name)
+        if headstock is not None and headstock_object_name in object_names:
+            raise FreeCADBackendError(
+                "Headstock object name must differ from other assembly objects."
             )
         self._validate_output_path(fcstd_path, {".fcstd"}, "FreeCAD")
         self._validate_output_path(step_path, {".step", ".stp"}, "STEP")
@@ -142,10 +152,15 @@ class FreeCADScriptExporter:
             for row in fretboard_surface.mesh.rows
         )
         fret_surface_rows = fretboard_surface.mesh.rows[1:]
+        export_features = "[neck_feature, fretboard_feature]"
+        if headstock is not None:
+            export_features = (
+                "[neck_feature, fretboard_feature, headstock_feature]"
+            )
         output_commands = self._render_output_commands(
             fcstd_path,
             step_path,
-            "[neck_feature, fretboard_feature]",
+            export_features,
         )
         truss_rod_source = self._render_truss_rod_cut(truss_rod_channel)
         fret_slot_source = self._render_fret_slot_cut(
@@ -157,6 +172,10 @@ class FreeCADScriptExporter:
             f"FRET_SURFACE_ROWS = {self._serialize_rows(fret_surface_rows)}\n"
             if fret_layout is not None
             else ""
+        )
+        headstock_source = self._render_headstock(
+            headstock,
+            headstock_object_name,
         )
 
         return (
@@ -186,8 +205,33 @@ class FreeCADScriptExporter:
             "fretboard_shape = make_loft(FRETBOARD_SECTION_POINTS)\n"
             f"{fret_slot_source}"
             "fretboard_feature.Shape = fretboard_shape\n"
+            f"{headstock_source}"
             "document.recompute()\n"
             f"{output_commands}"
+        )
+
+    def _render_headstock(
+        self,
+        headstock: HeadstockSolid | None,
+        object_name: str,
+    ) -> str:
+        """Return FreeCAD commands that create an angled headstock solid."""
+        if headstock is None:
+            return ""
+
+        boundary = self._serialize_points(headstock.top_boundary)
+        vector = headstock.extrusion_vector
+        return (
+            f"HEADSTOCK_BOUNDARY = {boundary}\n"
+            "headstock_vectors = "
+            "[App.Vector(x, y, z) for x, y, z in HEADSTOCK_BOUNDARY]\n"
+            "headstock_vectors.append(headstock_vectors[0])\n"
+            "headstock_face = Part.Face(Part.makePolygon(headstock_vectors))\n"
+            "headstock_shape = headstock_face.extrude("
+            f"App.Vector({vector.x}, {vector.y}, {vector.z}))\n"
+            "headstock_feature = document.addObject("
+            f'"Part::Feature", "{object_name}")\n'
+            "headstock_feature.Shape = headstock_shape\n"
         )
 
     @staticmethod
@@ -339,6 +383,14 @@ class FreeCADScriptExporter:
                 [[point.x, point.y, point.z] for point in row]
                 for row in rows
             ],
+            separators=(",", ":"),
+        )
+
+    @staticmethod
+    def _serialize_points(points: tuple[Point3D, ...]) -> str:
+        """Return compact deterministic JSON for three-dimensional points."""
+        return json.dumps(
+            [[point.x, point.y, point.z] for point in points],
             separators=(",", ":"),
         )
 

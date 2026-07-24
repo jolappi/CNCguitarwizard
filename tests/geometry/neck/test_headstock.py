@@ -9,6 +9,7 @@ from cncguitarwizard.geometry.exceptions import HeadstockGeometryError
 from cncguitarwizard.geometry.neck import (
     HeadstockAngleReference,
     HeadstockPlan,
+    HeadstockSolid,
 )
 
 
@@ -49,6 +50,36 @@ def test_eight_degree_reference_calculates_tip_drop() -> None:
     assert reference.reference_line.end.y == pytest.approx(-reference.tip_drop)
 
 
+def test_headstock_solid_uses_sixteen_millimetre_default() -> None:
+    solid = HeadstockSolid(
+        make_plan(),
+        HeadstockAngleReference(150.0, 8.0),
+    )
+
+    assert solid.thickness == 16.0
+    assert solid.top_boundary[0].z == pytest.approx(0.0)
+    assert solid.top_boundary[3].z == pytest.approx(-21.081, abs=0.001)
+    vector_length = (
+        solid.extrusion_vector.x**2
+        + solid.extrusion_vector.y**2
+        + solid.extrusion_vector.z**2
+    ) ** 0.5
+    assert vector_length == pytest.approx(16.0)
+
+
+@pytest.mark.parametrize("thickness", [14.0, 15.0, 16.0])
+def test_headstock_solid_accepts_supported_thicknesses(
+    thickness: float,
+) -> None:
+    solid = HeadstockSolid(
+        make_plan(),
+        HeadstockAngleReference(150.0, 8.0),
+        thickness,
+    )
+
+    assert solid.thickness == thickness
+
+
 def test_headstock_geometry_is_immutable() -> None:
     plan = make_plan()
 
@@ -66,10 +97,26 @@ def test_headstock_geometry_is_immutable() -> None:
         lambda: HeadstockAngleReference(0.0, 8.0),
         lambda: HeadstockAngleReference(150.0, 0.0),
         lambda: HeadstockAngleReference(150.0, 90.0),
+        lambda: HeadstockSolid(
+            make_plan(),
+            HeadstockAngleReference(149.0, 8.0),
+        ),
+        lambda: HeadstockSolid(
+            make_plan(),
+            HeadstockAngleReference(150.0, 8.0),
+            13.9,
+        ),
+        lambda: HeadstockSolid(
+            make_plan(),
+            HeadstockAngleReference(150.0, 8.0),
+            16.1,
+        ),
     ],
 )
 def test_headstock_rejects_invalid_dimensions(
-    create_geometry: Callable[[], HeadstockPlan | HeadstockAngleReference],
+    create_geometry: Callable[
+        [], HeadstockPlan | HeadstockAngleReference | HeadstockSolid
+    ],
 ) -> None:
     with pytest.raises(HeadstockGeometryError):
         create_geometry()

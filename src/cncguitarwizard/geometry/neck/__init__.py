@@ -5,6 +5,7 @@ from .centerline import Centerline
 from .headstock import (
     HeadstockAngleReference,
     HeadstockPlan,
+    HeadstockSolid,
     TunerHole,
     TunerLayout,
 )
@@ -21,6 +22,7 @@ __all__ = [
     "Centerline",
     "HeadstockAngleReference",
     "HeadstockPlan",
+    "HeadstockSolid",
     "NeckOutline",
     "NeckBackCrossSection",
     "NeckBackSurface",

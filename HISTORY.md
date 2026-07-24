@@ -20,6 +20,10 @@ The three-dimensional neck-back surface now continues beyond fret 24 through
 the complete 63 mm bolt-on heel. Heel width and wood depth remain constant at
 56 mm and 20 mm, so FreeCAD exports no longer stop at the final fret.
 
+The tapered headstock now has backend-independent solid geometry with a
+configurable, validated thickness from 14 to 16 mm. Prototype001 uses 16 mm,
+and FreeCAD assemblies can export it as a separate angled solid.
+
 The geometry package was introduced as the backend-independent foundation for
 instrument geometry.
 

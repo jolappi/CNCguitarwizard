@@ -39,3 +39,17 @@ angle = HeadstockAngleReference(150.0, 8.0)
 
 These are reference geometries. Headstock thickness, transition curves, and
 six 10 mm tuner holes are separate manufacturing features.
+
+## Thickness and solid
+
+`HeadstockSolid` turns the plan and angle reference into a three-dimensional
+blank. Thickness is configurable from 14 to 16 mm and is measured normal to
+the angled face. Prototype001 defaults to 16 mm:
+
+```python
+from cncguitarwizard.geometry.neck import HeadstockSolid
+
+solid = HeadstockSolid(plan, angle, thickness=16.0)
+```
+
+Values below 14 mm or above 16 mm are rejected before CAD export.

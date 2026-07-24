@@ -8,7 +8,7 @@ from itertools import combinations
 from typing import Literal
 
 from ..exceptions import HeadstockGeometryError
-from ..primitives import Line2D, Point2D
+from ..primitives import Line2D, Point2D, Point3D
 
 
 @dataclass(frozen=True, slots=True)
@@ -147,6 +147,72 @@ class HeadstockAngleReference:
                 Point2D(-self.length, -tip_drop),
             ),
         )
+
+
+@dataclass(frozen=True, slots=True)
+class HeadstockSolid:
+    """Represent an angled headstock blank with configurable thickness.
+
+    Thickness is measured normal to the headstock face. Prototype001 uses
+    16 mm, while the supported manufacturing range is 14–16 mm.
+
+    Args:
+        plan: Two-dimensional headstock boundary.
+        angle: Angled center-plane reference matching the plan length.
+        thickness: Finished headstock thickness in millimetres.
+
+    Raises:
+        HeadstockGeometryError: If references disagree or thickness is
+            outside the supported range.
+    """
+
+    plan: HeadstockPlan
+    angle: HeadstockAngleReference
+    thickness: float = 16.0
+    top_boundary: tuple[Point3D, ...] = field(init=False)
+    bottom_boundary: tuple[Point3D, ...] = field(init=False)
+    extrusion_vector: Point3D = field(init=False)
+
+    def __post_init__(self) -> None:
+        """Validate references and construct the angled solid boundaries."""
+        if not math.isclose(self.plan.length, self.angle.length):
+            raise HeadstockGeometryError(
+                "Headstock plan and angle reference must share a length."
+            )
+        if not math.isfinite(self.thickness) or not 14.0 <= self.thickness <= 16.0:
+            raise HeadstockGeometryError(
+                "Headstock thickness must be between 14 and 16 mm."
+            )
+
+        radians = math.radians(self.angle.angle_degrees)
+        cosine = math.cos(radians)
+        sine = math.sin(radians)
+        tangent = math.tan(radians)
+        top_boundary = tuple(
+            Point3D(
+                point.x,
+                point.y,
+                point.x * tangent,
+            )
+            for point in self.plan.boundary
+        )
+        extrusion_vector = Point3D(
+            self.thickness * sine,
+            0.0,
+            -self.thickness * cosine,
+        )
+        bottom_boundary = tuple(
+            Point3D(
+                point.x + extrusion_vector.x,
+                point.y + extrusion_vector.y,
+                point.z + extrusion_vector.z,
+            )
+            for point in top_boundary
+        )
+
+        object.__setattr__(self, "top_boundary", top_boundary)
+        object.__setattr__(self, "bottom_boundary", bottom_boundary)
+        object.__setattr__(self, "extrusion_vector", extrusion_vector)
 
 
 @dataclass(frozen=True, slots=True)
