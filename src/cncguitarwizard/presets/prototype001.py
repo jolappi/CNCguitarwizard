@@ -71,6 +71,8 @@ class Prototype001Parameters:
     tuner_edge_clearance: float = 8.0
     tuner_hole_clearance: float = 10.0
     tuner_chamfer_depth: float = 0.2
+    headstock_transition_length: float = 30.0
+    heel_transition_length: float = 35.0
     profile_sample_count: int = 33
     segments_per_region: int = 8
 
@@ -99,6 +101,9 @@ class Prototype001Parameters:
             first_fret_wood_thickness,
             twelfth_fret_wood_thickness,
             self.heel_thickness,
+            nut_transition_thickness=self.headstock_thickness,
+            nut_transition_length=self.headstock_transition_length,
+            heel_transition_length=self.heel_transition_length,
             profile_sample_count=self.profile_sample_count,
             segments_per_region=self.segments_per_region,
         )

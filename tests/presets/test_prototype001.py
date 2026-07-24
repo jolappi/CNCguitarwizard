@@ -35,6 +35,9 @@ def test_default_preset_builds_every_locked_component() -> None:
         == 19.0
     )
     assert geometry.neck_surface.final_fret_thickness == 20.0
+    assert geometry.neck_surface.nut_transition_thickness == 16.0
+    assert geometry.neck_surface.nut_transition_length == 30.0
+    assert geometry.neck_surface.heel_transition_length == 35.0
     assert geometry.truss_rod_channel.length == 440.0
     assert geometry.headstock.thickness == 16.0
     assert len(geometry.tuner_layout.holes) == 6

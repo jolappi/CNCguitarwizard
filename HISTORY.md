@@ -1,5 +1,9 @@
 ## Geometry Engine
 
+Prototype001 now has a planar bolt-on heel underside. A 35 mm smooth profile
+transition changes the neck D profile into the rectangular heel, while a
+30 mm volute blends the angled headstock thickness into the first-fret neck.
+
 Generated FreeCAD scripts can optionally save an editable `.FCStd` document
 and export their solid as `.step` or `.stp`. Output suffixes are validated
 before source generation.

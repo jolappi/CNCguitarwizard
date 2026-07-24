@@ -34,10 +34,12 @@ source = FreeCADScriptExporter().render_prototype001(
 Building the preset creates and cross-validates:
 
 - the full neck and 63 mm heel;
+- a planar 20 mm heel underside with a 35 mm neck-to-heel transition;
 - the 430 mm radius fretboard;
 - 24 radius-following fret slots;
 - the 440 × 6 × 9 mm truss-rod channel;
 - the 8-degree, 14–16 mm thick headstock;
+- a 30 mm headstock-to-neck volute matched to that headstock thickness;
 - the six-hole 3+3 tuner layout with at least about 8 mm of side-edge wood.
 
 The FreeCAD convenience export applies all current manufacturing features and

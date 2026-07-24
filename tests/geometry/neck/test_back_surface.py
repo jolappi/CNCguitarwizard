@@ -90,6 +90,46 @@ def test_heel_rows_remain_parallel_and_constant_depth() -> None:
         )
 
 
+def test_flat_heel_has_vertical_sides_and_level_underside() -> None:
+    surface = NeckBackSurface(
+        make_outline(),
+        17.0,
+        19.0,
+        20.0,
+        heel_transition_length=35.0,
+        profile_sample_count=5,
+        segments_per_region=2,
+    )
+    heel_row = surface.mesh.rows[-1]
+
+    assert heel_row[0].y == heel_row[1].y
+    assert heel_row[-2].y == heel_row[-1].y
+    assert {point.z for point in heel_row[1:-1]} == {-20.0}
+    assert heel_row[0].z == heel_row[-1].z == 0.0
+
+
+def test_headstock_transition_blends_from_flat_sixteen_to_d_profile() -> None:
+    surface = NeckBackSurface(
+        make_outline(),
+        11.0,
+        13.0,
+        20.0,
+        nut_transition_thickness=16.0,
+        nut_transition_length=30.0,
+        heel_transition_length=35.0,
+        profile_sample_count=5,
+        segments_per_region=2,
+    )
+    nut_row = surface.mesh.rows[0]
+    transition_row = surface.mesh.rows[
+        surface.station_positions.index(30.0)
+    ]
+
+    assert {point.z for point in nut_row[1:-1]} == {-16.0}
+    assert transition_row[2].z == pytest.approx(-11.0)
+    assert transition_row[1].z > -11.0
+
+
 def test_surface_is_immutable() -> None:
     surface = make_surface()
 
@@ -116,6 +156,20 @@ def test_surface_is_immutable() -> None:
             19.0,
             20.0,
             segments_per_region=0,
+        ),
+        lambda: NeckBackSurface(
+            make_outline(),
+            17.0,
+            19.0,
+            20.0,
+            nut_transition_thickness=16.0,
+        ),
+        lambda: NeckBackSurface(
+            make_outline(),
+            17.0,
+            19.0,
+            20.0,
+            heel_transition_length=500.0,
         ),
     ],
 )

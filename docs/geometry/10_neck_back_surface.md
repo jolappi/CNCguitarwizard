@@ -33,6 +33,16 @@ Prototype001 preset converts the requested total 17 mm and 19 mm dimensions
 to 11 mm and 13 mm wood depths by subtracting its 6 mm fretboard. The heel
 remains 20 mm of wood as originally specified.
 
+Prototype001 adds a 30 mm headstock volute. At the nut, its rectangular
+underside matches the selected 14–16 mm headstock thickness, then changes
+smoothly into the first-fret D profile. At the body end, a 35 mm transition
+changes the D profile into a rectangular heel. The entire 63 mm heel has a
+planar 20 mm underside for reliable seating in a bolt-on neck pocket.
+
+Both transitions use cubic smoothstep interpolation. Their slopes reach zero
+at the adjoining reference sections instead of producing abrupt thickness or
+profile changes.
+
 The default mesh contains eight longitudinal segments in each reference
 region and 33 points across every D-profile section. It is intended as a
 deterministic interchange surface. The FreeCAD backend uses these rows as
