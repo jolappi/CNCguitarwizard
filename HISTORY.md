@@ -28,6 +28,9 @@ FreeCAD headstock exports can now subtract the validated 3+3 tuner layout.
 All six 10 mm bores pass completely through the solid along the normal of the
 8-degree face.
 
+Tuner holes now receive a configurable 45-degree face chamfer. Prototype001
+uses the previously agreed 0.2 mm depth, while zero disables the feature.
+
 The geometry package was introduced as the backend-independent foundation for
 instrument geometry.
 

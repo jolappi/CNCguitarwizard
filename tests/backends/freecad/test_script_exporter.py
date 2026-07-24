@@ -324,6 +324,23 @@ def test_headstock_can_receive_six_normal_tuner_holes() -> None:
     assert "cutter = Part.makeCylinder(" in source
     assert "diameter / 2.0" in source
     assert "headstock_shape = headstock_shape.cut(cutter)" in source
+    assert "tuner_chamfer_depth = 0.2" in source
+    assert "chamfer = Part.makeCone(" in source
+    assert "diameter / 2.0 + tuner_chamfer_depth" in source
+    assert "headstock_shape = headstock_shape.cut(chamfer)" in source
+
+
+def test_tuner_chamfer_can_be_disabled() -> None:
+    headstock = make_headstock()
+    source = FreeCADScriptExporter().render_neck_assembly(
+        make_neck_surface(),
+        make_fretboard_surface(),
+        headstock=headstock,
+        tuner_layout=make_tuner_layout(headstock.plan),
+        tuner_chamfer_depth=0.0,
+    )
+
+    assert "tuner_chamfer_depth = 0.0" in source
 
 
 def test_headstock_omits_tuner_holes_by_default() -> None:
@@ -437,4 +454,20 @@ def test_neck_assembly_rejects_incompatible_tuner_holes() -> None:
             make_fretboard_surface(),
             headstock=make_headstock(),
             tuner_layout=make_tuner_layout(different_plan),
+        )
+    with pytest.raises(FreeCADBackendError):
+        exporter.render_neck_assembly(
+            make_neck_surface(),
+            make_fretboard_surface(),
+            headstock=make_headstock(),
+            tuner_layout=make_tuner_layout(),
+            tuner_chamfer_depth=-0.1,
+        )
+    with pytest.raises(FreeCADBackendError):
+        exporter.render_neck_assembly(
+            make_neck_surface(),
+            make_fretboard_surface(),
+            headstock=make_headstock(14.0),
+            tuner_layout=make_tuner_layout(),
+            tuner_chamfer_depth=14.0,
         )

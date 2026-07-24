@@ -98,6 +98,7 @@ class FreeCADScriptExporter:
         truss_rod_channel: TrussRodChannel | None = None,
         headstock: HeadstockSolid | None = None,
         tuner_layout: TunerLayout | None = None,
+        tuner_chamfer_depth: float = 0.2,
         fret_layout: FretLayout | None = None,
         fret_slot_width: float = 0.6,
         fret_slot_depth: float = 2.7,
@@ -119,6 +120,7 @@ class FreeCADScriptExporter:
             truss_rod_channel: Optional rectangular channel cut from the neck.
             headstock: Optional angled headstock solid.
             tuner_layout: Optional six-hole layout cut through the headstock.
+            tuner_chamfer_depth: Depth of the 45-degree top-edge chamfer.
             fret_layout: Optional bounded fret slots cut into the fretboard.
             fret_slot_width: Width of each fret slot in millimetres.
             fret_slot_depth: Vertical slot depth below the playing surface.
@@ -144,7 +146,11 @@ class FreeCADScriptExporter:
         self._validate_output_path(fcstd_path, {".fcstd"}, "FreeCAD")
         self._validate_output_path(step_path, {".step", ".stp"}, "STEP")
         self._validate_truss_rod_channel(neck_surface, truss_rod_channel)
-        self._validate_tuner_layout(headstock, tuner_layout)
+        self._validate_tuner_layout(
+            headstock,
+            tuner_layout,
+            tuner_chamfer_depth,
+        )
         self._validate_fret_slots(
             fretboard_surface,
             fret_layout,
@@ -185,6 +191,7 @@ class FreeCADScriptExporter:
             headstock,
             headstock_object_name,
             tuner_layout,
+            tuner_chamfer_depth,
         )
 
         return (
@@ -224,6 +231,7 @@ class FreeCADScriptExporter:
         headstock: HeadstockSolid | None,
         object_name: str,
         tuner_layout: TunerLayout | None,
+        tuner_chamfer_depth: float,
     ) -> str:
         """Return FreeCAD commands that create an angled headstock solid."""
         if headstock is None:
@@ -231,7 +239,11 @@ class FreeCADScriptExporter:
 
         boundary = self._serialize_points(headstock.top_boundary)
         vector = headstock.extrusion_vector
-        tuner_source = self._render_tuner_hole_cuts(headstock, tuner_layout)
+        tuner_source = self._render_tuner_hole_cuts(
+            headstock,
+            tuner_layout,
+            tuner_chamfer_depth,
+        )
         return (
             f"HEADSTOCK_BOUNDARY = {boundary}\n"
             "headstock_vectors = "
@@ -250,6 +262,7 @@ class FreeCADScriptExporter:
     def _render_tuner_hole_cuts(
         headstock: HeadstockSolid,
         layout: TunerLayout | None,
+        chamfer_depth: float,
     ) -> str:
         """Return FreeCAD commands for six normal-through tuner holes."""
         if layout is None:
@@ -274,6 +287,7 @@ class FreeCADScriptExporter:
             f"TUNER_HOLES = {json.dumps(holes, separators=(',', ':'))}\n"
             f"tuner_axis = App.Vector({axis_x}, {axis_y}, {axis_z})\n"
             "tuner_overcut = 1.0\n"
+            f"tuner_chamfer_depth = {chamfer_depth}\n"
             "for x, y, z, diameter in TUNER_HOLES:\n"
             "    top_center = App.Vector(x, y, z)\n"
             "    cutter_start = top_center - tuner_axis * tuner_overcut\n"
@@ -284,6 +298,15 @@ class FreeCADScriptExporter:
             "        tuner_axis,\n"
             "    )\n"
             "    headstock_shape = headstock_shape.cut(cutter)\n"
+            "    if tuner_chamfer_depth > 0.0:\n"
+            "        chamfer = Part.makeCone(\n"
+            "            diameter / 2.0 + tuner_chamfer_depth,\n"
+            "            diameter / 2.0,\n"
+            "            tuner_chamfer_depth,\n"
+            "            top_center,\n"
+            "            tuner_axis,\n"
+            "        )\n"
+            "        headstock_shape = headstock_shape.cut(chamfer)\n"
         )
 
     @staticmethod
@@ -488,6 +511,7 @@ class FreeCADScriptExporter:
     def _validate_tuner_layout(
         headstock: HeadstockSolid | None,
         layout: TunerLayout | None,
+        chamfer_depth: float,
     ) -> None:
         """Ensure optional tuner holes belong to the exported headstock."""
         if layout is None:
@@ -499,6 +523,15 @@ class FreeCADScriptExporter:
         if layout.headstock != headstock.plan:
             raise FreeCADBackendError(
                 "Tuner layout and headstock solid must share a plan."
+            )
+        if (
+            not math.isfinite(chamfer_depth)
+            or chamfer_depth < 0.0
+            or chamfer_depth >= headstock.thickness
+        ):
+            raise FreeCADBackendError(
+                "Tuner chamfer depth must be non-negative and less than "
+                "the headstock thickness."
             )
 
     @staticmethod

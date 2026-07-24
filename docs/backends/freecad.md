@@ -81,6 +81,10 @@ The cutters follow the headstock normal rather than the global Z axis, so the
 finished bores remain perpendicular to the 8-degree face. Each cutter extends
 1 mm beyond both faces to make the boolean operation unambiguous.
 
+Each hole also receives a 45-degree entry chamfer on the headstock face.
+`tuner_chamfer_depth` defaults to 0.2 mm, accepts other safe values, and can
+be set to zero to disable the chamfer.
+
 An existing `TrussRodChannel` can be applied as a rectangular subtraction
 from the neck solid:
 
