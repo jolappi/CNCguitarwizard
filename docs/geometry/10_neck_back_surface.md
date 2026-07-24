@@ -47,6 +47,11 @@ Both transitions use cubic smoothstep interpolation. Their slopes reach zero
 at the adjoining reference sections instead of producing abrupt thickness or
 profile changes.
 
+The Prototype001 playing section uses exponent `2.0`, producing an elliptical
+profile instead of the earlier flat-backed `3.5` D profile. The back curve
+therefore begins directly at each fretboard side and remains continuously
+rounded through the centerline.
+
 The default mesh contains eight longitudinal segments in each reference
 region and 33 points across every D-profile section. It is intended as a
 deterministic interchange surface. The FreeCAD backend uses these rows as

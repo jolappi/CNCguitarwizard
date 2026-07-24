@@ -37,6 +37,7 @@ Building the preset creates and cross-validates:
 - a fretboard that ends flush with the back of that heel;
 - a 6 mm nut shelf immediately before the fretboard;
 - a planar 20 mm heel underside with a 35 mm neck-to-heel transition;
+- a rounded exponent-2 neck back beginning directly at the fretboard sides;
 - the 430 mm radius fretboard;
 - 24 radius-following fret slots;
 - the 440 × 6 × 9 mm truss-rod channel;

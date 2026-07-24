@@ -74,6 +74,7 @@ class Prototype001Parameters:
     nut_shelf_length: float = 6.0
     headstock_transition_length: float = 30.0
     heel_transition_length: float = 35.0
+    neck_profile_exponent: float = 2.0
     profile_sample_count: int = 33
     segments_per_region: int = 8
 
@@ -106,6 +107,7 @@ class Prototype001Parameters:
             nut_shelf_length=self.nut_shelf_length,
             nut_transition_length=self.headstock_transition_length,
             heel_transition_length=self.heel_transition_length,
+            exponent=self.neck_profile_exponent,
             profile_sample_count=self.profile_sample_count,
             segments_per_region=self.segments_per_region,
         )
