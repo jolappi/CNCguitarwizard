@@ -302,6 +302,28 @@ def test_headstock_is_included_in_step_export(tmp_path: Path) -> None:
     )
 
 
+def test_headstock_can_be_joined_to_the_neck_for_manufacturing(
+    tmp_path: Path,
+) -> None:
+    step_path = tmp_path / "Prototype001_Wood.step"
+    source = FreeCADScriptExporter().render_neck_assembly(
+        make_neck_surface(),
+        make_fretboard_surface(),
+        headstock=make_headstock(),
+        tuner_layout=make_tuner_layout(),
+        join_headstock_to_neck=True,
+        step_path=step_path,
+    )
+
+    assert "neck_shape = neck_shape.fuse(headstock_shape)" in source
+    assert source.count("neck_feature.Shape = neck_shape") == 2
+    assert "headstock_feature = document.addObject" not in source
+    assert (
+        f'Part.export([neck_feature, fretboard_feature], "{step_path}")'
+        in source
+    )
+
+
 def test_headstock_can_receive_six_normal_tuner_holes() -> None:
     headstock = make_headstock()
     source = FreeCADScriptExporter().render_neck_assembly(
@@ -470,4 +492,27 @@ def test_neck_assembly_rejects_incompatible_tuner_holes() -> None:
             headstock=make_headstock(14.0),
             tuner_layout=make_tuner_layout(),
             tuner_chamfer_depth=14.0,
+        )
+
+
+def test_neck_assembly_rejects_an_invalid_headstock_join() -> None:
+    exporter = FreeCADScriptExporter()
+
+    with pytest.raises(FreeCADBackendError):
+        exporter.render_neck_assembly(
+            make_neck_surface(),
+            make_fretboard_surface(),
+            join_headstock_to_neck=True,
+        )
+
+    incompatible_headstock = HeadstockSolid(
+        HeadstockPlan(150.0, 43.0, 30.0, 65.0, 40.0),
+        HeadstockAngleReference(150.0, 8.0),
+    )
+    with pytest.raises(FreeCADBackendError):
+        exporter.render_neck_assembly(
+            make_neck_surface(),
+            make_fretboard_surface(),
+            headstock=incompatible_headstock,
+            join_headstock_to_neck=True,
         )

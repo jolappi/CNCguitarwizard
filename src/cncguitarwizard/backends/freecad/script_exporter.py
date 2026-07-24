@@ -99,6 +99,7 @@ class FreeCADScriptExporter:
         headstock: HeadstockSolid | None = None,
         tuner_layout: TunerLayout | None = None,
         tuner_chamfer_depth: float = 0.2,
+        join_headstock_to_neck: bool = False,
         fret_layout: FretLayout | None = None,
         fret_slot_width: float = 0.6,
         fret_slot_depth: float = 2.7,
@@ -121,6 +122,7 @@ class FreeCADScriptExporter:
             headstock: Optional angled headstock solid.
             tuner_layout: Optional six-hole layout cut through the headstock.
             tuner_chamfer_depth: Depth of the 45-degree top-edge chamfer.
+            join_headstock_to_neck: Fuse headstock and neck into one wood solid.
             fret_layout: Optional bounded fret slots cut into the fretboard.
             fret_slot_width: Width of each fret slot in millimetres.
             fret_slot_depth: Vertical slot depth below the playing surface.
@@ -151,6 +153,11 @@ class FreeCADScriptExporter:
             tuner_layout,
             tuner_chamfer_depth,
         )
+        self._validate_headstock_join(
+            neck_surface,
+            headstock,
+            join_headstock_to_neck,
+        )
         self._validate_fret_slots(
             fretboard_surface,
             fret_layout,
@@ -167,7 +174,7 @@ class FreeCADScriptExporter:
         )
         fret_surface_rows = fretboard_surface.mesh.rows[1:]
         export_features = "[neck_feature, fretboard_feature]"
-        if headstock is not None:
+        if headstock is not None and not join_headstock_to_neck:
             export_features = (
                 "[neck_feature, fretboard_feature, headstock_feature]"
             )
@@ -192,6 +199,7 @@ class FreeCADScriptExporter:
             headstock_object_name,
             tuner_layout,
             tuner_chamfer_depth,
+            join_headstock_to_neck,
         )
 
         return (
@@ -232,6 +240,7 @@ class FreeCADScriptExporter:
         object_name: str,
         tuner_layout: TunerLayout | None,
         tuner_chamfer_depth: float,
+        join_to_neck: bool,
     ) -> str:
         """Return FreeCAD commands that create an angled headstock solid."""
         if headstock is None:
@@ -244,6 +253,16 @@ class FreeCADScriptExporter:
             tuner_layout,
             tuner_chamfer_depth,
         )
+        feature_source = (
+            "neck_shape = neck_shape.fuse(headstock_shape)\n"
+            "neck_feature.Shape = neck_shape\n"
+            if join_to_neck
+            else (
+                "headstock_feature = document.addObject("
+                f'"Part::Feature", "{object_name}")\n'
+                "headstock_feature.Shape = headstock_shape\n"
+            )
+        )
         return (
             f"HEADSTOCK_BOUNDARY = {boundary}\n"
             "headstock_vectors = "
@@ -253,9 +272,7 @@ class FreeCADScriptExporter:
             "headstock_shape = headstock_face.extrude("
             f"App.Vector({vector.x}, {vector.y}, {vector.z}))\n"
             f"{tuner_source}"
-            "headstock_feature = document.addObject("
-            f'"Part::Feature", "{object_name}")\n'
-            "headstock_feature.Shape = headstock_shape\n"
+            f"{feature_source}"
         )
 
     @staticmethod
@@ -532,6 +549,27 @@ class FreeCADScriptExporter:
             raise FreeCADBackendError(
                 "Tuner chamfer depth must be non-negative and less than "
                 "the headstock thickness."
+            )
+
+    @staticmethod
+    def _validate_headstock_join(
+        neck_surface: NeckBackSurface,
+        headstock: HeadstockSolid | None,
+        join_to_neck: bool,
+    ) -> None:
+        """Ensure an optional headstock fusion has compatible geometry."""
+        if not join_to_neck:
+            return
+        if headstock is None:
+            raise FreeCADBackendError(
+                "Joining the headstock requires a headstock solid."
+            )
+        if not math.isclose(
+            headstock.plan.nut_width,
+            neck_surface.neck_outline.nut_width,
+        ):
+            raise FreeCADBackendError(
+                "Joined headstock and neck must share a nut width."
             )
 
     @staticmethod

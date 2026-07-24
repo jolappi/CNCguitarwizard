@@ -31,6 +31,10 @@ All six 10 mm bores pass completely through the solid along the normal of the
 Tuner holes now receive a configurable 45-degree face chamfer. Prototype001
 uses the previously agreed 0.2 mm depth, while zero disables the feature.
 
+The FreeCAD assembly exporter can optionally fuse the angled headstock into
+the neck back for manufacturing output. Separate-object inspection remains
+available, and incompatible nut widths are rejected before source generation.
+
 The geometry package was introduced as the backend-independent foundation for
 instrument geometry.
 

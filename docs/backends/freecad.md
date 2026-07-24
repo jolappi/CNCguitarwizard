@@ -85,6 +85,12 @@ Each hole also receives a 45-degree entry chamfer on the headstock face.
 `tuner_chamfer_depth` defaults to 0.2 mm, accepts other safe values, and can
 be set to zero to disable the chamfer.
 
+For manufacturing output, `join_headstock_to_neck=True` fuses the angled
+headstock into the neck-back solid after tuner-hole cutting. The editable
+inspection mode remains the default and keeps the two objects separate.
+Fusion requires matching nut widths, and STEP output contains only the fused
+wood solid plus the separate fretboard.
+
 An existing `TrussRodChannel` can be applied as a rectangular subtraction
 from the neck solid:
 
