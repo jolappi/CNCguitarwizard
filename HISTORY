@@ -56,6 +56,15 @@ The centered 440 × 6 × 9 mm double-action truss-rod channel was added with a
 heel-side adjustment reference. Its fit is checked against the complete neck
 outline before geometry is accepted.
 
+Wizard-inspired D-profile cross-sections were introduced at frets 1 and 12.
+The backend-independent superellipse keeps the shape symmetric and makes its
+shoulder fullness adjustable for the future physical test block.
+
+The cross-sections were then joined into the first backend-independent 3D neck
+surface. A deterministic quad mesh now follows the nut, first-fret,
+twelfth-fret, and final-fret thickness references and is ready for a future
+FreeCAD loft backend.
+
 ## Documentation
 
 - Added public package reference with API tables, examples, and diagrams.

@@ -15,6 +15,7 @@ from cncguitarwizard.geometry.neck import (
     Centerline,
     HeadstockAngleReference,
     HeadstockPlan,
+    NeckBackCrossSection,
     NeckOutline,
     NeckSideProfile,
     TrussRodChannel,
@@ -80,6 +81,11 @@ def make_truss_rod_channel() -> TrussRodChannel:
     )
 
 
+def make_neck_back_cross_section() -> NeckBackCrossSection:
+    """Return the Prototype001 twelfth-fret D profile."""
+    return NeckBackCrossSection(51.3333333333, 19.0, sample_count=5)
+
+
 @pytest.mark.parametrize(
     ("geometry", "snapshot_name"),
     [
@@ -96,6 +102,7 @@ def make_truss_rod_channel() -> TrussRodChannel:
         (HeadstockAngleReference(150.0, 8.0), "headstock_angle.svg"),
         (make_tuner_layout(), "tuner_layout.svg"),
         (make_truss_rod_channel(), "truss_rod.svg"),
+        (make_neck_back_cross_section(), "neck_back_cross_section.svg"),
     ],
 )
 def test_svg_renderer_matches_geometry_snapshot(
@@ -109,6 +116,7 @@ def test_svg_renderer_matches_geometry_snapshot(
         | FretboardSideProfile
         | HeadstockAngleReference
         | HeadstockPlan
+        | NeckBackCrossSection
         | TunerLayout
         | TrussRodChannel
         | NeckOutline
@@ -137,6 +145,7 @@ def test_svg_renderer_matches_geometry_snapshot(
         HeadstockAngleReference(150.0, 8.0),
         make_tuner_layout(),
         make_truss_rod_channel(),
+        make_neck_back_cross_section(),
     ],
 )
 def test_svg_renderer_returns_well_formed_xml(
@@ -150,6 +159,7 @@ def test_svg_renderer_returns_well_formed_xml(
         | FretboardSideProfile
         | HeadstockAngleReference
         | HeadstockPlan
+        | NeckBackCrossSection
         | TunerLayout
         | TrussRodChannel
         | NeckOutline

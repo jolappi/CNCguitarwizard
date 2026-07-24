@@ -1,5 +1,6 @@
 """Geometry models specific to guitar neck construction."""
 
+from .back_surface import NeckBackSurface
 from .centerline import Centerline
 from .headstock import (
     HeadstockAngleReference,
@@ -8,7 +9,12 @@ from .headstock import (
     TunerLayout,
 )
 from .outline import NeckOutline
-from .side_profile import NeckSideProfile
+from .side_profile import (
+    NeckBackCrossSection,
+    NeckProfileStation,
+    NeckProfileStations,
+    NeckSideProfile,
+)
 from .truss_rod import TrussRodChannel
 
 __all__ = [
@@ -16,6 +22,10 @@ __all__ = [
     "HeadstockAngleReference",
     "HeadstockPlan",
     "NeckOutline",
+    "NeckBackCrossSection",
+    "NeckBackSurface",
+    "NeckProfileStation",
+    "NeckProfileStations",
     "NeckSideProfile",
     "TunerHole",
     "TunerLayout",

@@ -16,6 +16,7 @@ from ...geometry.neck import (
     Centerline,
     HeadstockAngleReference,
     HeadstockPlan,
+    NeckBackCrossSection,
     NeckOutline,
     NeckSideProfile,
     TrussRodChannel,
@@ -33,6 +34,7 @@ RenderableGeometry: TypeAlias = (
     | FretboardSideProfile
     | HeadstockAngleReference
     | HeadstockPlan
+    | NeckBackCrossSection
     | TunerLayout
     | TrussRodChannel
     | NeckOutline
@@ -95,6 +97,11 @@ class SVGRenderer:
             element = self._render_polygon(
                 geometry.boundary,
                 "headstock-plan",
+            )
+        elif isinstance(geometry, NeckBackCrossSection):
+            element = self._render_polygon(
+                geometry.boundary,
+                "neck-back-cross-section",
             )
         elif isinstance(geometry, HeadstockAngleReference):
             element = self._render_line(geometry.reference_line).replace(
@@ -165,6 +172,8 @@ class SVGRenderer:
         if isinstance(geometry, (FretboardSideProfile, FretboardCrossSection)):
             return geometry.boundary
         if isinstance(geometry, HeadstockPlan):
+            return geometry.boundary
+        if isinstance(geometry, NeckBackCrossSection):
             return geometry.boundary
         if isinstance(geometry, HeadstockAngleReference):
             return (
@@ -287,4 +296,6 @@ class SVGRenderer:
     @staticmethod
     def _format_number(value: float) -> str:
         """Return a compact, deterministic SVG number."""
+        if value == 0.0:
+            return "0"
         return format(value, ".15g")
