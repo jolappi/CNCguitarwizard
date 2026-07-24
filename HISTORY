@@ -70,6 +70,12 @@ playing surface. Cross-section rows now coincide with the nut and every fret,
 providing exact longitudinal references for CAD lofting and future fret-slot
 operations.
 
+## FreeCAD Backend
+
+The first CAD backend was introduced without coupling FreeCAD to the geometry
+engine. Deterministic standalone scripts can now loft the sampled neck-back
+and fretboard sections into FreeCAD solids for visual inspection.
+
 ## Documentation
 
 - Added public package reference with API tables, examples, and diagrams.
