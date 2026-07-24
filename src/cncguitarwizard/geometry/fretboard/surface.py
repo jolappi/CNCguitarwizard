@@ -26,6 +26,7 @@ class FretboardSurface:
         last_fret_width: Fretboard width at the final fret in millimetres.
         radius: Constant playing-surface radius in millimetres.
         center_thickness: Centerline thickness above the flat underside.
+        end_extension: Additional length after the final fret.
         profile_sample_count: Odd number of points across each radius section.
 
     Raises:
@@ -39,6 +40,7 @@ class FretboardSurface:
     radius: float
     center_thickness: float
     profile_sample_count: int = 33
+    end_extension: float = 0.0
     station_positions: tuple[float, ...] = field(init=False)
     mesh: SurfaceMesh = field(init=False)
 
@@ -54,9 +56,14 @@ class FretboardSurface:
             0.0,
             *(position.distance_from_nut for position in fret_positions),
         )
-        final_position = station_positions[-1]
+        final_fret_position = station_positions[-1]
+        if self.end_extension > 0.0:
+            station_positions = (
+                *station_positions,
+                final_fret_position + self.end_extension,
+            )
         rows = tuple(
-            self._build_profile_row(position, final_position)
+            self._build_profile_row(position, final_fret_position)
             for position in station_positions
         )
         faces = tuple(
@@ -92,6 +99,10 @@ class FretboardSurface:
             )
         if self.fret_count <= 0:
             raise FretboardGeometryError("Fret count must be greater than zero.")
+        if not math.isfinite(self.end_extension) or self.end_extension < 0.0:
+            raise FretboardGeometryError(
+                "Fretboard end extension must be finite and non-negative."
+            )
         if self.last_fret_width < self.nut_width:
             raise FretboardGeometryError(
                 "Final-fret width must not be narrower than the nut."
@@ -121,7 +132,7 @@ class FretboardSurface:
         final_position: float,
     ) -> tuple[Point3D, ...]:
         """Return one circular-arc row at a longitudinal station."""
-        fraction = position / final_position
+        fraction = min(position / final_position, 1.0)
         width = (
             self.nut_width
             + (self.last_fret_width - self.nut_width) * fraction

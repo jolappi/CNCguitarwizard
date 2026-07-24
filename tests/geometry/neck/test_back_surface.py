@@ -130,6 +130,28 @@ def test_headstock_transition_blends_from_flat_sixteen_to_d_profile() -> None:
     assert transition_row[1].z > -11.0
 
 
+def test_nut_shelf_extends_six_millimetres_before_fretboard() -> None:
+    surface = NeckBackSurface(
+        make_outline(),
+        11.0,
+        13.0,
+        20.0,
+        nut_transition_thickness=16.0,
+        nut_shelf_length=6.0,
+        nut_transition_length=30.0,
+        heel_transition_length=35.0,
+        profile_sample_count=5,
+        segments_per_region=2,
+    )
+
+    assert surface.station_positions[0] == -6.0
+    assert surface.station_positions_reference(1) == pytest.approx(
+        34.214219,
+        abs=0.000001,
+    )
+    assert {point.z for point in surface.mesh.rows[0][1:-1]} == {-16.0}
+
+
 def test_surface_is_immutable() -> None:
     surface = make_surface()
 
@@ -170,6 +192,13 @@ def test_surface_is_immutable() -> None:
             19.0,
             20.0,
             heel_transition_length=500.0,
+        ),
+        lambda: NeckBackSurface(
+            make_outline(),
+            17.0,
+            19.0,
+            20.0,
+            nut_shelf_length=-1.0,
         ),
     ],
 )

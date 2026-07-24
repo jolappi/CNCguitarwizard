@@ -3,6 +3,8 @@
 Prototype001 now has a planar bolt-on heel underside. A 35 mm smooth profile
 transition changes the neck D profile into the rectangular heel, while a
 30 mm volute blends the angled headstock thickness into the first-fret neck.
+Its fretboard now ends flush with the heel, and the neck wood includes a
+6 mm horizontal nut shelf before the fretboard without moving the scale.
 
 Generated FreeCAD scripts can optionally save an editable `.FCStd` document
 and export their solid as `.step` or `.stp`. Output suffixes are validated

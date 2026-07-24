@@ -38,6 +38,7 @@ class NeckBackSurface:
     twelfth_fret_thickness: float
     final_fret_thickness: float
     nut_transition_thickness: float | None = None
+    nut_shelf_length: float = 0.0
     nut_transition_length: float = 0.0
     heel_transition_length: float = 0.0
     exponent: float = 3.5
@@ -63,6 +64,7 @@ class NeckBackSurface:
             tuple(
                 dict.fromkeys(
                     (
+                        -self.nut_shelf_length,
                         0.0,
                         self.nut_transition_length,
                         first_position,
@@ -150,6 +152,13 @@ class NeckBackSurface:
             raise NeckGeometryError(
                 "Nut-transition thickness must be finite and at least the "
                 "first-fret wood thickness."
+            )
+        if (
+            not math.isfinite(self.nut_shelf_length)
+            or self.nut_shelf_length < 0.0
+        ):
+            raise NeckGeometryError(
+                "Nut shelf length must be finite and non-negative."
             )
         if (
             not math.isfinite(self.nut_transition_length)
@@ -241,6 +250,8 @@ class NeckBackSurface:
 
     def _width_at(self, position: float) -> float:
         """Return linearly tapered width at a longitudinal position."""
+        if position <= 0.0:
+            return self.neck_outline.nut_width
         if position >= self.neck_outline.last_fret_position:
             return self.neck_outline.heel_width
         fraction = position / self.neck_outline.last_fret_position
@@ -259,6 +270,12 @@ class NeckBackSurface:
         twelfth_position = self.station_positions_reference(12)
         final_position = self.neck_outline.last_fret_position
 
+        if position <= 0.0:
+            return (
+                self.first_fret_thickness
+                if self.nut_transition_thickness is None
+                else self.nut_transition_thickness
+            )
         if (
             self.nut_transition_thickness is not None
             and self.nut_transition_length > 0.0
@@ -297,6 +314,8 @@ class NeckBackSurface:
 
     def _nut_transition_blend_at(self, position: float) -> float:
         """Return rectangle-to-D blend through the headstock volute."""
+        if position <= 0.0 and self.nut_shelf_length > 0.0:
+            return 1.0
         if self.nut_transition_length <= 0.0:
             return 0.0
         fraction = min(max(position / self.nut_transition_length, 0.0), 1.0)

@@ -39,6 +39,10 @@ smoothly into the first-fret D profile. At the body end, a 35 mm transition
 changes the D profile into a rectangular heel. The entire 63 mm heel has a
 planar 20 mm underside for reliable seating in a bolt-on neck pocket.
 
+The neck wood begins 6 mm before the fretboard at the headstock side. This
+horizontal shelf provides the reserved space for the nut while keeping the
+scale origin and all fret locations at the fretboard start.
+
 Both transitions use cubic smoothstep interpolation. Their slopes reach zero
 at the adjoining reference sections instead of producing abrupt thickness or
 profile changes.

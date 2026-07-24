@@ -71,6 +71,7 @@ class Prototype001Parameters:
     tuner_edge_clearance: float = 8.0
     tuner_hole_clearance: float = 10.0
     tuner_chamfer_depth: float = 0.2
+    nut_shelf_length: float = 6.0
     headstock_transition_length: float = 30.0
     heel_transition_length: float = 35.0
     profile_sample_count: int = 33
@@ -102,6 +103,7 @@ class Prototype001Parameters:
             twelfth_fret_wood_thickness,
             self.heel_thickness,
             nut_transition_thickness=self.headstock_thickness,
+            nut_shelf_length=self.nut_shelf_length,
             nut_transition_length=self.headstock_transition_length,
             heel_transition_length=self.heel_transition_length,
             profile_sample_count=self.profile_sample_count,
@@ -114,7 +116,8 @@ class Prototype001Parameters:
             self.final_fret_width,
             self.fretboard_radius,
             self.fretboard_thickness,
-            self.profile_sample_count,
+            end_extension=self.heel_length,
+            profile_sample_count=self.profile_sample_count,
         )
         final_fret_fraction = 1.0 - 2.0 ** (-self.fret_count / 12.0)
         width_at_scale_end = self.nut_width + (

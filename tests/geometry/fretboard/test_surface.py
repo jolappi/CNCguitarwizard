@@ -37,6 +37,23 @@ def test_surface_mesh_has_expected_resolution() -> None:
     assert surface.mesh.face_count == 24 * 4
 
 
+def test_surface_can_extend_beyond_final_fret_without_additional_frets() -> None:
+    surface = FretboardSurface(
+        scale_length=609.6,
+        fret_count=24,
+        nut_width=42.0,
+        last_fret_width=56.0,
+        radius=430.0,
+        center_thickness=6.0,
+        profile_sample_count=5,
+        end_extension=63.0,
+    )
+
+    assert len(surface.station_positions) == 26
+    assert surface.station_positions[-1] == pytest.approx(520.2)
+    assert surface.mesh.rows[-1][-1].y - surface.mesh.rows[-1][0].y == 56.0
+
+
 def test_surface_tapers_from_nut_to_final_fret_width() -> None:
     surface = make_surface()
     nut_row = surface.mesh.rows[0]
@@ -82,6 +99,15 @@ def test_surface_is_immutable() -> None:
             430.0,
             6.0,
             profile_sample_count=4,
+        ),
+        lambda: FretboardSurface(
+            609.6,
+            24,
+            42.0,
+            56.0,
+            430.0,
+            6.0,
+            end_extension=-1.0,
         ),
     ],
 )

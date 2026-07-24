@@ -206,7 +206,9 @@ class FreeCADScriptExporter:
             self._close_fretboard_row(row)
             for row in fretboard_surface.mesh.rows
         )
-        fret_surface_rows = fretboard_surface.mesh.rows[1:]
+        fret_surface_rows = fretboard_surface.mesh.rows[
+            1 : fretboard_surface.fret_count + 1
+        ]
         export_features = "[neck_feature, fretboard_feature]"
         if headstock is not None and not join_headstock_to_neck:
             export_features = (
@@ -674,7 +676,9 @@ class FreeCADScriptExporter:
             raise FreeCADBackendError(
                 "Fret layout and fretboard surface must share a fret count."
             )
-        surface_positions = surface.station_positions[1:]
+        surface_positions = surface.station_positions[
+            1 : surface.fret_count + 1
+        ]
         layout_positions = tuple(
             (slot.start.x + slot.end.x) / 2.0 for slot in layout.slots
         )
