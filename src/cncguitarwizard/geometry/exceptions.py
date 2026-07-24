@@ -19,3 +19,7 @@ class FretboardGeometryError(GeometryException):
 
 class NeckGeometryError(GeometryException):
     """Raised when neck geometry cannot be constructed safely."""
+
+
+class HeadstockGeometryError(GeometryException):
+    """Raised when headstock geometry cannot be constructed safely."""

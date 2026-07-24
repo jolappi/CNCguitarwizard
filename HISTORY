@@ -44,6 +44,10 @@ The separate fretboard geometry was then added with a 6 mm center thickness
 and a true 430 mm circular cross-section. The model now exposes the calculated
 surface sagitta and remaining edge thickness for manufacturing checks.
 
+The modern 3+3 headstock reference followed with a 150 mm tapered plan and an
+8-degree side angle. The shape widens through a 65 mm shoulder and narrows to
+a 40 mm tip without copying a manufacturer-specific outline.
+
 ## Documentation
 
 - Added public package reference with API tables, examples, and diagrams.

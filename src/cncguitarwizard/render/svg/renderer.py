@@ -12,7 +12,13 @@ from ...geometry.fretboard import (
     FretboardSideProfile,
     FretLayout,
 )
-from ...geometry.neck import Centerline, NeckOutline, NeckSideProfile
+from ...geometry.neck import (
+    Centerline,
+    HeadstockAngleReference,
+    HeadstockPlan,
+    NeckOutline,
+    NeckSideProfile,
+)
 from ...geometry.primitives import Line2D, Point2D
 
 RenderableGeometry: TypeAlias = (
@@ -23,6 +29,8 @@ RenderableGeometry: TypeAlias = (
     | FretLayout
     | FretboardCrossSection
     | FretboardSideProfile
+    | HeadstockAngleReference
+    | HeadstockPlan
     | NeckOutline
     | NeckSideProfile
 )
@@ -79,6 +87,17 @@ class SVGRenderer:
                 geometry.boundary,
                 "fretboard-cross-section",
             )
+        elif isinstance(geometry, HeadstockPlan):
+            element = self._render_polygon(
+                geometry.boundary,
+                "headstock-plan",
+            )
+        elif isinstance(geometry, HeadstockAngleReference):
+            element = self._render_line(geometry.reference_line).replace(
+                "<line ",
+                '<line class="headstock-angle-reference" ',
+                1,
+            )
         elif isinstance(geometry, NeckOutline):
             element = self._render_neck_outline(geometry)
         elif isinstance(geometry, NeckSideProfile):
@@ -134,6 +153,13 @@ class SVGRenderer:
             )
         if isinstance(geometry, (FretboardSideProfile, FretboardCrossSection)):
             return geometry.boundary
+        if isinstance(geometry, HeadstockPlan):
+            return geometry.boundary
+        if isinstance(geometry, HeadstockAngleReference):
+            return (
+                geometry.reference_line.start,
+                geometry.reference_line.end,
+            )
         if isinstance(geometry, NeckOutline):
             return geometry.boundary
         if isinstance(geometry, NeckSideProfile):

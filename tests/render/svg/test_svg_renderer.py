@@ -11,7 +11,13 @@ from cncguitarwizard.geometry.fretboard import (
     FretboardSideProfile,
     FretLayout,
 )
-from cncguitarwizard.geometry.neck import Centerline, NeckOutline, NeckSideProfile
+from cncguitarwizard.geometry.neck import (
+    Centerline,
+    HeadstockAngleReference,
+    HeadstockPlan,
+    NeckOutline,
+    NeckSideProfile,
+)
 from cncguitarwizard.geometry.primitives import Line2D, Point2D
 from cncguitarwizard.render.svg import SVGRenderer
 
@@ -50,6 +56,11 @@ def make_fretboard_cross_section() -> FretboardCrossSection:
     return FretboardCrossSection(56.0, 430.0, 6.0, sample_count=5)
 
 
+def make_headstock_plan() -> HeadstockPlan:
+    """Return the Prototype001 tapered headstock plan."""
+    return HeadstockPlan(150.0, 42.0, 30.0, 65.0, 40.0)
+
+
 @pytest.mark.parametrize(
     ("geometry", "snapshot_name"),
     [
@@ -62,6 +73,8 @@ def make_fretboard_cross_section() -> FretboardCrossSection:
         (make_neck_side_profile(), "neck_side_profile.svg"),
         (make_fretboard_side_profile(), "fretboard_side_profile.svg"),
         (make_fretboard_cross_section(), "fretboard_cross_section.svg"),
+        (make_headstock_plan(), "headstock_plan.svg"),
+        (HeadstockAngleReference(150.0, 8.0), "headstock_angle.svg"),
     ],
 )
 def test_svg_renderer_matches_geometry_snapshot(
@@ -73,6 +86,8 @@ def test_svg_renderer_matches_geometry_snapshot(
         | FretLayout
         | FretboardCrossSection
         | FretboardSideProfile
+        | HeadstockAngleReference
+        | HeadstockPlan
         | NeckOutline
         | NeckSideProfile
     ),
@@ -95,6 +110,8 @@ def test_svg_renderer_matches_geometry_snapshot(
         make_neck_side_profile(),
         make_fretboard_side_profile(),
         make_fretboard_cross_section(),
+        make_headstock_plan(),
+        HeadstockAngleReference(150.0, 8.0),
     ],
 )
 def test_svg_renderer_returns_well_formed_xml(
@@ -106,6 +123,8 @@ def test_svg_renderer_returns_well_formed_xml(
         | FretLayout
         | FretboardCrossSection
         | FretboardSideProfile
+        | HeadstockAngleReference
+        | HeadstockPlan
         | NeckOutline
         | NeckSideProfile
     ),
