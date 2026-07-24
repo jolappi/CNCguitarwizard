@@ -65,6 +65,22 @@ Passing a `HeadstockSolid` adds the modern tapered headstock as a third
 `Part::Feature`. Its configurable 14–16 mm thickness is extruded normal to
 the 8-degree face, and the optional STEP output includes all three solids.
 
+Passing the matching `TunerLayout` cuts all six 10 mm holes through the
+headstock:
+
+```python
+source = exporter.render_neck_assembly(
+    neck_surface,
+    fretboard_surface,
+    headstock=headstock,
+    tuner_layout=tuner_layout,
+)
+```
+
+The cutters follow the headstock normal rather than the global Z axis, so the
+finished bores remain perpendicular to the 8-degree face. Each cutter extends
+1 mm beyond both faces to make the boolean operation unambiguous.
+
 An existing `TrussRodChannel` can be applied as a rectangular subtraction
 from the neck solid:
 

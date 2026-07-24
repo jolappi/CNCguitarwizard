@@ -24,6 +24,10 @@ The tapered headstock now has backend-independent solid geometry with a
 configurable, validated thickness from 14 to 16 mm. Prototype001 uses 16 mm,
 and FreeCAD assemblies can export it as a separate angled solid.
 
+FreeCAD headstock exports can now subtract the validated 3+3 tuner layout.
+All six 10 mm bores pass completely through the solid along the normal of the
+8-degree face.
+
 The geometry package was introduced as the backend-independent foundation for
 instrument geometry.
 

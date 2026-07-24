@@ -9,7 +9,12 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from ...geometry.fretboard import FretboardSurface, FretLayout
-from ...geometry.neck import HeadstockSolid, NeckBackSurface, TrussRodChannel
+from ...geometry.neck import (
+    HeadstockSolid,
+    NeckBackSurface,
+    TrussRodChannel,
+    TunerLayout,
+)
 from ...geometry.primitives import Point3D
 from .exceptions import FreeCADBackendError
 
@@ -92,6 +97,7 @@ class FreeCADScriptExporter:
         headstock_object_name: str = "Headstock",
         truss_rod_channel: TrussRodChannel | None = None,
         headstock: HeadstockSolid | None = None,
+        tuner_layout: TunerLayout | None = None,
         fret_layout: FretLayout | None = None,
         fret_slot_width: float = 0.6,
         fret_slot_depth: float = 2.7,
@@ -112,6 +118,7 @@ class FreeCADScriptExporter:
             headstock_object_name: FreeCAD identifier for the headstock.
             truss_rod_channel: Optional rectangular channel cut from the neck.
             headstock: Optional angled headstock solid.
+            tuner_layout: Optional six-hole layout cut through the headstock.
             fret_layout: Optional bounded fret slots cut into the fretboard.
             fret_slot_width: Width of each fret slot in millimetres.
             fret_slot_depth: Vertical slot depth below the playing surface.
@@ -137,6 +144,7 @@ class FreeCADScriptExporter:
         self._validate_output_path(fcstd_path, {".fcstd"}, "FreeCAD")
         self._validate_output_path(step_path, {".step", ".stp"}, "STEP")
         self._validate_truss_rod_channel(neck_surface, truss_rod_channel)
+        self._validate_tuner_layout(headstock, tuner_layout)
         self._validate_fret_slots(
             fretboard_surface,
             fret_layout,
@@ -176,6 +184,7 @@ class FreeCADScriptExporter:
         headstock_source = self._render_headstock(
             headstock,
             headstock_object_name,
+            tuner_layout,
         )
 
         return (
@@ -214,6 +223,7 @@ class FreeCADScriptExporter:
         self,
         headstock: HeadstockSolid | None,
         object_name: str,
+        tuner_layout: TunerLayout | None,
     ) -> str:
         """Return FreeCAD commands that create an angled headstock solid."""
         if headstock is None:
@@ -221,6 +231,7 @@ class FreeCADScriptExporter:
 
         boundary = self._serialize_points(headstock.top_boundary)
         vector = headstock.extrusion_vector
+        tuner_source = self._render_tuner_hole_cuts(headstock, tuner_layout)
         return (
             f"HEADSTOCK_BOUNDARY = {boundary}\n"
             "headstock_vectors = "
@@ -229,9 +240,50 @@ class FreeCADScriptExporter:
             "headstock_face = Part.Face(Part.makePolygon(headstock_vectors))\n"
             "headstock_shape = headstock_face.extrude("
             f"App.Vector({vector.x}, {vector.y}, {vector.z}))\n"
+            f"{tuner_source}"
             "headstock_feature = document.addObject("
             f'"Part::Feature", "{object_name}")\n'
             "headstock_feature.Shape = headstock_shape\n"
+        )
+
+    @staticmethod
+    def _render_tuner_hole_cuts(
+        headstock: HeadstockSolid,
+        layout: TunerLayout | None,
+    ) -> str:
+        """Return FreeCAD commands for six normal-through tuner holes."""
+        if layout is None:
+            return ""
+
+        radians = math.radians(headstock.angle.angle_degrees)
+        tangent = math.tan(radians)
+        holes = [
+            [
+                hole.center.x,
+                hole.center.y,
+                hole.center.x * tangent,
+                hole.diameter,
+            ]
+            for hole in layout.holes
+        ]
+        axis = headstock.extrusion_vector
+        axis_x = axis.x / headstock.thickness
+        axis_y = axis.y / headstock.thickness
+        axis_z = axis.z / headstock.thickness
+        return (
+            f"TUNER_HOLES = {json.dumps(holes, separators=(',', ':'))}\n"
+            f"tuner_axis = App.Vector({axis_x}, {axis_y}, {axis_z})\n"
+            "tuner_overcut = 1.0\n"
+            "for x, y, z, diameter in TUNER_HOLES:\n"
+            "    top_center = App.Vector(x, y, z)\n"
+            "    cutter_start = top_center - tuner_axis * tuner_overcut\n"
+            "    cutter = Part.makeCylinder(\n"
+            "        diameter / 2.0,\n"
+            f"        {headstock.thickness} + 2.0 * tuner_overcut,\n"
+            "        cutter_start,\n"
+            "        tuner_axis,\n"
+            "    )\n"
+            "    headstock_shape = headstock_shape.cut(cutter)\n"
         )
 
     @staticmethod
@@ -430,6 +482,23 @@ class FreeCADScriptExporter:
         if channel.depth >= surface.first_fret_thickness:
             raise FreeCADBackendError(
                 "Truss-rod channel must leave wood beneath its floor."
+            )
+
+    @staticmethod
+    def _validate_tuner_layout(
+        headstock: HeadstockSolid | None,
+        layout: TunerLayout | None,
+    ) -> None:
+        """Ensure optional tuner holes belong to the exported headstock."""
+        if layout is None:
+            return
+        if headstock is None:
+            raise FreeCADBackendError(
+                "Tuner-hole export requires a headstock solid."
+            )
+        if layout.headstock != headstock.plan:
+            raise FreeCADBackendError(
+                "Tuner layout and headstock solid must share a plan."
             )
 
     @staticmethod

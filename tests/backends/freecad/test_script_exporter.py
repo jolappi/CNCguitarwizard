@@ -21,6 +21,7 @@ from cncguitarwizard.geometry.neck import (
     NeckBackSurface,
     NeckOutline,
     TrussRodChannel,
+    TunerLayout,
 )
 
 
@@ -78,6 +79,16 @@ def make_headstock(thickness: float = 16.0) -> HeadstockSolid:
         HeadstockPlan(150.0, 42.0, 30.0, 65.0, 40.0),
         HeadstockAngleReference(150.0, 8.0),
         thickness,
+    )
+
+
+def make_tuner_layout(
+    plan: HeadstockPlan | None = None,
+) -> TunerLayout:
+    """Return the locked six-hole Prototype001 tuner layout."""
+    return TunerLayout(
+        plan or make_headstock().plan,
+        hole_diameter=10.0,
     )
 
 
@@ -291,6 +302,41 @@ def test_headstock_is_included_in_step_export(tmp_path: Path) -> None:
     )
 
 
+def test_headstock_can_receive_six_normal_tuner_holes() -> None:
+    headstock = make_headstock()
+    source = FreeCADScriptExporter().render_neck_assembly(
+        make_neck_surface(),
+        make_fretboard_surface(),
+        headstock=headstock,
+        tuner_layout=make_tuner_layout(headstock.plan),
+    )
+
+    module = ast.parse(source)
+    assignment = next(
+        node
+        for node in module.body
+        if isinstance(node, ast.Assign)
+        and isinstance(node.targets[0], ast.Name)
+        and node.targets[0].id == "TUNER_HOLES"
+    )
+    assert isinstance(assignment.value, ast.List)
+    assert len(assignment.value.elts) == 6
+    assert "cutter = Part.makeCylinder(" in source
+    assert "diameter / 2.0" in source
+    assert "headstock_shape = headstock_shape.cut(cutter)" in source
+
+
+def test_headstock_omits_tuner_holes_by_default() -> None:
+    source = FreeCADScriptExporter().render_neck_assembly(
+        make_neck_surface(),
+        make_fretboard_surface(),
+        headstock=make_headstock(),
+    )
+
+    assert "TUNER_HOLES" not in source
+    assert "Part.makeCylinder" not in source
+
+
 def test_exporter_rejects_unsafe_names_and_file_suffixes(
     tmp_path: Path,
 ) -> None:
@@ -371,4 +417,24 @@ def test_neck_assembly_rejects_incompatible_fret_slots() -> None:
             make_fretboard_surface(),
             fret_layout=make_fret_layout(),
             fret_slot_depth=6.0,
+        )
+
+
+def test_neck_assembly_rejects_incompatible_tuner_holes() -> None:
+    exporter = FreeCADScriptExporter()
+
+    with pytest.raises(FreeCADBackendError):
+        exporter.render_neck_assembly(
+            make_neck_surface(),
+            make_fretboard_surface(),
+            tuner_layout=make_tuner_layout(),
+        )
+
+    different_plan = HeadstockPlan(150.0, 43.0, 30.0, 65.0, 40.0)
+    with pytest.raises(FreeCADBackendError):
+        exporter.render_neck_assembly(
+            make_neck_surface(),
+            make_fretboard_surface(),
+            headstock=make_headstock(),
+            tuner_layout=make_tuner_layout(different_plan),
         )
