@@ -9,7 +9,11 @@ import pytest
 from cncguitarwizard.backends.freecad import FreeCADScriptExporter
 from cncguitarwizard.backends.freecad.exceptions import FreeCADBackendError
 from cncguitarwizard.geometry.fretboard import FretboardSurface
-from cncguitarwizard.geometry.neck import NeckBackSurface, NeckOutline
+from cncguitarwizard.geometry.neck import (
+    NeckBackSurface,
+    NeckOutline,
+    TrussRodChannel,
+)
 
 
 def make_neck_surface() -> NeckBackSurface:
@@ -27,6 +31,21 @@ def make_neck_surface() -> NeckBackSurface:
 def make_fretboard_surface() -> FretboardSurface:
     """Return a low-resolution fretboard surface for backend tests."""
     return FretboardSurface(609.6, 24, 42.0, 56.0, 430.0, 6.0, 5)
+
+
+def make_truss_rod_channel(
+    outline: NeckOutline | None = None,
+    depth: float = 9.0,
+) -> TrussRodChannel:
+    """Return the locked rectangular double-action truss-rod channel."""
+    return TrussRodChannel(
+        outline or make_neck_surface().neck_outline,
+        12.0,
+        440.0,
+        6.0,
+        depth,
+        adjustment_side="heel",
+    )
 
 
 @pytest.mark.parametrize(
@@ -120,7 +139,8 @@ def test_neck_assembly_creates_two_separate_features(tmp_path: Path) -> None:
     ast.parse(source)
     assert 'document.addObject("Part::Feature", "NeckBack")' in source
     assert 'document.addObject("Part::Feature", "Fretboard")' in source
-    assert "neck_feature.Shape = make_loft(NECK_SECTION_POINTS)" in source
+    assert "neck_shape = make_loft(NECK_SECTION_POINTS)" in source
+    assert "neck_feature.Shape = neck_shape" in source
     assert (
         "fretboard_feature.Shape = make_loft("
         "FRETBOARD_SECTION_POINTS)" in source
@@ -154,6 +174,37 @@ def test_neck_assembly_serializes_both_surface_row_sets() -> None:
     assert len(fretboard_rows.elts) == len(fretboard_surface.mesh.rows)
 
 
+def test_neck_assembly_can_cut_the_truss_rod_channel() -> None:
+    surface = make_neck_surface()
+    channel = make_truss_rod_channel(surface.neck_outline)
+
+    source = FreeCADScriptExporter().render_neck_assembly(
+        surface,
+        make_fretboard_surface(),
+        truss_rod_channel=channel,
+    )
+
+    assert (
+        "truss_rod_shape = Part.makeBox("
+        "440.0, 6.0, 9.0, App.Vector(12.0, -3.0, -9.0))"
+        in source
+    )
+    assert "neck_shape = neck_shape.cut(truss_rod_shape)" in source
+    assert source.index("neck_shape.cut") < source.index(
+        "neck_feature.Shape = neck_shape"
+    )
+
+
+def test_neck_assembly_omits_truss_rod_cut_by_default() -> None:
+    source = FreeCADScriptExporter().render_neck_assembly(
+        make_neck_surface(),
+        make_fretboard_surface(),
+    )
+
+    assert "truss_rod_shape" not in source
+    assert "neck_shape.cut" not in source
+
+
 def test_exporter_rejects_unsafe_names_and_file_suffixes(
     tmp_path: Path,
 ) -> None:
@@ -182,4 +233,25 @@ def test_exporter_rejects_unsafe_names_and_file_suffixes(
             make_fretboard_surface(),
             neck_object_name="Neck",
             fretboard_object_name="Neck",
+        )
+
+
+def test_neck_assembly_rejects_an_incompatible_truss_rod_channel() -> None:
+    surface = make_neck_surface()
+    different_outline = NeckOutline(609.6, 24, 43.0, 56.0, 56.0, 63.0)
+
+    with pytest.raises(FreeCADBackendError):
+        FreeCADScriptExporter().render_neck_assembly(
+            surface,
+            make_fretboard_surface(),
+            truss_rod_channel=make_truss_rod_channel(different_outline),
+        )
+    with pytest.raises(FreeCADBackendError):
+        FreeCADScriptExporter().render_neck_assembly(
+            surface,
+            make_fretboard_surface(),
+            truss_rod_channel=make_truss_rod_channel(
+                surface.neck_outline,
+                depth=17.0,
+            ),
         )

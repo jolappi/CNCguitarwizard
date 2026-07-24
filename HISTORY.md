@@ -8,6 +8,10 @@ The FreeCAD backend can now generate a single neck assembly document. The
 neck back and fretboard remain separate solids, while an optional STEP export
 contains both objects for fit inspection.
 
+The assembly exporter can optionally subtract the validated rectangular
+truss-rod channel from the neck solid. It rejects mismatched outlines and
+channels that would consume the full neck depth.
+
 The geometry package was introduced as the backend-independent foundation for
 instrument geometry.
 

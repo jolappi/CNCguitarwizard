@@ -58,10 +58,26 @@ STEP file exports both solids together, without applying a boolean union.
 This makes the joint at the shared `Z = 0` plane easy to inspect before later
 manufacturing operations are introduced.
 
+An existing `TrussRodChannel` can be applied as a rectangular subtraction
+from the neck solid:
+
+```python
+source = exporter.render_neck_assembly(
+    neck_surface,
+    fretboard_surface,
+    truss_rod_channel=channel,
+)
+```
+
+The backend verifies that the channel and neck use the same outline and that
+the requested depth leaves wood below the channel floor. The current
+subtraction models the specified 440 × 6 × 9 mm straight channel; a separate
+spokewheel access pocket will follow once its hardware dimensions are known.
+
 ## Current limitations
 
 - The generated loft uses sampled polygon sections rather than exact B-spline
   or circular wires.
 - Neck-to-headstock and neck-to-heel transition surfaces are not included.
-- Truss-rod subtraction and fret-slot cuts are not yet applied.
+- Fret-slot cuts are not yet applied.
 - Scripts must be visually inspected in FreeCAD before any CAM work.
