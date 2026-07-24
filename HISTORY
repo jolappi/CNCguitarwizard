@@ -65,6 +65,11 @@ surface. A deterministic quad mesh now follows the nut, first-fret,
 twelfth-fret, and final-fret thickness references and is ready for a future
 FreeCAD loft backend.
 
+The 430 mm fretboard radius was extended into a three-dimensional tapered
+playing surface. Cross-section rows now coincide with the nut and every fret,
+providing exact longitudinal references for CAD lofting and future fret-slot
+operations.
+
 ## Documentation
 
 - Added public package reference with API tables, examples, and diagrams.
