@@ -39,6 +39,10 @@ The Prototype001 preset now provides one immutable parameter source for the
 complete neck. It builds every current geometry component and feeds them to a
 one-call FreeCAD export without coupling the core model to a CAD backend.
 
+Prototype001 now has a one-command build workflow. It creates matching
+FreeCAD macro and Python scripts plus a JSON report containing the complete
+parameter set, version, timestamp, target files, and script checksum.
+
 The geometry package was introduced as the backend-independent foundation for
 instrument geometry.
 
