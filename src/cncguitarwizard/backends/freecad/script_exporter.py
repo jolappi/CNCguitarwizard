@@ -212,7 +212,18 @@ class FreeCADScriptExporter:
             neck_surface.heel_flat_start_offset
             + neck_surface.neck_outline.heel_length
         )
-        heel_width = neck_surface.neck_outline.heel_width
+        heel_start_fraction = (
+            heel_start / neck_surface.neck_outline.last_fret_position
+        )
+        heel_start_width = (
+            neck_surface.neck_outline.nut_width
+            + (
+                neck_surface.neck_outline.last_fret_width
+                - neck_surface.neck_outline.nut_width
+            )
+            * heel_start_fraction
+        )
+        heel_end_width = neck_surface.neck_outline.heel_width
         heel_thickness = neck_surface.final_fret_thickness
         fretboard_rows = tuple(
             self._close_fretboard_row(row)
@@ -256,7 +267,8 @@ class FreeCADScriptExporter:
             "import Part\n\n"
             f"NECK_SECTION_POINTS = {self._serialize_rows(neck_rows)}\n"
             "HEEL_BLOCK = "
-            f"[{heel_start},{heel_length},{heel_width},{heel_thickness}]\n"
+            f"[{heel_start},{heel_length},{heel_start_width},"
+            f"{heel_end_width},{heel_thickness}]\n"
             "FRETBOARD_SECTION_POINTS = "
             f"{self._serialize_rows(fretboard_rows)}\n"
             f"{serialized_fret_rows}\n"
@@ -278,17 +290,23 @@ class FreeCADScriptExporter:
             "    return shape\n\n"
             f'document = App.newDocument("{document_name}")\n'
             "neck_shape = make_loft(NECK_SECTION_POINTS)\n"
-            "heel_start, heel_length, heel_width, heel_thickness = HEEL_BLOCK\n"
-            "heel_shape = Part.makeBox(\n"
-            "    heel_length,\n"
-            "    heel_width,\n"
-            "    heel_thickness,\n"
-            "    App.Vector(\n"
-            "        heel_start,\n"
-            "        -heel_width / 2.0,\n"
-            "        -heel_thickness,\n"
-            "    ),\n"
-            ")\n"
+            "heel_start, heel_length, heel_start_width, "
+            "heel_end_width, heel_thickness = HEEL_BLOCK\n"
+            "heel_end = heel_start + heel_length\n"
+            "heel_bottom = [\n"
+            "    App.Vector(heel_start, -heel_start_width / 2.0, "
+            "-heel_thickness),\n"
+            "    App.Vector(heel_end, -heel_end_width / 2.0, "
+            "-heel_thickness),\n"
+            "    App.Vector(heel_end, heel_end_width / 2.0, "
+            "-heel_thickness),\n"
+            "    App.Vector(heel_start, heel_start_width / 2.0, "
+            "-heel_thickness),\n"
+            "]\n"
+            "heel_bottom.append(heel_bottom[0])\n"
+            "heel_face = Part.Face(Part.makePolygon(heel_bottom))\n"
+            "heel_shape = heel_face.extrude("
+            "App.Vector(0.0, 0.0, heel_thickness))\n"
             "neck_shape = require_shape(\n"
             "    neck_shape.fuse(heel_shape).removeSplitter(),\n"
             '    "heel-block fusion",\n'

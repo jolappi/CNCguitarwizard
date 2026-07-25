@@ -121,10 +121,14 @@ def test_flat_heel_can_begin_before_the_final_fret() -> None:
     )
     flat_start = surface.neck_outline.last_fret_position - 50.0
     row = surface.mesh.rows[surface.station_positions.index(flat_start)]
+    expected_width = 42.0 + (56.0 - 42.0) * (
+        flat_start / surface.neck_outline.last_fret_position
+    )
 
     assert {point.z for point in row[1:-1]} == {-20.0}
     assert row[0].y == row[1].y
     assert row[-2].y == row[-1].y
+    assert row[-1].y - row[0].y == pytest.approx(expected_width)
 
 
 def test_headstock_transition_blends_from_flat_sixteen_to_d_profile() -> None:

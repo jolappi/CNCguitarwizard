@@ -64,9 +64,10 @@ manufacturing operations are introduced.
 
 The shaped neck loft ends 50 mm before fret 24 and is fused to an exact
 rectangular heel block that ends 4 mm after fret 24. The resulting mounting
-block is 54 mm long, 56 mm wide, and 20 mm deep. The fretboard ends separately
-4 mm after fret 24. Keeping the heel block out of the spline loft prevents
-ripples on its flat mounting faces.
+block is 54 mm long and 20 mm deep. Its sides continue the fretboard taper
+to the 56 mm end width rather than forming a rectangle. The fretboard ends
+separately 4 mm after fret 24. Keeping the heel block out of the spline loft
+prevents ripples on its flat mounting faces.
 
 Passing a `HeadstockSolid` adds the modern tapered headstock as a third
 `Part::Feature`. Its configurable 14–16 mm thickness is extruded normal to

@@ -26,10 +26,11 @@ surface radius and preserves material beneath every slot.
 
 The fretboard ends 4 mm after fret 24. The flat bolt-on heel begins 50 mm
 toward the headstock from fret 24 and ends with the fretboard, making an exact
-56 × 54 × 20 mm mounting block. It is fused to the shaped neck separately,
-preventing spline-loft ripples on its flat mounting faces.
-Both major joints now blend laterally as well: the neck widens smoothly into
-the heel block, and the headstock shoulder uses a sampled curved outline.
+54 × 20 mm tapered mounting solid that reaches 56 mm at its end. It is fused
+to the shaped neck separately, preventing spline-loft ripples on its flat
+mounting faces.
+Both major joints are continuous laterally as well: the heel follows the
+neck/fretboard taper, and the headstock shoulder uses a sampled curved outline.
 
 The tapered headstock now has backend-independent solid geometry with a
 configurable, validated thickness from 14 to 16 mm. Prototype001 uses 16 mm,

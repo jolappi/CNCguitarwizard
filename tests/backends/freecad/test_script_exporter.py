@@ -269,7 +269,8 @@ def test_neck_assembly_serializes_both_surface_row_sets() -> None:
     heel_start_index = neck_surface.station_positions.index(heel_start)
     assert len(neck_rows.elts) == heel_start_index + 1
     assert len(fretboard_rows.elts) == len(fretboard_surface.mesh.rows)
-    assert "heel_shape = Part.makeBox(" in source
+    assert "heel_face = Part.Face(Part.makePolygon(heel_bottom))" in source
+    assert "heel_shape = heel_face.extrude(" in source
     assert '"heel-block fusion"' in source
 
 

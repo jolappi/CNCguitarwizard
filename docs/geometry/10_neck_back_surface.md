@@ -39,8 +39,8 @@ smoothly into the first-fret D profile. At the body end, a 35 mm transition
 changes the D profile into a rectangular heel. Its flat section begins 50 mm
 before fret 24 and ends 4 mm after it, producing a 54 mm long mounting block
 with a planar 20 mm underside for reliable seating in a bolt-on neck pocket.
-During the preceding 35 mm transition, the side width also curves smoothly
-out to the full 56 mm heel width. The block therefore has no lateral step.
+In plan view, the block continues the fretboard taper from its local starting
+width to the 56 mm end width instead of forming a rectangle.
 
 The neck wood begins 6 mm before the fretboard at the headstock side. This
 horizontal shelf provides the reserved space for the nut while keeping the
