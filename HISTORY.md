@@ -31,6 +31,8 @@ to the shaped neck separately, preventing spline-loft ripples on its flat
 mounting faces.
 Both major joints are continuous laterally as well: the heel follows the
 neck/fretboard taper, and the headstock shoulder uses a sampled curved outline.
+FreeCAD output additionally applies configurable 3 mm side-joint fillets at
+the heel and headstock connections so no sharp lateral corner remains.
 
 The tapered headstock now has backend-independent solid geometry with a
 configurable, validated thickness from 14 to 16 mm. Prototype001 uses 16 mm,

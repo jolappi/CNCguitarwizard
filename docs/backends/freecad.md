@@ -69,6 +69,11 @@ to the 56 mm end width rather than forming a rectangle. The fretboard ends
 separately 4 mm after fret 24. Keeping the heel block out of the spline loft
 prevents ripples on its flat mounting faces.
 
+Prototype001 applies a configurable 3 mm fillet to the lateral joint edges
+where the shaped neck meets the heel and angled headstock. These fillets
+remove the remaining sharp side-view corners without rounding the heel's
+flat mounting underside.
+
 Passing a `HeadstockSolid` adds the modern tapered headstock as a third
 `Part::Feature`. Its configurable 14–16 mm thickness is extruded normal to
 the 8-degree face, and the optional STEP output includes all three solids.

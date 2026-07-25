@@ -84,6 +84,7 @@ class FreeCADScriptExporter:
             headstock=geometry.headstock,
             tuner_layout=geometry.tuner_layout,
             tuner_chamfer_depth=geometry.tuner_chamfer_depth,
+            joint_fillet_radius=geometry.joint_fillet_radius,
             join_headstock_to_neck=join_headstock_to_neck,
             fret_layout=geometry.fret_layout,
             fret_slot_width=geometry.fret_slot_width,
@@ -133,6 +134,7 @@ class FreeCADScriptExporter:
         headstock: HeadstockSolid | None = None,
         tuner_layout: TunerLayout | None = None,
         tuner_chamfer_depth: float = 0.2,
+        joint_fillet_radius: float = 0.0,
         join_headstock_to_neck: bool = False,
         fret_layout: FretLayout | None = None,
         fret_slot_width: float = 0.6,
@@ -156,6 +158,7 @@ class FreeCADScriptExporter:
             headstock: Optional angled headstock solid.
             tuner_layout: Optional six-hole layout cut through the headstock.
             tuner_chamfer_depth: Depth of the 45-degree top-edge chamfer.
+            joint_fillet_radius: Radius for lateral heel and headstock joints.
             join_headstock_to_neck: Fuse headstock and neck into one wood solid.
             fret_layout: Optional bounded fret slots cut into the fretboard.
             fret_slot_width: Width of each fret slot in millimetres.
@@ -187,6 +190,15 @@ class FreeCADScriptExporter:
             tuner_layout,
             tuner_chamfer_depth,
         )
+        if (
+            not math.isfinite(joint_fillet_radius)
+            or joint_fillet_radius < 0.0
+            or joint_fillet_radius > neck_surface.final_fret_thickness / 2.0
+        ):
+            raise FreeCADBackendError(
+                "Joint fillet radius must be finite, non-negative, and no "
+                "greater than half the heel thickness."
+            )
         self._validate_headstock_join(
             neck_surface,
             headstock,
@@ -258,6 +270,7 @@ class FreeCADScriptExporter:
             headstock_object_name,
             tuner_layout,
             tuner_chamfer_depth,
+            joint_fillet_radius,
             join_headstock_to_neck,
         )
 
@@ -288,6 +301,15 @@ class FreeCADScriptExporter:
             "    if not shape.isValid():\n"
             "        raise RuntimeError(f\"{operation} produced an invalid shape\")\n"
             "    return shape\n\n"
+            "def side_joint_edges(shape, joint_x, minimum_abs_y, x_tolerance):\n"
+            '    """Return lateral edges local to one solid joint."""\n'
+            "    return [\n"
+            "        edge\n"
+            "        for edge in shape.Edges\n"
+            "        if abs(edge.CenterOfMass.y) >= minimum_abs_y\n"
+            "        and edge.BoundBox.XMin >= joint_x - x_tolerance\n"
+            "        and edge.BoundBox.XMax <= joint_x + x_tolerance\n"
+            "    ]\n\n"
             f'document = App.newDocument("{document_name}")\n'
             "neck_shape = make_loft(NECK_SECTION_POINTS)\n"
             "heel_start, heel_length, heel_start_width, "
@@ -307,6 +329,21 @@ class FreeCADScriptExporter:
             "heel_face = Part.Face(Part.makePolygon(heel_bottom))\n"
             "heel_shape = heel_face.extrude("
             "App.Vector(0.0, 0.0, heel_thickness))\n"
+            f"joint_fillet_radius = {joint_fillet_radius}\n"
+            "if joint_fillet_radius > 0.0:\n"
+            "    heel_joint_edges = side_joint_edges(\n"
+            "        heel_shape,\n"
+            "        heel_start,\n"
+            "        heel_start_width / 2.0 - 0.1,\n"
+            "        0.1,\n"
+            "    )\n"
+            "    heel_shape = require_shape(\n"
+            "        heel_shape.makeFillet(\n"
+            "            joint_fillet_radius,\n"
+            "            heel_joint_edges,\n"
+            "        ),\n"
+            '        "heel side-joint fillet",\n'
+            "    )\n"
             "neck_shape = require_shape(\n"
             "    neck_shape.fuse(heel_shape).removeSplitter(),\n"
             '    "heel-block fusion",\n'
@@ -331,6 +368,7 @@ class FreeCADScriptExporter:
         object_name: str,
         tuner_layout: TunerLayout | None,
         tuner_chamfer_depth: float,
+        joint_fillet_radius: float,
         join_to_neck: bool,
     ) -> str:
         """Return FreeCAD commands that create an angled headstock solid."""
@@ -366,6 +404,20 @@ class FreeCADScriptExporter:
             "headstock_shape = headstock_face.extrude("
             f"App.Vector({vector.x}, {vector.y}, {vector.z}))\n"
             f"{tuner_source}"
+            "if joint_fillet_radius > 0.0:\n"
+            "    headstock_joint_edges = side_joint_edges(\n"
+            "        headstock_shape,\n"
+            "        0.0,\n"
+            f"        {headstock.plan.nut_width / 2.0 - 0.1},\n"
+            f"        {abs(vector.x) + 0.1},\n"
+            "    )\n"
+            "    headstock_shape = require_shape(\n"
+            "        headstock_shape.makeFillet(\n"
+            "            joint_fillet_radius,\n"
+            "            headstock_joint_edges,\n"
+            "        ),\n"
+            '        "headstock side-joint fillet",\n'
+            "    )\n"
             f"{feature_source}"
         )
 

@@ -61,6 +61,7 @@ def test_default_preset_builds_every_locked_component() -> None:
     assert len(geometry.fret_layout.slots) == 24
     assert geometry.fret_slot_width == 0.6
     assert geometry.fret_slot_depth == 2.7
+    assert geometry.joint_fillet_radius == 3.0
 
 
 def test_preset_headstock_thickness_is_configurable_in_supported_range() -> None:

@@ -31,6 +31,7 @@ class Prototype001Geometry:
     fret_slot_width: float
     fret_slot_depth: float
     tuner_chamfer_depth: float
+    joint_fillet_radius: float
 
 
 @dataclass(frozen=True, slots=True)
@@ -73,6 +74,7 @@ class Prototype001Parameters:
     tuner_edge_clearance: float = 8.0
     tuner_hole_clearance: float = 10.0
     tuner_chamfer_depth: float = 0.2
+    joint_fillet_radius: float = 3.0
     nut_shelf_length: float = 6.0
     headstock_transition_length: float = 30.0
     heel_transition_length: float = 35.0
@@ -177,4 +179,5 @@ class Prototype001Parameters:
             self.fret_slot_width,
             self.fret_slot_depth,
             self.tuner_chamfer_depth,
+            self.joint_fillet_radius,
         )
