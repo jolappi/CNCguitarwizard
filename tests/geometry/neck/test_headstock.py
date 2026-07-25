@@ -41,6 +41,15 @@ def test_plan_is_symmetric_about_its_centerline() -> None:
         assert line.start.y == pytest.approx(-line.end.y)
 
 
+def test_plan_side_boundary_uses_smooth_sampled_curves() -> None:
+    plan = make_plan()
+
+    assert len(plan.boundary) == 34
+    assert plan.width_at_distance(0.0) == pytest.approx(42.0)
+    assert plan.width_at_distance(30.0) == pytest.approx(65.0)
+    assert plan.width_at_distance(150.0) == pytest.approx(40.0)
+
+
 def test_eight_degree_reference_calculates_tip_drop() -> None:
     reference = HeadstockAngleReference(150.0, 8.0)
 
@@ -58,7 +67,10 @@ def test_headstock_solid_uses_sixteen_millimetre_default() -> None:
 
     assert solid.thickness == 16.0
     assert solid.top_boundary[0].z == pytest.approx(0.0)
-    assert solid.top_boundary[3].z == pytest.approx(-21.081, abs=0.001)
+    assert min(point.z for point in solid.top_boundary) == pytest.approx(
+        -21.081,
+        abs=0.001,
+    )
     vector_length = (
         solid.extrusion_vector.x**2
         + solid.extrusion_vector.y**2
@@ -94,6 +106,7 @@ def test_headstock_geometry_is_immutable() -> None:
         lambda: HeadstockPlan(150.0, 42.0, 150.0, 65.0, 40.0),
         lambda: HeadstockPlan(150.0, 66.0, 30.0, 65.0, 40.0),
         lambda: HeadstockPlan(150.0, 42.0, 30.0, 65.0, 65.0),
+        lambda: HeadstockPlan(150.0, 42.0, 30.0, 65.0, 40.0, 1),
         lambda: HeadstockAngleReference(0.0, 8.0),
         lambda: HeadstockAngleReference(150.0, 0.0),
         lambda: HeadstockAngleReference(150.0, 90.0),

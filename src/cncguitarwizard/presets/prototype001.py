@@ -68,7 +68,7 @@ class Prototype001Parameters:
     headstock_angle: float = 8.0
     headstock_thickness: float = 16.0
     tuner_hole_diameter: float = 10.0
-    tuner_station_distances: tuple[float, float, float] = (55.0, 85.0, 115.0)
+    tuner_station_distances: tuple[float, float, float] = (55.0, 85.0, 110.0)
     tuner_side_offsets: tuple[float, float, float] = (16.0, 13.0, 10.0)
     tuner_edge_clearance: float = 8.0
     tuner_hole_clearance: float = 10.0

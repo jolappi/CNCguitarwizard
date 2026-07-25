@@ -35,6 +35,7 @@ class HeadstockPlan:
     shoulder_distance: float
     shoulder_width: float
     tip_width: float
+    side_curve_segments: int = 8
     nut_line: Line2D = field(init=False)
     shoulder_line: Line2D = field(init=False)
     tip_line: Line2D = field(init=False)
@@ -56,6 +57,29 @@ class HeadstockPlan:
         )
         tip_left = Point2D(-self.length, self.tip_width / 2.0)
         tip_right = Point2D(-self.length, -self.tip_width / 2.0)
+        distances = (
+            *(
+                self.shoulder_distance
+                * index
+                / self.side_curve_segments
+                for index in range(self.side_curve_segments + 1)
+            ),
+            *(
+                self.shoulder_distance
+                + (self.length - self.shoulder_distance)
+                * index
+                / self.side_curve_segments
+                for index in range(1, self.side_curve_segments + 1)
+            ),
+        )
+        right_side = tuple(
+            Point2D(-distance, -self.width_at_distance(distance) / 2.0)
+            for distance in distances
+        )
+        left_side = tuple(
+            Point2D(-distance, self.width_at_distance(distance) / 2.0)
+            for distance in distances
+        )
 
         object.__setattr__(self, "nut_line", Line2D(nut_left, nut_right))
         object.__setattr__(
@@ -69,11 +93,8 @@ class HeadstockPlan:
             "boundary",
             (
                 nut_left,
-                nut_right,
-                shoulder_right,
-                tip_right,
-                tip_left,
-                shoulder_left,
+                *right_side,
+                *reversed(left_side[1:]),
             ),
         )
 
@@ -102,6 +123,30 @@ class HeadstockPlan:
             raise HeadstockGeometryError(
                 "Headstock tip must be narrower than the shoulder."
             )
+        if self.side_curve_segments < 2:
+            raise HeadstockGeometryError(
+                "Headstock side curves require at least two segments."
+            )
+
+    def width_at_distance(self, distance: float) -> float:
+        """Return smooth side width at a nut-to-tip distance."""
+        if distance <= self.shoulder_distance:
+            fraction = distance / self.shoulder_distance
+            blend = self._smoothstep(fraction)
+            return self.nut_width + (
+                self.shoulder_width - self.nut_width
+            ) * blend
+        fraction = (distance - self.shoulder_distance) / (
+            self.length - self.shoulder_distance
+        )
+        return self.shoulder_width + (
+            self.tip_width - self.shoulder_width
+        ) * fraction
+
+    @staticmethod
+    def _smoothstep(fraction: float) -> float:
+        """Return cubic interpolation with zero slope at both ends."""
+        return fraction * fraction * (3.0 - 2.0 * fraction)
 
 
 @dataclass(frozen=True, slots=True)
@@ -349,23 +394,8 @@ class TunerLayout:
                 )
 
     def _half_width_at(self, distance: float) -> float:
-        """Return the linearly interpolated half-width at a nut distance."""
-        if distance <= self.headstock.shoulder_distance:
-            fraction = distance / self.headstock.shoulder_distance
-            width = (
-                self.headstock.nut_width
-                + (self.headstock.shoulder_width - self.headstock.nut_width)
-                * fraction
-            )
-            return width / 2.0
-
-        taper_length = self.headstock.length - self.headstock.shoulder_distance
-        fraction = (distance - self.headstock.shoulder_distance) / taper_length
-        width = (
-            self.headstock.shoulder_width
-            + (self.headstock.tip_width - self.headstock.shoulder_width) * fraction
-        )
-        return width / 2.0
+        """Return the curved-plan half-width at a nut distance."""
+        return self.headstock.width_at_distance(distance) / 2.0
 
     def _validate_hole_clearance(self, holes: tuple[TunerHole, ...]) -> None:
         """Ensure the circular holes do not overlap each other."""

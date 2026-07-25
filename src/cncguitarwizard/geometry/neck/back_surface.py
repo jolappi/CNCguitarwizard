@@ -263,19 +263,45 @@ class NeckBackSurface:
         )
 
     def _width_at(self, position: float) -> float:
-        """Return linearly tapered width at a longitudinal position."""
+        """Return tapered width with a rounded lead-in to the heel block."""
         if position <= 0.0:
             return self.neck_outline.nut_width
-        if position >= self.neck_outline.last_fret_position:
+        final_position = self.neck_outline.last_fret_position
+        heel_flat_start = final_position - self.heel_flat_start_offset
+        if position >= heel_flat_start:
             return self.neck_outline.heel_width
-        fraction = position / self.neck_outline.last_fret_position
-        return (
+        fraction = position / final_position
+        tapered_width = (
             self.neck_outline.nut_width
             + (
                 self.neck_outline.last_fret_width
                 - self.neck_outline.nut_width
             )
             * fraction
+        )
+        if self.heel_transition_length <= 0.0:
+            return tapered_width
+        transition_start = heel_flat_start - self.heel_transition_length
+        if position <= transition_start:
+            return tapered_width
+        start_fraction = transition_start / final_position
+        transition_start_width = (
+            self.neck_outline.nut_width
+            + (
+                self.neck_outline.last_fret_width
+                - self.neck_outline.nut_width
+            )
+            * start_fraction
+        )
+        blend = self._smoothstep(
+            (position - transition_start) / self.heel_transition_length
+        )
+        return self._interpolate_value(
+            blend,
+            0.0,
+            1.0,
+            transition_start_width,
+            self.neck_outline.heel_width,
         )
 
     def _depth_at(self, position: float) -> float:

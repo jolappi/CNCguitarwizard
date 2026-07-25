@@ -1,6 +1,9 @@
 # Headstock reference geometry
 
 Prototype001 uses a symmetric 3+3 headstock with a modern tapered outline.
+The first 30 mm uses a sampled smoothstep side curve from the 42 mm nut width
+to the 65 mm shoulder. This rounds the neck-to-headstock joint in plan view
+instead of connecting it with two straight diagonal edges.
 It is Gibson-inspired in layout but does not reproduce an identifiable
 manufacturer outline.
 
