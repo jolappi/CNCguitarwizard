@@ -62,8 +62,10 @@ STEP file exports both solids together, without applying a boolean union.
 This makes the joint at the shared `Z = 0` plane easy to inspect before later
 manufacturing operations are introduced.
 
-The neck-back loft includes the full parallel 63 mm heel after fret 24. Its
-width remains 56 mm and its wood depth remains 20 mm through the heel end.
+The neck-back loft ends at fret 24 and is fused to an exact rectangular heel
+block extending 4 mm beyond it. Its width is 56 mm and its wood depth is
+20 mm. Keeping the block out of the spline loft prevents ripples on its flat
+mounting faces.
 
 Passing a `HeadstockSolid` adds the modern tapered headstock as a third
 `Part::Feature`. Its configurable 14–16 mm thickness is extruded normal to

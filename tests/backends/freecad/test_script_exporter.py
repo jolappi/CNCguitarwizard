@@ -262,8 +262,13 @@ def test_neck_assembly_serializes_both_surface_row_sets() -> None:
     fretboard_rows = assignments["FRETBOARD_SECTION_POINTS"]
     assert isinstance(neck_rows, ast.List)
     assert isinstance(fretboard_rows, ast.List)
-    assert len(neck_rows.elts) == len(neck_surface.mesh.rows)
+    heel_start_index = neck_surface.station_positions.index(
+        neck_surface.neck_outline.last_fret_position
+    )
+    assert len(neck_rows.elts) == heel_start_index + 1
     assert len(fretboard_rows.elts) == len(fretboard_surface.mesh.rows)
+    assert "heel_shape = Part.makeBox(" in source
+    assert '"heel-block fusion"' in source
 
 
 def test_neck_assembly_can_cut_the_truss_rod_channel() -> None:

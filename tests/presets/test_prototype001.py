@@ -19,7 +19,7 @@ def test_default_preset_builds_every_locked_component() -> None:
     assert geometry.neck_outline.fret_count == 24
     assert geometry.neck_outline.nut_width == 42.0
     assert geometry.neck_outline.heel_width == 56.0
-    assert geometry.neck_outline.heel_length == 63.0
+    assert geometry.neck_outline.heel_length == 4.0
     assert geometry.fretboard_surface.radius == 430.0
     assert geometry.fretboard_surface.center_thickness == 6.0
     assert geometry.neck_surface.first_fret_thickness == 11.0

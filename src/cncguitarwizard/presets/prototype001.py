@@ -47,7 +47,7 @@ class Prototype001Parameters:
     nut_width: float = 42.0
     final_fret_width: float = 56.0
     heel_width: float = 56.0
-    heel_length: float = 63.0
+    heel_length: float = 4.0
     first_fret_thickness: float = 17.0
     twelfth_fret_thickness: float = 19.0
     heel_thickness: float = 20.0

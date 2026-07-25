@@ -33,7 +33,7 @@ source = FreeCADScriptExporter().render_prototype001(
 
 Building the preset creates and cross-validates:
 
-- the full neck and 63 mm heel;
+- the neck and fretboard ending 4 mm after fret 24;
 - a fretboard that ends flush with the back of that heel;
 - a 6 mm nut shelf immediately before the fretboard;
 - a planar 20 mm heel underside with a 35 mm neck-to-heel transition;

@@ -199,9 +199,17 @@ class FreeCADScriptExporter:
             fret_slot_depth,
         )
 
-        neck_rows = tuple(
-            self._close_neck_row(row) for row in neck_surface.mesh.rows
+        heel_start_index = neck_surface.station_positions.index(
+            neck_surface.neck_outline.last_fret_position
         )
+        neck_rows = tuple(
+            self._close_neck_row(row)
+            for row in neck_surface.mesh.rows[: heel_start_index + 1]
+        )
+        heel_start = neck_surface.neck_outline.last_fret_position
+        heel_length = neck_surface.neck_outline.heel_length
+        heel_width = neck_surface.neck_outline.heel_width
+        heel_thickness = neck_surface.final_fret_thickness
         fretboard_rows = tuple(
             self._close_fretboard_row(row)
             for row in fretboard_surface.mesh.rows
@@ -243,6 +251,8 @@ class FreeCADScriptExporter:
             "import FreeCAD as App\n"
             "import Part\n\n"
             f"NECK_SECTION_POINTS = {self._serialize_rows(neck_rows)}\n"
+            "HEEL_BLOCK = "
+            f"[{heel_start},{heel_length},{heel_width},{heel_thickness}]\n"
             "FRETBOARD_SECTION_POINTS = "
             f"{self._serialize_rows(fretboard_rows)}\n"
             f"{serialized_fret_rows}\n"
@@ -264,6 +274,21 @@ class FreeCADScriptExporter:
             "    return shape\n\n"
             f'document = App.newDocument("{document_name}")\n'
             "neck_shape = make_loft(NECK_SECTION_POINTS)\n"
+            "heel_start, heel_length, heel_width, heel_thickness = HEEL_BLOCK\n"
+            "heel_shape = Part.makeBox(\n"
+            "    heel_length,\n"
+            "    heel_width,\n"
+            "    heel_thickness,\n"
+            "    App.Vector(\n"
+            "        heel_start,\n"
+            "        -heel_width / 2.0,\n"
+            "        -heel_thickness,\n"
+            "    ),\n"
+            ")\n"
+            "neck_shape = require_shape(\n"
+            "    neck_shape.fuse(heel_shape).removeSplitter(),\n"
+            '    "heel-block fusion",\n'
+            ")\n"
             f"{truss_rod_source}"
             "neck_feature = document.addObject("
             f'"Part::Feature", "{neck_object_name}")\n'
