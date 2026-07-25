@@ -135,6 +135,9 @@ def test_complete_prototype_can_be_rendered_with_one_export_call(
     assert '"headstock side-joint fillet"' in source
     assert "def safe_fillet(" in source
     assert "base transition retained" in source
+    assert source.index("neck_shape.fuse(heel_shape)") < source.index(
+        '"heel side-joint fillet"'
+    )
 
 
 def test_neck_script_contains_one_section_for_each_surface_row() -> None:

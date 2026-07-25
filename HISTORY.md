@@ -36,6 +36,9 @@ the heel and headstock connections so no sharp lateral corner remains.
 Fillet generation is now adaptive because OpenCASCADE may reject individual
 BREP radii: smaller radii are attempted automatically and an optional fillet
 failure no longer aborts the complete model build.
+The heel fillet is now selected after heel-to-neck fusion and uses edge
+vertices for lateral matching, correcting the earlier radius on the heel
+blank's front corners instead of the visible joint seam.
 
 The tapered headstock now has backend-independent solid geometry with a
 configurable, validated thickness from 14 to 16 mm. Prototype001 uses 16 mm,

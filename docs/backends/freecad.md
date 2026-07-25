@@ -70,9 +70,11 @@ separately 4 mm after fret 24. Keeping the heel block out of the spline loft
 prevents ripples on its flat mounting faces.
 
 Prototype001 applies a configurable 3 mm fillet to the lateral joint edges
-where the shaped neck meets the heel and angled headstock. These fillets
-remove the remaining sharp side-view corners without rounding the heel's
-flat mounting underside.
+where the shaped neck meets the heel and angled headstock. The heel edges are
+selected from the already fused neck-and-heel solid, ensuring the radius is
+applied to the visible seam rather than the heel blank's front corners. These
+fillets remove the remaining sharp side-view corners without rounding the
+heel's flat mounting underside.
 
 OpenCASCADE can reject a radius on a particular BREP edge. The generated
 script therefore tries 3.0, 2.25, 1.5, and 0.75 mm in order and retains the
