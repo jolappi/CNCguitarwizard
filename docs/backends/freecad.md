@@ -74,6 +74,12 @@ where the shaped neck meets the heel and angled headstock. These fillets
 remove the remaining sharp side-view corners without rounding the heel's
 flat mounting underside.
 
+OpenCASCADE can reject a radius on a particular BREP edge. The generated
+script therefore tries 3.0, 2.25, 1.5, and 0.75 mm in order and retains the
+already tangent base transition if none is valid. Every failed attempt and
+the applied radius are written to `freecad.log`; a rejected optional fillet
+does not abort FCStd or STEP generation.
+
 Passing a `HeadstockSolid` adds the modern tapered headstock as a third
 `Part::Feature`. Its configurable 14–16 mm thickness is extruded normal to
 the 8-degree face, and the optional STEP output includes all three solids.

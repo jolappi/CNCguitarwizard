@@ -133,6 +133,8 @@ def test_complete_prototype_can_be_rendered_with_one_export_call(
     assert "joint_fillet_radius = 3.0" in source
     assert '"heel side-joint fillet"' in source
     assert '"headstock side-joint fillet"' in source
+    assert "def safe_fillet(" in source
+    assert "base transition retained" in source
 
 
 def test_neck_script_contains_one_section_for_each_surface_row() -> None:
