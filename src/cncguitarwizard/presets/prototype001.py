@@ -48,6 +48,8 @@ class Prototype001Parameters:
     final_fret_width: float = 56.0
     heel_width: float = 56.0
     heel_length: float = 4.0
+    heel_flat_start_offset: float = 50.0
+    fretboard_end_extension: float = 4.0
     first_fret_thickness: float = 17.0
     twelfth_fret_thickness: float = 19.0
     heel_thickness: float = 20.0
@@ -107,6 +109,7 @@ class Prototype001Parameters:
             nut_shelf_length=self.nut_shelf_length,
             nut_transition_length=self.headstock_transition_length,
             heel_transition_length=self.heel_transition_length,
+            heel_flat_start_offset=self.heel_flat_start_offset,
             exponent=self.neck_profile_exponent,
             profile_sample_count=self.profile_sample_count,
             segments_per_region=self.segments_per_region,
@@ -118,7 +121,7 @@ class Prototype001Parameters:
             self.final_fret_width,
             self.fretboard_radius,
             self.fretboard_thickness,
-            end_extension=self.heel_length,
+            end_extension=self.fretboard_end_extension,
             profile_sample_count=self.profile_sample_count,
         )
         final_fret_fraction = 1.0 - 2.0 ** (-self.fret_count / 12.0)

@@ -41,6 +41,7 @@ class NeckBackSurface:
     nut_shelf_length: float = 0.0
     nut_transition_length: float = 0.0
     heel_transition_length: float = 0.0
+    heel_flat_start_offset: float = 0.0
     exponent: float = 3.5
     profile_sample_count: int = 33
     segments_per_region: int = 8
@@ -59,7 +60,8 @@ class NeckBackSurface:
         twelfth_position = fret_positions[11].distance_from_nut
         final_position = fret_positions[-1].distance_from_nut
         heel_end_position = final_position + self.neck_outline.heel_length
-        heel_transition_start = final_position - self.heel_transition_length
+        heel_flat_start = final_position - self.heel_flat_start_offset
+        heel_transition_start = heel_flat_start - self.heel_transition_length
         station_positions = self._build_station_positions(
             tuple(
                 dict.fromkeys(
@@ -70,6 +72,7 @@ class NeckBackSurface:
                         first_position,
                         twelfth_position,
                         heel_transition_start,
+                        heel_flat_start,
                         final_position,
                         heel_end_position,
                     )
@@ -171,11 +174,22 @@ class NeckBackSurface:
             not math.isfinite(self.heel_transition_length)
             or not 0.0
             <= self.heel_transition_length
-            <= final_position - twelfth_position
+            <= final_position
+            - self.heel_flat_start_offset
+            - twelfth_position
         ):
             raise NeckGeometryError(
                 "Heel-transition length must fit between fret 12 and the "
                 "final fret."
+            )
+        if (
+            not math.isfinite(self.heel_flat_start_offset)
+            or not 0.0
+            <= self.heel_flat_start_offset
+            < final_position - twelfth_position
+        ):
+            raise NeckGeometryError(
+                "Heel flat-start offset must fit after fret 12."
             )
 
     def _build_station_positions(
@@ -269,6 +283,7 @@ class NeckBackSurface:
         first_position = self.station_positions_reference(1)
         twelfth_position = self.station_positions_reference(12)
         final_position = self.neck_outline.last_fret_position
+        heel_flat_start = final_position - self.heel_flat_start_offset
 
         if position <= 0.0:
             return (
@@ -289,7 +304,7 @@ class NeckBackSurface:
                 self.nut_transition_thickness,
                 self.first_fret_thickness,
             )
-        if position >= final_position:
+        if position >= heel_flat_start:
             return self.final_fret_thickness
         if position <= first_position:
             return self.first_fret_thickness
@@ -302,7 +317,8 @@ class NeckBackSurface:
                 self.twelfth_fret_thickness,
             )
         fraction = self._smoothstep(
-            (position - twelfth_position) / (final_position - twelfth_position)
+            (position - twelfth_position)
+            / (heel_flat_start - twelfth_position)
         )
         return self._interpolate_value(
             fraction,
@@ -324,11 +340,12 @@ class NeckBackSurface:
     def _heel_transition_blend_at(self, position: float) -> float:
         """Return D-to-flat blend before and through the bolt-on heel."""
         final_position = self.neck_outline.last_fret_position
-        if position >= final_position:
+        heel_flat_start = final_position - self.heel_flat_start_offset
+        if position >= heel_flat_start:
             return 1.0
         if self.heel_transition_length <= 0.0:
             return 0.0
-        transition_start = final_position - self.heel_transition_length
+        transition_start = heel_flat_start - self.heel_transition_length
         if position <= transition_start:
             return 0.0
         fraction = (position - transition_start) / self.heel_transition_length

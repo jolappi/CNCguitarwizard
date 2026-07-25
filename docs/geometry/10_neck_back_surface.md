@@ -36,8 +36,9 @@ remains 20 mm of wood as originally specified.
 Prototype001 adds a 30 mm headstock volute. At the nut, its rectangular
 underside matches the selected 14–16 mm headstock thickness, then changes
 smoothly into the first-fret D profile. At the body end, a 35 mm transition
-changes the D profile into a rectangular heel. The final 4 mm heel has a
-planar 20 mm underside for reliable seating in a bolt-on neck pocket.
+changes the D profile into a rectangular heel. Its flat section begins 50 mm
+before fret 24 and ends 4 mm after it, producing a 54 mm long mounting block
+with a planar 20 mm underside for reliable seating in a bolt-on neck pocket.
 
 The neck wood begins 6 mm before the fretboard at the headstock side. This
 horizontal shelf provides the reserved space for the nut while keeping the

@@ -24,9 +24,10 @@ The fretboard solid can now receive all 24 validated fret-slot cuts. Their
 0.6 mm wide, 2.7 mm deep cutting geometry follows the sampled 430 mm playing
 surface radius and preserves material beneath every slot.
 
-The FreeCAD neck now ends 4 mm after fret 24. Its final heel is generated as
-an exact 56 × 4 × 20 mm block and fused to the shaped neck, preventing spline
-loft ripples on the flat mounting faces.
+The fretboard ends 4 mm after fret 24. The flat bolt-on heel begins 50 mm
+toward the headstock from fret 24 and ends with the fretboard, making an exact
+56 × 54 × 20 mm mounting block. It is fused to the shaped neck separately,
+preventing spline-loft ripples on its flat mounting faces.
 
 The tapered headstock now has backend-independent solid geometry with a
 configurable, validated thickness from 14 to 16 mm. Prototype001 uses 16 mm,

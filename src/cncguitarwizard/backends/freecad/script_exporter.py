@@ -199,15 +199,19 @@ class FreeCADScriptExporter:
             fret_slot_depth,
         )
 
-        heel_start_index = neck_surface.station_positions.index(
+        heel_start = (
             neck_surface.neck_outline.last_fret_position
+            - neck_surface.heel_flat_start_offset
         )
+        heel_start_index = neck_surface.station_positions.index(heel_start)
         neck_rows = tuple(
             self._close_neck_row(row)
             for row in neck_surface.mesh.rows[: heel_start_index + 1]
         )
-        heel_start = neck_surface.neck_outline.last_fret_position
-        heel_length = neck_surface.neck_outline.heel_length
+        heel_length = (
+            neck_surface.heel_flat_start_offset
+            + neck_surface.neck_outline.heel_length
+        )
         heel_width = neck_surface.neck_outline.heel_width
         heel_thickness = neck_surface.final_fret_thickness
         fretboard_rows = tuple(

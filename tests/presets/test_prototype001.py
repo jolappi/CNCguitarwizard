@@ -20,6 +20,7 @@ def test_default_preset_builds_every_locked_component() -> None:
     assert geometry.neck_outline.nut_width == 42.0
     assert geometry.neck_outline.heel_width == 56.0
     assert geometry.neck_outline.heel_length == 4.0
+    assert geometry.neck_surface.heel_flat_start_offset == 50.0
     assert geometry.fretboard_surface.radius == 430.0
     assert geometry.fretboard_surface.center_thickness == 6.0
     assert geometry.neck_surface.first_fret_thickness == 11.0
@@ -40,8 +41,12 @@ def test_default_preset_builds_every_locked_component() -> None:
     assert geometry.neck_surface.nut_transition_length == 30.0
     assert geometry.neck_surface.heel_transition_length == 35.0
     assert geometry.neck_surface.exponent == 2.0
+    assert geometry.fretboard_surface.end_extension == 4.0
     assert geometry.fretboard_surface.station_positions[-1] == pytest.approx(
-        geometry.neck_surface.station_positions[-1]
+        geometry.neck_outline.last_fret_position + 4.0
+    )
+    assert geometry.neck_surface.station_positions[-1] == pytest.approx(
+        geometry.neck_outline.last_fret_position + 4.0
     )
     assert geometry.truss_rod_channel.length == 440.0
     assert geometry.headstock.thickness == 16.0

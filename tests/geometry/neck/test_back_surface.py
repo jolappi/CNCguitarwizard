@@ -108,6 +108,25 @@ def test_flat_heel_has_vertical_sides_and_level_underside() -> None:
     assert heel_row[0].z == heel_row[-1].z == 0.0
 
 
+def test_flat_heel_can_begin_before_the_final_fret() -> None:
+    surface = NeckBackSurface(
+        make_outline(),
+        17.0,
+        19.0,
+        20.0,
+        heel_transition_length=35.0,
+        heel_flat_start_offset=50.0,
+        profile_sample_count=5,
+        segments_per_region=2,
+    )
+    flat_start = surface.neck_outline.last_fret_position - 50.0
+    row = surface.mesh.rows[surface.station_positions.index(flat_start)]
+
+    assert {point.z for point in row[1:-1]} == {-20.0}
+    assert row[0].y == row[1].y
+    assert row[-2].y == row[-1].y
+
+
 def test_headstock_transition_blends_from_flat_sixteen_to_d_profile() -> None:
     surface = NeckBackSurface(
         make_outline(),
@@ -192,6 +211,13 @@ def test_surface_is_immutable() -> None:
             19.0,
             20.0,
             heel_transition_length=500.0,
+        ),
+        lambda: NeckBackSurface(
+            make_outline(),
+            17.0,
+            19.0,
+            20.0,
+            heel_flat_start_offset=500.0,
         ),
         lambda: NeckBackSurface(
             make_outline(),

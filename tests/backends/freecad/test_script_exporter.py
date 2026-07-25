@@ -262,9 +262,11 @@ def test_neck_assembly_serializes_both_surface_row_sets() -> None:
     fretboard_rows = assignments["FRETBOARD_SECTION_POINTS"]
     assert isinstance(neck_rows, ast.List)
     assert isinstance(fretboard_rows, ast.List)
-    heel_start_index = neck_surface.station_positions.index(
+    heel_start = (
         neck_surface.neck_outline.last_fret_position
+        - neck_surface.heel_flat_start_offset
     )
+    heel_start_index = neck_surface.station_positions.index(heel_start)
     assert len(neck_rows.elts) == heel_start_index + 1
     assert len(fretboard_rows.elts) == len(fretboard_surface.mesh.rows)
     assert "heel_shape = Part.makeBox(" in source
