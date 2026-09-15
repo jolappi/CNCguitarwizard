@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CNCguitarwizard</title>
+<style>
+  :root {
+    --ink: #1f1a14;
+    --muted: #6b625a;
+    --wood: #f1e4c8;
+    --line: #d9cfbd;
+    --accent: #8a4b1e;
+    --ok: #2f7d4a;
+    --bad: #a83232;
+    --bg: #faf7f1;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+  }
+  header {
+    padding: 14px 22px;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  header h1 { margin: 0; font-size: 20px; }
+  header .motto { color: var(--muted); font-style: italic; }
+  #status { margin-left: auto; color: var(--muted); }
+  #status.ok { color: var(--ok); }
+  #status.bad { color: var(--bad); }
+  main {
+    display: grid;
+    grid-template-columns: 360px 1fr;
+    gap: 0;
+    min-height: calc(100vh - 54px);
+  }
+  aside {
+    border-right: 1px solid var(--line);
+    padding: 14px 16px 40px;
+    overflow-y: auto;
+    max-height: calc(100vh - 54px);
+  }
+  section.results { padding: 16px 22px 40px; overflow-x: hidden; }
+  details { border: 1px solid var(--line); border-radius: 6px; margin: 0 0 8px; background: #fff; }
+  summary { cursor: pointer; padding: 7px 10px; font-weight: 600; }
+  .fields { padding: 4px 10px 8px; }
+  .field { display: grid; grid-template-columns: 1fr 110px; gap: 8px; align-items: center; padding: 2px 0; }
+  .field label { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: #3b332b; overflow-wrap: anywhere; }
+  .field input[type=text], .field input[type=number] {
+    width: 100%; padding: 3px 6px; border: 1px solid var(--line); border-radius: 4px; font: inherit; font-size: 12.5px;
+  }
+  .field input.changed { border-color: var(--accent); background: #fff6ec; }
+  .actions { display: flex; gap: 8px; align-items: center; margin: 10px 0 14px; }
+  button {
+    padding: 8px 16px; border-radius: 6px; border: 1px solid var(--accent);
+    background: var(--accent); color: #fff; font: inherit; font-weight: 600; cursor: pointer;
+  }
+  button.secondary { background: #fff; color: var(--accent); }
+  button:disabled { opacity: .5; cursor: default; }
+  .error { border: 1px solid var(--bad); background: #fff2f2; color: var(--bad); padding: 10px 12px; border-radius: 6px; white-space: pre-wrap; }
+  .hidden { display: none; }
+  h2 { font-size: 16px; margin: 18px 0 8px; }
+  .preview { border: 1px solid var(--line); border-radius: 6px; background: #fff; overflow: auto; }
+  .preview svg { display: block; max-width: 100%; height: auto; }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0; }
+  .tabs button { padding: 5px 10px; font-weight: 500; }
+  .tabs button.active { background: var(--ink); border-color: var(--ink); }
+  table { border-collapse: collapse; font-size: 13px; }
+  td, th { text-align: left; padding: 4px 10px 4px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  a.download { color: var(--accent); font-weight: 600; text-decoration: none; }
+  a.download:hover { text-decoration: underline; }
+  .note { color: var(--muted); font-size: 13px; }
+  @media (max-width: 900px) {
+    main { grid-template-columns: 1fr; }
+    aside { max-height: none; border-right: 0; border-bottom: 1px solid var(--line); }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>CNCguitarwizard</h1>
+  <span class="motto">Measure twice. Generate once.</span>
+  <span id="status">Loading Python runtime…</span>
+</header>
+<main>
+  <aside>
+    <div class="actions">
+      <button id="build" disabled>Build Prototype001</button>
+      <button id="reset" class="secondary" disabled>Reset</button>
+    </div>
+    <p class="note">Every value below is a field of <code>Prototype001Parameters</code> or
+      <code>MachiningParameters</code>. Changed values are highlighted. Lists are edited as JSON.</p>
+    <form id="form"></form>
+  </aside>
+  <section class="results">
+    <div id="error" class="error hidden"></div>
+    <div id="intro">
+      <h2>What this page does</h2>
+      <p>It runs the real <code>cncguitarwizard</code> Python package in your browser (via Pyodide) and
+        builds the complete Prototype001 package: the FreeCAD script, the body G-code for a GRBL
+        machine, toolpath plots and the build report — all without a server.</p>
+      <p>The <code>.FCStd</code> and STEP models need FreeCAD itself: download
+        <code>Prototype001_freecad.py</code> and run it with <code>freecadcmd</code> or as a macro.</p>
+    </div>
+    <div id="output" class="hidden">
+      <h2>Plan view</h2>
+      <div id="plan" class="preview"></div>
+      <h2>Toolpaths</h2>
+      <div id="tabs" class="tabs"></div>
+      <div id="toolpath" class="preview"></div>
+      <h2>Downloads</h2>
+      <table id="files"></table>
+      <h2>Summary</h2>
+      <table id="summary"></table>
+    </div>
+  </section>
+</main>
+<script src="https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

@@ -51,7 +51,11 @@ def test_surface_can_extend_beyond_final_fret_without_additional_frets() -> None
 
     assert len(surface.station_positions) == 26
     assert surface.station_positions[-1] == pytest.approx(520.2)
-    assert surface.mesh.rows[-1][-1].y - surface.mesh.rows[-1][0].y == 56.0
+    expected_width = 42.0 + (56.0 - 42.0) * (520.2 / 457.2)
+    assert (
+        surface.mesh.rows[-1][-1].y - surface.mesh.rows[-1][0].y
+        == pytest.approx(expected_width)
+    )
 
 
 def test_surface_tapers_from_nut_to_final_fret_width() -> None:

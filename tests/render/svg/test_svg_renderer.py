@@ -176,8 +176,14 @@ def test_fret_layout_svg_contains_one_outline_and_every_slot() -> None:
     root = ElementTree.fromstring(SVGRenderer().render(layout))
     namespace = {"svg": "http://www.w3.org/2000/svg"}
 
-    assert len(root.findall(".//svg:polygon", namespace)) == 1
+    assert len(root.findall(".//svg:path", namespace)) == 1
     assert len(root.findall(".//svg:line", namespace)) == len(layout.slots)
+
+
+def test_fretboard_svg_uses_two_symmetric_eight_millimetre_nut_arcs() -> None:
+    svg = SVGRenderer().render(Fretboard(609.6, 42.0, 63.0, Centerline(609.6)))
+
+    assert svg.count("A 8 8 0 0 0") == 2
 
 
 def test_view_box_fits_geometry_with_requested_padding() -> None:

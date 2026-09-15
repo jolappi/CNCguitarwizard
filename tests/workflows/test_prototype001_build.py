@@ -41,6 +41,34 @@ def test_build_creates_scripts_and_traceable_report(tmp_path: Path) -> None:
     assert len(report["script_sha256"]) == 64
 
 
+def test_build_writes_body_gcode_and_toolpath_previews(tmp_path: Path) -> None:
+    result = build_prototype001(tmp_path / "output", run_freecad=False)
+
+    assert [path.name for path in result.gcode_paths] == [
+        "Body_index_pins.nc",
+        "Body_top.nc",
+        "Body_back.nc",
+    ]
+    assert [path.name for path in result.toolpath_preview_paths] == [
+        "Body_index_pins.svg",
+        "Body_top.svg",
+        "Body_back.svg",
+    ]
+    for path in (*result.gcode_paths, *result.toolpath_preview_paths):
+        assert path.is_file()
+    top = result.gcode_paths[1].read_text(encoding="utf-8")
+    assert top.splitlines()[0].startswith("(CNCguitarwizard")
+    assert "(-- Neck pocket --)" in top
+    assert top.rstrip().endswith("M2")
+
+    report = json.loads(result.report_path.read_text(encoding="utf-8"))
+    assert report["machining"]["tool_diameter"] == 6.0
+    assert report["gcode"]["Body_top"]["file"] == "Body_top.nc"
+    assert report["gcode"]["Body_top"]["estimated_minutes"] > 0.0
+    assert report["stock"]["thickness_mm"] == 44.0
+    assert report["stock"]["work_origin_model_xy"] == [420.0, 0.0]
+
+
 def test_generated_script_targets_absolute_build_paths(tmp_path: Path) -> None:
     result = build_prototype001(
         tmp_path / "nested" / "build",
@@ -50,9 +78,24 @@ def test_generated_script_targets_absolute_build_paths(tmp_path: Path) -> None:
 
     assert f'document.saveAs("{result.fcstd_path}")' in source
     assert (
-        f'Part.export([neck_feature, fretboard_feature], "{result.step_path}")'
-        in source
+        "Part.export([neck_feature, fretboard_feature, body_feature], "
+        f'"{result.step_path}")' in source
     )
+
+
+def test_default_build_includes_the_headstock_instead_of_hiding_it(
+    tmp_path: Path,
+) -> None:
+    result = build_prototype001(
+        tmp_path / "output",
+        run_freecad=False,
+    )
+    source = result.python_path.read_text(encoding="utf-8")
+
+    assert "headstock_feature = document.addObject" not in source
+    assert "headstock_feature.ViewObject.Visibility = False" not in source
+    assert "neck_shape = require_shape(" in source
+    assert "neck_shape = fuse_or_compound(" in source
 
 
 def test_complete_build_runs_freecad_and_verifies_outputs(

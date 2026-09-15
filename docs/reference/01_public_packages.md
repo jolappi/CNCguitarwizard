@@ -80,6 +80,11 @@ This package exports `Point2D`, `Vector2D`, and `Line2D`. `Vector2D` provides
 `length`, `normalized()`, `dot()`, `cross()`, `angle_to()`, and
 `perpendicular()`. `Line2D` provides `length`.
 
+It also exports two polygon helpers used by the body model:
+`rounded_polygon_points(vertices, radii, samples_per_corner)` replaces each
+corner of a polygon with a sampled fillet arc, and `point_in_polygon(point,
+polygon)` is a ray-casting containment test.
+
 ### `cncguitarwizard.geometry.utils`
 
 | API | Purpose |
@@ -146,9 +151,16 @@ first_fret = FretLine(centerline, position)
 | API | Purpose |
 | --- | --- |
 | `Fretboard` | Immutable tapered fretboard outline. |
+| `FretboardSurface` | Sampled three-dimensional radiused playing surface. |
+| `FretLayout` | Fret-slot positions aligned to a fretboard surface. |
+| `InlayLayout` | Position-marker pockets on a fretboard surface. |
+| `InlayMarker` | One marker: fret number, outline, and lateral placement. |
 
-`Fretboard` exposes `left_edge`, `right_edge`, `nut_line`, `bridge_line`, and
-the four-segment `outline` tuple.
+`Fretboard` exposes `left_edge`, `right_edge`, `nut_line`, `bridge_line`, the
+four-segment `outline` tuple, and an 8 mm default `nut_corner_radius`.
+`InlayLayout(fretboard_surface, depth, single_marker_frets,
+double_marker_frets)` builds barbed-wire markers centred between the listed
+frets, with a side-by-side pair at each double-marker fret.
 
 ```python
 from cncguitarwizard.geometry.fretboard import Fretboard
@@ -157,6 +169,39 @@ from cncguitarwizard.geometry.neck import Centerline
 fretboard = Fretboard(609.6, 42.0, 63.0, Centerline(609.6))
 assert fretboard.nut_line.length == 42.0
 ```
+
+### `cncguitarwizard.geometry.body`
+
+| API | Purpose |
+| --- | --- |
+| `BodySolid` | Complete flat-slab body with every cavity, hole, and bore, cross-validated. |
+| `BodyOutline` | Parametric superstrat-style silhouette. |
+| `TracedOutline` | Silhouette from an explicit closed point loop. |
+| `RectangularCavity` | Rounded-corner rectangular pocket. |
+| `CircularCavity` | Round pocket. |
+| `TracedCavity` | Pocket from an explicit point loop. |
+| `RearCavity` | Cavity plus cover recess, cut from the back face. |
+| `DrilledHole` | Vertical hole from the top face. |
+| `BridgeMounting` | Bridge reference with optional pivot studs and sustain-block cavity. |
+| `JackHole` | Sideways jack bore from the edge. |
+
+All raise `BodyGeometryError` for impossible dimensions or placements. See
+[Solid body](../geometry/12_body.md) for the coordinate frame, the validation
+rules, and how Prototype001's body was digitised from a DXF drawing.
+
+## `cncguitarwizard.cam`
+
+| API | Purpose |
+| --- | --- |
+| `MachiningParameters` | Tool, feeds, step-down, allowance, tabs, and index pins. |
+| `plan_body_machining(body, parameters)` | Two-sided `BodyMachiningPlan` for a `BodySolid`. |
+| `pocket()`, `drill()`, `profile()` | 2.5D operations on closed polygons in a machine frame. |
+| `Toolpath`, `Move`, `PathBuilder` | Tool-centre move sequences. |
+| `Setup`, `GRBLWriter` | One fixturing's toolpaths and its GRBL G-code. |
+| `render_setup_svg()` | Toolpath plot over the part outline. |
+| `clear_intervals()`, `offset_polygon()`, `disc_fits()` | Exact planar clearance helpers. |
+
+See [Body G-code](../cam/01_body_gcode.md).
 
 ## `cncguitarwizard.render`
 

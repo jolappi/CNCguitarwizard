@@ -82,6 +82,9 @@ def main(argv: Sequence[str] | None = None) -> None:
         print(f"Python: {result.python_path.name}")
         print(f"Report: {result.report_path.name}")
         print(f"Log:    {result.freecad_log_path.name}")
+        print(
+            "G-code: " + ", ".join(path.name for path in result.gcode_paths)
+        )
         if arguments.scripts_only:
             print("FCStd and STEP will be created when a script runs in FreeCAD.")
         else:

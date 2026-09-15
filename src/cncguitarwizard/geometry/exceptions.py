@@ -27,3 +27,7 @@ class HeadstockGeometryError(GeometryException):
 
 class TrussRodGeometryError(GeometryException):
     """Raised when truss-rod geometry cannot be constructed safely."""
+
+
+class BodyGeometryError(GeometryException):
+    """Raised when body geometry cannot be constructed safely."""

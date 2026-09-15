@@ -22,7 +22,7 @@ from ...geometry.neck import (
     TrussRodChannel,
     TunerLayout,
 )
-from ...geometry.primitives import Line2D, Point2D
+from ...geometry.primitives import Line2D, Point2D, Vector2D
 
 RenderableGeometry: TypeAlias = (
     Point2D
@@ -220,26 +220,76 @@ class SVGRenderer:
 
     @staticmethod
     def _render_fretboard(fretboard: Fretboard) -> str:
-        """Return the SVG polygon element for a fretboard outline."""
-        points = (
-            fretboard.nut_line.start,
-            fretboard.nut_line.end,
-            fretboard.bridge_line.end,
-            fretboard.bridge_line.start,
+        """Return the SVG path element for a rounded fretboard outline."""
+        nut_left = fretboard.nut_line.start
+        nut_right = fretboard.nut_line.end
+        bridge_right = fretboard.bridge_line.end
+        bridge_left = fretboard.bridge_line.start
+        nut_left_start, nut_left_end = SVGRenderer._corner_tangents(
+            bridge_left,
+            nut_left,
+            nut_right,
+            fretboard.nut_corner_radius,
         )
-        coordinates = " ".join(
+        nut_right_start, nut_right_end = SVGRenderer._corner_tangents(
+            nut_left,
+            nut_right,
+            bridge_right,
+            fretboard.nut_corner_radius,
+        )
+        radius = SVGRenderer._format_number(fretboard.nut_corner_radius)
+
+        return (
+            f"<path d=\"M {SVGRenderer._format_point(nut_left_start)} "
+            f"A {radius} {radius} 0 0 0 "
+            f"{SVGRenderer._format_point(nut_left_end)} "
+            f"L {SVGRenderer._format_point(nut_right_start)} "
+            f"A {radius} {radius} 0 0 0 "
+            f"{SVGRenderer._format_point(nut_right_end)} "
+            f"L {SVGRenderer._format_point(bridge_right)} "
+            f"L {SVGRenderer._format_point(bridge_left)} Z\"/>"
+        )
+
+    @staticmethod
+    def _corner_tangents(
+        previous: Point2D,
+        corner: Point2D,
+        following: Point2D,
+        radius: float,
+    ) -> tuple[Point2D, Point2D]:
+        """Return tangent points for a circular corner fillet."""
+        incoming = Vector2D(corner.x - previous.x, corner.y - previous.y)
+        outgoing = Vector2D(following.x - corner.x, following.y - corner.y)
+        angle = incoming.angle_to(outgoing)
+        tangent_distance = radius / math.tan(angle / 2.0)
+        incoming_unit = incoming.normalized()
+        outgoing_unit = outgoing.normalized()
+
+        return (
+            Point2D(
+                corner.x - incoming_unit.x * tangent_distance,
+                corner.y - incoming_unit.y * tangent_distance,
+            ),
+            Point2D(
+                corner.x + outgoing_unit.x * tangent_distance,
+                corner.y + outgoing_unit.y * tangent_distance,
+            ),
+        )
+
+    @staticmethod
+    def _format_point(point: Point2D) -> str:
+        """Return a point formatted for an SVG path command."""
+        return (
             f"{SVGRenderer._format_number(point.x)},"
             f"{SVGRenderer._format_number(point.y)}"
-            for point in points
         )
-        return f'<polygon points="{coordinates}"/>'
 
     @staticmethod
     def _render_fret_layout(layout: FretLayout) -> str:
         """Return a grouped fretboard outline and its fret-slot segments."""
         outline = SVGRenderer._render_fretboard(layout.fretboard).replace(
-            "<polygon ",
-            '<polygon class="fretboard-outline" ',
+            "<path ",
+            '<path class="fretboard-outline" ',
             1,
         )
         slots = "\n".join(

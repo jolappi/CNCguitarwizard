@@ -62,25 +62,40 @@ STEP file exports both solids together, without applying a boolean union.
 This makes the joint at the shared `Z = 0` plane easy to inspect before later
 manufacturing operations are introduced.
 
-The shaped neck loft ends 50 mm before fret 24 and is fused to an exact
-rectangular heel block that ends 4 mm after fret 24. The resulting mounting
-block is 54 mm long and 20 mm deep. Its sides continue the fretboard taper
-to the 56 mm end width rather than forming a rectangle. The fretboard ends
-separately 4 mm after fret 24. Keeping the heel block out of the spline loft
-prevents ripples on its flat mounting faces.
+The fretboard's nut-end corners receive the same symmetric R8 mm rounding as
+the two-dimensional outline. The generated FreeCAD script selects the two
+vertical nut-corner edges immediately after lofting the fretboard and applies
+the fillet before any fret-slot cuts. `nut_corner_radius` defaults to 8 mm and
+is validated against half the nut width.
 
-Prototype001 applies a configurable 3 mm fillet to the lateral joint edges
-where the shaped neck meets the heel and angled headstock. The heel edges are
-selected from the already fused neck-and-heel solid, ensuring the radius is
-applied to the visible seam rather than the heel blank's front corners. These
-fillets remove the remaining sharp side-view corners without rounding the
-heel's flat mounting underside.
+The neck and heel are created by one uninterrupted loft ending 4 mm after
+fret 24. Its 54 mm heel region is 20 mm deep, and its sides continue the
+fretboard taper to the 56 mm end width. No separate heel prism is fused to
+the neck, so FreeCAD has no intermediate face boundary to display.
+
+The neck-to-heel transition is part of the backend-independent 3D geometry,
+not a FreeCAD edge fillet or separate rounded solid. Prototype001 uses
+multiple superelliptical sections through a 35 mm loft. The sections widen,
+deepen and flatten into the heel rows without a linear bevel or boolean
+boundary. The generated script applies an adaptive 3 mm fillet to the
+remaining transverse heel-transition edge, removing its sharp visible corner
+while retaining one continuous lofted neck solid.
+For neck-end inspection, the backend can cut a U-shaped boundary immediately
+after lofting the neck: both outer neck-end corners remain on the original end
+line and the middle retracts toward the heel. This changes only the boundary; the sampled
+D-profile rows and the fixed 5 mm nut shelf remain exactly as generated. A
+vertical circular cutter passes through the two outer corners and the chosen
+centre depth, avoiding the invalid BREP created by a tangent U-prism.
+After refining that cut, a 2 mm cylindrical fillet rounds only the two lateral
+U arcs where the D profile rises into the cylinder. The U nose and both outer
+endpoints deliberately remain unmodified; the fixed 5 mm nut shelf remains
+unchanged.
 
 OpenCASCADE can reject a radius on a particular BREP edge. The generated
-script therefore tries 3.0, 2.25, 1.5, and 0.75 mm in order and retains the
-already tangent base transition if none is valid. Every failed attempt and
-the applied radius are written to `freecad.log`; a rejected optional fillet
-does not abort FCStd or STEP generation.
+script therefore tries 100%, 75%, 50%, and 25% of each requested radius and
+retains the tangent base transition if none is valid. Every failed attempt
+and the applied radius are written to `freecad.log`; a rejected optional
+fillet does not abort FCStd or STEP generation.
 
 Passing a `HeadstockSolid` adds the modern tapered headstock as a third
 `Part::Feature`. Its configurable 14–16 mm thickness is extruded normal to
@@ -149,11 +164,54 @@ The cutter extends 0.2 mm above the playing surface and 1 mm beyond both
 fretboard edges. These overcuts avoid coincident boolean faces without
 changing the requested 2.7 mm finished slot depth.
 
+## Fretboard inlays
+
+Passing an `InlayLayout` cuts each position marker as a flat-bottomed pocket
+into the radiused playing surface. Every marker outline is extruded from
+above the surface down to its floor, so the pocket depth is measured from the
+crown of the fretboard at the marker's own position. The backend checks that
+the layout belongs to the same `FretboardSurface` and that every marker stays
+inside the fretboard outline.
+
+## Solid body
+
+Passing a `BodySolid` adds the body as a fourth `Part::Feature`, `Body` by
+default:
+
+```python
+source = exporter.render_neck_assembly(
+    neck_surface,
+    fretboard_surface,
+    body=body,
+    body_object_name="Body",
+)
+```
+
+The outline is extruded from `Z = 0` down by the slab thickness, so the body's
+top face meets the neck-back surface's own `Z = 0` plane and the neck heel
+sits in the neck-pocket cavity. The script then cuts, in order:
+
+1. the neck pocket, both pickup routes, the optional sustain-block cavity, and
+   every extra cavity straight down from the top face;
+2. the control, switch and battery cavities (when present) upward from the
+   back face, each followed by its shallow cover recess;
+3. pivot-stud holes (when the bridge has any) and every `DrilledHole` as
+   vertical cylinders from the top face — a hole as deep as the slab is
+   overcut at both ends so it breaks out cleanly;
+4. the jack bore as a horizontal cylinder at half the slab thickness.
+
+Every cavity profile is overcut by 0.6 mm above its entry face so no boolean
+operation meets a coincident face. A requested STEP file includes the body.
+
 ## Current limitations
 
 - The generated loft uses sampled polygon sections rather than exact B-spline
   or circular wires.
-- Neck-to-headstock and neck-to-heel transition surfaces are not included.
+- The headstock root replaces a trimmed section of the angled headstock with a
+  sampled, tangent-continuous loft; visually inspect it in FreeCAD before CAM
+  work.
 - Fret slots follow the sampled polygon surface rather than an exact circular
   sweep.
+- The body is a flat slab: arm and belly contours, edge round-overs, and the
+  cover plates themselves are not modelled.
 - Scripts must be visually inspected in FreeCAD before any CAM work.

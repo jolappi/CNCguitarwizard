@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from ..neck import Centerline
+from ..neck.centerline import Centerline
 from ..primitives import Point2D, Vector2D
 from ..utils import interpolate
 from .fret_position import FretPosition

@@ -52,6 +52,18 @@ def test_fretboard_boundary_lines_match_the_requested_widths(
     assert fretboard.bridge_line.length == 63.0
 
 
+def test_fretboard_uses_an_eight_millimetre_nut_corner_radius_by_default(
+    fretboard: Fretboard,
+) -> None:
+    assert fretboard.nut_corner_radius == 8.0
+
+
+def test_fretboard_accepts_a_custom_nut_corner_radius() -> None:
+    fretboard = Fretboard(609.6, 42.0, 63.0, Centerline(609.6), 6.0)
+
+    assert fretboard.nut_corner_radius == 6.0
+
+
 def test_fretboard_is_immutable(fretboard: Fretboard) -> None:
     with pytest.raises(FrozenInstanceError):
         fretboard.nut_width = 43.0

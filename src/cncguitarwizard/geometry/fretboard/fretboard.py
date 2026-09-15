@@ -23,6 +23,7 @@ class Fretboard:
     nut_width: float
     bridge_width: float
     centerline: Centerline
+    nut_corner_radius: float = 8.0
     left_edge: Line2D = field(init=False)
     right_edge: Line2D = field(init=False)
     nut_line: Line2D = field(init=False)

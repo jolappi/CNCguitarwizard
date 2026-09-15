@@ -33,22 +33,50 @@ Prototype001 preset converts the requested total 17 mm and 19 mm dimensions
 to 11 mm and 13 mm wood depths by subtracting its 6 mm fretboard. The heel
 remains 20 mm of wood as originally specified.
 
-Prototype001 adds a 30 mm headstock volute. At the nut, its rectangular
-underside matches the selected 14–16 mm headstock thickness, then changes
-smoothly into the first-fret D profile. At the body end, a 35 mm transition
-changes the D profile into a rectangular heel. Its flat section begins 50 mm
-before fret 24 and ends 4 mm after it, producing a 54 mm long mounting block
-with a planar 20 mm underside for reliable seating in a bolt-on neck pocket.
-In plan view, the block continues the fretboard taper from its local starting
+Prototype001 uses a compact 12 mm headstock-root transition. At the nut, its
+center remains at the rectangular headstock reference while the broad
+D-profile shoulders extend 12 mm toward the headstock. The default local back
+swell is zero; an optional swell can be added only when needed. At the body end,
+Prototype001 uses a
+45 mm tangent-controlled blend from the D profile to the heel section. The
+D-shaped sections widen, deepen, and flatten through several superelliptical
+intermediate profiles until they enter the straight heel. The heel starts
+50 mm before fret 24 and ends 4 mm after fret 24, producing a 54 mm long
+mounting region with a 20 mm center depth.
+In plan view, the heel continues the fretboard taper from its local starting
 width to the 56 mm end width instead of forming a rectangle.
 
-The neck wood begins 6 mm before the fretboard at the headstock side. This
+The shaped neck does not meet the heel through a separate nose, fillet, or
+triangular bevel. Cubic Hermite depth interpolation controls the centerline
+depth, while quintic longitudinal blending progressively changes each
+cross-section from the playing D into a rounded lead-in for the heel. The
+remaining 54 mm heel mounting region retains the same sampled loft topology required by
+FreeCAD: its central mounting area is flat in the longitudinal direction and
+almost flat across its width, with only small rounded relief at the outer side
+edges. The transition and heel belong to one loft, so no separate heel solid,
+boolean seam, or overlap step is introduced.
+Prototype001 adds a 1.5 mm inward longitudinal scoop. The scoop is zero with
+zero slope at both transition ends, so it reverses the visible hump without
+introducing a kink at the playing neck or heel. Its magnitude is scaled by the
+remaining depth to the heel plane; it therefore never reaches that plane early
+or creates a flat segment before the transition ends.
+
+The two root regions are also tapered laterally. At the headstock, the outer
+shoulders retain the D profile for an additional configurable distance toward
+the headstock, while the center remains at the nut. The FreeCAD exporter
+replaces that part of the headstock with a matching transition loft, so these
+are physical surfaces rather than hidden overlap. At the heel, the center of the rounded runout starts earlier than
+the side edges, creating the broad Strat-inspired root ahead of the flat
+mounting block. Both controls only reshape the runout; neither one creates a
+second solid or reduces the flat bolt-on area.
+
+The neck wood begins 5 mm before the fretboard at the headstock side. This
 horizontal shelf provides the reserved space for the nut while keeping the
 scale origin and all fret locations at the fretboard start.
 
-Both transitions use cubic smoothstep interpolation. Their slopes reach zero
-at the adjoining reference sections instead of producing abrupt thickness or
-profile changes.
+The nut transition uses cubic smoothstep interpolation. The heel root profile uses
+quintic smootherstep interpolation so both its slope and curvature approach
+zero at the adjoining reference sections.
 
 The Prototype001 playing section uses exponent `2.0`, producing an elliptical
 profile instead of the earlier flat-backed `3.5` D profile. The back curve

@@ -132,7 +132,7 @@ class FretboardSurface:
         final_position: float,
     ) -> tuple[Point3D, ...]:
         """Return one circular-arc row at a longitudinal station."""
-        fraction = min(position / final_position, 1.0)
+        fraction = position / final_position
         width = (
             self.nut_width
             + (self.last_fret_width - self.nut_width) * fraction
