@@ -8,7 +8,12 @@ from pathlib import Path
 import pytest
 
 from cncguitarwizard.presets import Prototype001Parameters
-from cncguitarwizard.workflows import FreeCADExecutionError, build_prototype001
+from cncguitarwizard.workflows import (
+    BuildWorkflowError,
+    FreeCADExecutionError,
+    Prototype001Build,
+    build_prototype001,
+)
 
 
 def test_build_creates_scripts_and_traceable_report(tmp_path: Path) -> None:
@@ -70,6 +75,37 @@ def test_build_writes_gcode_and_toolpath_previews_for_every_part(
     assert report["stock"]["Body"]["thickness_mm"] == 44.0
     assert report["stock"]["Neck"]["thickness_mm"] == 40.0
     assert len(report["stock"]["Fretboard"]["index_pins_model_xy"]) == 2
+
+
+def test_stepwise_build_runs_one_stage_per_advance(tmp_path: Path) -> None:
+    build = Prototype001Build(tmp_path / "output", run_freecad=False)
+
+    assert build.labels == (
+        "Building the geometry",
+        "Planning the body toolpaths",
+        "Planning the neck toolpaths",
+        "Planning the fretboard toolpaths",
+        "Writing G-code and toolpath previews",
+        "Writing the FreeCAD script and report",
+    )
+    assert build.completed == 0 and not build.done
+    with pytest.raises(BuildWorkflowError):
+        build.result
+    assert build.advance() is True
+    assert build.completed == 1 and build.geometry is not None
+    assert not (tmp_path / "output" / "Body_top.nc").exists()
+    steps = 1
+    while build.advance():
+        steps += 1
+    steps += 1
+    assert steps == len(build.labels) and build.done
+    assert build.advance() is False
+    result = build.result
+    assert result.report_path.is_file()
+    assert len(result.gcode_paths) == 13
+    assert (
+        Prototype001Build(tmp_path / "freecad").labels[-1] == "Running FreeCAD"
+    )
 
 
 def test_generated_script_targets_absolute_build_paths(tmp_path: Path) -> None:

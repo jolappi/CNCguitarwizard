@@ -14,10 +14,16 @@ Python.
 2. Asks `cncguitarwizard.webapp.parameter_schema()` for every field of
    `Prototype001Parameters` and `MachiningParameters` and draws a grouped
    form from it. Changed values are highlighted; tuple fields are edited as
-   JSON.
-3. On **Build** calls `cncguitarwizard.webapp.run_build()`, which runs the
-   normal `build_prototype001(run_freecad=False)` into Pyodide's in-memory
-   file system and returns every artifact as text.
+   JSON. A field whose type is a union of kinded dataclasses — the bridge —
+   becomes a dropdown of kinds with the chosen kind's own fields beneath
+   it (`variant` in the schema).
+3. On **Build** runs the build in stages — `start_build()`, then
+   `advance_build()` once per stage of `workflows.Prototype001Build`
+   (geometry, body, neck and fretboard toolpaths, G-code, FreeCAD script),
+   then `finish_build()` — repainting a progress bar and a spinning Build
+   button between stages, since Pyodide runs Python on the page's own
+   thread. Everything lands in Pyodide's in-memory file system and comes
+   back as text.
 4. Shows the whole-instrument plan view, the three toolpath plots, download
    links for the FreeCAD script (`.py` and `.FCMacro`), the three `.nc`
    programs, the SVG plots and `build.json`, and a summary with stock size

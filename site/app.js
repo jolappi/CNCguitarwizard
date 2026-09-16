@@ -8,6 +8,9 @@ const form = document.getElementById("form");
 const buildButton = document.getElementById("build");
 const resetButton = document.getElementById("reset");
 const errorBox = document.getElementById("error");
+const progress = document.getElementById("progress");
+const progressFill = progress.querySelector(".fill");
+const progressLabel = progress.querySelector(".label");
 const output = document.getElementById("output");
 const intro = document.getElementById("intro");
 
@@ -79,6 +82,7 @@ function renderForm() {
 }
 
 function renderField(set, field) {
+  if (field.type === "variant") return renderVariantField(set, field);
   const row = document.createElement("div");
   row.className = "field";
   const label = document.createElement("label");
@@ -90,23 +94,69 @@ function renderField(set, field) {
   input.dataset.name = field.name;
   input.dataset.type = field.type;
   input.dataset.default = JSON.stringify(field.default);
+  const initial = "value" in field ? field.value : field.default;
   if (field.type === "bool") {
     input.type = "checkbox";
-    input.checked = Boolean(field.default);
+    input.checked = Boolean(initial);
   } else if (field.type === "float" || field.type === "int") {
     input.type = "number";
     input.step = field.type === "int" ? "1" : "any";
-    input.value = String(field.default);
+    input.value = String(initial);
   } else {
     input.type = "text";
-    input.value = field.type === "optional_float" && field.default === null
+    input.value = field.type === "optional_float" && initial === null
       ? ""
-      : JSON.stringify(field.default);
+      : JSON.stringify(initial);
   }
   input.addEventListener("input", () => markChanged(input));
   row.appendChild(label);
   row.appendChild(input);
   return row;
+}
+
+function renderVariantField(set, field) {
+  // A dropdown of kinds; the chosen kind's own fields appear beneath it.
+  const holder = document.createElement("div");
+  holder.className = "variant";
+  holder.dataset.set = set;
+  holder.dataset.name = field.name;
+  holder.dataset.defaultKind = field.default.kind;
+  const row = document.createElement("div");
+  row.className = "field";
+  const label = document.createElement("label");
+  label.textContent = field.name;
+  label.htmlFor = set + "." + field.name + ".kind";
+  const select = document.createElement("select");
+  select.id = label.htmlFor;
+  select.className = "kind";
+  for (const [kind, variant] of Object.entries(field.variants)) {
+    const option = document.createElement("option");
+    option.value = kind;
+    option.textContent = variant.label;
+    option.selected = kind === field.default.kind;
+    select.appendChild(option);
+  }
+  row.appendChild(label);
+  row.appendChild(select);
+  holder.appendChild(row);
+  const sub = document.createElement("div");
+  sub.className = "subfields";
+  holder.appendChild(sub);
+
+  const renderSubfields = (kind, values) => {
+    sub.innerHTML = "";
+    for (const subfield of field.variants[kind].fields) {
+      const withValue = values && subfield.name in values
+        ? { ...subfield, default: subfield.default, value: values[subfield.name] }
+        : subfield;
+      const subrow = renderField(set + "." + field.name, withValue);
+      sub.appendChild(subrow);
+    }
+    select.classList.toggle("changed", kind !== field.default.kind);
+  };
+  renderSubfields(field.default.kind, field.default);
+  select.addEventListener("change", () => renderSubfields(select.value, null));
+  return holder;
 }
 
 function markChanged(input) {
@@ -127,6 +177,21 @@ function readValue(input) {
 
 function collectValues() {
   const payload = { prototype: {}, machining: {} };
+  const assign = (set, name, value) => {
+    // "prototype.body_bridge" addresses a variant's sub-object.
+    const parts = set.split(".");
+    let target = payload[parts[0]];
+    for (const part of parts.slice(1)) {
+      target[part] = target[part] || {};
+      target = target[part];
+    }
+    target[name] = value;
+  };
+  for (const variant of form.querySelectorAll(".variant")) {
+    assign(variant.dataset.set, variant.dataset.name, {
+      kind: variant.querySelector("select.kind").value,
+    });
+  }
   for (const input of form.querySelectorAll("input")) {
     let value;
     try {
@@ -137,9 +202,27 @@ function collectValues() {
     if (typeof value === "number" && Number.isNaN(value)) {
       throw new Error(`${input.dataset.name}: not a number`);
     }
-    payload[input.dataset.set][input.dataset.name] = value;
+    assign(input.dataset.set, input.dataset.name, value);
   }
   return payload;
+}
+
+// Let the browser paint between Python stages (Pyodide blocks the page
+// thread while a stage runs).
+function paint() {
+  return new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
+}
+
+function showProgress(completed, total, label) {
+  progress.classList.remove("hidden");
+  progressFill.style.width = `${Math.round((100 * completed) / total)}%`;
+  progressLabel.textContent = label
+    ? `${completed + 1}/${total} · ${label}`
+    : `${completed}/${total} · done`;
+}
+
+async function runPython(code) {
+  return JSON.parse(await pyodide.runPythonAsync(code));
 }
 
 async function build() {
@@ -152,18 +235,45 @@ async function build() {
     return;
   }
   buildButton.disabled = true;
+  buildButton.classList.add("busy");
+  buildButton.textContent = "Building…";
   setStatus("Building…");
   const started = performance.now();
   try {
     pyodide.globals.set("payload_json", JSON.stringify(payload));
-    const resultJson = await pyodide.runPythonAsync(
-      "import json\nfrom cncguitarwizard.webapp import run_build\n" +
-      "json.dumps(run_build(json.loads(payload_json)))"
+    const startResult = await runPython(
+      "import json\nfrom cncguitarwizard.webapp import start_build\n" +
+      "json.dumps(start_build(json.loads(payload_json)))"
     );
-    const result = JSON.parse(resultJson);
+    if (startResult.error) {
+      showError(startResult.error);
+      setStatus("Parameters rejected", "bad");
+      return;
+    }
+    const stages = startResult.stages;
+    showProgress(0, stages.length, stages[0]);
+    await paint();
+    for (;;) {
+      const step = await runPython(
+        "import json\nfrom cncguitarwizard.webapp import advance_build\n" +
+        "json.dumps(advance_build())"
+      );
+      if (step.error) {
+        showError(step.error);
+        setStatus("Build failed", "bad");
+        return;
+      }
+      showProgress(step.completed, step.total, step.next);
+      await paint();
+      if (step.done) break;
+    }
+    const result = await runPython(
+      "import json\nfrom cncguitarwizard.webapp import finish_build\n" +
+      "json.dumps(finish_build())"
+    );
     if (result.error) {
       showError(result.error);
-      setStatus("Parameters rejected", "bad");
+      setStatus("Build failed", "bad");
       return;
     }
     showResult(result);
@@ -175,6 +285,9 @@ async function build() {
     setStatus("Build failed", "bad");
   } finally {
     buildButton.disabled = false;
+    buildButton.classList.remove("busy");
+    buildButton.textContent = "Build Prototype001";
+    setTimeout(() => progress.classList.add("hidden"), 1500);
   }
 }
 

@@ -56,7 +56,10 @@
   .field input[type=text], .field input[type=number] {
     width: 100%; padding: 3px 6px; border: 1px solid var(--line); border-radius: 4px; font: inherit; font-size: 12.5px;
   }
-  .field input.changed { border-color: var(--accent); background: #fff6ec; }
+  .field input.changed, .field select.changed { border-color: var(--accent); background: #fff6ec; }
+  .field select { width: 100%; padding: 3px 4px; border: 1px solid var(--line); border-radius: 4px; font: inherit; font-size: 12.5px; background: #fff; }
+  .variant .field:first-child { grid-template-columns: 1fr 180px; }
+  .variant .subfields { margin: 2px 0 6px 12px; padding-left: 8px; border-left: 2px solid var(--line); }
   .actions { display: flex; gap: 8px; align-items: center; margin: 10px 0 14px; }
   button {
     padding: 8px 16px; border-radius: 6px; border: 1px solid var(--accent);
@@ -64,6 +67,17 @@
   }
   button.secondary { background: #fff; color: var(--accent); }
   button:disabled { opacity: .5; cursor: default; }
+  button.busy { opacity: 1; background: #b07a4a; border-color: #b07a4a; padding-left: 34px; position: relative; }
+  button.busy::before {
+    content: ""; position: absolute; left: 12px; top: 50%; width: 14px; height: 14px; margin-top: -7px;
+    border: 2px solid rgba(255,255,255,.5); border-top-color: #fff; border-radius: 50%;
+    animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .progress { margin: -4px 0 12px; }
+  .progress .bar { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+  .progress .fill { height: 100%; width: 0; background: var(--accent); transition: width .25s ease; }
+  .progress .label { display: block; margin-top: 4px; font-size: 12px; color: var(--muted); }
   .error { border: 1px solid var(--bad); background: #fff2f2; color: var(--bad); padding: 10px 12px; border-radius: 6px; white-space: pre-wrap; }
   .hidden { display: none; }
   h2 { font-size: 16px; margin: 18px 0 8px; }
@@ -95,6 +109,10 @@
     <div class="actions">
       <button id="build" disabled>Build Prototype001</button>
       <button id="reset" class="secondary" disabled>Reset</button>
+    </div>
+    <div id="progress" class="progress hidden" aria-live="polite">
+      <div class="bar"><div class="fill"></div></div>
+      <span class="label"></span>
     </div>
     <p class="note">Every value below is a field of <code>Prototype001Parameters</code> or
       <code>MachiningParameters</code>. Changed values are highlighted. Lists are edited as JSON.</p>

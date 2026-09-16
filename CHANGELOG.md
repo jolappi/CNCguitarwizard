@@ -2,11 +2,25 @@
 
 ## Unreleased
 
+### Added
+
+- Interchangeable bridges (`geometry.body.bridges`): `KahlerBridgeSpec`
+  (default), `FloydRoseSpec` (studs, recess, through block route, rear
+  spring cavity with cover), `TuneOMaticSpec` (posts and stop-bar studs)
+  and `HardtailSpec` (string-through and pilot holes), selected with
+  `Prototype001Parameters.body_bridge`; the web form shows it as a
+  dropdown of kinds with the chosen kind's dimensions beneath it. `BodySolid` gained `through_cavities` and `extra_rear_cavities`.
+  The body CAM drills pivot studs, cuts through routes and puts holes
+  narrower than the main tool in a separate `Body_top_small_holes.nc`.
+
 ### Changed
 
 - Prototype001's fretboard meets the nut with square corners
   (`fretboard_nut_corner_radius = 0`); the 8 mm rounding is available by
   setting the parameter.
+
+- The build workflow is stepwise (`workflows.Prototype001Build`), and the
+  web app shows a spinner and a stage-by-stage progress bar while building.
 
 ### Fixed
 

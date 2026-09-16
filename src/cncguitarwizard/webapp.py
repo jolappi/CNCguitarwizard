@@ -19,9 +19,10 @@ from typing import Any
 
 from .cam import MachiningParameters
 from .exceptions import CNCGuitarWizardError
+from .geometry.body import BRIDGE_LABELS, bridge_spec_from_dict
 from .presets import Prototype001Parameters
 from .render.svg import render_plan_view_svg
-from .workflows import build_prototype001
+from .workflows import Prototype001Build
 
 _GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
     (
@@ -43,7 +44,10 @@ def parameter_schema() -> dict[str, Any]:
         ``{"prototype": [...groups...], "machining": [...groups...]}``
         where every group is ``{"title", "fields"}`` and every field is
         ``{"name", "type", "default"}`` with ``type`` one of ``float``,
-        ``int``, ``bool``, ``optional_float`` or ``json`` (tuples).
+        ``int``, ``bool``, ``optional_float``, ``json`` (tuples) or
+        ``variant`` — a choice between dataclasses that each carry a
+        ``kind`` field (the bridge), described by ``variants``:
+        ``{kind: {"label", "fields"}}``.
     """
     return {
         "prototype": _group_fields(Prototype001Parameters),
@@ -53,37 +57,67 @@ def parameter_schema() -> dict[str, Any]:
     }
 
 
-def run_build(
+_ACTIVE_BUILD: Prototype001Build | None = None
+
+
+def start_build(
     payload: dict[str, Any], output_directory: str = "/build"
 ) -> dict[str, Any]:
-    """Build every FreeCAD-free artifact from JSON parameter overrides.
+    """Validate the parameters and prepare a stepwise build.
 
-    Args:
-        payload: ``{"prototype": {...}, "machining": {...}}`` with values
-            as produced by the form: numbers, booleans, ``None``, and
-            lists for tuple fields.
-        output_directory: Where to write, on whatever file system the
-            interpreter has (Pyodide's in the browser).
-
-    Returns:
-        ``{"files": {name: text}, "report": {...}, "plan_view": svg}`` or
-        ``{"error": message}`` when the parameters are rejected.
+    Returns ``{"stages": [labels...]}`` or ``{"error": message}``. Call
+    ``advance_build`` once per stage, then ``finish_build``.
     """
+    global _ACTIVE_BUILD
+    _ACTIVE_BUILD = None
     try:
         parameters = Prototype001Parameters(
             **_coerce(payload.get("prototype", {}))
         )
         machining = MachiningParameters(**_coerce(payload.get("machining", {})))
-        geometry = parameters.build()
-        result = build_prototype001(
-            Path(output_directory),
-            parameters,
-            run_freecad=False,
-            machining=machining,
-        )
     except (CNCGuitarWizardError, TypeError, ValueError) as error:
         return {"error": f"{type(error).__name__}: {error}"}
+    _ACTIVE_BUILD = Prototype001Build(
+        Path(output_directory),
+        parameters,
+        run_freecad=False,
+        machining=machining,
+    )
+    return {"stages": list(_ACTIVE_BUILD.labels)}
 
+
+def advance_build() -> dict[str, Any]:
+    """Run the next stage of the prepared build.
+
+    Returns ``{"completed", "total", "done", "next"}`` or ``{"error"}``
+    (which also discards the build).
+    """
+    global _ACTIVE_BUILD
+    build = _ACTIVE_BUILD
+    if build is None:
+        return {"error": "No build has been started."}
+    try:
+        build.advance()
+    except (CNCGuitarWizardError, TypeError, ValueError) as error:
+        _ACTIVE_BUILD = None
+        return {"error": f"{type(error).__name__}: {error}"}
+    labels = build.labels
+    return {
+        "completed": build.completed,
+        "total": len(labels),
+        "done": build.done,
+        "next": None if build.done else labels[build.completed],
+    }
+
+
+def finish_build() -> dict[str, Any]:
+    """Collect the finished build's files, report and plan view."""
+    global _ACTIVE_BUILD
+    build = _ACTIVE_BUILD
+    if build is None or not build.done or build.geometry is None:
+        return {"error": "The build has not finished."}
+    _ACTIVE_BUILD = None
+    result = build.result
     files: dict[str, str] = {}
     for path in (
         result.python_path,
@@ -97,8 +131,39 @@ def run_build(
     return {
         "files": files,
         "report": report,
-        "plan_view": render_plan_view_svg(geometry),
+        "plan_view": render_plan_view_svg(build.geometry),
     }
+
+
+def run_build(
+    payload: dict[str, Any], output_directory: str = "/build"
+) -> dict[str, Any]:
+    """Build every FreeCAD-free artifact from JSON parameter overrides.
+
+    Runs every stage at once (``start_build`` / ``advance_build`` /
+    ``finish_build`` do the same in steps).
+
+    Args:
+        payload: ``{"prototype": {...}, "machining": {...}}`` with values
+            as produced by the form: numbers, booleans, ``None``, lists
+            for tuple fields, and ``{"kind": ...}`` objects for variants.
+        output_directory: Where to write, on whatever file system the
+            interpreter has (Pyodide's in the browser).
+
+    Returns:
+        ``{"files": {name: text}, "report": {...}, "plan_view": svg}`` or
+        ``{"error": message}`` when the parameters are rejected.
+    """
+    started = start_build(payload, output_directory)
+    if "error" in started:
+        return started
+    while True:
+        step = advance_build()
+        if "error" in step:
+            return step
+        if step["done"]:
+            break
+    return finish_build()
 
 
 def _group_fields(cls: type) -> list[dict[str, Any]]:
@@ -132,14 +197,49 @@ def _describe_fields(cls: type) -> list[dict[str, Any]]:
             if field.default is not dataclasses.MISSING
             else field.default_factory()  # type: ignore[misc]
         )
-        described.append(
-            {
-                "name": field.name,
-                "type": _form_type(hints[field.name]),
-                "default": _jsonable(default),
+        entry: dict[str, Any] = {
+            "name": field.name,
+            "type": _form_type(hints[field.name]),
+            "default": _jsonable(default),
+        }
+        variants = _variant_classes(hints[field.name])
+        if variants:
+            entry["type"] = "variant"
+            entry["variants"] = {
+                kind: {
+                    "label": BRIDGE_LABELS.get(kind, kind),
+                    "fields": [
+                        described_field
+                        for described_field in _describe_fields(variant)
+                        if described_field["name"] != "kind"
+                    ],
+                }
+                for kind, variant in variants.items()
             }
-        )
+        described.append(entry)
     return described
+
+
+def _variant_classes(annotation: Any) -> dict[str, type[Any]]:
+    """Return ``{kind: class}`` when the annotation is a union of kinded specs."""
+    origin = typing.get_origin(annotation)
+    members = (
+        list(typing.get_args(annotation))
+        if origin in (types.UnionType, typing.Union)
+        else [annotation]
+    )
+    variants: dict[str, type[Any]] = {}
+    for member in members:
+        if not (isinstance(member, type) and dataclasses.is_dataclass(member)):
+            return {}
+        kind_field = next(
+            (field for field in dataclasses.fields(member) if field.name == "kind"),
+            None,
+        )
+        if kind_field is None or kind_field.default is dataclasses.MISSING:
+            return {}
+        variants[str(kind_field.default)] = member
+    return variants
 
 
 def _form_type(annotation: Any) -> str:
@@ -162,6 +262,8 @@ def _form_type(annotation: Any) -> str:
 def _jsonable(value: Any) -> Any:
     if isinstance(value, tuple):
         return [_jsonable(item) for item in value]
+    if dataclasses.is_dataclass(value) and not isinstance(value, type):
+        return dataclasses.asdict(value)
     return value
 
 
@@ -173,4 +275,6 @@ def _coerce(values: dict[str, Any]) -> dict[str, Any]:
 def _tuplify(value: Any) -> Any:
     if isinstance(value, list):
         return tuple(_tuplify(item) for item in value)
+    if isinstance(value, dict) and "kind" in value:
+        return bridge_spec_from_dict(value)
     return value

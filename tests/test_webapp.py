@@ -3,7 +3,13 @@
 import json
 from pathlib import Path
 
-from cncguitarwizard.webapp import parameter_schema, run_build
+from cncguitarwizard.webapp import (
+    advance_build,
+    finish_build,
+    parameter_schema,
+    run_build,
+    start_build,
+)
 
 
 def test_schema_lists_every_parameter_with_a_form_type() -> None:
@@ -20,12 +26,23 @@ def test_schema_lists_every_parameter_with_a_form_type() -> None:
         "default": 609.6,
     }
     assert prototype_fields["fret_count"]["type"] == "int"
-    stud_spacing = prototype_fields["body_bridge_pivot_stud_spacing"]
-    assert stud_spacing["type"] == "optional_float"
     assert prototype_fields["body_pot_offsets"] == {
         "name": "body_pot_offsets",
         "type": "json",
         "default": [[180.8, 86.0], [220.8, 87.0]],
+    }
+    bridge = prototype_fields["body_bridge"]
+    assert bridge["type"] == "variant"
+    assert bridge["default"]["kind"] == "kahler_7300"
+    assert bridge["default"]["baseplate_depth"] == 25.0
+    assert set(bridge["variants"]) == {
+        "kahler_7300", "floyd_rose", "tune_o_matic", "hardtail"
+    }
+    assert bridge["variants"]["floyd_rose"]["label"].startswith("Floyd Rose")
+    floyd_fields = {f["name"]: f for f in bridge["variants"]["floyd_rose"]["fields"]}
+    assert "kind" not in floyd_fields
+    assert floyd_fields["pivot_stud_spacing"] == {
+        "name": "pivot_stud_spacing", "type": "float", "default": 74.0
     }
     titles = [group["title"] for group in schema["prototype"]]
     assert "Body" in titles and "Headstock and tuners" in titles
@@ -56,6 +73,64 @@ def test_run_build_returns_files_report_and_plan_view(tmp_path: Path) -> None:
     assert result["plan_view"].startswith("<svg")
     assert "Pot 2 shaft hole" not in result["files"]["Body_top.nc"]
     json.dumps(result)
+
+
+def test_run_build_accepts_a_bridge_spec_as_json(tmp_path: Path) -> None:
+    result = run_build(
+        {
+            "prototype": {
+                "body_bridge": {"kind": "tune_o_matic", "compensation": 2.0},
+            }
+        },
+        str(tmp_path),
+    )
+
+    assert "error" not in result
+    assert result["report"]["parameters"]["body_bridge"]["kind"] == "tune_o_matic"
+    assert result["report"]["parameters"]["body_bridge"]["compensation"] == 2.0
+    assert "(-- Bridge post bass --)" in result["files"]["Body_top.nc"]
+
+
+def test_run_build_rejects_an_unknown_bridge_kind(tmp_path: Path) -> None:
+    result = run_build({"prototype": {"body_bridge": {"kind": "banjo"}}}, str(tmp_path))
+
+    assert "Unknown bridge kind" in result.get("error", "")
+
+
+def test_stepwise_build_reports_progress_between_stages(tmp_path: Path) -> None:
+    started = start_build({"prototype": {}, "machining": {}}, str(tmp_path))
+
+    assert started["stages"][0] == "Building the geometry"
+    assert len(started["stages"]) == 6
+    first = advance_build()
+    assert first == {
+        "completed": 1,
+        "total": 6,
+        "done": False,
+        "next": "Planning the body toolpaths",
+    }
+    assert finish_build() == {"error": "The build has not finished."}
+    step = first
+    while not step["done"]:
+        step = advance_build()
+    assert step["completed"] == 6 and step["next"] is None
+    result = finish_build()
+    assert "Body_top.nc" in result["files"] and result["plan_view"].startswith("<svg")
+    assert advance_build() == {"error": "No build has been started."}
+
+
+def test_stepwise_build_surfaces_stage_errors(tmp_path: Path) -> None:
+    started = start_build({"prototype": {"fret_count": 22}}, str(tmp_path))
+
+    assert "stages" in started
+    step = advance_build()
+    assert "TrussRodGeometryError" in step["error"]
+    assert advance_build() == {"error": "No build has been started."}
+
+
+def test_start_build_rejects_bad_parameters_immediately(tmp_path: Path) -> None:
+    started = start_build({"prototype": {"nope": 1}}, str(tmp_path))
+    assert "TypeError" in started["error"]
 
 
 def test_run_build_reports_rejected_parameters(tmp_path: Path) -> None:
