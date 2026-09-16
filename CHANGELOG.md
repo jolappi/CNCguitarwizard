@@ -1,8 +1,8 @@
 # Changelog
 
-## Unreleased
+## v0.2.0-alpha1 - 2026-09-16
 
-Everything since v0.1.0-alpha2; no release tag has been cut yet.
+Everything since v0.1.0-alpha2.
 
 ### Added
 
@@ -40,6 +40,13 @@ Everything since v0.1.0-alpha2; no release tag has been cut yet.
 - `Prototype001Parameters` preset and `build-prototype001` one-command
   workflow producing `.FCMacro`, `.py`, `.FCStd`, `.step`, `build.json`, and
   `freecad.log`.
+- 3D surfacing in the CAM (`cam.surfacing`): drop-cutter offset grids for
+  flat and ball-nosed tools, Z-limited roughing and finishing rasters;
+  `plan_neck_machining` (truss rod, angled headstock face, tuner centre
+  marks, back roughing/finishing, tabbed outline over a holding skin) and
+  `plan_fretboard_machining` (radius, inlay pockets, radius-following fret
+  slots, tabbed outline). `build-prototype001` now writes thirteen `.nc`
+  programs with previews and per-part stock/pin data in `build.json`.
 - Dependency-free 2.5D CAM (`cncguitarwizard.cam`): exact scanline clearance
   and pruned polygon offsets, pocket/drill/profile operations, holding tabs,
   a GRBL G-code writer, toolpath SVG plots, and a two-sided body plan on
@@ -51,6 +58,14 @@ Everything since v0.1.0-alpha2; no release tag has been cut yet.
   script, body G-code, toolpath plots and report client-side, with a
   whole-instrument plan view (`render_plan_view_svg`). `tools/build_site.py`
   and a Pages workflow assemble and deploy it.
+- Body placements are anchored: outline, pocket, neck pickup, electronics
+  and jack ride with the neck's heel end, bridge features with the scale
+  length; the neck pocket is derived from the neck's own tapered outline
+  with a clearance; index pins are placed automatically in the blank's
+  waste on the centerline (horn gap and tail notch), never in the finished
+  body, and every program checks both dowels before the spindle starts;
+  overlapping top cavities are rejected; inlay markers beyond the last
+  fret are skipped.
 - `tools/inspect_step_reference.py` for reporting on reference STEP models.
 - Documentation: solid-body guide, fretboard-surface and neck-back-surface
   guides, headstock guide, Prototype001 preset and workflow guides, FreeCAD
