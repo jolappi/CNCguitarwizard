@@ -77,11 +77,7 @@ def render_plan_view_svg(geometry: Prototype001Geometry) -> str:
     for tuner in geometry.tuner_layout.holes:
         parts.append(circle(tuner.center.x, tuner.center.y, tuner.diameter / 2.0, hole))
 
-    top_cavities = [body.neck_pocket, body.neck_pickup, body.bridge_pickup]
-    if body.bridge_mounting.sustain_block_cavity is not None:
-        top_cavities.append(body.bridge_mounting.sustain_block_cavity)
-    top_cavities.extend(body.extra_cavities)
-    for cavity in top_cavities:
+    for cavity in body.top_cavities:
         parts.append(path(cavity.outline, pocket))
     for rear_cavity in body.rear_cavities:
         parts.append(path(rear_cavity.cover_recess.outline, rear))

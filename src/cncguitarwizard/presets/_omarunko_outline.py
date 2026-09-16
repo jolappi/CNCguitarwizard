@@ -19,9 +19,11 @@ pickup block, the only features the drawing positions explicitly):
   behind the bridge is on the lower bout at +Y. (Mirroring every Y
   below gives the right-handed twin.)
 
-The same offset then places every other traced feature — the bridge
-baseplate cutout and both rear cavities with their cover recesses —
-at its real position and shape relative to that same neck.
+The same offset then places every other traced feature — both rear
+cavities with their cover recesses — at its real position and shape
+relative to that same neck. The drawing's rectangular bridge baseplate
+cutout lives on as the defaults of ``KahlerBridgeSpec`` (55.45 x 65.04 mm,
+centred 44.245 mm behind the scale line).
 
 ``OMARUNKO_OUTLINE_POINTS`` excludes the pickup, neck-pocket, bridge
 and rear-cavity features, which are modelled separately as their own
@@ -362,15 +364,6 @@ OMARUNKO_OUTLINE_POINTS: tuple[tuple[float, float], ...] = (
 # scale length and OMARUNKO_SCALE_LENGTH.
 OMARUNKO_HEEL_END_X: float = 461.2
 OMARUNKO_SCALE_LENGTH: float = 609.6
-
-# The plain rectangular baseplate-clearance cutout, traced from the
-# drawing's own LWPOLYLINE entity.
-OMARUNKO_BRIDGE_BASEPLATE_POINTS: tuple[tuple[float, float], ...] = (
-    (681.57, 32.52),
-    (681.57, -32.52),
-    (626.12, -32.52),
-    (626.12, 32.52),
-)
 
 # The almond-shaped rear control cavity behind the bridge, traced from
 # the inner of the drawing's two concentric arc-chain rings.

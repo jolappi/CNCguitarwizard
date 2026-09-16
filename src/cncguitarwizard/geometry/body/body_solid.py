@@ -44,6 +44,12 @@ class BodySolid:
             mounting.
         holes: Vertical holes drilled from the top face — pot and
             switch shaft holes, pickup-screw clearance recesses.
+        through_cavities: Routes cut from the top clean through the body
+            (a tremolo's sustain-block route into its spring cavity);
+            exempt from the floor and break-through checks by design.
+        extra_rear_cavities: Further rear-routed cavities with cover
+            recesses beyond the named electronics cavities — a tremolo
+            spring cavity, for example.
 
     Raises:
         BodyGeometryError: If any cavity is deeper than the slab, falls
@@ -66,6 +72,8 @@ class BodySolid:
     battery_cavity: RearCavity | None = None
     extra_cavities: tuple[Cavity, ...] = ()
     holes: tuple[DrilledHole, ...] = ()
+    through_cavities: tuple[Cavity, ...] = ()
+    extra_rear_cavities: tuple[RearCavity, ...] = ()
 
     def __post_init__(self) -> None:
         """Cross-check every cavity against the slab and outline bounds."""
@@ -82,16 +90,29 @@ class BodySolid:
                 )
 
         for cavity in self._cavities():
+            if cavity in self.through_cavities:
+                continue
             if cavity.depth >= self.thickness:
                 raise BodyGeometryError(
                     f"{cavity.name} depth must leave material beneath its "
                     "floor."
                 )
+        for cavity in self.through_cavities:
+            if cavity.depth < self.thickness:
+                raise BodyGeometryError(
+                    f"{cavity.name} is a through route and must be at least "
+                    "as deep as the body."
+                )
         # Top cavities are separate features; two that overlap in plan
         # would merge into one unintended pocket (typically a bridge
         # feature that has been moved onto a body feature by a scale
-        # or fret-count change).
-        top_cavities = self._top_cavities()
+        # or fret-count change). Through routes are exempt: a tremolo's
+        # block route deliberately sits inside its recess.
+        top_cavities = tuple(
+            cavity
+            for cavity in self.top_cavities
+            if cavity not in self.through_cavities
+        )
         for index, first in enumerate(top_cavities):
             for second in top_cavities[index + 1 :]:
                 if (
@@ -107,7 +128,9 @@ class BodySolid:
         # together leave wood between their floors, or the two rout
         # into one another.
         for rear in self.rear_cavities:
-            for top in self._top_cavities():
+            for top in self.top_cavities:
+                if top in self.through_cavities:
+                    continue
                 overlaps = (
                     rear.cavity.min_x < top.max_x
                     and top.min_x < rear.cavity.max_x
@@ -201,21 +224,24 @@ class BodySolid:
                 self.control_cavity,
                 self.switch_cavity,
                 self.battery_cavity,
+                *self.extra_rear_cavities,
             )
             if rear is not None
         )
 
-    def _top_cavities(self) -> tuple[Cavity, ...]:
-        """Return every cavity cut down from the top face."""
-        cavities = [self.neck_pocket, self.bridge_pickup, self.neck_pickup]
+    @property
+    def top_cavities(self) -> tuple[Cavity, ...]:
+        """Return every cavity cut down from the top face, through routes last."""
+        cavities = [self.neck_pocket, self.neck_pickup, self.bridge_pickup]
         if self.bridge_mounting.sustain_block_cavity is not None:
             cavities.append(self.bridge_mounting.sustain_block_cavity)
         cavities.extend(self.extra_cavities)
+        cavities.extend(self.through_cavities)
         return tuple(cavities)
 
     def _cavities(self) -> tuple[Cavity, ...]:
         """Return every plan-view cavity outline to depth- and bounds-check."""
-        cavities = list(self._top_cavities())
+        cavities = list(self.top_cavities)
         for rear in self.rear_cavities:
             cavities.append(rear.cavity)
             cavities.append(rear.cover_recess)

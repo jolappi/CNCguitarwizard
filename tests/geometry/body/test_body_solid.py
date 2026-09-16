@@ -217,6 +217,30 @@ def test_body_solid_rejects_a_hole_outside_the_outline() -> None:
         make_body(holes=(DrilledHole("Pot 1 shaft hole", 610.0, -300.0, 10.0, 30.0),))
 
 
+def test_body_solid_accepts_a_through_route_inside_a_top_cavity() -> None:
+    recess = RectangularCavity("Tremolo recess", 640.0, 0.0, 60.0, 84.0, 16.0)
+    block = RectangularCavity("Sustain-block route", 645.0, 0.0, 24.0, 40.0, 44.0)
+    spring = make_rear_cavity("Tremolo spring cavity", 660.0, 0.0, 20.0)
+    body = make_body(
+        bridge_mounting=BridgeMounting(609.6, has_sustain_block=False),
+        extra_cavities=(recess,),
+        through_cavities=(block,),
+        extra_rear_cavities=(spring,),
+    )
+
+    assert body.top_cavities[-1] is block
+    assert spring in body.rear_cavities
+
+
+def test_body_solid_rejects_a_shallow_through_route() -> None:
+    block = RectangularCavity("Sustain-block route", 700.0, 0.0, 24.0, 40.0, 30.0)
+    with pytest.raises(BodyGeometryError, match="through route"):
+        make_body(
+            bridge_mounting=BridgeMounting(609.6, has_sustain_block=False),
+            through_cavities=(block,),
+        )
+
+
 def test_body_solid_rejects_overlapping_top_cavities() -> None:
     # Right on top of the default sustain-block cavity behind the bridge.
     extra = TracedCavity(

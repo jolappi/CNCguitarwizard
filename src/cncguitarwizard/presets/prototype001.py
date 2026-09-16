@@ -3,14 +3,15 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from ..geometry.body import (
     BodySolid,
-    BridgeMounting,
+    BridgeSpec,
     CircularCavity,
     DrilledHole,
     JackHole,
+    KahlerBridgeSpec,
     RearCavity,
     TracedCavity,
     TracedOutline,
@@ -34,13 +35,11 @@ from ..geometry.neck import (
 )
 from ..geometry.primitives import Point2D
 from ._omarunko_outline import (
-    OMARUNKO_BRIDGE_BASEPLATE_POINTS,
     OMARUNKO_CONTROL_CAVITY_POINTS,
     OMARUNKO_CONTROL_COVER_POINTS,
     OMARUNKO_HEEL_END_X,
     OMARUNKO_OUTLINE_POINTS,
     OMARUNKO_PICKUP_ROUTE_LOCAL_POINTS,
-    OMARUNKO_SCALE_LENGTH,
 )
 
 
@@ -136,14 +135,12 @@ class Prototype001Parameters:
     body_pickup_screw_spacing: float = 79.9
     body_pickup_screw_recess_diameter: float = 6.0
     body_pickup_screw_recess_extra_depth: float = 8.0
-    # A Kahler 7300 is a fixed bridge screwed flat to the body: no pivot
-    # stud holes (None) and no sustain block or springs, so no rear
-    # cavity behind it either. The stud parameters stay parametrised
-    # for a stud-mounted bridge in a future preset.
-    body_bridge_pivot_stud_spacing: float | None = None
-    body_bridge_pivot_hole_diameter: float = 8.0
-    body_bridge_pivot_hole_depth: float = 12.0
-    body_bridge_baseplate_depth: float = 25.0
+    # The bridge is an interchangeable spec (see geometry.body.bridges):
+    # KahlerBridgeSpec (default, the DXF's flat-mount 7300 cutout),
+    # FloydRoseSpec, TuneOMaticSpec or HardtailSpec. Each places its own
+    # routes, rear cavities and holes relative to the scale line. In the
+    # web form it is edited as JSON with a "kind" entry.
+    body_bridge: BridgeSpec = field(default_factory=KahlerBridgeSpec)
     # Rear-routed electronics cavities, both straight from the DXF. Each
     # is cut up from the back face to within body_rear_cavity_top_wall
     # of the top so the pot and switch bushings can pass through, and is
@@ -483,7 +480,6 @@ class Prototype001Parameters:
         # Traced body features ride with the heel end, bridge features
         # with the scale length (see the body_* parameter comments).
         body_shift = heel_end - OMARUNKO_HEEL_END_X
-        bridge_shift = self.scale_length - OMARUNKO_SCALE_LENGTH
 
         def shifted(
             points: tuple[tuple[float, float], ...], dx: float
@@ -513,18 +509,8 @@ class Prototype001Parameters:
         bridge_pickup = pickup_route("Bridge pickup route", bridge_pickup_x)
         switch_x = heel_end + self.body_switch_cavity_offset
         switch_cover_x = heel_end + self.body_switch_cover_offset
-        bridge_mounting = BridgeMounting(
-            self.scale_length,
-            pivot_stud_spacing=self.body_bridge_pivot_stud_spacing,
-            pivot_hole_diameter=self.body_bridge_pivot_hole_diameter,
-            pivot_hole_depth=self.body_bridge_pivot_hole_depth,
-            has_sustain_block=False,
-        )
-        bridge_baseplate_cavity = TracedCavity(
-            "Bridge baseplate cutout",
-            shifted(OMARUNKO_BRIDGE_BASEPLATE_POINTS, bridge_shift),
-            self.body_bridge_baseplate_depth,
-        )
+        bridge = self.body_bridge.hardware(self.scale_length, self.body_thickness)
+        bridge_mounting = bridge.mounting
         rear_cavity_depth = self.body_thickness - self.body_rear_cavity_top_wall
         control_cavity = RearCavity(
             TracedCavity(
@@ -561,7 +547,8 @@ class Prototype001Parameters:
             diameter=self.body_jack_diameter,
             depth=self.body_jack_depth,
         )
-        holes = [
+        holes: list[DrilledHole] = list(bridge.holes)
+        holes.append(
             DrilledHole(
                 "Switch shaft hole",
                 switch_x,
@@ -569,7 +556,7 @@ class Prototype001Parameters:
                 self.body_switch_shaft_hole_diameter,
                 self.body_thickness,
             )
-        ]
+        )
         for index, (pot_offset, pot_y) in enumerate(self.body_pot_offsets, start=1):
             holes.append(
                 DrilledHole(
@@ -605,8 +592,10 @@ class Prototype001Parameters:
             jack_hole,
             control_cavity=control_cavity,
             switch_cavity=switch_cavity,
-            extra_cavities=(bridge_baseplate_cavity,),
+            extra_cavities=bridge.top_cavities,
             holes=tuple(holes),
+            through_cavities=bridge.through_cavities,
+            extra_rear_cavities=bridge.rear_cavities,
         )
         tuner_layout = TunerLayout(
             headstock_plan,

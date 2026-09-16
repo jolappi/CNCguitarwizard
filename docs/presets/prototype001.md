@@ -72,9 +72,10 @@ Building the preset creates and cross-validates:
 - 2 mm deep barbed-wire position markers (`InlayLayout`) at frets 3, 5, 7, 9,
   15, 17, 19 and 21, with double markers at 12 and 24;
 - a 44 mm flat-slab left-handed body (`BodySolid`) digitised from the user's
-  `assets/reference/omarunko.dxf`: the drawing's own outline, trapezoidal neck pocket ending
-  exactly at the heel, humbucker routes with mounting ears, Kahler 7300
-  baseplate cutout, rear control and switch cavities with 2 mm cover recesses,
+  `assets/reference/omarunko.dxf`: the drawing's own outline, a neck pocket
+  derived from the neck's own taper, humbucker routes with mounting ears, an
+  interchangeable bridge (`body_bridge`: Kahler 7300 by default, Floyd Rose,
+  Tune-o-matic or hardtail), rear control and switch cavities with 2 mm cover recesses,
   pot and switch shaft holes, pickup-screw recesses, and the jack bore — see
   [Solid body](../geometry/12_body.md).
 

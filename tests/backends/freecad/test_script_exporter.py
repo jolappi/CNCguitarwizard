@@ -660,6 +660,30 @@ def test_neck_assembly_drills_body_holes_from_the_top_face() -> None:
     assert "'pot 1 shaft hole cut'" in source
 
 
+def test_neck_assembly_cuts_through_routes_and_extra_rear_cavities() -> None:
+    block = RectangularCavity("Sustain-block route", 700.0, 0.0, 24.0, 40.0, 44.0)
+    spring = RearCavity(
+        RectangularCavity("Tremolo spring cavity", 700.0, 0.0, 45.0, 60.0, 20.0),
+        RectangularCavity(
+            "Tremolo spring cavity cover recess", 700.0, 0.0, 55.0, 70.0, 2.0
+        ),
+    )
+    source = FreeCADScriptExporter().render_neck_assembly(
+        make_neck_surface(),
+        make_fretboard_surface(),
+        body=replace(
+            make_body(),
+            bridge_mounting=BridgeMounting(609.6, has_sustain_block=False),
+            through_cavities=(block,),
+            extra_rear_cavities=(spring,),
+        ),
+    )
+
+    assert "'sustain-block route through cut')" in source
+    assert "'tremolo spring cavity cut', from_back=True)" in source
+    assert "'tremolo spring cavity cover recess cut', from_back=True)" in source
+
+
 def test_neck_assembly_omits_the_sustain_block_cut_for_a_fixed_bridge() -> None:
     source = FreeCADScriptExporter().render_neck_assembly(
         make_neck_surface(),

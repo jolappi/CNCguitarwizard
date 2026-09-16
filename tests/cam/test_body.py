@@ -227,6 +227,51 @@ def test_plan_rejects_an_index_pin_outside_the_blank(body) -> None:
         )
 
 
+def test_floyd_rose_plan_drills_the_pivot_studs_and_routes_through() -> None:
+    from dataclasses import replace
+
+    from cncguitarwizard.geometry.body import FloydRoseSpec
+
+    geometry = replace(
+        Prototype001Parameters(),
+        body_bridge=FloydRoseSpec(),
+        body_bridge_pickup_offset=35.0,
+    ).build()
+    plan = plan_body_machining(geometry.body, MachiningParameters())
+    names = [path.name for path in plan.top.toolpaths]
+
+    assert "Pivot stud bass" in names and "Pivot stud treble" in names
+    block = next(
+        path for path in plan.top.toolpaths if path.name == "Sustain-block route"
+    )
+    assert block.deepest_z() == pytest.approx(-(geometry.body.thickness + 0.5))
+    assert plan.top_small_holes is None
+    assert "Tremolo spring cavity" in [path.name for path in plan.back.toolpaths]
+
+
+def test_hardtail_plan_puts_narrow_holes_in_a_small_drill_program() -> None:
+    from dataclasses import replace
+
+    from cncguitarwizard.geometry.body import HardtailSpec
+
+    geometry = replace(Prototype001Parameters(), body_bridge=HardtailSpec()).build()
+    plan = plan_body_machining(geometry.body, MachiningParameters())
+
+    assert plan.top_small_holes is not None
+    assert [setup.name for setup in plan.setups] == [
+        "Body_index_pins",
+        "Body_top",
+        "Body_top_small_holes",
+        "Body_back",
+    ]
+    assert len(plan.preview_outlines) == 4
+    small_names = [path.name for path in plan.top_small_holes.toolpaths]
+    assert len(small_names) == 11 and "String 1 through hole" in small_names
+    assert plan.top_small_holes.tool is not None
+    assert plan.top_small_holes.tool.tool_diameter == 3.0
+    assert all("String" not in path.name for path in plan.top.toolpaths)
+
+
 def test_setups_render_to_gcode(plan, parameters) -> None:  # type: ignore[no-untyped-def]
     for setup in plan.setups:
         source = GRBLWriter().render(setup, parameters)

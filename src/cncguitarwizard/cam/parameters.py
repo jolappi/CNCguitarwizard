@@ -50,6 +50,9 @@ class MachiningParameters:
             blank is the outline's bounding box grown by this much.
         stock_edge_margin: Minimum distance from a dowel hole to the
             blank's edge.
+        small_hole_tool_diameter: Diameter of the drill or end mill used
+            in a separate program for holes smaller than the main tool
+            (string-through and pilot holes).
         profile_overlap: How far each side's outline profile cuts past
             the mid-plane so the two half-depth cuts meet.
         raster_link_spacing: Sample spacing when checking whether a link
@@ -78,6 +81,7 @@ class MachiningParameters:
     index_pin_wall: float = 3.0
     stock_margin: float = 15.0
     stock_edge_margin: float = 8.0
+    small_hole_tool_diameter: float = 3.0
     profile_overlap: float = 0.5
     raster_link_spacing: float = 1.0
 
@@ -96,6 +100,7 @@ class MachiningParameters:
             "index_pin_diameter": self.index_pin_diameter,
             "stock_margin": self.stock_margin,
             "stock_edge_margin": self.stock_edge_margin,
+            "small_hole_tool_diameter": self.small_hole_tool_diameter,
             "raster_link_spacing": self.raster_link_spacing,
         }
         for name, value in positive.items():

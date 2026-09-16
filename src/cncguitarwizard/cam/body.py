@@ -11,7 +11,7 @@ pins where they were.
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from ..geometry.body import BodySolid, Cavity, DrilledHole
 from ..geometry.primitives import Point2D, point_in_polygon
@@ -30,6 +30,8 @@ class BodyMachiningPlan:
         index_pins: Program that drills the two index pins from the top.
         top: Top-face setup: pockets, holes, and the upper half of the
             outline.
+        top_small_holes: Top-face program with the small drill for holes
+            narrower than the main tool, or ``None`` when there are none.
         back: Back-face setup after the flip: rear cavities, cover
             recesses, and the lower half of the outline with tabs.
         stock_length: Minimum blank length along X.
@@ -43,6 +45,7 @@ class BodyMachiningPlan:
     index_pins: Setup
     top: Setup
     back: Setup
+    top_small_holes: Setup | None
     stock_length: float
     stock_width: float
     stock_thickness: float
@@ -54,7 +57,9 @@ class BodyMachiningPlan:
     @property
     def setups(self) -> tuple[Setup, ...]:
         """Return the setups in running order."""
-        return (self.index_pins, self.top, self.back)
+        if self.top_small_holes is None:
+            return (self.index_pins, self.top, self.back)
+        return (self.index_pins, self.top, self.top_small_holes, self.back)
 
 
 def plan_body_machining(
@@ -114,16 +119,35 @@ def plan_body_machining(
 
     top_paths: list[Toolpath] = []
     for cavity in _top_cavities(body):
+        depth = cavity.depth
+        if cavity in body.through_cavities:
+            depth = body.thickness + parameters.through_overshoot
         top_paths.append(
             pocket(
                 cavity.name,
                 top_frame.polygon(cavity.outline),
-                cavity.depth,
+                depth,
                 parameters,
             )
         )
+    small_holes = [
+        hole for hole in body.holes if hole.diameter < parameters.tool_diameter - 1e-6
+    ]
     for hole in body.holes:
+        if hole in small_holes:
+            continue
         top_paths.append(_drill_hole(hole, body, top_frame, parameters))
+    mounting = body.bridge_mounting
+    for side, pivot in zip(("bass", "treble"), mounting.pivot_holes, strict=False):
+        top_paths.append(
+            drill(
+                f"Pivot stud {side}",
+                top_frame.point(pivot),
+                mounting.pivot_hole_diameter,
+                mounting.pivot_hole_depth,
+                parameters,
+            )
+        )
     top_paths.append(
         profile(
             "Outline, upper half",
@@ -145,6 +169,27 @@ def plan_body_machining(
         ),
         reference_points,
     )
+
+    top_small_holes: Setup | None = None
+    if small_holes:
+        small_tool = replace(
+            parameters,
+            tool_diameter=parameters.small_hole_tool_diameter,
+            plunge_rate=min(parameters.plunge_rate, 150.0),
+        )
+        top_small_holes = Setup(
+            "Body_top_small_holes",
+            f"Body top face - holes for the {small_tool.tool_diameter:g} mm drill",
+            tuple(
+                _drill_hole(hole, body, top_frame, small_tool) for hole in small_holes
+            ),
+            (
+                "Same fixture and X/Y zero as Body_top; change to the small drill "
+                "and re-touch Z on the stock top.",
+            ),
+            reference_points,
+            small_tool,
+        )
 
     back_paths: list[Toolpath] = []
     for rear in body.rear_cavities:
@@ -189,21 +234,23 @@ def plan_body_machining(
         reference_points,
     )
 
+    top_outline = top_frame.polygon(body.outline.points)
+    previews = [top_outline, top_outline]
+    if top_small_holes is not None:
+        previews.append(top_outline)
+    previews.append(back_frame.polygon(body.outline.points))
     return BodyMachiningPlan(
         pin_setup,
         top,
         back,
+        top_small_holes,
         stock_length=stock.length,
         stock_width=stock.width,
         stock_thickness=body.thickness,
         origin_x=origin_x,
         origin_y=origin_y,
         index_pin_positions=tuple((x, y) for x, y in pins),
-        preview_outlines=(
-            top_frame.polygon(body.outline.points),
-            top_frame.polygon(body.outline.points),
-            back_frame.polygon(body.outline.points),
-        ),
+        preview_outlines=tuple(previews),
     )
 
 
@@ -230,12 +277,8 @@ class _Frame:
 
 
 def _top_cavities(body: BodySolid) -> tuple[Cavity, ...]:
-    """Return the top-face cavities in cutting order."""
-    cavities: list[Cavity] = [body.neck_pocket, body.neck_pickup, body.bridge_pickup]
-    if body.bridge_mounting.sustain_block_cavity is not None:
-        cavities.append(body.bridge_mounting.sustain_block_cavity)
-    cavities.extend(body.extra_cavities)
-    return tuple(cavities)
+    """Return the top-face cavities in cutting order (through routes last)."""
+    return body.top_cavities
 
 
 def _drill_hole(

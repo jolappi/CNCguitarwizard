@@ -1763,6 +1763,8 @@ class FreeCADScriptExporter:
             )
         for index, extra_cavity in enumerate(body.extra_cavities, start=1):
             cavity_cuts.append((extra_cavity, f"extra cavity {index} cut"))
+        for through in body.through_cavities:
+            cavity_cuts.append((through, f"{through.name.lower()} through cut"))
         for cavity, label in cavity_cuts:
             outline = outline_literal(cavity.outline)
             lines.append(
@@ -1773,6 +1775,7 @@ class FreeCADScriptExporter:
             (body.control_cavity, "control cavity"),
             (body.switch_cavity, "switch cavity"),
             (body.battery_cavity, "battery cavity"),
+            *((rear, rear.name.lower()) for rear in body.extra_rear_cavities),
         ]
         for rear, label in rear_cuts:
             if rear is None:

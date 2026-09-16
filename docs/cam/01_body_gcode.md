@@ -23,6 +23,7 @@ the Prototype001 manufacturing specification (TwoTrees H40, GRBL):
 | `tab_count` / `tab_length` / `tab_height` | 6 / 8 mm / 4 mm | Holding tabs on the final profile passes |
 | `index_pin_diameter` / `index_pin_positions` | 6 mm, automatic | Dowels for the flip; `None` places them in the blank's waste on the centerline |
 | `index_pin_wall` / `stock_margin` / `stock_edge_margin` | 3 / 15 / 8 mm | Wood between a dowel and the nearest cut; waste around the outline; dowel distance from the blank edge |
+| `small_hole_tool_diameter` | 3 mm | Drill for holes narrower than the main tool, in their own program |
 | `profile_overlap` | 0.5 mm | How far each side's outline cut passes the mid-plane |
 
 Feeds and speeds are deliberately conservative placeholders; nothing in the
@@ -58,7 +59,8 @@ Three programs are written, in running order:
 | --- | --- | --- |
 | `Body_index_pins.nc` | Top up | The two dowel holes, through the blank |
 | `Body_top.nc` | Top up, on the dowels | Neck pocket, pickup routes, baseplate cutout, screw recesses, pot and switch shaft holes, outline to half depth + overlap |
-| `Body_back.nc` | Flipped, on the dowels | Cover recesses, control and switch cavities, outline to half depth + overlap with tabs |
+| `Body_top_small_holes.nc` | Top up, on the dowels (only when needed) | Holes narrower than the main tool — a hardtail's string-through and pilot holes — with the `small_hole_tool_diameter` drill |
+| `Body_back.nc` | Flipped, on the dowels | Cover recesses, control and switch cavities, any tremolo spring cavity, outline to half depth + overlap with tabs |
 
 Every program first rapids to `X0 Y0` at the safe height — parked over
 index pin 1 — then over dowel 2 and back, all before the spindle starts,
@@ -80,7 +82,9 @@ is a normal offset pruned by the same disc-fits test, with arc samples placed
 on the circumscribed polygon so the chords never gouge the wall. Inside
 corners are left at the tool radius, as an end mill must.
 
-**Hole.** A tool-sized hole is peck-plunged. A larger hole is first pecked
+**Hole.** Pivot-stud holes (a Floyd Rose) are drilled with the shaft and
+recess holes; holes narrower than the main tool get their own program with
+the small drill. A tool-sized hole is peck-plunged. A larger hole is first pecked
 at its centre, so no pillar survives, then bored with a sampled helix whose
 pitch is the step-down, finishing with one full circle on the floor. Pot
 and switch shaft holes only break through the 8 mm top wall into the rear

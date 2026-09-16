@@ -4,10 +4,13 @@ from dataclasses import FrozenInstanceError, replace
 
 import pytest
 
+from cncguitarwizard.geometry.body import FloydRoseSpec, HardtailSpec, TuneOMaticSpec
 from cncguitarwizard.geometry.exceptions import (
+    BodyGeometryError,
     HeadstockGeometryError,
     NeckGeometryError,
 )
+from cncguitarwizard.geometry.primitives import point_in_polygon
 from cncguitarwizard.presets import Prototype001Parameters
 
 
@@ -293,6 +296,34 @@ def test_preset_parameters_are_immutable() -> None:
 
     with pytest.raises(FrozenInstanceError):
         parameters.scale_length = 647.7
+
+
+@pytest.mark.parametrize(
+    ("spec", "overrides"),
+    [
+        (FloydRoseSpec(), {"body_bridge_pickup_offset": 35.0}),
+        (TuneOMaticSpec(), {}),
+        (HardtailSpec(), {}),
+    ],
+)
+def test_every_bridge_kind_fits_the_prototype_body(spec, overrides) -> None:  # type: ignore[no-untyped-def]
+    geometry = replace(Prototype001Parameters(), body_bridge=spec, **overrides).build()
+    body = geometry.body
+
+    assert body.bridge_mounting.reference_x >= 609.6
+    for hole in body.holes:
+        assert point_in_polygon(hole.center, body.outline.points)
+    if isinstance(spec, FloydRoseSpec):
+        assert [c.name for c in body.through_cavities] == ["Sustain-block route"]
+        assert "Tremolo spring cavity" in [r.name for r in body.rear_cavities]
+        assert len(body.bridge_mounting.pivot_holes) == 2
+    else:
+        assert body.through_cavities == ()
+
+
+def test_the_bridge_pickup_must_make_room_for_a_floyd_rose() -> None:
+    with pytest.raises(BodyGeometryError, match="overlaps"):
+        replace(Prototype001Parameters(), body_bridge=FloydRoseSpec()).build()
 
 
 def test_body_follows_the_neck_and_bridge_follows_the_scale() -> None:

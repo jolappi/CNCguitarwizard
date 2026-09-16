@@ -93,6 +93,34 @@ The frame is anchored on the drawing's own pickup placement: the neck
 pickup's nut-ward edge sits 10 mm past the heel end, and the pickups' centre
 line is `Y = 0`. Everything else in the drawing follows from that one offset.
 
+## Bridges
+
+The bridge is an interchangeable *spec* (`geometry.body.bridges`). Each spec
+is a small frozen dataclass of dimensions whose `hardware(scale_length,
+body_thickness)` returns everything that bridge needs cut into the body,
+all placed relative to the scale line:
+
+| Spec | `kind` | Adds |
+| --- | --- | --- |
+| `KahlerBridgeSpec` (default) | `kahler_7300` | Rectangular baseplate cutout (the DXF's 55.45 × 65.04 × 25 mm); no studs, no rear cavity |
+| `FloydRoseSpec` | `floyd_rose` | Two Ø 10 stud holes on the scale line, a 60 × 84 × 16 mm recess, a sustain-block route clean through the body, and a rear spring cavity (45 × 95 mm) with a 2 mm cover recess |
+| `TuneOMaticSpec` | `tune_o_matic` | Two Ø 11.2 post holes 3 mm behind the scale line and two Ø 11.2 stop-bar stud holes 45 mm behind it |
+| `HardtailSpec` | `hardtail` | Six Ø 3 string-through holes 14 mm behind the scale line and five pilot holes for the baseplate screws |
+
+`Prototype001Parameters.body_bridge` holds the spec; in the web form it is a
+dropdown of bridge kinds with that kind's dimensions beneath it, sent back as
+a JSON object with a `kind` entry (`bridge_spec_from_dict` rebuilds it).
+Every dimension is a labelled starting value to be checked against the real
+hardware. Switching bridges may need the bridge pickup moved — a Floyd Rose
+recess reaches 6 mm ahead of the scale line, so `body_bridge_pickup_offset`
+must grow to about 35 mm — and `BodySolid` says so rather than merging the
+two routes. A Tune-o-matic on this flat body also wants a neck angle or a
+recessed bridge, which the model does not provide.
+
+Two new `BodySolid` fields carry bridge features: `through_cavities` (top
+routes that may reach clean through into a rear cavity, exempt from the
+floor and break-through checks) and `extra_rear_cavities`.
+
 ## Two anchors
 
 Longitudinal body placements are offsets, not absolute positions, so the
@@ -117,7 +145,7 @@ cavities overlap.
 | Neck pocket | Neck's own taper + 0.15 mm clearance, 79.5 mm long, ends at heel end (461.2), 20 mm deep, opens onto the horn gap |
 | Pickup routes | DXF humbucker route with ears, 41 × 85.9 mm, 22 mm deep, centres 491.7 and 587.9 |
 | Pickup screw recesses | Ø 6 mm, 8 mm below the route floor, at ±39.95 mm |
-| Bridge | Kahler 7300, flat mount: no pivot studs, no sustain block; 55 × 65 mm baseplate cutout 25 mm deep |
+| Bridge | `KahlerBridgeSpec`: flat mount, no pivot studs, no sustain block; 55 × 65 mm baseplate cutout 25 mm deep (see *Bridges*) |
 | Control cavity | DXF almond, rear, 36 mm deep (8 mm top wall), 2 mm cover recess |
 | Switch cavity | DXF circle Ø 44 at the upper-horn root, rear, 36 mm deep, Ø 59.5 cover recess |
 | Shaft holes | Ø 12.7 switch, 2 × Ø 10 pots at (642, 86) and (682, 87) |
