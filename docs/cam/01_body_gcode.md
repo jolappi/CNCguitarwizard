@@ -1,9 +1,10 @@
 # Body G-code
 
 `cncguitarwizard.cam` turns the `BodySolid` into GRBL G-code without any
-external CAM package or FreeCAD. It is a 2.5D planner — pockets, holes and
-outside profiles with one end mill — which is exactly what a flat-slab body
-needs. The neck and fretboard, which need 3D surfacing, are not covered yet.
+external CAM package or FreeCAD. The body only needs the 2.5D planner —
+pockets, holes and outside profiles with one end mill. The neck and
+fretboard add 3D surfacing on top; see
+[Neck and fretboard G-code](02_neck_and_fretboard_gcode.md).
 
 ## Machine and tooling assumptions
 
@@ -20,7 +21,8 @@ the Prototype001 manufacturing specification (TwoTrees H40, GRBL):
 | `spindle_speed` | 10 000 rpm | Emitted with `M3` |
 | `safe_height` | 5 mm | Rapid traverse height above the stock top |
 | `tab_count` / `tab_length` / `tab_height` | 6 / 8 mm / 4 mm | Holding tabs on the final profile passes |
-| `index_pin_diameter` / `index_pin_positions` | 6 mm at (420, 0) and (654, 0) | Dowels for the flip |
+| `index_pin_diameter` / `index_pin_positions` | 6 mm, automatic | Dowels for the flip; `None` places them in the blank's waste on the centerline |
+| `index_pin_wall` / `stock_margin` / `stock_edge_margin` | 3 / 15 / 8 mm | Wood between a dowel and the nearest cut; waste around the outline; dowel distance from the blank edge |
 | `profile_overlap` | 0.5 mm | How far each side's outline cut passes the mid-plane |
 
 Feeds and speeds are deliberately conservative placeholders; nothing in the
@@ -29,13 +31,25 @@ planner depends on them except the time estimate.
 ## Coordinate frame and the flip
 
 The body is machined from both faces. Two 6 mm dowels on the neck
-centerline — one in the neck-pocket floor, one in the bridge-baseplate
-floor, both later hidden under hardware — locate the blank in both setups.
+centerline locate the blank in both setups, and both sit in the **waste**,
+never in the finished body: pin 1 in the horn gap ahead of the neck pocket,
+pin 2 in the tail notch behind the body. By default the planner places
+them itself — it scans the centerline across the blank for runs where a
+dowel fits with the tool diameter plus `index_pin_wall` of wood to every
+cut (outline profile and every top cavity, the neck pocket included, since
+it reaches into the horn gap) and `stock_edge_margin` from the blank's
+edge, then takes the middle of the nut-ward-most and tail-ward-most runs.
+Explicit `index_pin_positions` are accepted but checked the same way.
+`build.json` records the positions in model and machine coordinates.
+
+Because the dowels are in the waste frame, the holding tabs on the final
+profile passes are what keep the body located until the very end.
 Because the flip is about the centerline, a model point `(x, y)` becomes
 `(x, -y)` on the back and the dowels stay where they were. Every program
 therefore shares one work zero:
 
-- **X/Y zero** at index pin 1 (model `(420, 0)`);
+- **X/Y zero** at index pin 1 (in the neck-pocket floor; the model
+  coordinates are in `build.json`);
 - **Z zero** on the stock top of the current setup.
 
 Three programs are written, in running order:
@@ -47,8 +61,9 @@ Three programs are written, in running order:
 | `Body_back.nc` | Flipped, on the dowels | Cover recesses, control and switch cavities, outline to half depth + overlap with tabs |
 
 Every program first rapids to `X0 Y0` at the safe height — parked over
-index pin 1 — before the spindle starts, so the work zero can be checked by
-eye, and returns there after the last cut. Each `.nc` file starts with
+index pin 1 — then over dowel 2 and back, all before the spindle starts,
+so the work zero and the fixture can be checked by eye; it returns to pin 1
+after the last cut. Each `.nc` file starts with
 operator notes as comments. A matching `.svg`
 plots every move (rapids dashed, cuts coloured blue → red by depth) over the
 outline in that setup's own frame, so the flipped setup is drawn mirrored.

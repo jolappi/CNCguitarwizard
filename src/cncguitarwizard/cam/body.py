@@ -15,11 +15,10 @@ from dataclasses import dataclass
 
 from ..geometry.body import BodySolid, Cavity, DrilledHole
 from ..geometry.primitives import Point2D, point_in_polygon
-from .exceptions import ToolpathError
+from .fixturing import StockBounds, resolve_index_pins
 from .gcode import Setup
 from .operations import drill, pocket, profile
 from .parameters import MachiningParameters
-from .planar import polygon_bounds
 from .toolpath import Toolpath
 
 
@@ -38,6 +37,7 @@ class BodyMachiningPlan:
         stock_thickness: Blank thickness (the body thickness).
         origin_x: Model X of the work origin (index pin 1).
         origin_y: Model Y of the work origin.
+        index_pin_positions: Both dowel centres in the model frame.
     """
 
     index_pins: Setup
@@ -48,6 +48,8 @@ class BodyMachiningPlan:
     stock_thickness: float
     origin_x: float
     origin_y: float
+    index_pin_positions: tuple[tuple[float, float], ...]
+    preview_outlines: tuple[tuple[Point2D, ...], ...] = ()
 
     @property
     def setups(self) -> tuple[Setup, ...]:
@@ -62,19 +64,27 @@ def plan_body_machining(
     """Return toolpaths for every machinable feature of the body.
 
     Raises:
-        ToolpathError: If an index pin lies outside the body, or a
-            feature cannot be cut with the tool.
+        ToolpathError: If an index pin would end up in the finished body,
+            too close to a cut or the blank's edge, or a feature cannot
+            be cut with the tool.
     """
-    origin_x, origin_y = parameters.index_pin_positions[0]
-    for x, y in parameters.index_pin_positions:
-        if not point_in_polygon(Point2D(x, y), body.outline.points):
-            raise ToolpathError(f"Index pin at ({x}, {y}) is outside the body.")
+    stock = StockBounds.around(body.outline.points, parameters.stock_margin)
+    pins = resolve_index_pins(
+        body.outline.points,
+        [cavity.outline for cavity in _top_cavities(body)],
+        parameters,
+        stock,
+    )
+    origin_x, origin_y = pins[0]
+    reference_points = tuple(
+        (x - origin_x, y - origin_y) for x, y in pins[1:]
+    )
 
     top_frame = _Frame(origin_x, origin_y, mirror_y=False)
     back_frame = _Frame(origin_x, origin_y, mirror_y=True)
     half_depth = body.thickness / 2.0 + parameters.profile_overlap
 
-    pins = Setup(
+    pin_setup = Setup(
         "Body_index_pins",
         "Body index pins - drill both dowel holes through the blank",
         tuple(
@@ -85,13 +95,21 @@ def plan_body_machining(
                 body.thickness + parameters.through_overshoot,
                 parameters,
             )
-            for index, (x, y) in enumerate(parameters.index_pin_positions, start=1)
+            for index, (x, y) in enumerate(pins, start=1)
         ),
         (
             "Clamp the blank top face up on a spoilboard.",
             "Set X/Y zero at the index pin 1 position and Z zero on the stock top.",
+            "Both dowels sit in the waste on the centerline - pin 1 in the horn "
+            "gap ahead of the neck pocket, pin 2 in the tail notch - so they "
+            "never end up in the finished body.",
+            f"Blank: at least {stock.length:.0f} x {stock.width:.0f} x "
+            f"{body.thickness:g} mm; pin 1 is "
+            f"{pins[0][0] - stock.min_x:.1f} mm from the nut-end edge "
+            "on the centerline.",
             "Insert both dowels after this program before running Body_top.",
         ),
+        reference_points,
     )
 
     top_paths: list[Toolpath] = []
@@ -125,6 +143,7 @@ def plan_body_machining(
             "one piece.",
             "The jack bore enters from the edge and is not part of this program.",
         ),
+        reference_points,
     )
 
     back_paths: list[Toolpath] = []
@@ -164,20 +183,27 @@ def plan_body_machining(
             "Keep X/Y zero at index pin 1; set Z zero on the (new) stock top.",
             f"The outline finishes with {parameters.tab_count} holding tabs "
             f"{parameters.tab_height:.1f} mm high; saw and sand them off.",
+            "The dowels stay in the waste frame, which the tabs keep attached "
+            "to the body until the end.",
         ),
+        reference_points,
     )
 
-    min_x, min_y, max_x, max_y = polygon_bounds(body.outline.points)
-    margin = 2.0 * parameters.tool_diameter
     return BodyMachiningPlan(
-        pins,
+        pin_setup,
         top,
         back,
-        stock_length=max_x - min_x + 2.0 * margin,
-        stock_width=max_y - min_y + 2.0 * margin,
+        stock_length=stock.length,
+        stock_width=stock.width,
         stock_thickness=body.thickness,
         origin_x=origin_x,
         origin_y=origin_y,
+        index_pin_positions=tuple((x, y) for x, y in pins),
+        preview_outlines=(
+            top_frame.polygon(body.outline.points),
+            top_frame.polygon(body.outline.points),
+            back_frame.polygon(body.outline.points),
+        ),
     )
 
 

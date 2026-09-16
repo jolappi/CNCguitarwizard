@@ -20,6 +20,8 @@ class MachiningParameters:
 
     Args:
         tool_diameter: Cutting diameter of the end mill.
+        tool_tip: ``"flat"`` for a square end mill, ``"ball"`` for a ball
+            nose of the same diameter (only surfacing cares).
         spindle_speed: Spindle speed in rpm, emitted with ``M3``.
         feed_rate: Cutting feed for XY moves.
         plunge_rate: Feed for straight plunges and helical descents.
@@ -36,8 +38,18 @@ class MachiningParameters:
         tab_length: Length of each tab along the profile.
         tab_height: Height of each tab above the profile floor.
         index_pin_diameter: Diameter of the two-sided-machining dowels.
-        index_pin_positions: Dowel centres in the model frame; the first
-            one is the G-code work origin (X = 0, Y = 0).
+        index_pin_positions: Dowel centres in the model frame, or ``None``
+            to place them automatically on the centerline in the blank's
+            waste — in the horn gap ahead of the neck pocket and in the
+            tail notch behind the body — so the holes never end up in
+            the finished part. The first one is the G-code work origin
+            (X = 0, Y = 0).
+        index_pin_wall: Wood left between a dowel hole and the nearest
+            cut (outline profile or cavity), beyond the tool diameter.
+        stock_margin: Waste around the body outline on every side; the
+            blank is the outline's bounding box grown by this much.
+        stock_edge_margin: Minimum distance from a dowel hole to the
+            blank's edge.
         profile_overlap: How far each side's outline profile cuts past
             the mid-plane so the two half-depth cuts meet.
         raster_link_spacing: Sample spacing when checking whether a link
@@ -48,6 +60,7 @@ class MachiningParameters:
     """
 
     tool_diameter: float = 6.0
+    tool_tip: str = "flat"
     spindle_speed: float = 10000.0
     feed_rate: float = 1000.0
     plunge_rate: float = 300.0
@@ -61,10 +74,10 @@ class MachiningParameters:
     tab_length: float = 8.0
     tab_height: float = 4.0
     index_pin_diameter: float = 6.0
-    index_pin_positions: tuple[tuple[float, float], ...] = (
-        (420.0, 0.0),
-        (654.0, 0.0),
-    )
+    index_pin_positions: tuple[tuple[float, float], ...] | None = None
+    index_pin_wall: float = 3.0
+    stock_margin: float = 15.0
+    stock_edge_margin: float = 8.0
     profile_overlap: float = 0.5
     raster_link_spacing: float = 1.0
 
@@ -81,6 +94,8 @@ class MachiningParameters:
             "tab_length": self.tab_length,
             "tab_height": self.tab_height,
             "index_pin_diameter": self.index_pin_diameter,
+            "stock_margin": self.stock_margin,
+            "stock_edge_margin": self.stock_edge_margin,
             "raster_link_spacing": self.raster_link_spacing,
         }
         for name, value in positive.items():
@@ -90,19 +105,23 @@ class MachiningParameters:
             "finishing_allowance": self.finishing_allowance,
             "through_overshoot": self.through_overshoot,
             "profile_overlap": self.profile_overlap,
+            "index_pin_wall": self.index_pin_wall,
         }
         for name, value in non_negative.items():
             if not math.isfinite(value) or value < 0.0:
                 raise ToolpathError(f"{name} must be finite and non-negative.")
+        if self.tool_tip not in ("flat", "ball"):
+            raise ToolpathError('tool_tip must be "flat" or "ball".')
         if not 0.0 < self.step_over <= 1.0:
             raise ToolpathError("step_over must lie in (0, 1].")
         if self.tab_count < 0:
             raise ToolpathError("tab_count must not be negative.")
-        if len(self.index_pin_positions) != 2:
-            raise ToolpathError("Exactly two index pins are required.")
-        for x, y in self.index_pin_positions:
-            if not math.isfinite(x) or not math.isfinite(y):
-                raise ToolpathError("Index pin positions must be finite.")
+        if self.index_pin_positions is not None:
+            if len(self.index_pin_positions) != 2:
+                raise ToolpathError("Exactly two index pins are required.")
+            for x, y in self.index_pin_positions:
+                if not math.isfinite(x) or not math.isfinite(y):
+                    raise ToolpathError("Index pin positions must be finite.")
 
     @property
     def tool_radius(self) -> float:

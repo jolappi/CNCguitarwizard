@@ -18,12 +18,19 @@ class Setup:
         description: One line shown in the G-code header.
         toolpaths: Operations in cutting order.
         notes: Operator instructions written as header comments.
+        reference_points: Further machine-frame points (the other
+            dowels) the program visits at the safe height before the
+            spindle starts, so the operator can check the fixture.
+        tool: The tool this setup is cut with, when it differs from the
+            parameters handed to the writer (multi-tool parts).
     """
 
     name: str
     description: str
     toolpaths: tuple[Toolpath, ...]
     notes: tuple[str, ...] = ()
+    reference_points: tuple[tuple[float, float], ...] = ()
+    tool: MachiningParameters | None = None
 
     def cutting_length(self) -> float:
         """Return the total feed-move length in millimetres."""
@@ -35,6 +42,7 @@ class Setup:
 
     def estimated_minutes(self, parameters: MachiningParameters) -> float:
         """Return a rough run time from path lengths and nominal feeds."""
+        parameters = self.tool or parameters
         cutting = 0.0
         for path in self.toolpaths:
             previous: Move | None = None
@@ -61,12 +69,18 @@ class GRBLWriter:
     """
 
     def render(self, setup: Setup, parameters: MachiningParameters) -> str:
-        """Return the complete program for one setup."""
+        """Return the complete program for one setup.
+
+        ``setup.tool`` takes precedence over ``parameters`` for the tool
+        line, spindle speed, feeds, and safe height.
+        """
+        parameters = setup.tool or parameters
         lines = [
             f"({PROJECT_NAME} {__version__})",
             f"(Setup: {_comment(setup.description)})",
             (
-                f"(Tool: {parameters.tool_diameter:.3f} mm end mill, "
+                f"(Tool: {parameters.tool_diameter:.3f} mm "
+                f"{'ball nose' if parameters.tool_tip == 'ball' else 'end mill'}, "
                 f"S{parameters.spindle_speed:.0f}, F{parameters.feed_rate:.0f}, "
                 f"plunge F{parameters.plunge_rate:.0f}, "
                 f"step-down {parameters.step_down:.3f} mm)"
@@ -83,9 +97,15 @@ class GRBLWriter:
                 f"G0 Z{parameters.safe_height:.3f}",
                 "(Start over index pin 1 - check the work zero here)",
                 "G0 X0.000 Y0.000",
-                f"M3 S{parameters.spindle_speed:.0f}",
             ]
         )
+        for index, (x, y) in enumerate(setup.reference_points, start=2):
+            lines.append(f"(Check dowel {index})")
+            lines.append(f"G0 X{x:.3f} Y{y:.3f}")
+        if setup.reference_points:
+            lines.append("(Back over index pin 1)")
+            lines.append("G0 X0.000 Y0.000")
+        lines.append(f"M3 S{parameters.spindle_speed:.0f}")
         state = _WordState(initial_z=parameters.safe_height)
         for path in setup.toolpaths:
             lines.append(f"(-- {_comment(path.name)} --)")

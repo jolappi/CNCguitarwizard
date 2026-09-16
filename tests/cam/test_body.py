@@ -1,6 +1,7 @@
 """Tests for the two-sided body machining plan on Prototype001."""
 
 import math
+from dataclasses import replace
 
 import pytest
 
@@ -61,10 +62,68 @@ def test_plan_has_three_setups_in_running_order(plan) -> None:  # type: ignore[n
     ]
 
 
-def test_work_origin_is_index_pin_one_on_the_centerline(plan) -> None:  # type: ignore[no-untyped-def]
-    assert (plan.origin_x, plan.origin_y) == (420.0, 0.0)
+def test_work_origin_is_index_pin_one_on_the_centerline(plan, body) -> None:  # type: ignore[no-untyped-def]
+    assert plan.origin_y == 0.0
+    assert (plan.origin_x, plan.origin_y) == plan.index_pin_positions[0]
     first_pin = plan.index_pins.toolpaths[0].moves[0]
     assert (first_pin.x, first_pin.y) == (0.0, 0.0)
+
+
+def test_automatic_index_pins_stay_in_the_waste(plan, body, parameters) -> None:  # type: ignore[no-untyped-def]
+    """Both dowels sit on the centerline outside the finished body."""
+    (x1, y1), (x2, y2) = plan.index_pin_positions
+    clearance = (
+        parameters.index_pin_diameter / 2.0
+        + parameters.tool_diameter
+        + parameters.index_pin_wall
+    )
+    outline_min_x = min(point.x for point in body.outline.points)
+    outline_max_x = max(point.x for point in body.outline.points)
+
+    assert y1 == 0.0 and y2 == 0.0
+    for pin in (Point2D(x1, y1), Point2D(x2, y2)):
+        assert not point_in_polygon(pin, body.outline.points)
+        assert distance_to_boundary(pin, body.outline.points) >= clearance
+        for cavity in (body.neck_pocket, body.neck_pickup, *body.extra_cavities):
+            assert not point_in_polygon(pin, cavity.outline)
+            assert distance_to_boundary(pin, cavity.outline) >= clearance
+    # Pin 1 in the horn gap ahead of the pocket, pin 2 in the tail notch.
+    assert outline_min_x < x1 < body.neck_pocket.min_x
+    assert x2 > max(point.x for point in body.outline.points if abs(point.y) < 5.0)
+    assert x2 < outline_max_x + parameters.stock_margin
+    # Every program checks both dowels before the spindle starts.
+    assert plan.top.reference_points == ((x2 - x1, 0.0),)
+    assert plan.back.reference_points == plan.top.reference_points
+
+
+def test_automatic_index_pins_follow_a_changed_neck() -> None:
+    base = plan_body_machining(
+        Prototype001Parameters().build().body, MachiningParameters()
+    )
+    other = plan_body_machining(
+        replace(Prototype001Parameters(), scale_length=647.7).build().body,
+        MachiningParameters(),
+    )
+    heel_shift = 647.7 * (1 - 2 ** (-2)) - 609.6 * (1 - 2 ** (-2))
+    assert other.index_pin_positions[0][0] - base.index_pin_positions[0][0] == (
+        pytest.approx(heel_shift, abs=0.6)
+    )
+
+
+def test_explicit_index_pins_are_honoured(body) -> None:
+    explicit = plan_body_machining(
+        body, MachiningParameters(index_pin_positions=((335.0, 0.0), (762.0, 0.0)))
+    )
+
+    assert explicit.index_pin_positions == ((335.0, 0.0), (762.0, 0.0))
+    assert explicit.top.reference_points == ((427.0, 0.0),)
+
+
+def test_plan_rejects_an_index_pin_inside_the_finished_body(body) -> None:
+    with pytest.raises(ToolpathError, match="inside the finished part"):
+        plan_body_machining(
+            body, MachiningParameters(index_pin_positions=((335.0, 0.0), (540.0, 0.0)))
+        )
 
 
 def test_every_top_cut_stays_inside_its_own_feature(body, plan, parameters) -> None:  # type: ignore[no-untyped-def]
@@ -160,11 +219,11 @@ def test_plan_reports_a_blank_larger_than_the_outline(plan, body) -> None:  # ty
     assert plan.stock_thickness == body.thickness
 
 
-def test_plan_rejects_an_index_pin_outside_the_body(body) -> None:
-    with pytest.raises(ToolpathError, match="outside"):
+def test_plan_rejects_an_index_pin_outside_the_blank(body) -> None:
+    with pytest.raises(ToolpathError, match="outside the blank"):
         plan_body_machining(
             body,
-            MachiningParameters(index_pin_positions=((420.0, 0.0), (100.0, 0.0))),
+            MachiningParameters(index_pin_positions=((335.0, 0.0), (100.0, 0.0))),
         )
 
 

@@ -52,6 +52,23 @@ def test_writer_omits_unchanged_words_and_repeats_feed_only_on_change() -> None:
     assert all(re.fullmatch(r"G[01]( [XYZF]-?\d+(\.\d{3})?)+", line) for line in body)
 
 
+def test_writer_visits_reference_points_before_starting_the_spindle() -> None:
+    setup = make_setup()
+    with_reference = Setup(
+        setup.name, setup.description, setup.toolpaths, setup.notes, ((426.0, 0.0),)
+    )
+    lines = GRBLWriter().render(with_reference, MachiningParameters()).splitlines()
+    start = lines.index("G0 X0.000 Y0.000")
+
+    assert lines[start + 1 : start + 5] == [
+        "(Check dowel 2)",
+        "G0 X426.000 Y0.000",
+        "(Back over index pin 1)",
+        "G0 X0.000 Y0.000",
+    ]
+    assert lines[start + 5] == "M3 S10000"
+
+
 def test_setup_lengths_and_time_estimate() -> None:
     setup = make_setup()
     parameters = MachiningParameters(rapid_rate=3000.0)
