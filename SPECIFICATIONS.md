@@ -19,7 +19,7 @@ toisin mainita.
 | Otelaudan pää | 4 mm 24. nauhan jälkeen; samassa tasossa kannan lopun kanssa |
 | Satulahylly | Kiinteä 5 mm ennen otelautaa; ei saa muuttua |
 | Nauhaurat | 0,6 mm × 2,7 mm |
-| Inlayt | Piikkilankakuvio, 2 mm syvät; välit 3, 5, 7, 9, 15, 17, 19, 21 yksittäin, 12 ja 24 kaksoismerkillä |
+| Inlayt | 2 mm syvät välissä 3, 5, 7, 9, 15, 17, 19, 21 (12 ja 24 kaksois-); tyyli `inlay_style`: piikkilanka (oletus), pyöreä dotti (Ø 6) tai Gibson-tyylinen kapeneva blokki (yksi/väli, 60 % nauhavälistä, 5 mm reunasta) |
 
 ## Kanta ja kiinnitys
 
@@ -88,7 +88,7 @@ mensuurilla.
 | Kaulatasku | Kaulan oma kapeneva ääriviiva + 0,15 mm välys/puoli, 79,5 mm pitkä, päättyy kannan päähän, 20 mm syvä; avautuu sarvien väliin |
 | Mikkikolot | DXF:n humbucker-kolo korvakkeineen, 41 × 85,9 mm, 22 mm syvä; keskipisteet x = 491,7 ja 587,9 |
 | Säätöruuvien syvennykset | Ø 6 mm, 8 mm kolon pohjan alle, ±39,95 mm keskilinjasta |
-| Talla | Vaihdettava (`body_bridge`): oletus Kahler 7300 (ruuvattava, levyn kolo 55 × 65 × 25 mm); vaihtoehdot Floyd Rose (tapit Ø10, 60 × 84 × 16 upotus, läpi menevä block-kolo, takana jousikolo 45 × 95 kansiuralla), Tune-o-matic + stop bar (4 × Ø11,2 reikää) ja hardtail (6 string-through + 5 esiporausta). Mitat lähtöarvoja — tarkista laitteesta |
+| Talla | Vaihdettava (`body_bridge`): oletus Kahler 7300 (ruuvattava, levyn kolo 55 × 65 × 25 mm); vaihtoehdot Floyd Rose Original valmistajan jyrsintäpiirustuksen mukaan (tapit Ø10 k/k 73,91, 11,9 mm skaalaviivan edellä; 95,25 mm leveä upotus, joka kapenee 71,12 mm:iin 42,44 mm:n kohdalla (pituus 79,38), jyrsitään kokonaan 6,73 mm syväksi ja syvennetään 11,18 mm:iin etummaisen 15,88 mm tappihyllyn takaa porrastaskuna sen sisällä; pohjassa 20,96 × 82,85 × 29,59 block-kolo, joka avautuu jousikoloon; takana jousikolo 123,19 × 56,64 × 16,13 + 28,19 mm syvä block-tasku ja 2 mm kansiura; upotus 3,56 mm leveämpi vipupuolella), Tune-o-matic + stop bar (4 × Ø11,2 reikää) ja hardtail (6 string-through + 5 esiporausta). Floyd Rose -mitat valmistajan piirustuksesta, muut lähtöarvoja — tarkista laitteesta |
 | Potikkakolo | DXF:n manteli tallan takana, takaa 36 mm (8 mm puuta kanteen), kansiura 2 mm |
 | Kytkinkolo | DXF:n ympyrä Ø 44 yläsakaran juuressa, takaa 36 mm, kansiura Ø 59,5 × 2 mm |
 | Akselireiät | Kytkin Ø 12,7; potikat 2 × Ø 10 kohdissa (642, 86) ja (682, 87) |

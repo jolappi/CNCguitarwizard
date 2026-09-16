@@ -31,6 +31,12 @@ def test_schema_lists_every_parameter_with_a_form_type() -> None:
         "type": "json",
         "default": [[180.8, 86.0], [220.8, 87.0]],
     }
+    assert prototype_fields["inlay_style"] == {
+        "name": "inlay_style",
+        "type": "choice",
+        "default": "barbed_wire",
+        "options": ["barbed_wire", "dot", "block"],
+    }
     bridge = prototype_fields["body_bridge"]
     assert bridge["type"] == "variant"
     assert bridge["default"]["kind"] == "kahler_7300"
@@ -42,8 +48,10 @@ def test_schema_lists_every_parameter_with_a_form_type() -> None:
     floyd_fields = {f["name"]: f for f in bridge["variants"]["floyd_rose"]["fields"]}
     assert "kind" not in floyd_fields
     assert floyd_fields["pivot_stud_spacing"] == {
-        "name": "pivot_stud_spacing", "type": "float", "default": 74.0
+        "name": "pivot_stud_spacing", "type": "float", "default": 73.91
     }
+    assert floyd_fields["treble_side"]["type"] == "choice"
+    assert floyd_fields["treble_side"]["options"] == ["+y", "-y"]
     titles = [group["title"] for group in schema["prototype"]]
     assert "Body" in titles and "Headstock and tuners" in titles
     machining = {field["name"] for field in schema["machining"][0]["fields"]}

@@ -10,15 +10,25 @@ from .planar import polygon_bounds
 from .toolpath import Move
 
 
-def render_setup_svg(setup: Setup, outline: Sequence[Point2D]) -> str:
+def render_setup_svg(
+    setup: Setup,
+    outline: Sequence[Point2D],
+    tool_diameter: float | None = None,
+) -> str:
     """Return an SVG of every move in ``setup`` over the part outline.
 
     Rapids are dashed grey, cuts are coloured from blue (shallow) to red
     (deep). Consecutive moves at one depth are joined into a single path
     element, so even a long program stays a small file. The outline is
     drawn in the setup's own machine frame, so a flipped setup shows the
-    mirrored part.
+    mirrored part. When ``tool_diameter`` is given (or the setup carries
+    its own tool), every cut is also drawn as a translucent band that
+    wide, so the material actually removed is visible rather than only
+    the tool-centre line — two pockets that share a wall then meet on
+    the drawing exactly as they do in the wood.
     """
+    if tool_diameter is None and setup.tool is not None:
+        tool_diameter = setup.tool.tool_diameter
     min_x, min_y, max_x, max_y = polygon_bounds(outline)
     margin = 20.0
     width = max_x - min_x + 2.0 * margin
@@ -52,6 +62,13 @@ def render_setup_svg(setup: Setup, outline: Sequence[Point2D]) -> str:
         f'<text x="{margin:.1f}" y="{margin * 0.6:.1f}" font-size="6" '
         f'font-family="sans-serif">{_escape(setup.description)}</text>',
     ]
+    if tool_diameter:
+        parts.append(
+            f'<text x="{margin:.1f}" y="{margin * 0.6 + 7:.1f}" font-size="4.5" '
+            'font-family="sans-serif" fill="#555">Shaded bands show the '
+            f'{tool_diameter:g} mm tool width; thin lines are the tool centre.'
+            "</text>"
+        )
     for path in setup.toolpaths:
         rapids: list[str] = []
         run: list[str] = []
@@ -60,9 +77,16 @@ def render_setup_svg(setup: Setup, outline: Sequence[Point2D]) -> str:
 
         def flush() -> None:
             if len(run) > 1 and run_z is not None:
+                data = "M" + run[0] + " L" + " ".join(run[1:])
+                if tool_diameter:
+                    parts.append(
+                        f'<path d="{data}" fill="none" stroke="{colour(run_z)}" '
+                        f'stroke-width="{tool_diameter:.2f}" stroke-opacity="0.25" '
+                        'stroke-linecap="round" stroke-linejoin="round"/>'
+                    )
                 parts.append(
-                    f'<path d="{"M" + run[0] + " L" + " ".join(run[1:])}" '
-                    f'fill="none" stroke="{colour(run_z)}" stroke-width="0.45"/>'
+                    f'<path d="{data}" fill="none" stroke="{colour(run_z)}" '
+                    'stroke-width="0.45"/>'
                 )
             run.clear()
 

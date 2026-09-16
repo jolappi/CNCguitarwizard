@@ -241,6 +241,47 @@ def test_body_solid_rejects_a_shallow_through_route() -> None:
         )
 
 
+def test_body_solid_accepts_a_through_route_that_opens_into_a_rear_cavity() -> None:
+    block = RectangularCavity("Sustain-block route", 660.0, 0.0, 24.0, 40.0, 30.0)
+    spring = make_rear_cavity("Tremolo spring cavity", 660.0, 0.0, 20.0)
+    body = make_body(
+        bridge_mounting=BridgeMounting(609.6, has_sustain_block=False),
+        through_cavities=(block,),
+        extra_rear_cavities=(spring,),
+    )
+
+    assert block in body.top_cavities
+    # 30 + 15 < 44: the same route over a shallower cavity is rejected.
+    with pytest.raises(BodyGeometryError, match="through route"):
+        make_body(
+            bridge_mounting=BridgeMounting(609.6, has_sustain_block=False),
+            through_cavities=(block,),
+            extra_rear_cavities=(make_rear_cavity("Shallow", 660.0, 0.0, 12.0),),
+        )
+
+
+def test_body_solid_accepts_a_deeper_step_inside_a_top_cavity() -> None:
+    recess = RectangularCavity("Recess", 660.0, 0.0, 80.0, 90.0, 7.0)
+    step = RectangularCavity("Step", 670.0, 0.0, 60.0, 90.0, 11.0)
+    body = make_body(
+        bridge_mounting=BridgeMounting(609.6, has_sustain_block=False),
+        extra_cavities=(recess, step),
+    )
+
+    assert body.step_start_depth(step) == 7.0
+    assert body.step_start_depth(recess) == 0.0
+
+
+def test_body_solid_rejects_a_nested_cavity_that_is_not_deeper() -> None:
+    recess = RectangularCavity("Recess", 660.0, 0.0, 80.0, 90.0, 11.0)
+    inner = RectangularCavity("Inner", 670.0, 0.0, 60.0, 90.0, 7.0)
+    with pytest.raises(BodyGeometryError, match="not a step"):
+        make_body(
+            bridge_mounting=BridgeMounting(609.6, has_sustain_block=False),
+            extra_cavities=(recess, inner),
+        )
+
+
 def test_body_solid_rejects_overlapping_top_cavities() -> None:
     # Right on top of the default sustain-block cavity behind the bridge.
     extra = TracedCavity(

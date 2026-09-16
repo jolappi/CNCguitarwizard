@@ -60,7 +60,7 @@ Three programs are written, in running order:
 | `Body_index_pins.nc` | Top up | The two dowel holes, through the blank |
 | `Body_top.nc` | Top up, on the dowels | Neck pocket, pickup routes, baseplate cutout, screw recesses, pot and switch shaft holes, outline to half depth + overlap |
 | `Body_top_small_holes.nc` | Top up, on the dowels (only when needed) | Holes narrower than the main tool — a hardtail's string-through and pilot holes — with the `small_hole_tool_diameter` drill |
-| `Body_back.nc` | Flipped, on the dowels | Cover recesses, control and switch cavities, any tremolo spring cavity, outline to half depth + overlap with tabs |
+| `Body_back.nc` | Flipped, on the dowels | Cover recesses, control and switch cavities, any tremolo spring cavity and its deeper block clearance pocket, outline to half depth + overlap with tabs |
 
 Every program first rapids to `X0 Y0` at the safe height — parked over
 index pin 1 — then over dowel 2 and back, all before the spindle starts,

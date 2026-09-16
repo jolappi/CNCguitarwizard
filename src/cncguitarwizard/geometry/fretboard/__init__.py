@@ -2,7 +2,7 @@
 
 from .fret_layout import FretLayout
 from .fretboard import Fretboard
-from .inlay_layout import InlayLayout, InlayMarker
+from .inlay_layout import InlayLayout, InlayMarker, InlayStyle
 from .profiles import FretboardCrossSection, FretboardSideProfile
 from .surface import FretboardSurface
 
@@ -14,4 +14,5 @@ __all__ = [
     "FretLayout",
     "InlayLayout",
     "InlayMarker",
+    "InlayStyle",
 ]

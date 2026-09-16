@@ -17,6 +17,27 @@ from cncguitarwizard.geometry.exceptions import BodyGeometryError
 from cncguitarwizard.geometry.primitives import Point2D
 
 
+def test_rear_cavity_steps_deepen_part_of_its_floor() -> None:
+    cavity = RectangularCavity("Spring cavity", 100.0, 0.0, 120.0, 56.0, 16.0)
+    cover = RectangularCavity("Cover", 100.0, 0.0, 130.0, 66.0, 2.0)
+    pocket = RectangularCavity("Block pocket", 154.0, 0.0, 12.0, 56.0, 28.0)
+    rear = RearCavity(cavity, cover, steps=(pocket,))
+
+    assert rear.depth == 28.0
+    assert rear.pockets == (cavity, pocket)
+    assert rear.depth_at(Point2D(100.0, 0.0)) == 16.0
+    assert rear.depth_at(Point2D(155.0, 0.0)) == 28.0
+    assert rear.depth_at(Point2D(0.0, 0.0)) is None
+    with pytest.raises(BodyGeometryError, match="deeper than"):
+        RearCavity(cavity, cover, steps=(pocket.__class__(
+            "Shallow", 154.0, 0.0, 12.0, 56.0, 10.0
+        ),))
+    with pytest.raises(BodyGeometryError, match="inside"):
+        RearCavity(cavity, cover, steps=(pocket.__class__(
+            "Outside", 170.0, 0.0, 12.0, 56.0, 28.0
+        ),))
+
+
 def test_rectangular_cavity_bounds_match_its_center_and_size() -> None:
     cavity = RectangularCavity("Test cavity", 100.0, -20.0, 40.0, 60.0, 10.0)
 

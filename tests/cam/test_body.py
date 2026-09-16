@@ -232,21 +232,37 @@ def test_floyd_rose_plan_drills_the_pivot_studs_and_routes_through() -> None:
 
     from cncguitarwizard.geometry.body import FloydRoseSpec
 
-    geometry = replace(
-        Prototype001Parameters(),
-        body_bridge=FloydRoseSpec(),
-        body_bridge_pickup_offset=35.0,
-    ).build()
+    geometry = replace(Prototype001Parameters(), body_bridge=FloydRoseSpec()).build()
     plan = plan_body_machining(geometry.body, MachiningParameters())
     names = [path.name for path in plan.top.toolpaths]
 
     assert "Pivot stud bass" in names and "Pivot stud treble" in names
     block = next(
-        path for path in plan.top.toolpaths if path.name == "Sustain-block route"
+        path for path in plan.top.toolpaths if path.name == "Floyd Rose block route"
     )
-    assert block.deepest_z() == pytest.approx(-(geometry.body.thickness + 0.5))
+    # 29.59 mm deep: it opens into the 16.13 mm spring cavity, not the back.
+    assert block.deepest_z() == pytest.approx(-29.59)
     assert plan.top_small_holes is None
-    assert "Tremolo spring cavity" in [path.name for path in plan.back.toolpaths]
+    back_names = [path.name for path in plan.back.toolpaths]
+    assert back_names.index("Floyd Rose spring cavity") < back_names.index(
+        "Floyd Rose block clearance pocket"
+    )
+    pocket = next(
+        path
+        for path in plan.back.toolpaths
+        if path.name == "Floyd Rose block clearance pocket"
+    )
+    assert pocket.deepest_z() == pytest.approx(-28.19)
+    # The deeper floor is a step inside the recess: it starts at the
+    # recess floor instead of cutting air from the top face, and so does
+    # the block slot inside it.
+    for name, floor in (
+        ("Floyd Rose fine-tuner recess", 6.73),
+        ("Floyd Rose block route", 11.18),
+    ):
+        step = next(path for path in plan.top.toolpaths if path.name == name)
+        cut_z = [move.z for move in step.moves if not move.rapid]
+        assert max(cut_z) <= -floor + 1e-9
 
 
 def test_hardtail_plan_puts_narrow_holes_in_a_small_drill_program() -> None:

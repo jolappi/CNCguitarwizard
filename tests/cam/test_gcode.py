@@ -99,3 +99,24 @@ def test_empty_toolpath_lengths_are_zero() -> None:
     assert path.cutting_length() == 0.0
     assert path.rapid_length() == 0.0
     assert path.deepest_z() == 0.0
+
+
+def test_preview_draws_each_cut_as_a_tool_wide_band() -> None:
+    from cncguitarwizard.cam import MachiningParameters, render_setup_svg
+    from cncguitarwizard.cam.operations import pocket
+    from cncguitarwizard.geometry.primitives import Point2D
+
+    parameters = MachiningParameters()
+    square = [
+        Point2D(0.0, 0.0),
+        Point2D(40.0, 0.0),
+        Point2D(40.0, 40.0),
+        Point2D(0.0, 40.0),
+    ]
+    setup = Setup("Test", "test", (pocket("Pocket", square, 5.0, parameters),))
+
+    svg = render_setup_svg(setup, square, parameters.tool_diameter)
+
+    assert 'stroke-width="6.00" stroke-opacity="0.25"' in svg
+    assert "Shaded bands show the 6 mm tool width" in svg
+    assert 'stroke-width="6.00"' not in render_setup_svg(setup, square)

@@ -44,7 +44,8 @@ def parameter_schema() -> dict[str, Any]:
         ``{"prototype": [...groups...], "machining": [...groups...]}``
         where every group is ``{"title", "fields"}`` and every field is
         ``{"name", "type", "default"}`` with ``type`` one of ``float``,
-        ``int``, ``bool``, ``optional_float``, ``json`` (tuples) or
+        ``int``, ``bool``, ``optional_float``, ``json`` (tuples),
+        ``choice`` (a ``Literal`` of strings, listed in ``options``) or
         ``variant`` — a choice between dataclasses that each carry a
         ``kind`` field (the bridge), described by ``variants``:
         ``{kind: {"label", "fields"}}``.
@@ -202,6 +203,10 @@ def _describe_fields(cls: type) -> list[dict[str, Any]]:
             "type": _form_type(hints[field.name]),
             "default": _jsonable(default),
         }
+        if entry["type"] == "choice":
+            entry["options"] = [
+                str(option) for option in typing.get_args(hints[field.name])
+            ]
         variants = _variant_classes(hints[field.name])
         if variants:
             entry["type"] = "variant"
@@ -245,6 +250,8 @@ def _variant_classes(annotation: Any) -> dict[str, type[Any]]:
 def _form_type(annotation: Any) -> str:
     """Map a field annotation to the form control it needs."""
     origin = typing.get_origin(annotation)
+    if origin is typing.Literal:
+        return "choice"
     if origin in (types.UnionType, typing.Union):
         members = [arg for arg in typing.get_args(annotation) if arg is not type(None)]
         if len(members) == 1 and members[0] is float:

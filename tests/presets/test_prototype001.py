@@ -6,7 +6,6 @@ import pytest
 
 from cncguitarwizard.geometry.body import FloydRoseSpec, HardtailSpec, TuneOMaticSpec
 from cncguitarwizard.geometry.exceptions import (
-    BodyGeometryError,
     HeadstockGeometryError,
     NeckGeometryError,
 )
@@ -301,7 +300,7 @@ def test_preset_parameters_are_immutable() -> None:
 @pytest.mark.parametrize(
     ("spec", "overrides"),
     [
-        (FloydRoseSpec(), {"body_bridge_pickup_offset": 35.0}),
+        (FloydRoseSpec(), {}),
         (TuneOMaticSpec(), {}),
         (HardtailSpec(), {}),
     ],
@@ -310,20 +309,52 @@ def test_every_bridge_kind_fits_the_prototype_body(spec, overrides) -> None:  # 
     geometry = replace(Prototype001Parameters(), body_bridge=spec, **overrides).build()
     body = geometry.body
 
-    assert body.bridge_mounting.reference_x >= 609.6
+    if isinstance(spec, FloydRoseSpec):
+        # Floyd Rose studs sit 11.9 mm ahead of the scale line.
+        assert body.bridge_mounting.reference_x == pytest.approx(609.6 - 11.9)
+    else:
+        assert body.bridge_mounting.reference_x >= 609.6
     for hole in body.holes:
         assert point_in_polygon(hole.center, body.outline.points)
     if isinstance(spec, FloydRoseSpec):
-        assert [c.name for c in body.through_cavities] == ["Sustain-block route"]
-        assert "Tremolo spring cavity" in [r.name for r in body.rear_cavities]
+        assert [c.name for c in body.through_cavities] == ["Floyd Rose block route"]
+        assert "Floyd Rose spring cavity" in [r.name for r in body.rear_cavities]
         assert len(body.bridge_mounting.pivot_holes) == 2
     else:
         assert body.through_cavities == ()
 
 
-def test_the_bridge_pickup_must_make_room_for_a_floyd_rose() -> None:
-    with pytest.raises(BodyGeometryError, match="overlaps"):
-        replace(Prototype001Parameters(), body_bridge=FloydRoseSpec()).build()
+def test_the_bridge_pickup_moves_forward_to_make_room_for_a_floyd_rose() -> None:
+    parameters = replace(Prototype001Parameters(), body_bridge=FloydRoseSpec())
+    body = parameters.build().body
+    recess = body.extra_cavities[0]
+
+    assert recess.name == "Floyd Rose recess"
+    assert body.bridge_pickup.max_x == pytest.approx(
+        recess.min_x - parameters.body_bridge_pickup_clearance
+    )
+    # The Kahler default keeps the DXF's own placement.
+    assert Prototype001Parameters().build().body.bridge_pickup.max_x == (
+        pytest.approx(609.6 - 21.73 + 20.5)
+    )
+
+
+def test_the_bridge_pickup_can_still_be_moved_further_by_hand() -> None:
+    body = replace(
+        Prototype001Parameters(),
+        body_bridge=FloydRoseSpec(),
+        body_bridge_pickup_offset=50.0,
+    ).build().body
+
+    assert body.bridge_pickup.max_x == pytest.approx(609.6 - 50.0 + 20.5)
+
+
+@pytest.mark.parametrize("style", ["barbed_wire", "dot", "block"])
+def test_inlay_styles_build(style: str) -> None:
+    geometry = replace(Prototype001Parameters(), inlay_style=style).build()  # type: ignore[arg-type]
+
+    assert geometry.inlay_layout.style == style
+    assert len(geometry.inlay_layout.markers) == (10 if style == "block" else 12)
 
 
 def test_body_follows_the_neck_and_bridge_follows_the_scale() -> None:

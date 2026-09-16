@@ -189,11 +189,12 @@ class Prototype001Build:
                 )
                 self._gcode_paths.append(gcode_path)
                 preview_path = self.destination / f"{setup.name}.svg"
+                tool = setup.tool or self.machining
                 preview_path.write_text(
-                    render_setup_svg(setup, outline), encoding="utf-8"
+                    render_setup_svg(setup, outline, tool.tool_diameter),
+                    encoding="utf-8",
                 )
                 self._preview_paths.append(preview_path)
-                tool = setup.tool or self.machining
                 self._gcode_report[setup.name] = {
                     "part": part,
                     "file": gcode_path.name,

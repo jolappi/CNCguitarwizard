@@ -1,6 +1,7 @@
 """Immutable two-dimensional geometry primitives."""
 
 from .line2d import Line2D
+from .nudge_inward import nudge_inward
 from .point2d import Point2D
 from .point3d import Point3D
 from .point_in_polygon import point_in_polygon
@@ -15,6 +16,7 @@ __all__ = [
     "QuadFace",
     "SurfaceMesh",
     "Vector2D",
+    "nudge_inward",
     "point_in_polygon",
     "rounded_polygon_points",
 ]

@@ -6,8 +6,9 @@ body thickness yields every body feature that bridge requires — pivot or
 post holes, top routes, routes that pass clean through into a rear cavity,
 rear cavities with their cover recesses — ready for ``BodySolid``.
 
-Every dimension here is a labelled, adjustable starting value, not a
-verified manufacturer template: measure the real hardware before cutting.
+The Floyd Rose routing follows the manufacturer's own routing diagrams;
+the other bridges' dimensions are labelled, adjustable starting values
+rather than verified templates — measure the real hardware before cutting.
 All longitudinal offsets are measured from the scale-length line (the
 nominal saddle/intonation line) toward the tail, so a bridge stays on the
 scale whatever the neck does.
@@ -21,12 +22,14 @@ from dataclasses import dataclass, fields
 from typing import Any, Literal
 
 from ..exceptions import BodyGeometryError
+from ..primitives import Point2D, rounded_polygon_points
 from .hardware import (
     BridgeMounting,
     Cavity,
     DrilledHole,
     RearCavity,
     RectangularCavity,
+    TracedCavity,
 )
 
 
@@ -97,51 +100,94 @@ class KahlerBridgeSpec:
 
 @dataclass(frozen=True, slots=True)
 class FloydRoseSpec:
-    """Recessed Floyd Rose-style double-locking tremolo.
+    """Recessed Floyd Rose Original double-locking tremolo.
 
-    Two pivot studs on the scale line, a recess so the baseplate sits
-    flush with the top, a sustain-block route through the body, and a
-    rear spring cavity with a cover recess. The trem-claw screws go into
-    the spring cavity's nut-ward wall by hand.
+    The routing follows the manufacturer's *Original Series Routing
+    Diagrams* (floydrose.com, metric sheet): from the top a 95.25 mm wide
+    recess, full width for 42.44 mm from the front wall and then
+    71.12 mm wide, 79.38 mm long, cut 6.73 mm deep over its whole
+    footprint; its front 15.88 mm stays at that depth as the shelf
+    carrying the two Ø 10 pivot-stud holes, while everything behind is
+    deepened to 11.18 mm for the baseplate's underside and the fine
+    tuners, with a 20.96 × 82.85 mm slot 29.59 mm deep for the sustain
+    block through that floor; from the back a 123.19 × 56.64 × 16.13 mm spring cavity
+    with a 28.19 mm deep block clearance pocket at its tail end. The
+    slot and the spring cavity meet only where they overlap, so the slot
+    opens into the back solely inside the narrower spring cavity. The
+    recess is not symmetric: the tremolo-arm side (treble) is 3.56 mm
+    wider and the block slot sits 5.44 mm toward it. Floyd Rose puts the
+    stud centre line 25.03 in from the nut on a 25.5 in scale, i.e.
+    11.9 mm ahead of the scale line (StewMac's rule of thumb is 0.415 in
+    / 10.5 mm) — ``pivot_offset``.
 
     Args:
+        treble_side: Which side of the centreline carries the treble
+            strings and the tremolo arm: ``"+y"`` for the left-handed
+            Prototype001 body (controls at +Y), ``"-y"`` otherwise.
+        pivot_offset: Stud centres relative to the scale line (negative =
+            ahead of it, toward the nut).
         pivot_stud_spacing: Centre distance between the two stud inserts.
         pivot_hole_diameter: Insert hole diameter.
-        pivot_hole_depth: Insert hole depth.
-        pivot_offset: Stud centres behind the scale line.
-        recess_length: Baseplate/fine-tuner recess length along the neck.
-        recess_width: Recess width across the body.
-        recess_front_offset: Recess front edge behind the scale line
-            (negative = ahead of it).
-        recess_depth: Recess depth from the top.
-        block_route_length: Sustain-block route length along the neck.
-        block_route_width: Sustain-block route width across the body.
-        block_route_offset: Route centre behind the scale line.
+        pivot_hole_depth: Insert hole depth from the top face (the
+            6.73 mm shelf plus a 20.3 mm insert).
+        stud_to_front_wall: Stud centres behind the recess front wall.
+        stud_shelf_depth: Depth of the shelf the baseplate rests over.
+        stud_shelf_length: Front wall to the block slot's front edge.
+        recess_bass_half_width: Centreline to the bass-side wall.
+        recess_treble_half_width: Centreline to the treble-side wall.
+        recess_full_width_length: Length of the full-width part, from
+            the front wall.
+        recess_length: Total recess length from the front wall.
+        fine_tuner_width: Width of the narrower rear part.
+        fine_tuner_depth: Depth of the clearance behind the stud shelf,
+            around and behind the block slot.
+        recess_corner_radius: Radius of the convex recess corners.
+        recess_step_radius: Radius where the full width steps in.
+        block_route_length: Block slot length along the neck.
+        block_route_width: Block slot width across the body.
+        block_route_depth: Block slot depth from the top face; together
+            with the spring cavity it must exceed the body thickness so
+            the slot opens into the cavity.
+        block_route_treble_shift: Slot centre toward the treble side.
         spring_cavity_length: Rear spring cavity length along the neck.
         spring_cavity_width: Rear spring cavity width across the body.
-        spring_cavity_offset: Cavity centre behind the scale line.
-        spring_cavity_floor_wall: Wood left between the recess floor and
-            the spring cavity.
+        spring_cavity_depth: Spring cavity depth from the back face.
+        spring_cavity_tail_offset: Spring cavity tail end behind the
+            recess front wall.
+        block_pocket_length: Length of the deeper block clearance pocket
+            at the spring cavity's tail end.
+        block_pocket_depth: Its depth from the back face.
         cover_margin: Cover recess overhang around the spring cavity.
         cover_depth: Cover recess depth.
     """
 
     kind: Literal["floyd_rose"] = "floyd_rose"
-    pivot_stud_spacing: float = 74.0
+    treble_side: Literal["+y", "-y"] = "+y"
+    pivot_offset: float = -11.9
+    pivot_stud_spacing: float = 73.91
     pivot_hole_diameter: float = 10.0
-    pivot_hole_depth: float = 22.0
-    pivot_offset: float = 0.0
-    recess_length: float = 60.0
-    recess_width: float = 84.0
-    recess_front_offset: float = -6.0
-    recess_depth: float = 16.0
-    block_route_length: float = 24.0
-    block_route_width: float = 40.0
-    block_route_offset: float = 12.0
-    spring_cavity_length: float = 45.0
-    spring_cavity_width: float = 95.0
-    spring_cavity_offset: float = 32.0
-    spring_cavity_floor_wall: float = 6.0
+    pivot_hole_depth: float = 27.0
+    stud_to_front_wall: float = 7.62
+    stud_shelf_depth: float = 6.73
+    stud_shelf_length: float = 15.88
+    recess_bass_half_width: float = 45.85
+    recess_treble_half_width: float = 49.4
+    recess_full_width_length: float = 42.44
+    recess_length: float = 79.38
+    fine_tuner_width: float = 71.12
+    fine_tuner_depth: float = 11.18
+    recess_corner_radius: float = 3.18
+    recess_step_radius: float = 4.76
+    block_route_length: float = 20.96
+    block_route_width: float = 82.85
+    block_route_depth: float = 29.59
+    block_route_treble_shift: float = 5.44
+    spring_cavity_length: float = 123.19
+    spring_cavity_width: float = 56.64
+    spring_cavity_depth: float = 16.13
+    spring_cavity_tail_offset: float = 48.27
+    block_pocket_length: float = 11.43
+    block_pocket_depth: float = 28.19
     cover_margin: float = 5.0
     cover_depth: float = 2.0
 
@@ -151,26 +197,39 @@ class FloydRoseSpec:
             "pivot_stud_spacing",
             "pivot_hole_diameter",
             "pivot_hole_depth",
+            "stud_shelf_depth",
+            "stud_shelf_length",
+            "recess_bass_half_width",
+            "recess_treble_half_width",
+            "recess_full_width_length",
             "recess_length",
-            "recess_width",
-            "recess_depth",
+            "fine_tuner_width",
+            "fine_tuner_depth",
             "block_route_length",
             "block_route_width",
+            "block_route_depth",
             "spring_cavity_length",
             "spring_cavity_width",
-            "spring_cavity_floor_wall",
+            "spring_cavity_depth",
+            "block_pocket_length",
+            "block_pocket_depth",
             "cover_margin",
             "cover_depth",
         )
+        self._check_layout(body_thickness)
+        sign = 1.0 if self.treble_side == "+y" else -1.0
         pivot_x = scale_length + self.pivot_offset
-        spring_depth = (
-            body_thickness - self.recess_depth - self.spring_cavity_floor_wall
-        )
-        if spring_depth <= self.cover_depth:
-            raise BodyGeometryError(
-                "Floyd Rose spring cavity would have no depth: the body is too "
-                "thin for the recess and floor wall."
-            )
+        front = pivot_x - self.stud_to_front_wall
+        slot_front = front + self.stud_shelf_length
+        slot_back = slot_front + self.block_route_length
+        step_x = front + self.recess_full_width_length
+        back = front + self.recess_length
+        bass = -sign * self.recess_bass_half_width
+        treble = sign * self.recess_treble_half_width
+        narrow = self.fine_tuner_width / 2.0
+        corner = self.recess_corner_radius
+        step = self.recess_step_radius
+
         mounting = BridgeMounting(
             pivot_x,
             pivot_stud_spacing=self.pivot_stud_spacing,
@@ -178,56 +237,164 @@ class FloydRoseSpec:
             pivot_hole_depth=self.pivot_hole_depth,
             has_sustain_block=False,
         )
-        recess = RectangularCavity(
-            "Tremolo recess",
-            pivot_x + self.recess_front_offset + self.recess_length / 2.0,
-            0.0,
-            self.recess_length,
-            self.recess_width,
-            self.recess_depth,
-            corner_radius=4.0,
+        # The whole footprint is one shallow pocket, so its walls are
+        # continuous; the deeper floor behind the stud shelf is a step
+        # inside it, starting where the slot starts so every pocket is
+        # wider than a router bit (the drawing's 5.6 mm full-width strip
+        # behind the slot would otherwise be a pocket no tool fits into).
+        recess = TracedCavity(
+            "Floyd Rose recess",
+            rounded_polygon_points(
+                [
+                    Point2D(front, bass),
+                    Point2D(step_x, bass),
+                    Point2D(step_x, -sign * narrow),
+                    Point2D(back, -sign * narrow),
+                    Point2D(back, sign * narrow),
+                    Point2D(step_x, sign * narrow),
+                    Point2D(step_x, treble),
+                    Point2D(front, treble),
+                ],
+                [corner, corner, step, corner, corner, step, corner, corner],
+            ),
+            self.stud_shelf_depth,
+        )
+        fine_tuners = TracedCavity(
+            "Floyd Rose fine-tuner recess",
+            rounded_polygon_points(
+                [
+                    Point2D(slot_front, bass),
+                    Point2D(step_x, bass),
+                    Point2D(step_x, -sign * narrow),
+                    Point2D(back, -sign * narrow),
+                    Point2D(back, sign * narrow),
+                    Point2D(step_x, sign * narrow),
+                    Point2D(step_x, treble),
+                    Point2D(slot_front, treble),
+                ],
+                [0.0, corner, step, corner, corner, step, corner, 0.0],
+            ),
+            self.fine_tuner_depth,
         )
         block_route = RectangularCavity(
-            "Sustain-block route",
-            pivot_x + self.block_route_offset,
-            0.0,
+            "Floyd Rose block route",
+            (slot_front + slot_back) / 2.0,
+            sign * self.block_route_treble_shift,
             self.block_route_length,
             self.block_route_width,
-            body_thickness,
-            corner_radius=3.0,
+            min(self.block_route_depth, body_thickness),
+            corner_radius=self.block_route_length / 2.0,
         )
-        spring_x = pivot_x + self.spring_cavity_offset
+        tail = front + self.spring_cavity_tail_offset
+        rear_radius = min(5.0, self.block_pocket_length / 2.0)
         spring_cavity = RearCavity(
             RectangularCavity(
-                "Tremolo spring cavity",
-                spring_x,
+                "Floyd Rose spring cavity",
+                tail - self.spring_cavity_length / 2.0,
                 0.0,
                 self.spring_cavity_length,
                 self.spring_cavity_width,
-                spring_depth,
-                corner_radius=6.0,
+                self.spring_cavity_depth,
+                corner_radius=rear_radius,
             ),
             RectangularCavity(
-                "Tremolo spring cavity cover recess",
-                spring_x,
+                "Floyd Rose spring cavity cover recess",
+                tail - self.spring_cavity_length / 2.0,
                 0.0,
                 self.spring_cavity_length + 2.0 * self.cover_margin,
                 self.spring_cavity_width + 2.0 * self.cover_margin,
                 self.cover_depth,
-                corner_radius=6.0 + self.cover_margin,
+                corner_radius=rear_radius + self.cover_margin,
+            ),
+            steps=(
+                RectangularCavity(
+                    "Floyd Rose block clearance pocket",
+                    tail - self.block_pocket_length / 2.0,
+                    0.0,
+                    self.block_pocket_length,
+                    self.spring_cavity_width,
+                    self.block_pocket_depth,
+                    corner_radius=rear_radius,
+                ),
             ),
         )
         return BridgeHardware(
             mounting,
-            top_cavities=(recess,),
+            top_cavities=(recess, fine_tuners),
             through_cavities=(block_route,),
             rear_cavities=(spring_cavity,),
             notes=(
-                "Floyd Rose: drill the two trem-claw screw holes into the spring "
-                "cavity's nut-ward wall by hand.",
-                "Dimensions are starting values; check them against the unit.",
+                "Floyd Rose Original: routing per the manufacturer's Original "
+                "Series Routing Diagrams; studs 11.9 mm ahead of the scale line "
+                "(25.03 in on a 25.5 in scale).",
+                "Drill the two trem-claw screw holes into the spring cavity's "
+                "nut-ward wall by hand.",
             ),
         )
+
+    def _check_layout(self, body_thickness: float) -> None:
+        """Reject a recess whose parts cannot be laid out as drawn."""
+        if self.stud_to_front_wall <= 0.0 or self.stud_to_front_wall >= (
+            self.stud_shelf_length
+        ):
+            raise BodyGeometryError(
+                "Floyd Rose studs must sit on the shelf ahead of the block route."
+            )
+        if self.stud_shelf_length + self.block_route_length > (
+            self.recess_full_width_length
+        ):
+            raise BodyGeometryError(
+                "Floyd Rose block route must end inside the full-width part of "
+                "the recess."
+            )
+        if self.recess_full_width_length >= self.recess_length:
+            raise BodyGeometryError(
+                "Floyd Rose recess must be longer than its full-width part."
+            )
+        if self.fine_tuner_width / 2.0 > min(
+            self.recess_bass_half_width, self.recess_treble_half_width
+        ):
+            raise BodyGeometryError(
+                "Floyd Rose fine-tuner recess must be narrower than the full width."
+            )
+        slot_half = self.block_route_width / 2.0
+        if (
+            self.block_route_treble_shift + slot_half > self.recess_treble_half_width
+            or slot_half - self.block_route_treble_shift > self.recess_bass_half_width
+        ):
+            raise BodyGeometryError(
+                "Floyd Rose block route must lie inside the recess width."
+            )
+        if self.block_pocket_length > self.spring_cavity_length:
+            raise BodyGeometryError(
+                "Floyd Rose block clearance pocket must fit in the spring cavity."
+            )
+        if self.block_pocket_depth <= self.spring_cavity_depth:
+            raise BodyGeometryError(
+                "Floyd Rose block clearance pocket must be deeper than the "
+                "spring cavity."
+            )
+        if self.spring_cavity_depth <= self.cover_depth:
+            raise BodyGeometryError(
+                "Floyd Rose spring cavity must be deeper than its cover recess."
+            )
+        if (
+            self.block_pocket_depth + self.fine_tuner_depth >= body_thickness
+            or self.spring_cavity_depth + self.fine_tuner_depth >= body_thickness
+        ):
+            raise BodyGeometryError(
+                "Floyd Rose routes would meet: the body is too thin for the "
+                "fine-tuner recess over the spring cavity."
+            )
+        if self.pivot_hole_depth >= body_thickness:
+            raise BodyGeometryError(
+                "Floyd Rose stud holes would pass through the body: too thin."
+            )
+        if self.block_route_depth + self.spring_cavity_depth <= body_thickness:
+            raise BodyGeometryError(
+                "Floyd Rose block route would not open into the spring cavity: "
+                "the body is too thick for the routed depths."
+            )
 
 
 @dataclass(frozen=True, slots=True)

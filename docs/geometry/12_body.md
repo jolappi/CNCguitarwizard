@@ -21,7 +21,7 @@ right-handed twin.
 | `RectangularCavity` | Rounded-corner rectangular pocket centred at a point. |
 | `CircularCavity` | Round pocket sampled as a polygon. |
 | `TracedCavity` | Pocket whose outline is supplied point by point. |
-| `RearCavity` | A deep cavity plus a shallow cover-plate recess, both cut from the back face. |
+| `RearCavity` | A deep cavity plus a shallow cover-plate recess, both cut from the back face; optional deeper `steps` inside the cavity floor. |
 | `DrilledHole` | Vertical round hole from the top face (pot/switch shafts, screw recesses). |
 | `BridgeMounting` | Bridge reference line with optional pivot-stud holes and optional sustain-block cavity. |
 | `JackHole` | Sideways cylindrical bore in from the edge. |
@@ -61,6 +61,11 @@ body = BodySolid(
   outline — except the **neck pocket**, whose nut-ward end may open onto
   the horn gap as long as its tail-ward wall is in wood;
 - a pivot hole or drilled hole is centred outside the outline;
+- two top cavities overlap in plan, unless one is a *step* — a deeper
+  cavity whose outline lies entirely inside a shallower one (a tremolo
+  recess cut over its whole footprint, then deepened behind the studs) —
+  or a through route inside its recess; a nested cavity that is not
+  deeper is rejected;
 - a rear cavity overlaps a top cavity in plan and their depths together
   reach the slab thickness (they would rout into each other);
 - the jack bore would reach clean through the body.
@@ -103,7 +108,7 @@ all placed relative to the scale line:
 | Spec | `kind` | Adds |
 | --- | --- | --- |
 | `KahlerBridgeSpec` (default) | `kahler_7300` | Rectangular baseplate cutout (the DXF's 55.45 × 65.04 × 25 mm); no studs, no rear cavity |
-| `FloydRoseSpec` | `floyd_rose` | Two Ø 10 stud holes on the scale line, a 60 × 84 × 16 mm recess, a sustain-block route clean through the body, and a rear spring cavity (45 × 95 mm) with a 2 mm cover recess |
+| `FloydRoseSpec` | `floyd_rose` | Floyd Rose Original recessed routing per the manufacturer's *Original Series Routing Diagrams*: two Ø 10 stud holes 73.91 mm apart, 11.9 mm ahead of the scale line (25.03 in on a 25.5 in scale); a 95.25 mm wide recess, 79.38 mm long, narrowing to 71.12 mm after 42.44 mm, cut 6.73 mm deep over its whole footprint (continuous walls) and deepened to 11.18 mm behind the front 15.88 mm stud shelf as a step inside it, with a 20.96 × 82.85 mm block route 29.59 mm deep through that floor that opens into the spring cavity only where the two overlap; a rear 123.19 × 56.64 × 16.13 mm spring cavity with a 28.19 mm deep block clearance pocket at its tail end and a 2 mm cover recess. The recess is 3.56 mm wider on the tremolo-arm (treble) side; `treble_side` picks that side (`"+y"` on the left-handed Prototype001 body) |
 | `TuneOMaticSpec` | `tune_o_matic` | Two Ø 11.2 post holes 3 mm behind the scale line and two Ø 11.2 stop-bar stud holes 45 mm behind it |
 | `HardtailSpec` | `hardtail` | Six Ø 3 string-through holes 14 mm behind the scale line and five pilot holes for the baseplate screws |
 
@@ -111,15 +116,17 @@ all placed relative to the scale line:
 dropdown of bridge kinds with that kind's dimensions beneath it, sent back as
 a JSON object with a `kind` entry (`bridge_spec_from_dict` rebuilds it).
 Every dimension is a labelled starting value to be checked against the real
-hardware. Switching bridges may need the bridge pickup moved — a Floyd Rose
-recess reaches 6 mm ahead of the scale line, so `body_bridge_pickup_offset`
-must grow to about 35 mm — and `BodySolid` says so rather than merging the
-two routes. A Tune-o-matic on this flat body also wants a neck angle or a
-recessed bridge, which the model does not provide.
+hardware. The bridge pickup keeps `body_bridge_pickup_offset` unless the
+chosen bridge's routes reach further forward — a Floyd Rose recess starts
+19.5 mm ahead of the scale line — in which case the route moves forward on
+its own to leave `body_bridge_pickup_clearance` (3 mm) of wood; a larger
+offset set by hand still wins. A Tune-o-matic on this flat body also wants a neck
+angle or a recessed bridge, which the model does not provide.
 
 Two new `BodySolid` fields carry bridge features: `through_cavities` (top
-routes that may reach clean through into a rear cavity, exempt from the
-floor and break-through checks) and `extra_rear_cavities`.
+routes that open into a rear cavity or clean through the body, exempt from
+the floor and break-through checks but required to reach the back face or a
+rear cavity they overlap) and `extra_rear_cavities`.
 
 ## Two anchors
 

@@ -22,6 +22,7 @@ from ..geometry.fretboard import (
     FretboardSurface,
     FretLayout,
     InlayLayout,
+    InlayStyle,
 )
 from ..geometry.neck import (
     Centerline,
@@ -94,12 +95,17 @@ class Prototype001Parameters:
     fretboard_thickness: float = 6.0
     fret_slot_width: float = 0.6
     fret_slot_depth: float = 2.7
-    # Barbed-wire position markers, cut as flat-bottomed pockets into the
-    # playing surface. 12 and 24 get the traditional double-dot layout;
-    # every other listed fret gets one marker centred on the fretboard.
+    # Position markers, cut as flat-bottomed pockets into the playing
+    # surface: barbed wire (default), round dots, or Gibson-style blocks
+    # that follow the taper. 12 and 24 get the traditional double layout
+    # (blocks stay single); every other listed fret gets one marker.
     inlay_depth: float = 2.0
     inlay_single_marker_frets: tuple[int, ...] = (3, 5, 7, 9, 15, 17, 19, 21)
     inlay_double_marker_frets: tuple[int, ...] = (12, 24)
+    inlay_style: InlayStyle = "barbed_wire"
+    inlay_dot_diameter: float = 6.0
+    inlay_block_length_fraction: float = 0.6
+    inlay_block_edge_margin: float = 5.0
     # Solid body (left-handed): outline, pickup routes, bridge baseplate
     # cutout, and the rear control and switch cavities (each with its
     # cover recess) are all digitised directly from the user's own
@@ -126,7 +132,12 @@ class Prototype001Parameters:
     # (OMARUNKO_PICKUP_ROUTE_LOCAL_POINTS, a humbucker with mounting-ear
     # tabs).
     body_neck_pickup_offset: float = 30.5  # route centre past the heel end
+    # The bridge pickup sits body_bridge_pickup_offset ahead of the scale
+    # line, but moves further forward on its own when the chosen bridge's
+    # routes reach ahead of the scale line (a recessed Floyd Rose), keeping
+    # body_bridge_pickup_clearance of wood between route and recess.
     body_bridge_pickup_offset: float = 21.73  # route centre before the bridge
+    body_bridge_pickup_clearance: float = 3.0
     body_pickup_route_depth: float = 22.0
     # Clearance recesses for the pickup height-adjustment screw tips,
     # drilled on down from the route floor at the centre of each of the
@@ -452,6 +463,10 @@ class Prototype001Parameters:
                 fret for fret in self.inlay_double_marker_frets
                 if fret <= self.fret_count
             ),
+            style=self.inlay_style,
+            dot_diameter=self.inlay_dot_diameter,
+            block_length_fraction=self.inlay_block_length_fraction,
+            block_edge_margin=self.inlay_block_edge_margin,
         )
         truss_rod_channel = TrussRodChannel(
             outline,
@@ -503,14 +518,28 @@ class Prototype001Parameters:
                 self.body_pickup_route_depth,
             )
 
+        bridge = self.body_bridge.hardware(self.scale_length, self.body_thickness)
+        bridge_mounting = bridge.mounting
         neck_pickup_x = heel_end + self.body_neck_pickup_offset
-        bridge_pickup_x = self.scale_length - self.body_bridge_pickup_offset
+        route_half_length = max(x for x, _ in OMARUNKO_PICKUP_ROUTE_LOCAL_POINTS)
+        bridge_fronts = [
+            cavity.min_x for cavity in (*bridge.top_cavities, *bridge.through_cavities)
+        ]
+        needed_offset = (
+            self.scale_length
+            - min(bridge_fronts)
+            + route_half_length
+            + self.body_bridge_pickup_clearance
+            if bridge_fronts
+            else -math.inf
+        )
+        bridge_pickup_x = self.scale_length - max(
+            self.body_bridge_pickup_offset, needed_offset
+        )
         neck_pickup = pickup_route("Neck pickup route", neck_pickup_x)
         bridge_pickup = pickup_route("Bridge pickup route", bridge_pickup_x)
         switch_x = heel_end + self.body_switch_cavity_offset
         switch_cover_x = heel_end + self.body_switch_cover_offset
-        bridge = self.body_bridge.hardware(self.scale_length, self.body_thickness)
-        bridge_mounting = bridge.mounting
         rear_cavity_depth = self.body_thickness - self.body_rear_cavity_top_wall
         control_cavity = RearCavity(
             TracedCavity(

@@ -13,6 +13,24 @@
   The body CAM drills pivot studs, cuts through routes and puts holes
   narrower than the main tool in a separate `Body_top_small_holes.nc`.
 
+- `FloydRoseSpec` now follows Floyd Rose's own *Original Series Routing
+  Diagrams*: stud shelf, 29.59 mm block route opening into the spring
+  cavity, and fine-tuner clearance at their drawn sizes and depths, the asymmetric 95.25 mm recess with a
+  `treble_side` switch, studs 11.9 mm ahead of the scale line, and a rear
+  spring cavity with a deeper block clearance pocket (`RearCavity.steps`).
+- Inlay styles: `inlay_style` chooses barbed wire, round dots
+  (`inlay_dot_diameter`) or Gibson-style tapered blocks
+  (`inlay_block_length_fraction`, `inlay_block_edge_margin`); `Literal`
+  parameters appear as dropdowns in the web form.
+- `BodySolid` accepts stepped top cavities: a deeper cavity nested inside
+  a shallower one is cut from that floor down (the body CAM starts it at
+  the enclosing floor), so a two-level recess keeps continuous walls.
+- Toolpath previews shade every cut with the tool's full width, so pockets
+  that share a wall are seen to meet instead of showing a tool-centre gap.
+- The bridge pickup moves forward automatically when the chosen bridge's
+  routes reach ahead of the scale line (a recessed Floyd Rose), keeping
+  `body_bridge_pickup_clearance` of wood.
+
 ### Changed
 
 - Prototype001's fretboard meets the nut with square corners

@@ -120,14 +120,17 @@ def plan_body_machining(
     top_paths: list[Toolpath] = []
     for cavity in _top_cavities(body):
         depth = cavity.depth
-        if cavity in body.through_cavities:
+        if cavity in body.through_cavities and depth >= body.thickness:
             depth = body.thickness + parameters.through_overshoot
+        # A stepped floor (or a through route inside a recess) starts
+        # where the enclosing pocket, cut earlier, already ended.
         top_paths.append(
             pocket(
                 cavity.name,
                 top_frame.polygon(cavity.outline),
                 depth,
                 parameters,
+                start_depth=body.step_start_depth(cavity),
             )
         )
     small_holes = [
@@ -210,6 +213,16 @@ def plan_body_machining(
                 start_depth=rear.cover_recess.depth,
             )
         )
+        for step in rear.steps:
+            back_paths.append(
+                pocket(
+                    step.name,
+                    back_frame.polygon(step.outline),
+                    step.depth,
+                    parameters,
+                    start_depth=rear.cavity.depth,
+                )
+            )
     back_paths.append(
         profile(
             "Outline, lower half with tabs",
@@ -300,9 +313,10 @@ def _drill_hole(
             start_depth = max(start_depth, cavity.depth)
     depth = hole.depth
     for rear in body.rear_cavities:
-        if point_in_polygon(hole.center, rear.cavity.outline):
+        rear_depth = rear.depth_at(hole.center)
+        if rear_depth is not None:
             depth = min(
-                depth, body.thickness - rear.depth + parameters.through_overshoot
+                depth, body.thickness - rear_depth + parameters.through_overshoot
             )
     if depth >= body.thickness:
         depth = body.thickness + parameters.through_overshoot

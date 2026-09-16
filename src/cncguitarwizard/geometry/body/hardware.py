@@ -6,7 +6,12 @@ import math
 from dataclasses import dataclass, field
 
 from ..exceptions import BodyGeometryError
-from ..primitives import Point2D, point_in_polygon, rounded_polygon_points
+from ..primitives import (
+    Point2D,
+    nudge_inward,
+    point_in_polygon,
+    rounded_polygon_points,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -260,14 +265,20 @@ class RearCavity:
         cover_recess: The shallow ledge the cover plate sits in. Its
             ``depth`` is the cover-plate thickness, also measured from
             the back face. Its outline must enclose the cavity outline.
+        steps: Deeper pockets cut on from the cavity floor — a tremolo
+            spring cavity's block-clearance pocket. Each must lie inside
+            the cavity outline and be deeper than the cavity; its
+            ``depth`` is again measured from the back face.
 
     Raises:
         BodyGeometryError: If the cover recess is at least as deep as
-            the cavity, or does not enclose the cavity outline.
+            the cavity, or does not enclose the cavity outline, or a
+            step is not deeper than the cavity or not inside it.
     """
 
     cavity: Cavity
     cover_recess: Cavity
+    steps: tuple[Cavity, ...] = ()
 
     def __post_init__(self) -> None:
         """Reject a recess that would not actually seat a cover plate."""
@@ -283,6 +294,18 @@ class RearCavity:
             raise BodyGeometryError(
                 f"{self.cavity.name} cover recess must enclose the cavity."
             )
+        for step in self.steps:
+            if step.depth <= self.cavity.depth:
+                raise BodyGeometryError(
+                    f"{step.name} must be deeper than {self.cavity.name}."
+                )
+            if not all(
+                point_in_polygon(point, self.cavity.outline)
+                for point in nudge_inward(step.outline, 0.05)
+            ):
+                raise BodyGeometryError(
+                    f"{step.name} must lie inside {self.cavity.name}."
+                )
 
     @property
     def name(self) -> str:
@@ -291,8 +314,21 @@ class RearCavity:
 
     @property
     def depth(self) -> float:
-        """Return the deep cavity's depth measured from the back face."""
-        return self.cavity.depth
+        """Return the deepest point measured from the back face."""
+        return max((step.depth for step in self.steps), default=self.cavity.depth)
+
+    @property
+    def pockets(self) -> tuple[Cavity, ...]:
+        """Return the cavity and its steps, shallowest first."""
+        return (self.cavity, *self.steps)
+
+    def depth_at(self, point: Point2D) -> float | None:
+        """Return the depth from the back face under ``point``, or ``None``."""
+        depth: float | None = None
+        for pocket in self.pockets:
+            if point_in_polygon(point, pocket.outline):
+                depth = pocket.depth if depth is None else max(depth, pocket.depth)
+        return depth
 
 
 @dataclass(frozen=True, slots=True)

@@ -81,7 +81,8 @@ def render_plan_view_svg(geometry: Prototype001Geometry) -> str:
         parts.append(path(cavity.outline, pocket))
     for rear_cavity in body.rear_cavities:
         parts.append(path(rear_cavity.cover_recess.outline, rear))
-        parts.append(path(rear_cavity.cavity.outline, rear))
+        for rear_pocket in rear_cavity.pockets:
+            parts.append(path(rear_pocket.outline, rear))
     pivot_radius = body.bridge_mounting.pivot_hole_diameter / 2.0
     for pivot in body.bridge_mounting.pivot_holes:
         parts.append(circle(pivot.x, pivot.y, pivot_radius, hole))

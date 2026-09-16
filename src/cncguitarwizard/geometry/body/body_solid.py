@@ -6,7 +6,7 @@ import math
 from dataclasses import dataclass
 
 from ..exceptions import BodyGeometryError
-from ..primitives import Point2D, point_in_polygon
+from ..primitives import Point2D, nudge_inward, point_in_polygon
 from .hardware import BridgeMounting, Cavity, DrilledHole, JackHole, RearCavity
 from .outline import BodyOutline, TracedOutline
 
@@ -44,9 +44,11 @@ class BodySolid:
             mounting.
         holes: Vertical holes drilled from the top face — pot and
             switch shaft holes, pickup-screw clearance recesses.
-        through_cavities: Routes cut from the top clean through the body
-            (a tremolo's sustain-block route into its spring cavity);
-            exempt from the floor and break-through checks by design.
+        through_cavities: Routes cut from the top that open into a rear
+            cavity (a tremolo's sustain-block route into its spring
+            cavity) or clean through the body; exempt from the floor and
+            break-through checks by design, but each must actually reach
+            the back face or a rear cavity it overlaps.
         extra_rear_cavities: Further rear-routed cavities with cover
             recesses beyond the named electronics cavities — a tremolo
             spring cavity, for example.
@@ -98,16 +100,23 @@ class BodySolid:
                     "floor."
                 )
         for cavity in self.through_cavities:
-            if cavity.depth < self.thickness:
+            if cavity.depth < self.thickness and not self._reaches_rear_cavity(
+                cavity
+            ):
                 raise BodyGeometryError(
-                    f"{cavity.name} is a through route and must be at least "
-                    "as deep as the body."
+                    f"{cavity.name} is a through route and must reach the back "
+                    "face or a rear cavity beneath it."
                 )
         # Top cavities are separate features; two that overlap in plan
         # would merge into one unintended pocket (typically a bridge
         # feature that has been moved onto a body feature by a scale
-        # or fret-count change). Through routes are exempt: a tremolo's
-        # block route deliberately sits inside its recess.
+        # or fret-count change). Two exceptions: a through route sits
+        # inside its recess by design, and a *step* — a deeper cavity
+        # whose outline lies entirely inside a shallower one — is how a
+        # recess with two floor levels is described (a tremolo recess
+        # cut over its whole footprint first, then deepened behind the
+        # studs), so its walls stay continuous instead of two pockets
+        # meeting at a wall.
         top_cavities = tuple(
             cavity
             for cavity in self.top_cavities
@@ -115,32 +124,41 @@ class BodySolid:
         )
         for index, first in enumerate(top_cavities):
             for second in top_cavities[index + 1 :]:
-                if (
+                if not (
                     first.min_x < second.max_x
                     and second.min_x < first.max_x
                     and first.min_y < second.max_y
                     and second.min_y < first.max_y
                 ):
+                    continue
+                if self.is_step(second, first) or self.is_step(first, second):
+                    continue
+                if self.encloses(first, second) or self.encloses(second, first):
                     raise BodyGeometryError(
-                        f"{first.name} overlaps {second.name}."
+                        f"{first.name} overlaps {second.name}: nested, but the "
+                        "inner one is not deeper, so not a step."
                     )
+                raise BodyGeometryError(
+                    f"{first.name} overlaps {second.name}."
+                )
         # A rear cavity and a top cavity that overlap in plan must
         # together leave wood between their floors, or the two rout
         # into one another.
         for rear in self.rear_cavities:
-            for top in self.top_cavities:
-                if top in self.through_cavities:
-                    continue
-                overlaps = (
-                    rear.cavity.min_x < top.max_x
-                    and top.min_x < rear.cavity.max_x
-                    and rear.cavity.min_y < top.max_y
-                    and top.min_y < rear.cavity.max_y
-                )
-                if overlaps and rear.depth + top.depth >= self.thickness:
-                    raise BodyGeometryError(
-                        f"{rear.name} would break through into {top.name}."
+            for pocket in rear.pockets:
+                for top in self.top_cavities:
+                    if top in self.through_cavities:
+                        continue
+                    overlaps = (
+                        pocket.min_x < top.max_x
+                        and top.min_x < pocket.max_x
+                        and pocket.min_y < top.max_y
+                        and top.min_y < pocket.max_y
                     )
+                    if overlaps and pocket.depth + top.depth >= self.thickness:
+                        raise BodyGeometryError(
+                            f"{pocket.name} would break through into {top.name}."
+                        )
         if self.bridge_mounting.pivot_hole_depth >= self.thickness:
             raise BodyGeometryError(
                 "Bridge pivot holes must leave material beneath their floor."
@@ -196,6 +214,49 @@ class BodySolid:
                 )
 
     @staticmethod
+    def encloses(outer: Cavity, inner: Cavity) -> bool:
+        """Return whether ``inner``'s outline lies inside ``outer``'s.
+
+        Walls the two share are tolerated: each inner point is nudged
+        very slightly into the inner cavity first.
+        """
+        return all(
+            point_in_polygon(point, outer.outline)
+            for point in nudge_inward(inner.outline, 0.05)
+        )
+
+    @staticmethod
+    def is_step(inner: Cavity, outer: Cavity) -> bool:
+        """Return whether ``inner`` is a deeper floor inside ``outer``."""
+        return inner.depth > outer.depth and BodySolid.encloses(outer, inner)
+
+    def step_start_depth(self, cavity: Cavity) -> float:
+        """Return the depth already cleared above ``cavity`` by the cavities
+        it steps down from, or 0 when it starts at the top face."""
+        return max(
+            (
+                other.depth
+                for other in self.top_cavities
+                if other is not cavity and self.is_step(cavity, other)
+            ),
+            default=0.0,
+        )
+
+    def _reaches_rear_cavity(self, cavity: Cavity) -> bool:
+        """Return whether a top route opens into some rear pocket under it."""
+        for rear in self.rear_cavities:
+            for pocket in rear.pockets:
+                overlaps = (
+                    pocket.min_x < cavity.max_x
+                    and cavity.min_x < pocket.max_x
+                    and pocket.min_y < cavity.max_y
+                    and cavity.min_y < pocket.max_y
+                )
+                if overlaps and pocket.depth + cavity.depth >= self.thickness:
+                    return True
+        return False
+
+    @staticmethod
     def _inset_outline(cavity: Cavity, inset: float) -> list[Point2D]:
         """Return the cavity outline with each point nudged toward its centre."""
         center_x = (cavity.min_x + cavity.max_x) / 2.0
@@ -243,7 +304,7 @@ class BodySolid:
         """Return every plan-view cavity outline to depth- and bounds-check."""
         cavities = list(self.top_cavities)
         for rear in self.rear_cavities:
-            cavities.append(rear.cavity)
+            cavities.extend(rear.pockets)
             cavities.append(rear.cover_recess)
         return tuple(cavities)
 

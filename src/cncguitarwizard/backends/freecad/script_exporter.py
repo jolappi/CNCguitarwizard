@@ -1783,6 +1783,7 @@ class FreeCADScriptExporter:
             for cavity, suffix in (
                 (rear.cavity, "cut"),
                 (rear.cover_recess, "cover recess cut"),
+                *((step, "step cut") for step in rear.steps),
             ):
                 outline = outline_literal(cavity.outline)
                 lines.append(

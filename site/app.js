@@ -83,6 +83,7 @@ function renderForm() {
 
 function renderField(set, field) {
   if (field.type === "variant") return renderVariantField(set, field);
+  if (field.type === "choice") return renderChoiceField(set, field);
   const row = document.createElement("div");
   row.className = "field";
   const label = document.createElement("label");
@@ -111,6 +112,34 @@ function renderField(set, field) {
   input.addEventListener("input", () => markChanged(input));
   row.appendChild(label);
   row.appendChild(input);
+  return row;
+}
+
+function renderChoiceField(set, field) {
+  const row = document.createElement("div");
+  row.className = "field";
+  const label = document.createElement("label");
+  label.textContent = field.name;
+  label.htmlFor = set + "." + field.name;
+  const select = document.createElement("select");
+  select.id = label.htmlFor;
+  select.className = "choice";
+  select.dataset.set = set;
+  select.dataset.name = field.name;
+  select.dataset.default = JSON.stringify(field.default);
+  const initial = "value" in field ? field.value : field.default;
+  for (const option of field.options) {
+    const element = document.createElement("option");
+    element.value = option;
+    element.textContent = option;
+    element.selected = option === initial;
+    select.appendChild(element);
+  }
+  select.addEventListener("change", () => {
+    select.classList.toggle("changed", JSON.stringify(select.value) !== select.dataset.default);
+  });
+  row.appendChild(label);
+  row.appendChild(select);
   return row;
 }
 
@@ -191,6 +220,9 @@ function collectValues() {
     assign(variant.dataset.set, variant.dataset.name, {
       kind: variant.querySelector("select.kind").value,
     });
+  }
+  for (const select of form.querySelectorAll("select.choice")) {
+    assign(select.dataset.set, select.dataset.name, select.value);
   }
   for (const input of form.querySelectorAll("input")) {
     let value;

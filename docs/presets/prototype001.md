@@ -69,8 +69,11 @@ Building the preset creates and cross-validates:
   the heel runout lead smoothly into the neck while the full 54 mm mounting
   block stays planar and intact;
 - the six-hole 3+3 tuner layout with at least about 8 mm of side-edge wood;
-- 2 mm deep barbed-wire position markers (`InlayLayout`) at frets 3, 5, 7, 9,
-  15, 17, 19 and 21, with double markers at 12 and 24;
+- 2 mm deep position markers (`InlayLayout`) at frets 3, 5, 7, 9, 15, 17, 19
+  and 21, doubled at 12 and 24: barbed wire by default, or round dots
+  (`inlay_style="dot"`, `inlay_dot_diameter`) or Gibson-style tapered blocks
+  (`inlay_style="block"`, one per fret, `inlay_block_length_fraction`,
+  `inlay_block_edge_margin`);
 - a 44 mm flat-slab left-handed body (`BodySolid`) digitised from the user's
   `assets/reference/omarunko.dxf`: the drawing's own outline, a neck pocket
   derived from the neck's own taper, humbucker routes with mounting ears, an
