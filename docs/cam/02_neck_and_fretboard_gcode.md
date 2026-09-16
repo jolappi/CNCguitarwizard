@@ -66,7 +66,7 @@ the top in one fixturing.
 | `Fretboard_radius.nc` | ball | 430 mm radius; the crown ends `blank − 6` mm below the blank top, the edges 0.9 mm lower |
 | `Fretboard_inlays.nc` | 1 mm | Twelve barbed-wire pockets 2 mm below the crown; barbs narrower than the tool are left uncut |
 | `Fretboard_slots.nc` | 0.6 mm | 24 slots that follow the radius across the board, 2.7 mm below the surface, three 0.9 mm passes, 1 mm past each edge |
-| `Fretboard_outline.nc` | flat | Tapered outline with 8 mm nut corners and tabs |
+| `Fretboard_outline.nc` | flat | Tapered outline with square nut corners (`fretboard_nut_corner_radius`, 0 by default) and tabs |
 
 ## Checks
 

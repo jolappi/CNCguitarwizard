@@ -64,6 +64,7 @@ def test_default_preset_builds_every_locked_component() -> None:
     assert geometry.neck_surface.preserve_d_profile_at_heel is False
     assert geometry.neck_surface.exponent == 2.0
     assert geometry.fretboard_surface.end_extension == 4.0
+    assert geometry.fret_layout.fretboard.nut_corner_radius == 0.0
     assert geometry.fretboard_surface.station_positions[-1] == pytest.approx(
         geometry.neck_outline.last_fret_position + 4.0
     )

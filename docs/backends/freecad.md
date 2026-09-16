@@ -62,11 +62,12 @@ STEP file exports both solids together, without applying a boolean union.
 This makes the joint at the shared `Z = 0` plane easy to inspect before later
 manufacturing operations are introduced.
 
-The fretboard's nut-end corners receive the same symmetric R8 mm rounding as
+The fretboard's nut-end corners can receive the same symmetric rounding as
 the two-dimensional outline. The generated FreeCAD script selects the two
 vertical nut-corner edges immediately after lofting the fretboard and applies
-the fillet before any fret-slot cuts. `nut_corner_radius` defaults to 8 mm and
-is validated against half the nut width.
+the fillet before any fret-slot cuts. `nut_corner_radius` is validated against
+half the nut width; Prototype001 sets it to 0 (`fretboard_nut_corner_radius`),
+leaving the nut end square, and a zero radius skips the fillet entirely.
 
 The neck and heel are created by one uninterrupted loft ending 4 mm after
 fret 24. Its 54 mm heel region is 20 mm deep, and its sides continue the

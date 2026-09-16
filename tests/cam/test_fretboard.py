@@ -29,15 +29,28 @@ def plan(geometry, parameters):  # type: ignore[no-untyped-def]
     return plan_fretboard_machining(geometry, parameters)
 
 
-def test_outline_is_the_tapered_board_with_rounded_nut_corners(geometry) -> None:  # type: ignore[no-untyped-def]
+def test_outline_is_the_tapered_board_with_square_nut_corners(geometry) -> None:  # type: ignore[no-untyped-def]
     polygon = fretboard_outline_polygon(geometry)
 
     assert min(point.x for point in polygon) == pytest.approx(0.0)
     assert max(point.x for point in polygon) == pytest.approx(461.2)
     assert max(point.y for point in polygon) == pytest.approx(28.06, abs=0.01)
-    # The nut corners are rounded: nothing reaches (0, 21).
-    assert all(math.hypot(point.x, abs(point.y) - 21.0) > 2.0 for point in polygon)
+    # Square nut corners: the outline is exactly the four-corner trapezoid.
+    assert len(polygon) == 4
+    assert Point2D(0.0, 21.0) in polygon and Point2D(0.0, -21.0) in polygon
     assert point_in_polygon(Point2D(230.0, 0.0), polygon)
+
+
+def test_outline_rounds_the_nut_corners_when_asked(geometry) -> None:  # type: ignore[no-untyped-def]
+    from dataclasses import replace
+
+    from cncguitarwizard.presets import Prototype001Parameters
+
+    rounded = replace(Prototype001Parameters(), fretboard_nut_corner_radius=8.0).build()
+    polygon = fretboard_outline_polygon(rounded)
+
+    assert len(polygon) > 4
+    assert all(math.hypot(point.x, abs(point.y) - 21.0) > 2.0 for point in polygon)
 
 
 def test_plan_has_five_setups_in_tool_order(plan, parameters) -> None:  # type: ignore[no-untyped-def]

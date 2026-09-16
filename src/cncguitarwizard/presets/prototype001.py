@@ -86,6 +86,8 @@ class Prototype001Parameters:
     heel_mounting_length: float = 54.0
     heel_length: float = 4.0
     fretboard_end_extension: float = 4.0
+    # Square nut-end corners: the board meets the nut with no rounding.
+    fretboard_nut_corner_radius: float = 0.0
     first_fret_thickness: float = 17.0
     twelfth_fret_thickness: float = 19.0
     heel_thickness: float = 20.0
@@ -437,6 +439,7 @@ class Prototype001Parameters:
             self.nut_width,
             width_at_scale_end,
             Centerline(self.scale_length),
+            nut_corner_radius=self.fretboard_nut_corner_radius,
         )
         fret_layout = FretLayout(fretboard, self.fret_count)
         # Markers listed beyond the last fret (the 24th-fret pair on a

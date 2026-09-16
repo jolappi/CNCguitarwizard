@@ -315,7 +315,7 @@ def plan_fretboard_machining(
 
     outline_setup = Setup(
         "Fretboard_outline",
-        "Fretboard outline - tapered profile with rounded nut corners and tabs",
+        "Fretboard outline - tapered profile with tabs",
         (
             profile(
                 "Fretboard outline with tabs",
