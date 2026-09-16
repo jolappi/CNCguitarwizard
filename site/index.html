@@ -124,6 +124,21 @@
   </section>
 </main>
 <script src="https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.js"></script>
-<script src="app.js"></script>
+<script>
+  // Load the manifest fresh, then the app script versioned by its build id,
+  // so a cached app.js can never run against a newer wheel.
+  fetch("wheel.json", { cache: "no-store" })
+    .then((response) => response.json())
+    .then((manifest) => {
+      window.CNCGW_MANIFEST = manifest;
+      const script = document.createElement("script");
+      script.src = "app.js?v=" + encodeURIComponent(manifest.build || Date.now());
+      document.body.appendChild(script);
+    })
+    .catch((error) => {
+      document.getElementById("status").textContent = "Could not load wheel.json";
+      console.error(error);
+    });
+</script>
 </body>
 </html>

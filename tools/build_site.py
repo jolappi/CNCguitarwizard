@@ -2,7 +2,10 @@
 
 Builds the package wheel into ``site/wheels/`` and writes
 ``site/wheel.json`` so the page knows which wheel to install into
-Pyodide. Run it from the repository root::
+Pyodide. The manifest also carries a build id (the wheel's hash) that the
+page appends to the ``app.js`` and wheel URLs, so browsers never pair a
+cached script with a newer wheel or vice versa. Run it from the repository
+root::
 
     python tools/build_site.py
 
@@ -11,6 +14,7 @@ The same script runs in the Pages workflow.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
 import subprocess
@@ -43,10 +47,12 @@ def main() -> None:
     wheels = sorted(WHEELS.glob("cncguitarwizard-*.whl"))
     if len(wheels) != 1:
         raise SystemExit(f"Expected exactly one wheel, found {len(wheels)}")
+    build_id = hashlib.sha256(wheels[0].read_bytes()).hexdigest()[:12]
     (SITE / "wheel.json").write_text(
-        json.dumps({"wheel": wheels[0].name}, indent=2) + "\n", encoding="utf-8"
+        json.dumps({"wheel": wheels[0].name, "build": build_id}, indent=2) + "\n",
+        encoding="utf-8",
     )
-    print(f"Site ready: {SITE} (wheel {wheels[0].name})")
+    print(f"Site ready: {SITE} (wheel {wheels[0].name}, build {build_id})")
 
 
 if __name__ == "__main__":

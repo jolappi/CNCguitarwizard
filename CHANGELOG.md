@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Prototype001's fretboard meets the nut with square corners
+  (`fretboard_nut_corner_radius = 0`); the 8 mm rounding is available by
+  setting the parameter.
+
+### Fixed
+
+- The web app versions its script and wheel URLs by build id, so a cached
+  `app.js` can no longer run against a newer wheel after a rebuild.
+
 ## v0.2.0-alpha1 - 2026-09-16
 
 Everything since v0.1.0-alpha2.

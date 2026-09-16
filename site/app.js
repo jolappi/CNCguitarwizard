@@ -35,9 +35,12 @@ async function boot() {
     pyodide = await loadPyodide({ indexURL: PYODIDE_INDEX });
     setStatus("Installing cncguitarwizard…");
     await pyodide.loadPackage("micropip");
-    const manifest = await (await fetch("wheel.json", { cache: "no-store" })).json();
+    const manifest = window.CNCGW_MANIFEST
+      || await (await fetch("wheel.json", { cache: "no-store" })).json();
     const micropip = pyodide.pyimport("micropip");
-    await micropip.install(new URL("wheels/" + manifest.wheel, location.href).href);
+    const wheelUrl = new URL("wheels/" + manifest.wheel, location.href);
+    wheelUrl.searchParams.set("v", manifest.build || String(Date.now()));
+    await micropip.install(wheelUrl.href);
     const schemaJson = await pyodide.runPythonAsync(
       "import json\nfrom cncguitarwizard.webapp import parameter_schema\njson.dumps(parameter_schema())"
     );
@@ -45,7 +48,7 @@ async function boot() {
     renderForm();
     buildButton.disabled = false;
     resetButton.disabled = false;
-    setStatus("Ready — " + manifest.wheel, "ok");
+    setStatus(`Ready — ${manifest.wheel} (build ${manifest.build || "dev"})`, "ok");
   } catch (error) {
     console.error(error);
     setStatus("Failed to start", "bad");

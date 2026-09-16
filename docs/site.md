@@ -40,6 +40,11 @@ into `site/wheels/` and writes `site/wheel.json`, both git-ignored. The
 page needs to be served over HTTP (not opened as a file) because Pyodide
 fetches the wheel.
 
+`wheel.json` carries a build id (the wheel's hash). The page fetches it
+uncached and appends the id to the `app.js` and wheel URLs, so after a
+rebuild a plain reload always gets the matching script and wheel — no
+hard refresh needed. The status line shows the build id that is running.
+
 ## Deployment
 
 `.github/workflows/pages.yml` builds the wheel and publishes `site/` on
