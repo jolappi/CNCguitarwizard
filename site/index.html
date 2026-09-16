@@ -60,6 +60,11 @@
   .field select { width: 100%; padding: 3px 4px; border: 1px solid var(--line); border-radius: 4px; font: inherit; font-size: 12.5px; background: #fff; }
   .variant .field:first-child { grid-template-columns: 1fr 180px; }
   .variant .subfields { margin: 2px 0 6px 12px; padding-left: 8px; border-left: 2px solid var(--line); }
+  details.advanced { margin: 4px 0 2px; background: var(--bg); border-style: dashed; }
+  details.advanced > summary { padding: 4px 10px; font-weight: 500; font-size: 12px; color: var(--muted); }
+  details.advanced > summary.changed { color: var(--accent); font-weight: 600; }
+  details.advanced > .fields { padding-top: 0; }
+  .toggle { display: flex; gap: 6px; align-items: center; margin: -4px 0 10px; }
   .actions { display: flex; gap: 8px; align-items: center; margin: 10px 0 14px; }
   button {
     padding: 8px 16px; border-radius: 6px; border: 1px solid var(--accent);
@@ -115,7 +120,9 @@
       <span class="label"></span>
     </div>
     <p class="note">Every value below is a field of <code>Prototype001Parameters</code> or
-      <code>MachiningParameters</code>. Changed values are highlighted. Lists are edited as JSON.</p>
+      <code>MachiningParameters</code>. Changed values are highlighted. Lists are edited as JSON.
+      Rarely needed fields sit behind each group's <em>Advanced</em> fold.</p>
+    <label class="note toggle"><input type="checkbox" id="show-advanced"> Show all advanced settings</label>
     <form id="form"></form>
   </aside>
   <section class="results">

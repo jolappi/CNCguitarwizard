@@ -24,6 +24,52 @@ from .presets import Prototype001Parameters
 from .render.svg import render_plan_view_svg
 from .workflows import Prototype001Build
 
+# The handful of parameters a builder normally touches; the form shows
+# every other field of the same group behind an "Advanced" fold.
+_BASIC_FIELDS: frozenset[str] = frozenset(
+    {
+        "scale_length",
+        "fret_count",
+        "nut_width",
+        "fretboard_radius",
+        "fretboard_thickness",
+        "inlay_style",
+        "final_fret_width",
+        "first_fret_thickness",
+        "twelfth_fret_thickness",
+        "neck_profile_exponent",
+        "heel_width",
+        "heel_thickness",
+        "headstock_length",
+        "headstock_angle",
+        "headstock_thickness",
+        "tuner_hole_diameter",
+        "body_thickness",
+        "body_bridge",
+        "body_neck_pickup_offset",
+        "body_bridge_pickup_offset",
+        "tool_diameter",
+        "tool_tip",
+        "spindle_speed",
+        "feed_rate",
+        "plunge_rate",
+        "step_down",
+        "step_over",
+        "tab_count",
+    }
+)
+
+# Per bridge kind, the dimensions worth checking against the unit in
+# hand; the rest of a kind's fields are its "Advanced" fold. A kind not
+# listed here shows all of its fields.
+_BASIC_BRIDGE_FIELDS: dict[str, frozenset[str]] = {
+    "floyd_rose": frozenset({"treble_side", "pivot_offset", "pivot_stud_spacing"}),
+    "tune_o_matic": frozenset(
+        {"post_spacing", "compensation", "stud_spacing", "tailpiece_offset"}
+    ),
+    "hardtail": frozenset({"string_spacing", "string_hole_offset", "screw_count"}),
+}
+
 _GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
     (
         "Scale and fretboard",
@@ -43,17 +89,21 @@ def parameter_schema() -> dict[str, Any]:
     Returns:
         ``{"prototype": [...groups...], "machining": [...groups...]}``
         where every group is ``{"title", "fields"}`` and every field is
-        ``{"name", "type", "default"}`` with ``type`` one of ``float``,
-        ``int``, ``bool``, ``optional_float``, ``json`` (tuples),
-        ``choice`` (a ``Literal`` of strings, listed in ``options``) or
-        ``variant`` — a choice between dataclasses that each carry a
-        ``kind`` field (the bridge), described by ``variants``:
-        ``{kind: {"label", "fields"}}``.
+        ``{"name", "type", "default", "advanced"}`` with ``type`` one of
+        ``float``, ``int``, ``bool``, ``optional_float``, ``json``
+        (tuples), ``choice`` (a ``Literal`` of strings, listed in
+        ``options``) or ``variant`` — a choice between dataclasses that
+        each carry a ``kind`` field (the bridge), described by
+        ``variants``: ``{kind: {"label", "fields"}}``. ``advanced`` is
+        true for the rarely changed fields the form folds away.
     """
     return {
         "prototype": _group_fields(Prototype001Parameters),
         "machining": [
-            {"title": "Machining", "fields": _describe_fields(MachiningParameters)}
+            {
+                "title": "Machining",
+                "fields": _describe_fields(MachiningParameters, _BASIC_FIELDS),
+            }
         ],
     }
 
@@ -169,7 +219,7 @@ def run_build(
 
 def _group_fields(cls: type) -> list[dict[str, Any]]:
     """Split a dataclass's fields into titled groups by name prefix."""
-    described = _describe_fields(cls)
+    described = _describe_fields(cls, _BASIC_FIELDS)
     groups: list[dict[str, Any]] = [
         {"title": title, "fields": []} for title, _ in _GROUPS
     ]
@@ -186,8 +236,16 @@ def _group_fields(cls: type) -> list[dict[str, Any]]:
     return [group for group in groups if group["fields"]]
 
 
-def _describe_fields(cls: type) -> list[dict[str, Any]]:
-    """Return name, form type, and default for every init field."""
+def _describe_fields(
+    cls: type, basic: frozenset[str] | None = None
+) -> list[dict[str, Any]]:
+    """Return name, form type, default and advanced flag for every init field.
+
+    Args:
+        cls: The dataclass to describe.
+        basic: Names of the fields shown up front; every other field is
+            marked ``advanced``. ``None`` marks nothing advanced.
+    """
     hints = typing.get_type_hints(cls)
     described = []
     for field in dataclasses.fields(cls):
@@ -202,6 +260,7 @@ def _describe_fields(cls: type) -> list[dict[str, Any]]:
             "name": field.name,
             "type": _form_type(hints[field.name]),
             "default": _jsonable(default),
+            "advanced": basic is not None and field.name not in basic,
         }
         if entry["type"] == "choice":
             entry["options"] = [
@@ -215,7 +274,9 @@ def _describe_fields(cls: type) -> list[dict[str, Any]]:
                     "label": BRIDGE_LABELS.get(kind, kind),
                     "fields": [
                         described_field
-                        for described_field in _describe_fields(variant)
+                        for described_field in _describe_fields(
+                            variant, _BASIC_BRIDGE_FIELDS.get(kind)
+                        )
                         if described_field["name"] != "kind"
                     ],
                 }

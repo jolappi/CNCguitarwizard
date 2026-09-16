@@ -13,6 +13,7 @@ const progressFill = progress.querySelector(".fill");
 const progressLabel = progress.querySelector(".label");
 const output = document.getElementById("output");
 const intro = document.getElementById("intro");
+const showAdvanced = document.getElementById("show-advanced");
 
 let pyodide = null;
 let schema = null;
@@ -74,10 +75,46 @@ function renderForm() {
       details.appendChild(summary);
       const holder = document.createElement("div");
       holder.className = "fields";
-      for (const field of group.fields) holder.appendChild(renderField(set, field));
+      renderFieldList(set, group.fields, holder);
       details.appendChild(holder);
       form.appendChild(details);
     }
+  }
+  applyAdvancedToggle();
+}
+
+// Basic fields first; the rarely changed ones fold away behind
+// "Advanced", whose summary lights up when one of them has been edited.
+function renderFieldList(set, fields, holder) {
+  const advanced = [];
+  for (const field of fields) {
+    if (field.advanced) advanced.push(field);
+    else holder.appendChild(renderField(set, field));
+  }
+  if (advanced.length === 0) return;
+  const details = document.createElement("details");
+  details.className = "advanced";
+  details.open = showAdvanced.checked;
+  const summary = document.createElement("summary");
+  summary.textContent = `Advanced (${advanced.length})`;
+  details.appendChild(summary);
+  const inner = document.createElement("div");
+  inner.className = "fields";
+  for (const field of advanced) inner.appendChild(renderField(set, field));
+  details.appendChild(inner);
+  details.addEventListener("input", () => flagAdvancedSummary(details));
+  details.addEventListener("change", () => flagAdvancedSummary(details));
+  holder.appendChild(details);
+}
+
+function flagAdvancedSummary(details) {
+  const summary = details.querySelector(":scope > summary");
+  summary.classList.toggle("changed", details.querySelector(".changed") !== null);
+}
+
+function applyAdvancedToggle() {
+  for (const details of form.querySelectorAll("details.advanced")) {
+    details.open = showAdvanced.checked;
   }
 }
 
@@ -174,13 +211,12 @@ function renderVariantField(set, field) {
 
   const renderSubfields = (kind, values) => {
     sub.innerHTML = "";
-    for (const subfield of field.variants[kind].fields) {
-      const withValue = values && subfield.name in values
+    const subfields = field.variants[kind].fields.map((subfield) => (
+      values && subfield.name in values
         ? { ...subfield, default: subfield.default, value: values[subfield.name] }
-        : subfield;
-      const subrow = renderField(set + "." + field.name, withValue);
-      sub.appendChild(subrow);
-    }
+        : subfield
+    ));
+    renderFieldList(set + "." + field.name, subfields, sub);
     select.classList.toggle("changed", kind !== field.default.kind);
   };
   renderSubfields(field.default.kind, field.default);
@@ -392,4 +428,5 @@ function reset() {
 
 buildButton.addEventListener("click", build);
 resetButton.addEventListener("click", reset);
+showAdvanced.addEventListener("change", applyAdvancedToggle);
 boot();

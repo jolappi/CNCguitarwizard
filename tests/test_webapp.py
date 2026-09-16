@@ -24,17 +24,20 @@ def test_schema_lists_every_parameter_with_a_form_type() -> None:
         "name": "scale_length",
         "type": "float",
         "default": 609.6,
+        "advanced": False,
     }
     assert prototype_fields["fret_count"]["type"] == "int"
     assert prototype_fields["body_pot_offsets"] == {
         "name": "body_pot_offsets",
         "type": "json",
         "default": [[180.8, 86.0], [220.8, 87.0]],
+        "advanced": True,
     }
     assert prototype_fields["inlay_style"] == {
         "name": "inlay_style",
         "type": "choice",
         "default": "barbed_wire",
+        "advanced": False,
         "options": ["barbed_wire", "dot", "block"],
     }
     bridge = prototype_fields["body_bridge"]
@@ -48,8 +51,17 @@ def test_schema_lists_every_parameter_with_a_form_type() -> None:
     floyd_fields = {f["name"]: f for f in bridge["variants"]["floyd_rose"]["fields"]}
     assert "kind" not in floyd_fields
     assert floyd_fields["pivot_stud_spacing"] == {
-        "name": "pivot_stud_spacing", "type": "float", "default": 73.91
+        "name": "pivot_stud_spacing",
+        "type": "float",
+        "default": 73.91,
+        "advanced": False,
     }
+    assert floyd_fields["cover_depth"]["advanced"] is True
+    kahler_fields = bridge["variants"]["kahler_7300"]["fields"]
+    assert all(f["advanced"] is False for f in kahler_fields)
+    assert prototype_fields["scale_length"]["advanced"] is False
+    assert prototype_fields["fretboard_nut_corner_radius"]["advanced"] is True
+    assert bridge["advanced"] is False
     assert floyd_fields["treble_side"]["type"] == "choice"
     assert floyd_fields["treble_side"]["options"] == ["+y", "-y"]
     titles = [group["title"] for group in schema["prototype"]]

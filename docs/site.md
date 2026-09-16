@@ -14,7 +14,12 @@ Python.
 2. Asks `cncguitarwizard.webapp.parameter_schema()` for every field of
    `Prototype001Parameters` and `MachiningParameters` and draws a grouped
    form from it. Changed values are highlighted; tuple fields are edited as
-   JSON. A field whose type is a union of kinded dataclasses — the bridge —
+   JSON. The few fields a builder normally touches (scale, fret count,
+   bridge, body thickness, tool and feeds…) are shown up front; the rest of
+   each group sits behind an *Advanced* fold, marked `advanced` in the
+   schema (`_BASIC_FIELDS`, `_BASIC_BRIDGE_FIELDS` in `webapp.py`), with a
+   page-wide checkbox to open them all. A field whose type is a union of
+   kinded dataclasses — the bridge —
    becomes a dropdown of kinds with the chosen kind's own fields beneath
    it (`variant` in the schema).
 3. On **Build** runs the build in stages — `start_build()`, then

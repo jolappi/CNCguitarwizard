@@ -25,6 +25,9 @@
 - `BodySolid` accepts stepped top cavities: a deeper cavity nested inside
   a shallower one is cut from that floor down (the body CAM starts it at
   the enclosing floor), so a two-level recess keeps continuous walls.
+- The web form shows only the commonly changed fields of each group and
+  folds the rest behind an "Advanced" toggle (`advanced` in the schema),
+  with a page-wide checkbox to open them all.
 - Toolpath previews shade every cut with the tool's full width, so pockets
   that share a wall are seen to meet instead of showing a tool-centre gap.
 - The bridge pickup moves forward automatically when the chosen bridge's
