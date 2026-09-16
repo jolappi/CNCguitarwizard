@@ -197,19 +197,20 @@ function showResult(result) {
       toolpath.innerHTML = result.files[name];
     });
     tabs.appendChild(button);
-    if (index === 1 || (previews.length === 1 && index === 0)) button.click();
+    if (name === "Body_top.svg" || (previews.length === 1 && index === 0)) button.click();
   });
 
   const files = document.getElementById("files");
   files.innerHTML = "<tr><th>File</th><th>Size</th><th></th></tr>";
-  const order = [
-    "Prototype001_freecad.py", "Prototype001.FCMacro",
-    "Body_index_pins.nc", "Body_top.nc", "Body_back.nc",
-    "Body_index_pins.svg", "Body_top.svg", "Body_back.svg", "build.json",
-  ];
-  const names = Object.keys(result.files).sort(
-    (a, b) => (order.indexOf(a) + 1 || 99) - (order.indexOf(b) + 1 || 99)
-  );
+  const order = Object.keys(result.report.gcode);
+  const rank = (name) => {
+    if (name.startsWith("Prototype001")) return 0;
+    const stem = name.replace(/\.(nc|svg)$/, "");
+    const index = order.indexOf(stem);
+    if (index >= 0) return 10 + index * 2 + (name.endsWith(".svg") ? 1 : 0);
+    return 1000;
+  };
+  const names = Object.keys(result.files).sort((a, b) => rank(a) - rank(b));
   for (const name of names) {
     const text = result.files[name];
     const type = name.endsWith(".svg") ? "image/svg+xml"
@@ -225,12 +226,12 @@ function showResult(result) {
 
   const summary = document.getElementById("summary");
   const report = result.report;
-  const rows = [
-    ["Stock", `${report.stock.length_mm} × ${report.stock.width_mm} × ${report.stock.thickness_mm} mm`],
-    ["Work origin (model X/Y)", report.stock.work_origin_model_xy.join(", ")],
-  ];
+  const rows = [];
+  for (const [part, stock] of Object.entries(report.stock)) {
+    rows.push([`${part} blank`, `${stock.length_mm} × ${stock.width_mm} × ${stock.thickness_mm} mm, pins at machine X ${stock.index_pins_machine_xy.map((p) => p[0]).join(" / ")}`]);
+  }
   for (const [name, info] of Object.entries(report.gcode)) {
-    rows.push([name, `${info.estimated_minutes} min, ${(info.cutting_length_mm / 1000).toFixed(1)} m of cutting, ${info.operations.length} operations`]);
+    rows.push([name, `${info.tool}: ${info.estimated_minutes} min, ${(info.cutting_length_mm / 1000).toFixed(1)} m of cutting, ${info.operations.length} operations`]);
   }
   rows.push(["Version", report.version]);
   summary.innerHTML = rows.map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join("");

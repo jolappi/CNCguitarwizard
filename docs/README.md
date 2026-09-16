@@ -12,6 +12,7 @@
 - [Building Prototype001 in FreeCAD](workflows/prototype001.md)
 - [FreeCAD backend](backends/freecad.md)
 - [Body G-code](cam/01_body_gcode.md)
+- [Neck and fretboard G-code](cam/02_neck_and_fretboard_gcode.md)
 - [Web app on GitHub Pages](site.md)
 - [SVG rendering](render/01_svg.md)
 - [Architecture](../ARCHITECTURE)

@@ -15,12 +15,17 @@ from pathlib import Path
 from ..backends.freecad import FreeCADScriptExporter
 from ..cam import (
     BodyMachiningPlan,
+    FretboardMachiningParameters,
+    FretboardMachiningPlan,
     GRBLWriter,
     MachiningParameters,
+    NeckMachiningParameters,
+    NeckMachiningPlan,
     plan_body_machining,
+    plan_fretboard_machining,
+    plan_neck_machining,
     render_setup_svg,
 )
-from ..geometry.primitives import Point2D
 from ..presets import Prototype001Parameters
 from ..version import PROJECT_MARK, PROJECT_NAME, __version__
 from .exceptions import FreeCADExecutionError
@@ -48,6 +53,8 @@ def build_prototype001(
     run_freecad: bool = True,
     freecad_command: Path | None = None,
     machining: MachiningParameters | None = None,
+    neck_machining: NeckMachiningParameters | None = None,
+    fretboard_machining: FretboardMachiningParameters | None = None,
 ) -> Prototype001BuildResult:
     """Generate scripts, FreeCAD models, G-code, and a traceable JSON report.
 
@@ -57,6 +64,10 @@ def build_prototype001(
         run_freecad: Execute FreeCAD and create `.FCStd` and `.step`.
         freecad_command: Optional explicit FreeCAD command-line executable.
         machining: Optional tool and feed overrides for the body G-code.
+        neck_machining: Optional tool, blank and surfacing overrides for
+            the neck G-code.
+        fretboard_machining: Optional tool and blank overrides for the
+            fretboard G-code.
 
     Returns:
         Paths for every generated or FreeCAD-targeted artifact.
@@ -67,30 +78,60 @@ def build_prototype001(
     destination.mkdir(parents=True, exist_ok=True)
 
     selected_machining = machining or MachiningParameters()
-    plan = plan_body_machining(geometry.body, selected_machining)
+    plans: list[
+        tuple[str, BodyMachiningPlan | NeckMachiningPlan | FretboardMachiningPlan]
+    ] = [
+        ("Body", plan_body_machining(geometry.body, selected_machining)),
+        (
+            "Neck",
+            plan_neck_machining(geometry, neck_machining or NeckMachiningParameters()),
+        ),
+        (
+            "Fretboard",
+            plan_fretboard_machining(
+                geometry, fretboard_machining or FretboardMachiningParameters()
+            ),
+        ),
+    ]
     writer = GRBLWriter()
     gcode_paths: list[Path] = []
     preview_paths: list[Path] = []
     gcode_report: dict[str, object] = {}
-    for setup, mirror in zip(plan.setups, (False, False, True), strict=True):
-        gcode_path = destination / f"{setup.name}.nc"
-        gcode_path.write_text(
-            writer.render(setup, selected_machining), encoding="utf-8"
-        )
-        gcode_paths.append(gcode_path)
-        outline = tuple(
-            _machine_point(point, plan, mirror)
-            for point in geometry.body.outline.points
-        )
-        preview_path = destination / f"{setup.name}.svg"
-        preview_path.write_text(render_setup_svg(setup, outline), encoding="utf-8")
-        preview_paths.append(preview_path)
-        gcode_report[setup.name] = {
-            "file": gcode_path.name,
-            "preview": preview_path.name,
-            "operations": [path.name for path in setup.toolpaths],
-            "cutting_length_mm": round(setup.cutting_length(), 1),
-            "estimated_minutes": round(setup.estimated_minutes(selected_machining), 1),
+    stock_report: dict[str, object] = {}
+    for part, plan in plans:
+        for setup, outline in zip(plan.setups, plan.preview_outlines, strict=True):
+            gcode_path = destination / f"{setup.name}.nc"
+            gcode_path.write_text(
+                writer.render(setup, selected_machining), encoding="utf-8"
+            )
+            gcode_paths.append(gcode_path)
+            preview_path = destination / f"{setup.name}.svg"
+            preview_path.write_text(render_setup_svg(setup, outline), encoding="utf-8")
+            preview_paths.append(preview_path)
+            tool = setup.tool or selected_machining
+            gcode_report[setup.name] = {
+                "part": part,
+                "file": gcode_path.name,
+                "preview": preview_path.name,
+                "tool": f"{tool.tool_diameter:g} mm {tool.tool_tip}",
+                "operations": [path.name for path in setup.toolpaths],
+                "cutting_length_mm": round(setup.cutting_length(), 1),
+                "estimated_minutes": round(
+                    setup.estimated_minutes(selected_machining), 1
+                ),
+            }
+        stock_report[part] = {
+            "length_mm": round(plan.stock_length, 1),
+            "width_mm": round(plan.stock_width, 1),
+            "thickness_mm": plan.stock_thickness,
+            "work_origin_model_xy": [round(plan.origin_x, 2), round(plan.origin_y, 2)],
+            "index_pins_model_xy": [
+                [round(x, 2), round(y, 2)] for x, y in plan.index_pin_positions
+            ],
+            "index_pins_machine_xy": [
+                [round(x - plan.origin_x, 2), round(y - plan.origin_y, 2)]
+                for x, y in plan.index_pin_positions
+            ],
         }
 
     macro_path = destination / "Prototype001.FCMacro"
@@ -129,12 +170,7 @@ def build_prototype001(
         "freecad_log": freecad_log_path.name,
         "machining": asdict(selected_machining),
         "gcode": gcode_report,
-        "stock": {
-            "length_mm": round(plan.stock_length, 1),
-            "width_mm": round(plan.stock_width, 1),
-            "thickness_mm": plan.stock_thickness,
-            "work_origin_model_xy": [plan.origin_x, plan.origin_y],
-        },
+        "stock": stock_report,
     }
     _write_report(report_path, report)
 
@@ -169,13 +205,6 @@ def build_prototype001(
         gcode_paths=tuple(gcode_paths),
         toolpath_preview_paths=tuple(preview_paths),
     )
-
-
-def _machine_point(point: Point2D, plan: BodyMachiningPlan, mirror: bool) -> Point2D:
-    """Map a model point into a setup's machine frame for the preview."""
-    if mirror:
-        return Point2D(point.x - plan.origin_x, -point.y + plan.origin_y)
-    return Point2D(point.x - plan.origin_x, point.y - plan.origin_y)
 
 
 def _write_report(path: Path, report: Mapping[str, object]) -> None:

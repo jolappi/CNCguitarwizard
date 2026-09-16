@@ -5,8 +5,8 @@ necks, fretboards, bodies, and CNC-ready geometry. The current release
 provides immutable geometry, fret and fretboard calculations, a fluent neck
 builder, dependency-free SVG rendering, a FreeCAD backend that builds the
 complete Prototype001 neck, fretboard, headstock and body as `.FCStd` and
-STEP files, and a dependency-free 2.5D CAM planner that writes GRBL G-code
-for the body.
+STEP files, and a dependency-free CAM planner that writes GRBL G-code for the body
+(2.5D), the neck (3D roughing and ball-nose finishing) and the fretboard.
 
 ## Getting started
 
@@ -41,8 +41,9 @@ Everything lands in the `build/` directory (git-ignored):
 | `Prototype001.FCStd` | Editable FreeCAD document: neck, fretboard and body as separate solids |
 | `Prototype001.step` | The same three solids for any other CAD/CAM tool |
 | `Prototype001.FCMacro`, `Prototype001_freecad.py` | The generated FreeCAD script (macro and plain-Python form) |
-| `Body_index_pins.nc`, `Body_top.nc`, `Body_back.nc` | GRBL G-code for the body, in running order — see [Body G-code](docs/cam/01_body_gcode.md) |
-| `Body_*.svg` | Toolpath plots of those programs |
+| `Body_*.nc` | GRBL G-code for the body (index pins, top, back) — see [Body G-code](docs/cam/01_body_gcode.md) |
+| `Neck_*.nc`, `Fretboard_*.nc` | GRBL G-code for the neck (five programs, flat + ball nose) and the fretboard (five programs, four tools) — see [Neck and fretboard G-code](docs/cam/02_neck_and_fretboard_gcode.md) |
+| `*.svg` next to each `.nc` | Toolpath plots of those programs |
 | `build.json` | Every parameter used, stock size, per-program time estimates, checksums |
 | `freecad.log` | FreeCAD's own output from the run |
 
@@ -111,6 +112,7 @@ svg = SVGRenderer().render(neck.fretboard)
 - [Building Prototype001 in FreeCAD](docs/workflows/prototype001.md)
 - [FreeCAD backend](docs/backends/freecad.md)
 - [Body G-code](docs/cam/01_body_gcode.md)
+- [Neck and fretboard G-code](docs/cam/02_neck_and_fretboard_gcode.md)
 - [Web app on GitHub Pages](docs/site.md)
 - [SVG rendering](docs/render/01_svg.md)
 - [Architecture](ARCHITECTURE)

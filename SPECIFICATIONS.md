@@ -77,12 +77,15 @@ säilyy 5 mm:nä kaikissa lapaliitoksen muutoksissa.
 Runko on jäljitetty omasta `assets/reference/omarunko.dxf`-piirustuksesta
 (`presets/_omarunko_outline.py`); muodot ovat piirustuksen omia, eivät
 likiarvoja. Koordinaatisto on kaulan: X satulasta perään, Y sivulle, yläpinta
-Z = 0.
+Z = 0. Rungon piirteet (ääriviiva, kolot, potikat, jakki) seuraavat kannan
+päätä ja tallan piirteet (tallalevyn kolo, tallamikki) mensuuria, joten
+mensuurin tai nauhamäärän muutos pitää kaulan taskussaan ja tallan
+mensuurilla.
 
 | Kohta | Speksi |
 | --- | --- |
 | Paksuus | 44 mm tasainen laatta (ei vielä käsi-/vatsaviisteitä) |
-| Kaulatasku | DXF:n trapetsi, 79,5 mm pitkä, päättyy kannan päähän (x = 461,2), 20 mm syvä; avautuu sarvien väliin |
+| Kaulatasku | Kaulan oma kapeneva ääriviiva + 0,15 mm välys/puoli, 79,5 mm pitkä, päättyy kannan päähän, 20 mm syvä; avautuu sarvien väliin |
 | Mikkikolot | DXF:n humbucker-kolo korvakkeineen, 41 × 85,9 mm, 22 mm syvä; keskipisteet x = 491,7 ja 587,9 |
 | Säätöruuvien syvennykset | Ø 6 mm, 8 mm kolon pohjan alle, ±39,95 mm keskilinjasta |
 | Talla | Kahler 7300, ruuvattava: ei tappireikiä eikä jousikoloa; levyn kolo 55 × 65 mm, 25 mm syvä |
@@ -101,10 +104,17 @@ Z = 0.
 | Viimeistelyvara | 0,30 mm |
 | Työjärjestys | Kalibrointilevy → testipalikka → Prototype001 |
 | Rungon G-koodi | `Body_index_pins.nc` → `Body_top.nc` → käännä keskilinjan ympäri tapeille → `Body_back.nc` |
-| Nollapiste | X/Y kohdistustappi 1 (mallin (420, 0)), Z aihion yläpinta kummassakin asetuksessa; jokainen ohjelma alkaa ja päättyy tapin päällä |
-| Aihio | vähintään 490 × 318 × 44 mm |
+| Nollapiste | X/Y kohdistustappi 1, Z aihion yläpinta kummassakin asetuksessa; jokainen ohjelma alkaa ja päättyy tapin päällä |
+| Kohdistustapit | 2 × Ø6 keskilinjalla aihion hukkapuussa: tappi 1 sarvien välissä kaulataskun edessä, tappi 2 perän lovessa — eivät koskaan valmiissa kappaleessa; ≥ terä + 3 mm puuta joka leikkaukseen, ≥ 8 mm aihion reunasta; paikat `build.json`:ssa |
+| Tarkistus | jokainen ohjelma ajaa ennen karan käynnistystä tappi 1 → tappi 2 → tappi 1 turvakorkeudella |
+| Aihio | vähintään 496 × 324 × 44 mm (ääriviiva + 15 mm joka puolelle) |
 | Ääriviiva | puolet paksuudesta + 0,5 mm kummaltakin puolelta; takapuolella 6 kpl 8 × 4 mm pidiketappia |
 | Jakin poraus | käsin/porausjigillä reunasta (ei G-koodissa) |
+| Kaulan G-koodi | `Neck_index_pins` → `Neck_top` (kaularauta, lavan pinta 8°, viritinreikien merkit) → käännä → `Neck_back_rough` (6 mm tasa) → `Neck_back_finish` (6 mm pallo, 0,75 mm askel) → `Neck_back_outline` (tapit) |
+| Kaulan aihio | 40 mm paksu, höylätty; yläpinta = otelaudan liimapinta; 2 mm nahka pitää kaulan kehyksessä |
+| Viritinreiät | vain 0,5 mm keskimerkit lavan pintaan — porataan pylväsporalla 8° kiilalla kohtisuoraan lapaan |
+| Otelaudan G-koodi | `Fretboard_index_pins` → `Fretboard_radius` (pallo) → `Fretboard_inlays` (1 mm) → `Fretboard_slots` (0,6 mm, 3 × 0,9 mm sädettä seuraten) → `Fretboard_outline` (tapit) |
+| Otelaudan aihio | 7 mm; harja 1 mm aihion pinnan alle |
 
 ## Mallinnuksen tämänhetkinen tila
 
@@ -116,9 +126,11 @@ Z = 0.
   rungon erillisinä solideina.
 - Rungosta puuttuvat vielä johtokanavat kolojen välillä, kansilevyt ja
   reunapyöristykset.
-- Rungon 2.5D-G-koodi (taskut, poraukset, ääriviiva kahdelta puolelta)
-  syntyy samasta parametrijoukosta ilman FreeCADia (`cncguitarwizard.cam`).
-  Kaulan ja otelaudan 3D-jyrsintä puuttuu vielä.
+- Rungon 2.5D-G-koodi, kaulan 3D-rouhinta ja pallojyrsinviimeistely sekä
+  otelaudan säde, inlayt, nauhaurat ja ääriviiva syntyvät samasta
+  parametrijoukosta ilman FreeCADia (`cncguitarwizard.cam`); yhteensä 13
+  ohjelmaa. Yksinkertaistukset: satulahyllyn U-muoto, lavan juuren
+  pyöristykset ja spoke wheel -kolo eivät ole G-koodissa.
 - Kaulan lapa-pään tarkastusmuoto on 12 mm syvä sylinterillä tehty U.
   D-muodon ja U:n liittymä pyöristetään vain sylinterin kahdelta
   pystysivulta, missä ne kohtaavat nykyisen kylkipyöristyksen. U:n keskikaari,

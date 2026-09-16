@@ -41,18 +41,17 @@ def test_build_creates_scripts_and_traceable_report(tmp_path: Path) -> None:
     assert len(report["script_sha256"]) == 64
 
 
-def test_build_writes_body_gcode_and_toolpath_previews(tmp_path: Path) -> None:
+def test_build_writes_gcode_and_toolpath_previews_for_every_part(
+    tmp_path: Path,
+) -> None:
     result = build_prototype001(tmp_path / "output", run_freecad=False)
 
-    assert [path.name for path in result.gcode_paths] == [
-        "Body_index_pins.nc",
-        "Body_top.nc",
-        "Body_back.nc",
-    ]
+    names = [path.name for path in result.gcode_paths]
+    assert names[:3] == ["Body_index_pins.nc", "Body_top.nc", "Body_back.nc"]
+    assert "Neck_back_finish.nc" in names and "Fretboard_slots.nc" in names
+    assert len(names) == 13
     assert [path.name for path in result.toolpath_preview_paths] == [
-        "Body_index_pins.svg",
-        "Body_top.svg",
-        "Body_back.svg",
+        name.replace(".nc", ".svg") for name in names
     ]
     for path in (*result.gcode_paths, *result.toolpath_preview_paths):
         assert path.is_file()
@@ -64,9 +63,13 @@ def test_build_writes_body_gcode_and_toolpath_previews(tmp_path: Path) -> None:
     report = json.loads(result.report_path.read_text(encoding="utf-8"))
     assert report["machining"]["tool_diameter"] == 6.0
     assert report["gcode"]["Body_top"]["file"] == "Body_top.nc"
-    assert report["gcode"]["Body_top"]["estimated_minutes"] > 0.0
-    assert report["stock"]["thickness_mm"] == 44.0
-    assert report["stock"]["work_origin_model_xy"] == [420.0, 0.0]
+    assert report["gcode"]["Body_top"]["part"] == "Body"
+    assert report["gcode"]["Neck_back_finish"]["tool"] == "6 mm ball"
+    assert report["gcode"]["Fretboard_slots"]["tool"] == "0.6 mm flat"
+    assert set(report["stock"]) == {"Body", "Neck", "Fretboard"}
+    assert report["stock"]["Body"]["thickness_mm"] == 44.0
+    assert report["stock"]["Neck"]["thickness_mm"] == 40.0
+    assert len(report["stock"]["Fretboard"]["index_pins_model_xy"]) == 2
 
 
 def test_generated_script_targets_absolute_build_paths(tmp_path: Path) -> None:
