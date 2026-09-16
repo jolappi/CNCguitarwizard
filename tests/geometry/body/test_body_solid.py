@@ -132,7 +132,7 @@ def test_body_solid_rejects_a_cover_recess_outside_the_outline() -> None:
 def test_body_solid_cuts_extra_traced_cavities() -> None:
     extra = TracedCavity(
         "Bridge baseplate cutout",
-        (Point2D(640.0, -20.0), Point2D(660.0, -20.0), Point2D(650.0, 10.0)),
+        (Point2D(700.0, -10.0), Point2D(720.0, -10.0), Point2D(710.0, 10.0)),
         12.0,
     )
 
@@ -215,6 +215,18 @@ def test_body_solid_rejects_a_hole_deeper_than_the_body() -> None:
 def test_body_solid_rejects_a_hole_outside_the_outline() -> None:
     with pytest.raises(BodyGeometryError, match="outside"):
         make_body(holes=(DrilledHole("Pot 1 shaft hole", 610.0, -300.0, 10.0, 30.0),))
+
+
+def test_body_solid_rejects_overlapping_top_cavities() -> None:
+    # Right on top of the default sustain-block cavity behind the bridge.
+    extra = TracedCavity(
+        "Bridge baseplate cutout",
+        (Point2D(640.0, -20.0), Point2D(660.0, -20.0), Point2D(650.0, 10.0)),
+        12.0,
+    )
+
+    with pytest.raises(BodyGeometryError, match="overlaps"):
+        make_body(extra_cavities=(extra,))
 
 
 def test_body_solid_rejects_non_positive_thickness() -> None:

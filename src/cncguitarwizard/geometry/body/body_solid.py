@@ -87,6 +87,22 @@ class BodySolid:
                     f"{cavity.name} depth must leave material beneath its "
                     "floor."
                 )
+        # Top cavities are separate features; two that overlap in plan
+        # would merge into one unintended pocket (typically a bridge
+        # feature that has been moved onto a body feature by a scale
+        # or fret-count change).
+        top_cavities = self._top_cavities()
+        for index, first in enumerate(top_cavities):
+            for second in top_cavities[index + 1 :]:
+                if (
+                    first.min_x < second.max_x
+                    and second.min_x < first.max_x
+                    and first.min_y < second.max_y
+                    and second.min_y < first.max_y
+                ):
+                    raise BodyGeometryError(
+                        f"{first.name} overlaps {second.name}."
+                    )
         # A rear cavity and a top cavity that overlap in plan must
         # together leave wood between their floors, or the two rout
         # into one another.

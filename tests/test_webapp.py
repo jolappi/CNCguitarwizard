@@ -22,10 +22,10 @@ def test_schema_lists_every_parameter_with_a_form_type() -> None:
     assert prototype_fields["fret_count"]["type"] == "int"
     stud_spacing = prototype_fields["body_bridge_pivot_stud_spacing"]
     assert stud_spacing["type"] == "optional_float"
-    assert prototype_fields["body_pot_positions"] == {
-        "name": "body_pot_positions",
+    assert prototype_fields["body_pot_offsets"] == {
+        "name": "body_pot_offsets",
         "type": "json",
-        "default": [[642.0, 86.0], [682.0, 87.0]],
+        "default": [[180.8, 86.0], [220.8, 87.0]],
     }
     titles = [group["title"] for group in schema["prototype"]]
     assert "Body" in titles and "Headstock and tuners" in titles
@@ -39,7 +39,7 @@ def test_run_build_returns_files_report_and_plan_view(tmp_path: Path) -> None:
         {
             "prototype": {
                 "body_thickness": 42.0,
-                "body_pot_positions": [[642.0, 86.0]],
+                "body_pot_offsets": [[180.8, 86.0]],
             },
             "machining": {"feed_rate": 800.0},
         },
@@ -52,6 +52,7 @@ def test_run_build_returns_files_report_and_plan_view(tmp_path: Path) -> None:
     assert result["report"]["parameters"]["body_thickness"] == 42.0
     assert result["report"]["machining"]["feed_rate"] == 800.0
     assert result["report"]["status"] == "scripts_only"
+    assert "Neck_back_finish.nc" in result["files"]
     assert result["plan_view"].startswith("<svg")
     assert "Pot 2 shaft hole" not in result["files"]["Body_top.nc"]
     json.dumps(result)

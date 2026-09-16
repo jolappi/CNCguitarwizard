@@ -37,9 +37,10 @@ from ._omarunko_outline import (
     OMARUNKO_BRIDGE_BASEPLATE_POINTS,
     OMARUNKO_CONTROL_CAVITY_POINTS,
     OMARUNKO_CONTROL_COVER_POINTS,
-    OMARUNKO_NECK_POCKET_LOCAL_POINTS,
+    OMARUNKO_HEEL_END_X,
     OMARUNKO_OUTLINE_POINTS,
     OMARUNKO_PICKUP_ROUTE_LOCAL_POINTS,
+    OMARUNKO_SCALE_LENGTH,
 )
 
 
@@ -105,18 +106,26 @@ class Prototype001Parameters:
     # shapes, not an approximation. The baseplate cutout depth remains a placeholder
     # (no Kahler 7300 manufacturer template was available).
     body_thickness: float = 44.0
-    # The neck pocket is the DXF's own trapezoidal "neckpocket" block,
-    # placed so its tail-ward wall is exactly where the neck's real heel
-    # ends and widened laterally to this neck's heel_width. Its nut-ward
-    # part opens onto the horn gap, as in the drawing — the body frame
-    # is aligned so the DXF's own neck pickup starts 10 mm past the
-    # pocket's tail wall, which is what decides where the traced body
-    # sits relative to the neck.
-    # Pickup routes are the DXF's own pickup-block placements (centres)
-    # and its own route shape (OMARUNKO_PICKUP_ROUTE_LOCAL_POINTS —
-    # humbucker with mounting-ear tabs), verbatim.
-    body_neck_pickup_position: float = 491.7
-    body_bridge_pickup_position: float = 587.87
+    # The neck pocket is the neck's own tapered outline over the last
+    # body_neck_pocket_length millimetres before the heel end, widened
+    # by body_neck_pocket_clearance per side. It ends exactly where the
+    # heel ends, opens onto the horn gap at its nut-ward end as in the
+    # drawing, and follows any change of scale, fret count or neck
+    # width by construction.
+    body_neck_pocket_length: float = 79.48
+    body_neck_pocket_clearance: float = 0.15
+    # Longitudinal placements are offsets, not absolute positions. The
+    # traced body — outline, neck pickup, control and switch cavities,
+    # pots, jack — rides with the neck's heel end; the bridge features
+    # — baseplate cutout, bridge pickup — ride with the scale length.
+    # A different scale or fret count therefore keeps the neck in its
+    # pocket and the bridge on the scale, and only the bridge's place
+    # on the body changes. The defaults are the DXF's own distances.
+    # Pickup routes use the drawing's own route shape
+    # (OMARUNKO_PICKUP_ROUTE_LOCAL_POINTS, a humbucker with mounting-ear
+    # tabs).
+    body_neck_pickup_offset: float = 30.5  # route centre past the heel end
+    body_bridge_pickup_offset: float = 21.73  # route centre before the bridge
     body_pickup_route_depth: float = 22.0
     # Clearance recesses for the pickup height-adjustment screw tips,
     # drilled on down from the route floor at the centre of each of the
@@ -143,10 +152,10 @@ class Prototype001Parameters:
     # Pickup-selector cavity at the upper-horn root: the DXF's two
     # near-concentric circles (inner = cavity, outer = cover ledge,
     # exactly as drawn, slightly eccentric).
-    body_switch_cavity_x: float = 457.195
+    body_switch_cavity_offset: float = -4.005  # centre X from the heel end
     body_switch_cavity_y: float = -70.565
     body_switch_cavity_diameter: float = 43.972
-    body_switch_cover_x: float = 457.989
+    body_switch_cover_offset: float = -3.211
     body_switch_cover_y: float = -70.3
     body_switch_cover_diameter: float = 59.452
     # Shaft holes through the top wall: a 1/2" toggle bushing at the
@@ -154,13 +163,13 @@ class Prototype001Parameters:
     # along the almond control cavity's long axis.
     body_switch_shaft_hole_diameter: float = 12.7
     body_pot_shaft_hole_diameter: float = 10.0
-    body_pot_positions: tuple[tuple[float, float], ...] = (
-        (642.0, 86.0),
-        (682.0, 87.0),
+    body_pot_offsets: tuple[tuple[float, float], ...] = (  # (X from heel end, Y)
+        (180.8, 86.0),
+        (220.8, 87.0),
     )
     # Output jack on the lower-bout edge, bored in toward the control
     # cavity's tail-ward end so the wiring lands inside it.
-    body_jack_x: float = 742.0
+    body_jack_offset: float = 280.8  # X from the heel end
     body_jack_y: float = 107.5
     body_jack_direction_degrees: float = 202.5
     body_jack_diameter: float = 12.5
@@ -252,6 +261,45 @@ class Prototype001Parameters:
         lead-in immediately before that fixed mounting area.
         """
         return self.heel_root_length
+
+    def _neck_pocket_outline(
+        self, outline: NeckOutline, heel_end: float
+    ) -> tuple[Point2D, ...]:
+        """Return the pocket polygon: the neck's own outline plus clearance.
+
+        The pocket runs from ``heel_end - body_neck_pocket_length`` to
+        ``heel_end``; between those the neck is ``nut_width`` wide at
+        the nut tapering to ``last_fret_width`` at the last fret, then
+        ``heel_width`` to the heel end. Every wall sits
+        ``body_neck_pocket_clearance`` outside the neck.
+        """
+        start = heel_end - self.body_neck_pocket_length
+        if start < 0.0:
+            raise NeckGeometryError(
+                "Neck pocket must not reach past the nut."
+            )
+        clearance = self.body_neck_pocket_clearance
+        last_fret = outline.last_fret_position
+
+        def taper_half_width(x: float) -> float:
+            fraction = x / last_fret
+            return (
+                outline.nut_width
+                + (outline.last_fret_width - outline.nut_width) * fraction
+            ) / 2.0
+
+        stations: list[tuple[float, float]] = []
+        if start < last_fret:
+            stations.append((start, taper_half_width(start)))
+            stations.append((last_fret, outline.last_fret_width / 2.0))
+            if outline.heel_width != outline.last_fret_width:
+                stations.append((last_fret, outline.heel_width / 2.0))
+        else:
+            stations.append((start, outline.heel_width / 2.0))
+        stations.append((heel_end, outline.heel_width / 2.0))
+        lower = [Point2D(x, -(half + clearance)) for x, half in stations]
+        upper = [Point2D(x, half + clearance) for x, half in reversed(stations)]
+        return tuple(lower + upper)
 
     def build(self) -> Prototype001Geometry:
         """Build and validate all geometry from this parameter set.
@@ -391,11 +439,19 @@ class Prototype001Parameters:
             Centerline(self.scale_length),
         )
         fret_layout = FretLayout(fretboard, self.fret_count)
+        # Markers listed beyond the last fret (the 24th-fret pair on a
+        # 22-fret neck, say) are simply not cut.
         inlay_layout = InlayLayout(
             fretboard_surface,
             self.inlay_depth,
-            single_marker_frets=self.inlay_single_marker_frets,
-            double_marker_frets=self.inlay_double_marker_frets,
+            single_marker_frets=tuple(
+                fret for fret in self.inlay_single_marker_frets
+                if fret <= self.fret_count
+            ),
+            double_marker_frets=tuple(
+                fret for fret in self.inlay_double_marker_frets
+                if fret <= self.fret_count
+            ),
         )
         truss_rod_channel = TrussRodChannel(
             outline,
@@ -420,39 +476,24 @@ class Prototype001Parameters:
             ),
             self.headstock_thickness,
         )
-        neck_pocket_end = outline.last_fret_position + self.heel_length
-        body_outline = TracedOutline(
-            tuple(Point2D(x, y) for x, y in OMARUNKO_OUTLINE_POINTS)
-        )
-        # The traced pocket is flipped in X (the DXF block's own local
-        # X runs from the nut-ward wall at 0 back to the tail-ward wall
-        # at -79.48, the opposite sense from this project's own
-        # X-from-the-nut convention) so its tail-ward wall lands at
-        # neck_pocket_end, and scaled in Y about its own centre so that
-        # its wall closest to the centreline (the block is slightly
-        # asymmetric as well as tapered) sits exactly heel_width / 2 out
-        # — every other wall ends up a little further, keeping the
-        # block's own slight taper rather than forcing a rectangle. The
-        # neck therefore never exceeds the pocket: the heel is
-        # heel_width wide and ends at neck_pocket_end, the pocket is at
-        # least heel_width wide everywhere and 79.48 mm long.
-        pocket_local = OMARUNKO_NECK_POCKET_LOCAL_POINTS
-        pocket_local_ys = [y for _, y in pocket_local]
-        pocket_y_center = (max(pocket_local_ys) + min(pocket_local_ys)) / 2.0
-        pocket_y_scale = (self.heel_width / 2.0) / min(
-            abs(y - pocket_y_center) for y in pocket_local_ys
-        )
+        heel_end = outline.last_fret_position + self.heel_length
+        # Traced body features ride with the heel end, bridge features
+        # with the scale length (see the body_* parameter comments).
+        body_shift = heel_end - OMARUNKO_HEEL_END_X
+        bridge_shift = self.scale_length - OMARUNKO_SCALE_LENGTH
+
+        def shifted(
+            points: tuple[tuple[float, float], ...], dx: float
+        ) -> tuple[Point2D, ...]:
+            return tuple(Point2D(x + dx, y) for x, y in points)
+
+        body_outline = TracedOutline(shifted(OMARUNKO_OUTLINE_POINTS, body_shift))
         neck_pocket = TracedCavity(
             "Neck pocket",
-            tuple(
-                Point2D(
-                    neck_pocket_end + local_x,
-                    (local_y - pocket_y_center) * pocket_y_scale,
-                )
-                for local_x, local_y in pocket_local
-            ),
+            self._neck_pocket_outline(outline, heel_end),
             self.heel_thickness,
         )
+
         def pickup_route(name: str, center_x: float) -> TracedCavity:
             return TracedCavity(
                 name,
@@ -463,12 +504,12 @@ class Prototype001Parameters:
                 self.body_pickup_route_depth,
             )
 
-        neck_pickup = pickup_route(
-            "Neck pickup route", self.body_neck_pickup_position
-        )
-        bridge_pickup = pickup_route(
-            "Bridge pickup route", self.body_bridge_pickup_position
-        )
+        neck_pickup_x = heel_end + self.body_neck_pickup_offset
+        bridge_pickup_x = self.scale_length - self.body_bridge_pickup_offset
+        neck_pickup = pickup_route("Neck pickup route", neck_pickup_x)
+        bridge_pickup = pickup_route("Bridge pickup route", bridge_pickup_x)
+        switch_x = heel_end + self.body_switch_cavity_offset
+        switch_cover_x = heel_end + self.body_switch_cover_offset
         bridge_mounting = BridgeMounting(
             self.scale_length,
             pivot_stud_spacing=self.body_bridge_pivot_stud_spacing,
@@ -478,40 +519,40 @@ class Prototype001Parameters:
         )
         bridge_baseplate_cavity = TracedCavity(
             "Bridge baseplate cutout",
-            tuple(Point2D(x, y) for x, y in OMARUNKO_BRIDGE_BASEPLATE_POINTS),
+            shifted(OMARUNKO_BRIDGE_BASEPLATE_POINTS, bridge_shift),
             self.body_bridge_baseplate_depth,
         )
         rear_cavity_depth = self.body_thickness - self.body_rear_cavity_top_wall
         control_cavity = RearCavity(
             TracedCavity(
                 "Control cavity",
-                tuple(Point2D(x, y) for x, y in OMARUNKO_CONTROL_CAVITY_POINTS),
+                shifted(OMARUNKO_CONTROL_CAVITY_POINTS, body_shift),
                 rear_cavity_depth,
             ),
             TracedCavity(
                 "Control cavity cover recess",
-                tuple(Point2D(x, y) for x, y in OMARUNKO_CONTROL_COVER_POINTS),
+                shifted(OMARUNKO_CONTROL_COVER_POINTS, body_shift),
                 self.body_cover_recess_depth,
             ),
         )
         switch_cavity = RearCavity(
             CircularCavity(
                 "Switch cavity",
-                self.body_switch_cavity_x,
+                switch_x,
                 self.body_switch_cavity_y,
                 self.body_switch_cavity_diameter,
                 rear_cavity_depth,
             ),
             CircularCavity(
                 "Switch cavity cover recess",
-                self.body_switch_cover_x,
+                switch_cover_x,
                 self.body_switch_cover_y,
                 self.body_switch_cover_diameter,
                 self.body_cover_recess_depth,
             ),
         )
         jack_hole = JackHole(
-            self.body_jack_x,
+            heel_end + self.body_jack_offset,
             self.body_jack_y,
             self.body_jack_direction_degrees,
             diameter=self.body_jack_diameter,
@@ -520,25 +561,25 @@ class Prototype001Parameters:
         holes = [
             DrilledHole(
                 "Switch shaft hole",
-                self.body_switch_cavity_x,
+                switch_x,
                 self.body_switch_cavity_y,
                 self.body_switch_shaft_hole_diameter,
                 self.body_thickness,
             )
         ]
-        for index, (pot_x, pot_y) in enumerate(self.body_pot_positions, start=1):
+        for index, (pot_offset, pot_y) in enumerate(self.body_pot_offsets, start=1):
             holes.append(
                 DrilledHole(
                     f"Pot {index} shaft hole",
-                    pot_x,
+                    heel_end + pot_offset,
                     pot_y,
                     self.body_pot_shaft_hole_diameter,
                     self.body_thickness,
                 )
             )
         for label, pickup_x in (
-            ("Neck", self.body_neck_pickup_position),
-            ("Bridge", self.body_bridge_pickup_position),
+            ("Neck", neck_pickup_x),
+            ("Bridge", bridge_pickup_x),
         ):
             for side, sign in (("bass", -1.0), ("treble", 1.0)):
                 holes.append(

@@ -25,8 +25,9 @@ at its real position and shape relative to that same neck.
 
 ``OMARUNKO_OUTLINE_POINTS`` excludes the pickup, neck-pocket, bridge
 and rear-cavity features, which are modelled separately as their own
-cavities using the point sets below plus the neck's own real heel
-dimensions.
+cavities using the point sets below. The neck pocket is not traced at
+all: it is derived from the neck's own tapered outline so it always
+matches the neck it receives.
 """
 
 # The humbucker route ("a" block, inserted twice): a 41 x 73.9 mm
@@ -353,20 +354,14 @@ OMARUNKO_OUTLINE_POINTS: tuple[tuple[float, float], ...] = (
     (403.69, -25.16),
 )
 
-# The neck pocket ("neckpocket" block) is slightly trapezoidal, not a
-# plain rectangle — these are its four corners exactly as drawn, in the
-# block's own local coordinates. Unlike the shapes above, this block is
-# never placed (no INSERT) anywhere in the drawing, so there is no
-# recorded real-world position or orientation to read off directly —
-# Prototype001Parameters.build() derives both from the neck's own real
-# heel geometry (see the comment on ``heel_length`` there) rather than
-# hard-coding a fixed position here.
-OMARUNKO_NECK_POCKET_LOCAL_POINTS: tuple[tuple[float, float], ...] = (
-    (0.0, 0.0),
-    (-79.47636816666261, 0.3405743327126771),
-    (-79.47636816666261, -53.34739699473099),
-    (0.0, -51.72159504718849),
-)
+# Anchors for re-placing the traced features when the neck changes: the
+# drawing was made for this heel-end position and scale length. Body
+# features (outline, cavities, pots, jack) are shifted by the difference
+# between the real heel end and OMARUNKO_HEEL_END_X; bridge features
+# (baseplate cutout, bridge pickup) by the difference between the real
+# scale length and OMARUNKO_SCALE_LENGTH.
+OMARUNKO_HEEL_END_X: float = 461.2
+OMARUNKO_SCALE_LENGTH: float = 609.6
 
 # The plain rectangular baseplate-clearance cutout, traced from the
 # drawing's own LWPOLYLINE entity.

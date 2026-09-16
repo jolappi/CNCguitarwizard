@@ -96,15 +96,19 @@ def test_default_preset_builds_every_locked_component() -> None:
     assert geometry.body.neck_pocket.max_x == pytest.approx(
         geometry.neck_outline.last_fret_position + parameters.heel_length
     )
-    # The neck must never exceed the pocket: every pocket wall sits at
-    # least heel_width / 2 from the centreline.
-    assert geometry.body.neck_pocket.max_y - geometry.body.neck_pocket.min_y >= (
-        parameters.heel_width
+    # The pocket is the neck's own tapered outline plus clearance: as
+    # wide as the heel at its tail wall, narrower at its nut-ward end.
+    pocket = geometry.body.neck_pocket
+    clearance = parameters.body_neck_pocket_clearance
+    assert pocket.max_x - pocket.min_x == pytest.approx(
+        parameters.body_neck_pocket_length
     )
-    assert all(
-        abs(point.y) >= parameters.heel_width / 2.0 - 1e-9
-        for point in geometry.body.neck_pocket.outline
+    assert pocket.max_y == pytest.approx(parameters.heel_width / 2.0 + clearance)
+    nut_end_half_width = max(
+        point.y for point in pocket.outline if point.x == pytest.approx(pocket.min_x)
     )
+    assert nut_end_half_width < parameters.heel_width / 2.0
+    assert nut_end_half_width > parameters.nut_width / 2.0
     # The DXF's own pickup placements, verbatim: neck route starts 10 mm
     # past the pocket's tail wall.
     neck_pickup = geometry.body.neck_pickup
@@ -156,7 +160,9 @@ def test_default_preset_builds_every_locked_component() -> None:
     assert holes["Pot 1 shaft hole"].depth == parameters.body_thickness
     assert holes["Pot 2 shaft hole"].diameter == 10.0
     recess = holes["Bridge pickup treble screw recess"]
-    assert recess.center_x == parameters.body_bridge_pickup_position
+    assert recess.center_x == pytest.approx(
+        parameters.scale_length - parameters.body_bridge_pickup_offset
+    )
     assert recess.center_y == pytest.approx(39.95)
     assert recess.depth == pytest.approx(30.0)
     assert geometry.joint_fillet_radius == 3.0
@@ -286,3 +292,53 @@ def test_preset_parameters_are_immutable() -> None:
 
     with pytest.raises(FrozenInstanceError):
         parameters.scale_length = 647.7
+
+
+def test_body_follows_the_neck_and_bridge_follows_the_scale() -> None:
+    """A longer scale moves the pocket with the heel and the bridge with the scale."""
+    base = Prototype001Parameters().build()
+    longer = replace(Prototype001Parameters(), scale_length=647.7).build()
+
+    heel_shift = (
+        longer.neck_outline.last_fret_position - base.neck_outline.last_fret_position
+    )
+    assert heel_shift > 0.0
+    assert longer.body.neck_pocket.max_x == pytest.approx(
+        longer.neck_outline.last_fret_position + longer.neck_outline.heel_length
+    )
+    assert longer.body.outline.points[0].x - base.body.outline.points[0].x == (
+        pytest.approx(heel_shift)
+    )
+    assert longer.body.neck_pickup.min_x - base.body.neck_pickup.min_x == (
+        pytest.approx(heel_shift)
+    )
+    assert longer.body.control_cavity is not None
+    assert base.body.control_cavity is not None
+    assert (
+        longer.body.control_cavity.cavity.min_x - base.body.control_cavity.cavity.min_x
+    ) == pytest.approx(heel_shift)
+    baseplate = longer.body.extra_cavities[0]
+    assert baseplate.min_x - base.body.extra_cavities[0].min_x == pytest.approx(
+        647.7 - 609.6
+    )
+    assert longer.body.bridge_pickup.min_x - base.body.bridge_pickup.min_x == (
+        pytest.approx(647.7 - 609.6)
+    )
+    assert longer.body.bridge_mounting.reference_x == 647.7
+
+
+def test_fewer_frets_keep_the_neck_in_its_pocket() -> None:
+    # A 22-fret neck is shorter, so the physical 440 mm truss rod no longer
+    # fits; a shorter rod is a separate hardware choice.
+    geometry = replace(
+        Prototype001Parameters(), fret_count=22, truss_rod_length=400.0
+    ).build()
+    assert {marker.fret_number for marker in geometry.inlay_layout.markers} == {
+        3, 5, 7, 9, 12, 15, 17, 19, 21
+    }
+
+    assert geometry.body.neck_pocket.max_x == pytest.approx(
+        geometry.neck_outline.last_fret_position + geometry.neck_outline.heel_length
+    )
+    assert geometry.body.neck_pocket.max_x < 461.2
+    assert geometry.body.bridge_mounting.reference_x == 609.6

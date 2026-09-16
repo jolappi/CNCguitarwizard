@@ -80,9 +80,10 @@ nut-origin frame:
   segments chained by nearest endpoints);
 - the two pickup routes are the drawing's own pickup block, inserted at its
   two recorded positions; the block's mounting-ear tabs are kept;
-- the neck pocket is the drawing's trapezoidal `neckpocket` block, placed so
-  its tail-ward wall is exactly where the neck's real heel ends and widened
-  laterally so every wall is at least `heel_width / 2` from the centerline;
+- the neck pocket is *not* traced: it is the neck's own tapered outline over
+  the last `body_neck_pocket_length` (79.5 mm) before the heel end, widened
+  by `body_neck_pocket_clearance` (0.15 mm) per side, so it always matches
+  the neck it receives;
 - the bridge baseplate cutout is the drawing's `LWPOLYLINE`;
 - the almond control cavity and the round switch cavity are the drawing's
   pairs of concentric loops — the inner loop is the cavity, the outer loop the
@@ -92,12 +93,28 @@ The frame is anchored on the drawing's own pickup placement: the neck
 pickup's nut-ward edge sits 10 mm past the heel end, and the pickups' centre
 line is `Y = 0`. Everything else in the drawing follows from that one offset.
 
+## Two anchors
+
+Longitudinal body placements are offsets, not absolute positions, so the
+model stays consistent when the neck changes:
+
+- **Heel-anchored** (`OMARUNKO_HEEL_END_X`): the outline, neck pocket, neck
+  pickup, control and switch cavities, pot holes and jack all move with the
+  neck's heel end (`last_fret_position + heel_length`).
+- **Scale-anchored** (`OMARUNKO_SCALE_LENGTH`): the bridge baseplate cutout
+  and the bridge pickup move with `scale_length`.
+
+Changing the scale or the fret count therefore keeps the neck in its pocket
+and the bridge on the scale; only the bridge's place on the body shifts by
+the difference. `BodySolid` rejects the result if that shift makes two top
+cavities overlap.
+
 ## Prototype001 body
 
 | Feature | Value |
 | --- | --- |
 | Thickness | 44 mm flat slab |
-| Neck pocket | DXF trapezoid, 79.5 mm long, ends at heel end (461.2), 20 mm deep, opens onto the horn gap |
+| Neck pocket | Neck's own taper + 0.15 mm clearance, 79.5 mm long, ends at heel end (461.2), 20 mm deep, opens onto the horn gap |
 | Pickup routes | DXF humbucker route with ears, 41 × 85.9 mm, 22 mm deep, centres 491.7 and 587.9 |
 | Pickup screw recesses | Ø 6 mm, 8 mm below the route floor, at ±39.95 mm |
 | Bridge | Kahler 7300, flat mount: no pivot studs, no sustain block; 55 × 65 mm baseplate cutout 25 mm deep |
