@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
+from typing import Literal
 
 from ..geometry.body import (
     BodySolid,
@@ -31,6 +32,7 @@ from ..geometry.neck import (
     HeadstockSolid,
     NeckBackSurface,
     NeckOutline,
+    Side,
     TrussRodChannel,
     TunerLayout,
 )
@@ -42,6 +44,37 @@ from ._omarunko_outline import (
     OMARUNKO_OUTLINE_POINTS,
     OMARUNKO_PICKUP_ROUTE_LOCAL_POINTS,
 )
+
+HeadstockStyle = Literal["3+3", "6_inline", "6_inline_reverse", "4+2", "2+4"]
+"""Tuner arrangements: bass+treble counts; "reverse" puts the row on the treble side."""
+
+HEADSTOCK_STYLES: dict[str, tuple[int, int]] = {
+    "3+3": (3, 3),
+    "6_inline": (6, 0),
+    "6_inline_reverse": (0, 6),
+    "4+2": (4, 2),
+    "2+4": (2, 4),
+}
+"""Tuner counts on the (bass, treble) side for every headstock style."""
+
+HEADSTOCK_RESERVES: dict[
+    str, tuple[tuple[float | None, float | None], tuple[float | None, float | None]]
+] = {
+    "6_inline": ((36.0, None), (35.0, 60.0)),
+    "6_inline_reverse": ((36.0, None), (35.0, 60.0)),
+    "4+2": ((36.0, 15.0), (40.0, 30.0)),
+    "2+4": ((36.0, 15.0), (40.0, 30.0)),
+}
+"""Least (shoulder, tip) half-widths kept on the row side and the other side.
+
+``None`` leaves that end to the edge fitted through the holes.
+
+Wood left in the blank so a traditional outline can still be carved from
+it: a Strat headstock's treble lobe beside a six-in-line row (the row's
+own edge follows its posts, which sit on the strings' lines and so run
+diagonally across the centreline), a Music Man's root lobe and narrow tip
+around 4+2. A 3+3 has no reserve; its edges follow the holes exactly.
+"""
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,6 +100,21 @@ class Prototype001Geometry:
     headstock_outer_d_profile_guide_extension: float
     heel_nose_radius: float
     heel_block_start_offset: float
+
+
+@dataclass(frozen=True, slots=True)
+class _HeadstockLayout:
+    """The resolved headstock plan settings and tuner stations of a style."""
+
+    length: float
+    shoulder_width: float
+    shoulder_shift: float
+    tip_width: float
+    tip_shift: float
+    bass_sign: float
+    stations: tuple[float, ...]
+    sides: tuple[Side, ...] | None
+    offsets: tuple[float, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -188,15 +236,42 @@ class Prototype001Parameters:
     truss_rod_length: float = 440.0
     truss_rod_width: float = 6.0
     truss_rod_depth: float = 9.0
+    # Headstock style: "3+3" mirrors tuner_station_distances /
+    # tuner_side_offsets onto both sides. The row styles (six in line on
+    # the bass or, for "reverse", the treble edge; 4+2 with the pair at
+    # the root) space tuner_inline_* stations along the row and put every
+    # post on its own string's straight line past the nut
+    # (nut_string_spacing / bridge_string_spacing, the post
+    # tuner_post_diameter/2 outboard of the string), so no string bends
+    # at the nut. Every edge with tuners follows them tuner_edge_offset
+    # further out (a line fitted through the holes), but never inside
+    # the style's wood reserve (HEADSTOCK_RESERVES): a six-in-line blank
+    # keeps room for a Strat outline, a 4+2 blank for a Music Man one.
+    # The headstock grows past headstock_length when the last tuner
+    # needs it. headstock_bass_side says where the low E is: -Y on the
+    # left-handed Prototype001 body (the long-horn side). The shoulder
+    # and tip widths and shifts, when set, override the resolved ends
+    # (shifts toward the bass side positive).
+    headstock_style: HeadstockStyle = "3+3"
+    headstock_bass_side: Literal["-y", "+y"] = "-y"
     headstock_length: float = 150.0
     headstock_root_length: float = 45.0
-    headstock_shoulder_width: float = 65.0
-    headstock_tip_width: float = 40.0
+    headstock_shoulder_width: float | None = None
+    headstock_tip_width: float | None = None
+    headstock_shoulder_shift: float | None = None
+    headstock_tip_shift: float | None = None
     headstock_angle: float = 8.0
     headstock_thickness: float = 16.0
     tuner_hole_diameter: float = 10.0
     tuner_station_distances: tuple[float, float, float] = (55.0, 85.0, 110.0)
     tuner_side_offsets: tuple[float, float, float] = (15.0, 12.0, 10.0)
+    tuner_inline_first_distance: float = 50.0
+    tuner_inline_spacing: float = 25.4
+    tuner_edge_offset: float = 15.0
+    tuner_tip_margin: float = 5.0
+    tuner_post_diameter: float = 6.0
+    nut_string_spacing: float = 7.0
+    bridge_string_spacing: float = 10.5
     tuner_edge_clearance: float = 8.0
     tuner_hole_clearance: float = 10.0
     tuner_chamfer_depth: float = 0.2
@@ -311,6 +386,180 @@ class Prototype001Parameters:
         upper = [Point2D(x, half + clearance) for x, half in reversed(stations)]
         return tuple(lower + upper)
 
+    def _headstock_layout(self) -> _HeadstockLayout:
+        """Resolve the headstock plan and tuner stations for the style.
+
+        Stations: "3+3" mirrors ``tuner_station_distances`` onto both
+        sides with ``tuner_side_offsets``. A row of tuners runs
+        ``max(bass, treble)`` stations ``tuner_inline_spacing`` apart along
+        the fuller side from ``tuner_inline_first_distance``; a 4+2 pair
+        sits at the root on the other side, staggered half a station
+        opposite the row's first two.
+
+        Posts: in the row styles every post sits on its own string's
+        straight continuation past the nut (the bridge-to-nut line from
+        ``bridge_string_spacing`` and ``nut_string_spacing``), the post
+        radius outboard of the string, so no string bends at the nut. The
+        row takes its side's strings nearest first (low E to the first
+        bass post) and the pair the other side's outermost strings, so a
+        six-in-line row runs diagonally across the centreline and a 4+2
+        row converges toward it. A 3+3 keeps its given offsets: with both
+        rows at the same stations, straight strings would put the D and G
+        posts too close together.
+
+        Outline: each edge with tuners on it is the straight line fitted
+        through those holes ``tuner_edge_offset`` further out, from the
+        shoulder to the tip, so every hole sits the same distance from
+        its edge — but never inside the style's ``HEADSTOCK_RESERVES``,
+        the wood kept for carving a Strat or Music Man outline. An edge
+        with no tuners is the reserve alone. Explicit
+        ``headstock_shoulder_width`` / ``headstock_shoulder_shift`` /
+        ``headstock_tip_width`` / ``headstock_tip_shift`` override the
+        resolved ends. The headstock grows past ``headstock_length`` when
+        the last tuner needs it.
+        """
+        bass_sign = -1.0 if self.headstock_bass_side == "-y" else 1.0
+        bass_count, treble_count = HEADSTOCK_STYLES[self.headstock_style]
+        hole_edge = self.tuner_hole_diameter / 2.0 + self.tuner_edge_clearance
+        # Bass-positive lateral position of string n (1 = low E) at a
+        # distance past the nut, continuing its bridge-to-nut line.
+        def string_u(string: int, distance: float) -> float:
+            spacing = self.nut_string_spacing + (
+                self.nut_string_spacing - self.bridge_string_spacing
+            ) * distance / self.scale_length
+            return (3.5 - string) * spacing
+
+        stations: list[tuple[float, Side, float]] = []  # distance, side, u
+        sides: tuple[Side, ...] | None
+        distances: tuple[float, ...]
+        offsets: tuple[float, ...]
+        if self.headstock_style == "3+3":
+            for distance, offset in zip(
+                self.tuner_station_distances, self.tuner_side_offsets, strict=True
+            ):
+                stations.append((distance, "bass", offset))
+                stations.append((distance, "treble", -offset))
+            length = self.headstock_length
+            sides = None
+            distances = self.tuner_station_distances
+            offsets = self.tuner_side_offsets
+        else:
+            row_side: Side
+            pair_side: Side
+            row_side, pair_side = (
+                ("bass", "treble")
+                if bass_count >= treble_count
+                else ("treble", "bass")
+            )
+            row_count = max(bass_count, treble_count)
+            pair_count = min(bass_count, treble_count)
+            first, spacing = self.tuner_inline_first_distance, self.tuner_inline_spacing
+            row_strings = (
+                list(range(1, row_count + 1))
+                if row_side == "bass"
+                else list(range(6, 6 - row_count, -1))
+            )
+            pair_strings = (
+                list(range(6, 6 - pair_count, -1))
+                if pair_side == "treble"
+                else list(range(1, pair_count + 1))
+            )
+            post_radius = self.tuner_post_diameter / 2.0
+            row_distances = [first + index * spacing for index in range(row_count)]
+            length = max(
+                self.headstock_length,
+                max(row_distances) + hole_edge + self.tuner_tip_margin,
+            )
+            for distance, string in zip(row_distances, row_strings, strict=True):
+                sign = 1.0 if row_side == "bass" else -1.0
+                post_u = string_u(string, distance) + sign * post_radius
+                stations.append((distance, row_side, post_u))
+            for step, string in enumerate(pair_strings):
+                distance = first + (step + 0.5) * spacing
+                sign = 1.0 if pair_side == "bass" else -1.0
+                post_u = string_u(string, distance) + sign * post_radius
+                stations.append((distance, pair_side, post_u))
+            sides = tuple(side for _, side, _ in stations)
+            distances = tuple(distance for distance, _, _ in stations)
+            # Offsets are measured toward the hole's own side; a row post
+            # past the centreline gets a negative one.
+            offsets = tuple(
+                u if side == "bass" else -u for _, side, u in stations
+            )
+
+        # Edges: fit each side's line through its holes, edge_offset out,
+        # never inside the style's reserve; then, keeping the shoulder
+        # end, push the tip end out until the line clears every hole (a
+        # row that has crossed the centreline needs room on the far side
+        # too) by tuner_edge_clearance.
+        root = self.headstock_root_length
+        reserve = HEADSTOCK_RESERVES.get(self.headstock_style)
+        row_side_of_style: Side = (
+            "bass" if bass_count >= treble_count else "treble"
+        )
+        halves: dict[Side, tuple[float, float]] = {}
+        for side in ("bass", "treble"):
+            sign = 1.0 if side == "bass" else -1.0
+            reserve_shoulder, reserve_tip = (
+                (None, None)
+                if reserve is None
+                else reserve[0 if side == row_side_of_style else 1]
+            )
+            points = [
+                (distance, sign * u + self.tuner_edge_offset)
+                for distance, hole_side, u in stations
+                if hole_side == side
+            ]
+            if len(points) >= 2:
+                mean_d = sum(d for d, _ in points) / len(points)
+                mean_e = sum(e for _, e in points) / len(points)
+                slope = sum((d - mean_d) * (e - mean_e) for d, e in points) / sum(
+                    (d - mean_d) ** 2 for d, _ in points
+                )
+                shoulder_half = mean_e + slope * (root - mean_d)
+                tip_half = mean_e + slope * (length - mean_d)
+                if reserve_shoulder is not None:
+                    shoulder_half = max(shoulder_half, reserve_shoulder)
+                if reserve_tip is not None:
+                    tip_half = max(tip_half, reserve_tip)
+            else:
+                shoulder_half = reserve_shoulder or 0.0
+                tip_half = reserve_tip or 0.0
+            for distance, _, u in stations:
+                fraction = (distance - root) / (length - root)
+                if fraction <= 0.0:
+                    continue
+                required = sign * u + hole_edge + 0.01
+                tip_half = max(
+                    tip_half, (required - shoulder_half * (1.0 - fraction)) / fraction
+                )
+            halves[side] = (shoulder_half, tip_half)
+        shoulder_bass, tip_bass = halves["bass"]
+        shoulder_treble, tip_treble = halves["treble"]
+        shoulder_width = shoulder_bass + shoulder_treble
+        shoulder_shift = (shoulder_bass - shoulder_treble) / 2.0
+        tip_width_final = tip_bass + tip_treble
+        tip_shift = (tip_bass - tip_treble) / 2.0
+        if self.headstock_shoulder_width is not None:
+            shoulder_width = self.headstock_shoulder_width
+        if self.headstock_shoulder_shift is not None:
+            shoulder_shift = self.headstock_shoulder_shift
+        if self.headstock_tip_width is not None:
+            tip_width_final = self.headstock_tip_width
+        if self.headstock_tip_shift is not None:
+            tip_shift = self.headstock_tip_shift
+        return _HeadstockLayout(
+            length,
+            shoulder_width,
+            shoulder_shift,
+            tip_width_final,
+            tip_shift,
+            bass_sign,
+            distances,
+            sides,
+            offsets,
+        )
+
     def build(self) -> Prototype001Geometry:
         """Build and validate all geometry from this parameter set.
 
@@ -350,6 +599,42 @@ class Prototype001Parameters:
             raise NeckGeometryError(
                 "Headstock root length must be at least 5 mm and shorter "
                 "than the headstock."
+            )
+        if self.headstock_style not in HEADSTOCK_STYLES:
+            raise NeckGeometryError(
+                f"Unknown headstock style {self.headstock_style!r}; choose one "
+                f"of {', '.join(HEADSTOCK_STYLES)}."
+            )
+        inline_values = (
+            self.tuner_inline_first_distance,
+            self.tuner_inline_spacing,
+            self.tuner_edge_offset,
+        )
+        if not all(
+            math.isfinite(value) and value > 0.0 for value in inline_values
+        ):
+            raise NeckGeometryError(
+                "In-line tuner distance, spacing and edge offset must be positive."
+            )
+        if not math.isfinite(self.tuner_tip_margin) or (
+            self.tuner_tip_margin < 0.0
+        ):
+            raise NeckGeometryError("Tuner tip margin must not be negative.")
+        if self.headstock_bass_side not in ("-y", "+y"):
+            raise NeckGeometryError('headstock_bass_side must be "-y" or "+y".')
+        string_values = (
+            self.tuner_post_diameter,
+            self.nut_string_spacing,
+            self.bridge_string_spacing,
+        )
+        if not all(math.isfinite(value) and value > 0.0 for value in string_values):
+            raise NeckGeometryError(
+                "Tuner post diameter and string spacings must be positive."
+            )
+        if self.tuner_inline_first_distance < self.headstock_root_length:
+            raise NeckGeometryError(
+                "The first in-line tuner must sit beyond the headstock root, "
+                "on the straight tapered edge."
             )
         if (
             not math.isfinite(self.headstock_root_swell)
@@ -476,17 +761,21 @@ class Prototype001Parameters:
             self.truss_rod_depth,
             adjustment_side="heel",
         )
+        layout = self._headstock_layout()
         headstock_plan = HeadstockPlan(
-            self.headstock_length,
+            layout.length,
             self.nut_width,
             self.headstock_root_length,
-            self.headstock_shoulder_width,
-            self.headstock_tip_width,
+            layout.shoulder_width,
+            layout.tip_width,
+            shoulder_shift=layout.shoulder_shift,
+            tip_shift=layout.tip_shift,
+            bass_sign=layout.bass_sign,
         )
         headstock = HeadstockSolid(
             headstock_plan,
             HeadstockAngleReference(
-                self.headstock_length,
+                layout.length,
                 self.headstock_angle,
             ),
             self.headstock_thickness,
@@ -629,10 +918,11 @@ class Prototype001Parameters:
         tuner_layout = TunerLayout(
             headstock_plan,
             hole_diameter=self.tuner_hole_diameter,
-            station_distances=self.tuner_station_distances,
-            side_offsets=self.tuner_side_offsets,
+            station_distances=layout.stations,
+            side_offsets=layout.offsets,
             minimum_edge_clearance=self.tuner_edge_clearance,
             minimum_hole_clearance=self.tuner_hole_clearance,
+            sides=layout.sides,
         )
         return Prototype001Geometry(
             outline,

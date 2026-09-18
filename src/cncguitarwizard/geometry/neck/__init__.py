@@ -6,6 +6,7 @@ from .headstock import (
     HeadstockAngleReference,
     HeadstockPlan,
     HeadstockSolid,
+    Side,
     TunerHole,
     TunerLayout,
 )
@@ -29,6 +30,7 @@ __all__ = [
     "NeckProfileStation",
     "NeckProfileStations",
     "NeckSideProfile",
+    "Side",
     "TunerHole",
     "TunerLayout",
     "TrussRodChannel",

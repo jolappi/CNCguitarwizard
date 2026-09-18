@@ -51,13 +51,13 @@ liittymistä U-sylinteriin.
 
 | Kohta | Speksi |
 | --- | --- |
-| Muoto | Oma, moderni kapeneva 3+3-malli |
-| Pituus | 150 mm |
+| Muoto | Oma, moderni malli; `headstock_style` valitsee 3+3 (oletus), 6 rivissä bassopuolella tai diskanttipuolella (`6_inline`, `6_inline_reverse`) tai 4+2 / 2+4. Reunat seuraavat viritinreikiä 15 mm:n päässä (`tuner_edge_offset`), mutta rivityyleissä aihioon jää varapuu: 6 rivissä Strat-lobelle vastakkaisella puolella (hartia 71, kärki 62 mm), 4+2:ssa Music Man -muodolle (hartia 76, kärki 45 mm) |
+| Pituus | 150 mm; kasvaa automaattisesti, kun viritinrivi tarvitsee (6 rivissä 195 mm) |
 | Kulma | 8° |
 | Paksuus | Säädettävä 14–16 mm; oletus 16 mm |
-| Hartialeveys | 65 mm |
-| Kärjen leveys | 40 mm |
-| Virittimet | 6 × 10 mm läpireikää |
+| Hartialeveys | reikien mukaan (3+3: 61,7 mm; 65 mm reunalla, jolla ei ole virittimiä) |
+| Kärjen leveys | reikien mukaan (3+3: 42,5 mm; 40 mm reunalla, jolla ei ole virittimiä) |
+| Virittimet | 6 × 10 mm läpireikää; rivissä 25,4 mm jaolla 50 mm:stä alkaen; rivityyleissä tapit kielten suorilla linjoilla (kielet eivät taitu satulassa): kuutosrivi kulkee vinosti keskilinjan yli ja sen reuna seuraa tappeja 15 mm:n päässä, 4+2:n pari lavan juuressa rivin kahta ensimmäistä vastapäätä; bassopuoli −Y (`headstock_bass_side`) |
 | Reunapuuta viritinreiällä | Vähintään 8 mm |
 | Reikäviiste | 45°, 0,2 mm |
 

@@ -1243,11 +1243,13 @@ class FreeCADScriptExporter:
             # is headstock.plan's own distance at this position, exactly
             # as _angled_headstock_root_section computes it unmodified.
             top_distance = max(0.0, -position) * weight
-            top_width = headstock.plan.width_at_distance(top_distance)
-            top_half_width = top_width / 2.0
             new_row = list(row)
-            new_row[0] = Point3D(position, -top_half_width, top_z)
-            new_row[count - 1] = Point3D(position, top_half_width, top_z)
+            new_row[0] = Point3D(
+                position, headstock.plan.edge_y(top_distance, -1.0), top_z
+            )
+            new_row[count - 1] = Point3D(
+                position, headstock.plan.edge_y(top_distance, 1.0), top_z
+            )
             rebuilt.append(tuple(new_row))
         return tuple(rebuilt)
 
@@ -1352,12 +1354,19 @@ class FreeCADScriptExporter:
         """
         radians = math.radians(headstock.angle.angle_degrees)
         shear = headstock.thickness * math.sin(radians)
-        top_width = headstock.plan.width_at_distance(max(0.0, -position))
-        bottom_width = headstock.plan.width_at_distance(
-            max(0.0, -position + shear)
-        )
-        top_half_width = top_width / 2.0
-        bottom_half_width = bottom_width / 2.0
+        # The plan may be asymmetric (an in-line headstock), and an edge
+        # may even sit past the centerline, so the row runs between the
+        # two signed edge positions rather than +-half-widths.
+        top_edges = {
+            y_sign: headstock.plan.edge_y(max(0.0, -position), y_sign)
+            for y_sign in (-1.0, 1.0)
+        }
+        bottom_edges = {
+            y_sign: headstock.plan.edge_y(max(0.0, -position + shear), y_sign)
+            for y_sign in (-1.0, 1.0)
+        }
+        bottom_centre = (bottom_edges[1.0] + bottom_edges[-1.0]) / 2.0
+        bottom_half_width = (bottom_edges[1.0] - bottom_edges[-1.0]) / 2.0
         top_z = position * math.tan(radians)
         bottom_z = top_z - headstock.thickness / math.cos(radians)
         count = neck_surface.profile_sample_count
@@ -1378,23 +1387,21 @@ class FreeCADScriptExporter:
         points: list[Point3D] = []
         for index in range(count):
             if index == 0:
-                points.append(Point3D(position, -top_half_width, top_z))
+                points.append(Point3D(position, top_edges[-1.0], top_z))
                 continue
             if index == count - 1:
-                points.append(Point3D(position, top_half_width, top_z))
+                points.append(Point3D(position, top_edges[1.0], top_z))
                 continue
             lateral_u = 2.0 * (index - 1) / (count - 3) - 1.0
             abs_u = abs(lateral_u)
+            side = 1.0 if lateral_u >= 0.0 else -1.0
             if rounding_fraction > 0.0 and abs_u > flat_fraction:
                 edge_progress = (abs_u - flat_fraction) / rounding_span
                 blend = NeckBackSurface._smootherstep(edge_progress)
-                magnitude = bottom_half_width + (
-                    top_half_width - bottom_half_width
-                ) * blend
-                y = math.copysign(magnitude, lateral_u)
+                y = bottom_edges[side] + (top_edges[side] - bottom_edges[side]) * blend
                 z = bottom_z + (top_z - bottom_z) * blend
             else:
-                y = bottom_half_width * lateral_u / flat_fraction
+                y = bottom_centre + bottom_half_width * lateral_u / flat_fraction
                 z = bottom_z
             points.append(Point3D(position, y, z))
         return tuple(points)

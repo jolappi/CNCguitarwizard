@@ -26,7 +26,9 @@ pin 1 → pin 2 → pin 1 check.
 ## Neck (`NeckMachiningParameters`, five programs)
 
 The blank is planed to `blank_thickness` (40 mm) with its top face the
-fretboard glue plane. Two dowels sit in the waste beyond the headstock tip
+fretboard glue plane; a headstock whose angled tip reaches lower (a 195 mm
+six-in-line headstock needs 45.6 mm) raises the blank thickness on its own,
+and the stock report and the index-pin program's blank note say so. Two dowels sit in the waste beyond the headstock tip
 and beyond the heel, on the centerline.
 
 | Program | Setup | Contents |

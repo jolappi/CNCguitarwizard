@@ -9,7 +9,6 @@ from cncguitarwizard.cam import (
     GRBLWriter,
     MachiningParameters,
     NeckMachiningParameters,
-    ToolpathError,
     neck_plan_polygon,
     plan_neck_machining,
 )
@@ -156,9 +155,24 @@ def test_outline_cuts_the_skin_with_tabs(plan, parameters) -> None:  # type: ign
     assert all(move.z <= tab_top + 1e-6 for move in cut_moves if move.z < 0.0)
 
 
-def test_blank_too_thin_for_the_headstock_is_rejected(geometry) -> None:  # type: ignore[no-untyped-def]
-    with pytest.raises(ToolpathError, match="thick"):
-        plan_neck_machining(geometry, NeckMachiningParameters(blank_thickness=30.0))
+def test_blank_too_thin_for_the_headstock_is_thickened(geometry) -> None:  # type: ignore[no-untyped-def]
+    plan = plan_neck_machining(geometry, NeckMachiningParameters(blank_thickness=30.0))
+
+    # 150 mm at 8 deg drops 21.08 mm, plus 16 mm / cos 8 deg and the 2 mm skin.
+    assert plan.stock_thickness == pytest.approx(39.3, abs=0.05)
+    assert "more than the 30 mm blank_thickness" in " ".join(plan.setups[0].notes)
+
+
+def test_a_six_in_line_headstock_thickens_the_blank() -> None:
+    from dataclasses import replace
+
+    from cncguitarwizard.presets import Prototype001Parameters
+
+    geometry = replace(Prototype001Parameters(), headstock_style="6_inline").build()
+    plan = plan_neck_machining(geometry, NeckMachiningParameters())
+
+    assert plan.stock_thickness == pytest.approx(45.6, abs=0.05)
+    assert plan.stock_thickness > 40.0
 
 
 def test_setups_render_with_their_own_tool_lines(plan) -> None:  # type: ignore[no-untyped-def]

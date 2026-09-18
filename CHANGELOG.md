@@ -25,6 +25,22 @@
 - `BodySolid` accepts stepped top cavities: a deeper cavity nested inside
   a shallower one is cut from that floor down (the body CAM starts it at
   the enclosing floor), so a two-level recess keeps continuous walls.
+- Headstock styles (`headstock_style`): 3+3, six in line on either side
+  and 4+2 / 2+4. `HeadstockPlan` can shift its shoulder and tip sideways
+  (per-side widths flow through the FreeCAD loft, CAM and plan view) and
+  `TunerLayout` places stations on named sides. A tuner row lengthens the
+  headstock automatically. In the row styles every post sits on its own
+  string's straight line past the nut (a six-in-line row crosses the
+  centreline, a 4+2 row converges Music Man-style), and
+  every edge with tuners is fitted through its holes `tuner_edge_offset`
+  out, so holes sit the same distance from the edge — outside a per-style
+  wood reserve (`HEADSTOCK_RESERVES`) that keeps a six-in-line blank big
+  enough for a Strat outline and a 4+2 blank for a Music Man one; a
+  headstock edge may cross the centreline and the tip may be wider than
+  the shoulder. `headstock_bass_side` (default `-y`, the
+  left-handed body) makes "bass" the physical bass side in the tuner
+  layout and headstock plan. The default 3+3 outline is now 61.7 mm at
+  the shoulder and 42.5 mm at the tip, following its holes.
 - The web form shows only the commonly changed fields of each group and
   folds the rest behind an "Advanced" toggle (`advanced` in the schema),
   with a page-wide checkbox to open them all.

@@ -61,7 +61,8 @@ class NeckMachiningParameters:
         flat: The 6 mm flat end mill used for the truss-rod channel,
             headstock face, tuner marks, roughing, and the outline.
         ball: The ball nose of the same diameter used to finish the back.
-        blank_thickness: Planed thickness of the neck blank; must exceed
+        blank_thickness: Planed thickness of the neck blank; raised
+            automatically when the headstock tip needs more. Must exceed
             the headstock's lowest point below the glue plane.
         skin: Wood left under the part (at the glue-plane side) outside
             the outline and along the back's edges, so the neck stays in
@@ -159,24 +160,24 @@ def plan_neck_machining(
 ) -> NeckMachiningPlan:
     """Return toolpaths for every machinable feature of the neck.
 
+    The blank is ``blank_thickness`` thick, or thicker when the angled
+    headstock's tip reaches lower than that — a longer in-line headstock
+    needs a thicker blank, and the plan's ``stock_thickness`` and the
+    index-pin program's blank note say how much.
+
     Raises:
-        ToolpathError: If the blank is too thin for the headstock, or an
-            index pin cannot be placed.
+        ToolpathError: If an index pin cannot be placed.
     """
     flat = parameters.flat
     ball = parameters.ball
-    thickness = parameters.blank_thickness
     headstock = geometry.headstock
     angle = math.radians(headstock.angle.angle_degrees)
     tangent = math.tan(angle)
     back_plane_offset = headstock.thickness / math.cos(angle)
     tip_x = -headstock.plan.length
     lowest = tip_x * tangent - back_plane_offset
-    if thickness < -lowest + parameters.skin:
-        raise ToolpathError(
-            f"Neck blank must be at least {-lowest + parameters.skin:.1f} mm "
-            f"thick for this headstock; {thickness} mm given."
-        )
+    needed = math.ceil((-lowest + parameters.skin) * 10.0) / 10.0
+    thickness = max(parameters.blank_thickness, needed)
 
     outline = neck_plan_polygon(geometry)
     min_x, min_y, max_x, max_y = polygon_bounds(outline)
@@ -213,7 +214,14 @@ def plan_neck_machining(
             "Both dowels sit in the waste on the centerline, beyond the "
             "headstock tip and beyond the heel.",
             f"Blank: at least {stock.length:.0f} x {stock.width:.0f} x "
-            f"{thickness:g} mm.",
+            f"{thickness:g} mm."
+            + (
+                f" (the {headstock.plan.length:g} mm headstock needs "
+                f"{thickness:g} mm, more than the {parameters.blank_thickness:g} "
+                "mm blank_thickness)"
+                if thickness > parameters.blank_thickness
+                else ""
+            ),
         ),
         reference_points,
         flat,

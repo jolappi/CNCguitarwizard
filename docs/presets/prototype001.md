@@ -68,7 +68,11 @@ Building the preset creates and cross-validates:
 - a separate 15 mm `heel_root_center_extension`, which makes the center of
   the heel runout lead smoothly into the neck while the full 54 mm mounting
   block stays planar and intact;
-- the six-hole 3+3 tuner layout with at least about 8 mm of side-edge wood;
+- the tuner layout chosen by `headstock_style` — 3+3 by default, or a
+  6-in-line row (either side) or 4+2 / 2+4 — with at least about 8 mm of
+  side-edge wood; a row of tuners lengthens the headstock as needed, every
+  post sits on its string's own line, and each edge follows its holes (see
+  [Tuner-hole layout](../geometry/07_tuner_layout.md));
 - 2 mm deep position markers (`InlayLayout`) at frets 3, 5, 7, 9, 15, 17, 19
   and 21, doubled at 12 and 24: barbed wire by default, or round dots
   (`inlay_style="dot"`, `inlay_dot_diameter`) or Gibson-style tapered blocks

@@ -40,6 +40,7 @@ _BASIC_FIELDS: frozenset[str] = frozenset(
         "neck_profile_exponent",
         "heel_width",
         "heel_thickness",
+        "headstock_style",
         "headstock_length",
         "headstock_angle",
         "headstock_thickness",

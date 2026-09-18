@@ -82,7 +82,7 @@ def test_default_preset_builds_every_locked_component() -> None:
     assert geometry.tuner_layout.side_offsets == (15.0, 12.0, 10.0)
     assert geometry.tuner_layout.minimum_side_edge_clearance >= 8.0
     assert geometry.tuner_layout.minimum_side_edge_clearance == pytest.approx(
-        9.761905,
+        9.901099,
         abs=0.000001,
     )
     assert len(geometry.fret_layout.slots) == 24

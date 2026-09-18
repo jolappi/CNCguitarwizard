@@ -62,6 +62,12 @@ def test_schema_lists_every_parameter_with_a_form_type() -> None:
     assert prototype_fields["scale_length"]["advanced"] is False
     assert prototype_fields["fretboard_nut_corner_radius"]["advanced"] is True
     assert bridge["advanced"] is False
+    assert prototype_fields["headstock_style"]["type"] == "choice"
+    assert prototype_fields["headstock_style"]["options"] == [
+        "3+3", "6_inline", "6_inline_reverse", "4+2", "2+4"
+    ]
+    assert prototype_fields["headstock_style"]["advanced"] is False
+    assert prototype_fields["headstock_tip_width"]["type"] == "optional_float"
     assert floyd_fields["treble_side"]["type"] == "choice"
     assert floyd_fields["treble_side"]["options"] == ["+y", "-y"]
     titles = [group["title"] for group in schema["prototype"]]

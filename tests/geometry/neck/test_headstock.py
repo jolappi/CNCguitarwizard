@@ -105,7 +105,7 @@ def test_headstock_geometry_is_immutable() -> None:
         lambda: HeadstockPlan(0.0, 42.0, 30.0, 65.0, 40.0),
         lambda: HeadstockPlan(150.0, 42.0, 150.0, 65.0, 40.0),
         lambda: HeadstockPlan(150.0, 66.0, 30.0, 65.0, 40.0),
-        lambda: HeadstockPlan(150.0, 42.0, 30.0, 65.0, 65.0),
+        lambda: HeadstockPlan(150.0, 42.0, 30.0, 65.0, -40.0),
         lambda: HeadstockPlan(150.0, 42.0, 30.0, 65.0, 40.0, 1),
         lambda: HeadstockAngleReference(0.0, 8.0),
         lambda: HeadstockAngleReference(150.0, 0.0),
