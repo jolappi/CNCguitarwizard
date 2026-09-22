@@ -434,8 +434,28 @@ function showResult(result) {
 // in an iframe; the user pastes into its editor.
 const SIMULATOR_URL = "https://ncviewer.com/";
 
+function simulatorPanel() {
+  // A browser that kept an older index.html cached (Safari does) has no
+  // panel markup; build it after the downloads table in that case.
+  let panel = document.getElementById("simulator");
+  if (!panel) {
+    panel = document.createElement("div");
+    panel.id = "simulator";
+    panel.className = "simulator hidden";
+    panel.innerHTML =
+      '<h2>Simulator <span id="simulator-file" class="note"></span></h2>' +
+      '<p id="simulator-hint" class="note"></p>' +
+      '<iframe id="simulator-frame" title="NC Viewer G-code simulator" ' +
+      'allow="clipboard-read; clipboard-write" ' +
+      'style="width:100%;height:640px;border:1px solid #d9cfbd;border-radius:6px;background:#fff"></iframe>';
+    const files = document.getElementById("files");
+    files.parentNode.insertBefore(panel, files.nextSibling);
+  }
+  return panel;
+}
+
 async function simulate(name, text) {
-  const panel = document.getElementById("simulator");
+  const panel = simulatorPanel();
   const frame = document.getElementById("simulator-frame");
   const hint = document.getElementById("simulator-hint");
   document.getElementById("simulator-file").textContent = `— ${name}`;
