@@ -32,7 +32,11 @@ Python.
 4. Shows the whole-instrument plan view, the three toolpath plots, download
    links for the FreeCAD script (`.py` and `.FCMacro`), the three `.nc`
    programs, the SVG plots and `build.json`, and a summary with stock size
-   and time estimates.
+   and time estimates. Each `.nc` row also has a *Simulate* button: it
+   copies that program to the clipboard and opens
+   [NC Viewer](https://ncviewer.com) in a panel below, where pasting into
+   the editor (or dropping the downloaded file) runs the simulation — the
+   viewer has no URL or message API a page could feed directly.
 
 FreeCAD cannot run in a browser, so `.FCStd` and STEP are made locally:
 download `Prototype001_freecad.py` and run
@@ -51,7 +55,7 @@ into `site/wheels/` and writes `site/wheel.json`, both git-ignored. The
 page needs to be served over HTTP (not opened as a file) because Pyodide
 fetches the wheel.
 
-`wheel.json` carries a build id (the wheel's hash). The page fetches it
+`wheel.json` carries a build id (a hash of the wheel and `app.js`). The page fetches it
 uncached and appends the id to the `app.js` and wheel URLs, so after a
 rebuild a plain reload always gets the matching script and wheel — no
 hard refresh needed. The status line shows the build id that is running.
@@ -68,7 +72,7 @@ job prints the page URL.
 | File | Purpose |
 | --- | --- |
 | `site/index.html` | Layout and styling |
-| `site/app.js` | Pyodide bootstrap, form generation, build, downloads |
+| `site/app.js` | Pyodide bootstrap, form generation, build, downloads, NC Viewer simulator panel |
 | `src/cncguitarwizard/webapp.py` | Schema and build glue called from the page |
 | `src/cncguitarwizard/render/svg/plan_view.py` | The plan-view SVG |
 | `tools/build_site.py` | Wheel build and manifest |

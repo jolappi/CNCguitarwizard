@@ -405,6 +405,14 @@ function showResult(result) {
     row.innerHTML =
       `<td>${name}</td><td>${(text.length / 1024).toFixed(0)} kB</td>` +
       `<td><a class="download" href="${url}" download="${name}">Download</a></td>`;
+    if (name.endsWith(".nc")) {
+      const button = document.createElement("button");
+      button.className = "simulate";
+      button.textContent = "Simulate";
+      button.title = "Copy this program to the clipboard and open NC Viewer below";
+      button.addEventListener("click", () => simulate(name, text));
+      row.lastElementChild.appendChild(button);
+    }
     files.appendChild(row);
   }
 
@@ -419,6 +427,32 @@ function showResult(result) {
   }
   rows.push(["Version", report.version]);
   summary.innerHTML = rows.map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join("");
+}
+
+// NC Viewer (ncviewer.com) has no URL or postMessage way to receive a
+// program, so the button copies it to the clipboard and opens the viewer
+// in an iframe; the user pastes into its editor.
+const SIMULATOR_URL = "https://ncviewer.com/";
+
+async function simulate(name, text) {
+  const panel = document.getElementById("simulator");
+  const frame = document.getElementById("simulator-frame");
+  const hint = document.getElementById("simulator-hint");
+  document.getElementById("simulator-file").textContent = `— ${name}`;
+  panel.classList.remove("hidden");
+  if (!frame.src) frame.src = SIMULATOR_URL;
+  let copied = false;
+  try {
+    await navigator.clipboard.writeText(text);
+    copied = true;
+  } catch (error) {
+    console.warn("Clipboard write failed", error);
+  }
+  hint.className = copied ? "note ok" : "note bad";
+  hint.textContent = copied
+    ? `${name} is on the clipboard: click into the NC Viewer editor below and paste (Ctrl/Cmd+V), or drop the downloaded file onto it.`
+    : `Could not copy to the clipboard: download ${name} and drop it onto NC Viewer below, or open it there with its file button.`;
+  panel.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function reset() {

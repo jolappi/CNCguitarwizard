@@ -2,7 +2,7 @@
 
 Builds the package wheel into ``site/wheels/`` and writes
 ``site/wheel.json`` so the page knows which wheel to install into
-Pyodide. The manifest also carries a build id (the wheel's hash) that the
+Pyodide. The manifest also carries a build id (a hash of the wheel and app.js) that the
 page appends to the ``app.js`` and wheel URLs, so browsers never pair a
 cached script with a newer wheel or vice versa. Run it from the repository
 root::
@@ -47,7 +47,11 @@ def main() -> None:
     wheels = sorted(WHEELS.glob("cncguitarwizard-*.whl"))
     if len(wheels) != 1:
         raise SystemExit(f"Expected exactly one wheel, found {len(wheels)}")
-    build_id = hashlib.sha256(wheels[0].read_bytes()).hexdigest()[:12]
+    # Hash the wheel together with the page's own script, so a change to
+    # app.js alone also busts the cache.
+    digest = hashlib.sha256(wheels[0].read_bytes())
+    digest.update((SITE / "app.js").read_bytes())
+    build_id = digest.hexdigest()[:12]
     (SITE / "wheel.json").write_text(
         json.dumps({"wheel": wheels[0].name, "build": build_id}, indent=2) + "\n",
         encoding="utf-8",

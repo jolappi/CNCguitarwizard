@@ -41,6 +41,9 @@
   left-handed body) makes "bass" the physical bass side in the tuner
   layout and headstock plan. The default 3+3 outline is now 61.7 mm at
   the shoulder and 42.5 mm at the tip, following its holes.
+- Every `.nc` download row has a *Simulate* button that copies the
+  program to the clipboard and opens ncviewer.com in a panel below, ready
+  for pasting into its editor (the viewer offers no URL or message API).
 - The web form shows only the commonly changed fields of each group and
   folds the rest behind an "Advanced" toggle (`advanced` in the schema),
   with a page-wide checkbox to open them all.
