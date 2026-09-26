@@ -88,8 +88,25 @@ def test_schema_lists_every_parameter_with_a_form_type() -> None:
         "4_inline",
         "4_inline_reverse",
     ]
+    assert prototype_fields["body_pickups"]["options"] == [
+        "HH",
+        "HSH",
+        "HSS",
+        "H",
+        "SSS",
+        "SS",
+        "PJ",
+        "JJ",
+        "P",
+        "MM",
+        "custom",
+    ]
+    assert prototype_fields["body_pickups"]["advanced"] is False
+    assert prototype_fields["body_neck_pickup"]["advanced"] is True
+    assert prototype_fields["body_middle_pickup_offset"]["type"] == "optional_float"
     assert prototype_fields["body_neck_pickup"]["options"] == [
         "humbucker",
+        "single_coil",
         "jazz_bass",
         "precision_bass",
         "bass_soapbar",
@@ -313,3 +330,11 @@ def test_headstock_editor_layout_gives_fitted_edges_and_the_holes(
     )
     assert "error" not in built
     json.dumps(layout)
+
+
+def test_body_editor_layout_moves_the_middle_pickup_as_its_own_group() -> None:
+    layout = body_editor_layout({"prototype": {"body_pickups": "HSH"}})
+    groups = {p["name"]: p["group"] for p in layout["polygons"]}
+
+    assert groups["Middle pickup route"] == "pickup:middle"
+    assert {c["group"] for c in layout["circles"]} >= {"pickup:middle"}

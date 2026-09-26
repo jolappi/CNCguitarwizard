@@ -20,7 +20,7 @@ from ..geometry.body import (
     TracedCavity,
     TracedOutline,
 )
-from ..geometry.exceptions import NeckGeometryError
+from ..geometry.exceptions import BodyGeometryError, NeckGeometryError
 from ..geometry.fretboard import (
     Fretboard,
     FretboardSurface,
@@ -41,7 +41,14 @@ from ..geometry.neck import (
 )
 from ..geometry.primitives import Point2D
 from .body_shapes import BASS_BODY, BodyShapeSpec, DesignByJoneShape
-from .pickups import PickupType, pickup_half_length, pickup_route, pickup_screws
+from .pickups import (
+    PICKUP_CONFIGURATIONS,
+    PickupConfiguration,
+    PickupType,
+    pickup_half_length,
+    pickup_route,
+    pickup_screws,
+)
 
 Instrument = Literal["electric_guitar", "bass_guitar"]
 """Which instrument's defaults a parameter set starts from."""
@@ -136,6 +143,7 @@ class BodyLayout:
         holes: Drilled holes (switch, pots, pickup screws, bridge).
         through_cavities: Routes that open into a rear cavity.
         extra_rear_cavities: The bridge's rear cavities.
+        middle_pickup: The middle pickup route, or ``None``.
     """
 
     heel_end: float
@@ -151,6 +159,7 @@ class BodyLayout:
     holes: tuple[DrilledHole, ...]
     through_cavities: tuple[Cavity, ...]
     extra_rear_cavities: tuple[RearCavity, ...]
+    middle_pickup: TracedCavity | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -243,11 +252,22 @@ class Prototype001Parameters:
     body_bridge_pickup_offset: float = 21.73  # route centre before the bridge
     body_bridge_pickup_clearance: float = 3.0
     body_pickup_route_depth: float = 22.0
-    # Pickup type in each position (see pickups.py): the guitar
-    # humbucker, a Jazz Bass single coil, a Precision Bass split coil, a
-    # bass soapbar humbucker, or none.
+    # body_pickups picks a named layout (see PICKUP_CONFIGURATIONS): HH,
+    # HSH, HSS, H, SSS, SS for a guitar, PJ, JJ, P, MM for a bass. With
+    # "custom" each position takes its own type from body_neck_pickup /
+    # body_middle_pickup / body_bridge_pickup: the guitar humbucker or
+    # single coil, a Jazz Bass single coil, a Precision Bass split coil,
+    # a bass soapbar humbucker, or none. The middle pickup sits
+    # body_middle_pickup_offset past the heel end, or, left empty, in the
+    # middle of the gap between the neck and bridge routes. A bridge
+    # single coil slants body_bridge_single_coil_angle degrees, its treble
+    # end toward the bridge, as on a Strat.
+    body_pickups: PickupConfiguration = "HH"
     body_neck_pickup: PickupType = "humbucker"
+    body_middle_pickup: PickupType = "none"
     body_bridge_pickup: PickupType = "humbucker"
+    body_middle_pickup_offset: float | None = None
+    body_bridge_single_coil_angle: float = 10.0
     # Clearance recesses for the pickup height-adjustment screw tips,
     # drilled on down from the route floor at the centre of each of the
     # route's two mounting-ear tabs (the DXF ears are centred 39.95 mm
@@ -716,6 +736,28 @@ class Prototype001Parameters:
                 centres.append((side, -distance, sign * offset))
         return tuple(centres)
 
+    def pickup_types(self) -> tuple[PickupType, PickupType, PickupType]:
+        """Return the (neck, middle, bridge) pickup types in use.
+
+        A named ``body_pickups`` layout decides; ``"custom"`` takes each
+        position's own ``body_*_pickup`` parameter.
+
+        Raises:
+            BodyGeometryError: For an unknown layout name.
+        """
+        if self.body_pickups == "custom":
+            return (
+                self.body_neck_pickup,
+                self.body_middle_pickup,
+                self.body_bridge_pickup,
+            )
+        if self.body_pickups not in PICKUP_CONFIGURATIONS:
+            raise BodyGeometryError(
+                f"Unknown pickup layout {self.body_pickups!r}; choose one of "
+                f"{', '.join(PICKUP_CONFIGURATIONS)} or custom."
+            )
+        return PICKUP_CONFIGURATIONS[self.body_pickups]
+
     def neck_outline(self) -> NeckOutline:
         """Return the neck's plan outline (cheap: no surfaces are built)."""
         return NeckOutline(
@@ -743,8 +785,12 @@ class Prototype001Parameters:
 
         bridge = self.body_bridge.hardware(self.scale_length, self.body_thickness)
         bridge_mounting = bridge.mounting
+        neck_type, middle_type, bridge_type = self.pickup_types()
+        bridge_angle = (
+            self.body_bridge_single_coil_angle if bridge_type == "single_coil" else 0.0
+        )
         neck_pickup_x = heel_end + self.body_neck_pickup_offset
-        route_half_length = pickup_half_length(self.body_bridge_pickup)
+        route_half_length = pickup_half_length(bridge_type, bridge_angle, bass_sign)
         bridge_fronts = [
             cavity.min_x for cavity in (*bridge.top_cavities, *bridge.through_cavities)
         ]
@@ -753,25 +799,47 @@ class Prototype001Parameters:
             - min(bridge_fronts)
             + route_half_length
             + self.body_bridge_pickup_clearance
-            if bridge_fronts and self.body_bridge_pickup != "none"
+            if bridge_fronts and bridge_type != "none"
             else -math.inf
         )
         bridge_pickup_x = self.scale_length - max(
             self.body_bridge_pickup_offset, needed_offset
         )
+        # Left empty, the middle pickup goes in the middle of the gap
+        # between the neck and bridge routes' facing edges, so a single
+        # coil between a single coil and a wide humbucker looks centred.
+        middle_pickup_x = (
+            (
+                neck_pickup_x
+                + pickup_half_length(neck_type, 0.0, bass_sign)
+                + bridge_pickup_x
+                - pickup_half_length(bridge_type, bridge_angle, bass_sign)
+            )
+            / 2.0
+            if self.body_middle_pickup_offset is None
+            else heel_end + self.body_middle_pickup_offset
+        )
         neck_pickup = pickup_route(
-            self.body_neck_pickup,
+            neck_type,
             "Neck pickup route",
             neck_pickup_x,
             self.body_pickup_route_depth,
             bass_sign,
         )
+        middle_pickup = pickup_route(
+            middle_type,
+            "Middle pickup route",
+            middle_pickup_x,
+            self.body_pickup_route_depth,
+            bass_sign,
+        )
         bridge_pickup = pickup_route(
-            self.body_bridge_pickup,
+            bridge_type,
             "Bridge pickup route",
             bridge_pickup_x,
             self.body_pickup_route_depth,
             bass_sign,
+            bridge_angle,
         )
         switch_x = heel_end + shape.switch_cavity_offset
         switch_cover_x = heel_end + shape.switch_cover_offset
@@ -831,12 +899,13 @@ class Prototype001Parameters:
                     self.body_thickness,
                 )
             )
-        for label, kind, pickup_x in (
-            ("Neck", self.body_neck_pickup, neck_pickup_x),
-            ("Bridge", self.body_bridge_pickup, bridge_pickup_x),
+        for label, kind, pickup_x, angle in (
+            ("Neck", neck_type, neck_pickup_x, 0.0),
+            ("Middle", middle_type, middle_pickup_x, 0.0),
+            ("Bridge", bridge_type, bridge_pickup_x, bridge_angle),
         ):
             for side, screw_x, screw_y in pickup_screws(
-                kind, pickup_x, bass_sign, self.body_pickup_screw_spacing
+                kind, pickup_x, bass_sign, self.body_pickup_screw_spacing, angle
             ):
                 holes.append(
                     DrilledHole(
@@ -862,6 +931,7 @@ class Prototype001Parameters:
             tuple(holes),
             bridge.through_cavities,
             bridge.rear_cavities,
+            middle_pickup,
         )
 
     def build(self) -> Prototype001Geometry:
@@ -1079,7 +1149,14 @@ class Prototype001Parameters:
             body_parts.jack_hole,
             control_cavity=body_parts.control_cavity,
             switch_cavity=body_parts.switch_cavity,
-            extra_cavities=body_parts.extra_cavities,
+            extra_cavities=(
+                *(
+                    (body_parts.middle_pickup,)
+                    if body_parts.middle_pickup is not None
+                    else ()
+                ),
+                *body_parts.extra_cavities,
+            ),
             holes=body_parts.holes,
             through_cavities=body_parts.through_cavities,
             extra_rear_cavities=body_parts.extra_rear_cavities,
@@ -1131,6 +1208,7 @@ INSTRUMENT_OVERRIDES: dict[str, dict[str, Any]] = {
         "tuner_inline_spacing": 38.0,
         "tuner_edge_offset": 20.0,
         "tuner_post_diameter": 12.0,
+        "body_pickups": "PJ",
         "body_neck_pickup": "precision_bass",
         "body_bridge_pickup": "jazz_bass",
         "body_neck_pickup_offset": 102.7,

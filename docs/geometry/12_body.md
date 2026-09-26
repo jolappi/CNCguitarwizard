@@ -142,14 +142,37 @@ feature outside the wood.
 
 ## Pickups
 
-`body_neck_pickup` and `body_bridge_pickup` choose each position's route
-(`presets.pickups`); both sit on the centreline, the neck one
-`body_neck_pickup_offset` past the heel end, the bridge one
-`body_bridge_pickup_offset` ahead of the scale line:
+`body_pickups` picks a named layout (`PICKUP_CONFIGURATIONS`) giving the
+neck, middle and bridge types; `custom` takes them from `body_neck_pickup`,
+`body_middle_pickup` and `body_bridge_pickup` instead:
+
+| Layout | Neck | Middle | Bridge |
+| --- | --- | --- | --- |
+| `HH` (guitar default) | humbucker | — | humbucker |
+| `HSH` | humbucker | single coil | humbucker |
+| `HSS` | single coil | single coil | humbucker |
+| `H` | — | — | humbucker |
+| `SSS` | single coil | single coil | single coil |
+| `SS` | single coil | — | single coil |
+| `PJ` (bass default) | Precision Bass | — | Jazz Bass |
+| `JJ` | Jazz Bass | — | Jazz Bass |
+| `P` | Precision Bass | — | — |
+| `MM` | — | — | bass soapbar |
+
+Every route sits on the centreline: the neck one `body_neck_pickup_offset`
+past the heel end, the bridge one `body_bridge_pickup_offset` ahead of the
+scale line, and the middle one `body_middle_pickup_offset` past the heel
+end — or, left empty, in the middle of the gap between the neck and bridge
+routes' facing edges, so a single coil between a single coil and a wider
+humbucker still looks centred. A bridge single coil slants
+`body_bridge_single_coil_angle` (10°), its treble end toward the bridge as
+on a Strat; its screws turn with it. The middle route is one of the body's
+extra top cavities. The route types:
 
 | Type | Route | Height-screw recesses |
 | --- | --- | --- |
 | `humbucker` | The DXF's humbucker with mounting ears (41 × 85.9 mm) | two, `body_pickup_screw_spacing` apart |
+| `single_coil` | 20 × 88 mm bar with round ends | two, 76 mm apart |
 | `jazz_bass` | 21 × 100 mm bar with R6 corners | two, 94 mm apart |
 | `precision_bass` | Two 21 × 58 mm coils offset 21 mm along the neck and 38 mm across it, the bass coil nut-ward on the bass side | two per coil, 4 mm in from its ends |
 | `bass_soapbar` | 44 × 102 mm bar with R12 corners (MM style) | two, 90 mm apart |

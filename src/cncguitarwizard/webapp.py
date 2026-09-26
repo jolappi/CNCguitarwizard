@@ -66,8 +66,7 @@ _BASIC_FIELDS: frozenset[str] = frozenset(
         "tuner_hole_diameter",
         "body_thickness",
         "body_shape",
-        "body_neck_pickup",
-        "body_bridge_pickup",
+        "body_pickups",
         "body_bridge",
         "body_neck_pickup_offset",
         "body_bridge_pickup_offset",
@@ -147,7 +146,8 @@ def _editor_group(name: str) -> str | None:
 
     ``control`` (the control cavity and its cover), ``switch`` (cavity,
     cover and shaft hole), ``pot:N`` (one pot hole, zero-based),
-    ``pickup:neck`` / ``pickup:bridge`` (a route and its screw recesses)
+    ``pickup:neck`` / ``pickup:middle`` / ``pickup:bridge`` (a route and
+    its screw recesses)
     and ``jack``; the neck, its pocket and the bridge do not move.
     """
     if name.startswith("Control cavity"):
@@ -158,6 +158,8 @@ def _editor_group(name: str) -> str | None:
         return f"pot:{int(name.split()[1]) - 1}"
     if name.startswith("Neck pickup"):
         return "pickup:neck"
+    if name.startswith("Middle pickup"):
+        return "pickup:middle"
     if name.startswith("Bridge pickup"):
         return "pickup:bridge"
     return None
@@ -209,7 +211,7 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         polygon("Neck", "neck", neck.boundary),
         polygon(layout.neck_pocket.name, "pocket", layout.neck_pocket.outline),
     ]
-    for pickup in (layout.neck_pickup, layout.bridge_pickup):
+    for pickup in (layout.neck_pickup, layout.middle_pickup, layout.bridge_pickup):
         if pickup is None:
             continue
         polygons.append(polygon(pickup.name, "pickup", pickup.outline))

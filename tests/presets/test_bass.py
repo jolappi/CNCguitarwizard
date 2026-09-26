@@ -69,6 +69,7 @@ def test_a_pickup_position_can_be_left_empty() -> None:
     body = (
         replace(
             Prototype001Parameters.for_instrument("bass_guitar"),
+            body_pickups="custom",
             body_neck_pickup="none",
             body_bridge_pickup="bass_soapbar",
         )

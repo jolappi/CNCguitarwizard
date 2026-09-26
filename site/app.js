@@ -786,6 +786,12 @@ const bodyEditor = {
       this.shiftField(shape, "jack_y", dy);
     } else if (group === "pickup:neck") {
       this.shiftField("prototype", "body_neck_pickup_offset", dx);
+    } else if (group === "pickup:middle") {
+      // Left empty the middle pickup sits halfway; a drag pins it down.
+      const route = this.layout.polygons.find((p) => p.group === "pickup:middle");
+      const xs = route.points.map((p) => p[0]);
+      const centre = (Math.min(...xs) + Math.max(...xs)) / 2;
+      this.setField(this.field("prototype", "body_middle_pickup_offset"), round(centre + dx));
     } else if (group === "pickup:bridge") {
       // The offset is measured ahead of the scale line, toward the nut.
       // Start from where the route really is: a bridge that reaches ahead

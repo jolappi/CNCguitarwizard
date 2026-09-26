@@ -59,6 +59,17 @@ nelikielinen läpimenevä talla ja offset-bassorunko. Mikkityypit ovat
 valittavissa kummallekin paikalle (humbucker, Jazz Bass, Precision Bass,
 bassohumbucker tai ei mikkiä). Bassoarvot ovat lähtöarvoja.
 
+## Mikit
+
+Mikkikokoonpano valitaan (`body_pickups`): kitaralle HH (oletus), HSH, HSS, H,
+SSS tai SS, bassolle PJ (oletus), JJ, P tai MM; "custom" ottaa jokaisen
+paikan (kaula, keski, talla) tyypin omasta parametristaan. Single coil -kolo
+on 20 × 88 mm pyöreäpäinen; keskimikki on oletuksena kaula- ja tallamikin
+välisen raon keskellä (`body_middle_pickup_offset` siirtää sen), tallan
+single coil on 10° kulmassa diskanttipää tallaa kohti
+(`body_bridge_single_coil_angle`), ja piirtoeditorissa
+sitä voi raahata kaulan suunnassa.
+
 ## Lapa
 
 | Kohta | Speksi |

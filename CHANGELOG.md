@@ -49,6 +49,14 @@
   the control cavity (with its pots), single pots, the switch cavity and
   the jack, and slide the pickup routes along the neck; the neck, pocket
   and bridge stay put. A live check lists any feature left outside.
+- Pickup layouts (`body_pickups`): HH, HSH, HSS, H, SSS and SS for a
+  guitar, PJ, JJ, P and MM for a bass, or `custom` with each position's
+  own type. New middle pickup position (`body_middle_pickup`,
+  `body_middle_pickup_offset`; when empty it sits in the middle of the
+  gap between the neck and bridge routes) and a guitar `single_coil`
+  route (20 × 88 mm, round ends). A bridge single coil slants
+  `body_bridge_single_coil_angle` (10°), its treble end toward the bridge.
+  The body editor drags the middle pickup along the neck too.
 - Drawn headstocks: `headstock_outline = "drawn"` takes the two edges from
   `headstock_bass_edge` / `headstock_treble_edge` (distance, half-width
   points to the tip, joined by the new `geometry.primitives.MonotoneCurve`)
