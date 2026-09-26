@@ -563,6 +563,17 @@ BRIDGE_LABELS: dict[str, str] = {
     "hardtail": "Hardtail (string-through)",
 }
 
+BRIDGE_MAX_STRINGS: dict[str, int] = {
+    "kahler_7300": 6,
+    "floyd_rose": 6,
+    "tune_o_matic": 6,
+}
+"""The most strings a bridge kind is drawn for; unlisted kinds take any count.
+
+The Kahler 7300, Floyd Rose and Tune-o-matic specs carry six-string
+dimensions; the hardtail makes a string-through hole per string.
+"""
+
 
 def bridge_spec_from_dict(data: Mapping[str, Any]) -> BridgeSpec:
     """Rebuild a bridge spec from its ``dataclasses.asdict`` form.

@@ -104,10 +104,13 @@ def test_layout_rejects_mismatched_sides_and_unordered_stations() -> None:
 
 @pytest.mark.parametrize("style", list(HEADSTOCK_STYLES))
 def test_every_headstock_style_builds(style: str) -> None:
-    # Four-tuner styles belong to the bass.
-    instrument = (
-        "bass_guitar" if sum(HEADSTOCK_STYLES[style]) == 4 else "electric_guitar"
-    )
+    # Each style belongs to the instrument with that many strings.
+    instrument = {
+        4: "bass_guitar",
+        6: "electric_guitar",
+        7: "seven_string_guitar",
+        8: "eight_string_guitar",
+    }[sum(HEADSTOCK_STYLES[style])]
     base = Prototype001Parameters.for_instrument(instrument)  # type: ignore[arg-type]
     geometry = replace(base, headstock_style=style).build()  # type: ignore[arg-type]
     layout = geometry.tuner_layout

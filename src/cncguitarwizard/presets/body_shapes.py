@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Mapping
-from dataclasses import dataclass, fields
+from dataclasses import dataclass, fields, replace
 from typing import Any, Literal
 
 from ..geometry.exceptions import BodyGeometryError
@@ -28,6 +28,32 @@ from ._omarunko_outline import (
 
 OUTLINE_SAMPLES_PER_SEGMENT = 8
 """Outline points per spline segment of a drawn body."""
+
+BODY_WIDENING_PER_STRING = 12.0
+"""Body width added along the centreline for every string past six.
+
+The shapes are drawn for a six-string neck; a seven- or eight-string heel
+is 10 mm wider per string and its pickups 12 mm longer, so each half of
+the body moves out by half this much per extra string.
+"""
+
+
+def widen_y(y: float, widening: float) -> float:
+    """Move a lateral coordinate out from the centreline by ``widening / 2``.
+
+    A point on the centreline stays there, so the body opens along it.
+    """
+    half = widening / 2.0
+    return y + half if y > 0.0 else y - half if y < 0.0 else y
+
+
+def widen_points(
+    points: tuple[tuple[float, float], ...], widening: float
+) -> tuple[tuple[float, float], ...]:
+    """Return ``points`` with every Y moved out by ``widening / 2``."""
+    if widening == 0.0:
+        return points
+    return tuple((x, widen_y(y, widening)) for x, y in points)
 
 
 def _translated(
@@ -81,9 +107,19 @@ class DesignByJoneShape:
         (-8.0, 6.0),
     )
 
-    def outline_points(self, heel_end: float) -> tuple[Point2D, ...]:
-        """Return the outline placed so its pocket end sits at ``heel_end``."""
-        return _translated(OMARUNKO_OUTLINE_POINTS, heel_end - OMARUNKO_HEEL_END_X, 0.0)
+    def outline_points(
+        self, heel_end: float, widening: float = 0.0
+    ) -> tuple[Point2D, ...]:
+        """Return the outline placed so its pocket end sits at ``heel_end``.
+
+        ``widening`` opens the body along the centreline (see
+        ``widen_points``).
+        """
+        return _translated(
+            widen_points(OMARUNKO_OUTLINE_POINTS, widening),
+            heel_end - OMARUNKO_HEEL_END_X,
+            0.0,
+        )
 
     def control_cavity_points(self, heel_end: float) -> tuple[Point2D, ...]:
         """Return the almond control cavity outline on this body."""
@@ -215,10 +251,16 @@ class YourDesignShape:
                 "Your design's control points must be finite (x, y) pairs."
             )
 
-    def outline_points(self, heel_end: float) -> tuple[Point2D, ...]:
-        """Return the spline outline placed relative to ``heel_end``."""
+    def outline_points(
+        self, heel_end: float, widening: float = 0.0
+    ) -> tuple[Point2D, ...]:
+        """Return the spline outline placed relative to ``heel_end``.
+
+        ``widening`` moves the control points out from the centreline
+        before the spline is drawn (see ``widen_points``).
+        """
         return closed_catmull_rom(
-            _translated(self.control_points, heel_end, 0.0),
+            _translated(widen_points(self.control_points, widening), heel_end, 0.0),
             OUTLINE_SAMPLES_PER_SEGMENT,
         )
 
@@ -245,6 +287,30 @@ def _control_points(
 
 
 BodyShapeSpec = DesignByJoneShape | YourDesignShape
+
+
+def widened_shape(shape: BodyShapeSpec, widening: float) -> BodyShapeSpec:
+    """Return ``shape`` with its switch, pots, jack and almond moved outward.
+
+    Each placement moves out from the centreline by ``widening / 2`` with
+    its half of the body; pass the same ``widening`` to
+    ``outline_points``. The neck bolts stay with the neck pocket.
+    """
+    if widening == 0.0:
+        return shape
+    almond_y = sum(y for _, y in OMARUNKO_CONTROL_CAVITY_POINTS) / len(
+        OMARUNKO_CONTROL_CAVITY_POINTS
+    )
+    shift_x, shift_y = shape.control_shift
+    moved_almond = widen_y(almond_y + shift_y, widening)
+    return replace(
+        shape,
+        switch_cavity_y=widen_y(shape.switch_cavity_y, widening),
+        switch_cover_y=widen_y(shape.switch_cover_y, widening),
+        pot_offsets=widen_points(shape.pot_offsets, widening),
+        jack_y=widen_y(shape.jack_y, widening),
+        control_shift=(shift_x, moved_almond - almond_y),
+    )
 
 BODY_SHAPE_KINDS: dict[str, type[Any]] = {
     "design_by_jone": DesignByJoneShape,

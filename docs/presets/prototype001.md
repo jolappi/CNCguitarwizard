@@ -31,23 +31,39 @@ source = FreeCADScriptExporter().render_prototype001(
 )
 ```
 
-## Electric guitar or bass
+## Electric guitar, extended-range guitar or bass
 
 `Prototype001Parameters.for_instrument("electric_guitar")` is the plain
-default; `for_instrument("bass_guitar")` applies `INSTRUMENT_OVERRIDES`:
+default; `"seven_string_guitar"`, `"eight_string_guitar"` and
+`"bass_guitar"` apply `INSTRUMENT_OVERRIDES`:
 
-| Setting | Electric guitar | Bass guitar |
-| --- | --- | --- |
-| Strings (`string_count`) | 6 | 4 |
-| Scale / frets | 609.6 mm / 24 | 863.6 mm (34 in) / 21 |
-| Nut / heel width | 42 / 56 mm | 38 / 62 mm |
-| 1st / 12th fret thickness, heel | 17 / 19 / 20 mm | 21 / 23 / 22 mm |
-| Fretboard radius | 430 mm | 305 mm |
-| String spacing nut / bridge | 7 / 10.5 mm | 10 / 19 mm |
-| Headstock | 3+3, 10 mm holes | 4 in line, 19 mm holes 38 mm apart, 20 mm from the edge |
-| Pickups | humbucker + humbucker | Precision Bass (neck) + Jazz Bass (bridge) |
-| Bridge | Kahler 7300 | four-string string-through hardtail |
-| Body | Design by Jone | offset bass body (a drawn body) |
+| Setting | Electric guitar | 7-string | 8-string | Bass guitar |
+| --- | --- | --- | --- | --- |
+| Strings (`string_count`) | 6 | 7 | 8 | 4 |
+| Scale / frets | 609.6 mm / 24 | 647.7 mm (25.5 in) / 24 | 685.8 mm (27 in) / 24 | 863.6 mm (34 in) / 21 |
+| Nut / heel width | 42 / 56 mm | 48 / 66 mm | 55 / 76 mm | 38 / 62 mm |
+| 1st / 12th fret thickness, heel | 17 / 19 / 20 mm | 17 / 19 / 20 mm | 17 / 19 / 20 mm | 21 / 23 / 22 mm |
+| Fretboard radius | 430 mm | 400 mm | 400 mm | 305 mm |
+| String spacing nut / bridge | 7 / 10.5 mm | 7 / 10.5 mm | 7 / 10.5 mm | 10 / 19 mm |
+| Headstock | 3+3, 10 mm holes | 7 in line (or 4+3 / 3+4) | 8 in line (or 4+4) | 4 in line, 19 mm holes 38 mm apart, 20 mm from the edge |
+| Pickups | humbucker + humbucker | stretched 12 mm | stretched 24 mm | Precision Bass (neck) + Jazz Bass (bridge) |
+| Bridge | Kahler 7300 | seven-string hardtail | eight-string hardtail (6 screws) | four-string string-through hardtail |
+| Body | Design by Jone | opened 12 mm | opened 24 mm | offset bass body (a drawn body) |
+
+The Kahler 7300, Floyd Rose and Tune-o-matic specs are drawn for six
+strings (`BRIDGE_MAX_STRINGS`): the build refuses them for more, and the
+web form hides them. A hardtail must have a hole per string.
+
+A guitar humbucker or single coil for more than six strings is the
+six-string route stretched across the strings by 12 mm per extra string
+(`pickups.pickup_stretch`), with its screws spread by the same amount.
+The body shapes are drawn for a six-string neck, so `body_widening`
+(empty: 12 mm per string past six, `BODY_WIDENING_PER_STRING`) opens the
+body along its centreline: each half, with its cavities, pots, switch and
+jack, moves out by half of it (`body_shapes.widened_shape`); the web
+editor draws a drawn body the same way. A row headstock opposite three or
+four tuners (4+3) stretches `tuner_inline_spacing` in 0.5 mm steps until
+every pair of holes keeps `tuner_hole_clearance`.
 
 Every value stays editable; the bass numbers are labelled starting points
 for a common four-string bass. `instrument` records which defaults a set

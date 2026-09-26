@@ -4,6 +4,7 @@ from .body_solid import BodySolid
 from .bridges import (
     BRIDGE_KINDS,
     BRIDGE_LABELS,
+    BRIDGE_MAX_STRINGS,
     BridgeHardware,
     BridgeSpec,
     FloydRoseSpec,
@@ -28,6 +29,7 @@ from .outline import BodyOutline, TracedOutline
 __all__ = [
     "BRIDGE_KINDS",
     "BRIDGE_LABELS",
+    "BRIDGE_MAX_STRINGS",
     "BodyOutline",
     "BodySolid",
     "BridgeHardware",

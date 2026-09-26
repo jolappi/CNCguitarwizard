@@ -56,6 +56,16 @@
   trapezoid on the Design by Jone body, whose treble cutaway is deep),
   else a 32 × 40 mm rectangle near the heel end; ferrules must sit in
   wood. The body editor drags the bolts too.
+- Seven- and eight-string guitars (`for_instrument("seven_string_guitar")`,
+  `"eight_string_guitar"`, both in the web form's instrument menu): 25.5-
+  and 27-inch scales, wider nuts and heels, a hardtail with a hole per
+  string, and new headstock styles 7 / 8 in line (either side), 4+3, 3+4
+  and 4+4. Guitar pickups stretch 12 mm per extra string, and
+  `body_widening` opens the body along its centreline (12 mm per extra
+  string by default) so the wider neck and pickups fit every body shape;
+  the drawn-body editor shows the widened outline. Bridges drawn for six
+  strings (`BRIDGE_MAX_STRINGS`: Kahler 7300, Floyd Rose, Tune-o-matic)
+  are refused for more and hidden in the form.
 - Control layouts (`body_controls`, a dropdown in the web form): the
   Design by Jone almond with 2 pots (default), a Gibson-style cavity with
   4 pots, a rear cavity with 3 pots in a row, a Telecaster-style control

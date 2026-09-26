@@ -87,7 +87,16 @@ def test_schema_lists_every_parameter_with_a_form_type() -> None:
         "2+2",
         "4_inline",
         "4_inline_reverse",
+        "4+3",
+        "3+4",
+        "7_inline",
+        "7_inline_reverse",
+        "4+4",
+        "8_inline",
+        "8_inline_reverse",
     ]
+    assert bridge["variants"]["kahler_7300"]["max_strings"] == 6
+    assert bridge["variants"]["hardtail"]["max_strings"] is None
     assert prototype_fields["body_pickups"]["options"] == [
         "HH",
         "HSH",
@@ -115,7 +124,19 @@ def test_schema_lists_every_parameter_with_a_form_type() -> None:
     assert prototype_fields["string_count"]["advanced"] is False
     # The instrument is chosen above the form, with its own defaults.
     assert "instrument" not in prototype_fields
-    assert set(schema["instruments"]) == {"electric_guitar", "bass_guitar"}
+    assert set(schema["instruments"]) == {
+        "electric_guitar",
+        "seven_string_guitar",
+        "eight_string_guitar",
+        "bass_guitar",
+    }
+    eight = schema["instruments"]["eight_string_guitar"]
+    assert eight["label"] == "8-string guitar"
+    assert eight["overrides"]["body_bridge"] == {
+        **eight["overrides"]["body_bridge"],
+        "kind": "hardtail",
+        "string_count": 8,
+    }
     bass = schema["instruments"]["bass_guitar"]
     assert bass["label"] == "Bass guitar"
     assert bass["overrides"]["string_count"] == 4

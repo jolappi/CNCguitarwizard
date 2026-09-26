@@ -99,7 +99,40 @@ function renderForm() {
     }
   }
   applyAdvancedToggle();
+  applyStringLimits();
   setTimeout(() => headstockEditor.sync(), 0);
+}
+
+// Hide the kinds drawn for fewer strings than the instrument has (the
+// Kahler, Floyd Rose and Tune-o-matic on a seven- or eight-string); if one
+// of them is chosen, switch to the first kind that fits.
+function applyStringLimits() {
+  const countInput = form.querySelector('[data-set="prototype"][data-name="string_count"]');
+  const count = countInput ? readValue(countInput) : 6;
+  for (const holder of form.querySelectorAll(".variant")) {
+    const field = variantFields[holder.dataset.name];
+    if (!field) continue;
+    const select = holder.querySelector("select.kind");
+    for (const option of select.options) {
+      const limit = field.variants[option.value].max_strings;
+      const unfit = limit != null && count > limit;
+      option.hidden = unfit;
+      option.disabled = unfit;
+    }
+    if (select.selectedOptions[0]?.disabled) {
+      const fitting = [...select.options].find((option) => !option.disabled);
+      if (fitting) {
+        select.value = fitting.value;
+        select.dispatchEvent(new Event("change"));
+      }
+    }
+    // A hardtail has a hole per string: keep its count with the instrument's.
+    const holes = holder.querySelector(`[data-set="prototype.${holder.dataset.name}"][data-name="string_count"]`);
+    if (holes && readValue(holes) !== count) {
+      holes.value = String(count);
+      markChanged(holes);
+    }
+  }
 }
 
 // Basic fields first; the rarely changed ones fold away behind
@@ -199,8 +232,11 @@ function renderChoiceField(set, field) {
   return row;
 }
 
+const variantFields = {};
+
 function renderVariantField(set, field) {
   // A dropdown of kinds; the chosen kind's own fields appear beneath it.
+  variantFields[field.name] = field;
   const holder = document.createElement("div");
   holder.className = "variant";
   holder.dataset.set = set;
@@ -602,8 +638,21 @@ const bodyEditor = {
     return points.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(2)},${(-y).toFixed(2)}`).join(" ") + " Z";
   },
 
+  // A seven- or eight-string body opens along the centreline: each half
+  // of the drawing moves out by half the widening, as in Python. The
+  // stored control points stay those of the six-string drawing.
+  widen([x, y]) {
+    const half = (this.layout.widening || 0) / 2;
+    return [x, y > 0 ? y + half : y < 0 ? y - half : y];
+  },
+
+  unwiden([x, y]) {
+    const half = (this.layout.widening || 0) / 2;
+    return [x, y > half ? y - half : y < -half ? y + half : 0];
+  },
+
   outline() {
-    return closedCatmullRom(this.points, this.layout.samples_per_segment);
+    return closedCatmullRom(this.points.map((p) => this.widen(p)), this.layout.samples_per_segment);
   },
 
   draw() {
@@ -670,7 +719,8 @@ const bodyEditor = {
     place(socket, jack.group, "Output jack");
 
     this.handles = this.points.map((point, index) => {
-      const handle = this.element("circle", { class: "handle", cx: point[0], cy: -point[1], r: 4 });
+      const [hx, hy] = this.widen(point);
+      const handle = this.element("circle", { class: "handle", cx: hx, cy: -hy, r: 4 });
       handle.addEventListener("pointerdown", (event) => this.startDrag(event, index, handle));
       handle.addEventListener("contextmenu", (event) => { event.preventDefault(); this.removePoint(index); });
       return handle;
@@ -694,9 +744,10 @@ const bodyEditor = {
     event.preventDefault();
     handle.classList.add("dragging");
     const move = (moveEvent) => {
-      this.points[index] = this.toModel(moveEvent);
-      handle.setAttribute("cx", this.points[index][0]);
-      handle.setAttribute("cy", -this.points[index][1]);
+      const shown = this.toModel(moveEvent);
+      this.points[index] = this.unwiden(shown);
+      handle.setAttribute("cx", shown[0]);
+      handle.setAttribute("cy", -shown[1]);
       this.outlinePath.setAttribute("d", this.pathData(this.outline()));
       this.check();
     };
@@ -834,7 +885,7 @@ const bodyEditor = {
       const distance = (ox - x) ** 2 + (oy - y) ** 2;
       if (distance < bestDistance) { bestDistance = distance; best = i; }
     });
-    this.points.splice(Math.floor(best / samples) + 1, 0, [x, y]);
+    this.points.splice(Math.floor(best / samples) + 1, 0, this.unwiden([x, y]));
     this.commit();
     this.draw();
   },
@@ -1237,6 +1288,7 @@ form.addEventListener("input", (event) => {
   }
 });
 form.addEventListener("change", (event) => {
+  if (event.target.dataset.name === "string_count") applyStringLimits();
   if (event.target.dataset.name !== "control_points") bodyEditor.scheduleRefresh();
 });
 

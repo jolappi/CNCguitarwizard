@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from typing import Any, Literal
 
 from ..geometry.body import (
+    BRIDGE_MAX_STRINGS,
     BodySolid,
     BridgeMounting,
     BridgeSpec,
@@ -40,7 +41,13 @@ from ..geometry.neck import (
     TunerLayout,
 )
 from ..geometry.primitives import Point2D, point_in_polygon
-from .body_shapes import BASS_BODY, BodyShapeSpec, DesignByJoneShape
+from .body_shapes import (
+    BASS_BODY,
+    BODY_WIDENING_PER_STRING,
+    BodyShapeSpec,
+    DesignByJoneShape,
+    widened_shape,
+)
 from .controls import ControlFeatures, ControlLayout, control_features
 from .pickups import (
     PICKUP_CONFIGURATIONS,
@@ -51,7 +58,9 @@ from .pickups import (
     pickup_screws,
 )
 
-Instrument = Literal["electric_guitar", "bass_guitar"]
+Instrument = Literal[
+    "electric_guitar", "seven_string_guitar", "eight_string_guitar", "bass_guitar"
+]
 """Which instrument's defaults a parameter set starts from."""
 
 HeadstockStyle = Literal[
@@ -63,6 +72,13 @@ HeadstockStyle = Literal[
     "2+2",
     "4_inline",
     "4_inline_reverse",
+    "4+3",
+    "3+4",
+    "7_inline",
+    "7_inline_reverse",
+    "4+4",
+    "8_inline",
+    "8_inline_reverse",
 ]
 """Tuner arrangements: bass+treble counts; "reverse" puts the row on the treble side."""
 
@@ -75,6 +91,13 @@ HEADSTOCK_STYLES: dict[str, tuple[int, int]] = {
     "2+2": (2, 2),
     "4_inline": (4, 0),
     "4_inline_reverse": (0, 4),
+    "4+3": (4, 3),
+    "3+4": (3, 4),
+    "7_inline": (7, 0),
+    "7_inline_reverse": (0, 7),
+    "4+4": (4, 4),
+    "8_inline": (8, 0),
+    "8_inline_reverse": (0, 8),
 }
 """Tuner counts on the (bass, treble) side for every headstock style."""
 
@@ -87,6 +110,12 @@ HEADSTOCK_RESERVES: dict[
     "2+4": ((36.0, 15.0), (40.0, 30.0)),
     "4_inline": ((40.0, None), (45.0, 60.0)),
     "4_inline_reverse": ((40.0, None), (45.0, 60.0)),
+    "4+3": ((36.0, 15.0), (40.0, 30.0)),
+    "3+4": ((36.0, 15.0), (40.0, 30.0)),
+    "7_inline": ((36.0, None), (35.0, 60.0)),
+    "7_inline_reverse": ((36.0, None), (35.0, 60.0)),
+    "8_inline": ((36.0, None), (35.0, 60.0)),
+    "8_inline_reverse": ((36.0, None), (35.0, 60.0)),
 }
 """Least (shoulder, tip) half-widths kept on the row side and the other side.
 
@@ -298,6 +327,12 @@ class Prototype001Parameters:
     # themselves keep the DXF's shapes. In the web form it is a dropdown
     # of kinds with the chosen kind's placements beneath it.
     body_shape: BodyShapeSpec = field(default_factory=DesignByJoneShape)
+    # body_widening opens the body along its centreline for a wider neck:
+    # each half, with its cavities, pots, switch and jack, moves out by
+    # half of it. Left empty it is BODY_WIDENING_PER_STRING (12 mm) for
+    # every string past six, so a seven- or eight-string heel and its
+    # longer pickups fit a shape drawn for six strings.
+    body_widening: float | None = None
     # Rear-routed electronics cavities are cut up from the back face to
     # within body_rear_cavity_top_wall of the top so the pot and switch
     # bushings can pass through, and closed by a cover plate seated in a
@@ -594,20 +629,44 @@ class Prototype001Parameters:
                 else list(range(1, pair_count + 1))
             )
             post_radius = self.tuner_post_diameter / 2.0
-            row_distances = [first + index * spacing for index in range(row_count)]
+            row_sign = 1.0 if row_side == "bass" else -1.0
+            pair_sign = -row_sign
+            # Posts on both sides follow the strings, so the middle strings'
+            # posts meet near the centreline; when they would crowd each
+            # other (a 4+3), stretch the station spacing just enough.
+            gap = self.tuner_hole_diameter + self.tuner_hole_clearance
+            for _ in range(60):
+                row_distances = [first + index * spacing for index in range(row_count)]
+                stations = [
+                    (
+                        distance,
+                        row_side,
+                        string_u(string, distance) + row_sign * post_radius,
+                    )
+                    for distance, string in zip(row_distances, row_strings, strict=True)
+                ]
+                # The opposite side's tuners sit between the row's stations.
+                stations += [
+                    (
+                        first + (step + 0.5) * spacing,
+                        pair_side,
+                        string_u(string, first + (step + 0.5) * spacing)
+                        + pair_sign * post_radius,
+                    )
+                    for step, string in enumerate(pair_strings)
+                ]
+                crowded = any(
+                    math.hypot(a[0] - b[0], a[2] - b[2]) < gap
+                    for index, a in enumerate(stations)
+                    for b in stations[index + 1 :]
+                )
+                if not crowded:
+                    break
+                spacing += 0.5
             length = max(
                 self.headstock_length,
                 max(row_distances) + hole_edge + self.tuner_tip_margin,
             )
-            for distance, string in zip(row_distances, row_strings, strict=True):
-                sign = 1.0 if row_side == "bass" else -1.0
-                post_u = string_u(string, distance) + sign * post_radius
-                stations.append((distance, row_side, post_u))
-            for step, string in enumerate(pair_strings):
-                distance = first + (step + 0.5) * spacing
-                sign = 1.0 if pair_side == "bass" else -1.0
-                post_u = string_u(string, distance) + sign * post_radius
-                stations.append((distance, pair_side, post_u))
             sides = tuple(side for _, side, _ in stations)
             distances = tuple(distance for distance, _, _ in stations)
             # Offsets are measured toward the hole's own side; a row post
@@ -808,7 +867,9 @@ class Prototype001Parameters:
                 for sx, sy in ((-1.0, -1.0), (1.0, -1.0), (-1.0, 1.0), (1.0, 1.0))
             ]
         bolt_depth = self.body_thickness - pocket.depth
-        body_outline = self.body_shape.outline_points(heel_end)
+        body_outline = self.body_shape.outline_points(
+            heel_end, self.body_widening_amount()
+        )
         reach = self.body_neck_ferrule_diameter / 2.0 + 2.0
         holes: list[DrilledHole] = []
         for index, (x, y) in enumerate(centres, start=1):
@@ -851,6 +912,12 @@ class Prototype001Parameters:
             )
         return tuple(holes)
 
+    def body_widening_amount(self) -> float:
+        """Return how much the body is opened along its centreline, in mm."""
+        if self.body_widening is not None:
+            return self.body_widening
+        return max(0, self.string_count - 6) * BODY_WIDENING_PER_STRING
+
     def pickup_types(self) -> tuple[PickupType, PickupType, PickupType]:
         """Return the (neck, middle, bridge) pickup types in use.
 
@@ -888,8 +955,9 @@ class Prototype001Parameters:
         heel_end = outline.last_fret_position + self.heel_length
         # Body features ride with the heel end, bridge features with the
         # scale length (see the body_* parameter comments).
-        shape = self.body_shape
-        body_outline = TracedOutline(shape.outline_points(heel_end))
+        widening = self.body_widening_amount()
+        shape = widened_shape(self.body_shape, widening)
+        body_outline = TracedOutline(shape.outline_points(heel_end, widening))
         neck_pocket = TracedCavity(
             "Neck pocket",
             self._neck_pocket_outline(outline, heel_end),
@@ -900,12 +968,29 @@ class Prototype001Parameters:
 
         bridge = self.body_bridge.hardware(self.scale_length, self.body_thickness)
         bridge_mounting = bridge.mounting
+        if isinstance(self.body_bridge, HardtailSpec):
+            if self.body_bridge.string_count != self.string_count:
+                raise BodyGeometryError(
+                    f"The hardtail has {self.body_bridge.string_count} string "
+                    f"holes, but the instrument has {self.string_count} strings."
+                )
+        elif self.string_count > BRIDGE_MAX_STRINGS.get(
+            self.body_bridge.kind, self.string_count
+        ):
+            raise BodyGeometryError(
+                f"The {self.body_bridge.kind} bridge is drawn for "
+                f"{BRIDGE_MAX_STRINGS[self.body_bridge.kind]} strings; use the "
+                f"hardtail for {self.string_count}."
+            )
+        strings = self.string_count
         neck_type, middle_type, bridge_type = self.pickup_types()
         bridge_angle = (
             self.body_bridge_single_coil_angle if bridge_type == "single_coil" else 0.0
         )
         neck_pickup_x = heel_end + self.body_neck_pickup_offset
-        route_half_length = pickup_half_length(bridge_type, bridge_angle, bass_sign)
+        route_half_length = pickup_half_length(
+            bridge_type, bridge_angle, bass_sign, strings
+        )
         bridge_fronts = [
             cavity.min_x for cavity in (*bridge.top_cavities, *bridge.through_cavities)
         ]
@@ -926,9 +1011,9 @@ class Prototype001Parameters:
         middle_pickup_x = (
             (
                 neck_pickup_x
-                + pickup_half_length(neck_type, 0.0, bass_sign)
+                + pickup_half_length(neck_type, 0.0, bass_sign, strings)
                 + bridge_pickup_x
-                - pickup_half_length(bridge_type, bridge_angle, bass_sign)
+                - pickup_half_length(bridge_type, bridge_angle, bass_sign, strings)
             )
             / 2.0
             if self.body_middle_pickup_offset is None
@@ -940,6 +1025,7 @@ class Prototype001Parameters:
             neck_pickup_x,
             self.body_pickup_route_depth,
             bass_sign,
+            string_count=strings,
         )
         middle_pickup = pickup_route(
             middle_type,
@@ -947,6 +1033,7 @@ class Prototype001Parameters:
             middle_pickup_x,
             self.body_pickup_route_depth,
             bass_sign,
+            string_count=strings,
         )
         bridge_pickup = pickup_route(
             bridge_type,
@@ -955,6 +1042,7 @@ class Prototype001Parameters:
             self.body_pickup_route_depth,
             bass_sign,
             bridge_angle,
+            string_count=strings,
         )
         controls = control_features(
             self.body_controls,
@@ -980,7 +1068,12 @@ class Prototype001Parameters:
             ("Bridge", bridge_type, bridge_pickup_x, bridge_angle),
         ):
             for side, screw_x, screw_y in pickup_screws(
-                kind, pickup_x, bass_sign, self.body_pickup_screw_spacing, angle
+                kind,
+                pickup_x,
+                bass_sign,
+                self.body_pickup_screw_spacing,
+                angle,
+                string_count=strings,
             ):
                 holes.append(
                     DrilledHole(
@@ -1057,6 +1150,10 @@ class Prototype001Parameters:
             )
         if self.string_count < 1:
             raise NeckGeometryError("The instrument needs at least one string.")
+        if self.body_widening is not None and (
+            not math.isfinite(self.body_widening) or self.body_widening < 0.0
+        ):
+            raise NeckGeometryError("Body widening must be zero or more.")
         if sum(HEADSTOCK_STYLES[self.headstock_style]) != self.string_count:
             raise NeckGeometryError(
                 f"Headstock style {self.headstock_style} holds "
@@ -1268,6 +1365,28 @@ class Prototype001Parameters:
 
 INSTRUMENT_OVERRIDES: dict[str, dict[str, Any]] = {
     "electric_guitar": {},
+    "seven_string_guitar": {
+        "string_count": 7,
+        "scale_length": 647.7,
+        "nut_width": 48.0,
+        "final_fret_width": 66.0,
+        "heel_width": 66.0,
+        "fretboard_radius": 400.0,
+        "headstock_style": "7_inline",
+        "body_bridge": HardtailSpec(string_count=7),
+    },
+    "eight_string_guitar": {
+        "string_count": 8,
+        "scale_length": 685.8,
+        "nut_width": 55.0,
+        "final_fret_width": 76.0,
+        "heel_width": 76.0,
+        "fretboard_radius": 400.0,
+        "headstock_style": "8_inline",
+        "tuner_station_distances": (50.0, 78.0, 106.0, 134.0),
+        "tuner_side_offsets": (20.0, 17.0, 14.0, 11.0),
+        "body_bridge": HardtailSpec(string_count=8, screw_count=6),
+    },
     "bass_guitar": {
         "string_count": 4,
         "scale_length": 863.6,
@@ -1307,6 +1426,14 @@ INSTRUMENT_OVERRIDES: dict[str, dict[str, Any]] = {
     },
 }
 """Parameter values that differ from the defaults, per instrument.
+
+The seven- and eight-string values are labelled starting points for
+extended-range guitars: 25.5-inch (647.7 mm) and 27-inch (685.8 mm)
+scales, 48 / 55 mm nuts and 66 / 76 mm heels (one more 7 mm nut and
+10.5 mm bridge string spacing per string), a flatter 400 mm fretboard
+radius, tuners in line, stretched humbuckers (see
+``pickups.pickup_stretch``) and a string-through hardtail with a hole per
+string; an eight-string can also take a 4+4 headstock.
 
 The bass values are labelled starting points for a common four-string
 bass: 34-inch (863.6 mm) scale, 21 frets, a 38 mm nut and 62 mm heel, a

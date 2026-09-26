@@ -49,8 +49,19 @@ liittymistä U-sylinteriin.
 
 ## Soitin
 
-Lomakkeen ensimmäinen valinta on soitin: sähkökitara (oletus) tai
-bassokitara (`Prototype001Parameters.for_instrument`). Basson oletukset:
+Lomakkeen ensimmäinen valinta on soitin: sähkökitara (oletus), 7-kielinen,
+8-kielinen tai bassokitara (`Prototype001Parameters.for_instrument`).
+
+7-kielisen oletukset: 25,5" (647,7 mm) skaala, satula 48 mm, kanta 66 mm,
+otelaudan säde 400 mm, 7 viritintä rivissä (tai 4+3 / 3+4) ja seitsemän
+kielen läpimenevä hardtail. 8-kielisen: 27" (685,8 mm) skaala, satula 55 mm,
+kanta 76 mm, 8 viritintä rivissä (tai 4+4) ja kahdeksan kielen hardtail.
+Kitaran humbuckerit ja singlet pitenevät 12 mm jokaista kuudennen yli
+menevää kieltä kohden, ja runko levenee keskilinjasta saman verran
+(`body_widening`, tyhjänä 12 mm / lisäkieli), jotta leveämpi kanta ja mikit
+mahtuvat. Kahler 7300, Floyd Rose ja Tune-o-matic on mitoitettu kuudelle
+kielelle, joten ne eivät ole valittavissa 7- ja 8-kielisille.
+ Basson oletukset:
 4 kieltä, 34" (863,6 mm) skaala, 21 nauhaa, satula 38 mm ja kanta 62 mm,
 paksuudet 21 / 23 mm ja kanta 22 mm, otelaudan säde 305 mm, kielijako 10 mm
 satulassa ja 19 mm tallassa, neljä 19 mm viritinreikää rivissä 38 mm välein

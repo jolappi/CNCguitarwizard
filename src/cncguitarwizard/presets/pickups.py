@@ -4,7 +4,9 @@ Every route is described in a local frame centred on the pickup — X along
 the neck, Y across it — and placed by adding the pickup's centre. The
 humbucker is the Design by Jone drawing's own route; the bass routes are
 labelled starting values for the common pickup families, to be checked
-against the pickups in hand before cutting.
+against the pickups in hand before cutting. Guitar pickups for seven and
+eight strings are the six-string routes stretched across the strings by
+``PICKUP_STRETCH_PER_STRING`` per extra string.
 """
 
 from __future__ import annotations
@@ -62,6 +64,41 @@ _SINGLE_LENGTH, _SINGLE_WIDTH, _SINGLE_SCREW = 88.0, 20.0, 38.0
 _JAZZ_LENGTH, _JAZZ_WIDTH, _JAZZ_SCREW = 100.0, 21.0, 47.0
 _SOAPBAR_LENGTH, _SOAPBAR_WIDTH, _SOAPBAR_SCREW = 102.0, 44.0, 45.0
 _P_COIL_LENGTH, _P_COIL_WIDTH, _P_COIL_OFFSET, _P_COIL_SHIFT = 58.0, 21.0, 19.0, 10.5
+
+PICKUP_STRETCH_PER_STRING = 12.0
+"""How much longer (across the strings) a guitar pickup is per string past six.
+
+A seven-string humbucker is about 82.5 mm long against a six-string's
+70 mm, an eight-string's about 94 mm; the route and its screw spacing
+grow by the same amount.
+"""
+
+
+def pickup_stretch(kind: PickupType, string_count: int) -> float:
+    """Return how much a pickup's route is lengthened for ``string_count``.
+
+    Only the guitar humbucker and single coil grow; the bass routes and
+    guitars of six strings or fewer keep their size.
+    """
+    if kind not in ("humbucker", "single_coil") or string_count <= 6:
+        return 0.0
+    return (string_count - 6) * PICKUP_STRETCH_PER_STRING
+
+
+def _stretched(
+    points: tuple[tuple[float, float], ...], stretch: float
+) -> tuple[tuple[float, float], ...]:
+    """Move each half of a route outward across the strings by ``stretch / 2``.
+
+    The ends (and a humbucker's ears) keep their shape; the straight sides
+    between them get longer.
+    """
+    if stretch == 0.0:
+        return points
+    half = stretch / 2.0
+    return tuple(
+        (x, y + half if y > 0.0 else y - half if y < 0.0 else y) for x, y in points
+    )
 
 
 def _bar(length: float, width: float, radius: float) -> tuple[tuple[float, float], ...]:
@@ -130,15 +167,18 @@ def _rotated(
 
 
 def pickup_half_length(
-    kind: PickupType, angle_degrees: float = 0.0, bass_sign: float = -1.0
+    kind: PickupType,
+    angle_degrees: float = 0.0,
+    bass_sign: float = -1.0,
+    string_count: int = 6,
 ) -> float:
     """Return how far the route reaches along the neck from its centre."""
     if kind == "none":
         return 0.0
-    return max(
-        abs(x)
-        for x, _ in _rotated(_local_outline(kind, bass_sign), angle_degrees, bass_sign)
+    local = _stretched(
+        _local_outline(kind, bass_sign), pickup_stretch(kind, string_count)
     )
+    return max(abs(x) for x, _ in _rotated(local, angle_degrees, bass_sign))
 
 
 def pickup_route(
@@ -148,6 +188,7 @@ def pickup_route(
     depth: float,
     bass_sign: float,
     angle_degrees: float = 0.0,
+    string_count: int = 6,
 ) -> TracedCavity | None:
     """Return the route for a pickup centred at ``center_x``, or ``None``.
 
@@ -159,10 +200,16 @@ def pickup_route(
         bass_sign: +1 when the bass side is +Y, -1 when it is -Y.
         angle_degrees: Slant, the treble end toward the tail (see
             ``_rotated``).
+        string_count: The instrument's strings; a guitar pickup for more
+            than six is stretched (see ``pickup_stretch``).
     """
     if kind == "none":
         return None
-    local = _rotated(_local_outline(kind, bass_sign), angle_degrees, bass_sign)
+    local = _rotated(
+        _stretched(_local_outline(kind, bass_sign), pickup_stretch(kind, string_count)),
+        angle_degrees,
+        bass_sign,
+    )
     return TracedCavity(name, tuple(Point2D(center_x + x, y) for x, y in local), depth)
 
 
@@ -172,15 +219,19 @@ def pickup_screws(
     bass_sign: float,
     humbucker_screw_spacing: float,
     angle_degrees: float = 0.0,
+    string_count: int = 6,
 ) -> tuple[tuple[str, float, float], ...]:
     """Return ``(label, x, y)`` for each height-screw recess of a pickup.
 
     ``label`` is ``bass`` / ``treble`` (with a coil prefix for a split
     pickup); the humbucker's spacing is ``humbucker_screw_spacing``. The
-    screws turn with the route by ``angle_degrees``.
+    screws turn with the route by ``angle_degrees`` and spread with its
+    stretch for more than six strings.
     """
+    stretch = pickup_stretch(kind, string_count)
 
     def pair(spacing: float) -> list[tuple[str, float, float]]:
+        spacing += stretch
         return [
             ("bass", 0.0, bass_sign * spacing / 2.0),
             ("treble", 0.0, -bass_sign * spacing / 2.0),

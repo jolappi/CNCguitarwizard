@@ -20,7 +20,12 @@ from typing import Any
 
 from .cam import MachiningParameters
 from .exceptions import CNCGuitarWizardError
-from .geometry.body import BRIDGE_KINDS, BRIDGE_LABELS, bridge_spec_from_dict
+from .geometry.body import (
+    BRIDGE_KINDS,
+    BRIDGE_LABELS,
+    BRIDGE_MAX_STRINGS,
+    bridge_spec_from_dict,
+)
 from .presets import Prototype001Parameters
 from .presets.body_shapes import (
     BODY_SHAPE_KINDS,
@@ -42,6 +47,8 @@ _CHOICE_LABELS: dict[str, dict[str, str]] = {"body_controls": CONTROL_LABELS}
 
 INSTRUMENT_LABELS: dict[str, str] = {
     "electric_guitar": "Electric guitar",
+    "seven_string_guitar": "7-string guitar",
+    "eight_string_guitar": "8-string guitar",
     "bass_guitar": "Bass guitar",
 }
 
@@ -188,8 +195,11 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         payload: ``{"prototype": {...}}`` as for ``start_build``.
 
     Returns:
-        ``{"heel_end", "samples_per_segment", "start_points", "templates",
-        "polygons", "circles", "jack"}``, or ``{"error": message}``.
+        ``{"heel_end", "samples_per_segment", "widening", "start_points",
+        "templates", "polygons", "circles", "jack"}``, or ``{"error":
+        message}``. ``widening`` is the body's opening along the centreline
+        (see ``body_shapes.widen_points``), which the editor applies to
+        the drawn control points as Python does.
         ``templates`` maps a key to ``{"label", "shape"}``, the shape as
         the form's JSON. ``polygons`` is a list of ``{"name", "role",
         "group", "points"}`` with ``role`` one of ``neck``, ``pocket``,
@@ -286,6 +296,7 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
     return {
         "heel_end": round(heel_end, 2),
         "samples_per_segment": OUTLINE_SAMPLES_PER_SEGMENT,
+        "widening": parameters.body_widening_amount(),
         "start_points": [list(point) for point in YOUR_DESIGN_START_POINTS],
         "templates": {
             key: {"label": label, "shape": _jsonable(shape)}
@@ -529,6 +540,7 @@ def _describe_fields(
             entry["variants"] = {
                 kind: {
                     "label": _VARIANT_LABELS.get(kind, kind),
+                    "max_strings": BRIDGE_MAX_STRINGS.get(kind),
                     "fields": [
                         described_field
                         for described_field in _describe_fields(
