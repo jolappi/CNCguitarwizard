@@ -10,6 +10,7 @@ pins where they were.
 
 from __future__ import annotations
 
+import math
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
 
@@ -33,7 +34,8 @@ class BodyMachiningPlan:
         top_small_holes: Top-face program with the small drill for holes
             narrower than the main tool, or ``None`` when there are none.
         back: Back-face setup after the flip: rear cavities, cover
-            recesses, and the lower half of the outline with tabs.
+            recesses, rear holes, and the lower half of the outline with
+            tabs.
         stock_length: Minimum blank length along X.
         stock_width: Minimum blank width along Y.
         stock_thickness: Blank thickness (the body thickness).
@@ -53,13 +55,18 @@ class BodyMachiningPlan:
     origin_y: float
     index_pin_positions: tuple[tuple[float, float], ...]
     preview_outlines: tuple[tuple[Point2D, ...], ...] = ()
+    back_small_holes: Setup | None = None
 
     @property
     def setups(self) -> tuple[Setup, ...]:
         """Return the setups in running order."""
-        if self.top_small_holes is None:
-            return (self.index_pins, self.top, self.back)
-        return (self.index_pins, self.top, self.top_small_holes, self.back)
+        setups = [self.index_pins, self.top]
+        if self.top_small_holes is not None:
+            setups.append(self.top_small_holes)
+        setups.append(self.back)
+        if self.back_small_holes is not None:
+            setups.append(self.back_small_holes)
+        return tuple(setups)
 
 
 def plan_body_machining(
@@ -223,6 +230,14 @@ def plan_body_machining(
                     start_depth=rear.cavity.depth,
                 )
             )
+    back_small = [
+        hole
+        for hole in body.rear_holes
+        if hole.diameter < parameters.tool_diameter - 1e-6
+    ]
+    for hole in body.rear_holes:
+        if hole not in back_small:
+            back_paths.append(_drill_rear_hole(hole, body, back_frame, parameters))
     back_paths.append(
         profile(
             "Outline, lower half with tabs",
@@ -247,11 +262,36 @@ def plan_body_machining(
         reference_points,
     )
 
+    back_small_holes: Setup | None = None
+    if back_small:
+        small_tool = replace(
+            parameters,
+            tool_diameter=parameters.small_hole_tool_diameter,
+            plunge_rate=min(parameters.plunge_rate, 150.0),
+        )
+        back_small_holes = Setup(
+            "Body_back_small_holes",
+            f"Body back face - holes for the {small_tool.tool_diameter:g} mm drill",
+            tuple(
+                _drill_rear_hole(hole, body, back_frame, small_tool)
+                for hole in back_small
+            ),
+            (
+                "Same fixture and X/Y zero as Body_back; change to the small drill "
+                "and re-touch Z on the stock top (the back face).",
+            ),
+            reference_points,
+            small_tool,
+        )
+
     top_outline = top_frame.polygon(body.outline.points)
+    back_outline = back_frame.polygon(body.outline.points)
     previews = [top_outline, top_outline]
     if top_small_holes is not None:
         previews.append(top_outline)
-    previews.append(back_frame.polygon(body.outline.points))
+    previews.append(back_outline)
+    if back_small_holes is not None:
+        previews.append(back_outline)
     return BodyMachiningPlan(
         pin_setup,
         top,
@@ -264,6 +304,7 @@ def plan_body_machining(
         origin_y=origin_y,
         index_pin_positions=tuple((x, y) for x, y in pins),
         preview_outlines=tuple(previews),
+        back_small_holes=back_small_holes,
     )
 
 
@@ -292,6 +333,48 @@ class _Frame:
 def _top_cavities(body: BodySolid) -> tuple[Cavity, ...]:
     """Return the top-face cavities in cutting order (through routes last)."""
     return body.top_cavities
+
+
+def _drill_rear_hole(
+    hole: DrilledHole,
+    body: BodySolid,
+    frame: _Frame,
+    parameters: MachiningParameters,
+) -> Toolpath:
+    """Drill one hole from the back, starting below any wider rear hole.
+
+    A hole inside a wider, shallower rear hole at the same spot (a bolt
+    hole under its ferrule counterbore) starts at that hole's floor; a
+    hole that reaches a top cavity (the neck pocket) runs on by the
+    through overshoot so it breaks cleanly into it.
+    """
+    start_depth = 0.0
+    for other in body.rear_holes:
+        if (
+            other is not hole
+            and other.diameter > hole.diameter
+            and other.depth < hole.depth
+            and math.hypot(
+                other.center_x - hole.center_x, other.center_y - hole.center_y
+            )
+            <= (other.diameter - hole.diameter) / 2.0
+        ):
+            start_depth = max(start_depth, other.depth)
+    depth = hole.depth
+    for cavity in _top_cavities(body):
+        if (
+            point_in_polygon(hole.center, cavity.outline)
+            and depth + cavity.depth >= body.thickness - 1e-6
+        ):
+            depth = body.thickness - cavity.depth + parameters.through_overshoot
+    return drill(
+        hole.name,
+        frame.point(hole.center),
+        hole.diameter,
+        depth,
+        parameters,
+        start_depth=start_depth,
+    )
 
 
 def _drill_hole(

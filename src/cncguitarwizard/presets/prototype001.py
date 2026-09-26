@@ -39,7 +39,7 @@ from ..geometry.neck import (
     TrussRodChannel,
     TunerLayout,
 )
-from ..geometry.primitives import Point2D
+from ..geometry.primitives import Point2D, point_in_polygon
 from .body_shapes import BASS_BODY, BodyShapeSpec, DesignByJoneShape
 from .pickups import (
     PICKUP_CONFIGURATIONS,
@@ -144,6 +144,8 @@ class BodyLayout:
         through_cavities: Routes that open into a rear cavity.
         extra_rear_cavities: The bridge's rear cavities.
         middle_pickup: The middle pickup route, or ``None``.
+        rear_holes: Holes drilled from the back (the neck-bolt ferrules
+            and bolt holes).
     """
 
     heel_end: float
@@ -160,6 +162,7 @@ class BodyLayout:
     through_cavities: tuple[Cavity, ...]
     extra_rear_cavities: tuple[RearCavity, ...]
     middle_pickup: TracedCavity | None = None
+    rear_holes: tuple[DrilledHole, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -304,6 +307,20 @@ class Prototype001Parameters:
     # Output jack bore, in from the edge at the shape's jack position.
     body_jack_diameter: float = 12.5
     body_jack_depth: float = 55.0
+    # Bolt-on neck: the body shape's own neck_bolts, or else four bolts
+    # in a rectangle centred across the neck, body_neck_bolt_spacing_x
+    # along it and _y across it, the tail pair as close to the pocket's end
+    # as the bolt hole allows (4 mm of wood) unless
+    # body_neck_bolt_center_offset puts the pattern's centre that far
+    # ahead of the heel end. Each bolt gets a ferrule counterbore in the
+    # back of the body and a bolt hole on from its floor to the neck
+    # pocket; every ferrule must sit in wood with 2 mm to spare.
+    body_neck_bolt_spacing_x: float = 32.0
+    body_neck_bolt_spacing_y: float = 40.0
+    body_neck_bolt_center_offset: float | None = None
+    body_neck_ferrule_diameter: float = 14.0
+    body_neck_ferrule_depth: float = 5.0
+    body_neck_bolt_hole_diameter: float = 5.0
     truss_rod_start: float = 12.0
     truss_rod_length: float = 440.0
     truss_rod_width: float = 6.0
@@ -736,6 +753,93 @@ class Prototype001Parameters:
                 centres.append((side, -distance, sign * offset))
         return tuple(centres)
 
+    def _neck_bolt_holes(
+        self, heel_end: float, pocket: TracedCavity
+    ) -> tuple[DrilledHole, ...]:
+        """Return the ferrule counterbores and bolt holes, from the back.
+
+        Raises:
+            BodyGeometryError: If the sizes are not positive, the bolt
+                hole is not narrower than its ferrule, or a bolt misses the
+                neck pocket.
+        """
+        sizes = (
+            self.body_neck_bolt_spacing_x,
+            self.body_neck_bolt_spacing_y,
+            self.body_neck_ferrule_diameter,
+            self.body_neck_ferrule_depth,
+            self.body_neck_bolt_hole_diameter,
+        )
+        if not all(math.isfinite(value) and value > 0.0 for value in sizes):
+            raise BodyGeometryError("Neck-bolt sizes must be finite and positive.")
+        if self.body_neck_bolt_hole_diameter >= self.body_neck_ferrule_diameter:
+            raise BodyGeometryError(
+                "The neck-bolt hole must be narrower than its ferrule."
+            )
+        if self.body_shape.neck_bolts:
+            centres = [
+                (heel_end + x, y) for x, y in self.body_shape.neck_bolts
+            ]
+        else:
+            offset = (
+                self.body_neck_bolt_hole_diameter / 2.0
+                + 4.0
+                + self.body_neck_bolt_spacing_x / 2.0
+                if self.body_neck_bolt_center_offset is None
+                else self.body_neck_bolt_center_offset
+            )
+            centre_x = heel_end - offset
+            centres = [
+                (
+                    centre_x + sx * self.body_neck_bolt_spacing_x / 2.0,
+                    sy * self.body_neck_bolt_spacing_y / 2.0,
+                )
+                for sx, sy in ((-1.0, -1.0), (1.0, -1.0), (-1.0, 1.0), (1.0, 1.0))
+            ]
+        bolt_depth = self.body_thickness - pocket.depth
+        body_outline = self.body_shape.outline_points(heel_end)
+        reach = self.body_neck_ferrule_diameter / 2.0 + 2.0
+        holes: list[DrilledHole] = []
+        for index, (x, y) in enumerate(centres, start=1):
+            if not point_in_polygon(Point2D(x, y), pocket.outline):
+                raise BodyGeometryError(
+                    f"Neck bolt {index} at ({x - heel_end:.1f}, {y:.1f}) from the "
+                    "heel end misses the neck pocket; move it or reduce the bolt "
+                    "spacing."
+                )
+            rim = (
+                Point2D(
+                    x + reach * math.cos(math.pi * step / 12.0),
+                    y + reach * math.sin(math.pi * step / 12.0),
+                )
+                for step in range(24)
+            )
+            if not all(point_in_polygon(point, body_outline) for point in rim):
+                raise BodyGeometryError(
+                    f"Neck bolt {index} ferrule at ({x - heel_end:.1f}, {y:.1f}) "
+                    "from the heel end runs out of the body; move it (drag it in "
+                    "the body editor) or reduce the bolt spacing."
+                )
+            holes.append(
+                DrilledHole(
+                    f"Neck bolt {index} ferrule",
+                    x,
+                    y,
+                    self.body_neck_ferrule_diameter,
+                    self.body_neck_ferrule_depth,
+                )
+            )
+            holes.append(
+                DrilledHole(
+                    f"Neck bolt {index} hole",
+                    x,
+                    y,
+                    self.body_neck_bolt_hole_diameter,
+                    bolt_depth,
+                )
+            )
+        return tuple(holes)
+
     def pickup_types(self) -> tuple[PickupType, PickupType, PickupType]:
         """Return the (neck, middle, bridge) pickup types in use.
 
@@ -932,6 +1036,7 @@ class Prototype001Parameters:
             bridge.through_cavities,
             bridge.rear_cavities,
             middle_pickup,
+            self._neck_bolt_holes(heel_end, neck_pocket),
         )
 
     def build(self) -> Prototype001Geometry:
@@ -1160,6 +1265,7 @@ class Prototype001Parameters:
             holes=body_parts.holes,
             through_cavities=body_parts.through_cavities,
             extra_rear_cavities=body_parts.extra_rear_cavities,
+            rear_holes=body_parts.rear_holes,
         )
         return Prototype001Geometry(
             outline,

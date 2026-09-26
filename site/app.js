@@ -656,7 +656,10 @@ const bodyEditor = {
       place(node, polygon.group, polygon.name);
     }
     for (const circle of layout.circles) {
-      const node = this.element("circle", { cx: circle.x, cy: -circle.y, r: circle.r, fill: "#fff", stroke: "#222", "stroke-width": 0.5 }, features);
+      const look = circle.rear
+        ? { fill: "#fff", "fill-opacity": 0.5, stroke: "#5a3a8a", "stroke-width": 0.5, "stroke-dasharray": "2,1.5" }
+        : { fill: "#fff", stroke: "#222", "stroke-width": 0.5 };
+      const node = this.element("circle", { cx: circle.x, cy: -circle.y, r: circle.r, ...look }, features);
       place(node, circle.group, circle.name);
     }
     const jack = layout.jack;
@@ -781,6 +784,21 @@ const bodyEditor = {
     } else if (group.startsWith("pot:")) {
       const target = Number(group.split(":")[1]);
       movePots((index) => index === target);
+    } else if (group.startsWith("bolt:")) {
+      // An empty list means the preset's rectangle: start from where the
+      // bolts are drawn now, then move the one that was dragged.
+      const input = this.field(shape, "neck_bolts");
+      let bolts = readValue(input);
+      if (!bolts.length) {
+        bolts = this.layout.circles
+          .filter((c) => c.rear && c.name.endsWith("ferrule"))
+          .map((c) => [c.x, c.y]);
+      }
+      const target = Number(group.split(":")[1]);
+      bolts = bolts.map(([x, y], index) => (
+        index === target ? [round(x + dx), round(y + dy)] : [x, y]
+      ));
+      this.setField(input, bolts);
     } else if (group === "jack") {
       this.shiftField(shape, "jack_offset", dx);
       this.shiftField(shape, "jack_y", dy);

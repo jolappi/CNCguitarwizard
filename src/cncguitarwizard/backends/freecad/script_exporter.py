@@ -1826,6 +1826,21 @@ class FreeCADScriptExporter:
                 f"    {drilled.name.lower() + ' cut'!r},\n"
                 ")\n"
             )
+        for drilled in body.rear_holes:
+            # Drilled up from the back face (Z = -thickness).
+            lines.append(
+                "drilled_hole = Part.makeCylinder(\n"
+                f"    {drilled.diameter / 2.0},\n"
+                f"    {drilled.depth} + body_overcut,\n"
+                f"    App.Vector({drilled.center_x}, {drilled.center_y}, "
+                "-body_thickness - body_overcut),\n"
+                "    App.Vector(0.0, 0.0, 1.0),\n"
+                ")\n"
+                "body_shape = require_shape(\n"
+                "    body_shape.cut(drilled_hole),\n"
+                f"    {drilled.name.lower() + ' cut'!r},\n"
+                ")\n"
+            )
         jack = body.jack_hole
         jack_radians = math.radians(jack.direction_degrees)
         jack_direction = (

@@ -59,6 +59,14 @@ nelikielinen läpimenevä talla ja offset-bassorunko. Mikkityypit ovat
 valittavissa kummallekin paikalle (humbucker, Jazz Bass, Precision Bass,
 bassohumbucker tai ei mikkiä). Bassoarvot ovat lähtöarvoja.
 
+## Kaulan kiinnitys
+
+Neljä kaulapulttia rungon takaa: holkkiupotus Ø 14 mm, 5 mm syvä, ja sen
+pohjasta Ø 5 mm pulttireikä kaulataskuun. Paikat tulevat rungon muodosta
+(`neck_bolts`): Design by Jone -rungossa puolisuunnikas, koska diskanttipuolen
+cutaway on syvä, muuten 32 × 40 mm suorakulmio heel-päädyn lähellä. Holkin on
+jäätävä puuhun 2 mm varalla; piirtoeditorissa pultteja voi raahata.
+
 ## Mikit
 
 Mikkikokoonpano valitaan (`body_pickups`): kitaralle HH (oletus), HSH, HSS, H,

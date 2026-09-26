@@ -148,7 +148,8 @@ def _editor_group(name: str) -> str | None:
     cover and shaft hole), ``pot:N`` (one pot hole, zero-based),
     ``pickup:neck`` / ``pickup:middle`` / ``pickup:bridge`` (a route and
     its screw recesses)
-    and ``jack``; the neck, its pocket and the bridge do not move.
+    ``bolt:N`` (a neck bolt's ferrule and hole) and ``jack``; the neck, its
+    pocket and the bridge do not move.
     """
     if name.startswith("Control cavity"):
         return "control"
@@ -156,6 +157,8 @@ def _editor_group(name: str) -> str | None:
         return "switch"
     if name.startswith("Pot ") and name.endswith("shaft hole"):
         return f"pot:{int(name.split()[1]) - 1}"
+    if name.startswith("Neck bolt "):
+        return f"bolt:{int(name.split()[2]) - 1}"
     if name.startswith("Neck pickup"):
         return "pickup:neck"
     if name.startswith("Middle pickup"):
@@ -235,6 +238,17 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
             "r": hole.diameter / 2.0,
         }
         for hole in layout.holes
+    ]
+    circles += [
+        {
+            "name": hole.name,
+            "group": _editor_group(hole.name),
+            "x": round(hole.center_x - heel_end, 2),
+            "y": round(hole.center_y, 2),
+            "r": hole.diameter / 2.0,
+            "rear": True,
+        }
+        for hole in layout.rear_holes
     ]
     mounting = layout.bridge_mounting
     circles += [

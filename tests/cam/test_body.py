@@ -12,7 +12,7 @@ from cncguitarwizard.cam import (
     plan_body_machining,
 )
 from cncguitarwizard.cam.planar import disc_fits, distance_to_boundary
-from cncguitarwizard.geometry.body import BodySolid
+from cncguitarwizard.geometry.body import BodySolid, CircularCavity
 from cncguitarwizard.geometry.primitives import Point2D, point_in_polygon
 from cncguitarwizard.presets import Prototype001Parameters
 
@@ -38,11 +38,12 @@ def to_model(point: Point2D, plan, mirror: bool) -> Point2D:  # type: ignore[no-
     return Point2D(point.x + plan.origin_x, point.y + plan.origin_y)
 
 
-def test_plan_has_three_setups_in_running_order(plan) -> None:  # type: ignore[no-untyped-def]
+def test_plan_has_its_setups_in_running_order(plan) -> None:  # type: ignore[no-untyped-def]
     assert [setup.name for setup in plan.setups] == [
         "Body_index_pins",
         "Body_top",
         "Body_back",
+        "Body_back_small_holes",
     ]
     assert [path.name for path in plan.index_pins.toolpaths] == [
         "Index pin 1",
@@ -58,6 +59,10 @@ def test_plan_has_three_setups_in_running_order(plan) -> None:  # type: ignore[n
         "Control cavity",
         "Switch cavity cover recess",
         "Switch cavity",
+        "Neck bolt 1 ferrule",
+        "Neck bolt 2 ferrule",
+        "Neck bolt 3 ferrule",
+        "Neck bolt 4 ferrule",
         "Outline, lower half with tabs",
     ]
 
@@ -157,6 +162,17 @@ def test_every_back_cut_stays_inside_its_own_feature(body, plan, parameters) -> 
     for rear in body.rear_cavities:
         regions[rear.cavity.name] = rear.cavity.outline
         regions[rear.cover_recess.name] = rear.cover_recess.outline
+    for hole in body.rear_holes:
+        # A hair wider than the hole: the sampled circle's chords sit just
+        # inside the true circle the tool edge follows.
+        regions[hole.name] = CircularCavity(
+            hole.name,
+            hole.center_x,
+            hole.center_y,
+            hole.diameter + 0.05,
+            hole.depth,
+            64,
+        ).outline
     for path in plan.back.toolpaths:
         for move in path.moves:
             if move.rapid or move.z >= 0.0:
@@ -279,8 +295,9 @@ def test_hardtail_plan_puts_narrow_holes_in_a_small_drill_program() -> None:
         "Body_top",
         "Body_top_small_holes",
         "Body_back",
+        "Body_back_small_holes",
     ]
-    assert len(plan.preview_outlines) == 4
+    assert len(plan.preview_outlines) == 5
     small_names = [path.name for path in plan.top_small_holes.toolpaths]
     assert len(small_names) == 11 and "String 1 through hole" in small_names
     assert plan.top_small_holes.tool is not None
@@ -317,3 +334,21 @@ def test_a_body_without_a_tail_notch_gets_a_longer_blank_for_its_tail_pin() -> N
     assert plan.stock_length > tail - nose + 2 * 15.0
     assert plan.index_pin_positions[1][0] > tail + 3.0
     assert plan.index_pin_positions[0][0] < body.neck_pocket.min_x
+
+
+def test_the_neck_bolts_are_drilled_from_the_back() -> None:
+    from cncguitarwizard.presets import Prototype001Parameters
+
+    body = Prototype001Parameters().build().body
+    plan = plan_body_machining(body, MachiningParameters())
+    back = {path.name: path for path in plan.back.toolpaths}
+    small = {path.name: path for path in plan.back_small_holes.toolpaths}  # type: ignore[union-attr]
+
+    # Ferrules (14 mm) with the 6 mm tool on the back, 5 mm deep.
+    assert back["Neck bolt 1 ferrule"].deepest_z() == pytest.approx(-5.0)
+    # Bolt holes (5 mm) with the small drill, from the ferrule floor into
+    # the neck pocket (44 - 20 = 24 mm, plus the overshoot).
+    hole = small["Neck bolt 1 hole"]
+    assert hole.deepest_z() == pytest.approx(-(24.0 + 0.5))
+    assert max(move.z for move in hole.moves if not move.rapid) <= -5.0 + 1e-9
+    assert [setup.name for setup in plan.setups][-1] == "Body_back_small_holes"

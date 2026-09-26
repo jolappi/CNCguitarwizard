@@ -54,7 +54,8 @@ def test_build_writes_gcode_and_toolpath_previews_for_every_part(
     names = [path.name for path in result.gcode_paths]
     assert names[:3] == ["Body_index_pins.nc", "Body_top.nc", "Body_back.nc"]
     assert "Neck_back_finish.nc" in names and "Fretboard_slots.nc" in names
-    assert len(names) == 13
+    assert len(names) == 14
+    assert "Body_back_small_holes.nc" in names
     assert [path.name for path in result.toolpath_preview_paths] == [
         name.replace(".nc", ".svg") for name in names
     ]
@@ -102,7 +103,7 @@ def test_stepwise_build_runs_one_stage_per_advance(tmp_path: Path) -> None:
     assert build.advance() is False
     result = build.result
     assert result.report_path.is_file()
-    assert len(result.gcode_paths) == 13
+    assert len(result.gcode_paths) == 14
     assert (
         Prototype001Build(tmp_path / "freecad").labels[-1] == "Running FreeCAD"
     )

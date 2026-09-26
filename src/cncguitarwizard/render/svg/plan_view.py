@@ -90,6 +90,16 @@ def render_plan_view_svg(geometry: Prototype001Geometry) -> str:
         parts.append(
             circle(drilled.center_x, drilled.center_y, drilled.diameter / 2.0, hole)
         )
+    rear_hole = (
+        'fill="#fff" fill-opacity="0.6" stroke="#5a3a8a" stroke-width="0.5" '
+        'stroke-dasharray="2,1.5"'
+    )
+    for drilled in body.rear_holes:
+        parts.append(
+            circle(
+                drilled.center_x, drilled.center_y, drilled.diameter / 2.0, rear_hole
+            )
+        )
     jack = body.jack_hole
     parts.append(circle(jack.start_x, jack.start_y, jack.diameter / 2.0, hole))
     parts.append(

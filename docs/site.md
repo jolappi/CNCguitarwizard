@@ -34,9 +34,10 @@ Python.
    over the neck, pocket, pickup and bridge routes and dashed rear
    cavities that `webapp.body_editor_layout()` lays out from the other
    settings. The control cavity (carrying its pots), each pot, the switch
-   cavity and the jack can be dragged too, and the pickup routes slide
+   cavity, each neck bolt (dashed: drilled from the back) and the jack can
+   be dragged too, and the pickup routes slide
    along the neck; a drop moves the fields that place them
-   (`control_shift`, `pot_offsets`, `switch_*`, `jack_*`,
+   (`control_shift`, `pot_offsets`, `switch_*`, `neck_bolts`, `jack_*`,
    `body_*_pickup_offset`) and the layout is fetched again. The neck, its
    pocket and the bridge follow the neck and scale and stay put. The
    panel reports the body's size

@@ -56,6 +56,10 @@ class DesignByJoneShape:
         jack_direction_degrees: Direction the bore runs in, in the plan.
         control_shift: Translation (X, Y) applied to the traced almond
             control cavity and its cover, from their drawn position.
+        neck_bolts: Neck-bolt centres as (X from the heel end, Y) pairs;
+            empty for the preset's rectangular pattern. This body's deep
+            treble cutaway leaves wood for a ferrule only near the heel
+            end on that side, so its four bolts form a trapezoid.
     """
 
     kind: Literal["design_by_jone"] = "design_by_jone"
@@ -70,6 +74,12 @@ class DesignByJoneShape:
     jack_y: float = 107.5
     jack_direction_degrees: float = 202.5
     control_shift: tuple[float, float] = (0.0, 0.0)
+    neck_bolts: tuple[tuple[float, float], ...] = (
+        (-40.0, -20.0),
+        (-8.0, -20.0),
+        (-28.0, 6.0),
+        (-8.0, 6.0),
+    )
 
     def outline_points(self, heel_end: float) -> tuple[Point2D, ...]:
         """Return the outline placed so its pocket end sits at ``heel_end``."""
@@ -169,6 +179,8 @@ class YourDesignShape:
         jack_direction_degrees: Direction the bore runs in, in the plan.
         control_shift: Translation (X, Y) applied to the traced almond
             control cavity and its cover, from their drawn position.
+        neck_bolts: Neck-bolt centres as (X from the heel end, Y) pairs;
+            empty for the preset's rectangular pattern.
 
     Raises:
         BodyGeometryError: For fewer than four or non-finite control points.
@@ -187,6 +199,7 @@ class YourDesignShape:
     jack_y: float = 134.0
     jack_direction_degrees: float = 230.0
     control_shift: tuple[float, float] = (0.0, 0.0)
+    neck_bolts: tuple[tuple[float, float], ...] = ()
 
     def __post_init__(self) -> None:
         """Reject a control polygon that cannot describe a body."""
@@ -422,9 +435,18 @@ YOUR_DESIGN_TEMPLATES: dict[str, tuple[str, YourDesignShape]] = {
             jack_offset=_DESIGN_BY_JONE.jack_offset,
             jack_y=_DESIGN_BY_JONE.jack_y,
             jack_direction_degrees=_DESIGN_BY_JONE.jack_direction_degrees,
+            neck_bolts=_DESIGN_BY_JONE.neck_bolts,
         ),
     ),
-    "les_paul": ("Les Paul style", YourDesignShape(control_points=_LES_PAUL_POINTS)),
+    "les_paul": (
+        "Les Paul style",
+        YourDesignShape(
+            control_points=_LES_PAUL_POINTS,
+            # The cutaway leaves less wood on the treble side: its bolts
+            # move in toward the centreline.
+            neck_bolts=((-38.5, -20.0), (-6.5, -20.0), (-38.5, 12.0), (-6.5, 12.0)),
+        ),
+    ),
     "stratocaster": ("Stratocaster style", YourDesignShape()),
     "jackson_rr": (
         "Jackson RR style",

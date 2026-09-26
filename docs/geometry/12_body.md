@@ -181,6 +181,24 @@ extra top cavities. The route types:
 The bass routes are labelled starting values; check them against the
 pickups in hand. `BodySolid.neck_pickup` / `bridge_pickup` may be `None`.
 
+## Neck bolts
+
+A bolt-on neck is held by four bolts through the back of the body. Each
+gets a ferrule counterbore (`body_neck_ferrule_diameter` 14 mm,
+`body_neck_ferrule_depth` 5 mm) and, on from its floor, a bolt hole
+(`body_neck_bolt_hole_diameter` 5 mm) through to the neck pocket — both in
+`BodySolid.rear_holes`, drilled from the back. The body shape's
+`neck_bolts` (X from the heel end, Y) place them; left empty they form a
+rectangle `body_neck_bolt_spacing_x` (32 mm) by `_y` (40 mm) with the tail
+pair 4 mm of wood from the pocket's end (or centred
+`body_neck_bolt_center_offset` ahead of the heel end). The Design by Jone
+body's deep treble cutaway leaves room for a ferrule only near the heel end
+on that side, so it uses a trapezoid, (-40, -20), (-8, -20), (-28, 6),
+(-8, 6); the Les Paul template moves its treble pair in to y = 12. Every
+bolt must land in the pocket and every ferrule in wood with 2 mm to spare,
+or the build says which one to move — in the body editor the bolts can be
+dragged like the cavities.
+
 ## Bridges
 
 The bridge is an interchangeable *spec* (`geometry.body.bridges`). Each spec

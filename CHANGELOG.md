@@ -49,6 +49,13 @@
   the control cavity (with its pots), single pots, the switch cavity and
   the jack, and slide the pickup routes along the neck; the neck, pocket
   and bridge stay put. A live check lists any feature left outside.
+- Bolt-on neck: four neck-bolt ferrule counterbores (14 mm, 5 mm deep)
+  and bolt holes (5 mm) through to the neck pocket, drilled from the back
+  (`BodySolid.rear_holes`, a new `Body_back_small_holes.nc` for the
+  narrow bolt holes). The body shape's `neck_bolts` place them (a
+  trapezoid on the Design by Jone body, whose treble cutaway is deep),
+  else a 32 × 40 mm rectangle near the heel end; ferrules must sit in
+  wood. The body editor drags the bolts too.
 - Pickup layouts (`body_pickups`): HH, HSH, HSS, H, SSS and SS for a
   guitar, PJ, JJ, P and MM for a bass, or `custom` with each position's
   own type. New middle pickup position (`body_middle_pickup`,
