@@ -9,6 +9,7 @@ from cncguitarwizard.webapp import (
     advance_build,
     body_editor_layout,
     finish_build,
+    headstock_editor_layout,
     parameter_schema,
     run_build,
     start_build,
@@ -282,3 +283,33 @@ def test_run_build_makes_a_bass(tmp_path: Path) -> None:
 
 def _bass_overrides() -> dict[str, object]:
     return parameter_schema()["instruments"]["bass_guitar"]["overrides"]
+
+
+def test_headstock_editor_layout_gives_fitted_edges_and_the_holes(
+    tmp_path: Path,
+) -> None:
+    layout = headstock_editor_layout({"prototype": {"headstock_style": "4+2"}})
+
+    assert layout["nut_half_width"] == 21.0
+    assert layout["bass_sign"] == -1.0
+    assert layout["min_edge_distance"] == 15.0
+    for side in ("bass", "treble"):
+        edge = layout["start_edges"][side]
+        assert len(edge) == 10 and edge[0][0] == 22.5 and edge[1][0] == 45.0
+        assert edge[-1][0] == 150.0
+    assert len(layout["holes"]) == 6
+    assert {hole["side"] for hole in layout["holes"]} == {"bass", "treble"}
+    # The drawn start edges build as they are.
+    built = run_build(
+        {
+            "prototype": {
+                "headstock_style": "4+2",
+                "headstock_outline": "drawn",
+                "headstock_bass_edge": layout["start_edges"]["bass"],
+                "headstock_treble_edge": layout["start_edges"]["treble"],
+            }
+        },
+        str(tmp_path),
+    )
+    assert "error" not in built
+    json.dumps(layout)

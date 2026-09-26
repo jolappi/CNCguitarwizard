@@ -7,8 +7,8 @@ from dataclasses import dataclass, field
 from itertools import combinations
 from typing import Literal
 
-from ..exceptions import HeadstockGeometryError
-from ..primitives import Line2D, Point2D, Point3D
+from ..exceptions import GeometryException, HeadstockGeometryError
+from ..primitives import Line2D, MonotoneCurve, Point2D, Point3D
 
 Side = Literal["bass", "treble"]
 """Which physical side of the centerline a feature is on.
@@ -47,9 +47,16 @@ class HeadstockPlan:
             toward the bass side.
         bass_sign: +1.0 when the bass side is +Y (right-handed), -1.0
             when it is -Y (left-handed).
+        bass_edge: A drawn bass-side edge: ``(distance from the nut,
+            half-width)`` points ending at the tip (``distance ==
+            length``), or ``None`` for the tapered shape above. The edge
+            is a ``MonotoneCurve`` from the nut's half-width through them.
+        treble_edge: The same for the treble side; give both or neither.
 
     Raises:
-        HeadstockGeometryError: If dimensions cannot form the tapered outline.
+        HeadstockGeometryError: If dimensions cannot form the tapered
+            outline, or a drawn edge does not end at the tip, does not
+            run away from the nut, or crosses the other edge.
     """
 
     length: float
@@ -61,6 +68,8 @@ class HeadstockPlan:
     shoulder_shift: float = 0.0
     tip_shift: float = 0.0
     bass_sign: float = 1.0
+    bass_edge: tuple[tuple[float, float], ...] | None = None
+    treble_edge: tuple[tuple[float, float], ...] | None = None
     nut_line: Line2D = field(init=False)
     shoulder_line: Line2D = field(init=False)
     tip_line: Line2D = field(init=False)
@@ -82,7 +91,7 @@ class HeadstockPlan:
         )
         tip_left = Point2D(-self.length, self.half_width_at_y(self.length, 1.0))
         tip_right = Point2D(-self.length, -self.half_width_at_y(self.length, -1.0))
-        distances = (
+        distances: tuple[float, ...] = (
             *(
                 self.shoulder_distance
                 * index
@@ -97,6 +106,8 @@ class HeadstockPlan:
                 for index in range(1, self.side_curve_segments + 1)
             ),
         )
+        if self.is_drawn:
+            distances = self._drawn_distances()
         right_side = tuple(
             Point2D(-distance, -self.half_width_at_y(distance, -1.0))
             for distance in distances
@@ -154,11 +165,58 @@ class HeadstockPlan:
             raise HeadstockGeometryError("Headstock shifts must be finite.")
         if self.bass_sign not in (1.0, -1.0):
             raise HeadstockGeometryError("Headstock bass_sign must be +1 or -1.")
+        self._validate_drawn()
         for side in ("bass", "treble"):
             if self._shoulder_half(side) < self.nut_width / 2.0:
                 raise HeadstockGeometryError(
                     f"Headstock shoulder on the {side} side must not be "
                     "narrower than the nut."
+                )
+
+    @property
+    def is_drawn(self) -> bool:
+        """Return whether the edges were drawn rather than tapered."""
+        return self.bass_edge is not None
+
+    def _edge_curve(self, side: Side) -> MonotoneCurve:
+        edge = self.bass_edge if side == "bass" else self.treble_edge
+        assert edge is not None
+        return MonotoneCurve(((0.0, self.nut_width / 2.0), *edge))
+
+    def _drawn_distances(self) -> tuple[float, ...]:
+        """Sample the drawn edges every 2.5 mm and at every control point."""
+        assert self.bass_edge is not None and self.treble_edge is not None
+        steps = max(2, math.ceil(self.length / 2.5))
+        samples = {self.length * index / steps for index in range(steps + 1)}
+        samples.update(d for d, _ in (*self.bass_edge, *self.treble_edge))
+        return tuple(sorted(samples))
+
+    def _validate_drawn(self) -> None:
+        if (self.bass_edge is None) != (self.treble_edge is None):
+            raise HeadstockGeometryError(
+                "Draw both headstock edges, or neither."
+            )
+        if self.bass_edge is None or self.treble_edge is None:
+            return
+        for side, edge in (("bass", self.bass_edge), ("treble", self.treble_edge)):
+            if not edge:
+                raise HeadstockGeometryError(f"The {side} edge needs a tip point.")
+            if not math.isclose(edge[-1][0], self.length, abs_tol=1e-6):
+                raise HeadstockGeometryError(
+                    f"The drawn {side} edge must end at the tip, "
+                    f"{self.length:g} mm from the nut."
+                )
+            try:
+                MonotoneCurve(((0.0, self.nut_width / 2.0), *edge))
+            except GeometryException as error:
+                raise HeadstockGeometryError(
+                    f"The drawn {side} edge must run from the nut to the tip "
+                    f"without doubling back ({error})"
+                ) from error
+        for distance in self._drawn_distances():
+            if self.width_at_distance(distance) < 1.0:
+                raise HeadstockGeometryError(
+                    f"The drawn edges meet or cross {distance:.0f} mm from the nut."
                 )
 
     def _shoulder_half(self, side: Side) -> float:
@@ -174,6 +232,8 @@ class HeadstockPlan:
 
         Negative when that edge has crossed the centerline.
         """
+        if self.is_drawn:
+            return self._edge_curve(side).value_at(distance)
         if distance <= self.shoulder_distance:
             fraction = distance / self.shoulder_distance
             blend = self._smoothstep(fraction)

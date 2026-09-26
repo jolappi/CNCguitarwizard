@@ -73,8 +73,8 @@
     border-radius: 6px; background: #fff; touch-action: none; user-select: none; }
   .body-editor .actions { margin: 6px 0; }
   .body-editor select { padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; font: inherit; background: #fff; }
-  #body-editor-status.ok { color: var(--ok); }
-  #body-editor-status.bad { color: var(--bad); }
+  #body-editor-status.ok, #headstock-editor-status.ok { color: var(--ok); }
+  #body-editor-status.bad, #headstock-editor-status.bad { color: var(--bad); }
   .body-editor .handle { fill: #fff; stroke: var(--accent); stroke-width: 0.8; cursor: grab; }
   .body-editor .handle:hover, .body-editor .handle.dragging { fill: var(--accent); }
   .body-editor .movable { cursor: move; }
@@ -165,6 +165,18 @@
       </div>
       <p id="body-editor-status" class="note"></p>
       <svg id="body-editor-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+    <div id="headstock-editor" class="body-editor hidden">
+      <h2>Headstock design <span id="headstock-editor-size" class="note"></span></h2>
+      <p class="note">Drag the handles to shape the two edges; drag a tip handle to change the length.
+        Double-click an edge to add a handle there; Alt/Option-click or right-click a handle to remove
+        it. The tuner holes come from the headstock style and stay put; every hole must keep its
+        distance from the edge. The grid is 10 mm.</p>
+      <div class="actions">
+        <button id="headstock-editor-reset" class="secondary" type="button">Start over</button>
+      </div>
+      <p id="headstock-editor-status" class="note"></p>
+      <svg id="headstock-editor-svg" xmlns="http://www.w3.org/2000/svg"></svg>
     </div>
     <div id="error" class="error hidden"></div>
     <div id="intro">

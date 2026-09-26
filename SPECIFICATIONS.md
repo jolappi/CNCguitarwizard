@@ -73,6 +73,12 @@ bassohumbucker tai ei mikkiä). Bassoarvot ovat lähtöarvoja.
 | Reunapuuta viritinreiällä | Vähintään 8 mm |
 | Reikäviiste | 45°, 0,2 mm |
 
+Lavan reunat voi myös piirtää (`headstock_outline = "drawn"`): web-sovelluksen
+lavaeditorissa raahataan kummankin reunan kahvoja ja kärkeä, kun virittimien
+reiät pysyvät lavatyylin mukaisilla paikoillaan. Jokaisen reiän keskipisteen
+on jäätävä vähintään `tuner_edge_offset` (15 mm, bassolla 20 mm) reunasta;
+editori näyttää suoja-alueet ja build hylkää liian lähelle tulevan reunan.
+
 Kaulan ja lavan takaliitos on jatkuva, matala ja peukalolle vapaa. Satulahylly
 säilyy 5 mm:nä kaikissa lapaliitoksen muutoksissa.
 

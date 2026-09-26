@@ -49,6 +49,15 @@
   the control cavity (with its pots), single pots, the switch cavity and
   the jack, and slide the pickup routes along the neck; the neck, pocket
   and bridge stay put. A live check lists any feature left outside.
+- Drawn headstocks: `headstock_outline = "drawn"` takes the two edges from
+  `headstock_bass_edge` / `headstock_treble_edge` (distance, half-width
+  points to the tip, joined by the new `geometry.primitives.MonotoneCurve`)
+  and checks that every tuner hole of the chosen style stays at least
+  `tuner_edge_offset` from them. The web app opens a headstock editor for
+  it: drag the edge handles and the tip, over fixed tuner holes with their
+  keep-out circles. New: `HeadstockPlan(bass_edge, treble_edge)`,
+  `Prototype001Parameters.headstock_design()` / `tuner_centres()`,
+  `webapp.headstock_editor_layout()`.
 - Electric guitar or bass guitar: the web form's first control picks the
   instrument and reloads its defaults (`Prototype001Parameters.for_instrument`,
   `INSTRUMENT_OVERRIDES`). The bass is a four-string, 34-inch, 21-fret

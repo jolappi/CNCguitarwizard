@@ -170,6 +170,20 @@ outline = closed_catmull_rom(square, samples_per_segment=4)
 assert outline[0::4] == square
 ```
 
+## Monotone curves
+
+`MonotoneCurve(points)` is a smooth `y(x)` through points with increasing
+`x` (a Fritsch–Carlson piecewise cubic): between two neighbouring points
+it stays within their `y` values, its first slope is zero, and a peak or
+dip gets a flat slope. A drawn headstock edge is such a curve.
+
+```python
+from cncguitarwizard.geometry.primitives import MonotoneCurve
+
+edge = MonotoneCurve(((0.0, 21.0), (45.0, 33.0), (150.0, 20.0)))
+assert edge.value_at(45.0) == 33.0
+```
+
 ## Why geometry objects are immutable
 
 All geometry objects are frozen dataclasses with slots. Once created, their

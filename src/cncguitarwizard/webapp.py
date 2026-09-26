@@ -59,6 +59,7 @@ _BASIC_FIELDS: frozenset[str] = frozenset(
         "heel_width",
         "heel_thickness",
         "headstock_style",
+        "headstock_outline",
         "headstock_length",
         "headstock_angle",
         "headstock_thickness",
@@ -264,6 +265,62 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
             "y2": round(jack.start_y + jack.depth * math.sin(radians), 2),
             "r": jack.diameter / 2.0,
         },
+    }
+
+
+def headstock_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
+    """Describe the headstock for the web app's edge editor.
+
+    Coordinates are the model's: X is negative past the nut (the
+    headstock extends that way), Y from the centerline. Edges are lists of
+    ``[distance from the nut, half-width]`` ending at the tip, the form
+    ``headstock_bass_edge`` / ``headstock_treble_edge`` take.
+
+    Args:
+        payload: ``{"prototype": {...}}`` as for ``start_build``.
+
+    Returns:
+        ``{"nut_half_width", "bass_sign", "min_edge_distance",
+        "sample_step", "start_edges": {"bass", "treble"}, "holes"}`` or
+        ``{"error": message}``. ``start_edges`` are the fitted outline's
+        edges, sampled halfway to the shoulder, at the shoulder, at seven
+        points along the taper and at the tip (ten handles a side);
+        ``holes`` is a list of ``{"side", "x", "y", "r"}``.
+    """
+    try:
+        parameters = Prototype001Parameters(**_coerce(payload.get("prototype", {})))
+        fitted, _ = dataclasses.replace(
+            parameters, headstock_outline="fitted"
+        ).headstock_design()
+        centres = parameters.tuner_centres()
+    except (CNCGuitarWizardError, TypeError, ValueError) as error:
+        return {"error": f"{type(error).__name__}: {error}"}
+    root = parameters.headstock_root_length
+    stations = [root / 2.0]
+    stations += [root + (fitted.length - root) * step / 8.0 for step in range(8)]
+    stations.append(fitted.length)
+    start_edges = {
+        side: [
+            [round(distance, 1), round(fitted.half_width_at(distance, side), 1)]
+            for distance in stations
+        ]
+        for side in ("bass", "treble")
+    }
+    return {
+        "nut_half_width": parameters.nut_width / 2.0,
+        "bass_sign": fitted.bass_sign,
+        "min_edge_distance": parameters.tuner_edge_offset,
+        "sample_step": 2.5,
+        "start_edges": start_edges,
+        "holes": [
+            {
+                "side": side,
+                "x": round(x, 2),
+                "y": round(y, 2),
+                "r": parameters.tuner_hole_diameter / 2.0,
+            }
+            for side, x, y in centres
+        ],
     }
 
 

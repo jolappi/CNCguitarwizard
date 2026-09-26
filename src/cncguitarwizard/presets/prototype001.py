@@ -312,6 +312,15 @@ class Prototype001Parameters:
     headstock_tip_width: float | None = None
     headstock_shoulder_shift: float | None = None
     headstock_tip_shift: float | None = None
+    # "drawn" replaces the fitted outline with the edges drawn in the web
+    # app's headstock editor: (distance from the nut, half-width) points
+    # per side, each ending at the tip. The tuner holes still come from
+    # headstock_style, and every hole must stay at least
+    # tuner_edge_offset from the drawn edge. Empty edges fall back to
+    # the fitted outline.
+    headstock_outline: Literal["fitted", "drawn"] = "fitted"
+    headstock_bass_edge: tuple[tuple[float, float], ...] = ()
+    headstock_treble_edge: tuple[tuple[float, float], ...] = ()
     headstock_angle: float = 8.0
     headstock_thickness: float = 16.0
     tuner_hole_diameter: float = 10.0
@@ -432,9 +441,7 @@ class Prototype001Parameters:
         """
         start = heel_end - self.body_neck_pocket_length
         if start < 0.0:
-            raise NeckGeometryError(
-                "Neck pocket must not reach past the nut."
-            )
+            raise NeckGeometryError("Neck pocket must not reach past the nut.")
         clearance = self.body_neck_pocket_clearance
         last_fret = outline.last_fret_position
 
@@ -493,12 +500,16 @@ class Prototype001Parameters:
         bass_sign = -1.0 if self.headstock_bass_side == "-y" else 1.0
         bass_count, treble_count = HEADSTOCK_STYLES[self.headstock_style]
         hole_edge = self.tuner_hole_diameter / 2.0 + self.tuner_edge_clearance
+
         # Bass-positive lateral position of string n (1 = low E) at a
         # distance past the nut, continuing its bridge-to-nut line.
         def string_u(string: int, distance: float) -> float:
-            spacing = self.nut_string_spacing + (
-                self.nut_string_spacing - self.bridge_string_spacing
-            ) * distance / self.scale_length
+            spacing = (
+                self.nut_string_spacing
+                + (self.nut_string_spacing - self.bridge_string_spacing)
+                * distance
+                / self.scale_length
+            )
             return ((self.string_count + 1) / 2.0 - string) * spacing
 
         stations: list[tuple[float, Side, float]] = []  # distance, side, u
@@ -519,9 +530,7 @@ class Prototype001Parameters:
             row_side: Side
             pair_side: Side
             row_side, pair_side = (
-                ("bass", "treble")
-                if bass_count >= treble_count
-                else ("treble", "bass")
+                ("bass", "treble") if bass_count >= treble_count else ("treble", "bass")
             )
             row_count = max(bass_count, treble_count)
             pair_count = min(bass_count, treble_count)
@@ -555,9 +564,7 @@ class Prototype001Parameters:
             distances = tuple(distance for distance, _, _ in stations)
             # Offsets are measured toward the hole's own side; a row post
             # past the centreline gets a negative one.
-            offsets = tuple(
-                u if side == "bass" else -u for _, side, u in stations
-            )
+            offsets = tuple(u if side == "bass" else -u for _, side, u in stations)
 
         # Edges: fit each side's line through its holes, edge_offset out,
         # never inside the style's reserve; then, keeping the shoulder
@@ -566,9 +573,7 @@ class Prototype001Parameters:
         # too) by tuner_edge_clearance.
         root = self.headstock_root_length
         reserve = HEADSTOCK_RESERVES.get(self.headstock_style)
-        row_side_of_style: Side = (
-            "bass" if bass_count >= treble_count else "treble"
-        )
+        row_side_of_style: Side = "bass" if bass_count >= treble_count else "treble"
         halves: dict[Side, tuple[float, float]] = {}
         for side in ("bass", "treble"):
             sign = 1.0 if side == "bass" else -1.0
@@ -641,6 +646,75 @@ class Prototype001Parameters:
         full ``build`` does that when it makes the ``BodySolid``.
         """
         return self._body_layout(self.neck_outline())
+
+    def headstock_design(self) -> tuple[HeadstockPlan, TunerLayout]:
+        """Return the headstock plan and its tuner holes, validated.
+
+        Cheap: no solids are built. With ``headstock_outline == "drawn"``
+        and both edges given, the plan uses the drawn edges and its length
+        is theirs; every tuner hole must then sit at least
+        ``tuner_edge_offset`` (less 0.5 mm) from the drawn outline.
+
+        Raises:
+            NeckGeometryError: If a hole comes too close to a drawn edge.
+            HeadstockGeometryError: If the plan or holes are invalid.
+        """
+        layout = self._headstock_layout()
+        drawn = (
+            self.headstock_outline == "drawn"
+            and bool(self.headstock_bass_edge)
+            and bool(self.headstock_treble_edge)
+        )
+        plan = HeadstockPlan(
+            self.headstock_bass_edge[-1][0] if drawn else layout.length,
+            self.nut_width,
+            self.headstock_root_length,
+            layout.shoulder_width,
+            layout.tip_width,
+            shoulder_shift=layout.shoulder_shift,
+            tip_shift=layout.tip_shift,
+            bass_sign=layout.bass_sign,
+            bass_edge=self.headstock_bass_edge if drawn else None,
+            treble_edge=self.headstock_treble_edge if drawn else None,
+        )
+        tuners = TunerLayout(
+            plan,
+            hole_diameter=self.tuner_hole_diameter,
+            station_distances=layout.stations,
+            side_offsets=layout.offsets,
+            minimum_edge_clearance=self.tuner_edge_clearance,
+            minimum_hole_clearance=self.tuner_hole_clearance,
+            sides=layout.sides,
+        )
+        if drawn:
+            for hole in tuners.holes:
+                gap = distance_to_headstock_edge(plan, hole.center)
+                if gap < self.tuner_edge_offset - 0.5:
+                    raise NeckGeometryError(
+                        f"Tuner {hole.side} {hole.index} is {gap:.1f} mm from the "
+                        f"drawn headstock edge; keep it at least "
+                        f"{self.tuner_edge_offset:g} mm away."
+                    )
+        return plan, tuners
+
+    def tuner_centres(self) -> tuple[tuple[str, float, float], ...]:
+        """Return ``(side, x, y)`` of every tuner hole, without validating.
+
+        The web app's headstock editor draws these fixed holes under the
+        edges being drawn.
+        """
+        layout = self._headstock_layout()
+        centres: list[tuple[str, float, float]] = []
+        for index, (distance, offset) in enumerate(
+            zip(layout.stations, layout.offsets, strict=True)
+        ):
+            sides: tuple[Side, ...] = (
+                ("bass", "treble") if layout.sides is None else (layout.sides[index],)
+            )
+            for side in sides:
+                sign = layout.bass_sign * (1.0 if side == "bass" else -1.0)
+                centres.append((side, -distance, sign * offset))
+        return tuple(centres)
 
     def neck_outline(self) -> NeckOutline:
         """Return the neck's plan outline (cheap: no surfaces are built)."""
@@ -807,8 +881,7 @@ class Prototype001Parameters:
             )
         if heel_flat_start_offset <= 0.0:
             raise NeckGeometryError(
-                "Heel mounting length must exceed the heel extension after "
-                "fret 24."
+                "Heel mounting length must exceed the heel extension after fret 24."
             )
         if not math.isclose(self.nut_shelf_length, 5.0):
             raise NeckGeometryError(
@@ -856,15 +929,11 @@ class Prototype001Parameters:
             self.tuner_inline_spacing,
             self.tuner_edge_offset,
         )
-        if not all(
-            math.isfinite(value) and value > 0.0 for value in inline_values
-        ):
+        if not all(math.isfinite(value) and value > 0.0 for value in inline_values):
             raise NeckGeometryError(
                 "In-line tuner distance, spacing and edge offset must be positive."
             )
-        if not math.isfinite(self.tuner_tip_margin) or (
-            self.tuner_tip_margin < 0.0
-        ):
+        if not math.isfinite(self.tuner_tip_margin) or (self.tuner_tip_margin < 0.0):
             raise NeckGeometryError("Tuner tip margin must not be negative.")
         if self.headstock_bass_side not in ("-y", "+y"):
             raise NeckGeometryError('headstock_bass_side must be "-y" or "+y".')
@@ -886,16 +955,12 @@ class Prototype001Parameters:
             not math.isfinite(self.headstock_root_swell)
             or not 0.0 <= self.headstock_root_swell <= 3.0
         ):
-            raise NeckGeometryError(
-                "Headstock root swell must be between 0 and 3 mm."
-            )
+            raise NeckGeometryError("Headstock root swell must be between 0 and 3 mm.")
         if (
             not math.isfinite(self.nut_end_u_trim_depth)
             or not 0.0 <= self.nut_end_u_trim_depth <= 30.0
         ):
-            raise NeckGeometryError(
-                "Nut-end U trim depth must be between 0 and 30 mm."
-            )
+            raise NeckGeometryError("Nut-end U trim depth must be between 0 and 30 mm.")
         if (
             not math.isfinite(self.nut_end_u_side_fillet_radius)
             or not 0.0 <= self.nut_end_u_side_fillet_radius <= 2.0
@@ -905,24 +970,15 @@ class Prototype001Parameters:
             )
         if (
             not math.isfinite(self.headstock_outer_d_profile_guide_extension)
-            or not 0.0
-            <= self.headstock_outer_d_profile_guide_extension
-            <= 30.0
+            or not 0.0 <= self.headstock_outer_d_profile_guide_extension <= 30.0
         ):
             raise NeckGeometryError(
                 "Outer D-profile guide extension must be between 0 and 30 mm."
             )
-        if (
-            not math.isfinite(self.heel_root_length)
-            or self.heel_root_length <= 0.0
-        ):
-            raise NeckGeometryError(
-                "Heel root length must be finite and positive."
-            )
+        if not math.isfinite(self.heel_root_length) or self.heel_root_length <= 0.0:
+            raise NeckGeometryError("Heel root length must be finite and positive.")
         outline = self.neck_outline()
-        first_fret_wood_thickness = (
-            self.first_fret_thickness - self.fretboard_thickness
-        )
+        first_fret_wood_thickness = self.first_fret_thickness - self.fretboard_thickness
         twelfth_fret_wood_thickness = (
             self.twelfth_fret_thickness - self.fretboard_thickness
         )
@@ -963,9 +1019,10 @@ class Prototype001Parameters:
             profile_sample_count=self.profile_sample_count,
         )
         final_fret_fraction = 1.0 - 2.0 ** (-self.fret_count / 12.0)
-        width_at_scale_end = self.nut_width + (
-            self.final_fret_width - self.nut_width
-        ) / final_fret_fraction
+        width_at_scale_end = (
+            self.nut_width
+            + (self.final_fret_width - self.nut_width) / final_fret_fraction
+        )
         fretboard = Fretboard(
             self.scale_length,
             self.nut_width,
@@ -980,11 +1037,13 @@ class Prototype001Parameters:
             fretboard_surface,
             self.inlay_depth,
             single_marker_frets=tuple(
-                fret for fret in self.inlay_single_marker_frets
+                fret
+                for fret in self.inlay_single_marker_frets
                 if fret <= self.fret_count
             ),
             double_marker_frets=tuple(
-                fret for fret in self.inlay_double_marker_frets
+                fret
+                for fret in self.inlay_double_marker_frets
                 if fret <= self.fret_count
             ),
             style=self.inlay_style,
@@ -1000,21 +1059,11 @@ class Prototype001Parameters:
             self.truss_rod_depth,
             adjustment_side="heel",
         )
-        layout = self._headstock_layout()
-        headstock_plan = HeadstockPlan(
-            layout.length,
-            self.nut_width,
-            self.headstock_root_length,
-            layout.shoulder_width,
-            layout.tip_width,
-            shoulder_shift=layout.shoulder_shift,
-            tip_shift=layout.tip_shift,
-            bass_sign=layout.bass_sign,
-        )
+        headstock_plan, tuner_layout = self.headstock_design()
         headstock = HeadstockSolid(
             headstock_plan,
             HeadstockAngleReference(
-                layout.length,
+                headstock_plan.length,
                 self.headstock_angle,
             ),
             self.headstock_thickness,
@@ -1034,15 +1083,6 @@ class Prototype001Parameters:
             holes=body_parts.holes,
             through_cavities=body_parts.through_cavities,
             extra_rear_cavities=body_parts.extra_rear_cavities,
-        )
-        tuner_layout = TunerLayout(
-            headstock_plan,
-            hole_diameter=self.tuner_hole_diameter,
-            station_distances=layout.stations,
-            side_offsets=layout.offsets,
-            minimum_edge_clearance=self.tuner_edge_clearance,
-            minimum_hole_clearance=self.tuner_hole_clearance,
-            sides=layout.sides,
         )
         return Prototype001Geometry(
             outline,
@@ -1115,3 +1155,18 @@ the bridge, Fender-style tuners in line (19 mm holes, 38 mm apart), a
 Precision Bass pickup 150 mm and a Jazz Bass pickup 45 mm ahead of the
 bridge, and a string-through four-string hardtail.
 """
+
+
+def distance_to_headstock_edge(plan: HeadstockPlan, point: Point2D) -> float:
+    """Return how far ``point`` sits from the headstock's edges and tip.
+
+    Measured as the fitted outline is laid out: across the neck to each
+    side's edge at the point's own distance from the nut, and along the
+    neck to the tip; the smallest of the three. The nut is not an edge.
+    """
+    distance = -point.x
+    return min(
+        plan.edge_y(distance, 1.0) - point.y,
+        point.y - plan.edge_y(distance, -1.0),
+        plan.length - distance,
+    )

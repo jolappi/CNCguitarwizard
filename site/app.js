@@ -99,6 +99,7 @@ function renderForm() {
     }
   }
   applyAdvancedToggle();
+  setTimeout(() => headstockEditor.sync(), 0);
 }
 
 // Basic fields first; the rarely changed ones fold away behind
@@ -889,6 +890,311 @@ const bodyEditor = {
 };
 
 document.getElementById("body-editor-reset").addEventListener("click", () => bodyEditor.reset());
+// ---------------------------------------------------------------------------
+// Headstock editor: drag the two edges of a "drawn" headstock over the
+// fixed tuner holes. Each edge is [distance from the nut, half-width]
+// points ending at the tip, joined by the same monotone cubic curve Python
+// uses (MonotoneCurve), starting flat from the nut's half-width.
+
+function monotoneCurve(points) {
+  const n = points.length;
+  const widths = [], secants = [];
+  for (let i = 0; i < n - 1; i++) {
+    widths.push(points[i + 1][0] - points[i][0]);
+    secants.push((points[i + 1][1] - points[i][1]) / widths[i]);
+  }
+  const slopes = [0];
+  for (let i = 1; i < n - 1; i++) {
+    const before = secants[i - 1], after = secants[i];
+    if (before * after <= 0) { slopes.push(0); continue; }
+    const w1 = 2 * widths[i] + widths[i - 1], w2 = widths[i] + 2 * widths[i - 1];
+    slopes.push((w1 + w2) / (w1 / before + w2 / after));
+  }
+  slopes.push(secants[n - 2]);
+  return (x) => {
+    if (x <= points[0][0]) return points[0][1];
+    if (x >= points[n - 1][0]) return points[n - 1][1];
+    let i = 0;
+    while (points[i + 1][0] < x) i++;
+    const [x0, y0] = points[i], [x1, y1] = points[i + 1];
+    const w = x1 - x0, t = (x - x0) / w, t2 = t * t, t3 = t2 * t;
+    return (2 * t3 - 3 * t2 + 1) * y0 + (t3 - 2 * t2 + t) * w * slopes[i]
+      + (-2 * t3 + 3 * t2) * y1 + (t3 - t2) * w * slopes[i + 1];
+  };
+}
+
+const headstockEditor = {
+  panel: document.getElementById("headstock-editor"),
+  svg: document.getElementById("headstock-editor-svg"),
+  status: document.getElementById("headstock-editor-status"),
+  size: document.getElementById("headstock-editor-size"),
+  edges: { bass: [], treble: [] },
+  layout: null,
+  paths: {},
+  refreshTimer: null,
+
+  inputs() {
+    return {
+      bass: form.querySelector("[data-set='prototype'][data-name='headstock_bass_edge']"),
+      treble: form.querySelector("[data-set='prototype'][data-name='headstock_treble_edge']"),
+      outline: form.querySelector("[data-set='prototype'][data-name='headstock_outline']"),
+    };
+  },
+
+  sync() {
+    const { outline, bass, treble } = this.inputs();
+    const active = outline && outline.value === "drawn";
+    this.panel.classList.toggle("hidden", !active);
+    if (!active) return;
+    try {
+      this.edges = { bass: JSON.parse(bass.value), treble: JSON.parse(treble.value) };
+    } catch (error) {
+      this.edges = { bass: [], treble: [] };
+    }
+    this.refresh();
+  },
+
+  async refresh() {
+    if (this.panel.classList.contains("hidden") || !pyodide) return;
+    let payload;
+    try {
+      payload = collectValues();
+    } catch (error) {
+      this.setStatus(`Cannot place the tuners: ${error.message}`, "bad");
+      return;
+    }
+    pyodide.globals.set("payload_json", JSON.stringify(payload));
+    const layout = await runPython(
+      "import json\nfrom cncguitarwizard.webapp import headstock_editor_layout\n" +
+      "json.dumps(headstock_editor_layout(json.loads(payload_json)))"
+    );
+    if (layout.error) {
+      this.setStatus(layout.error, "bad");
+      return;
+    }
+    this.layout = layout;
+    if (!this.edges.bass.length || !this.edges.treble.length) {
+      this.edges = structuredClone(layout.start_edges);
+      this.commit();
+    }
+    this.draw();
+  },
+
+  scheduleRefresh() {
+    clearTimeout(this.refreshTimer);
+    this.refreshTimer = setTimeout(() => this.refresh(), 400);
+  },
+
+  element(name, attributes, parent) {
+    return bodyEditor.element.call({ svg: this.svg }, name, attributes, parent);
+  },
+
+  // Y of a side's edge from its half-width, in the model frame.
+  sign(side) {
+    return (side === "bass" ? 1 : -1) * this.layout.bass_sign;
+  },
+
+  length() {
+    return this.edges.bass[this.edges.bass.length - 1][0];
+  },
+
+  curve(side) {
+    return monotoneCurve([[0, this.layout.nut_half_width], ...this.edges[side]]);
+  },
+
+  // The outline as model points: one side nut to tip, the other back.
+  samples(side) {
+    const length = this.length(), step = this.layout.sample_step;
+    const distances = new Set([0, length, ...this.edges[side].map((p) => p[0])]);
+    for (let d = step; d < length; d += step) distances.add(d);
+    const curve = this.curve(side), sign = this.sign(side);
+    return [...distances].sort((a, b) => a - b).map((d) => [-d, sign * curve(d)]);
+  },
+
+  pathData(points) {
+    return points.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(2)},${(-y).toFixed(2)}`).join(" ");
+  },
+
+  draw() {
+    const layout = this.layout;
+    this.svg.innerHTML = "";
+    const bass = this.samples("bass"), treble = this.samples("treble");
+    const all = [...bass, ...treble, ...layout.holes.map((h) => [h.x, h.y])];
+    const xs = all.map((p) => p[0]), ys = all.map((p) => p[1]);
+    const margin = 25;
+    const minX = Math.min(...xs) - margin, maxX = 70;
+    const minY = Math.min(...ys) - margin, maxY = Math.max(...ys) + margin;
+    this.svg.setAttribute("viewBox", `${minX} ${-maxY} ${maxX - minX} ${maxY - minY}`);
+    const grid = this.element("g", { stroke: "#eee6d8", "stroke-width": 0.3 });
+    for (let x = Math.ceil(minX / 10) * 10; x <= maxX; x += 10) this.element("line", { x1: x, y1: -maxY, x2: x, y2: -minY }, grid);
+    for (let y = Math.ceil(minY / 10) * 10; y <= maxY; y += 10) this.element("line", { x1: minX, y1: -y, x2: maxX, y2: -y }, grid);
+    this.element("line", { x1: minX, y1: 0, x2: maxX, y2: 0, stroke: "#bbb", "stroke-width": 0.4, "stroke-dasharray": "3,2" });
+    // The neck past the nut, for scale.
+    const half = layout.nut_half_width;
+    this.element("rect", { x: 0, y: -half, width: 70, height: 2 * half, fill: "#3b2a1a", "fill-opacity": 0.85 });
+    this.element("path", {
+      d: this.pathData([...bass, ...[...treble].reverse()]) + " Z",
+      fill: "#f1e4c8", stroke: "none",
+    });
+    for (const side of ["bass", "treble"]) {
+      const path = this.element("path", {
+        d: this.pathData(side === "bass" ? bass : treble),
+        fill: "none", stroke: "#6b4a1f", "stroke-width": 0.8, "stroke-linecap": "round", cursor: "copy",
+      });
+      path.addEventListener("dblclick", (event) => this.addPoint(event, side));
+      this.paths[side] = path;
+    }
+    this.tipLine = this.element("path", {
+      d: this.pathData([bass[bass.length - 1], treble[treble.length - 1]]),
+      stroke: "#6b4a1f", "stroke-width": 0.8,
+    });
+    for (const hole of layout.holes) {
+      this.element("circle", { cx: hole.x, cy: -hole.y, r: hole.r, fill: "#fff", stroke: "#222", "stroke-width": 0.4, "pointer-events": "none" });
+      this.element("circle", { cx: hole.x, cy: -hole.y, r: layout.min_edge_distance, fill: "none", stroke: "#8a4b1e", "stroke-width": 0.25, "stroke-dasharray": "1.5,1.5", "pointer-events": "none" });
+    }
+    for (const side of ["bass", "treble"]) {
+      const sign = this.sign(side);
+      this.edges[side].forEach(([d, h], index) => {
+        const handle = this.element("circle", { class: "handle", cx: -d, cy: -sign * h, r: 2.2 });
+        handle.addEventListener("pointerdown", (event) => this.startDrag(event, side, index, handle));
+        handle.addEventListener("contextmenu", (event) => { event.preventDefault(); this.removePoint(side, index); });
+      });
+    }
+    this.check();
+  },
+
+  toModel(event) {
+    return bodyEditor.toModel.call({ svg: this.svg }, event);
+  },
+
+  // Move one handle; a tip handle sets the length of both edges.
+  place(side, index, [x, y]) {
+    const edge = this.edges[side];
+    const isTip = index === edge.length - 1;
+    const half = Math.round(y * this.sign(side) * 10) / 10;
+    let distance = Math.round(-x * 10) / 10;
+    if (isTip) {
+      const before = Math.max(
+        ...["bass", "treble"].map((s) => (this.edges[s].length > 1 ? this.edges[s][this.edges[s].length - 2][0] : 0))
+      );
+      distance = Math.max(distance, before + 2);
+      for (const s of ["bass", "treble"]) this.edges[s][this.edges[s].length - 1][0] = distance;
+    } else {
+      const low = index > 0 ? edge[index - 1][0] + 1 : 1;
+      distance = Math.min(Math.max(distance, low), edge[index + 1][0] - 1);
+      edge[index][0] = distance;
+    }
+    edge[index][1] = half;
+  },
+
+  startDrag(event, side, index, handle) {
+    if (event.altKey) {
+      this.removePoint(side, index);
+      return;
+    }
+    event.preventDefault();
+    handle.classList.add("dragging");
+    const move = (moveEvent) => {
+      this.place(side, index, this.toModel(moveEvent));
+      const bass = this.samples("bass"), treble = this.samples("treble");
+      this.paths.bass.setAttribute("d", this.pathData(bass));
+      this.paths.treble.setAttribute("d", this.pathData(treble));
+      this.tipLine.setAttribute("d", this.pathData([bass[bass.length - 1], treble[treble.length - 1]]));
+      const [d, h] = this.edges[side][index];
+      handle.setAttribute("cx", -d);
+      handle.setAttribute("cy", -this.sign(side) * h);
+      this.check();
+    };
+    const end = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", end);
+      window.removeEventListener("pointercancel", end);
+      this.commit();
+      this.draw();
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", end);
+    window.addEventListener("pointercancel", end);
+  },
+
+  addPoint(event, side) {
+    const [x, y] = this.toModel(event);
+    const distance = Math.round(-x * 10) / 10;
+    const edge = this.edges[side];
+    const index = edge.findIndex(([d]) => d > distance);
+    if (index < 0 || distance <= 1 || (index > 0 && distance - edge[index - 1][0] < 1)) return;
+    edge.splice(index, 0, [distance, Math.round(y * this.sign(side) * 10) / 10]);
+    this.commit();
+    this.draw();
+  },
+
+  removePoint(side, index) {
+    if (index === this.edges[side].length - 1) {
+      this.setStatus("The tip handle sets the length and cannot be removed.", "bad");
+      return;
+    }
+    this.edges[side].splice(index, 1);
+    this.commit();
+    this.draw();
+  },
+
+  reset() {
+    if (!this.layout || !window.confirm("Replace the drawn headstock with the fitted outline?")) return;
+    this.edges = structuredClone(this.layout.start_edges);
+    this.commit();
+    this.draw();
+  },
+
+  commit() {
+    const { bass, treble } = this.inputs();
+    bodyEditor.setField(bass, this.edges.bass);
+    bodyEditor.setField(treble, this.edges.treble);
+  },
+
+  // Every hole must keep min_edge_distance from the edges and the tip,
+  // measured across the neck at the hole and along it to the tip, as the
+  // fitted outline is laid out (and as Python checks it).
+  check() {
+    const limit = this.layout.min_edge_distance;
+    const bassCurve = this.curve("bass"), trebleCurve = this.curve("treble");
+    const edgeY = (distance, ySign) => {
+      const side = ySign * this.layout.bass_sign > 0 ? "bass" : "treble";
+      return ySign * (side === "bass" ? bassCurve : trebleCurve)(distance);
+    };
+    const close = [];
+    for (const hole of this.layout.holes) {
+      const distance = -hole.x;
+      const gap = Math.min(
+        edgeY(distance, 1) - hole.y,
+        hole.y - edgeY(distance, -1),
+        this.length() - distance,
+      );
+      if (gap < limit - 0.5) close.push(`${hole.side} at ${distance.toFixed(0)} mm (${gap.toFixed(1)} mm)`);
+    }
+    this.size.textContent = `— ${this.length().toFixed(0)} mm long`;
+    if (close.length) {
+      this.setStatus(`Too close to the edge (keep ${limit} mm): ${close.join(", ")}.`, "bad");
+    } else {
+      this.setStatus(`Every tuner hole is at least ${limit} mm from the edge.`, "ok");
+    }
+  },
+
+  setStatus(text, kind) {
+    this.status.textContent = text;
+    this.status.className = `note ${kind}`;
+  },
+};
+
+document.getElementById("headstock-editor-reset").addEventListener("click", () => headstockEditor.reset());
+form.addEventListener("change", (event) => {
+  if (event.target.dataset.name === "headstock_outline") headstockEditor.sync();
+  else if (!/^headstock_(bass|treble)_edge$/.test(event.target.dataset.name || "")) headstockEditor.scheduleRefresh();
+});
+form.addEventListener("input", (event) => {
+  if (/^headstock_(bass|treble)_edge$/.test(event.target.dataset.name || "")) return;
+  headstockEditor.scheduleRefresh();
+});
+
 form.addEventListener("input", (event) => {
   if (event.target.dataset.name !== "control_points") {
     bodyEditor.scheduleRefresh();

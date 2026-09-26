@@ -41,7 +41,14 @@ Python.
    pocket and the bridge follow the neck and scale and stay put. The
    panel reports the body's size
    and any feature left outside the outline, and writes the points into
-   the shape's `control_points` field.
+   the shape's `control_points` field. Likewise, choosing
+   `headstock_outline` "drawn" opens a headstock panel: both edges are
+   handle chains from the shoulder to the tip (the tip handles set the
+   length), drawn over the fixed tuner holes of the chosen style with a
+   keep-out circle `tuner_edge_offset` round each; the panel names any hole
+   the edge comes too close to, and writes `headstock_bass_edge` /
+   `headstock_treble_edge` (`webapp.headstock_editor_layout()` supplies
+   the holes and the fitted start edges).
 3. On **Build** runs the build in stages — `start_build()`, then
    `advance_build()` once per stage of `workflows.Prototype001Build`
    (geometry, body, neck and fretboard toolpaths, G-code, FreeCAD script),

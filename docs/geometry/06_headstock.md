@@ -37,6 +37,28 @@ edge's Y coordinate, and `width_at_distance` the total; the FreeCAD
 headstock loft, the plan view and the CAM outline all run between the two
 signed edges.
 
+## Drawn edges
+
+`headstock_outline = "drawn"` replaces the fitted outline with two drawn
+edges, `headstock_bass_edge` and `headstock_treble_edge`: lists of
+`(distance from the nut, half-width)` points, each ending at the tip. Each
+edge is a `MonotoneCurve` from the nut's half-width through its points: it
+leaves the nut parallel to the neck and never bulges past the points that
+shape it. The tip stays a straight cut at `distance == length`, the last
+point's distance, so the FreeCAD headstock loft, the CAM outline and the
+plan view take a drawn headstock exactly as a fitted one
+(`HeadstockPlan(bass_edge=..., treble_edge=...)`).
+
+The tuner holes still come from `headstock_style`. `headstock_design()`
+checks every hole against the drawn outline — across the neck to each
+edge at the hole's own distance from the nut and along it to the tip, as
+the fitted outline is laid out; the nut is not an edge — and rejects one
+closer than `tuner_edge_offset` (less 0.5 mm).
+Empty edges fall back to the fitted outline. In the web app, choosing
+"drawn" opens an editor that starts from the fitted edges (ten handles a
+side: halfway to the shoulder, the shoulder, seven along the taper and the
+tip) and draws each hole's keep-out circle.
+
 ## Side reference
 
 The headstock center plane drops at 8 degrees. With a 150 mm plan length, the
