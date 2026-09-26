@@ -73,9 +73,7 @@ class DesignByJoneShape:
 
     def outline_points(self, heel_end: float) -> tuple[Point2D, ...]:
         """Return the outline placed so its pocket end sits at ``heel_end``."""
-        return _translated(
-            OMARUNKO_OUTLINE_POINTS, heel_end - OMARUNKO_HEEL_END_X, 0.0
-        )
+        return _translated(OMARUNKO_OUTLINE_POINTS, heel_end - OMARUNKO_HEEL_END_X, 0.0)
 
     def control_cavity_points(self, heel_end: float) -> tuple[Point2D, ...]:
         """Return the almond control cavity outline on this body."""
@@ -91,17 +89,48 @@ class DesignByJoneShape:
 
 
 YOUR_DESIGN_START_POINTS: tuple[tuple[float, float], ...] = (
-    (-52.0, -12.0), (-54.0, -34.0), (-66.0, -46.0), (-92.0, -58.0),
-    (-120.0, -74.0), (-136.0, -88.0), (-144.0, -100.0), (-140.0, -108.0),
-    (-124.0, -120.0), (-95.0, -136.0), (-55.0, -150.0), (-10.0, -158.0),
-    (40.0, -155.0), (85.0, -143.0), (120.0, -132.0), (150.0, -132.0),
-    (185.0, -144.0), (225.0, -158.0), (265.0, -156.0), (298.0, -132.0),
-    (322.0, -90.0), (330.0, -40.0), (330.0, 30.0), (318.0, 90.0),
-    (290.0, 132.0), (250.0, 156.0), (205.0, 162.0), (160.0, 150.0),
-    (130.0, 134.0), (105.0, 132.0), (75.0, 140.0), (40.0, 150.0),
-    (5.0, 150.0), (-30.0, 138.0), (-58.0, 120.0), (-76.0, 105.0),
-    (-84.0, 95.0), (-82.0, 84.0), (-72.0, 66.0), (-62.0, 48.0),
-    (-54.0, 34.0), (-52.0, 12.0),
+    (-52.0, -12.0),
+    (-54.0, -34.0),
+    (-66.0, -46.0),
+    (-92.0, -58.0),
+    (-120.0, -74.0),
+    (-136.0, -88.0),
+    (-144.0, -100.0),
+    (-140.0, -108.0),
+    (-124.0, -120.0),
+    (-95.0, -136.0),
+    (-55.0, -150.0),
+    (-10.0, -158.0),
+    (40.0, -155.0),
+    (85.0, -143.0),
+    (120.0, -132.0),
+    (150.0, -132.0),
+    (185.0, -144.0),
+    (225.0, -158.0),
+    (265.0, -156.0),
+    (298.0, -132.0),
+    (322.0, -90.0),
+    (330.0, -40.0),
+    (330.0, 30.0),
+    (318.0, 90.0),
+    (290.0, 132.0),
+    (250.0, 156.0),
+    (205.0, 162.0),
+    (160.0, 150.0),
+    (130.0, 134.0),
+    (105.0, 132.0),
+    (75.0, 140.0),
+    (40.0, 150.0),
+    (5.0, 150.0),
+    (-30.0, 138.0),
+    (-58.0, 120.0),
+    (-76.0, 105.0),
+    (-84.0, 95.0),
+    (-82.0, 84.0),
+    (-72.0, 66.0),
+    (-62.0, 48.0),
+    (-54.0, 34.0),
+    (-52.0, 12.0),
 )
 """A Stratocaster-inspired offset double cutaway to start drawing from.
 
@@ -246,3 +275,168 @@ def _tuplify(value: Any) -> Any:
     if isinstance(value, list):
         return tuple(_tuplify(item) for item in value)
     return value
+
+
+def _resampled(
+    points: tuple[tuple[float, float], ...], count: int, dx: float
+) -> tuple[tuple[float, float], ...]:
+    """Return count points spaced evenly along a closed polygon, shifted."""
+    closed = [(x + dx, y) for x, y in points]
+    lengths = [
+        math.dist(closed[index], closed[(index + 1) % len(closed)])
+        for index in range(len(closed))
+    ]
+    step = sum(lengths) / count
+    result: list[tuple[float, float]] = []
+    segment = 0
+    walked = 0.0
+    for sample in range(count):
+        target = sample * step
+        while walked + lengths[segment] < target:
+            walked += lengths[segment]
+            segment += 1
+        t = (target - walked) / lengths[segment]
+        (ax, ay), (bx, by) = closed[segment], closed[(segment + 1) % len(closed)]
+        result.append((round(ax + (bx - ax) * t, 1), round(ay + (by - ay) * t, 1)))
+    return tuple(result)
+
+
+_LES_PAUL_POINTS: tuple[tuple[float, float], ...] = (
+    (-58.0, -14.0),
+    (-62.0, -30.0),
+    (-72.0, -50.0),
+    (-86.0, -76.0),
+    (-96.0, -104.0),
+    (-92.0, -130.0),
+    (-72.0, -148.0),
+    (-40.0, -157.0),
+    (0.0, -154.0),
+    (38.0, -142.0),
+    (72.0, -127.0),
+    (102.0, -123.0),
+    (135.0, -133.0),
+    (175.0, -152.0),
+    (220.0, -164.0),
+    (265.0, -162.0),
+    (302.0, -146.0),
+    (328.0, -114.0),
+    (342.0, -70.0),
+    (346.0, -20.0),
+    (344.0, 30.0),
+    (334.0, 80.0),
+    (313.0, 120.0),
+    (281.0, 150.0),
+    (240.0, 164.0),
+    (196.0, 163.0),
+    (156.0, 150.0),
+    (126.0, 130.0),
+    (100.0, 120.0),
+    (70.0, 117.0),
+    (40.0, 114.0),
+    (10.0, 108.0),
+    (-18.0, 100.0),
+    (-40.0, 90.0),
+    (-52.0, 76.0),
+    (-44.0, 62.0),
+    (-24.0, 52.0),
+    (-4.0, 45.0),
+    (10.0, 39.0),
+    (4.0, 32.0),
+    (-20.0, 30.0),
+    (-42.0, 25.0),
+    (-58.0, 14.0),
+)
+"""A single-cutaway outline in the Les Paul genre: a full round bass bout
+sweeping into the neck and a rounded cutaway under a short treble horn."""
+
+_JACKSON_RR_POINTS: tuple[tuple[float, float], ...] = (
+    (-52.0, -12.0),
+    (-56.0, -30.0),
+    (-78.0, -46.0),
+    (-118.0, -70.0),
+    (-158.0, -94.0),
+    (-166.0, -101.0),
+    (-156.0, -108.0),
+    (-110.0, -120.0),
+    (-50.0, -130.0),
+    (20.0, -134.0),
+    (90.0, -134.0),
+    (160.0, -140.0),
+    (235.0, -150.0),
+    (292.0, -163.0),
+    (304.0, -160.0),
+    (296.0, -140.0),
+    (272.0, -95.0),
+    (250.0, -45.0),
+    (242.0, -5.0),
+    (255.0, 35.0),
+    (290.0, 80.0),
+    (340.0, 130.0),
+    (382.0, 160.0),
+    (384.0, 171.0),
+    (370.0, 175.0),
+    (315.0, 172.0),
+    (250.0, 165.0),
+    (175.0, 155.0),
+    (105.0, 138.0),
+    (50.0, 118.0),
+    (5.0, 100.0),
+    (-32.0, 90.0),
+    (-46.0, 86.0),
+    (-44.0, 76.0),
+    (-30.0, 62.0),
+    (-34.0, 42.0),
+    (-46.0, 26.0),
+    (-52.0, 12.0),
+)
+"""An offset V in the Jackson Randy Rhoads genre: a long pointed bass horn,
+a short treble horn and a swept tail whose treble wing is the longer."""
+
+
+_BASS_POINTS: tuple[tuple[float, float], ...] = tuple(
+    (round(x * 1.18, 1), round(y * 1.08, 1)) for x, y in YOUR_DESIGN_START_POINTS
+)
+"""An offset double cutaway for a bass: the Stratocaster-style outline
+stretched 18 % along the neck and 8 % across it, so the longer scale's
+bridge and the bass pickups fit, with correspondingly longer horns."""
+
+BASS_BODY = YourDesignShape(control_points=_BASS_POINTS)
+"""The bass guitar's default drawn body (see ``_BASS_POINTS``)."""
+
+_DESIGN_BY_JONE = DesignByJoneShape()
+
+YOUR_DESIGN_TEMPLATES: dict[str, tuple[str, YourDesignShape]] = {
+    "design_by_jone": (
+        "Design by Jone",
+        YourDesignShape(
+            control_points=_resampled(
+                OMARUNKO_OUTLINE_POINTS, 64, -OMARUNKO_HEEL_END_X
+            ),
+            switch_cavity_offset=_DESIGN_BY_JONE.switch_cavity_offset,
+            switch_cavity_y=_DESIGN_BY_JONE.switch_cavity_y,
+            switch_cavity_diameter=_DESIGN_BY_JONE.switch_cavity_diameter,
+            switch_cover_offset=_DESIGN_BY_JONE.switch_cover_offset,
+            switch_cover_y=_DESIGN_BY_JONE.switch_cover_y,
+            switch_cover_diameter=_DESIGN_BY_JONE.switch_cover_diameter,
+            pot_offsets=_DESIGN_BY_JONE.pot_offsets,
+            jack_offset=_DESIGN_BY_JONE.jack_offset,
+            jack_y=_DESIGN_BY_JONE.jack_y,
+            jack_direction_degrees=_DESIGN_BY_JONE.jack_direction_degrees,
+        ),
+    ),
+    "les_paul": ("Les Paul style", YourDesignShape(control_points=_LES_PAUL_POINTS)),
+    "stratocaster": ("Stratocaster style", YourDesignShape()),
+    "jackson_rr": (
+        "Jackson RR style",
+        YourDesignShape(control_points=_JACKSON_RR_POINTS),
+    ),
+    "bass_offset": ("Offset bass (P/J style)", BASS_BODY),
+}
+"""Starting points for a drawn body: a label and a complete shape each.
+
+"Design by Jone" is the traced DXF outline resampled to 64 evenly spaced
+control points, with that body's own switch, pot and jack placements; the
+others are original outlines in the genre named, sharing the drawn body's
+default placements. Loading one in the web app replaces the outline and
+the placements, which then stay editable.
+"""

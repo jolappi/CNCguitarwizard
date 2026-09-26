@@ -27,17 +27,25 @@ from .presets.body_shapes import (
     BODY_SHAPE_LABELS,
     OUTLINE_SAMPLES_PER_SEGMENT,
     YOUR_DESIGN_START_POINTS,
+    YOUR_DESIGN_TEMPLATES,
     body_shape_from_dict,
 )
+from .presets.prototype001 import INSTRUMENT_OVERRIDES
 from .render.svg import render_plan_view_svg
 from .workflows import Prototype001Build
 
 _VARIANT_LABELS: dict[str, str] = {**BRIDGE_LABELS, **BODY_SHAPE_LABELS}
 
+INSTRUMENT_LABELS: dict[str, str] = {
+    "electric_guitar": "Electric guitar",
+    "bass_guitar": "Bass guitar",
+}
+
 # The handful of parameters a builder normally touches; the form shows
 # every other field of the same group behind an "Advanced" fold.
 _BASIC_FIELDS: frozenset[str] = frozenset(
     {
+        "string_count",
         "scale_length",
         "fret_count",
         "nut_width",
@@ -57,6 +65,8 @@ _BASIC_FIELDS: frozenset[str] = frozenset(
         "tuner_hole_diameter",
         "body_thickness",
         "body_shape",
+        "body_neck_pickup",
+        "body_bridge_pickup",
         "body_bridge",
         "body_neck_pickup_offset",
         "body_bridge_pickup_offset",
@@ -87,7 +97,7 @@ _BASIC_VARIANT_FIELDS: dict[str, frozenset[str]] = {
 _GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
     (
         "Scale and fretboard",
-        ("scale_length", "fret_count", "nut_width", "fret", "inlay"),
+        ("string_count", "scale_length", "fret_count", "nut_width", "fret", "inlay"),
     ),
     ("Neck", ("final_fret", "first_fret", "twelfth", "neck", "nut_", "truss")),
     ("Heel", ("heel",)),
@@ -101,7 +111,9 @@ def parameter_schema() -> dict[str, Any]:
     """Describe both parameter sets for a generated form.
 
     Returns:
-        ``{"prototype": [...groups...], "machining": [...groups...]}``
+        ``{"instruments", "prototype": [...groups...], "machining":
+        [...groups...]}``; ``instruments`` maps each instrument to
+        ``{"label", "overrides"}``, the defaults that differ for it
         where every group is ``{"title", "fields"}`` and every field is
         ``{"name", "type", "default", "advanced"}`` with ``type`` one of
         ``float``, ``int``, ``bool``, ``optional_float``, ``json``
@@ -112,6 +124,13 @@ def parameter_schema() -> dict[str, Any]:
         true for the rarely changed fields the form folds away.
     """
     return {
+        "instruments": {
+            instrument: {
+                "label": INSTRUMENT_LABELS[instrument],
+                "overrides": _jsonable(overrides),
+            }
+            for instrument, overrides in INSTRUMENT_OVERRIDES.items()
+        },
         "prototype": _group_fields(Prototype001Parameters),
         "machining": [
             {
@@ -157,12 +176,14 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         payload: ``{"prototype": {...}}`` as for ``start_build``.
 
     Returns:
-        ``{"heel_end", "samples_per_segment", "start_points", "polygons",
-        "circles", "jack"}``, or ``{"error": message}``. ``polygons`` is a
-        list of ``{"name", "role", "group", "points"}`` with ``role`` one
-        of ``neck``, ``pocket``, ``pickup``, ``bridge``, ``rear`` or
-        ``cover``; ``circles`` a list of ``{"name", "group", "x", "y",
-        "r"}``; ``jack`` ``{"group", "x", "y", "x2", "y2", "r"}``.
+        ``{"heel_end", "samples_per_segment", "start_points", "templates",
+        "polygons", "circles", "jack"}``, or ``{"error": message}``.
+        ``templates`` maps a key to ``{"label", "shape"}``, the shape as
+        the form's JSON. ``polygons`` is a list of ``{"name", "role",
+        "group", "points"}`` with ``role`` one of ``neck``, ``pocket``,
+        ``pickup``, ``bridge``, ``rear`` or ``cover``; ``circles`` a list
+        of ``{"name", "group", "x", "y", "r"}``; ``jack`` ``{"group", "x",
+        "y", "x2", "y2", "r"}``.
     """
     try:
         parameters = Prototype001Parameters(**_coerce(payload.get("prototype", {})))
@@ -188,6 +209,8 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         polygon(layout.neck_pocket.name, "pocket", layout.neck_pocket.outline),
     ]
     for pickup in (layout.neck_pickup, layout.bridge_pickup):
+        if pickup is None:
+            continue
         polygons.append(polygon(pickup.name, "pickup", pickup.outline))
     for cavity in (*layout.extra_cavities, *layout.through_cavities):
         polygons.append(polygon(cavity.name, "bridge", cavity.outline))
@@ -227,6 +250,10 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         "heel_end": round(heel_end, 2),
         "samples_per_segment": OUTLINE_SAMPLES_PER_SEGMENT,
         "start_points": [list(point) for point in YOUR_DESIGN_START_POINTS],
+        "templates": {
+            key: {"label": label, "shape": _jsonable(shape)}
+            for key, (label, shape) in YOUR_DESIGN_TEMPLATES.items()
+        },
         "polygons": polygons,
         "circles": circles,
         "jack": {
@@ -349,7 +376,12 @@ def run_build(
 
 def _group_fields(cls: type) -> list[dict[str, Any]]:
     """Split a dataclass's fields into titled groups by name prefix."""
-    described = _describe_fields(cls, _BASIC_FIELDS)
+    # The instrument is chosen above the form (it picks the defaults).
+    described = [
+        field
+        for field in _describe_fields(cls, _BASIC_FIELDS)
+        if field["name"] != "instrument"
+    ]
     groups: list[dict[str, Any]] = [
         {"title": title, "fields": []} for title, _ in _GROUPS
     ]
@@ -461,7 +493,9 @@ def _jsonable(value: Any) -> Any:
     if isinstance(value, tuple):
         return [_jsonable(item) for item in value]
     if dataclasses.is_dataclass(value) and not isinstance(value, type):
-        return dataclasses.asdict(value)
+        return _jsonable(dataclasses.asdict(value))
+    if isinstance(value, dict):
+        return {key: _jsonable(item) for key, item in value.items()}
     return value
 
 

@@ -28,8 +28,8 @@ class BodySolid:
         outline: The body's plan-view silhouette.
         thickness: Overall slab thickness in millimetres.
         neck_pocket: Recess that receives the neck heel.
-        bridge_pickup: Route for the bridge-position humbucker.
-        neck_pickup: Route for the neck-position humbucker.
+        bridge_pickup: Route for the bridge-position pickup, or ``None``.
+        neck_pickup: Route for the neck-position pickup, or ``None``.
         bridge_mounting: Kahler-style bridge cavity and pivot holes.
         control_cavity: Optional rear-routed cavity for the
             potentiometers, with its cover recess.
@@ -65,8 +65,8 @@ class BodySolid:
     outline: Outline
     thickness: float
     neck_pocket: Cavity
-    bridge_pickup: Cavity
-    neck_pickup: Cavity
+    bridge_pickup: Cavity | None
+    neck_pickup: Cavity | None
     bridge_mounting: BridgeMounting
     jack_hole: JackHole
     control_cavity: RearCavity | None = None
@@ -293,7 +293,12 @@ class BodySolid:
     @property
     def top_cavities(self) -> tuple[Cavity, ...]:
         """Return every cavity cut down from the top face, through routes last."""
-        cavities = [self.neck_pocket, self.neck_pickup, self.bridge_pickup]
+        cavities: list[Cavity] = [self.neck_pocket]
+        cavities.extend(
+            pickup
+            for pickup in (self.neck_pickup, self.bridge_pickup)
+            if pickup is not None
+        )
         if self.bridge_mounting.sustain_block_cavity is not None:
             cavities.append(self.bridge_mounting.sustain_block_cavity)
         cavities.extend(self.extra_cavities)

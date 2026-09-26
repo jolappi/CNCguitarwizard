@@ -14,6 +14,7 @@ from cncguitarwizard.presets import (
     YourDesignShape,
     body_shape_from_dict,
 )
+from cncguitarwizard.presets.body_shapes import YOUR_DESIGN_TEMPLATES
 
 
 def test_the_default_body_is_the_design_by_jone_tracing() -> None:
@@ -141,3 +142,30 @@ def test_an_outline_that_misses_a_feature_is_rejected_by_the_build() -> None:
         replace(
             Prototype001Parameters(), body_shape=YourDesignShape(control_points=small)
         ).build()
+
+
+@pytest.mark.parametrize("key", list(YOUR_DESIGN_TEMPLATES))
+def test_every_your_design_template_builds_with_its_features_inside(key: str) -> None:
+    _, shape = YOUR_DESIGN_TEMPLATES[key]
+    body = replace(Prototype001Parameters(), body_shape=shape).build().body
+
+    for hole in body.holes:
+        assert point_in_polygon(hole.center, body.outline.points), hole.name
+
+
+def test_the_design_by_jone_template_follows_the_traced_outline() -> None:
+    _, template = YOUR_DESIGN_TEMPLATES["design_by_jone"]
+    heel_end = 461.2
+    traced = DesignByJoneShape().outline_points(heel_end)
+    drawn = template.outline_points(heel_end)
+
+    assert len(template.control_points) == 64
+    # The spline stays within a few millimetres of the traced silhouette.
+    for axis in ("x", "y"):
+        for pick in (min, max):
+            assert pick(getattr(p, axis) for p in drawn) == pytest.approx(
+                pick(getattr(p, axis) for p in traced), abs=4.0
+            )
+    # It keeps that body's own electronics placements.
+    assert template.switch_cavity_y == DesignByJoneShape().switch_cavity_y
+    assert template.jack_offset == DesignByJoneShape().jack_offset

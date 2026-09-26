@@ -31,6 +31,30 @@ source = FreeCADScriptExporter().render_prototype001(
 )
 ```
 
+## Electric guitar or bass
+
+`Prototype001Parameters.for_instrument("electric_guitar")` is the plain
+default; `for_instrument("bass_guitar")` applies `INSTRUMENT_OVERRIDES`:
+
+| Setting | Electric guitar | Bass guitar |
+| --- | --- | --- |
+| Strings (`string_count`) | 6 | 4 |
+| Scale / frets | 609.6 mm / 24 | 863.6 mm (34 in) / 21 |
+| Nut / heel width | 42 / 56 mm | 38 / 62 mm |
+| 1st / 12th fret thickness, heel | 17 / 19 / 20 mm | 21 / 23 / 22 mm |
+| Fretboard radius | 430 mm | 305 mm |
+| String spacing nut / bridge | 7 / 10.5 mm | 10 / 19 mm |
+| Headstock | 3+3, 10 mm holes | 4 in line, 19 mm holes 38 mm apart, 20 mm from the edge |
+| Pickups | humbucker + humbucker | Precision Bass (neck) + Jazz Bass (bridge) |
+| Bridge | Kahler 7300 | four-string string-through hardtail |
+| Body | Design by Jone | offset bass body (a drawn body) |
+
+Every value stays editable; the bass numbers are labelled starting points
+for a common four-string bass. `instrument` records which defaults a set
+started from; `string_count` is what the tuners, the hardtail bridge and
+the pickups follow. The web form's first control picks the instrument and
+reloads the form with its defaults.
+
 Building the preset creates and cross-validates:
 
 - the fretboard ending 4 mm after fret 24;

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import Any, Literal
 
 from ..geometry.body import (
     BodySolid,
@@ -13,6 +13,7 @@ from ..geometry.body import (
     Cavity,
     CircularCavity,
     DrilledHole,
+    HardtailSpec,
     JackHole,
     KahlerBridgeSpec,
     RearCavity,
@@ -39,12 +40,22 @@ from ..geometry.neck import (
     TunerLayout,
 )
 from ..geometry.primitives import Point2D
-from ._omarunko_outline import (
-    OMARUNKO_PICKUP_ROUTE_LOCAL_POINTS,
-)
-from .body_shapes import BodyShapeSpec, DesignByJoneShape
+from .body_shapes import BASS_BODY, BodyShapeSpec, DesignByJoneShape
+from .pickups import PickupType, pickup_half_length, pickup_route, pickup_screws
 
-HeadstockStyle = Literal["3+3", "6_inline", "6_inline_reverse", "4+2", "2+4"]
+Instrument = Literal["electric_guitar", "bass_guitar"]
+"""Which instrument's defaults a parameter set starts from."""
+
+HeadstockStyle = Literal[
+    "3+3",
+    "6_inline",
+    "6_inline_reverse",
+    "4+2",
+    "2+4",
+    "2+2",
+    "4_inline",
+    "4_inline_reverse",
+]
 """Tuner arrangements: bass+treble counts; "reverse" puts the row on the treble side."""
 
 HEADSTOCK_STYLES: dict[str, tuple[int, int]] = {
@@ -53,6 +64,9 @@ HEADSTOCK_STYLES: dict[str, tuple[int, int]] = {
     "6_inline_reverse": (0, 6),
     "4+2": (4, 2),
     "2+4": (2, 4),
+    "2+2": (2, 2),
+    "4_inline": (4, 0),
+    "4_inline_reverse": (0, 4),
 }
 """Tuner counts on the (bass, treble) side for every headstock style."""
 
@@ -63,6 +77,8 @@ HEADSTOCK_RESERVES: dict[
     "6_inline_reverse": ((36.0, None), (35.0, 60.0)),
     "4+2": ((36.0, 15.0), (40.0, 30.0)),
     "2+4": ((36.0, 15.0), (40.0, 30.0)),
+    "4_inline": ((40.0, None), (45.0, 60.0)),
+    "4_inline_reverse": ((40.0, None), (45.0, 60.0)),
 }
 """Least (shoulder, tip) half-widths kept on the row side and the other side.
 
@@ -110,8 +126,8 @@ class BodyLayout:
             measured from here.
         outline: The body silhouette.
         neck_pocket: The pocket the neck heel sits in.
-        bridge_pickup: The bridge humbucker route.
-        neck_pickup: The neck humbucker route.
+        bridge_pickup: The bridge pickup route, or ``None``.
+        neck_pickup: The neck pickup route, or ``None``.
         bridge_mounting: Bridge reference line and pivot studs.
         jack_hole: The output jack bore.
         control_cavity: The rear control cavity with its cover recess.
@@ -125,8 +141,8 @@ class BodyLayout:
     heel_end: float
     outline: TracedOutline
     neck_pocket: TracedCavity
-    bridge_pickup: TracedCavity
-    neck_pickup: TracedCavity
+    bridge_pickup: TracedCavity | None
+    neck_pickup: TracedCavity | None
     bridge_mounting: BridgeMounting
     jack_hole: JackHole
     control_cavity: RearCavity
@@ -161,6 +177,11 @@ class Prototype001Parameters:
     below the separate fretboard, matching the specified 20 mm + fretboard.
     """
 
+    # instrument names the defaults this set was made from (see
+    # Prototype001Parameters.for_instrument); string_count is what the
+    # tuner layout, bridge and pickups actually follow.
+    instrument: Instrument = "electric_guitar"
+    string_count: int = 6
     scale_length: float = 609.6
     fret_count: int = 24
     nut_width: float = 42.0
@@ -222,6 +243,11 @@ class Prototype001Parameters:
     body_bridge_pickup_offset: float = 21.73  # route centre before the bridge
     body_bridge_pickup_clearance: float = 3.0
     body_pickup_route_depth: float = 22.0
+    # Pickup type in each position (see pickups.py): the guitar
+    # humbucker, a Jazz Bass single coil, a Precision Bass split coil, a
+    # bass soapbar humbucker, or none.
+    body_neck_pickup: PickupType = "humbucker"
+    body_bridge_pickup: PickupType = "humbucker"
     # Clearance recesses for the pickup height-adjustment screw tips,
     # drilled on down from the route floor at the centre of each of the
     # route's two mounting-ear tabs (the DXF ears are centred 39.95 mm
@@ -289,8 +315,8 @@ class Prototype001Parameters:
     headstock_angle: float = 8.0
     headstock_thickness: float = 16.0
     tuner_hole_diameter: float = 10.0
-    tuner_station_distances: tuple[float, float, float] = (55.0, 85.0, 110.0)
-    tuner_side_offsets: tuple[float, float, float] = (15.0, 12.0, 10.0)
+    tuner_station_distances: tuple[float, ...] = (55.0, 85.0, 110.0)
+    tuner_side_offsets: tuple[float, ...] = (15.0, 12.0, 10.0)
     tuner_inline_first_distance: float = 50.0
     tuner_inline_spacing: float = 25.4
     tuner_edge_offset: float = 15.0
@@ -340,6 +366,26 @@ class Prototype001Parameters:
     neck_profile_exponent: float = 2.0
     profile_sample_count: int = 33
     segments_per_region: int = 12
+
+    @classmethod
+    def for_instrument(cls, instrument: Instrument) -> Prototype001Parameters:
+        """Return the default parameters for an instrument.
+
+        ``"electric_guitar"`` is the plain default; ``"bass_guitar"``
+        applies ``INSTRUMENT_OVERRIDES["bass_guitar"]`` — a four-string,
+        34-inch-scale bass with a wider, deeper neck, four in-line 19 mm
+        tuner holes, a Precision Bass neck pickup and a Jazz Bass bridge
+        pickup, a four-string hardtail and an offset bass body.
+
+        Raises:
+            NeckGeometryError: For an unknown instrument.
+        """
+        if instrument not in INSTRUMENT_OVERRIDES:
+            raise NeckGeometryError(
+                f"Unknown instrument {instrument!r}; choose one of "
+                f"{', '.join(INSTRUMENT_OVERRIDES)}."
+            )
+        return cls(instrument=instrument, **INSTRUMENT_OVERRIDES[instrument])
 
     @property
     def heel_flat_start_offset(self) -> float:
@@ -453,13 +499,13 @@ class Prototype001Parameters:
             spacing = self.nut_string_spacing + (
                 self.nut_string_spacing - self.bridge_string_spacing
             ) * distance / self.scale_length
-            return (3.5 - string) * spacing
+            return ((self.string_count + 1) / 2.0 - string) * spacing
 
         stations: list[tuple[float, Side, float]] = []  # distance, side, u
         sides: tuple[Side, ...] | None
         distances: tuple[float, ...]
         offsets: tuple[float, ...]
-        if self.headstock_style == "3+3":
+        if bass_count == treble_count:
             for distance, offset in zip(
                 self.tuner_station_distances, self.tuner_side_offsets, strict=True
             ):
@@ -483,10 +529,10 @@ class Prototype001Parameters:
             row_strings = (
                 list(range(1, row_count + 1))
                 if row_side == "bass"
-                else list(range(6, 6 - row_count, -1))
+                else list(range(self.string_count, self.string_count - row_count, -1))
             )
             pair_strings = (
-                list(range(6, 6 - pair_count, -1))
+                list(range(self.string_count, self.string_count - pair_count, -1))
                 if pair_side == "treble"
                 else list(range(1, pair_count + 1))
             )
@@ -619,20 +665,12 @@ class Prototype001Parameters:
             self.heel_thickness,
         )
 
-        def pickup_route(name: str, center_x: float) -> TracedCavity:
-            return TracedCavity(
-                name,
-                tuple(
-                    Point2D(center_x + local_x, local_y)
-                    for local_x, local_y in OMARUNKO_PICKUP_ROUTE_LOCAL_POINTS
-                ),
-                self.body_pickup_route_depth,
-            )
+        bass_sign = -1.0 if self.headstock_bass_side == "-y" else 1.0
 
         bridge = self.body_bridge.hardware(self.scale_length, self.body_thickness)
         bridge_mounting = bridge.mounting
         neck_pickup_x = heel_end + self.body_neck_pickup_offset
-        route_half_length = max(x for x, _ in OMARUNKO_PICKUP_ROUTE_LOCAL_POINTS)
+        route_half_length = pickup_half_length(self.body_bridge_pickup)
         bridge_fronts = [
             cavity.min_x for cavity in (*bridge.top_cavities, *bridge.through_cavities)
         ]
@@ -641,14 +679,26 @@ class Prototype001Parameters:
             - min(bridge_fronts)
             + route_half_length
             + self.body_bridge_pickup_clearance
-            if bridge_fronts
+            if bridge_fronts and self.body_bridge_pickup != "none"
             else -math.inf
         )
         bridge_pickup_x = self.scale_length - max(
             self.body_bridge_pickup_offset, needed_offset
         )
-        neck_pickup = pickup_route("Neck pickup route", neck_pickup_x)
-        bridge_pickup = pickup_route("Bridge pickup route", bridge_pickup_x)
+        neck_pickup = pickup_route(
+            self.body_neck_pickup,
+            "Neck pickup route",
+            neck_pickup_x,
+            self.body_pickup_route_depth,
+            bass_sign,
+        )
+        bridge_pickup = pickup_route(
+            self.body_bridge_pickup,
+            "Bridge pickup route",
+            bridge_pickup_x,
+            self.body_pickup_route_depth,
+            bass_sign,
+        )
         switch_x = heel_end + shape.switch_cavity_offset
         switch_cover_x = heel_end + shape.switch_cover_offset
         rear_cavity_depth = self.body_thickness - self.body_rear_cavity_top_wall
@@ -707,16 +757,18 @@ class Prototype001Parameters:
                     self.body_thickness,
                 )
             )
-        for label, pickup_x in (
-            ("Neck", neck_pickup_x),
-            ("Bridge", bridge_pickup_x),
+        for label, kind, pickup_x in (
+            ("Neck", self.body_neck_pickup, neck_pickup_x),
+            ("Bridge", self.body_bridge_pickup, bridge_pickup_x),
         ):
-            for side, sign in (("bass", -1.0), ("treble", 1.0)):
+            for side, screw_x, screw_y in pickup_screws(
+                kind, pickup_x, bass_sign, self.body_pickup_screw_spacing
+            ):
                 holes.append(
                     DrilledHole(
                         f"{label} pickup {side} screw recess",
-                        pickup_x,
-                        sign * self.body_pickup_screw_spacing / 2.0,
+                        screw_x,
+                        screw_y,
                         self.body_pickup_screw_recess_diameter,
                         self.body_pickup_route_depth
                         + self.body_pickup_screw_recess_extra_depth,
@@ -782,6 +834,22 @@ class Prototype001Parameters:
             raise NeckGeometryError(
                 f"Unknown headstock style {self.headstock_style!r}; choose one "
                 f"of {', '.join(HEADSTOCK_STYLES)}."
+            )
+        if self.string_count < 1:
+            raise NeckGeometryError("The instrument needs at least one string.")
+        if sum(HEADSTOCK_STYLES[self.headstock_style]) != self.string_count:
+            raise NeckGeometryError(
+                f"Headstock style {self.headstock_style} holds "
+                f"{sum(HEADSTOCK_STYLES[self.headstock_style])} tuners, but the "
+                f"instrument has {self.string_count} strings."
+            )
+        bass_count, treble_count = HEADSTOCK_STYLES[self.headstock_style]
+        if bass_count == treble_count and len(self.tuner_station_distances) != (
+            bass_count
+        ):
+            raise NeckGeometryError(
+                f"A {self.headstock_style} headstock needs {bass_count} "
+                "tuner_station_distances (and tuner_side_offsets)."
             )
         inline_values = (
             self.tuner_inline_first_distance,
@@ -997,3 +1065,53 @@ class Prototype001Parameters:
             self.heel_nose_radius,
             heel_flat_start_offset + self.heel_block_overlap,
         )
+
+
+INSTRUMENT_OVERRIDES: dict[str, dict[str, Any]] = {
+    "electric_guitar": {},
+    "bass_guitar": {
+        "string_count": 4,
+        "scale_length": 863.6,
+        "fret_count": 21,
+        "nut_width": 38.0,
+        "final_fret_width": 62.0,
+        "heel_width": 62.0,
+        "first_fret_thickness": 21.0,
+        "twelfth_fret_thickness": 23.0,
+        "heel_thickness": 22.0,
+        "fretboard_radius": 305.0,
+        "nut_string_spacing": 10.0,
+        "bridge_string_spacing": 19.0,
+        "headstock_style": "4_inline",
+        "headstock_length": 200.0,
+        "tuner_hole_diameter": 19.0,
+        "tuner_station_distances": (60.0, 110.0),
+        "tuner_side_offsets": (20.0, 16.0),
+        "tuner_inline_first_distance": 60.0,
+        "tuner_inline_spacing": 38.0,
+        "tuner_edge_offset": 20.0,
+        "tuner_post_diameter": 12.0,
+        "body_neck_pickup": "precision_bass",
+        "body_bridge_pickup": "jazz_bass",
+        "body_neck_pickup_offset": 102.7,
+        "body_bridge_pickup_offset": 45.0,
+        "body_bridge": HardtailSpec(
+            string_count=4,
+            string_spacing=19.0,
+            string_hole_offset=30.0,
+            screw_count=5,
+            screw_spacing=15.0,
+            screw_offset=-12.0,
+        ),
+        "body_shape": BASS_BODY,
+    },
+}
+"""Parameter values that differ from the defaults, per instrument.
+
+The bass values are labelled starting points for a common four-string
+bass: 34-inch (863.6 mm) scale, 21 frets, a 38 mm nut and 62 mm heel, a
+12-inch fretboard radius, 10 mm string spacing at the nut and 19 mm at
+the bridge, Fender-style tuners in line (19 mm holes, 38 mm apart), a
+Precision Bass pickup 150 mm and a Jazz Bass pickup 45 mm ahead of the
+bridge, and a string-through four-string hardtail.
+"""

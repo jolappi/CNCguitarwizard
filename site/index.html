@@ -66,10 +66,13 @@
   details.advanced > summary.changed { color: var(--accent); font-weight: 600; }
   details.advanced > .fields { padding-top: 0; }
   .toggle { display: flex; gap: 6px; align-items: center; margin: -4px 0 10px; }
+  .instrument { display: flex; gap: 10px; align-items: center; margin: 0 0 12px; font-weight: 600; }
+  .instrument select { flex: 1; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; font: inherit; background: #fff; }
   .body-editor { margin-bottom: 20px; }
   .body-editor svg { display: block; width: 100%; height: auto; max-height: 75vh; border: 1px solid var(--line);
     border-radius: 6px; background: #fff; touch-action: none; user-select: none; }
   .body-editor .actions { margin: 6px 0; }
+  .body-editor select { padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; font: inherit; background: #fff; }
   #body-editor-status.ok { color: var(--ok); }
   #body-editor-status.bad { color: var(--bad); }
   .body-editor .handle { fill: #fff; stroke: var(--accent); stroke-width: 0.8; cursor: grab; }
@@ -135,6 +138,10 @@
       <div class="bar"><div class="fill"></div></div>
       <span class="label"></span>
     </div>
+    <div class="instrument">
+      <label for="instrument">Instrument</label>
+      <select id="instrument"></select>
+    </div>
     <p class="note">Every value below is a field of <code>Prototype001Parameters</code> or
       <code>MachiningParameters</code>. Changed values are highlighted. Lists are edited as JSON.
       Rarely needed fields sit behind each group's <em>Advanced</em> fold.</p>
@@ -145,12 +152,16 @@
     <div id="body-editor" class="body-editor hidden">
       <h2>Your design <span id="body-editor-size" class="note"></span></h2>
       <p class="note">Drag the round handles to shape the body. Double-click the outline to add a
-        handle there; Alt/Option-click or right-click a handle to remove it. Drag the control cavity
+        handle there; Alt/Option-click or right-click a handle to remove it. <em>Start from</em> loads a
+        template — Design by Jone, Les Paul, Stratocaster or Jackson RR style — with its own cavity
+        placements. Drag the control cavity
         (its pots come along), a single pot, the switch cavity or the jack to move it; the pickup routes
         slide along the neck. The neck, its pocket and the bridge follow the neck and scale and stay put.
         The grid is 50 mm.</p>
       <div class="actions">
-        <button id="body-editor-reset" class="secondary" type="button">Start over</button>
+        <label class="note" for="body-editor-template">Start from</label>
+        <select id="body-editor-template"></select>
+        <button id="body-editor-reset" class="secondary" type="button">Load</button>
       </div>
       <p id="body-editor-status" class="note"></p>
       <svg id="body-editor-svg" xmlns="http://www.w3.org/2000/svg"></svg>

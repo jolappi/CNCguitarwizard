@@ -48,7 +48,20 @@
   shape the outline (double-click to add, Alt-click to remove) and drag
   the control cavity (with its pots), single pots, the switch cavity and
   the jack, and slide the pickup routes along the neck; the neck, pocket
-  and bridge stay put. A live check lists any feature left outside. The switch cavity, pot and
+  and bridge stay put. A live check lists any feature left outside.
+- Electric guitar or bass guitar: the web form's first control picks the
+  instrument and reloads its defaults (`Prototype001Parameters.for_instrument`,
+  `INSTRUMENT_OVERRIDES`). The bass is a four-string, 34-inch, 21-fret
+  neck (38 mm nut, 62 mm heel, 12-inch radius) with four in-line 19 mm
+  tuner holes, Precision + Jazz pickups, a four-string hardtail and an
+  offset bass body. New parameters `string_count`, `body_neck_pickup` and
+  `body_bridge_pickup` (humbucker, Jazz Bass, Precision Bass, bass
+  soapbar or none, `presets.pickups`); headstock styles `2+2`,
+  `4_inline`, `4_inline_reverse`; `HardtailSpec.string_count`;
+  `BodySolid` pickups may be `None`.
+- The drawn body can start from a template (`YOUR_DESIGN_TEMPLATES`):
+  Design by Jone (the traced DXF resampled to 64 control points, with its
+  own cavity placements), Les Paul, Stratocaster or Jackson RR style. The switch cavity, pot and
   jack placements moved from `body_switch_*` / `body_pot_offsets` /
   `body_jack_offset` parameters into the shape spec. New:
   `geometry.primitives.closed_catmull_rom`,

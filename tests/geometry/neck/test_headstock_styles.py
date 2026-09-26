@@ -104,7 +104,12 @@ def test_layout_rejects_mismatched_sides_and_unordered_stations() -> None:
 
 @pytest.mark.parametrize("style", list(HEADSTOCK_STYLES))
 def test_every_headstock_style_builds(style: str) -> None:
-    geometry = replace(Prototype001Parameters(), headstock_style=style).build()  # type: ignore[arg-type]
+    # Four-tuner styles belong to the bass.
+    instrument = (
+        "bass_guitar" if sum(HEADSTOCK_STYLES[style]) == 4 else "electric_guitar"
+    )
+    base = Prototype001Parameters.for_instrument(instrument)  # type: ignore[arg-type]
+    geometry = replace(base, headstock_style=style).build()  # type: ignore[arg-type]
     layout = geometry.tuner_layout
     bass, treble = HEADSTOCK_STYLES[style]
 
@@ -268,3 +273,17 @@ def test_the_preset_rejects_bad_headstock_style_settings() -> None:
         ).build()
     with pytest.raises(NeckGeometryError, match="positive"):
         replace(Prototype001Parameters(), nut_string_spacing=0.0).build()
+
+
+def test_a_headstock_style_must_hold_every_string() -> None:
+    with pytest.raises(NeckGeometryError, match="holds 4 tuners"):
+        replace(Prototype001Parameters(), headstock_style="4_inline").build()
+
+
+def test_a_symmetric_style_needs_one_station_per_tuner_pair() -> None:
+    with pytest.raises(NeckGeometryError, match="needs 2 tuner_station_distances"):
+        replace(
+            Prototype001Parameters.for_instrument("bass_guitar"),
+            headstock_style="2+2",
+            tuner_station_distances=(60.0, 90.0, 120.0),
+        ).build()

@@ -47,6 +47,18 @@ pysyy aina kiinteänä 5 mm:nä. Tällä 5 mm alueella keskikohta pysyy tasaisen
 mutta reunojen D-profiili jatkuu pituussuunnassa kaulan päähän asti ennen
 liittymistä U-sylinteriin.
 
+## Soitin
+
+Lomakkeen ensimmäinen valinta on soitin: sähkökitara (oletus) tai
+bassokitara (`Prototype001Parameters.for_instrument`). Basson oletukset:
+4 kieltä, 34" (863,6 mm) skaala, 21 nauhaa, satula 38 mm ja kanta 62 mm,
+paksuudet 21 / 23 mm ja kanta 22 mm, otelaudan säde 305 mm, kielijako 10 mm
+satulassa ja 19 mm tallassa, neljä 19 mm viritinreikää rivissä 38 mm välein
+ja 20 mm reunasta, Precision-mikki kaulassa ja Jazz-mikki tallalla,
+nelikielinen läpimenevä talla ja offset-bassorunko. Mikkityypit ovat
+valittavissa kummallekin paikalle (humbucker, Jazz Bass, Precision Bass,
+bassohumbucker tai ei mikkiä). Bassoarvot ovat lähtöarvoja.
+
 ## Lapa
 
 | Kohta | Speksi |
@@ -77,8 +89,9 @@ säilyy 5 mm:nä kaikissa lapaliitoksen muutoksissa.
 Rungon muoto valitaan (`body_shape`): oletuksena "Design by Jone", joka on
 jäljitetty omasta `assets/reference/omarunko.dxf`-piirustuksesta
 (`presets/_omarunko_outline.py`), tai "Your design", jonka ääriviiva
-piirretään web-sovelluksessa raahaamalla spline-ohjauspisteitä (aloitusmuoto
-Stratocaster-henkinen); editorissa voi myös raahata kontrollikoloa
+piirretään web-sovelluksessa raahaamalla spline-ohjauspisteitä; pohjaksi
+voi ladata Design by Jone -rungon, Les Paul-, Stratocaster- tai Jackson
+RR -henkisen muodon (oletus Stratocaster); editorissa voi myös raahata kontrollikoloa
 (potit mukana), yksittäisiä potteja, kytkinkoloa ja jakkia sekä liu'uttaa
 mikkikoloja kaulan suunnassa, kun taas kaulatasku ja talla pysyvät
 paikallaan. Kytkinkolon, pottien ja

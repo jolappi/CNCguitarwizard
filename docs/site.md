@@ -11,7 +11,11 @@ Python.
 
 1. Loads Pyodide from the jsDelivr CDN and installs the project wheel from
    `site/wheels/` with micropip.
-2. Asks `cncguitarwizard.webapp.parameter_schema()` for every field of
+2. Offers the instrument first — electric guitar or bass guitar — from the
+   schema's `instruments` (`INSTRUMENT_OVERRIDES`); switching reloads the
+   form with that instrument's defaults (after a confirmation when values
+   were changed) and sends it as `prototype.instrument`. Then asks
+   `cncguitarwizard.webapp.parameter_schema()` for every field of
    `Prototype001Parameters` and `MachiningParameters` and draws a grouped
    form from it. Changed values are highlighted; tuple fields are edited as
    JSON. The few fields a builder normally touches (scale, fret count,
@@ -24,7 +28,9 @@ Python.
    it (`variant` in the schema). Choosing the body shape "Your design"
    opens a drawing panel above the results: the outline's control points
    are handles to drag (double-click the outline to add one, Alt-click or
-   right-click to remove one, *Start over* for the starting shape), drawn
+   right-click to remove one; *Start from* + *Load* replaces the drawing
+   with a template — Design by Jone, Les Paul, Stratocaster or Jackson RR
+   style — and its cavity placements), drawn
    over the neck, pocket, pickup and bridge routes and dashed rear
    cavities that `webapp.body_editor_layout()` lays out from the other
    settings. The control cavity (carrying its pots), each pot, the switch

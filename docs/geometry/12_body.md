@@ -119,12 +119,44 @@ left-handed like the DXF: the long upper horn at -Y, controls at +Y. The
 drawn body's starting loop closes across the horn gap about 52 mm ahead of
 the pocket end so the neck pocket opens onto the gap as the DXF body's does.
 
+`YOUR_DESIGN_TEMPLATES` offers four starting points for a drawn body, each
+a complete `YourDesignShape` (outline and electronics placements):
+
+| Key | Label | Outline |
+| --- | --- | --- |
+| `design_by_jone` | Design by Jone | The traced DXF outline resampled to 64 evenly spaced control points, with that body's own switch, pot and jack placements |
+| `les_paul` | Les Paul style | Single cutaway: a full round bass bout sweeping into the neck and a rounded cutaway under a short treble horn |
+| `stratocaster` | Stratocaster style | The offset double cutaway the drawn body starts as |
+| `jackson_rr` | Jackson RR style | An offset V: a long pointed bass horn, a short treble horn and a swept tail with the longer treble wing |
+| `bass_offset` | Offset bass (P/J style) | The Stratocaster-style outline stretched 18 % along the neck and 8 % across it; the bass guitar's default body (`BASS_BODY`) |
+
+The last three are original outlines in the genre named, not tracings of
+any instrument.
+
 `Prototype001Parameters.body_layout()` returns the outline and every
 feature (`BodyLayout`) without building the neck surfaces or validating
 the body, in about a millisecond; the web app's editor uses it (through
 `webapp.body_editor_layout`) to draw the fixed features under the outline
 being drawn. The full `build()` then rejects an outline that leaves a
 feature outside the wood.
+
+## Pickups
+
+`body_neck_pickup` and `body_bridge_pickup` choose each position's route
+(`presets.pickups`); both sit on the centreline, the neck one
+`body_neck_pickup_offset` past the heel end, the bridge one
+`body_bridge_pickup_offset` ahead of the scale line:
+
+| Type | Route | Height-screw recesses |
+| --- | --- | --- |
+| `humbucker` | The DXF's humbucker with mounting ears (41 × 85.9 mm) | two, `body_pickup_screw_spacing` apart |
+| `jazz_bass` | 21 × 100 mm bar with R6 corners | two, 94 mm apart |
+| `precision_bass` | Two 21 × 58 mm coils offset 21 mm along the neck and 38 mm across it, the bass coil nut-ward on the bass side | two per coil, 4 mm in from its ends |
+| `bass_soapbar` | 44 × 102 mm bar with R12 corners (MM style) | two, 90 mm apart |
+| `none` | No route in that position | — |
+
+The bass routes are labelled starting values; check them against the
+pickups in hand. `BodySolid.neck_pickup` / `bridge_pickup` may be `None`.
 
 ## Bridges
 
@@ -138,7 +170,7 @@ all placed relative to the scale line:
 | `KahlerBridgeSpec` (default) | `kahler_7300` | Rectangular baseplate cutout (the DXF's 55.45 × 65.04 × 25 mm); no studs, no rear cavity |
 | `FloydRoseSpec` | `floyd_rose` | Floyd Rose Original recessed routing per the manufacturer's *Original Series Routing Diagrams*: two Ø 10 stud holes 73.91 mm apart, 11.9 mm ahead of the scale line (25.03 in on a 25.5 in scale); a 95.25 mm wide recess, 79.38 mm long, narrowing to 71.12 mm after 42.44 mm, cut 6.73 mm deep over its whole footprint (continuous walls) and deepened to 11.18 mm behind the front 15.88 mm stud shelf as a step inside it, with a 20.96 × 82.85 mm block route 29.59 mm deep through that floor that opens into the spring cavity only where the two overlap; a rear 123.19 × 56.64 × 16.13 mm spring cavity with a 28.19 mm deep block clearance pocket at its tail end and a 2 mm cover recess. The recess is 3.56 mm wider on the tremolo-arm (treble) side; `treble_side` picks that side (`"+y"` on the left-handed Prototype001 body) |
 | `TuneOMaticSpec` | `tune_o_matic` | Two Ø 11.2 post holes 3 mm behind the scale line and two Ø 11.2 stop-bar stud holes 45 mm behind it |
-| `HardtailSpec` | `hardtail` | Six Ø 3 string-through holes 14 mm behind the scale line and five pilot holes for the baseplate screws |
+| `HardtailSpec` | `hardtail` | `string_count` (6) Ø 3 string-through holes 14 mm behind the scale line and five pilot holes for the baseplate screws; the bass uses four strings 19 mm apart, 30 mm behind the scale line |
 
 `Prototype001Parameters.body_bridge` holds the spec; in the web form it is a
 dropdown of bridge kinds with that kind's dimensions beneath it, sent back as

@@ -83,7 +83,27 @@ def test_schema_lists_every_parameter_with_a_form_type() -> None:
         "6_inline_reverse",
         "4+2",
         "2+4",
+        "2+2",
+        "4_inline",
+        "4_inline_reverse",
     ]
+    assert prototype_fields["body_neck_pickup"]["options"] == [
+        "humbucker",
+        "jazz_bass",
+        "precision_bass",
+        "bass_soapbar",
+        "none",
+    ]
+    assert prototype_fields["string_count"]["advanced"] is False
+    # The instrument is chosen above the form, with its own defaults.
+    assert "instrument" not in prototype_fields
+    assert set(schema["instruments"]) == {"electric_guitar", "bass_guitar"}
+    bass = schema["instruments"]["bass_guitar"]
+    assert bass["label"] == "Bass guitar"
+    assert bass["overrides"]["string_count"] == 4
+    assert bass["overrides"]["body_bridge"]["kind"] == "hardtail"
+    assert bass["overrides"]["body_shape"]["kind"] == "your_design"
+    assert schema["instruments"]["electric_guitar"]["overrides"] == {}
     assert prototype_fields["headstock_style"]["advanced"] is False
     assert prototype_fields["headstock_tip_width"]["type"] == "optional_float"
     assert floyd_fields["treble_side"]["type"] == "choice"
@@ -197,6 +217,19 @@ def test_body_editor_layout_lists_the_fixed_features_relative_to_the_heel() -> N
     layout = body_editor_layout({"prototype": {"body_shape": {"kind": "your_design"}}})
 
     assert layout["samples_per_segment"] == 8
+    templates = layout["templates"]
+    assert list(templates) == [
+        "design_by_jone",
+        "les_paul",
+        "stratocaster",
+        "jackson_rr",
+        "bass_offset",
+    ]
+    assert templates["les_paul"]["label"] == "Les Paul style"
+    assert (
+        templates["stratocaster"]["shape"]["control_points"] == layout["start_points"]
+    )
+    assert len(templates["design_by_jone"]["shape"]["control_points"]) == 64
     assert len(layout["start_points"]) == 42
     roles = {polygon["name"]: polygon["role"] for polygon in layout["polygons"]}
     assert roles["Neck pocket"] == "pocket"
@@ -231,3 +264,21 @@ def test_body_editor_layout_follows_the_bridge_and_reports_errors() -> None:
     assert any(p["name"] == "Floyd Rose recess" for p in floyd["polygons"])
     assert any(c["name"] == "Pivot stud" for c in floyd["circles"])
     assert "TypeError" in body_editor_layout({"prototype": {"nope": 1}})["error"]
+
+
+def test_run_build_makes_a_bass(tmp_path: Path) -> None:
+    result = run_build(
+        {"prototype": {"instrument": "bass_guitar", **_bass_overrides()}},
+        str(tmp_path),
+    )
+
+    assert "error" not in result
+    assert result["report"]["parameters"]["string_count"] == 4
+    top = result["files"]["Body_top.nc"]
+    assert "(-- Neck pickup route --)" in top and "(-- Bridge pickup route --)" in top
+    assert "String 4 through hole" in result["files"]["Body_top_small_holes.nc"]
+    assert "String 5 through hole" not in result["files"]["Body_top_small_holes.nc"]
+
+
+def _bass_overrides() -> dict[str, object]:
+    return parameter_schema()["instruments"]["bass_guitar"]["overrides"]

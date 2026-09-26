@@ -14,6 +14,7 @@ const progressLabel = progress.querySelector(".label");
 const output = document.getElementById("output");
 const intro = document.getElementById("intro");
 const showAdvanced = document.getElementById("show-advanced");
+const instrumentSelect = document.getElementById("instrument");
 
 let pyodide = null;
 let schema = null;
@@ -49,6 +50,13 @@ async function boot() {
       "import json\nfrom cncguitarwizard.webapp import parameter_schema\njson.dumps(parameter_schema())"
     );
     schema = JSON.parse(schemaJson);
+    for (const [key, instrument] of Object.entries(schema.instruments)) {
+      const option = document.createElement("option");
+      option.value = key;
+      option.textContent = instrument.label;
+      instrumentSelect.appendChild(option);
+    }
+    instrumentSelect.dataset.current = instrumentSelect.value;
     renderForm();
     buildButton.disabled = false;
     resetButton.disabled = false;
@@ -67,7 +75,17 @@ function renderForm() {
     ["machining", schema.machining],
   ];
   for (const [set, groups] of sections) {
-    for (const group of groups) {
+    for (let group of groups) {
+      // The chosen instrument's defaults replace the electric guitar's.
+      const overrides = set === "prototype"
+        ? schema.instruments[instrumentSelect.value].overrides
+        : {};
+      group = {
+        ...group,
+        fields: group.fields.map((field) => (
+          field.name in overrides ? { ...field, default: overrides[field.name] } : field
+        )),
+      };
       const details = document.createElement("details");
       if (group.title === "Body" || group.title === "Machining") details.open = true;
       const summary = document.createElement("summary");
@@ -242,7 +260,7 @@ function readValue(input) {
 }
 
 function collectValues() {
-  const payload = { prototype: {}, machining: {} };
+  const payload = { prototype: { instrument: instrumentSelect.value }, machining: {} };
   const assign = (set, name, value) => {
     // "prototype.body_bridge" addresses a variant's sub-object.
     const parts = set.split(".");
@@ -538,7 +556,9 @@ const bodyEditor = {
     } catch (error) {
       this.points = [];
     }
-    this.refresh();
+    // The form may still be mid-render (the rest of it not yet attached),
+    // so read it for the layout only once this render has finished.
+    setTimeout(() => this.refresh(), 0);
   },
 
   async refresh() {
@@ -560,6 +580,7 @@ const bodyEditor = {
       return;
     }
     this.layout = layout;
+    this.fillTemplates();
     if (this.points.length < 4) this.points = layout.start_points.map((p) => [...p]);
     this.draw();
   },
@@ -802,11 +823,34 @@ const bodyEditor = {
     this.draw();
   },
 
+  fillTemplates() {
+    const select = document.getElementById("body-editor-template");
+    if (select.options.length) return;
+    for (const [key, template] of Object.entries(this.layout.templates)) {
+      const option = document.createElement("option");
+      option.value = key;
+      option.textContent = template.label;
+      select.appendChild(option);
+    }
+    select.value = "stratocaster";
+  },
+
+  // Replace the drawing with a template: its outline and its switch, pot
+  // and jack placements, which all stay editable afterwards.
   reset() {
     if (!this.layout) return;
-    this.points = this.layout.start_points.map((p) => [...p]);
+    const key = document.getElementById("body-editor-template").value;
+    const template = this.layout.templates[key];
+    if (!template) return;
+    if (!window.confirm(`Replace your drawing with ${template.label}?`)) return;
+    const set = "prototype.body_shape";
+    for (const [name, value] of Object.entries(template.shape)) {
+      if (name === "kind" || name === "control_points") continue;
+      this.setField(this.field(set, name), value);
+    }
+    this.points = template.shape.control_points.map((p) => [...p]);
     this.commit();
-    this.draw();
+    this.refresh();
   },
 
   commit() {
@@ -863,6 +907,18 @@ form.addEventListener("input", (event) => {
 });
 form.addEventListener("change", (event) => {
   if (event.target.dataset.name !== "control_points") bodyEditor.scheduleRefresh();
+});
+
+instrumentSelect.addEventListener("change", () => {
+  if (form.querySelector(".changed") && !window.confirm(
+    "Switch instrument? Every value goes back to that instrument's defaults."
+  )) {
+    instrumentSelect.value = instrumentSelect.dataset.current;
+    return;
+  }
+  instrumentSelect.dataset.current = instrumentSelect.value;
+  renderForm();
+  clearError();
 });
 
 buildButton.addEventListener("click", build);

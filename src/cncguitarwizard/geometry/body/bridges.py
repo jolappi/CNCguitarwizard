@@ -477,6 +477,7 @@ class HardtailSpec:
     baseplate screws are pilot-drilled along its front edge.
 
     Args:
+        string_count: Number of strings (and string-through holes).
         string_spacing: Centre distance between neighbouring strings.
         string_hole_diameter: String-through hole diameter.
         string_hole_offset: String holes behind the scale line.
@@ -489,6 +490,7 @@ class HardtailSpec:
     """
 
     kind: Literal["hardtail"] = "hardtail"
+    string_count: int = 6
     string_spacing: float = 10.5
     string_hole_diameter: float = 3.0
     string_hole_offset: float = 14.0
@@ -509,10 +511,12 @@ class HardtailSpec:
         )
         if self.screw_count < 1:
             raise BodyGeometryError("Hardtail needs at least one mounting screw.")
+        if self.string_count < 1:
+            raise BodyGeometryError("Hardtail needs at least one string.")
         holes: list[DrilledHole] = []
         string_x = scale_length + self.string_hole_offset
-        for index in range(6):
-            y = (index - 2.5) * self.string_spacing
+        for index in range(self.string_count):
+            y = (index - (self.string_count - 1) / 2.0) * self.string_spacing
             holes.append(
                 DrilledHole(
                     f"String {index + 1} through hole",

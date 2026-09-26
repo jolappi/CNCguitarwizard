@@ -10,6 +10,14 @@ default. `headstock_style` chooses the arrangement:
 | `6_inline_reverse` | 0 | 6 | the same row on the treble side |
 | `4+2` | 4 | 2 | a row of four on the bass edge, the pair at the root on the treble edge (Music Man-like) |
 | `2+4` | 2 | 4 | the same, mirrored |
+| `2+2` | 2 | 2 | bass: the given stations and offsets, mirrored |
+| `4_inline` | 4 | 0 | bass: a row on the bass edge, every post on its string's line |
+| `4_inline_reverse` | 0 | 4 | bass: the same row on the treble edge |
+
+A style must hold exactly `string_count` tuners, and a symmetric style
+(3+3, 2+2) one `tuner_station_distances` entry per pair. The string lines
+follow `string_count`: string *n* (1 = lowest) sits
+`((string_count + 1) / 2 - n)` spacings from the centreline.
 
 **Stations.** A row is spaced `tuner_inline_spacing` (25.4 mm) apart from
 `tuner_inline_first_distance` (50 mm); a 4+2 pair sits at the root on the

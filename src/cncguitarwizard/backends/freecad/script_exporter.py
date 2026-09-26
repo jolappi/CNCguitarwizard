@@ -1759,11 +1759,11 @@ class FreeCADScriptExporter:
             ),
             'body_shape = require_shape(body_shape, "body outline extrude")\n',
         ]
-        cavity_cuts = [
-            (body.neck_pocket, "neck pocket cut"),
-            (body.bridge_pickup, "bridge pickup route cut"),
-            (body.neck_pickup, "neck pickup route cut"),
-        ]
+        cavity_cuts = [(body.neck_pocket, "neck pocket cut")]
+        if body.bridge_pickup is not None:
+            cavity_cuts.append((body.bridge_pickup, "bridge pickup route cut"))
+        if body.neck_pickup is not None:
+            cavity_cuts.append((body.neck_pickup, "neck pickup route cut"))
         if body.bridge_mounting.sustain_block_cavity is not None:
             cavity_cuts.append(
                 (body.bridge_mounting.sustain_block_cavity, "sustain-block cavity cut")
