@@ -41,6 +41,18 @@
   left-handed body) makes "bass" the physical bass side in the tuner
   layout and headstock plan. The default 3+3 outline is now 61.7 mm at
   the shoulder and 42.5 mm at the tip, following its holes.
+- Body shapes (`Prototype001Parameters.body_shape`, a dropdown in the web
+  form): `DesignByJoneShape` (the traced DXF, default) and `YourDesignShape`,
+  a body drawn as a closed Catmull-Rom spline through movable control
+  points. In the web app "Your design" opens an editor: drag handles to
+  shape the outline (double-click to add, Alt-click to remove) and drag
+  the control cavity (with its pots), single pots, the switch cavity and
+  the jack, and slide the pickup routes along the neck; the neck, pocket
+  and bridge stay put. A live check lists any feature left outside. The switch cavity, pot and
+  jack placements moved from `body_switch_*` / `body_pot_offsets` /
+  `body_jack_offset` parameters into the shape spec. New:
+  `geometry.primitives.closed_catmull_rom`,
+  `Prototype001Parameters.body_layout()` and `webapp.body_editor_layout`.
 - Every `.nc` download row has a *Simulate* button that copies the
   program to the clipboard and opens ncviewer.com in a panel below, ready
   for pasting into its editor (the viewer offers no URL or message API).

@@ -3,8 +3,11 @@
 import json
 from pathlib import Path
 
+import pytest
+
 from cncguitarwizard.webapp import (
     advance_build,
+    body_editor_layout,
     finish_build,
     parameter_schema,
     run_build,
@@ -27,8 +30,16 @@ def test_schema_lists_every_parameter_with_a_form_type() -> None:
         "advanced": False,
     }
     assert prototype_fields["fret_count"]["type"] == "int"
-    assert prototype_fields["body_pot_offsets"] == {
-        "name": "body_pot_offsets",
+    shape = prototype_fields["body_shape"]
+    assert shape["type"] == "variant" and shape["advanced"] is False
+    assert shape["default"]["kind"] == "design_by_jone"
+    assert set(shape["variants"]) == {"design_by_jone", "your_design"}
+    assert shape["variants"]["your_design"]["label"].startswith("Your design")
+    strat_fields = {f["name"]: f for f in shape["variants"]["your_design"]["fields"]}
+    assert strat_fields["control_points"]["type"] == "json"
+    assert len(strat_fields["control_points"]["default"]) == 42
+    assert strat_fields["pot_offsets"] == {
+        "name": "pot_offsets",
         "type": "json",
         "default": [[180.8, 86.0], [220.8, 87.0]],
         "advanced": True,
@@ -45,7 +56,10 @@ def test_schema_lists_every_parameter_with_a_form_type() -> None:
     assert bridge["default"]["kind"] == "kahler_7300"
     assert bridge["default"]["baseplate_depth"] == 25.0
     assert set(bridge["variants"]) == {
-        "kahler_7300", "floyd_rose", "tune_o_matic", "hardtail"
+        "kahler_7300",
+        "floyd_rose",
+        "tune_o_matic",
+        "hardtail",
     }
     assert bridge["variants"]["floyd_rose"]["label"].startswith("Floyd Rose")
     floyd_fields = {f["name"]: f for f in bridge["variants"]["floyd_rose"]["fields"]}
@@ -64,7 +78,11 @@ def test_schema_lists_every_parameter_with_a_form_type() -> None:
     assert bridge["advanced"] is False
     assert prototype_fields["headstock_style"]["type"] == "choice"
     assert prototype_fields["headstock_style"]["options"] == [
-        "3+3", "6_inline", "6_inline_reverse", "4+2", "2+4"
+        "3+3",
+        "6_inline",
+        "6_inline_reverse",
+        "4+2",
+        "2+4",
     ]
     assert prototype_fields["headstock_style"]["advanced"] is False
     assert prototype_fields["headstock_tip_width"]["type"] == "optional_float"
@@ -82,7 +100,10 @@ def test_run_build_returns_files_report_and_plan_view(tmp_path: Path) -> None:
         {
             "prototype": {
                 "body_thickness": 42.0,
-                "body_pot_offsets": [[180.8, 86.0]],
+                "body_shape": {
+                    "kind": "design_by_jone",
+                    "pot_offsets": [[180.8, 86.0]],
+                },
             },
             "machining": {"feed_rate": 800.0},
         },
@@ -120,7 +141,7 @@ def test_run_build_accepts_a_bridge_spec_as_json(tmp_path: Path) -> None:
 def test_run_build_rejects_an_unknown_bridge_kind(tmp_path: Path) -> None:
     result = run_build({"prototype": {"body_bridge": {"kind": "banjo"}}}, str(tmp_path))
 
-    assert "Unknown bridge kind" in result.get("error", "")
+    assert "Unknown bridge or body shape kind" in result.get("error", "")
 
 
 def test_stepwise_build_reports_progress_between_stages(tmp_path: Path) -> None:
@@ -170,3 +191,43 @@ def test_run_build_reports_unknown_fields(tmp_path: Path) -> None:
     result = run_build({"prototype": {"no_such_field": 1.0}}, str(tmp_path))
 
     assert "TypeError" in result["error"]
+
+
+def test_body_editor_layout_lists_the_fixed_features_relative_to_the_heel() -> None:
+    layout = body_editor_layout({"prototype": {"body_shape": {"kind": "your_design"}}})
+
+    assert layout["samples_per_segment"] == 8
+    assert len(layout["start_points"]) == 42
+    roles = {polygon["name"]: polygon["role"] for polygon in layout["polygons"]}
+    assert roles["Neck pocket"] == "pocket"
+    assert roles["Neck pickup route"] == "pickup"
+    assert roles["Control cavity"] == "rear"
+    assert roles["Switch cavity cover recess"] == "cover"
+    pocket = next(p for p in layout["polygons"] if p["name"] == "Neck pocket")
+    # The pocket ends at the heel end, the editor's X = 0.
+    assert max(x for x, _ in pocket["points"]) == pytest.approx(0.0, abs=0.01)
+    names = {circle["name"] for circle in layout["circles"]}
+    assert {"Switch shaft hole", "Pot 1 shaft hole"} <= names
+    # The jack of the drawn body sits at its own placement.
+    assert layout["jack"]["x"] == pytest.approx(284.0)
+    # Draggable groups: electronics and pickups move, neck and bridge do not.
+    groups = {p["name"]: p["group"] for p in layout["polygons"]}
+    assert groups["Control cavity"] == "control"
+    assert groups["Control cavity cover recess"] == "control"
+    assert groups["Switch cavity"] == "switch"
+    assert groups["Neck pickup route"] == "pickup:neck"
+    assert groups["Neck pocket"] is None and groups["Neck"] is None
+    assert groups["Bridge baseplate cutout"] is None
+    circle_groups = {c["name"]: c["group"] for c in layout["circles"]}
+    assert circle_groups["Pot 2 shaft hole"] == "pot:1"
+    assert circle_groups["Switch shaft hole"] == "switch"
+    assert circle_groups["Bridge pickup bass screw recess"] == "pickup:bridge"
+    assert layout["jack"]["group"] == "jack"
+    json.dumps(layout)
+
+
+def test_body_editor_layout_follows_the_bridge_and_reports_errors() -> None:
+    floyd = body_editor_layout({"prototype": {"body_bridge": {"kind": "floyd_rose"}}})
+    assert any(p["name"] == "Floyd Rose recess" for p in floyd["polygons"])
+    assert any(c["name"] == "Pivot stud" for c in floyd["circles"])
+    assert "TypeError" in body_editor_layout({"prototype": {"nope": 1}})["error"]

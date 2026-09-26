@@ -17,11 +17,25 @@ Python.
    JSON. The few fields a builder normally touches (scale, fret count,
    bridge, body thickness, tool and feeds…) are shown up front; the rest of
    each group sits behind an *Advanced* fold, marked `advanced` in the
-   schema (`_BASIC_FIELDS`, `_BASIC_BRIDGE_FIELDS` in `webapp.py`), with a
+   schema (`_BASIC_FIELDS`, `_BASIC_VARIANT_FIELDS` in `webapp.py`), with a
    page-wide checkbox to open them all. A field whose type is a union of
-   kinded dataclasses — the bridge —
+   kinded dataclasses — the bridge, the body shape —
    becomes a dropdown of kinds with the chosen kind's own fields beneath
-   it (`variant` in the schema).
+   it (`variant` in the schema). Choosing the body shape "Your design"
+   opens a drawing panel above the results: the outline's control points
+   are handles to drag (double-click the outline to add one, Alt-click or
+   right-click to remove one, *Start over* for the starting shape), drawn
+   over the neck, pocket, pickup and bridge routes and dashed rear
+   cavities that `webapp.body_editor_layout()` lays out from the other
+   settings. The control cavity (carrying its pots), each pot, the switch
+   cavity and the jack can be dragged too, and the pickup routes slide
+   along the neck; a drop moves the fields that place them
+   (`control_shift`, `pot_offsets`, `switch_*`, `jack_*`,
+   `body_*_pickup_offset`) and the layout is fetched again. The neck, its
+   pocket and the bridge follow the neck and scale and stay put. The
+   panel reports the body's size
+   and any feature left outside the outline, and writes the points into
+   the shape's `control_points` field.
 3. On **Build** runs the build in stages — `start_build()`, then
    `advance_build()` once per stage of `workflows.Prototype001Build`
    (geometry, body, neck and fretboard toolpaths, G-code, FreeCAD script),

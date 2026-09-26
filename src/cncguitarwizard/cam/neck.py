@@ -189,7 +189,7 @@ def plan_neck_machining(
         Point2D(min_x - radius, max_y + radius),
     )
     stock = StockBounds.around(outline, flat.stock_margin)
-    pins = resolve_index_pins(outline, [sweep], flat, stock)
+    pins, stock = resolve_index_pins(outline, [sweep], flat, stock)
     origin_x, origin_y = pins[0]
     top_frame = _Frame(origin_x, origin_y, mirror_y=False)
     back_frame = _Frame(origin_x, origin_y, mirror_y=True)

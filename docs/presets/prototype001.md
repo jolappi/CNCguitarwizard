@@ -78,8 +78,10 @@ Building the preset creates and cross-validates:
   (`inlay_style="dot"`, `inlay_dot_diameter`) or Gibson-style tapered blocks
   (`inlay_style="block"`, one per fret, `inlay_block_length_fraction`,
   `inlay_block_edge_margin`);
-- a 44 mm flat-slab left-handed body (`BodySolid`) digitised from the user's
-  `assets/reference/omarunko.dxf`: the drawing's own outline, a neck pocket
+- a 44 mm flat-slab left-handed body (`BodySolid`) whose silhouette is
+  chosen by `body_shape` — the user's own outline digitised from
+  `assets/reference/omarunko.dxf` by default, or "your design", drawn by
+  dragging spline control points — with the drawing's own cavities: a neck pocket
   derived from the neck's own taper, humbucker routes with mounting ears, an
   interchangeable bridge (`body_bridge`: Kahler 7300 by default, Floyd Rose,
   Tune-o-matic or hardtail), rear control and switch cavities with 2 mm cover recesses,

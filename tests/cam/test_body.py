@@ -299,3 +299,21 @@ def test_setups_render_to_gcode(plan, parameters) -> None:  # type: ignore[no-un
         first_motion = next(line for line in lines if line.startswith("G0 X"))
         assert first_motion == "G0 X0.000 Y0.000"
         assert lines[-2] == "G0 X0.000 Y0.000"
+
+
+def test_a_body_without_a_tail_notch_gets_a_longer_blank_for_its_tail_pin() -> None:
+    from dataclasses import replace
+
+    from cncguitarwizard.presets import Prototype001Parameters, YourDesignShape
+
+    parameters = replace(Prototype001Parameters(), body_shape=YourDesignShape())
+    body = parameters.build().body
+    plan = plan_body_machining(body, MachiningParameters())
+    tail = max(point.x for point in body.outline.points)
+    nose = min(point.x for point in body.outline.points)
+
+    # The drawn body's convex tail leaves no waste on the centerline
+    # inside the 15 mm margin, so the blank grows by a dowel's worth.
+    assert plan.stock_length > tail - nose + 2 * 15.0
+    assert plan.index_pin_positions[1][0] > tail + 3.0
+    assert plan.index_pin_positions[0][0] < body.neck_pocket.min_x

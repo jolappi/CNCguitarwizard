@@ -155,6 +155,21 @@ assert first_fret.location.x == first_position.distance_from_nut
 assert first_fret.direction.dot(first_fret.direction) == 1.0
 ```
 
+## Closed splines
+
+`closed_catmull_rom(control_points, samples_per_segment=8)` returns a
+smooth closed outline that passes through every control point: each
+segment is a uniform Catmull-Rom cubic, tangent-continuous with its
+neighbours. A drawn body (`YourDesignShape`) is such a loop.
+
+```python
+from cncguitarwizard.geometry.primitives import Point2D, closed_catmull_rom
+
+square = (Point2D(0, 0), Point2D(10, 0), Point2D(10, 10), Point2D(0, 10))
+outline = closed_catmull_rom(square, samples_per_segment=4)
+assert outline[0::4] == square
+```
+
 ## Why geometry objects are immutable
 
 All geometry objects are frozen dataclasses with slots. Once created, their

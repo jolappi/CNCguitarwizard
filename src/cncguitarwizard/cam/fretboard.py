@@ -175,7 +175,7 @@ def plan_fretboard_machining(
         Point2D(min(xs) - radius, max(ys) + radius),
     )
     stock = StockBounds.around(outline, flat.stock_margin)
-    pins = resolve_index_pins(outline, [sweep], flat, stock)
+    pins, stock = resolve_index_pins(outline, [sweep], flat, stock)
     origin_x, origin_y = pins[0]
     reference_points = tuple((x - origin_x, y - origin_y) for x, y in pins[1:])
 

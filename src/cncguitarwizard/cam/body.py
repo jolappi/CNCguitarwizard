@@ -74,7 +74,7 @@ def plan_body_machining(
             be cut with the tool.
     """
     stock = StockBounds.around(body.outline.points, parameters.stock_margin)
-    pins = resolve_index_pins(
+    pins, stock = resolve_index_pins(
         body.outline.points,
         [cavity.outline for cavity in _top_cavities(body)],
         parameters,

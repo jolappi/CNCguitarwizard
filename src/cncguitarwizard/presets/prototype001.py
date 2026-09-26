@@ -8,7 +8,9 @@ from typing import Literal
 
 from ..geometry.body import (
     BodySolid,
+    BridgeMounting,
     BridgeSpec,
+    Cavity,
     CircularCavity,
     DrilledHole,
     JackHole,
@@ -38,12 +40,9 @@ from ..geometry.neck import (
 )
 from ..geometry.primitives import Point2D
 from ._omarunko_outline import (
-    OMARUNKO_CONTROL_CAVITY_POINTS,
-    OMARUNKO_CONTROL_COVER_POINTS,
-    OMARUNKO_HEEL_END_X,
-    OMARUNKO_OUTLINE_POINTS,
     OMARUNKO_PICKUP_ROUTE_LOCAL_POINTS,
 )
+from .body_shapes import BodyShapeSpec, DesignByJoneShape
 
 HeadstockStyle = Literal["3+3", "6_inline", "6_inline_reverse", "4+2", "2+4"]
 """Tuner arrangements: bass+treble counts; "reverse" puts the row on the treble side."""
@@ -100,6 +99,42 @@ class Prototype001Geometry:
     headstock_outer_d_profile_guide_extension: float
     heel_nose_radius: float
     heel_block_start_offset: float
+
+
+@dataclass(frozen=True, slots=True)
+class BodyLayout:
+    """A body's outline and every feature cut into it, not yet validated.
+
+    Args:
+        heel_end: X of the neck pocket's end; shape placements are
+            measured from here.
+        outline: The body silhouette.
+        neck_pocket: The pocket the neck heel sits in.
+        bridge_pickup: The bridge humbucker route.
+        neck_pickup: The neck humbucker route.
+        bridge_mounting: Bridge reference line and pivot studs.
+        jack_hole: The output jack bore.
+        control_cavity: The rear control cavity with its cover recess.
+        switch_cavity: The rear switch cavity with its cover recess.
+        extra_cavities: The bridge's top routes.
+        holes: Drilled holes (switch, pots, pickup screws, bridge).
+        through_cavities: Routes that open into a rear cavity.
+        extra_rear_cavities: The bridge's rear cavities.
+    """
+
+    heel_end: float
+    outline: TracedOutline
+    neck_pocket: TracedCavity
+    bridge_pickup: TracedCavity
+    neck_pickup: TracedCavity
+    bridge_mounting: BridgeMounting
+    jack_hole: JackHole
+    control_cavity: RearCavity
+    switch_cavity: RearCavity
+    extra_cavities: tuple[Cavity, ...]
+    holes: tuple[DrilledHole, ...]
+    through_cavities: tuple[Cavity, ...]
+    extra_rear_cavities: tuple[RearCavity, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -200,36 +235,27 @@ class Prototype001Parameters:
     # routes, rear cavities and holes relative to the scale line. In the
     # web form it is edited as JSON with a "kind" entry.
     body_bridge: BridgeSpec = field(default_factory=KahlerBridgeSpec)
-    # Rear-routed electronics cavities, both straight from the DXF. Each
-    # is cut up from the back face to within body_rear_cavity_top_wall
-    # of the top so the pot and switch bushings can pass through, and is
-    # closed by a cover plate seated in a body_cover_recess_depth ledge
-    # — the drawing's own outer ring/circle around each cavity.
+    # The body shape is an interchangeable spec (see body_shapes): the
+    # user's own Design by Jone outline traced from the DXF (default) or
+    # a Stratocaster-inspired silhouette. Each carries its own outline
+    # and the placements that belong to the silhouette - switch cavity,
+    # pot holes, jack - measured from the heel end; the rear cavities
+    # themselves keep the DXF's shapes. In the web form it is a dropdown
+    # of kinds with the chosen kind's placements beneath it.
+    body_shape: BodyShapeSpec = field(default_factory=DesignByJoneShape)
+    # Rear-routed electronics cavities are cut up from the back face to
+    # within body_rear_cavity_top_wall of the top so the pot and switch
+    # bushings can pass through, and closed by a cover plate seated in a
+    # body_cover_recess_depth ledge (the drawing's own outer ring/circle
+    # around each cavity).
     body_rear_cavity_top_wall: float = 8.0
     body_cover_recess_depth: float = 2.0
-    # Pickup-selector cavity at the upper-horn root: the DXF's two
-    # near-concentric circles (inner = cavity, outer = cover ledge,
-    # exactly as drawn, slightly eccentric).
-    body_switch_cavity_offset: float = -4.005  # centre X from the heel end
-    body_switch_cavity_y: float = -70.565
-    body_switch_cavity_diameter: float = 43.972
-    body_switch_cover_offset: float = -3.211
-    body_switch_cover_y: float = -70.3
-    body_switch_cover_diameter: float = 59.452
     # Shaft holes through the top wall: a 1/2" toggle bushing at the
-    # switch cavity's centre, and two 3/8" pot bushings side by side
-    # along the almond control cavity's long axis.
+    # switch cavity's centre, and 3/8" pot bushings at the shape's pot
+    # positions.
     body_switch_shaft_hole_diameter: float = 12.7
     body_pot_shaft_hole_diameter: float = 10.0
-    body_pot_offsets: tuple[tuple[float, float], ...] = (  # (X from heel end, Y)
-        (180.8, 86.0),
-        (220.8, 87.0),
-    )
-    # Output jack on the lower-bout edge, bored in toward the control
-    # cavity's tail-ward end so the wiring lands inside it.
-    body_jack_offset: float = 280.8  # X from the heel end
-    body_jack_y: float = 107.5
-    body_jack_direction_degrees: float = 202.5
+    # Output jack bore, in from the edge at the shape's jack position.
     body_jack_diameter: float = 12.5
     body_jack_depth: float = 55.0
     truss_rod_start: float = 12.0
@@ -560,6 +586,158 @@ class Prototype001Parameters:
             offsets,
         )
 
+    def body_layout(self) -> BodyLayout:
+        """Return the body's outline and every feature, without validating it.
+
+        Cheap: only the neck's plan outline is built, not its surfaces.
+        The web app's body editor draws these features over an outline the
+        user is still drawing, so nothing here checks that they fit; the
+        full ``build`` does that when it makes the ``BodySolid``.
+        """
+        return self._body_layout(self.neck_outline())
+
+    def neck_outline(self) -> NeckOutline:
+        """Return the neck's plan outline (cheap: no surfaces are built)."""
+        return NeckOutline(
+            self.scale_length,
+            self.fret_count,
+            self.nut_width,
+            self.final_fret_width,
+            self.heel_width,
+            self.heel_length,
+        )
+
+    def _body_layout(self, outline: NeckOutline) -> BodyLayout:
+        heel_end = outline.last_fret_position + self.heel_length
+        # Body features ride with the heel end, bridge features with the
+        # scale length (see the body_* parameter comments).
+        shape = self.body_shape
+        body_outline = TracedOutline(shape.outline_points(heel_end))
+        neck_pocket = TracedCavity(
+            "Neck pocket",
+            self._neck_pocket_outline(outline, heel_end),
+            self.heel_thickness,
+        )
+
+        def pickup_route(name: str, center_x: float) -> TracedCavity:
+            return TracedCavity(
+                name,
+                tuple(
+                    Point2D(center_x + local_x, local_y)
+                    for local_x, local_y in OMARUNKO_PICKUP_ROUTE_LOCAL_POINTS
+                ),
+                self.body_pickup_route_depth,
+            )
+
+        bridge = self.body_bridge.hardware(self.scale_length, self.body_thickness)
+        bridge_mounting = bridge.mounting
+        neck_pickup_x = heel_end + self.body_neck_pickup_offset
+        route_half_length = max(x for x, _ in OMARUNKO_PICKUP_ROUTE_LOCAL_POINTS)
+        bridge_fronts = [
+            cavity.min_x for cavity in (*bridge.top_cavities, *bridge.through_cavities)
+        ]
+        needed_offset = (
+            self.scale_length
+            - min(bridge_fronts)
+            + route_half_length
+            + self.body_bridge_pickup_clearance
+            if bridge_fronts
+            else -math.inf
+        )
+        bridge_pickup_x = self.scale_length - max(
+            self.body_bridge_pickup_offset, needed_offset
+        )
+        neck_pickup = pickup_route("Neck pickup route", neck_pickup_x)
+        bridge_pickup = pickup_route("Bridge pickup route", bridge_pickup_x)
+        switch_x = heel_end + shape.switch_cavity_offset
+        switch_cover_x = heel_end + shape.switch_cover_offset
+        rear_cavity_depth = self.body_thickness - self.body_rear_cavity_top_wall
+        control_cavity = RearCavity(
+            TracedCavity(
+                "Control cavity",
+                shape.control_cavity_points(heel_end),
+                rear_cavity_depth,
+            ),
+            TracedCavity(
+                "Control cavity cover recess",
+                shape.control_cover_points(heel_end),
+                self.body_cover_recess_depth,
+            ),
+        )
+        switch_cavity = RearCavity(
+            CircularCavity(
+                "Switch cavity",
+                switch_x,
+                shape.switch_cavity_y,
+                shape.switch_cavity_diameter,
+                rear_cavity_depth,
+            ),
+            CircularCavity(
+                "Switch cavity cover recess",
+                switch_cover_x,
+                shape.switch_cover_y,
+                shape.switch_cover_diameter,
+                self.body_cover_recess_depth,
+            ),
+        )
+        jack_hole = JackHole(
+            heel_end + shape.jack_offset,
+            shape.jack_y,
+            shape.jack_direction_degrees,
+            diameter=self.body_jack_diameter,
+            depth=self.body_jack_depth,
+        )
+        holes: list[DrilledHole] = list(bridge.holes)
+        holes.append(
+            DrilledHole(
+                "Switch shaft hole",
+                switch_x,
+                shape.switch_cavity_y,
+                self.body_switch_shaft_hole_diameter,
+                self.body_thickness,
+            )
+        )
+        for index, (pot_offset, pot_y) in enumerate(shape.pot_offsets, start=1):
+            holes.append(
+                DrilledHole(
+                    f"Pot {index} shaft hole",
+                    heel_end + pot_offset,
+                    pot_y,
+                    self.body_pot_shaft_hole_diameter,
+                    self.body_thickness,
+                )
+            )
+        for label, pickup_x in (
+            ("Neck", neck_pickup_x),
+            ("Bridge", bridge_pickup_x),
+        ):
+            for side, sign in (("bass", -1.0), ("treble", 1.0)):
+                holes.append(
+                    DrilledHole(
+                        f"{label} pickup {side} screw recess",
+                        pickup_x,
+                        sign * self.body_pickup_screw_spacing / 2.0,
+                        self.body_pickup_screw_recess_diameter,
+                        self.body_pickup_route_depth
+                        + self.body_pickup_screw_recess_extra_depth,
+                    )
+                )
+        return BodyLayout(
+            heel_end,
+            body_outline,
+            neck_pocket,
+            bridge_pickup,
+            neck_pickup,
+            bridge_mounting,
+            jack_hole,
+            control_cavity,
+            switch_cavity,
+            bridge.top_cavities,
+            tuple(holes),
+            bridge.through_cavities,
+            bridge.rear_cavities,
+        )
+
     def build(self) -> Prototype001Geometry:
         """Build and validate all geometry from this parameter set.
 
@@ -673,14 +851,7 @@ class Prototype001Parameters:
             raise NeckGeometryError(
                 "Heel root length must be finite and positive."
             )
-        outline = NeckOutline(
-            self.scale_length,
-            self.fret_count,
-            self.nut_width,
-            self.final_fret_width,
-            self.heel_width,
-            self.heel_length,
-        )
+        outline = self.neck_outline()
         first_fret_wood_thickness = (
             self.first_fret_thickness - self.fretboard_thickness
         )
@@ -780,140 +951,21 @@ class Prototype001Parameters:
             ),
             self.headstock_thickness,
         )
-        heel_end = outline.last_fret_position + self.heel_length
-        # Traced body features ride with the heel end, bridge features
-        # with the scale length (see the body_* parameter comments).
-        body_shift = heel_end - OMARUNKO_HEEL_END_X
-
-        def shifted(
-            points: tuple[tuple[float, float], ...], dx: float
-        ) -> tuple[Point2D, ...]:
-            return tuple(Point2D(x + dx, y) for x, y in points)
-
-        body_outline = TracedOutline(shifted(OMARUNKO_OUTLINE_POINTS, body_shift))
-        neck_pocket = TracedCavity(
-            "Neck pocket",
-            self._neck_pocket_outline(outline, heel_end),
-            self.heel_thickness,
-        )
-
-        def pickup_route(name: str, center_x: float) -> TracedCavity:
-            return TracedCavity(
-                name,
-                tuple(
-                    Point2D(center_x + local_x, local_y)
-                    for local_x, local_y in OMARUNKO_PICKUP_ROUTE_LOCAL_POINTS
-                ),
-                self.body_pickup_route_depth,
-            )
-
-        bridge = self.body_bridge.hardware(self.scale_length, self.body_thickness)
-        bridge_mounting = bridge.mounting
-        neck_pickup_x = heel_end + self.body_neck_pickup_offset
-        route_half_length = max(x for x, _ in OMARUNKO_PICKUP_ROUTE_LOCAL_POINTS)
-        bridge_fronts = [
-            cavity.min_x for cavity in (*bridge.top_cavities, *bridge.through_cavities)
-        ]
-        needed_offset = (
-            self.scale_length
-            - min(bridge_fronts)
-            + route_half_length
-            + self.body_bridge_pickup_clearance
-            if bridge_fronts
-            else -math.inf
-        )
-        bridge_pickup_x = self.scale_length - max(
-            self.body_bridge_pickup_offset, needed_offset
-        )
-        neck_pickup = pickup_route("Neck pickup route", neck_pickup_x)
-        bridge_pickup = pickup_route("Bridge pickup route", bridge_pickup_x)
-        switch_x = heel_end + self.body_switch_cavity_offset
-        switch_cover_x = heel_end + self.body_switch_cover_offset
-        rear_cavity_depth = self.body_thickness - self.body_rear_cavity_top_wall
-        control_cavity = RearCavity(
-            TracedCavity(
-                "Control cavity",
-                shifted(OMARUNKO_CONTROL_CAVITY_POINTS, body_shift),
-                rear_cavity_depth,
-            ),
-            TracedCavity(
-                "Control cavity cover recess",
-                shifted(OMARUNKO_CONTROL_COVER_POINTS, body_shift),
-                self.body_cover_recess_depth,
-            ),
-        )
-        switch_cavity = RearCavity(
-            CircularCavity(
-                "Switch cavity",
-                switch_x,
-                self.body_switch_cavity_y,
-                self.body_switch_cavity_diameter,
-                rear_cavity_depth,
-            ),
-            CircularCavity(
-                "Switch cavity cover recess",
-                switch_cover_x,
-                self.body_switch_cover_y,
-                self.body_switch_cover_diameter,
-                self.body_cover_recess_depth,
-            ),
-        )
-        jack_hole = JackHole(
-            heel_end + self.body_jack_offset,
-            self.body_jack_y,
-            self.body_jack_direction_degrees,
-            diameter=self.body_jack_diameter,
-            depth=self.body_jack_depth,
-        )
-        holes: list[DrilledHole] = list(bridge.holes)
-        holes.append(
-            DrilledHole(
-                "Switch shaft hole",
-                switch_x,
-                self.body_switch_cavity_y,
-                self.body_switch_shaft_hole_diameter,
-                self.body_thickness,
-            )
-        )
-        for index, (pot_offset, pot_y) in enumerate(self.body_pot_offsets, start=1):
-            holes.append(
-                DrilledHole(
-                    f"Pot {index} shaft hole",
-                    heel_end + pot_offset,
-                    pot_y,
-                    self.body_pot_shaft_hole_diameter,
-                    self.body_thickness,
-                )
-            )
-        for label, pickup_x in (
-            ("Neck", neck_pickup_x),
-            ("Bridge", bridge_pickup_x),
-        ):
-            for side, sign in (("bass", -1.0), ("treble", 1.0)):
-                holes.append(
-                    DrilledHole(
-                        f"{label} pickup {side} screw recess",
-                        pickup_x,
-                        sign * self.body_pickup_screw_spacing / 2.0,
-                        self.body_pickup_screw_recess_diameter,
-                        self.body_pickup_route_depth
-                        + self.body_pickup_screw_recess_extra_depth,
-                    )
-                )
+        body_parts = self._body_layout(outline)
         body = BodySolid(
-            body_outline,
+            body_parts.outline,
             self.body_thickness,
-            neck_pocket,
-            bridge_pickup,
-            neck_pickup,
-            bridge_mounting,
-            jack_hole,
-            control_cavity=control_cavity,
-            switch_cavity=switch_cavity,
-            extra_cavities=bridge.top_cavities,
-            holes=tuple(holes),
-            through_cavities=bridge.through_cavities,
-            extra_rear_cavities=bridge.rear_cavities,
+            body_parts.neck_pocket,
+            body_parts.bridge_pickup,
+            body_parts.neck_pickup,
+            body_parts.bridge_mounting,
+            body_parts.jack_hole,
+            control_cavity=body_parts.control_cavity,
+            switch_cavity=body_parts.switch_cavity,
+            extra_cavities=body_parts.extra_cavities,
+            holes=body_parts.holes,
+            through_cavities=body_parts.through_cavities,
+            extra_rear_cavities=body_parts.extra_rear_cavities,
         )
         tuner_layout = TunerLayout(
             headstock_plan,

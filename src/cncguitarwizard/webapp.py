@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
+import math
 import types
 import typing
 from pathlib import Path
@@ -19,10 +20,19 @@ from typing import Any
 
 from .cam import MachiningParameters
 from .exceptions import CNCGuitarWizardError
-from .geometry.body import BRIDGE_LABELS, bridge_spec_from_dict
+from .geometry.body import BRIDGE_KINDS, BRIDGE_LABELS, bridge_spec_from_dict
 from .presets import Prototype001Parameters
+from .presets.body_shapes import (
+    BODY_SHAPE_KINDS,
+    BODY_SHAPE_LABELS,
+    OUTLINE_SAMPLES_PER_SEGMENT,
+    YOUR_DESIGN_START_POINTS,
+    body_shape_from_dict,
+)
 from .render.svg import render_plan_view_svg
 from .workflows import Prototype001Build
+
+_VARIANT_LABELS: dict[str, str] = {**BRIDGE_LABELS, **BODY_SHAPE_LABELS}
 
 # The handful of parameters a builder normally touches; the form shows
 # every other field of the same group behind an "Advanced" fold.
@@ -46,6 +56,7 @@ _BASIC_FIELDS: frozenset[str] = frozenset(
         "headstock_thickness",
         "tuner_hole_diameter",
         "body_thickness",
+        "body_shape",
         "body_bridge",
         "body_neck_pickup_offset",
         "body_bridge_pickup_offset",
@@ -60,10 +71,12 @@ _BASIC_FIELDS: frozenset[str] = frozenset(
     }
 )
 
-# Per bridge kind, the dimensions worth checking against the unit in
-# hand; the rest of a kind's fields are its "Advanced" fold. A kind not
-# listed here shows all of its fields.
-_BASIC_BRIDGE_FIELDS: dict[str, frozenset[str]] = {
+# Per variant kind (bridges and body shapes), the fields worth checking
+# against the hardware in hand; the rest of a kind's fields are its
+# "Advanced" fold. A kind not listed here shows all of its fields.
+_BASIC_VARIANT_FIELDS: dict[str, frozenset[str]] = {
+    "design_by_jone": frozenset(),
+    "your_design": frozenset(),
     "floyd_rose": frozenset({"treble_side", "pivot_offset", "pivot_stud_spacing"}),
     "tune_o_matic": frozenset(
         {"post_spacing", "compensation", "stud_spacing", "tailpiece_offset"}
@@ -109,6 +122,124 @@ def parameter_schema() -> dict[str, Any]:
     }
 
 
+def _editor_group(name: str) -> str | None:
+    """Return which draggable group a body feature belongs to, if any.
+
+    ``control`` (the control cavity and its cover), ``switch`` (cavity,
+    cover and shaft hole), ``pot:N`` (one pot hole, zero-based),
+    ``pickup:neck`` / ``pickup:bridge`` (a route and its screw recesses)
+    and ``jack``; the neck, its pocket and the bridge do not move.
+    """
+    if name.startswith("Control cavity"):
+        return "control"
+    if name.startswith("Switch"):
+        return "switch"
+    if name.startswith("Pot ") and name.endswith("shaft hole"):
+        return f"pot:{int(name.split()[1]) - 1}"
+    if name.startswith("Neck pickup"):
+        return "pickup:neck"
+    if name.startswith("Bridge pickup"):
+        return "pickup:bridge"
+    return None
+
+
+def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
+    """Describe the body features for the web app's outline editor.
+
+    Everything is in the body's own frame — X from the heel end, Y from
+    the centerline — the frame ``YourDesignShape.control_points`` use, so
+    the editor can draw the features and the points on one grid. Nothing
+    is validated: the outline being drawn may not yet contain them. Each
+    feature the editor may drag carries a ``group`` (see
+    ``_editor_group``); dropping one moves the matching form fields.
+
+    Args:
+        payload: ``{"prototype": {...}}`` as for ``start_build``.
+
+    Returns:
+        ``{"heel_end", "samples_per_segment", "start_points", "polygons",
+        "circles", "jack"}``, or ``{"error": message}``. ``polygons`` is a
+        list of ``{"name", "role", "group", "points"}`` with ``role`` one
+        of ``neck``, ``pocket``, ``pickup``, ``bridge``, ``rear`` or
+        ``cover``; ``circles`` a list of ``{"name", "group", "x", "y",
+        "r"}``; ``jack`` ``{"group", "x", "y", "x2", "y2", "r"}``.
+    """
+    try:
+        parameters = Prototype001Parameters(**_coerce(payload.get("prototype", {})))
+        layout = parameters.body_layout()
+        neck = parameters.neck_outline()
+    except (CNCGuitarWizardError, TypeError, ValueError) as error:
+        return {"error": f"{type(error).__name__}: {error}"}
+    heel_end = layout.heel_end
+
+    def local(points: Any) -> list[list[float]]:
+        return [[round(point.x - heel_end, 2), round(point.y, 2)] for point in points]
+
+    def polygon(name: str, role: str, points: Any) -> dict[str, Any]:
+        return {
+            "name": name,
+            "role": role,
+            "group": _editor_group(name),
+            "points": local(points),
+        }
+
+    polygons: list[dict[str, Any]] = [
+        polygon("Neck", "neck", neck.boundary),
+        polygon(layout.neck_pocket.name, "pocket", layout.neck_pocket.outline),
+    ]
+    for pickup in (layout.neck_pickup, layout.bridge_pickup):
+        polygons.append(polygon(pickup.name, "pickup", pickup.outline))
+    for cavity in (*layout.extra_cavities, *layout.through_cavities):
+        polygons.append(polygon(cavity.name, "bridge", cavity.outline))
+    for rear in (
+        layout.control_cavity,
+        layout.switch_cavity,
+        *layout.extra_rear_cavities,
+    ):
+        cover = rear.cover_recess
+        polygons.append(polygon(cover.name, "cover", cover.outline))
+        for pocket in rear.pockets:
+            polygons.append(polygon(pocket.name, "rear", pocket.outline))
+    circles = [
+        {
+            "name": hole.name,
+            "group": _editor_group(hole.name),
+            "x": round(hole.center_x - heel_end, 2),
+            "y": round(hole.center_y, 2),
+            "r": hole.diameter / 2.0,
+        }
+        for hole in layout.holes
+    ]
+    mounting = layout.bridge_mounting
+    circles += [
+        {
+            "name": "Pivot stud",
+            "group": None,
+            "x": round(pivot.x - heel_end, 2),
+            "y": round(pivot.y, 2),
+            "r": mounting.pivot_hole_diameter / 2.0,
+        }
+        for pivot in mounting.pivot_holes
+    ]
+    jack = layout.jack_hole
+    radians = math.radians(jack.direction_degrees)
+    return {
+        "heel_end": round(heel_end, 2),
+        "samples_per_segment": OUTLINE_SAMPLES_PER_SEGMENT,
+        "start_points": [list(point) for point in YOUR_DESIGN_START_POINTS],
+        "polygons": polygons,
+        "circles": circles,
+        "jack": {
+            "group": "jack",
+            "x": round(jack.start_x - heel_end, 2),
+            "y": round(jack.start_y, 2),
+            "x2": round(jack.start_x - heel_end + jack.depth * math.cos(radians), 2),
+            "y2": round(jack.start_y + jack.depth * math.sin(radians), 2),
+            "r": jack.diameter / 2.0,
+        },
+    }
+
+
 _ACTIVE_BUILD: Prototype001Build | None = None
 
 
@@ -123,9 +254,7 @@ def start_build(
     global _ACTIVE_BUILD
     _ACTIVE_BUILD = None
     try:
-        parameters = Prototype001Parameters(
-            **_coerce(payload.get("prototype", {}))
-        )
+        parameters = Prototype001Parameters(**_coerce(payload.get("prototype", {})))
         machining = MachiningParameters(**_coerce(payload.get("machining", {})))
     except (CNCGuitarWizardError, TypeError, ValueError) as error:
         return {"error": f"{type(error).__name__}: {error}"}
@@ -272,11 +401,11 @@ def _describe_fields(
             entry["type"] = "variant"
             entry["variants"] = {
                 kind: {
-                    "label": BRIDGE_LABELS.get(kind, kind),
+                    "label": _VARIANT_LABELS.get(kind, kind),
                     "fields": [
                         described_field
                         for described_field in _describe_fields(
-                            variant, _BASIC_BRIDGE_FIELDS.get(kind)
+                            variant, _BASIC_VARIANT_FIELDS.get(kind)
                         )
                         if described_field["name"] != "kind"
                     ],
@@ -345,5 +474,11 @@ def _tuplify(value: Any) -> Any:
     if isinstance(value, list):
         return tuple(_tuplify(item) for item in value)
     if isinstance(value, dict) and "kind" in value:
-        return bridge_spec_from_dict(value)
+        if value["kind"] in BRIDGE_KINDS:
+            return bridge_spec_from_dict(value)
+        if value["kind"] in BODY_SHAPE_KINDS:
+            return body_shape_from_dict(value)
+        raise CNCGuitarWizardError(
+            f"Unknown bridge or body shape kind {value['kind']!r}."
+        )
     return value

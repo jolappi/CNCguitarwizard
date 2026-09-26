@@ -66,6 +66,17 @@
   details.advanced > summary.changed { color: var(--accent); font-weight: 600; }
   details.advanced > .fields { padding-top: 0; }
   .toggle { display: flex; gap: 6px; align-items: center; margin: -4px 0 10px; }
+  .body-editor { margin-bottom: 20px; }
+  .body-editor svg { display: block; width: 100%; height: auto; max-height: 75vh; border: 1px solid var(--line);
+    border-radius: 6px; background: #fff; touch-action: none; user-select: none; }
+  .body-editor .actions { margin: 6px 0; }
+  #body-editor-status.ok { color: var(--ok); }
+  #body-editor-status.bad { color: var(--bad); }
+  .body-editor .handle { fill: #fff; stroke: var(--accent); stroke-width: 0.8; cursor: grab; }
+  .body-editor .handle:hover, .body-editor .handle.dragging { fill: var(--accent); }
+  .body-editor .movable { cursor: move; }
+  .body-editor .movable:hover { filter: brightness(0.9); }
+  .body-editor .outline { fill: var(--wood); fill-opacity: 0.85; stroke: #6b4a1f; stroke-width: 1; cursor: copy; }
   .actions { display: flex; gap: 8px; align-items: center; margin: 10px 0 14px; }
   button {
     padding: 8px 16px; border-radius: 6px; border: 1px solid var(--accent);
@@ -131,6 +142,19 @@
     <form id="form"></form>
   </aside>
   <section class="results">
+    <div id="body-editor" class="body-editor hidden">
+      <h2>Your design <span id="body-editor-size" class="note"></span></h2>
+      <p class="note">Drag the round handles to shape the body. Double-click the outline to add a
+        handle there; Alt/Option-click or right-click a handle to remove it. Drag the control cavity
+        (its pots come along), a single pot, the switch cavity or the jack to move it; the pickup routes
+        slide along the neck. The neck, its pocket and the bridge follow the neck and scale and stay put.
+        The grid is 50 mm.</p>
+      <div class="actions">
+        <button id="body-editor-reset" class="secondary" type="button">Start over</button>
+      </div>
+      <p id="body-editor-status" class="note"></p>
+      <svg id="body-editor-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
     <div id="error" class="error hidden"></div>
     <div id="intro">
       <h2>What this page does</h2>

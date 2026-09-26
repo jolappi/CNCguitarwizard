@@ -119,15 +119,38 @@ def resolve_index_pins(
     avoid: Sequence[Sequence[Point2D]],
     parameters: MachiningParameters,
     stock: StockBounds,
-) -> tuple[tuple[float, float], ...]:
-    """Return the explicit pins after checking them, or automatic ones."""
-    pins = parameters.index_pin_positions or automatic_index_pins(
-        outline, avoid, parameters, stock
-    )
+) -> tuple[tuple[tuple[float, float], ...], StockBounds]:
+    """Return the pins and the blank they sit in.
+
+    Explicit ``index_pin_positions`` are checked as given. Otherwise the
+    pins are placed automatically; when the blank's ``stock_margin`` has
+    no room for a dowel beyond an end of the part (a body without a tail
+    notch on the centerline), the blank is lengthened at both ends by a
+    dowel's worth of waste and the search is repeated, so the returned
+    blank may be longer than ``StockBounds.around`` gave.
+    """
+    if parameters.index_pin_positions:
+        pins: tuple[tuple[float, float], ...] = tuple(
+            (x, y) for x, y in parameters.index_pin_positions
+        )
+    else:
+        try:
+            pins = automatic_index_pins(outline, avoid, parameters, stock)
+        except ToolpathError:
+            extra = (
+                parameters.index_pin_diameter
+                + 2.0 * parameters.index_pin_wall
+                + parameters.stock_edge_margin
+                + 2.0
+            )
+            stock = StockBounds(
+                stock.min_x - extra, stock.min_y, stock.max_x + extra, stock.max_y
+            )
+            pins = automatic_index_pins(outline, avoid, parameters, stock)
     for x, y in pins:
         if not pin_fits(Point2D(x, y), outline, avoid, parameters, stock):
             raise ToolpathError(
                 f"Index pin at ({x}, {y}) would end up inside the finished "
                 "part, too close to a cut, or outside the blank."
             )
-    return tuple((x, y) for x, y in pins)
+    return pins, stock

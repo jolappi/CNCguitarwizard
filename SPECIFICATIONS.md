@@ -74,8 +74,15 @@ säilyy 5 mm:nä kaikissa lapaliitoksen muutoksissa.
 
 ## Runko
 
-Runko on jäljitetty omasta `assets/reference/omarunko.dxf`-piirustuksesta
-(`presets/_omarunko_outline.py`); muodot ovat piirustuksen omia, eivät
+Rungon muoto valitaan (`body_shape`): oletuksena "Design by Jone", joka on
+jäljitetty omasta `assets/reference/omarunko.dxf`-piirustuksesta
+(`presets/_omarunko_outline.py`), tai "Your design", jonka ääriviiva
+piirretään web-sovelluksessa raahaamalla spline-ohjauspisteitä (aloitusmuoto
+Stratocaster-henkinen); editorissa voi myös raahata kontrollikoloa
+(potit mukana), yksittäisiä potteja, kytkinkoloa ja jakkia sekä liu'uttaa
+mikkikoloja kaulan suunnassa, kun taas kaulatasku ja talla pysyvät
+paikallaan. Kytkinkolon, pottien ja
+jakin paikat kuuluvat muotoon; kolojen muodot ovat piirustuksen omia, eivät
 likiarvoja. Koordinaatisto on kaulan: X satulasta perään, Y sivulle, yläpinta
 Z = 0. Rungon piirteet (ääriviiva, kolot, potikat, jakki) seuraavat kannan
 päätä ja tallan piirteet (tallalevyn kolo, tallamikki) mensuuria, joten

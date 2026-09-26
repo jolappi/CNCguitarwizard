@@ -98,6 +98,34 @@ The frame is anchored on the drawing's own pickup placement: the neck
 pickup's nut-ward edge sits 10 mm past the heel end, and the pickups' centre
 line is `Y = 0`. Everything else in the drawing follows from that one offset.
 
+## Body shapes
+
+The silhouette is an interchangeable *spec* too (`presets.body_shapes`),
+chosen with `Prototype001Parameters.body_shape` — a dropdown in the web
+form, sent back as a JSON object with a `kind` entry
+(`body_shape_from_dict` rebuilds it):
+
+| Spec | `kind` | Outline |
+| --- | --- | --- |
+| `DesignByJoneShape` (default) | `design_by_jone` | The user's own body traced from `assets/reference/omarunko.dxf` |
+| `YourDesignShape` | `your_design` | A body the user draws: a closed Catmull-Rom spline (`geometry.primitives.closed_catmull_rom`, 8 samples per segment) through `control_points`, edited by dragging in the web app; it starts as a Stratocaster-inspired offset double cutaway (`YOUR_DESIGN_START_POINTS`) |
+
+A shape carries the outline and the placements that belong to it — the
+round switch cavity (centre, cover), the pot shaft holes and the jack bore —
+all measured from the heel end, so the body rides with whatever neck it
+receives. The almond control cavity and its cover ledge keep the DXF's
+shapes on every body; `control_shift` moves them. Both shapes are
+left-handed like the DXF: the long upper horn at -Y, controls at +Y. The
+drawn body's starting loop closes across the horn gap about 52 mm ahead of
+the pocket end so the neck pocket opens onto the gap as the DXF body's does.
+
+`Prototype001Parameters.body_layout()` returns the outline and every
+feature (`BodyLayout`) without building the neck surfaces or validating
+the body, in about a millisecond; the web app's editor uses it (through
+`webapp.body_editor_layout`) to draw the fixed features under the outline
+being drawn. The full `build()` then rejects an outline that leaves a
+feature outside the wood.
+
 ## Bridges
 
 The bridge is an interchangeable *spec* (`geometry.body.bridges`). Each spec
