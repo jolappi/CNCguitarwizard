@@ -1,5 +1,10 @@
 # CNCguitarwizard
 
+**Try it in your browser, no install needed:
+[jounilappi.hopto.org/CNCguitarwizard](https://jounilappi.hopto.org/CNCguitarwizard/)** —
+set the parameters, build, preview the toolpaths and download the G-code and
+FreeCAD script without cloning this repository.
+
 CNCguitarwizard is an open-source Python foundation for designing guitar
 necks, fretboards, bodies, and CNC-ready geometry. The current release
 provides immutable geometry, fret and fretboard calculations, a fluent neck
