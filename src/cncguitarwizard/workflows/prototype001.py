@@ -15,6 +15,7 @@ from pathlib import Path
 from ..backends.freecad import FreeCADScriptExporter
 from ..cam import (
     BodyMachiningPlan,
+    CoverMachiningPlan,
     FretboardMachiningParameters,
     FretboardMachiningPlan,
     GRBLWriter,
@@ -22,6 +23,7 @@ from ..cam import (
     NeckMachiningParameters,
     NeckMachiningPlan,
     plan_body_machining,
+    plan_cover_machining,
     plan_fretboard_machining,
     plan_neck_machining,
     render_setup_svg,
@@ -86,7 +88,13 @@ class Prototype001Build:
         self.destination = output_directory.expanduser().resolve()
         self.geometry: Prototype001Geometry | None = None
         self._plans: list[
-            tuple[str, BodyMachiningPlan | NeckMachiningPlan | FretboardMachiningPlan]
+            tuple[
+                str,
+                BodyMachiningPlan
+                | NeckMachiningPlan
+                | FretboardMachiningPlan
+                | CoverMachiningPlan,
+            ]
         ] = []
         self._gcode_paths: list[Path] = []
         self._preview_paths: list[Path] = []
@@ -104,6 +112,7 @@ class Prototype001Build:
             ("Planning the body toolpaths", self._plan_body),
             ("Planning the neck toolpaths", self._plan_neck),
             ("Planning the fretboard toolpaths", self._plan_fretboard),
+            ("Planning the cover plates", self._plan_covers),
             ("Writing G-code and toolpath previews", self._write_gcode),
             ("Writing the FreeCAD script and report", self._write_script_and_report),
         ]
@@ -178,6 +187,12 @@ class Prototype001Build:
                 plan_fretboard_machining(self.geometry, self.fretboard_machining),
             )
         )
+
+    def _plan_covers(self) -> None:
+        assert self.geometry is not None
+        plan = plan_cover_machining(self.geometry.covers, self.machining)
+        if plan is not None:
+            self._plans.append(("Covers", plan))
 
     def _write_gcode(self) -> None:
         writer = GRBLWriter()

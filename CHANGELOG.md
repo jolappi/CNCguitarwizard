@@ -56,6 +56,16 @@
   trapezoid on the Design by Jone body, whose treble cutaway is deep),
   else a 32 × 40 mm rectangle near the heel end; ferrules must sit in
   wood. The body editor drags the bolts too.
+- Control layouts (`body_controls`, a dropdown in the web form): the
+  Design by Jone almond with 2 pots (default), a Gibson-style cavity with
+  4 pots, a rear cavity with 3 pots in a row, a Telecaster-style control
+  plate routed into the top, or none. The electronics are cut in their own
+  `Body_back_controls.nc` / `Body_top_controls.nc`; cover-screw spots sit
+  on the recess ledges (`cover_screw_points`) and go in the small-drill
+  programs. Every cover and control plate (`CoverPlate`,
+  `Prototype001Geometry.covers`) gets its own `Cover_<name>.nc`
+  (`cam.plan_cover_machining`) to cut from plexiglass or plastic sheet,
+  with its own work zero (`Setup.work_zero`).
 - Pickup layouts (`body_pickups`): HH, HSH, HSS, H, SSS and SS for a
   guitar, PJ, JJ, P and MM for a bass, or `custom` with each position's
   own type. New middle pickup position (`body_middle_pickup`,

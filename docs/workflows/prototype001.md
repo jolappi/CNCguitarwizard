@@ -27,7 +27,10 @@ The command creates:
 - `Body_index_pins.nc`, `Body_top.nc`, `Body_back.nc`: GRBL G-code for the
   body, generated without FreeCAD — see [Body G-code](../cam/01_body_gcode.md);
 - `Body_index_pins.svg`, `Body_top.svg`, `Body_back.svg`: toolpath plots of
-  those programs.
+  those programs; likewise the electronics programs
+  (`Body_top_controls.nc`, `Body_back_controls.nc`) and one
+  `Cover_<name>.nc` per cavity cover or control plate, planned in the
+  "Planning the cover plates" stage.
 
 The build locates `freecadcmd` automatically, including the standard macOS
 application location. An explicit executable can be selected with:

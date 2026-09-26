@@ -11,7 +11,7 @@ from ..geometry.body import (
     BridgeMounting,
     BridgeSpec,
     Cavity,
-    CircularCavity,
+    CoverPlate,
     DrilledHole,
     HardtailSpec,
     JackHole,
@@ -41,6 +41,7 @@ from ..geometry.neck import (
 )
 from ..geometry.primitives import Point2D, point_in_polygon
 from .body_shapes import BASS_BODY, BodyShapeSpec, DesignByJoneShape
+from .controls import ControlFeatures, ControlLayout, control_features
 from .pickups import (
     PICKUP_CONFIGURATIONS,
     PickupConfiguration,
@@ -122,6 +123,8 @@ class Prototype001Geometry:
     headstock_outer_d_profile_guide_extension: float
     heel_nose_radius: float
     heel_block_start_offset: float
+    covers: tuple[CoverPlate, ...] = ()
+    """Cavity covers and control plates, each cut from sheet."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -146,6 +149,8 @@ class BodyLayout:
         middle_pickup: The middle pickup route, or ``None``.
         rear_holes: Holes drilled from the back (the neck-bolt ferrules
             and bolt holes).
+        controls: The electronics layout's cavities, screw spots and
+            cover plates (see ``controls.control_features``).
     """
 
     heel_end: float
@@ -155,14 +160,15 @@ class BodyLayout:
     neck_pickup: TracedCavity | None
     bridge_mounting: BridgeMounting
     jack_hole: JackHole
-    control_cavity: RearCavity
-    switch_cavity: RearCavity
+    control_cavity: RearCavity | None
+    switch_cavity: RearCavity | None
     extra_cavities: tuple[Cavity, ...]
     holes: tuple[DrilledHole, ...]
     through_cavities: tuple[Cavity, ...]
     extra_rear_cavities: tuple[RearCavity, ...]
     middle_pickup: TracedCavity | None = None
     rear_holes: tuple[DrilledHole, ...] = ()
+    controls: ControlFeatures = field(default_factory=ControlFeatures)
 
 
 @dataclass(frozen=True, slots=True)
@@ -297,6 +303,11 @@ class Prototype001Parameters:
     # bushings can pass through, and closed by a cover plate seated in a
     # body_cover_recess_depth ledge (the drawing's own outer ring/circle
     # around each cavity).
+    # body_controls picks the electronics layout (see controls.py): the
+    # Design by Jone almond with 2 pots, a Gibson-style cavity with 4, a
+    # rear cavity with 3 in a row, a Telecaster-style plate in the top, or
+    # none. Each cover plate is cut from sheet in its own program.
+    body_controls: ControlLayout = "almond_2"
     body_rear_cavity_top_wall: float = 8.0
     body_cover_recess_depth: float = 2.0
     # Shaft holes through the top wall: a 1/2" toggle bushing at the
@@ -945,36 +956,15 @@ class Prototype001Parameters:
             bass_sign,
             bridge_angle,
         )
-        switch_x = heel_end + shape.switch_cavity_offset
-        switch_cover_x = heel_end + shape.switch_cover_offset
-        rear_cavity_depth = self.body_thickness - self.body_rear_cavity_top_wall
-        control_cavity = RearCavity(
-            TracedCavity(
-                "Control cavity",
-                shape.control_cavity_points(heel_end),
-                rear_cavity_depth,
-            ),
-            TracedCavity(
-                "Control cavity cover recess",
-                shape.control_cover_points(heel_end),
-                self.body_cover_recess_depth,
-            ),
-        )
-        switch_cavity = RearCavity(
-            CircularCavity(
-                "Switch cavity",
-                switch_x,
-                shape.switch_cavity_y,
-                shape.switch_cavity_diameter,
-                rear_cavity_depth,
-            ),
-            CircularCavity(
-                "Switch cavity cover recess",
-                switch_cover_x,
-                shape.switch_cover_y,
-                shape.switch_cover_diameter,
-                self.body_cover_recess_depth,
-            ),
+        controls = control_features(
+            self.body_controls,
+            shape,
+            heel_end,
+            thickness=self.body_thickness,
+            top_wall=self.body_rear_cavity_top_wall,
+            cover_depth=self.body_cover_recess_depth,
+            pot_hole_diameter=self.body_pot_shaft_hole_diameter,
+            switch_hole_diameter=self.body_switch_shaft_hole_diameter,
         )
         jack_hole = JackHole(
             heel_end + shape.jack_offset,
@@ -983,26 +973,7 @@ class Prototype001Parameters:
             diameter=self.body_jack_diameter,
             depth=self.body_jack_depth,
         )
-        holes: list[DrilledHole] = list(bridge.holes)
-        holes.append(
-            DrilledHole(
-                "Switch shaft hole",
-                switch_x,
-                shape.switch_cavity_y,
-                self.body_switch_shaft_hole_diameter,
-                self.body_thickness,
-            )
-        )
-        for index, (pot_offset, pot_y) in enumerate(shape.pot_offsets, start=1):
-            holes.append(
-                DrilledHole(
-                    f"Pot {index} shaft hole",
-                    heel_end + pot_offset,
-                    pot_y,
-                    self.body_pot_shaft_hole_diameter,
-                    self.body_thickness,
-                )
-            )
+        holes: list[DrilledHole] = [*bridge.holes, *controls.holes]
         for label, kind, pickup_x, angle in (
             ("Neck", neck_type, neck_pickup_x, 0.0),
             ("Middle", middle_type, middle_pickup_x, 0.0),
@@ -1029,14 +1000,15 @@ class Prototype001Parameters:
             neck_pickup,
             bridge_mounting,
             jack_hole,
-            control_cavity,
-            switch_cavity,
+            controls.control_cavity,
+            controls.switch_cavity,
             bridge.top_cavities,
             tuple(holes),
             bridge.through_cavities,
             bridge.rear_cavities,
             middle_pickup,
             self._neck_bolt_holes(heel_end, neck_pocket),
+            controls,
         )
 
     def build(self) -> Prototype001Geometry:
@@ -1266,6 +1238,9 @@ class Prototype001Parameters:
             through_cavities=body_parts.through_cavities,
             extra_rear_cavities=body_parts.extra_rear_cavities,
             rear_holes=body_parts.rear_holes,
+            control_top_cavities=body_parts.controls.top_cavities,
+            control_back_marks=body_parts.controls.back_marks,
+            control_top_marks=body_parts.controls.top_marks,
         )
         return Prototype001Geometry(
             outline,
@@ -1287,6 +1262,7 @@ class Prototype001Parameters:
             self.headstock_outer_d_profile_guide_extension,
             self.heel_nose_radius,
             heel_flat_start_offset + self.heel_block_overlap,
+            body_parts.controls.covers,
         )
 
 

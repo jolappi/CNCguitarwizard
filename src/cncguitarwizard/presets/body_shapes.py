@@ -413,7 +413,13 @@ _BASS_POINTS: tuple[tuple[float, float], ...] = tuple(
 stretched 18 % along the neck and 8 % across it, so the longer scale's
 bridge and the bass pickups fit, with correspondingly longer horns."""
 
-BASS_BODY = YourDesignShape(control_points=_BASS_POINTS)
+BASS_BODY = YourDesignShape(
+    control_points=_BASS_POINTS,
+    # The bass's bridge pickup sits where a guitar's controls go, so the
+    # controls move 84 mm tail-ward onto the lower bout behind it.
+    pot_offsets=((264.8, 99.5), (304.8, 100.5)),
+    control_shift=(84.0, 13.5),
+)
 """The bass guitar's default drawn body (see ``_BASS_POINTS``)."""
 
 _DESIGN_BY_JONE = DesignByJoneShape()

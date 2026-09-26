@@ -120,3 +120,19 @@ def test_preview_draws_each_cut_as_a_tool_wide_band() -> None:
     assert 'stroke-width="6.00" stroke-opacity="0.25"' in svg
     assert "Shaded bands show the 6 mm tool width" in svg
     assert 'stroke-width="6.00"' not in render_setup_svg(setup, square)
+
+
+def test_writer_names_a_setups_own_work_zero() -> None:
+    setup = make_setup()
+    own_zero = Setup(
+        setup.name,
+        setup.description,
+        setup.toolpaths,
+        work_zero="the centre of the cover, Z at the sheet top",
+    )
+    lines = GRBLWriter().render(own_zero, MachiningParameters()).splitlines()
+
+    assert "(Work zero: the centre of the cover, Z at the sheet top)" in lines
+    assert "(Start over the work zero - check it here)" in lines
+    assert lines[-3] == "(Return over the work zero)"
+    assert not any("index pin" in line for line in lines)

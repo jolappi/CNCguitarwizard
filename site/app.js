@@ -187,7 +187,7 @@ function renderChoiceField(set, field) {
   for (const option of field.options) {
     const element = document.createElement("option");
     element.value = option;
-    element.textContent = option;
+    element.textContent = field.labels?.[option] ?? option;
     element.selected = option === initial;
     select.appendChild(element);
   }
@@ -635,6 +635,7 @@ const bodyEditor = {
       pocket: { fill: "#f2c4b3", "fill-opacity": 0.9, stroke: "#7a3a1a", "stroke-width": 0.5 },
       pickup: { fill: "#f2c4b3", stroke: "#7a3a1a", "stroke-width": 0.5 },
       bridge: { fill: "#f2c4b3", stroke: "#7a3a1a", "stroke-width": 0.5 },
+      top_control: { fill: "#c9b7e6", "fill-opacity": 0.55, stroke: "#5a3a8a", "stroke-width": 0.6 },
       cover: { fill: "#c9b7e6", "fill-opacity": 0.35, stroke: "#5a3a8a", "stroke-width": 0.5, "stroke-dasharray": "3,2" },
       rear: { fill: "#c9b7e6", "fill-opacity": 0.55, stroke: "#5a3a8a", "stroke-width": 0.6, "stroke-dasharray": "3,2" },
     };

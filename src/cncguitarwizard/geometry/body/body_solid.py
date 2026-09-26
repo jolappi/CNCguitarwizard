@@ -44,6 +44,11 @@ class BodySolid:
             mounting.
         holes: Vertical holes drilled from the top face — pot and
             switch shaft holes, pickup-screw clearance recesses.
+        control_top_cavities: Electronics routed from the top — a
+            control plate's recess and the deeper cavity inside it; cut
+            in their own program with the top-face screw spots.
+        control_back_marks: Cover-screw spots drilled from the back.
+        control_top_marks: Cover-screw spots drilled from the top.
         rear_holes: Vertical holes drilled from the back face, their
             depth measured from the back — the neck-bolt ferrule
             counterbores and the bolt holes through to the neck pocket.
@@ -80,12 +85,20 @@ class BodySolid:
     through_cavities: tuple[Cavity, ...] = ()
     extra_rear_cavities: tuple[RearCavity, ...] = ()
     rear_holes: tuple[DrilledHole, ...] = ()
+    control_top_cavities: tuple[Cavity, ...] = ()
+    control_back_marks: tuple[DrilledHole, ...] = ()
+    control_top_marks: tuple[DrilledHole, ...] = ()
 
     def __post_init__(self) -> None:
         """Cross-check every cavity against the slab and outline bounds."""
         if not math.isfinite(self.thickness) or self.thickness <= 0.0:
             raise BodyGeometryError("Body thickness must be finite and positive.")
-        for hole in (*self.holes, *self.rear_holes):
+        for hole in (
+            *self.holes,
+            *self.rear_holes,
+            *self.control_back_marks,
+            *self.control_top_marks,
+        ):
             if hole.depth > self.thickness:
                 raise BodyGeometryError(
                     f"{hole.name} must not be deeper than the body."
@@ -306,6 +319,7 @@ class BodySolid:
         if self.bridge_mounting.sustain_block_cavity is not None:
             cavities.append(self.bridge_mounting.sustain_block_cavity)
         cavities.extend(self.extra_cavities)
+        cavities.extend(self.control_top_cavities)
         cavities.extend(self.through_cavities)
         return tuple(cavities)
 

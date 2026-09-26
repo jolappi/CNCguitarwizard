@@ -1,6 +1,12 @@
 """Dependency-free 2.5D/3D CAM: toolpaths and GRBL G-code from the geometry."""
 
 from .body import BodyMachiningPlan, plan_body_machining
+from .covers import (
+    CoverMachiningPlan,
+    cover_setup_name,
+    cover_tool,
+    plan_cover_machining,
+)
 from .exceptions import CAMError, ToolpathError
 from .fixturing import StockBounds, automatic_index_pins, pin_fits
 from .fretboard import (
@@ -34,6 +40,7 @@ from .toolpath import Move, PathBuilder, Toolpath
 __all__ = [
     "BodyMachiningPlan",
     "CAMError",
+    "CoverMachiningPlan",
     "FretboardMachiningParameters",
     "FretboardMachiningPlan",
     "GRBLWriter",
@@ -51,6 +58,8 @@ __all__ = [
     "automatic_index_pins",
     "build_offset_grid",
     "clear_intervals",
+    "cover_setup_name",
+    "cover_tool",
     "depth_levels",
     "disc_fits",
     "drill",
@@ -58,6 +67,7 @@ __all__ = [
     "neck_plan_polygon",
     "offset_polygon",
     "offset_sampled_surface",
+    "plan_cover_machining",
     "pin_fits",
     "plan_body_machining",
     "plan_fretboard_machining",

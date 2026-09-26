@@ -199,6 +199,32 @@ bolt must land in the pocket and every ferrule in wood with 2 mm to spare,
 or the build says which one to move — in the body editor the bolts can be
 dragged like the cavities.
 
+## Controls and cover plates
+
+`body_controls` picks the electronics layout (`presets.controls`); each
+layout is placed from the mean of the body shape's `pot_offsets`, so it
+follows the shape and moves with the control group in the body editor.
+
+| Layout | Label | Contents |
+| --- | --- | --- |
+| `almond_2` | Design by Jone almond | The DXF almond cavity and cover (default), 2 pots at the shape's `pot_offsets`, round switch cavity |
+| `gibson_4` | Gibson style | 78 × 70 mm rear cavity (r 16) in a 90 × 82 mm cover recess, 4 pots at ±21 / ±17 mm, round switch cavity |
+| `rear_3` | Rear cavity, 3 pots | 94 × 34 mm rear cavity in a 106 × 46 mm recess, 3 pots 30 mm apart in a row, round switch cavity |
+| `tele` | Telecaster-style plate | A 160 × 32 mm plate recess (cover depth) routed into the **top**, with a 140 × 22 mm control cavity from its floor; the plate carries 2 pot holes, a 20 × 7 mm blade switch slot and 2 screws |
+| `none` | No controls | No control or switch cavity, pots or covers |
+
+Rear layouts spread their cover screws round the ledge between the cavity
+and its recess (`geometry.body.cover_screw_points`: rays from the cover's
+centre toward its corners, turned up to 30° where the ledge is narrower
+than 5.2 mm) — 4 on the control cover, 3 on the switch cover. The screw
+spots (Ø 3 mm, 1 mm into the ledge floor) are in
+`BodySolid.control_back_marks`; a Tele plate's in `control_top_marks`, and
+its recess and cavity in `control_top_cavities`.
+
+Every cover is a `geometry.body.CoverPlate` (`Prototype001Geometry.covers`):
+the recess outline, the recess depth as the sheet thickness, 3.2 mm screw
+clearance holes, and for the Tele plate its pot holes and switch slot.
+
 ## Bridges
 
 The bridge is an interchangeable *spec* (`geometry.body.bridges`). Each spec
@@ -254,6 +280,7 @@ cavities overlap.
 | Pickup routes | DXF humbucker route with ears, 41 × 85.9 mm, 22 mm deep, centres 491.7 and 587.9 |
 | Pickup screw recesses | Ø 6 mm, 8 mm below the route floor, at ±39.95 mm |
 | Bridge | `KahlerBridgeSpec`: flat mount, no pivot studs, no sustain block; 55 × 65 mm baseplate cutout 25 mm deep (see *Bridges*) |
+| Controls | `almond_2` (see *Controls and cover plates*) |
 | Control cavity | DXF almond, rear, 36 mm deep (8 mm top wall), 2 mm cover recess |
 | Switch cavity | DXF circle Ø 44 at the upper-horn root, rear, 36 mm deep, Ø 59.5 cover recess |
 | Shaft holes | Ø 12.7 switch, 2 × Ø 10 pots at (642, 86) and (682, 87) |

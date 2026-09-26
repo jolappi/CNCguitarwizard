@@ -186,11 +186,11 @@ def test_stepwise_build_reports_progress_between_stages(tmp_path: Path) -> None:
     started = start_build({"prototype": {}, "machining": {}}, str(tmp_path))
 
     assert started["stages"][0] == "Building the geometry"
-    assert len(started["stages"]) == 6
+    assert len(started["stages"]) == 7
     first = advance_build()
     assert first == {
         "completed": 1,
-        "total": 6,
+        "total": 7,
         "done": False,
         "next": "Planning the body toolpaths",
     }
@@ -198,7 +198,7 @@ def test_stepwise_build_reports_progress_between_stages(tmp_path: Path) -> None:
     step = first
     while not step["done"]:
         step = advance_build()
-    assert step["completed"] == 6 and step["next"] is None
+    assert step["completed"] == 7 and step["next"] is None
     result = finish_build()
     assert "Body_top.nc" in result["files"] and result["plan_view"].startswith("<svg")
     assert advance_build() == {"error": "No build has been started."}
@@ -338,3 +338,31 @@ def test_body_editor_layout_moves_the_middle_pickup_as_its_own_group() -> None:
 
     assert groups["Middle pickup route"] == "pickup:middle"
     assert {c["group"] for c in layout["circles"]} >= {"pickup:middle"}
+
+
+def test_the_control_layout_is_a_basic_choice_and_shows_in_the_editor() -> None:
+    fields = {
+        field["name"]: field
+        for group in parameter_schema()["prototype"]
+        for field in group["fields"]
+    }
+    assert fields["body_controls"]["advanced"] is False
+    assert fields["body_controls"]["labels"]["gibson_4"].startswith("Gibson")
+    assert fields["body_controls"]["options"] == [
+        "almond_2",
+        "gibson_4",
+        "rear_3",
+        "tele",
+        "none",
+    ]
+
+    tele = body_editor_layout({"prototype": {"body_controls": "tele"}})
+    roles = {p["name"]: (p["role"], p["group"]) for p in tele["polygons"]}
+    assert roles["Control plate recess"] == ("top_control", "control")
+    assert roles["Control cavity"] == ("top_control", "control")
+    screws = [c for c in tele["circles"] if c["name"].startswith("Control plate")]
+    assert len(screws) == 2 and all(c["group"] == "control" for c in screws)
+
+    gibson = body_editor_layout({"prototype": {"body_controls": "gibson_4"}})
+    marks = [c for c in gibson["circles"] if "cover screw" in c["name"]]
+    assert len(marks) == 7 and all(c.get("rear") for c in marks)

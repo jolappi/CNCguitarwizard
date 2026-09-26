@@ -86,7 +86,7 @@ def render_plan_view_svg(geometry: Prototype001Geometry) -> str:
     pivot_radius = body.bridge_mounting.pivot_hole_diameter / 2.0
     for pivot in body.bridge_mounting.pivot_holes:
         parts.append(circle(pivot.x, pivot.y, pivot_radius, hole))
-    for drilled in body.holes:
+    for drilled in (*body.holes, *body.control_top_marks):
         parts.append(
             circle(drilled.center_x, drilled.center_y, drilled.diameter / 2.0, hole)
         )
@@ -94,7 +94,7 @@ def render_plan_view_svg(geometry: Prototype001Geometry) -> str:
         'fill="#fff" fill-opacity="0.6" stroke="#5a3a8a" stroke-width="0.5" '
         'stroke-dasharray="2,1.5"'
     )
-    for drilled in body.rear_holes:
+    for drilled in (*body.rear_holes, *body.control_back_marks):
         parts.append(
             circle(
                 drilled.center_x, drilled.center_y, drilled.diameter / 2.0, rear_hole

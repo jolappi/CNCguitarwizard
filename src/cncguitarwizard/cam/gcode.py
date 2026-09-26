@@ -23,6 +23,8 @@ class Setup:
             spindle starts, so the operator can check the fixture.
         tool: The tool this setup is cut with, when it differs from the
             parameters handed to the writer (multi-tool parts).
+        work_zero: Where the X/Y/Z zero is, when it is not index pin 1
+            on the stock top (a sheet cover's own centre).
     """
 
     name: str
@@ -31,6 +33,7 @@ class Setup:
     notes: tuple[str, ...] = ()
     reference_points: tuple[tuple[float, float], ...] = ()
     tool: MachiningParameters | None = None
+    work_zero: str | None = None
 
     def cutting_length(self) -> float:
         """Return the total feed-move length in millimetres."""
@@ -75,6 +78,7 @@ class GRBLWriter:
         line, spindle speed, feeds, and safe height.
         """
         parameters = setup.tool or parameters
+        zero = setup.work_zero or "index pin 1"
         lines = [
             f"({PROJECT_NAME} {__version__})",
             f"(Setup: {_comment(setup.description)})",
@@ -85,7 +89,11 @@ class GRBLWriter:
                 f"plunge F{parameters.plunge_rate:.0f}, "
                 f"step-down {parameters.step_down:.3f} mm)"
             ),
-            "(Work zero: X/Y at index pin 1, Z at stock top)",
+            (
+                f"(Work zero: {_comment(setup.work_zero)})"
+                if setup.work_zero
+                else "(Work zero: X/Y at index pin 1, Z at stock top)"
+            ),
         ]
         lines.extend(f"({_comment(note)})" for note in setup.notes)
         lines.extend(
@@ -95,7 +103,9 @@ class GRBLWriter:
                 "G17",
                 "G94",
                 f"G0 Z{parameters.safe_height:.3f}",
-                "(Start over index pin 1 - check the work zero here)",
+                f"(Start over {_comment(zero)} - check the work zero here)"
+                if setup.work_zero is None
+                else "(Start over the work zero - check it here)",
                 "G0 X0.000 Y0.000",
             ]
         )
@@ -117,7 +127,9 @@ class GRBLWriter:
             [
                 "M5",
                 f"G0 Z{parameters.safe_height:.3f}",
-                "(Return over index pin 1)",
+                "(Return over index pin 1)"
+                if setup.work_zero is None
+                else "(Return over the work zero)",
                 "G0 X0.000 Y0.000",
                 "M2",
                 "",

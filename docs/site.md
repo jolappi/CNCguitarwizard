@@ -52,14 +52,15 @@ Python.
    the holes and the fitted start edges).
 3. On **Build** runs the build in stages — `start_build()`, then
    `advance_build()` once per stage of `workflows.Prototype001Build`
-   (geometry, body, neck and fretboard toolpaths, G-code, FreeCAD script),
+   (geometry, body, neck and fretboard toolpaths, cover plates, G-code,
+   FreeCAD script),
    then `finish_build()` — repainting a progress bar and a spinning Build
    button between stages, since Pyodide runs Python on the page's own
    thread. Everything lands in Pyodide's in-memory file system and comes
    back as text.
 4. Shows the whole-instrument plan view, the three toolpath plots, download
-   links for the FreeCAD script (`.py` and `.FCMacro`), the three `.nc`
-   programs, the SVG plots and `build.json`, and a summary with stock size
+   links for the FreeCAD script (`.py` and `.FCMacro`), every `.nc`
+   program (body, electronics, neck, fretboard and one per cover plate), the SVG plots and `build.json`, and a summary with stock size
    and time estimates. Each `.nc` row also has a *Simulate* button: it
    copies that program to the clipboard and opens
    [NC Viewer](https://ncviewer.com) in a panel below, where pasting into

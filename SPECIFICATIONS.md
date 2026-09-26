@@ -67,6 +67,20 @@ pohjasta Ø 5 mm pulttireikä kaulataskuun. Paikat tulevat rungon muodosta
 cutaway on syvä, muuten 32 × 40 mm suorakulmio heel-päädyn lähellä. Holkin on
 jäätävä puuhun 2 mm varalla; piirtoeditorissa pultteja voi raahata.
 
+## Kontrollit ja kannet
+
+Kontrollikolot valitaan (`body_controls`): Design by Jone -manteli kahdella
+potikalla (oletus), Gibson-tyylinen kolo neljällä potikalla, takakolo kolmella
+potikalla rivissä, Telecaster-tyylinen kontrollilevy rungon päälle upotettuna
+(2 potikkaa ja teräkytkimen aukko) tai ei kontrolleja. Takakoloissa on
+myös pyöreä kytkinkolo. Kolot ajetaan omissa ohjelmissaan
+(`Body_back_controls.nc`, Telellä `Body_top_controls.nc`). Kansien ruuvit
+(4 kontrollikanteen, 3 kytkinkanteen) merkitään kansiupotuksen reunalle Ø 3 mm,
+1 mm syvä. Jokainen kansi ja kontrollilevy saa oman `Cover_<nimi>.nc`
+-ohjelmansa pleksistä tai muovista leikattavaksi: 3 mm terä, reiät ja aukot
+ensin, sitten ulkoreuna 0,2 mm upotusta pienempänä neljällä pidikkeellä;
+nollapiste kannen keskellä levyn pinnalla.
+
 ## Mikit
 
 Mikkikokoonpano valitaan (`body_pickups`): kitaralle HH (oletus), HSH, HSS, H,

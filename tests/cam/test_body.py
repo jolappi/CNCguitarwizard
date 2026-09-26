@@ -43,6 +43,7 @@ def test_plan_has_its_setups_in_running_order(plan) -> None:  # type: ignore[no-
         "Body_index_pins",
         "Body_top",
         "Body_back",
+        "Body_back_controls",
         "Body_back_small_holes",
     ]
     assert [path.name for path in plan.index_pins.toolpaths] == [
@@ -54,11 +55,14 @@ def test_plan_has_its_setups_in_running_order(plan) -> None:  # type: ignore[no-
     assert "Bridge baseplate cutout" in names
     assert names[-1] == "Outline, upper half"
     back_names = [path.name for path in plan.back.toolpaths]
-    assert back_names == [
+    assert plan.back_controls is not None
+    assert [path.name for path in plan.back_controls.toolpaths] == [
         "Control cavity cover recess",
         "Control cavity",
         "Switch cavity cover recess",
         "Switch cavity",
+    ]
+    assert back_names == [
         "Neck bolt 1 ferrule",
         "Neck bolt 2 ferrule",
         "Neck bolt 3 ferrule",
@@ -295,9 +299,10 @@ def test_hardtail_plan_puts_narrow_holes_in_a_small_drill_program() -> None:
         "Body_top",
         "Body_top_small_holes",
         "Body_back",
+        "Body_back_controls",
         "Body_back_small_holes",
     ]
-    assert len(plan.preview_outlines) == 5
+    assert len(plan.preview_outlines) == 6
     small_names = [path.name for path in plan.top_small_holes.toolpaths]
     assert len(small_names) == 11 and "String 1 through hole" in small_names
     assert plan.top_small_holes.tool is not None

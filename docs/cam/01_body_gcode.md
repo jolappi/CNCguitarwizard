@@ -60,8 +60,29 @@ Three programs are written, in running order:
 | `Body_index_pins.nc` | Top up | The two dowel holes, through the blank (a body with no tail notch on the centerline, such as the drawn body's starting shape, gets a blank lengthened by a dowel's worth so the tail pin sits in waste) |
 | `Body_top.nc` | Top up, on the dowels | Neck pocket, pickup routes, baseplate cutout, screw recesses, pot and switch shaft holes, outline to half depth + overlap |
 | `Body_top_small_holes.nc` | Top up, on the dowels (only when needed) | Holes narrower than the main tool — a hardtail's string-through and pilot holes — with the `small_hole_tool_diameter` drill |
-| `Body_back.nc` | Flipped, on the dowels | Cover recesses, control and switch cavities, any tremolo spring cavity and its deeper block clearance pocket, the neck-bolt ferrules, outline to half depth + overlap with tabs |
-| `Body_back_small_holes.nc` | Back up, on the dowels | The neck-bolt holes (narrower than the main tool) with the `small_hole_tool_diameter` drill, from each ferrule's floor into the neck pocket |
+| `Body_top_controls.nc` | Top up, on the dowels (Tele plate only) | The control plate recess, then the control cavity from its floor |
+| `Body_back.nc` | Flipped, on the dowels | Any tremolo spring cavity with its cover recess and deeper block clearance pocket, the neck-bolt ferrules, outline to half depth + overlap with tabs |
+| `Body_back_controls.nc` | Back up, on the dowels (rear control layouts) | The control and switch cover recesses and cavities |
+| `Body_back_small_holes.nc` | Back up, on the dowels | The neck-bolt holes (narrower than the main tool) with the `small_hole_tool_diameter` drill, from each ferrule's floor into the neck pocket, and the cover-screw spots on the recess ledges |
+| `Cover_<name>.nc` | A sheet on a spoilboard | One program per cover plate (below) |
+
+The electronics are in their own programs so the body can be cut with or
+without them and the cavities re-run on their own. The Tele plate's screw
+spots go in `Body_top_small_holes.nc`.
+
+### Cover plates
+
+Every cover (`Prototype001Geometry.covers`) gets its own
+`Cover_<name>.nc`, planned by `cam.plan_cover_machining`, to cut from
+plexiglass, pickguard plastic or thin plywood as thick as the cover recess
+(2 mm by default). The small tool cuts everything (`cam.cover_tool`:
+`small_hole_tool_diameter`, feed ≤ 600, plunge ≤ 150, 1 mm steps): the
+screw and pot holes, any slot, then the outline with four 4 mm tabs no
+higher than half the sheet, all 0.5 mm through. The outline is cut
+0.2 mm inside the recess (`COVER_FIT_CLEARANCE`) so the plate drops in.
+The work zero is the centre of the cover's bounding box on the sheet top
+(the header says so instead of naming index pin 1), and a back cover is
+mirrored so its visible face is up.
 
 Every program first rapids to `X0 Y0` at the safe height — parked over
 index pin 1 — then over dowel 2 and back, all before the spindle starts,

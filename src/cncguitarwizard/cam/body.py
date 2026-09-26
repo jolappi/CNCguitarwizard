@@ -14,7 +14,7 @@ import math
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
 
-from ..geometry.body import BodySolid, Cavity, DrilledHole
+from ..geometry.body import BodySolid, Cavity, DrilledHole, RearCavity
 from ..geometry.primitives import Point2D, point_in_polygon
 from .fixturing import StockBounds, resolve_index_pins
 from .gcode import Setup
@@ -33,6 +33,10 @@ class BodyMachiningPlan:
             outline.
         top_small_holes: Top-face program with the small drill for holes
             narrower than the main tool, or ``None`` when there are none.
+        top_controls: Top-face program for top-routed electronics (a
+            control plate's recess and cavity), or ``None``.
+        back_controls: Back-face program for the electronics cavities
+            and their cover recesses, or ``None``.
         back: Back-face setup after the flip: rear cavities, cover
             recesses, rear holes, and the lower half of the outline with
             tabs.
@@ -56,17 +60,26 @@ class BodyMachiningPlan:
     index_pin_positions: tuple[tuple[float, float], ...]
     preview_outlines: tuple[tuple[Point2D, ...], ...] = ()
     back_small_holes: Setup | None = None
+    top_controls: Setup | None = None
+    back_controls: Setup | None = None
 
     @property
     def setups(self) -> tuple[Setup, ...]:
-        """Return the setups in running order."""
-        setups = [self.index_pins, self.top]
-        if self.top_small_holes is not None:
-            setups.append(self.top_small_holes)
-        setups.append(self.back)
-        if self.back_small_holes is not None:
-            setups.append(self.back_small_holes)
-        return tuple(setups)
+        """Return the setups in running order.
+
+        Each face runs its main program, then its electronics program,
+        then its small-drill program.
+        """
+        candidates = (
+            self.index_pins,
+            self.top,
+            self.top_controls,
+            self.top_small_holes,
+            self.back,
+            self.back_controls,
+            self.back_small_holes,
+        )
+        return tuple(setup for setup in candidates if setup is not None)
 
 
 def plan_body_machining(
@@ -124,25 +137,44 @@ def plan_body_machining(
         reference_points,
     )
 
-    top_paths: list[Toolpath] = []
-    for cavity in _top_cavities(body):
+    def top_pocket(cavity: Cavity) -> Toolpath:
         depth = cavity.depth
         if cavity in body.through_cavities and depth >= body.thickness:
             depth = body.thickness + parameters.through_overshoot
         # A stepped floor (or a through route inside a recess) starts
         # where the enclosing pocket, cut earlier, already ended.
-        top_paths.append(
-            pocket(
-                cavity.name,
-                top_frame.polygon(cavity.outline),
-                depth,
-                parameters,
-                start_depth=body.step_start_depth(cavity),
-            )
+        return pocket(
+            cavity.name,
+            top_frame.polygon(cavity.outline),
+            depth,
+            parameters,
+            start_depth=body.step_start_depth(cavity),
         )
+
+    top_paths: list[Toolpath] = [
+        top_pocket(cavity)
+        for cavity in _top_cavities(body)
+        if cavity not in body.control_top_cavities
+    ]
     small_holes = [
         hole for hole in body.holes if hole.diameter < parameters.tool_diameter - 1e-6
+    ] + [
+        hole
+        for hole in body.control_top_marks
+        if hole.diameter < parameters.tool_diameter - 1e-6
     ]
+    top_controls: Setup | None = None
+    if body.control_top_cavities:
+        top_controls = Setup(
+            "Body_top_controls",
+            "Body top face - control plate recess and cavity",
+            tuple(top_pocket(cavity) for cavity in body.control_top_cavities),
+            (
+                "Same fixture, tool and X/Y zero as Body_top.",
+                "The plate's screw spots are in Body_top_small_holes.",
+            ),
+            reference_points,
+        )
     for hole in body.holes:
         if hole in small_holes:
             continue
@@ -201,40 +233,61 @@ def plan_body_machining(
             small_tool,
         )
 
-    back_paths: list[Toolpath] = []
-    for rear in body.rear_cavities:
-        back_paths.append(
+    def rear_pockets(rear: RearCavity) -> list[Toolpath]:
+        paths = [
             pocket(
                 rear.cover_recess.name,
                 back_frame.polygon(rear.cover_recess.outline),
                 rear.cover_recess.depth,
                 parameters,
-            )
-        )
-        back_paths.append(
+            ),
             pocket(
                 rear.cavity.name,
                 back_frame.polygon(rear.cavity.outline),
                 rear.cavity.depth,
                 parameters,
                 start_depth=rear.cover_recess.depth,
+            ),
+        ]
+        paths += [
+            pocket(
+                step.name,
+                back_frame.polygon(step.outline),
+                step.depth,
+                parameters,
+                start_depth=rear.cavity.depth,
             )
-        )
-        for step in rear.steps:
-            back_paths.append(
-                pocket(
-                    step.name,
-                    back_frame.polygon(step.outline),
-                    step.depth,
-                    parameters,
-                    start_depth=rear.cavity.depth,
-                )
-            )
+            for step in rear.steps
+        ]
+        return paths
+
+    electronics = [
+        rear
+        for rear in (body.control_cavity, body.switch_cavity, body.battery_cavity)
+        if rear is not None
+    ]
+    back_paths: list[Toolpath] = []
+    for rear in body.extra_rear_cavities:
+        back_paths += rear_pockets(rear)
     back_small = [
         hole
-        for hole in body.rear_holes
+        for hole in (*body.rear_holes, *body.control_back_marks)
         if hole.diameter < parameters.tool_diameter - 1e-6
     ]
+    back_controls: Setup | None = None
+    if electronics:
+        back_controls = Setup(
+            "Body_back_controls",
+            "Body back face - electronics cavities and their cover recesses",
+            tuple(path for rear in electronics for path in rear_pockets(rear)),
+            (
+                "Same fixture, tool and X/Y zero as Body_back (still held by the "
+                "outline's tabs).",
+                "The cover-screw spots are in Body_back_small_holes; drill the "
+                "screw pilots by hand to suit the screws.",
+            ),
+            reference_points,
+        )
     for hole in body.rear_holes:
         if hole not in back_small:
             back_paths.append(_drill_rear_hole(hole, body, back_frame, parameters))
@@ -249,7 +302,7 @@ def plan_body_machining(
     )
     back = Setup(
         "Body_back",
-        "Body back face - rear cavities, cover recesses, lower half of the outline",
+        "Body back face - bridge cavities, rear holes, lower half of the outline",
         tuple(back_paths),
         (
             "Flip the blank about the neck centerline onto the same two index pins.",
@@ -287,9 +340,13 @@ def plan_body_machining(
     top_outline = top_frame.polygon(body.outline.points)
     back_outline = back_frame.polygon(body.outline.points)
     previews = [top_outline, top_outline]
+    if top_controls is not None:
+        previews.append(top_outline)
     if top_small_holes is not None:
         previews.append(top_outline)
     previews.append(back_outline)
+    if back_controls is not None:
+        previews.append(back_outline)
     if back_small_holes is not None:
         previews.append(back_outline)
     return BodyMachiningPlan(
@@ -305,6 +362,8 @@ def plan_body_machining(
         index_pin_positions=tuple((x, y) for x, y in pins),
         preview_outlines=tuple(previews),
         back_small_holes=back_small_holes,
+        top_controls=top_controls,
+        back_controls=back_controls,
     )
 
 
@@ -349,6 +408,14 @@ def _drill_rear_hole(
     through overshoot so it breaks cleanly into it.
     """
     start_depth = 0.0
+    # Inside a rear cavity or its cover recess the wood starts at that
+    # floor (a cover screw's spot sits on the recess floor).
+    for rear in body.rear_cavities:
+        for floor in (rear.cover_recess, *rear.pockets):
+            if floor.depth < hole.depth and point_in_polygon(
+                hole.center, floor.outline
+            ):
+                start_depth = max(start_depth, floor.depth)
     for other in body.rear_holes:
         if (
             other is not hole

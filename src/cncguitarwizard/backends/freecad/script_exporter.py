@@ -1770,6 +1770,8 @@ class FreeCADScriptExporter:
             )
         for index, extra_cavity in enumerate(body.extra_cavities, start=1):
             cavity_cuts.append((extra_cavity, f"extra cavity {index} cut"))
+        for control in body.control_top_cavities:
+            cavity_cuts.append((control, f"{control.name.lower()} cut"))
         for through in body.through_cavities:
             cavity_cuts.append((through, f"{through.name.lower()} through cut"))
         for cavity, label in cavity_cuts:
@@ -1810,7 +1812,7 @@ class FreeCADScriptExporter:
                 f"    \"bridge pivot hole {index} cut\",\n"
                 ")\n"
             )
-        for drilled in body.holes:
+        for drilled in (*body.holes, *body.control_top_marks):
             # A through hole (depth == thickness) gets the overcut at both
             # ends so it breaks cleanly out of the back face too.
             lines.append(
@@ -1826,7 +1828,7 @@ class FreeCADScriptExporter:
                 f"    {drilled.name.lower() + ' cut'!r},\n"
                 ")\n"
             )
-        for drilled in body.rear_holes:
+        for drilled in (*body.rear_holes, *body.control_back_marks):
             # Drilled up from the back face (Z = -thickness).
             lines.append(
                 "drilled_hole = Part.makeCylinder(\n"

@@ -30,11 +30,15 @@ from .presets.body_shapes import (
     YOUR_DESIGN_TEMPLATES,
     body_shape_from_dict,
 )
+from .presets.controls import CONTROL_LABELS
 from .presets.prototype001 import INSTRUMENT_OVERRIDES
 from .render.svg import render_plan_view_svg
 from .workflows import Prototype001Build
 
 _VARIANT_LABELS: dict[str, str] = {**BRIDGE_LABELS, **BODY_SHAPE_LABELS}
+
+# Readable names for choice fields whose options are short codes.
+_CHOICE_LABELS: dict[str, dict[str, str]] = {"body_controls": CONTROL_LABELS}
 
 INSTRUMENT_LABELS: dict[str, str] = {
     "electric_guitar": "Electric guitar",
@@ -68,6 +72,7 @@ _BASIC_FIELDS: frozenset[str] = frozenset(
         "body_shape",
         "body_pickups",
         "body_bridge",
+        "body_controls",
         "body_neck_pickup_offset",
         "body_bridge_pickup_offset",
         "tool_diameter",
@@ -144,14 +149,15 @@ def parameter_schema() -> dict[str, Any]:
 def _editor_group(name: str) -> str | None:
     """Return which draggable group a body feature belongs to, if any.
 
-    ``control`` (the control cavity and its cover), ``switch`` (cavity,
+    ``control`` (every "Control ..." feature: the cavity, its cover and
+    screws, a layout's own pots, a control plate), ``switch`` (cavity,
     cover and shaft hole), ``pot:N`` (one pot hole, zero-based),
     ``pickup:neck`` / ``pickup:middle`` / ``pickup:bridge`` (a route and
     its screw recesses)
     ``bolt:N`` (a neck bolt's ferrule and hole) and ``jack``; the neck, its
     pocket and the bridge do not move.
     """
-    if name.startswith("Control cavity"):
+    if name.startswith("Control "):
         return "control"
     if name.startswith("Switch"):
         return "switch"
@@ -187,9 +193,9 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         ``templates`` maps a key to ``{"label", "shape"}``, the shape as
         the form's JSON. ``polygons`` is a list of ``{"name", "role",
         "group", "points"}`` with ``role`` one of ``neck``, ``pocket``,
-        ``pickup``, ``bridge``, ``rear`` or ``cover``; ``circles`` a list
-        of ``{"name", "group", "x", "y", "r"}``; ``jack`` ``{"group", "x",
-        "y", "x2", "y2", "r"}``.
+        ``pickup``, ``bridge``, ``top_control``, ``rear`` or ``cover``;
+        ``circles`` a list of ``{"name", "group", "x", "y", "r"}``;
+        ``jack`` ``{"group", "x", "y", "x2", "y2", "r"}``.
     """
     try:
         parameters = Prototype001Parameters(**_coerce(payload.get("prototype", {})))
@@ -220,11 +226,15 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         polygons.append(polygon(pickup.name, "pickup", pickup.outline))
     for cavity in (*layout.extra_cavities, *layout.through_cavities):
         polygons.append(polygon(cavity.name, "bridge", cavity.outline))
+    for cavity in layout.controls.top_cavities:
+        polygons.append(polygon(cavity.name, "top_control", cavity.outline))
     for rear in (
         layout.control_cavity,
         layout.switch_cavity,
         *layout.extra_rear_cavities,
     ):
+        if rear is None:
+            continue
         cover = rear.cover_recess
         polygons.append(polygon(cover.name, "cover", cover.outline))
         for pocket in rear.pockets:
@@ -248,7 +258,17 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
             "r": hole.diameter / 2.0,
             "rear": True,
         }
-        for hole in layout.rear_holes
+        for hole in (*layout.rear_holes, *layout.controls.back_marks)
+    ]
+    circles += [
+        {
+            "name": hole.name,
+            "group": _editor_group(hole.name),
+            "x": round(hole.center_x - heel_end, 2),
+            "y": round(hole.center_y, 2),
+            "r": hole.diameter / 2.0,
+        }
+        for hole in layout.controls.top_marks
     ]
     mounting = layout.bridge_mounting
     circles += [
@@ -501,6 +521,8 @@ def _describe_fields(
             entry["options"] = [
                 str(option) for option in typing.get_args(hints[field.name])
             ]
+            if field.name in _CHOICE_LABELS:
+                entry["labels"] = _CHOICE_LABELS[field.name]
         variants = _variant_classes(hints[field.name])
         if variants:
             entry["type"] = "variant"

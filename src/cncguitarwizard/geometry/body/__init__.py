@@ -12,6 +12,7 @@ from .bridges import (
     TuneOMaticSpec,
     bridge_spec_from_dict,
 )
+from .covers import CoverPlate, cover_screw_points
 from .hardware import (
     BridgeMounting,
     Cavity,
@@ -33,6 +34,7 @@ __all__ = [
     "BridgeMounting",
     "BridgeSpec",
     "Cavity",
+    "CoverPlate",
     "CircularCavity",
     "DrilledHole",
     "FloydRoseSpec",
@@ -45,4 +47,5 @@ __all__ = [
     "TracedOutline",
     "TuneOMaticSpec",
     "bridge_spec_from_dict",
+    "cover_screw_points",
 ]
