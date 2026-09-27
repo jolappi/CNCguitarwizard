@@ -199,9 +199,7 @@ def test_body_solid_rejects_a_pivot_hole_deeper_than_the_slab() -> None:
 
 def test_body_solid_rejects_a_jack_bore_through_the_whole_body() -> None:
     with pytest.raises(BodyGeometryError):
-        make_body(
-            jack_hole=JackHole(700.0, -140.0, 200.0, diameter=12.5, depth=500.0)
-        )
+        make_body(jack_hole=JackHole(700.0, -140.0, 200.0, diameter=12.5, depth=500.0))
 
 
 def test_body_solid_rejects_a_cavity_outside_the_outline() -> None:

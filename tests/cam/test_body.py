@@ -143,13 +143,16 @@ def test_plan_rejects_an_index_pin_inside_the_finished_body(body) -> None:
 def test_every_top_cut_stays_inside_its_own_feature(body, plan, parameters) -> None:  # type: ignore[no-untyped-def]
     """No cutting move on the top face leaves the cavity or hole it belongs to."""
     radius = parameters.tool_radius
-    cavities = {cavity.name: cavity for cavity in (
-        body.neck_pocket,
-        body.truss_rod_access,
-        body.neck_pickup,
-        body.bridge_pickup,
-        *body.extra_cavities,
-    )}
+    cavities = {
+        cavity.name: cavity
+        for cavity in (
+            body.neck_pocket,
+            body.truss_rod_access,
+            body.neck_pickup,
+            body.bridge_pickup,
+            *body.extra_cavities,
+        )
+    }
     holes = {hole.name: hole for hole in body.holes}
     for path in plan.top.toolpaths:
         for move in path.moves:
@@ -234,9 +237,7 @@ def test_both_outline_halves_overlap_at_the_mid_plane(plan, body, parameters) ->
     assert top.deepest_z() == pytest.approx(expected)
     assert back.deepest_z() == pytest.approx(expected)
     tab_top = expected + parameters.tab_height
-    assert any(
-        not move.rapid and abs(move.z - tab_top) < 1e-6 for move in back.moves
-    )
+    assert any(not move.rapid and abs(move.z - tab_top) < 1e-6 for move in back.moves)
 
 
 def test_plan_reports_a_blank_larger_than_the_outline(plan, body) -> None:  # type: ignore[no-untyped-def]

@@ -33,16 +33,11 @@ class TracedOutline:
     def __post_init__(self) -> None:
         """Reject a point set too small or malformed to be a silhouette."""
         if len(self.points) < 3:
-            raise BodyGeometryError(
-                "Traced outline needs at least three points."
-            )
+            raise BodyGeometryError("Traced outline needs at least three points.")
         if not all(
-            math.isfinite(point.x) and math.isfinite(point.y)
-            for point in self.points
+            math.isfinite(point.x) and math.isfinite(point.y) for point in self.points
         ):
-            raise BodyGeometryError(
-                "Traced outline points must all be finite."
-            )
+            raise BodyGeometryError("Traced outline points must all be finite.")
 
 
 @dataclass(frozen=True, slots=True)
@@ -253,8 +248,7 @@ class BodyOutline:
         )
         if not all(math.isfinite(value) and value > 0.0 for value in scalar_fields):
             raise BodyGeometryError(
-                "Body outline lengths and half-widths must be finite and "
-                "positive."
+                "Body outline lengths and half-widths must be finite and positive."
             )
         radii = (
             self.horn_tip_radius,
@@ -270,29 +264,21 @@ class BodyOutline:
             )
         pocket_half_width = self._pocket_half_width()
         if self.treble_horn_tip_half_width < pocket_half_width * 0.5:
-            raise BodyGeometryError(
-                "Treble horn tip must clear the neck pocket wall."
-            )
+            raise BodyGeometryError("Treble horn tip must clear the neck pocket wall.")
         if self.bass_horn_tip_half_width < pocket_half_width * 0.5:
-            raise BodyGeometryError(
-                "Bass horn tip must clear the neck pocket wall."
-            )
+            raise BodyGeometryError("Bass horn tip must clear the neck pocket wall.")
         treble_stations = (
             self.treble_horn_tip_position,
             self.neck_pocket_start,
         )
         if treble_stations[0] >= treble_stations[1]:
-            raise BodyGeometryError(
-                "Treble horn tip must sit before the neck pocket."
-            )
+            raise BodyGeometryError("Treble horn tip must sit before the neck pocket.")
         bass_stations = (
             self.bass_horn_tip_position,
             self.neck_pocket_start,
         )
         if bass_stations[0] >= bass_stations[1]:
-            raise BodyGeometryError(
-                "Bass horn tip must sit before the neck pocket."
-            )
+            raise BodyGeometryError("Bass horn tip must sit before the neck pocket.")
         for label, positions in (
             (
                 "Treble",

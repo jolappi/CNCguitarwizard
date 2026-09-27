@@ -93,17 +93,16 @@ class InlayLayout:
         final_fret_position = fret_positions[self.fretboard_surface.fret_count]
 
         def midpoint(fret_number: int) -> float:
-            previous = (
-                0.0 if fret_number == 1 else fret_positions[fret_number - 1]
-            )
+            previous = 0.0 if fret_number == 1 else fret_positions[fret_number - 1]
             return (previous + fret_positions[fret_number]) / 2.0
 
         def half_width_at(position: float) -> float:
             fraction = position / final_fret_position
             surface = self.fretboard_surface
-            width = surface.nut_width + (
-                surface.last_fret_width - surface.nut_width
-            ) * fraction
+            width = (
+                surface.nut_width
+                + (surface.last_fret_width - surface.nut_width) * fraction
+            )
             return width / 2.0
 
         markers: list[InlayMarker] = []
@@ -215,8 +214,7 @@ class InlayLayout:
             )
         if self.depth >= self.fretboard_surface.center_thickness:
             raise FretboardGeometryError(
-                "Inlay depth must leave material above the fretboard's "
-                "flat underside."
+                "Inlay depth must leave material above the fretboard's flat underside."
             )
         overlap = set(self.single_marker_frets) & set(self.double_marker_frets)
         if overlap:
@@ -296,9 +294,7 @@ def _barbed_wire_outline(
         points = [(-half_span, sign * wire_half_thickness)]
         for lateral in barb_positions:
             points.append((lateral - barb_half_width, sign * wire_half_thickness))
-            points.append(
-                (lateral, sign * (wire_half_thickness + barb_reach))
-            )
+            points.append((lateral, sign * (wire_half_thickness + barb_reach)))
             points.append((lateral + barb_half_width, sign * wire_half_thickness))
         points.append((half_span, sign * wire_half_thickness))
         return points

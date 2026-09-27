@@ -93,9 +93,7 @@ class HeadstockPlan:
         tip_right = Point2D(-self.length, -self.half_width_at_y(self.length, -1.0))
         distances: tuple[float, ...] = (
             *(
-                self.shoulder_distance
-                * index
-                / self.side_curve_segments
+                self.shoulder_distance * index / self.side_curve_segments
                 for index in range(self.side_curve_segments + 1)
             ),
             *(
@@ -193,9 +191,7 @@ class HeadstockPlan:
 
     def _validate_drawn(self) -> None:
         if (self.bass_edge is None) != (self.treble_edge is None):
-            raise HeadstockGeometryError(
-                "Draw both headstock edges, or neither."
-            )
+            raise HeadstockGeometryError("Draw both headstock edges, or neither.")
         if self.bass_edge is None or self.treble_edge is None:
             return
         for side, edge in (("bass", self.bass_edge), ("treble", self.treble_edge)):
@@ -237,15 +233,17 @@ class HeadstockPlan:
         if distance <= self.shoulder_distance:
             fraction = distance / self.shoulder_distance
             blend = self._smoothstep(fraction)
-            return self.nut_width / 2.0 + (
-                self._shoulder_half(side) - self.nut_width / 2.0
-            ) * blend
+            return (
+                self.nut_width / 2.0
+                + (self._shoulder_half(side) - self.nut_width / 2.0) * blend
+            )
         fraction = (distance - self.shoulder_distance) / (
             self.length - self.shoulder_distance
         )
-        return self._shoulder_half(side) + (
-            self._tip_half(side) - self._shoulder_half(side)
-        ) * fraction
+        return (
+            self._shoulder_half(side)
+            + (self._tip_half(side) - self._shoulder_half(side)) * fraction
+        )
 
     def side_of_y(self, y_sign: float) -> Side:
         """Return the physical side lying toward +Y (``1.0``) or -Y (``-1.0``)."""
@@ -483,23 +481,15 @@ class TunerLayout:
                 "Tuner-hole diameter must be greater than zero."
             )
         if self.minimum_edge_clearance < 0.0:
-            raise HeadstockGeometryError(
-                "Tuner edge clearance must not be negative."
-            )
+            raise HeadstockGeometryError("Tuner edge clearance must not be negative.")
         if self.minimum_hole_clearance < 0.0:
-            raise HeadstockGeometryError(
-                "Tuner-hole clearance must not be negative."
-            )
+            raise HeadstockGeometryError("Tuner-hole clearance must not be negative.")
         if any(distance <= 0.0 for distance in self.station_distances):
-            raise HeadstockGeometryError(
-                "Tuner stations must lie beyond the nut."
-            )
+            raise HeadstockGeometryError("Tuner stations must lie beyond the nut.")
         if len(self.station_distances) != len(self.side_offsets) or not (
             self.station_distances
         ):
-            raise HeadstockGeometryError(
-                "Tuner stations need one side offset each."
-            )
+            raise HeadstockGeometryError("Tuner stations need one side offset each.")
         if self.sides is not None:
             if len(self.sides) != len(self.station_distances):
                 raise HeadstockGeometryError("Tuner stations need one side each.")

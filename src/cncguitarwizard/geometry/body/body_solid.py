@@ -142,22 +142,17 @@ class BodySolid:
                     f"{hole.name} must not be deeper than the body."
                 )
             if not point_in_polygon(hole.center, self.outline.points):
-                raise BodyGeometryError(
-                    f"{hole.name} falls outside the body outline."
-                )
+                raise BodyGeometryError(f"{hole.name} falls outside the body outline.")
 
         for cavity in self._cavities():
             if cavity in self.through_cavities:
                 continue
             if cavity.depth >= self.thickness:
                 raise BodyGeometryError(
-                    f"{cavity.name} depth must leave material beneath its "
-                    "floor."
+                    f"{cavity.name} depth must leave material beneath its floor."
                 )
         for cavity in self.through_cavities:
-            if cavity.depth < self.thickness and not self._reaches_rear_cavity(
-                cavity
-            ):
+            if cavity.depth < self.thickness and not self._reaches_rear_cavity(cavity):
                 raise BodyGeometryError(
                     f"{cavity.name} is a through route and must reach the back "
                     "face or a rear cavity beneath it."
@@ -198,9 +193,7 @@ class BodySolid:
                         f"{first.name} overlaps {second.name}: nested, but the "
                         "inner one is not deeper, so not a step."
                     )
-                raise BodyGeometryError(
-                    f"{first.name} overlaps {second.name}."
-                )
+                raise BodyGeometryError(f"{first.name} overlaps {second.name}.")
         # Each rear cavity closes with its own plate, so two cover
         # recesses must not overlap: the plates would sit on each other.
         rears = self.rear_cavities
@@ -254,9 +247,7 @@ class BodySolid:
                 "Bridge pivot holes must leave material beneath their floor."
             )
         if self.jack_hole.depth >= self._outline_half_span():
-            raise BodyGeometryError(
-                "Jack bore must not reach clean through the body."
-            )
+            raise BodyGeometryError("Jack bore must not reach clean through the body.")
 
         # Testing every one of a cavity's own outline points (not just its
         # bounding-box corners) catches a concave or irregular traced
@@ -286,13 +277,11 @@ class BodySolid:
                     for point in tail_points
                 ):
                     raise BodyGeometryError(
-                        f"{cavity.name} tail-ward wall falls outside the "
-                        "body outline."
+                        f"{cavity.name} tail-ward wall falls outside the body outline."
                     )
                 continue
             if not all(
-                point_in_polygon(point, self.outline.points)
-                for point in test_points
+                point_in_polygon(point, self.outline.points) for point in test_points
             ):
                 raise BodyGeometryError(
                     f"{cavity.name} falls outside the body outline."

@@ -92,9 +92,7 @@ def test_raster_rough_layers_never_exceed_the_step_down_or_the_surface() -> None
     first_layer = [move for move in cut_moves if abs(move.z - levels[-1]) < 1e-6]
     assert first_layer
     plunges = [
-        move
-        for move in path.moves
-        if not move.rapid and move.feed == flat.plunge_rate
+        move for move in path.moves if not move.rapid and move.feed == flat.plunge_rate
     ]
     assert all(abs(move.z) <= grid.floor() * -1 + 1e-6 for move in plunges)
 

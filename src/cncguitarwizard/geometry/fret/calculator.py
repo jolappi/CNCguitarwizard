@@ -26,8 +26,6 @@ class FretCalculator:
         for number in range(1, fret_count + 1):
             remaining_scale = scale_length / math.pow(2.0, number / 12.0)
             distance_from_nut = scale_length - remaining_scale
-            positions.append(
-                FretPosition(number, distance_from_nut, remaining_scale)
-            )
+            positions.append(FretPosition(number, distance_from_nut, remaining_scale))
 
         return positions

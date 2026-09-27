@@ -138,9 +138,7 @@ def test_stepwise_build_runs_one_stage_per_advance(tmp_path: Path) -> None:
     result = build.result
     assert result.report_path.is_file()
     assert len(result.gcode_paths) == 17
-    assert (
-        Prototype001Build(tmp_path / "freecad").labels[-1] == "Running FreeCAD"
-    )
+    assert Prototype001Build(tmp_path / "freecad").labels[-1] == "Running FreeCAD"
 
 
 def test_generated_script_targets_absolute_build_paths(tmp_path: Path) -> None:
@@ -253,9 +251,9 @@ def test_build_rejects_failed_or_incomplete_freecad_execution(
         (tmp_path / "failed" / "build.json").read_text(encoding="utf-8")
     )
     assert failed_report["status"] == "failed"
-    assert "BREP failure" in (
-        tmp_path / "failed" / "freecad.log"
-    ).read_text(encoding="utf-8")
+    assert "BREP failure" in (tmp_path / "failed" / "freecad.log").read_text(
+        encoding="utf-8"
+    )
 
     monkeypatch.setattr(
         subprocess,

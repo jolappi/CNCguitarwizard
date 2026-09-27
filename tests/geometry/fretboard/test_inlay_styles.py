@@ -39,7 +39,16 @@ def test_block_style_makes_one_tapered_block_per_fret() -> None:
 
     assert len(layout.markers) == 10
     assert [m.fret_number for m in layout.markers] == [
-        3, 5, 7, 9, 12, 15, 17, 19, 21, 24
+        3,
+        5,
+        7,
+        9,
+        12,
+        15,
+        17,
+        19,
+        21,
+        24,
     ]
     block = next(m for m in layout.markers if m.fret_number == 12)
     xs = [p.x for p in block.outline]

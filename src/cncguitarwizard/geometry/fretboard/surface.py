@@ -123,10 +123,7 @@ class FretboardSurface:
             raise FretboardGeometryError(
                 "Fretboard radius must exceed half of the widest section."
             )
-        if (
-            self.profile_sample_count < 3
-            or self.profile_sample_count % 2 == 0
-        ):
+        if self.profile_sample_count < 3 or self.profile_sample_count % 2 == 0:
             raise FretboardGeometryError(
                 "Profile sample count must be an odd integer of at least three."
             )
@@ -145,10 +142,7 @@ class FretboardSurface:
     ) -> tuple[Point3D, ...]:
         """Return one circular-arc row at a longitudinal station."""
         fraction = position / final_position
-        width = (
-            self.nut_width
-            + (self.last_fret_width - self.nut_width) * fraction
-        )
+        width = self.nut_width + (self.last_fret_width - self.nut_width) * fraction
         half_width = width / 2.0
         step = width / (self.profile_sample_count - 1)
 
@@ -162,9 +156,7 @@ class FretboardSurface:
 
     def _surface_point(self, position: float, lateral: float) -> Point3D:
         """Return one point on the constant-radius playing surface."""
-        surface_drop = self.radius - math.sqrt(
-            self.radius**2 - lateral**2
-        )
+        surface_drop = self.radius - math.sqrt(self.radius**2 - lateral**2)
         return Point3D(
             position + self.skew.at(position) * lateral,
             lateral,

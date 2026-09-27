@@ -112,17 +112,13 @@ class FreeCADScriptExporter:
             # force FreeCAD to fall back to a compound rather than one solid.
             headstock_root_swell=0.0,
             nut_end_u_trim_depth=geometry.nut_end_u_trim_depth,
-            nut_end_u_side_fillet_radius=(
-                geometry.nut_end_u_side_fillet_radius
-            ),
+            nut_end_u_side_fillet_radius=(geometry.nut_end_u_side_fillet_radius),
             headstock_outer_d_profile_guide_extension=(
                 geometry.headstock_outer_d_profile_guide_extension
             ),
             heel_nose_radius=geometry.heel_nose_radius,
             heel_block_start_offset=geometry.heel_block_start_offset,
-            join_headstock_to_neck=(
-                join_headstock_to_neck and not hide_headstock
-            ),
+            join_headstock_to_neck=(join_headstock_to_neck and not hide_headstock),
             hide_headstock=hide_headstock,
             fret_layout=geometry.fret_layout,
             fret_slot_width=geometry.fret_slot_width,
@@ -298,8 +294,7 @@ class FreeCADScriptExporter:
             or not 0.0 <= nut_end_u_side_fillet_radius <= 2.0
         ):
             raise FreeCADBackendError(
-                "Nut-end U side fillet radius must be finite and between "
-                "0 and 2 mm."
+                "Nut-end U side fillet radius must be finite and between 0 and 2 mm."
             )
         if (
             not math.isfinite(heel_nose_radius)
@@ -315,8 +310,7 @@ class FreeCADScriptExporter:
             or headstock_outer_d_profile_guide_extension < 0.0
         ):
             raise FreeCADBackendError(
-                "Outer D-profile guide extension must be finite and "
-                "non-negative."
+                "Outer D-profile guide extension must be finite and non-negative."
             )
         block_start_offset = (
             neck_surface.heel_flat_start_offset
@@ -370,10 +364,7 @@ class FreeCADScriptExporter:
                 "greater than half the nut width."
             )
 
-        neck_rows = tuple(
-            self._close_neck_row(row)
-            for row in neck_surface.mesh.rows
-        )
+        neck_rows = tuple(self._close_neck_row(row) for row in neck_surface.mesh.rows)
         headstock_join_extension = neck_surface.nut_root_side_extension
         headstock_joins_neck_loft = (
             join_headstock_to_neck
@@ -406,9 +397,7 @@ class FreeCADScriptExporter:
             # that point, not past x = 0.
             first_unblended_index = next(
                 index
-                for index, position in enumerate(
-                    neck_surface.station_positions
-                )
+                for index, position in enumerate(neck_surface.station_positions)
                 if position > neck_surface.nut_transition_length + 2.0
             )
             neck_rows = transition_sections + tuple(
@@ -420,18 +409,13 @@ class FreeCADScriptExporter:
             - neck_surface.heel_flat_start_offset
         )
         fretboard_rows = tuple(
-            self._close_fretboard_row(row)
-            for row in fretboard_surface.mesh.rows
+            self._close_fretboard_row(row) for row in fretboard_surface.mesh.rows
         )
         fret_surface_rows = fretboard_surface.mesh.rows[
             1 : fretboard_surface.fret_count + 1
         ]
         export_feature_names = ["neck_feature", "fretboard_feature"]
-        if (
-            headstock is not None
-            and not join_headstock_to_neck
-            and not hide_headstock
-        ):
+        if headstock is not None and not join_headstock_to_neck and not hide_headstock:
             export_feature_names.append("headstock_feature")
         if body is not None:
             export_feature_names.append("body_feature")
@@ -501,13 +485,13 @@ class FreeCADScriptExporter:
             "        vectors.append(vectors[0])\n"
             "        sections.append(Part.makePolygon(vectors))\n"
             "    shape = Part.makeLoft(sections, True, False, False)\n"
-            "    return require_shape(shape, \"loft\")\n\n"
+            '    return require_shape(shape, "loft")\n\n'
             "def require_shape(shape, operation):\n"
             '    """Reject null or invalid FreeCAD operation results."""\n'
             "    if shape.isNull():\n"
-            "        raise RuntimeError(f\"{operation} produced a null shape\")\n"
+            '        raise RuntimeError(f"{operation} produced a null shape")\n'
             "    if not shape.isValid():\n"
-            "        raise RuntimeError(f\"{operation} produced an invalid shape\")\n"
+            '        raise RuntimeError(f"{operation} produced an invalid shape")\n'
             "    return shape\n\n"
             "def side_joint_edges(shape, joint_x, minimum_abs_y, x_tolerance):\n"
             '    """Return lateral edges local to one solid joint."""\n'
@@ -603,8 +587,8 @@ class FreeCADScriptExporter:
             "            candidate = shape.makeFillet(attempted_radius, edges)\n"
             "        except Exception as error:\n"
             "            print(\n"
-            "                f\"WARNING: {operation} radius \"\n"
-            "                f\"{attempted_radius:.3f} mm failed: {error}\"\n"
+            '                f"WARNING: {operation} radius "\n'
+            '                f"{attempted_radius:.3f} mm failed: {error}"\n'
             "            )\n"
             "            continue\n"
             "        if (\n"
@@ -615,15 +599,15 @@ class FreeCADScriptExporter:
             "            )\n"
             "        ):\n"
             "            print(\n"
-            "                f\"{operation}: applied {attempted_radius:.3f} mm\"\n"
+            '                f"{operation}: applied {attempted_radius:.3f} mm"\n'
             "            )\n"
             "            return candidate\n"
             "        print(\n"
-            "            f\"WARNING: {operation} radius \"\n"
-            "            f\"{attempted_radius:.3f} mm grew the bounding box; \"\n"
-            "            \"discarded\"\n"
+            '            f"WARNING: {operation} radius "\n'
+            '            f"{attempted_radius:.3f} mm grew the bounding box; "\n'
+            '            "discarded"\n'
             "        )\n"
-            "    print(f\"WARNING: {operation} skipped; base transition retained\")\n"
+            '    print(f"WARNING: {operation} skipped; base transition retained")\n'
             "    return shape\n\n"
             "def preserves_base_shape(candidate, shapes):\n"
             '    """Reject a boolean result that has lost any input solid."""\n'
@@ -665,14 +649,14 @@ class FreeCADScriptExporter:
             "    negligible = 0.01\n"
             "    if all(solid.Volume < negligible for solid in solids[1:]):\n"
             "        print(\n"
-            "            f\"{operation}: dropped {len(solids) - 1} \"\n"
-            "            \"negligible sliver solid(s) from the fuse\"\n"
+            '            f"{operation}: dropped {len(solids) - 1} "\n'
+            '            "negligible sliver solid(s) from the fuse"\n'
             "        )\n"
             "        return largest\n"
             "    print(\n"
-            "        f\"WARNING: {operation} produced {len(solids)} solids \"\n"
-            "        \"and more than one is non-negligible; inspect the \"\n"
-            "        \"root before CAM.\"\n"
+            '        f"WARNING: {operation} produced {len(solids)} solids "\n'
+            '        "and more than one is non-negligible; inspect the "\n'
+            '        "root before CAM."\n'
             "    )\n"
             "    return candidate\n\n"
             "def fuse_or_compound(shapes, operation):\n"
@@ -713,11 +697,11 @@ class FreeCADScriptExporter:
             "    ):\n"
             "        return drop_negligible_solids(candidate, operation)\n"
             "    print(\n"
-            "        f\"WARNING: {operation} used a compound fallback; \"\n"
-            "        \"inspect the root before CAM.\"\n"
+            '        f"WARNING: {operation} used a compound fallback; "\n'
+            '        "inspect the root before CAM."\n'
             "    )\n"
             "    compound = Part.makeCompound(shapes)\n"
-            "    return require_shape(compound, operation + \" fallback\")\n\n"
+            '    return require_shape(compound, operation + " fallback")\n\n'
             f'document = App.newDocument("{document_name}")\n'
             "neck_shape = make_loft(NECK_SECTION_POINTS)\n"
             f"{nut_end_u_trim_source}"
@@ -793,9 +777,7 @@ class FreeCADScriptExporter:
         if not include_headstock:
             return guide_source
         root_extension = neck_surface.nut_root_side_extension
-        headstock_joins_via_loft = (
-            join_to_neck and root_extension > 0.0
-        )
+        headstock_joins_via_loft = join_to_neck and root_extension > 0.0
         lateral_edge_fillet_source = ""
         if joint_fillet_radius > 0.0 and not headstock_joins_via_loft:
             # Every edge of the top/bottom boundary polygon is, by
@@ -860,11 +842,7 @@ class FreeCADScriptExporter:
             "neck_shape" if headstock_joins_via_loft else "headstock_shape",
         )
         root_edge_fillet_source = ""
-        if (
-            join_to_neck
-            and joint_fillet_radius > 0.0
-            and root_extension <= 0.0
-        ):
+        if join_to_neck and joint_fillet_radius > 0.0 and root_extension <= 0.0:
             root_edge_x_tolerance = abs(headstock.extrusion_vector.x) + 0.01
             root_edge_fillet_source = (
                 "headstock_root_edges = nut_corner_edges(\n"
@@ -952,9 +930,7 @@ class FreeCADScriptExporter:
             return ""
         slope = math.tan(math.radians(headstock.angle.angle_degrees))
         far_x = -headstock.plan.length - 10.0
-        half_width = (
-            max(abs(point.y) for point in headstock.top_boundary) + 10.0
-        )
+        half_width = max(abs(point.y) for point in headstock.top_boundary) + 10.0
         face_points = (
             (-shelf, -shelf * slope),
             (-shelf, 10.0),
@@ -1073,10 +1049,9 @@ class FreeCADScriptExporter:
         nut_row = neck_surface._build_profile_row(0.0)
         outside_points = (nut_row[1], nut_row[-2])
         radians = math.radians(headstock.angle.angle_degrees)
-        headstock_back_z = (
-            -extension * math.tan(radians)
-            - headstock.thickness / math.cos(radians)
-        )
+        headstock_back_z = -extension * math.tan(
+            radians
+        ) - headstock.thickness / math.cos(radians)
         guide_lines = tuple(
             (
                 point,
@@ -1220,9 +1195,7 @@ class FreeCADScriptExporter:
                     (after.y - before.y) / (2.0 * epsilon),
                     (after.z - before.z) / (2.0 * epsilon),
                 )
-                for before, after in zip(
-                    headstock_before, headstock_after, strict=True
-                )
+                for before, after in zip(headstock_before, headstock_after, strict=True)
             )
             # The neck's own taper is flat on both sides of
             # nut_transition_length: zero slope there too, so the target
@@ -1274,9 +1247,7 @@ class FreeCADScriptExporter:
                     (*tip_rows, *hermite_rows),
                     flat_end=flat_end,
                     tilt_resume=flat_end - HEADSTOCK_FACE_EASE_LENGTH,
-                    face_allowance=(
-                        HEADSTOCK_FACE_ALLOWANCE if shelf > 0.0 else 0.0
-                    ),
+                    face_allowance=(HEADSTOCK_FACE_ALLOWANCE if shelf > 0.0 else 0.0),
                 )
             )
         elif not sections:
@@ -1388,14 +1359,8 @@ class FreeCADScriptExporter:
                 tuple(
                     Point3D(
                         position,
-                        h00 * p0.y
-                        + h10 * m0.y * span
-                        + h01 * p1.y
-                        + h11 * m1.y * span,
-                        h00 * p0.z
-                        + h10 * m0.z * span
-                        + h01 * p1.z
-                        + h11 * m1.z * span,
+                        h00 * p0.y + h10 * m0.y * span + h01 * p1.y + h11 * m1.y * span,
+                        h00 * p0.z + h10 * m0.z * span + h01 * p1.z + h11 * m1.z * span,
                     )
                     for p0, m0, p1, m1 in zip(
                         start_row,
@@ -1632,9 +1597,7 @@ class FreeCADScriptExporter:
             # still spans the full D profile, so this curve genuinely meets
             # both neck sides instead of ending as a narrow center strip.
             secondary_weight = 1.0 - (
-                6.0 * normalized**5
-                - 15.0 * normalized**4
-                + 10.0 * normalized**3
+                6.0 * normalized**5 - 15.0 * normalized**4 + 10.0 * normalized**3
             )
             bottom_z = top_z - max(0.02, extra_depth * secondary_weight)
             bottom_points.append(
@@ -1925,7 +1888,7 @@ class FreeCADScriptExporter:
                 ")\n"
                 "body_shape = require_shape(\n"
                 "    body_shape.cut(pivot_hole),\n"
-                f"    \"bridge pivot hole {index} cut\",\n"
+                f'    "bridge pivot hole {index} cut",\n'
                 ")\n"
             )
         for drilled in (*body.holes, *body.control_top_marks):
@@ -2138,9 +2101,9 @@ class FreeCADScriptExporter:
             "def require_shape(shape, operation):\n"
             '    """Reject null or invalid FreeCAD operation results."""\n'
             "    if shape.isNull():\n"
-            "        raise RuntimeError(f\"{operation} produced a null shape\")\n"
+            '        raise RuntimeError(f"{operation} produced a null shape")\n'
             "    if not shape.isValid():\n"
-            "        raise RuntimeError(f\"{operation} produced an invalid shape\")\n"
+            '        raise RuntimeError(f"{operation} produced an invalid shape")\n'
             "    return shape\n\n"
             f'document = App.newDocument("{document_name}")\n'
             "sections = [closed_wire(points) for points in SECTION_POINTS]\n"
@@ -2176,10 +2139,7 @@ class FreeCADScriptExporter:
     def _serialize_rows(rows: tuple[tuple[Point3D, ...], ...]) -> str:
         """Return compact deterministic JSON for section coordinates."""
         return json.dumps(
-            [
-                [[point.x, point.y, point.z] for point in row]
-                for row in rows
-            ],
+            [[[point.x, point.y, point.z] for point in row] for row in rows],
             separators=(",", ":"),
         )
 
@@ -2239,9 +2199,7 @@ class FreeCADScriptExporter:
         if layout is None:
             return
         if headstock is None:
-            raise FreeCADBackendError(
-                "Tuner-hole export requires a headstock solid."
-            )
+            raise FreeCADBackendError("Tuner-hole export requires a headstock solid.")
         if layout.headstock != headstock.plan:
             raise FreeCADBackendError(
                 "Tuner layout and headstock solid must share a plan."
@@ -2288,9 +2246,7 @@ class FreeCADScriptExporter:
         if layout is None:
             return
         dimensions = (slot_width, slot_depth)
-        if not all(
-            math.isfinite(value) and value > 0.0 for value in dimensions
-        ):
+        if not all(math.isfinite(value) and value > 0.0 for value in dimensions):
             raise FreeCADBackendError(
                 "Fret-slot width and depth must be finite and positive."
             )
@@ -2305,9 +2261,7 @@ class FreeCADScriptExporter:
             raise FreeCADBackendError(
                 "Fret layout and fretboard surface must share a fret count."
             )
-        surface_positions = surface.station_positions[
-            1 : surface.fret_count + 1
-        ]
+        surface_positions = surface.station_positions[1 : surface.fret_count + 1]
         layout_positions = tuple(
             (slot.start.x + slot.end.x) / 2.0 for slot in layout.slots
         )
@@ -2322,9 +2276,7 @@ class FreeCADScriptExporter:
             raise FreeCADBackendError(
                 "Fret layout positions do not match the fretboard surface."
             )
-        minimum_thickness = min(
-            point.z for row in surface.mesh.rows for point in row
-        )
+        minimum_thickness = min(point.z for row in surface.mesh.rows for point in row)
         if slot_depth >= minimum_thickness:
             raise FreeCADBackendError(
                 "Fret slots must leave material beneath their floors."
@@ -2362,9 +2314,10 @@ def _body_edge_lines(
     cuts the true surfaces.
     """
     top, back = body.top_edge, body.back_edge
-    if not (
-        top.radius or back.radius or top.has_binding or back.has_binding
-    ) and not body.contours:
+    if (
+        not (top.radius or back.radius or top.has_binding or back.has_binding)
+        and not body.contours
+    ):
         return []
     lines = [
         "body_outline_face = Part.Face(Part.makePolygon(\n"
@@ -2418,9 +2371,7 @@ def _body_edge_lines(
                     )
                 lines.append(f"edge_ring({inset!r}, {high!r}, {low!r})\n")
         if edge.has_binding:
-            high, low = sorted(
-                (z_of(0.0), z_of(edge.binding_depth)), reverse=True
-            )
+            high, low = sorted((z_of(0.0), z_of(edge.binding_depth)), reverse=True)
             high, low = (high + 0.6, low) if face == "top" else (high, low - 0.6)
             lines.append(f"edge_ring({edge.binding_width!r}, {high!r}, {low!r})\n")
     for contour in body.contours:
@@ -2434,9 +2385,7 @@ def _body_edge_lines(
                 high, low = 0.6, -level
             else:
                 high, low = -body.thickness + level, -body.thickness - 0.6
-            lines.append(
-                f"terrace({outline_literal(region)}, {high!r}, {low!r})\n"
-            )
+            lines.append(f"terrace({outline_literal(region)}, {high!r}, {low!r})\n")
     # One general boolean for every layer is far quicker than one cut per
     # layer.
     lines.append(

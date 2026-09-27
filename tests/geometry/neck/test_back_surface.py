@@ -33,8 +33,7 @@ def test_surface_contains_all_locked_reference_stations() -> None:
     assert surface.station_positions_reference(12) in surface.station_positions
     assert surface.neck_outline.last_fret_position in surface.station_positions
     assert surface.station_positions[-1] == pytest.approx(
-        surface.neck_outline.last_fret_position
-        + surface.neck_outline.heel_length
+        surface.neck_outline.last_fret_position + surface.neck_outline.heel_length
     )
 
 
@@ -85,9 +84,7 @@ def test_heel_rows_remain_parallel_and_constant_depth() -> None:
     for row in surface.mesh.rows[final_fret_index:]:
         width = row[-1].y - row[0].y
         assert width == pytest.approx(surface.neck_outline.heel_width)
-        assert row[center_index].z == pytest.approx(
-            -surface.final_fret_thickness
-        )
+        assert row[center_index].z == pytest.approx(-surface.final_fret_thickness)
 
 
 def test_heel_terminal_section_remains_a_valid_rounded_profile() -> None:
@@ -146,18 +143,12 @@ def test_heel_uses_a_tangent_three_dimensional_blend_not_a_bevel() -> None:
     flat_start = surface.neck_outline.last_fret_position - 50.0
     transition_start = flat_start - 35.0
     midpoint = transition_start + 17.5
-    midpoint_row = surface.mesh.rows[
-        surface.station_positions.index(midpoint)
-    ]
+    midpoint_row = surface.mesh.rows[surface.station_positions.index(midpoint)]
     center_depth = -midpoint_row[surface.profile_sample_count // 2].z
     first_position = surface.station_positions_reference(1)
     twelfth_position = surface.station_positions_reference(12)
-    playing_slope = (13.0 - 11.0) / (
-        twelfth_position - first_position
-    )
-    start_depth = 13.0 + playing_slope * (
-        transition_start - twelfth_position
-    )
+    playing_slope = (13.0 - 11.0) / (twelfth_position - first_position)
+    start_depth = 13.0 + playing_slope * (transition_start - twelfth_position)
     straight_bevel_midpoint = (start_depth + 20.0) / 2.0
 
     assert start_depth < center_depth < 20.0
@@ -180,19 +171,13 @@ def test_heel_intermediate_section_is_a_widening_rounded_rectangle() -> None:
     flat_start = surface.neck_outline.last_fret_position - 50.0
     transition_start = flat_start - 35.0
     midpoint = transition_start + 17.5
-    start_row = surface.mesh.rows[
-        surface.station_positions.index(transition_start)
-    ]
-    midpoint_row = surface.mesh.rows[
-        surface.station_positions.index(midpoint)
-    ]
+    start_row = surface.mesh.rows[surface.station_positions.index(transition_start)]
+    midpoint_row = surface.mesh.rows[surface.station_positions.index(midpoint)]
     center_index = surface.profile_sample_count // 2
     shoulder_index = 1
 
     assert midpoint_row[center_index].z < start_row[center_index].z
-    assert abs(midpoint_row[shoulder_index].y) > abs(
-        start_row[shoulder_index].y
-    )
+    assert abs(midpoint_row[shoulder_index].y) > abs(start_row[shoulder_index].y)
     assert midpoint_row[shoulder_index].z < 0.0
     assert midpoint_row[shoulder_index].z > midpoint_row[center_index].z
 
@@ -227,9 +212,7 @@ def test_heel_scoop_curves_inward_without_changing_end_tangencies() -> None:
     assert scooped._depth_at(transition_start) == pytest.approx(
         base._depth_at(transition_start)
     )
-    assert scooped._depth_at(flat_start) == pytest.approx(
-        base._depth_at(flat_start)
-    )
+    assert scooped._depth_at(flat_start) == pytest.approx(base._depth_at(flat_start))
     assert scooped._depth_at(transition_start + 0.9 * 35.0) < 20.0
 
 
@@ -267,9 +250,7 @@ def test_headstock_transition_blends_from_flat_sixteen_to_d_profile() -> None:
         segments_per_region=2,
     )
     nut_row = surface.mesh.rows[0]
-    transition_row = surface.mesh.rows[
-        surface.station_positions.index(30.0)
-    ]
+    transition_row = surface.mesh.rows[surface.station_positions.index(30.0)]
 
     assert {point.z for point in nut_row[1:-1]} == {-16.0}
     assert transition_row[2].z == pytest.approx(-11.0)
@@ -407,14 +388,20 @@ def test_heel_root_starts_at_the_center_before_the_side_edges() -> None:
     flat_start = surface.neck_outline.last_fret_position - 50.0
     before_side_runout = flat_start - 40.0
 
-    assert surface._heel_transition_blend_at(
-        before_side_runout,
-        0.0,
-    ) == 0.0
-    assert surface._heel_transition_blend_at(
-        before_side_runout,
-        1.0,
-    ) > 0.0
+    assert (
+        surface._heel_transition_blend_at(
+            before_side_runout,
+            0.0,
+        )
+        == 0.0
+    )
+    assert (
+        surface._heel_transition_blend_at(
+            before_side_runout,
+            1.0,
+        )
+        > 0.0
+    )
     assert surface._heel_transition_blend_at(flat_start, 0.0) == 1.0
     assert surface._heel_transition_blend_at(flat_start, 1.0) == 1.0
 

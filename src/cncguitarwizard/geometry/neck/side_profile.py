@@ -93,10 +93,7 @@ class NeckSideProfile:
         object.__setattr__(
             self,
             "bottom_segments",
-            tuple(
-                Line2D(start, end)
-                for start, end in pairwise(bottom_points)
-            ),
+            tuple(Line2D(start, end) for start, end in pairwise(bottom_points)),
         )
         object.__setattr__(
             self,
@@ -165,9 +162,7 @@ class NeckBackCrossSection:
                 "Neck cross-section dimensions must be finite and positive."
             )
         if self.exponent < 2.0:
-            raise NeckGeometryError(
-                "Neck profile exponent must be at least two."
-            )
+            raise NeckGeometryError("Neck profile exponent must be at least two.")
         if self.sample_count < 3 or self.sample_count % 2 == 0:
             raise NeckGeometryError(
                 "Profile sample count must be an odd integer of at least three."
@@ -197,9 +192,7 @@ class NeckBackCrossSection:
     def _curve_point(self, x_coordinate: float, half_width: float) -> Point2D:
         """Return one point on the lower half of the superellipse."""
         normalized_x = abs(x_coordinate) / half_width
-        normalized_depth = (1.0 - normalized_x**self.exponent) ** (
-            1.0 / self.exponent
-        )
+        normalized_depth = (1.0 - normalized_x**self.exponent) ** (1.0 / self.exponent)
         return Point2D(x_coordinate, -self.depth * normalized_depth)
 
 
@@ -243,9 +236,7 @@ class NeckProfileStations:
             self.first_fret_thickness,
             self.twelfth_fret_thickness,
         )
-        if not all(
-            math.isfinite(value) and value > 0.0 for value in thicknesses
-        ):
+        if not all(math.isfinite(value) and value > 0.0 for value in thicknesses):
             raise NeckGeometryError(
                 "Profile-station thicknesses must be finite and positive."
             )
@@ -299,9 +290,6 @@ class NeckProfileStations:
         fraction = position / self.neck_outline.last_fret_position
         return (
             self.neck_outline.nut_width
-            + (
-                self.neck_outline.last_fret_width
-                - self.neck_outline.nut_width
-            )
+            + (self.neck_outline.last_fret_width - self.neck_outline.nut_width)
             * fraction
         )

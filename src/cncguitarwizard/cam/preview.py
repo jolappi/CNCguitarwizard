@@ -66,7 +66,7 @@ def render_setup_svg(
         parts.append(
             f'<text x="{margin:.1f}" y="{margin * 0.6 + 7:.1f}" font-size="4.5" '
             'font-family="sans-serif" fill="#555">Shaded bands show the '
-            f'{tool_diameter:g} mm tool width; thin lines are the tool centre.'
+            f"{tool_diameter:g} mm tool width; thin lines are the tool centre."
             "</text>"
         )
     for path in setup.toolpaths:
@@ -91,14 +91,11 @@ def render_setup_svg(
             run.clear()
 
         for move in path.moves:
-            if previous is not None and (
-                previous.x != move.x or previous.y != move.y
-            ):
+            if previous is not None and (previous.x != move.x or previous.y != move.y):
                 if move.rapid:
                     flush()
                     rapids.append(
-                        f"M{sx(previous.x)},{sy(previous.y)} "
-                        f"L{sx(move.x)},{sy(move.y)}"
+                        f"M{sx(previous.x)},{sy(previous.y)} L{sx(move.x)},{sy(move.y)}"
                     )
                 else:
                     if run_z != move.z or not run:

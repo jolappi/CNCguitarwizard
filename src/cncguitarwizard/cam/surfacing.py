@@ -104,10 +104,7 @@ def sample_surface(
     sub_x = _cell_offsets(spacing_x, max(1, edge_samples_x))
     sub_y = _cell_offsets(spacing_y, max(1, edge_samples_y))
     heights = tuple(
-        tuple(
-            max(surface(x + ox, y + oy) for ox in sub_x for oy in sub_y)
-            for x in xs
-        )
+        tuple(max(surface(x + ox, y + oy) for ox in sub_x for oy in sub_y) for x in xs)
         for y in ys
     )
     return SampledSurface(x_range[0], y_range[0], spacing_x, spacing_y, heights)

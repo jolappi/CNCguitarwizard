@@ -107,9 +107,7 @@ class FretboardCrossSection:
                 y=self.center_thickness
                 - (
                     self.radius
-                    - math.sqrt(
-                        self.radius**2 - (-half_width + index * step) ** 2
-                    )
+                    - math.sqrt(self.radius**2 - (-half_width + index * step) ** 2)
                 ),
             )
             for index in range(self.sample_count)

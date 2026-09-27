@@ -188,9 +188,7 @@ def plan_fretboard_machining(
 
     def surface_depth(model_y: float) -> float:
         """Depth of the radiused surface below the blank top at lateral y."""
-        drop = surface.radius - math.sqrt(
-            max(0.0, surface.radius**2 - model_y**2)
-        )
+        drop = surface.radius - math.sqrt(max(0.0, surface.radius**2 - model_y**2))
         return skim + drop
 
     index_pins = Setup(

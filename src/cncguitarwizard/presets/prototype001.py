@@ -1239,9 +1239,11 @@ class Prototype001Parameters:
                 # Up to 32 mm, shortened to keep 3 mm from the first tuner
                 # hole (a fanned neck's longer shelf pushes the trough back).
                 _, tuners = self.headstock_design()
-                room = min(
-                    -(hole.center.x + hole.diameter / 2.0) for hole in tuners.holes
-                ) - shelf - 3.0
+                room = (
+                    min(-(hole.center.x + hole.diameter / 2.0) for hole in tuners.holes)
+                    - shelf
+                    - 3.0
+                )
                 access = max(self.truss_rod_nut_length, min(32.0, room))
         fit = self.truss_rod_fit(outline)
         start = self.truss_rod_start if heel else -shelf
@@ -1509,6 +1511,7 @@ class Prototype001Parameters:
             self.body_bridge_single_coil_angle if bridge_type == "single_coil" else 0.0
         )
         bridge_angle = single_slant + fan_angle(scale - self.body_bridge_pickup_offset)
+
         # A pickup turned with fanned frets reaches further along the neck;
         # it moves back by that much, so its near edge keeps the same gap
         # to the neck pocket (or the bridge).
@@ -1879,9 +1882,10 @@ class Prototype001Parameters:
             )
         if self.string_count < 1:
             raise NeckGeometryError("The instrument needs at least one string.")
-        if not math.isfinite(self.fret_slant_angle) or abs(
-            self.fret_slant_angle
-        ) > MAX_FRET_SLANT_ANGLE:
+        if (
+            not math.isfinite(self.fret_slant_angle)
+            or abs(self.fret_slant_angle) > MAX_FRET_SLANT_ANGLE
+        ):
             raise NeckGeometryError(
                 f"Fret slant must be within {MAX_FRET_SLANT_ANGLE:g} degrees."
             )

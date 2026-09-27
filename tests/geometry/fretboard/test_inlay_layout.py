@@ -22,22 +22,22 @@ def make_surface() -> FretboardSurface:
     )
 
 
-def test_layout_places_one_marker_per_single_fret_and_two_per_double_fret() -> (
-    None
-):
+def test_layout_places_one_marker_per_single_fret_and_two_per_double_fret() -> None:
     layout = InlayLayout(make_surface(), depth=2.0)
 
     single_frets = {3, 5, 7, 9, 15, 17, 19, 21}
     double_frets = {12, 24}
     assert len(layout.markers) == len(single_frets) + 2 * len(double_frets)
     for fret_number in single_frets:
-        assert sum(
-            1 for marker in layout.markers if marker.fret_number == fret_number
-        ) == 1
+        assert (
+            sum(1 for marker in layout.markers if marker.fret_number == fret_number)
+            == 1
+        )
     for fret_number in double_frets:
-        assert sum(
-            1 for marker in layout.markers if marker.fret_number == fret_number
-        ) == 2
+        assert (
+            sum(1 for marker in layout.markers if marker.fret_number == fret_number)
+            == 2
+        )
 
 
 def test_double_marker_pair_straddles_the_centerline_symmetrically() -> None:
@@ -49,9 +49,7 @@ def test_double_marker_pair_straddles_the_centerline_symmetrically() -> None:
     assert len(twelfth_fret_markers) == 2
     first, second = twelfth_fret_markers
     first_center_y = sum(point.y for point in first.outline) / len(first.outline)
-    second_center_y = sum(
-        point.y for point in second.outline
-    ) / len(second.outline)
+    second_center_y = sum(point.y for point in second.outline) / len(second.outline)
     assert first_center_y == pytest.approx(-second_center_y)
 
 
@@ -62,9 +60,7 @@ def test_marker_outline_is_a_closed_simple_polygon() -> None:
         return (c.y - a.y) * (b.x - a.x) > (b.y - a.y) * (c.x - a.x)
 
     def segments_intersect(p1, p2, p3, p4) -> bool:
-        return ccw(p1, p3, p4) != ccw(p2, p3, p4) and ccw(p1, p2, p3) != ccw(
-            p1, p2, p4
-        )
+        return ccw(p1, p3, p4) != ccw(p2, p3, p4) and ccw(p1, p2, p3) != ccw(p1, p2, p4)
 
     for marker in layout.markers:
         points = marker.outline

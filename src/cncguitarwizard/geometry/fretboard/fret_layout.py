@@ -44,8 +44,10 @@ class FretLayout:
             self.fretboard.scale_length,
             self.fret_count,
         )
-        slots = tuple(self._create_slot(FretLine(self.fretboard.centerline, position))
-                      for position in positions)
+        slots = tuple(
+            self._create_slot(FretLine(self.fretboard.centerline, position))
+            for position in positions
+        )
         object.__setattr__(self, "slots", slots)
 
     def _validate(self) -> None:
@@ -64,9 +66,7 @@ class FretLayout:
 
     def _create_slot(self, fret_line: FretLine) -> Line2D:
         """Return one fret line clipped to the tapered fretboard."""
-        fraction = (
-            fret_line.position.distance_from_nut / self.fretboard.scale_length
-        )
+        fraction = fret_line.position.distance_from_nut / self.fretboard.scale_length
         width = (
             self.fretboard.nut_width
             + (self.fretboard.bridge_width - self.fretboard.nut_width) * fraction

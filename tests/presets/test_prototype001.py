@@ -101,10 +101,18 @@ def test_default_preset_builds_every_locked_component() -> None:
     assert geometry.inlay_layout.depth == 2.0
     assert geometry.inlay_layout.fretboard_surface is geometry.fretboard_surface
     assert len(geometry.inlay_layout.markers) == 12
-    assert {
-        marker.fret_number
-        for marker in geometry.inlay_layout.markers
-    } == {3, 5, 7, 9, 12, 15, 17, 19, 21, 24}
+    assert {marker.fret_number for marker in geometry.inlay_layout.markers} == {
+        3,
+        5,
+        7,
+        9,
+        12,
+        15,
+        17,
+        19,
+        21,
+        24,
+    }
     assert geometry.body.thickness == 44.0
     assert geometry.body.neck_pocket.max_x == pytest.approx(
         geometry.neck_outline.last_fret_position + parameters.heel_length
@@ -183,8 +191,7 @@ def test_default_preset_builds_every_locked_component() -> None:
     assert geometry.heel_nose_radius == 0.0
     assert geometry.heel_block_start_offset == pytest.approx(50.0)
     assert (
-        geometry.heel_block_start_offset
-        - geometry.neck_surface.heel_flat_start_offset
+        geometry.heel_block_start_offset - geometry.neck_surface.heel_flat_start_offset
         == 0.0
     )
 
@@ -215,7 +222,6 @@ def test_preset_keeps_an_explicit_root_swell_as_an_optional_volute() -> None:
     ).build()
 
     assert geometry.neck_surface.nut_volute_depth == 1.25
-
 
 
 def test_preset_rejects_unsupported_headstock_thickness() -> None:
@@ -350,11 +356,15 @@ def test_the_bridge_pickup_moves_forward_to_make_room_for_a_floyd_rose() -> None
 
 
 def test_the_bridge_pickup_can_still_be_moved_further_by_hand() -> None:
-    body = replace(
-        Prototype001Parameters(),
-        body_bridge=FloydRoseSpec(),
-        body_bridge_pickup_offset=50.0,
-    ).build().body
+    body = (
+        replace(
+            Prototype001Parameters(),
+            body_bridge=FloydRoseSpec(),
+            body_bridge_pickup_offset=50.0,
+        )
+        .build()
+        .body
+    )
 
     assert body.bridge_pickup.max_x == pytest.approx(609.6 - 50.0 + 20.5)
 
@@ -409,7 +419,15 @@ def test_fewer_frets_keep_the_neck_in_its_pocket() -> None:
     )
     assert rod.end_position == pytest.approx(heel_end - 12.0)
     assert {marker.fret_number for marker in geometry.inlay_layout.markers} == {
-        3, 5, 7, 9, 12, 15, 17, 19, 21
+        3,
+        5,
+        7,
+        9,
+        12,
+        15,
+        17,
+        19,
+        21,
     }
 
     assert geometry.body.neck_pocket.max_x == pytest.approx(

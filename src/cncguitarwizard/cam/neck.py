@@ -450,7 +450,7 @@ def plan_neck_machining(
             "Same fixture and X/Y zero as Neck_back_rough; change to the ball "
             "nose and re-touch Z on the blank top.",
             f"Scallop height about "
-            f"{parameters.finishing_step_over ** 2 / (8.0 * ball.tool_radius):.3f} mm.",
+            f"{parameters.finishing_step_over**2 / (8.0 * ball.tool_radius):.3f} mm.",
         ),
         reference_points,
         ball,

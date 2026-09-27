@@ -364,9 +364,7 @@ def _find_freecad_command() -> Path:
         if discovered is not None:
             return Path(discovered)
 
-    macos_command = Path(
-        "/Applications/FreeCAD.app/Contents/Resources/bin/freecadcmd"
-    )
+    macos_command = Path("/Applications/FreeCAD.app/Contents/Resources/bin/freecadcmd")
     if macos_command.is_file():
         return macos_command
 
@@ -416,9 +414,7 @@ def _execute_freecad(
             f"FreeCAD exited with code {completed.returncode}: {details}"
         )
 
-    missing = [
-        path.name for path in (fcstd_path, step_path) if not path.is_file()
-    ]
+    missing = [path.name for path in (fcstd_path, step_path) if not path.is_file()]
     if missing:
         raise FreeCADExecutionError(
             "FreeCAD finished without creating: " + ", ".join(missing)

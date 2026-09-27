@@ -29,13 +29,17 @@ def test_rear_cavity_steps_deepen_part_of_its_floor() -> None:
     assert rear.depth_at(Point2D(155.0, 0.0)) == 28.0
     assert rear.depth_at(Point2D(0.0, 0.0)) is None
     with pytest.raises(BodyGeometryError, match="deeper than"):
-        RearCavity(cavity, cover, steps=(pocket.__class__(
-            "Shallow", 154.0, 0.0, 12.0, 56.0, 10.0
-        ),))
+        RearCavity(
+            cavity,
+            cover,
+            steps=(pocket.__class__("Shallow", 154.0, 0.0, 12.0, 56.0, 10.0),),
+        )
     with pytest.raises(BodyGeometryError, match="inside"):
-        RearCavity(cavity, cover, steps=(pocket.__class__(
-            "Outside", 170.0, 0.0, 12.0, 56.0, 28.0
-        ),))
+        RearCavity(
+            cavity,
+            cover,
+            steps=(pocket.__class__("Outside", 170.0, 0.0, 12.0, 56.0, 28.0),),
+        )
 
 
 def test_rectangular_cavity_bounds_match_its_center_and_size() -> None:

@@ -26,9 +26,7 @@ def _self_intersections(points: tuple) -> int:
         return (c.y - a.y) * (b.x - a.x) > (b.y - a.y) * (c.x - a.x)
 
     def crosses(p1, p2, p3, p4) -> bool:
-        return ccw(p1, p3, p4) != ccw(p2, p3, p4) and ccw(p1, p2, p3) != ccw(
-            p1, p2, p4
-        )
+        return ccw(p1, p3, p4) != ccw(p2, p3, p4) and ccw(p1, p2, p3) != ccw(p1, p2, p4)
 
     count = len(points)
     total = 0

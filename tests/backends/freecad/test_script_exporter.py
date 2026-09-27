@@ -143,9 +143,7 @@ def make_body() -> BodySolid:
     "render_source",
     [
         lambda: FreeCADScriptExporter().render_neck_back(make_neck_surface()),
-        lambda: FreeCADScriptExporter().render_fretboard(
-            make_fretboard_surface()
-        ),
+        lambda: FreeCADScriptExporter().render_fretboard(make_fretboard_surface()),
     ],
 )
 def test_generated_freecad_source_is_valid_python(
@@ -189,8 +187,7 @@ def test_complete_prototype_can_be_rendered_with_one_export_call(
     assert "headstock_tip_shape" not in source
     assert "HEADSTOCK_ROOT_SECTION_POINTS = " not in source
     assert (
-        "headstock_root_shape = make_loft(HEADSTOCK_ROOT_SECTION_POINTS)"
-        not in source
+        "headstock_root_shape = make_loft(HEADSTOCK_ROOT_SECTION_POINTS)" not in source
     )
     assert "def preserves_base_shape(candidate, shapes):" in source
     assert "expected_volume = max(shape.Volume for shape in shapes)" in source
@@ -333,9 +330,7 @@ def test_neck_sections_do_not_repeat_existing_top_edge_points() -> None:
 
 
 def test_fretboard_sections_close_at_the_flat_underside() -> None:
-    source = FreeCADScriptExporter().render_fretboard(
-        make_fretboard_surface()
-    )
+    source = FreeCADScriptExporter().render_fretboard(make_fretboard_surface())
 
     assert ",0.0],[0.0,-21.0,0.0]" in source
 
@@ -362,9 +357,7 @@ def test_script_can_save_fcstd_and_export_step(tmp_path: Path) -> None:
 
     assert f'document.saveAs("{fcstd_path}")' in source
     assert f'Part.export([feature], "{step_path}")' in source
-    assert source.index("document.recompute()") < source.index(
-        "document.saveAs"
-    )
+    assert source.index("document.recompute()") < source.index("document.saveAs")
     assert source.index("document.saveAs") < source.index("Part.export")
 
 
@@ -391,10 +384,7 @@ def test_neck_assembly_creates_two_separate_features(tmp_path: Path) -> None:
     assert "neck_feature.Shape = neck_shape" in source
     assert "fretboard_shape = make_loft(FRETBOARD_SECTION_POINTS)" in source
     assert "fretboard_feature.Shape = fretboard_shape" in source
-    assert (
-        f'Part.export([neck_feature, fretboard_feature], "{step_path}")'
-        in source
-    )
+    assert f'Part.export([neck_feature, fretboard_feature], "{step_path}")' in source
 
 
 def test_neck_assembly_serializes_both_surface_row_sets() -> None:
@@ -408,8 +398,7 @@ def test_neck_assembly_serializes_both_surface_row_sets() -> None:
     assignments = {
         node.targets[0].id: node.value
         for node in module.body
-        if isinstance(node, ast.Assign)
-        and isinstance(node.targets[0], ast.Name)
+        if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name)
     }
 
     neck_rows = assignments["NECK_SECTION_POINTS"]
@@ -446,8 +435,7 @@ def test_flat_heel_rows_keep_the_same_loft_profile_structure() -> None:
 
     assert isinstance(section_points, ast.List)
     assert all(
-        isinstance(row, ast.List)
-        and len(row.elts) == surface.profile_sample_count
+        isinstance(row, ast.List) and len(row.elts) == surface.profile_sample_count
         for row in section_points.elts
     )
 
@@ -464,8 +452,7 @@ def test_neck_assembly_can_cut_the_truss_rod_channel() -> None:
 
     assert (
         "truss_rod_shape = Part.makeBox("
-        "440.0, 6.0, 14.0, App.Vector(12.0, -3.0, -9.0))"
-        in source
+        "440.0, 6.0, 14.0, App.Vector(12.0, -3.0, -9.0))" in source
     )
     assert "neck_shape.cut(truss_rod_shape)" in source
     assert '"truss-rod cut"' in source
@@ -547,9 +534,7 @@ def test_neck_assembly_omits_inlay_cuts_by_default() -> None:
     assert "INLAY_MARKER_OUTLINES" not in source
 
 
-def test_neck_assembly_rejects_an_inlay_layout_from_a_different_surface() -> (
-    None
-):
+def test_neck_assembly_rejects_an_inlay_layout_from_a_different_surface() -> None:
     with pytest.raises(FreeCADBackendError):
         FreeCADScriptExporter().render_neck_assembly(
             make_neck_surface(),
@@ -600,9 +585,7 @@ def test_neck_assembly_omits_the_control_cavity_cut_when_absent() -> None:
 def test_neck_assembly_cuts_a_rear_switch_cavity_with_its_cover() -> None:
     switch = RearCavity(
         RectangularCavity("Switch cavity", 680.0, 20.0, 30.0, 40.0, 30.0),
-        RectangularCavity(
-            "Switch cavity cover recess", 680.0, 20.0, 40.0, 50.0, 2.0
-        ),
+        RectangularCavity("Switch cavity cover recess", 680.0, 20.0, 40.0, 50.0, 2.0),
     )
     source = FreeCADScriptExporter().render_neck_assembly(
         make_neck_surface(),
@@ -618,9 +601,7 @@ def test_neck_assembly_cuts_a_rear_switch_cavity_with_its_cover() -> None:
 def test_neck_assembly_cuts_a_rear_battery_cavity_with_its_cover() -> None:
     battery = RearCavity(
         RectangularCavity("Battery cavity", 680.0, 20.0, 55.0, 30.0, 10.0),
-        RectangularCavity(
-            "Battery cavity cover recess", 680.0, 20.0, 65.0, 40.0, 2.0
-        ),
+        RectangularCavity("Battery cavity cover recess", 680.0, 20.0, 65.0, 40.0, 2.0),
     )
     source = FreeCADScriptExporter().render_neck_assembly(
         make_neck_surface(),
@@ -803,8 +784,7 @@ def test_headstock_can_be_joined_to_the_neck_for_manufacturing(
 
     assert "HEADSTOCK_ROOT_SECTION_POINTS = " not in source
     assert (
-        "headstock_root_shape = make_loft(HEADSTOCK_ROOT_SECTION_POINTS)"
-        not in source
+        "headstock_root_shape = make_loft(HEADSTOCK_ROOT_SECTION_POINTS)" not in source
     )
     assert "def preserves_base_shape(candidate, shapes):" in source
     assert "def fuse_or_compound(shapes, operation):" in source
@@ -814,10 +794,7 @@ def test_headstock_can_be_joined_to_the_neck_for_manufacturing(
     assert '"headstock-root edge fillet"' in source
     assert source.count("neck_feature.Shape = neck_shape") == 2
     assert "headstock_feature = document.addObject" not in source
-    assert (
-        f'Part.export([neck_feature, fretboard_feature], "{step_path}")'
-        in source
-    )
+    assert f'Part.export([neck_feature, fretboard_feature], "{step_path}")' in source
 
 
 def test_explicit_headstock_root_swell_adds_an_optional_root_loft() -> None:
@@ -862,12 +839,9 @@ def test_headstock_root_continues_as_a_tapered_d_neck_volute() -> None:
     # The centre is deepest, while both full-width D-profile edges are
     # already seated on the neck. This produces the visible secondary curves.
     assert (
-        first_neck_section[-(center_index + 1)].z
-        < first_neck_section[-center_index].z
+        first_neck_section[-(center_index + 1)].z < first_neck_section[-center_index].z
     )
-    assert first_neck_section[-1].z == pytest.approx(
-        first_neck_section[0].z - 0.02
-    )
+    assert first_neck_section[-1].z == pytest.approx(first_neck_section[0].z - 0.02)
     assert first_neck_section[-profile_count].z == pytest.approx(
         first_neck_section[profile_count - 1].z - 0.02
     )
@@ -1078,9 +1052,7 @@ def _neck_section_rows(source: str) -> list[list[tuple[float, float, float]]]:
             and isinstance(node.targets[0], ast.Name)
             and node.targets[0].id == "NECK_SECTION_POINTS"
         ):
-            rows: list[list[tuple[float, float, float]]] = ast.literal_eval(
-                node.value
-            )
+            rows: list[list[tuple[float, float, float]]] = ast.literal_eval(node.value)
             return rows
     raise AssertionError("NECK_SECTION_POINTS not found")
 
@@ -1105,9 +1077,7 @@ def test_the_neck_loft_is_flat_over_the_whole_nut_shelf(
     shelf = 5.0 + parameters.nut_shelf_reach()
 
     shelf_rows = [
-        row
-        for row in _neck_section_rows(source)
-        if -shelf <= row[0][0] <= 0.0
+        row for row in _neck_section_rows(source) if -shelf <= row[0][0] <= 0.0
     ]
 
     assert shelf_rows
@@ -1146,9 +1116,7 @@ def test_headstock_loft_rows_keep_their_edge_points_apart() -> None:
         Prototype001Parameters().build()
     )
 
-    headstock_rows = [
-        row for row in _neck_section_rows(source) if row[0][0] < -30.0
-    ]
+    headstock_rows = [row for row in _neck_section_rows(source) if row[0][0] < -30.0]
 
     assert headstock_rows
     for row in headstock_rows:

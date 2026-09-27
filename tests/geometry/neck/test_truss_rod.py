@@ -40,9 +40,7 @@ def test_channel_is_centered_on_the_neck() -> None:
 
     assert channel.centerline.start == Point2D(12.0, 0.0)
     assert channel.centerline.end == Point2D(452.0, 0.0)
-    assert channel.top_boundary[0].y == pytest.approx(
-        -channel.top_boundary[1].y
-    )
+    assert channel.top_boundary[0].y == pytest.approx(-channel.top_boundary[1].y)
 
 
 def test_heel_adjustment_reference_is_at_channel_end() -> None:

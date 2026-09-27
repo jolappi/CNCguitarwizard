@@ -136,7 +136,12 @@ def test_hardtail_strings_through_and_pilot_holes() -> None:
     assert len(strings) == 6 and len(screws) == 5
     assert all(hole.depth == 44.0 for hole in strings)
     assert sorted(round(hole.center_y, 2) for hole in strings) == [
-        -26.25, -15.75, -5.25, 5.25, 15.75, 26.25
+        -26.25,
+        -15.75,
+        -5.25,
+        5.25,
+        15.75,
+        26.25,
     ]
     assert all(hole.center_x == pytest.approx(599.6) for hole in screws)
 

@@ -4,7 +4,6 @@ from .result import ValidationResult
 
 
 class NeckParameterValidator:
-
     @staticmethod
     def validate(neck: NeckParameters) -> ValidationResult:
 

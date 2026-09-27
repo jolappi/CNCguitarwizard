@@ -11,7 +11,7 @@ from dataclasses import dataclass
 class NeckParameters:
     """Parametric guitar neck definition."""
 
-    scale_length: float = 609.6          # 24"
+    scale_length: float = 609.6  # 24"
     fret_count: int = 24
 
     nut_width: float = 42.0

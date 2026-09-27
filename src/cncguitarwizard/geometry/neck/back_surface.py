@@ -88,8 +88,7 @@ class NeckBackSurface:
             )
         )
         rows = tuple(
-            self._build_profile_row(position)
-            for position in station_positions
+            self._build_profile_row(position) for position in station_positions
         )
         faces = tuple(
             QuadFace(
@@ -130,13 +129,8 @@ class NeckBackSurface:
                 "Neck-back thickness must not decrease toward the heel."
             )
         if self.exponent < 2.0:
-            raise NeckGeometryError(
-                "Neck-back surface exponent must be at least two."
-            )
-        if (
-            self.profile_sample_count < 3
-            or self.profile_sample_count % 2 == 0
-        ):
+            raise NeckGeometryError("Neck-back surface exponent must be at least two.")
+        if self.profile_sample_count < 3 or self.profile_sample_count % 2 == 0:
             raise NeckGeometryError(
                 "Profile sample count must be an odd integer of at least three."
             )
@@ -164,13 +158,8 @@ class NeckBackSurface:
                 "Nut-transition thickness must be finite and at least the "
                 "first-fret wood thickness."
             )
-        if (
-            not math.isfinite(self.nut_shelf_length)
-            or self.nut_shelf_length < 0.0
-        ):
-            raise NeckGeometryError(
-                "Nut shelf length must be finite and non-negative."
-            )
+        if not math.isfinite(self.nut_shelf_length) or self.nut_shelf_length < 0.0:
+            raise NeckGeometryError("Nut shelf length must be finite and non-negative.")
         if (
             not math.isfinite(self.nut_transition_length)
             or not 0.0 <= self.nut_transition_length <= first_position
@@ -196,9 +185,7 @@ class NeckBackSurface:
             )
         if (
             not math.isfinite(self.nut_root_side_extension)
-            or not 0.0
-            <= self.nut_root_side_extension
-            <= 30.0
+            or not 0.0 <= self.nut_root_side_extension <= 30.0
         ):
             raise NeckGeometryError(
                 "Nut root side extension must be between 0 and 30 mm."
@@ -207,13 +194,10 @@ class NeckBackSurface:
             not math.isfinite(self.heel_transition_length)
             or not 0.0
             <= self.heel_transition_length
-            <= final_position
-            - self.heel_flat_start_offset
-            - twelfth_position
+            <= final_position - self.heel_flat_start_offset - twelfth_position
         ):
             raise NeckGeometryError(
-                "Heel-transition length must fit between fret 12 and the "
-                "final fret."
+                "Heel-transition length must fit between fret 12 and the final fret."
             )
         if (
             not math.isfinite(self.heel_flat_start_offset)
@@ -221,9 +205,7 @@ class NeckBackSurface:
             <= self.heel_flat_start_offset
             < final_position - twelfth_position
         ):
-            raise NeckGeometryError(
-                "Heel flat-start offset must fit after fret 12."
-            )
+            raise NeckGeometryError("Heel flat-start offset must fit after fret 12.")
         if (
             not math.isfinite(self.heel_scoop_depth)
             or self.heel_scoop_depth < 0.0
@@ -288,9 +270,7 @@ class NeckBackSurface:
         """Return one point on the playing profile or a continuous root."""
         normalized_lateral = abs(lateral) / half_width
         side_weight = self._smootherstep(normalized_lateral)
-        nut_root_side_weight = self._smootherstep(
-            math.sqrt(normalized_lateral)
-        )
+        nut_root_side_weight = self._smootherstep(math.sqrt(normalized_lateral))
         center_weight = 1.0 - side_weight
         nut_blend = self._nut_transition_blend_at(
             position,
@@ -322,12 +302,8 @@ class NeckBackSurface:
             flat_z = -depth
         base_point = Point3D(
             position,
-            self._interpolate_value(
-                nut_blend, 0.0, 1.0, lateral, flat_lateral
-            ),
-            self._interpolate_value(
-                nut_blend, 0.0, 1.0, curved_z, flat_z
-            ),
+            self._interpolate_value(nut_blend, 0.0, 1.0, lateral, flat_lateral),
+            self._interpolate_value(nut_blend, 0.0, 1.0, curved_z, flat_z),
         )
         return base_point
 
@@ -361,9 +337,9 @@ class NeckBackSurface:
             32.0,
         )
         normalized_lateral = abs(lateral) / half_width
-        heel_z = -depth * (
-            1.0 - normalized_lateral**heel_exponent
-        ) ** (1.0 / heel_exponent)
+        heel_z = -depth * (1.0 - normalized_lateral**heel_exponent) ** (
+            1.0 / heel_exponent
+        )
         section_blend = self._smootherstep(blend)
         return Point3D(
             position,
@@ -387,10 +363,7 @@ class NeckBackSurface:
         fraction = position / final_position
         return (
             self.neck_outline.nut_width
-            + (
-                self.neck_outline.last_fret_width
-                - self.neck_outline.nut_width
-            )
+            + (self.neck_outline.last_fret_width - self.neck_outline.nut_width)
             * fraction
         )
 
@@ -404,9 +377,7 @@ class NeckBackSurface:
         if position <= 0.0:
             if self.nut_transition_thickness is None:
                 return self.first_fret_thickness
-            return self.nut_transition_thickness + self._nut_volute_depth_at(
-                position
-            )
+            return self.nut_transition_thickness + self._nut_volute_depth_at(position)
         if (
             self.nut_transition_thickness is not None
             and self.nut_transition_length > 0.0
@@ -435,9 +406,9 @@ class NeckBackSurface:
             )
         transition_start = heel_flat_start - self.heel_transition_length
         first_position = self.station_positions_reference(1)
-        playing_slope = (
-            self.twelfth_fret_thickness - self.first_fret_thickness
-        ) / (twelfth_position - first_position)
+        playing_slope = (self.twelfth_fret_thickness - self.first_fret_thickness) / (
+            twelfth_position - first_position
+        )
         if self.heel_transition_length <= 0.0:
             return self.twelfth_fret_thickness + playing_slope * (
                 position - twelfth_position
@@ -458,9 +429,7 @@ class NeckBackSurface:
             0.0,
         )
         remaining_depth = self.final_fret_thickness - tangent_depth
-        total_depth_change = (
-            self.final_fret_thickness - transition_start_depth
-        )
+        total_depth_change = self.final_fret_thickness - transition_start_depth
         scoop = (
             16.0
             * self.heel_scoop_depth
@@ -491,10 +460,13 @@ class NeckBackSurface:
             # moving the nut line or extending the shelf.
             shelf_length = self.nut_shelf_length
             shelf_entry_blend = 1.0 - self._smootherstep(side_weight)
-            extra_extension = max(
-                self.nut_root_side_extension - shelf_length,
-                0.0,
-            ) * side_weight
+            extra_extension = (
+                max(
+                    self.nut_root_side_extension - shelf_length,
+                    0.0,
+                )
+                * side_weight
+            )
             transition_start = -(shelf_length + extra_extension)
             if position < transition_start:
                 return 1.0
@@ -537,9 +509,7 @@ class NeckBackSurface:
         """
         if self.nut_transition_length <= 0.0 or self.nut_volute_depth == 0.0:
             return 0.0
-        fraction = min(
-            max(abs(position) / self.nut_transition_length, 0.0), 1.0
-        )
+        fraction = min(max(abs(position) / self.nut_transition_length, 0.0), 1.0)
         peak = self.nut_volute_peak_fraction
         if fraction <= peak:
             rise = self._smootherstep(fraction / peak)
@@ -583,9 +553,7 @@ class NeckBackSurface:
         )
         if position <= transition_start:
             return 0.0
-        fraction = (position - transition_start) / (
-            heel_flat_start - transition_start
-        )
+        fraction = (position - transition_start) / (heel_flat_start - transition_start)
         return self._smootherstep(fraction)
 
     @staticmethod
@@ -596,9 +564,7 @@ class NeckBackSurface:
     @staticmethod
     def _smootherstep(fraction: float) -> float:
         """Return quintic interpolation with zero first and second slopes."""
-        return fraction**3 * (
-            fraction * (fraction * 6.0 - 15.0) + 10.0
-        )
+        return fraction**3 * (fraction * (fraction * 6.0 - 15.0) + 10.0)
 
     @staticmethod
     def _hermite_value(

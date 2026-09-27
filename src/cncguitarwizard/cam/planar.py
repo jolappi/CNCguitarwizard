@@ -202,14 +202,16 @@ def offset_polygon(
     for candidate in raw:
         if not disc_fits(candidate, points, distance, inside=inward):
             continue
-        if kept and math.hypot(
-            candidate.x - kept[-1].x, candidate.y - kept[-1].y
-        ) < 1e-6:
+        if (
+            kept
+            and math.hypot(candidate.x - kept[-1].x, candidate.y - kept[-1].y) < 1e-6
+        ):
             continue
         kept.append(candidate)
-    if len(kept) > 1 and math.hypot(
-        kept[0].x - kept[-1].x, kept[0].y - kept[-1].y
-    ) < 1e-6:
+    if (
+        len(kept) > 1
+        and math.hypot(kept[0].x - kept[-1].x, kept[0].y - kept[-1].y) < 1e-6
+    ):
         kept.pop()
     return tuple(kept) if len(kept) >= 3 else ()
 
@@ -265,9 +267,7 @@ def _stadium_interval(
         ux, uy = dx / length, dy / length
         nx, ny = -uy, ux
         along = _linear_interval(start.x, (y - start.y) * uy, ux, 0.0, length)
-        across = _linear_interval(
-            start.x, (y - start.y) * ny, nx, -radius, radius
-        )
+        across = _linear_interval(start.x, (y - start.y) * ny, nx, -radius, radius)
         if along is not None and across is not None:
             low = max(along[0], across[0])
             high = min(along[1], across[1])

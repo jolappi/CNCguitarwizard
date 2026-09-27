@@ -195,9 +195,7 @@ def test_view_box_fits_geometry_with_requested_padding() -> None:
 
 
 def test_zero_padding_still_produces_a_valid_point_view_box() -> None:
-    root = ElementTree.fromstring(
-        SVGRenderer(padding=0.0).render(Point2D(10.0, 20.0))
-    )
+    root = ElementTree.fromstring(SVGRenderer(padding=0.0).render(Point2D(10.0, 20.0)))
 
     assert root.attrib["viewBox"] == "10 20 1 1"
 

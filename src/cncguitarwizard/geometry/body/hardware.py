@@ -45,14 +45,11 @@ class TracedCavity:
         if len(self.outline) < 3:
             raise BodyGeometryError(f"{self.name} needs at least three points.")
         if not all(
-            math.isfinite(point.x) and math.isfinite(point.y)
-            for point in self.outline
+            math.isfinite(point.x) and math.isfinite(point.y) for point in self.outline
         ):
             raise BodyGeometryError(f"{self.name} points must all be finite.")
         if not math.isfinite(self.depth) or self.depth <= 0.0:
-            raise BodyGeometryError(
-                f"{self.name} depth must be finite and positive."
-            )
+            raise BodyGeometryError(f"{self.name} depth must be finite and positive.")
 
     @property
     def min_x(self) -> float:
@@ -153,17 +150,14 @@ class RectangularCavity:
                 f"{self.name} size and depth must be finite and positive."
             )
         if not math.isfinite(self.center_x) or not math.isfinite(self.center_y):
-            raise BodyGeometryError(
-                f"{self.name} centre must be finite."
-            )
+            raise BodyGeometryError(f"{self.name} centre must be finite.")
         if not math.isfinite(self.corner_radius) or self.corner_radius < 0.0:
             raise BodyGeometryError(
                 f"{self.name} corner radius must be finite and non-negative."
             )
         if self.corner_radius > min(self.length_x, self.length_y) / 2.0:
             raise BodyGeometryError(
-                f"{self.name} corner radius must not exceed half its "
-                "shortest side."
+                f"{self.name} corner radius must not exceed half its shortest side."
             )
 
 
@@ -382,9 +376,7 @@ class BridgeMounting:
     sustain_block_offset: float = 30.0
     sustain_block_cavity_override: RectangularCavity | TracedCavity | None = None
     has_sustain_block: bool = True
-    sustain_block_cavity: RectangularCavity | TracedCavity | None = field(
-        init=False
-    )
+    sustain_block_cavity: RectangularCavity | TracedCavity | None = field(init=False)
 
     def __post_init__(self) -> None:
         """Validate dimensions and build the sustain-block cavity, if any."""
@@ -438,13 +430,9 @@ class BridgeMounting:
                 "Bridge mounting dimensions must be finite and positive."
             )
         if not math.isfinite(self.reference_x):
-            raise BodyGeometryError(
-                "Bridge reference position must be finite."
-            )
+            raise BodyGeometryError("Bridge reference position must be finite.")
         if not math.isfinite(self.sustain_block_offset):
-            raise BodyGeometryError(
-                "Bridge sustain-block offset must be finite."
-            )
+            raise BodyGeometryError("Bridge sustain-block offset must be finite.")
 
 
 @dataclass(frozen=True, slots=True)

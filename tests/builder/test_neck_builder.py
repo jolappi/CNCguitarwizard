@@ -8,13 +8,7 @@ from cncguitarwizard.builder import BuilderError, NeckBuilder
 
 
 def test_neck_builder_creates_a_neck_with_requested_dimensions() -> None:
-    neck = (
-        NeckBuilder()
-        .scale_length(609.6)
-        .nut_width(42.0)
-        .bridge_width(63.0)
-        .build()
-    )
+    neck = NeckBuilder().scale_length(609.6).nut_width(42.0).bridge_width(63.0).build()
 
     assert neck.scale_length == 609.6
     assert neck.nut_width == 42.0

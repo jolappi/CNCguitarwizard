@@ -186,9 +186,9 @@ def _cut_raster(
     """Zigzag every raster row at one depth."""
     forward = True
     for y, intervals in rows:
-        ordered = intervals if forward else [
-            (high, low) for low, high in reversed(intervals)
-        ]
+        ordered = (
+            intervals if forward else [(high, low) for low, high in reversed(intervals)]
+        )
         for start_x, end_x in ordered:
             _approach(builder, Point2D(start_x, y), z, polygon, radius, parameters)
             builder.cut_to(end_x, y)

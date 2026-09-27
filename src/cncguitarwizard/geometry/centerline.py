@@ -31,9 +31,7 @@ class Centerline:
             length on the x-axis.
         """
         if not isfinite(scale_length) or scale_length <= 0.0:
-            raise GeometryException(
-                "Scale length must be a finite positive value."
-            )
+            raise GeometryException("Scale length must be a finite positive value.")
 
         return Line2D(
             Point2D(0.0, 0.0),

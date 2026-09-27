@@ -159,9 +159,7 @@ class SVGRenderer:
             return (geometry.line.start, geometry.line.end)
         if isinstance(geometry, Fretboard):
             return tuple(
-                point
-                for line in geometry.outline
-                for point in (line.start, line.end)
+                point for line in geometry.outline for point in (line.start, line.end)
             )
         if isinstance(geometry, FretLayout):
             return tuple(
@@ -240,14 +238,14 @@ class SVGRenderer:
         radius = SVGRenderer._format_number(fretboard.nut_corner_radius)
 
         return (
-            f"<path d=\"M {SVGRenderer._format_point(nut_left_start)} "
+            f'<path d="M {SVGRenderer._format_point(nut_left_start)} '
             f"A {radius} {radius} 0 0 0 "
             f"{SVGRenderer._format_point(nut_left_end)} "
             f"L {SVGRenderer._format_point(nut_right_start)} "
             f"A {radius} {radius} 0 0 0 "
             f"{SVGRenderer._format_point(nut_right_end)} "
             f"L {SVGRenderer._format_point(bridge_right)} "
-            f"L {SVGRenderer._format_point(bridge_left)} Z\"/>"
+            f'L {SVGRenderer._format_point(bridge_left)} Z"/>'
         )
 
     @staticmethod

@@ -659,6 +659,4 @@ def _positive(spec: object, *names: str) -> None:
     for name in names:
         value = getattr(spec, name)
         if not math.isfinite(value) or value <= 0.0:
-            raise BodyGeometryError(
-                f"Bridge {name} must be finite and positive."
-            )
+            raise BodyGeometryError(f"Bridge {name} must be finite and positive.")

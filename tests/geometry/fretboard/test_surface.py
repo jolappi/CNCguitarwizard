@@ -52,9 +52,8 @@ def test_surface_can_extend_beyond_final_fret_without_additional_frets() -> None
     assert len(surface.station_positions) == 26
     assert surface.station_positions[-1] == pytest.approx(520.2)
     expected_width = 42.0 + (56.0 - 42.0) * (520.2 / 457.2)
-    assert (
-        surface.mesh.rows[-1][-1].y - surface.mesh.rows[-1][0].y
-        == pytest.approx(expected_width)
+    assert surface.mesh.rows[-1][-1].y - surface.mesh.rows[-1][0].y == pytest.approx(
+        expected_width
     )
 
 
@@ -71,9 +70,7 @@ def test_surface_preserves_center_thickness_and_radius_drop() -> None:
     surface = make_surface()
     center_index = surface.profile_sample_count // 2
     final_row = surface.mesh.rows[-1]
-    expected_edge_thickness = 6.0 - (
-        430.0 - (430.0**2 - 28.0**2) ** 0.5
-    )
+    expected_edge_thickness = 6.0 - (430.0 - (430.0**2 - 28.0**2) ** 0.5)
 
     assert final_row[center_index].z == pytest.approx(6.0)
     assert final_row[0].z == pytest.approx(expected_edge_thickness)

@@ -111,9 +111,7 @@ def plan_body_machining(
         stock,
     )
     origin_x, origin_y = pins[0]
-    reference_points = tuple(
-        (x - origin_x, y - origin_y) for x, y in pins[1:]
-    )
+    reference_points = tuple((x - origin_x, y - origin_y) for x, y in pins[1:])
 
     top_frame = _Frame(origin_x, origin_y, mirror_y=False)
     back_frame = _Frame(origin_x, origin_y, mirror_y=True)

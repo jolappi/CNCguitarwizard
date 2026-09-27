@@ -81,8 +81,12 @@ def test_pocket_covers_the_floor_between_raster_rows() -> None:
         for start, end in swept:
             dx, dy = end.x - start.x, end.y - start.y
             length_sq = dx * dx + dy * dy
-            t = 0.0 if length_sq == 0.0 else max(
-                0.0, min(1.0, ((x - start.x) * dx + (y - start.y) * dy) / length_sq)
+            t = (
+                0.0
+                if length_sq == 0.0
+                else max(
+                    0.0, min(1.0, ((x - start.x) * dx + (y - start.y) * dy) / length_sq)
+                )
             )
             if math.hypot(x - (start.x + t * dx), y - (start.y + t * dy)) <= (
                 parameters.tool_radius + 1e-6
@@ -165,9 +169,7 @@ def test_profile_runs_counter_clockwise_outside_the_polygon() -> None:
     parameters = MachiningParameters()
     polygon = rectangle(50.0, 30.0)
     path = profile("Outline", polygon, 6.0, parameters)
-    loop = [
-        Point2D(move.x, move.y) for move in cuts(path.moves) if move.z == -6.0
-    ]
+    loop = [Point2D(move.x, move.y) for move in cuts(path.moves) if move.z == -6.0]
 
     assert signed_area(loop) > 0.0
     for point in loop:
@@ -190,9 +192,7 @@ def test_profile_lifts_over_tabs_on_the_final_passes() -> None:
     earlier = {round(move.z, 3) for move in cut_moves[:first_floor]}
     assert earlier == {-3.0, -6.0, -9.0, -8.0}
     assert all(
-        move.z != -8.0
-        for move in cut_moves[:first_floor]
-        if move.z > -6.0 - 1e-9
+        move.z != -8.0 for move in cut_moves[:first_floor] if move.z > -6.0 - 1e-9
     )
 
 
