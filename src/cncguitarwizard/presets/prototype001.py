@@ -60,6 +60,7 @@ from .controls import (
     ControlLayout,
     battery_features,
     control_features,
+    rear_cover,
 )
 from .pickups import (
     PICKUP_CONFIGURATIONS,
@@ -1627,6 +1628,10 @@ class Prototype001Parameters:
         )
         if battery is not None:
             controls = controls.with_battery(battery)
+        # The bridge's own rear cavities (a Floyd Rose's spring cavity)
+        # close with a six-screw sheet cover too.
+        for rear in bridge.rear_cavities:
+            controls = controls.with_covers(rear_cover(rear, 6))
         jack_hole = JackHole(
             heel_end + shape.jack_offset,
             shape.jack_y,

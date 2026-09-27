@@ -197,7 +197,7 @@ mensuurilla.
 | Kaulatasku | Kaulan oma kapeneva ääriviiva + 0,15 mm välys/puoli, 79,5 mm pitkä, päättyy kannan päähän, 20 mm syvä; avautuu sarvien väliin |
 | Mikkikolot | DXF:n humbucker-kolo korvakkeineen, 41 × 85,9 mm, 22 mm syvä; keskipisteet x = 491,7 ja 587,9 |
 | Säätöruuvien syvennykset | Ø 6 mm, 8 mm kolon pohjan alle, ±39,95 mm keskilinjasta |
-| Talla | Vaihdettava (`body_bridge`): oletus Kahler 7300 (ruuvattava, levyn kolo 55 × 65 × 25 mm); vaihtoehdot Floyd Rose Original valmistajan jyrsintäpiirustuksen mukaan (tapit Ø10 k/k 73,91, 11,9 mm skaalaviivan edellä; 95,25 mm leveä upotus, joka kapenee 71,12 mm:iin 42,44 mm:n kohdalla (pituus 79,38), jyrsitään kokonaan 6,73 mm syväksi ja syvennetään 11,18 mm:iin etummaisen 15,88 mm tappihyllyn takaa porrastaskuna sen sisällä; pohjassa 20,96 × 82,85 × 29,59 block-kolo, joka avautuu jousikoloon; takana jousikolo 123,19 × 56,64 × 16,13 + 28,19 mm syvä block-tasku ja 2 mm kansiura; upotus 3,56 mm leveämpi vipupuolella), Tune-o-matic + stop bar (4 × Ø11,2 reikää) ja hardtail (6 string-through + 5 esiporausta). Floyd Rose -mitat valmistajan piirustuksesta, muut lähtöarvoja — tarkista laitteesta |
+| Talla | Vaihdettava (`body_bridge`): oletus Kahler 7300 (ruuvattava, levyn kolo 55 × 65 × 25 mm); vaihtoehdot Floyd Rose Original valmistajan jyrsintäpiirustuksen mukaan (tapit Ø10 k/k 73,91, 11,9 mm skaalaviivan edellä; 95,25 mm leveä upotus, joka kapenee 71,12 mm:iin 42,44 mm:n kohdalla (pituus 79,38), jyrsitään kokonaan 6,73 mm syväksi ja syvennetään 11,18 mm:iin etummaisen 15,88 mm tappihyllyn takaa porrastaskuna sen sisällä; pohjassa 20,96 × 82,85 × 29,59 block-kolo, joka avautuu jousikoloon; takana jousikolo 123,19 × 56,64 × 16,13 + 28,19 mm syvä block-tasku ja 2 mm kansiura 8 mm kolon ulkopuolelle, johon tulee kuuden ruuvin levystä leikattava kansi omana `Cover_floyd_rose_spring_cavity.nc`-ohjelmanaan (piirustus on 44,45 mm rungolle; paksummassa rungossa jousikolo ja block-tasku syvenevät erotuksen verran, jotta block-kolo avautuu aina läpi); upotus 3,56 mm leveämpi vipupuolella), Tune-o-matic + stop bar (4 × Ø11,2 reikää) ja hardtail (6 string-through + 5 esiporausta). Floyd Rose -mitat valmistajan piirustuksesta, muut lähtöarvoja — tarkista laitteesta |
 | Potikkakolo | DXF:n manteli tallan takana, takaa 36 mm (8 mm puuta kanteen), kansiura 2 mm |
 | Kytkinkolo | DXF:n ympyrä Ø 44 yläsakaran juuressa, takaa 36 mm, kansiura Ø 59,5 × 2 mm |
 | Akselireiät | Kytkin Ø 12,7; potikat 2 × Ø 10 kohdissa (642, 86) ja (682, 87) |
@@ -228,7 +228,7 @@ tallenneta palvelimelle.
 
 | Kohta | Speksi |
 | --- | --- |
-| Kone / ohjain | TwoTrees H40 / GRBL |
+| Kone / ohjain | TwoTrees H40 / GRBL; G-koodin murre valittavissa (`post_processor`): GRBL (oletus), LinuxCNC, Mach3/4 / UCCNC, Marlin, Fanuc-tyyppinen teollisuusohjain tai KOSY / nccad (`.knc`-tiedostot, syöttö nccad:n yksiköissä mm/min ÷ 6, kara releellä 6), ja karan kiihdytysodotus (`spindle_dwell`, sekunteina, kirjoitetaan kunkin murteen yksiköissä) |
 | Yleisterä | 6 mm päätyjyrsin, enintään 3 mm Z-askel |
 | Nauhauraterä | 0,6 mm, vain nauhauriin, enintään 1 mm Z-askel |
 | Viimeistelyvara | 0,30 mm |

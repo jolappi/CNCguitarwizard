@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from cncguitarwizard.cam import MachiningParameters
 from cncguitarwizard.presets import Prototype001Parameters
 from cncguitarwizard.workflows import (
     BuildWorkflowError,
@@ -262,3 +263,30 @@ def test_build_rejects_failed_or_incomplete_freecad_execution(
     )
     with pytest.raises(FreeCADExecutionError, match="without creating"):
         build_prototype001(tmp_path / "missing", freecad_command=command)
+
+
+def test_build_writes_every_program_in_the_chosen_dialect(tmp_path: Path) -> None:
+    result = build_prototype001(
+        tmp_path / "output",
+        run_freecad=False,
+        machining=MachiningParameters(post_processor="fanuc", spindle_dwell=2.0),
+    )
+    for path in result.gcode_paths:
+        lines = path.read_text(encoding="utf-8").splitlines()
+        assert lines[0] == "%" and lines[-1] == "%", path.name
+        assert "G4 X2.000" in lines, path.name
+
+
+def test_build_writes_kosy_programs_as_knc_files(tmp_path: Path) -> None:
+    result = build_prototype001(
+        tmp_path / "output",
+        run_freecad=False,
+        machining=MachiningParameters(post_processor="kosy"),
+    )
+    report = json.loads(result.report_path.read_text(encoding="utf-8"))
+
+    assert result.gcode_paths
+    assert all(path.suffix == ".knc" for path in result.gcode_paths)
+    assert report["gcode"]["Body_top"]["file"] == "Body_top.knc"
+    first = result.gcode_paths[0].read_text(encoding="utf-8").splitlines()
+    assert first[:2] == ["_", "_"] and first[-1] == "G99"

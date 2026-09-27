@@ -18,7 +18,7 @@ from ..cam import (
     CoverMachiningPlan,
     FretboardMachiningParameters,
     FretboardMachiningPlan,
-    GRBLWriter,
+    GCodeWriter,
     MachiningParameters,
     NeckMachiningParameters,
     NeckMachiningPlan,
@@ -195,14 +195,14 @@ class Prototype001Build:
             self._plans.append(("Covers", plan))
 
     def _write_gcode(self) -> None:
-        writer = GRBLWriter()
+        writer = GCodeWriter.for_parameters(self.machining)
         for part, plan in self._plans:
             # Each part's programs are listed, and numbered, in the order
             # they are run (``plan.setups``).
             for step, (setup, outline) in enumerate(
                 zip(plan.setups, plan.preview_outlines, strict=True), start=1
             ):
-                gcode_path = self.destination / f"{setup.name}.nc"
+                gcode_path = self.destination / f"{setup.name}{writer.extension}"
                 gcode_path.write_text(
                     writer.render(setup, self.machining), encoding="utf-8"
                 )

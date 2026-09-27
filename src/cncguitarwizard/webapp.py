@@ -18,7 +18,7 @@ import typing
 from pathlib import Path
 from typing import Any
 
-from .cam import MachiningParameters
+from .cam import POST_PROCESSOR_LABELS, MachiningParameters
 from .exceptions import CNCGuitarWizardError
 from .geometry.body import (
     BRIDGE_KINDS,
@@ -45,6 +45,7 @@ _VARIANT_LABELS: dict[str, str] = {**BRIDGE_LABELS, **BODY_SHAPE_LABELS}
 # Readable names for choice fields whose options are short codes.
 _CHOICE_LABELS: dict[str, dict[str, str]] = {
     "body_controls": CONTROL_LABELS,
+    "post_processor": POST_PROCESSOR_LABELS,
     "body_pickups_follow_fan": {
         "auto": "Auto (turn, except with a Tune-o-matic)",
         "yes": "Turn with the frets",
@@ -104,6 +105,8 @@ _BASIC_FIELDS: frozenset[str] = frozenset(
         "body_bridge_pickup_offset",
         "tool_diameter",
         "tool_tip",
+        "post_processor",
+        "spindle_dwell",
         "spindle_speed",
         "feed_rate",
         "plunge_rate",

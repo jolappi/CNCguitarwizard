@@ -151,17 +151,45 @@ cut, and the back setup's final passes lift over evenly spaced tabs.
   first real blank; the planner has been checked geometrically (every
   cutting move lies inside its own feature), not on a machine.
 
+## G-code dialects
+
+`MachiningParameters.post_processor` picks the dialect every program is
+written in (`cam.GCodeWriter`; `GRBLWriter` is its GRBL default). Every
+dialect carries the same `G0`/`G1` moves — arcs are already lines, so no
+controller needs arc support — and differs only around them:
+
+| `post_processor` | For | Differences |
+| --- | --- | --- |
+| `grbl` (default) | GRBL, grblHAL, FluidNC, Carbide Motion, UGS, Candle | `( )` comments, `G21 G90 G17 G94`, `M3 S…`, `M2` |
+| `linuxcnc` | LinuxCNC | as GRBL |
+| `mach3` | Mach3 / Mach4 / UCCNC | as GRBL, but `M30` at the end |
+| `marlin` | Marlin | `;` comments (Marlin skips `( )` unless built for them), only `G21 G90`, no end code |
+| `fanuc` | Fanuc-style industrial controls | `%` around the program, `O1000`, upper-case comments, `G54` and `T1 M6`, `S… M3`, `M30` |
+| `kosy` | KOSY / nccad | `.knc` files: two `_` lines and `G90` to start, `;` comments, two decimals, feeds in nccad's units (mm/min ÷ 6, capped at F200 = 1200 mm/min with a note), the spindle on relay 6 (`M10 O6.1` / `M10 O6.0`, no speed), `G99` at the end |
+
+`spindle_dwell` (seconds, 0 by default) waits after the spindle starts, for
+a spindle that needs time to reach speed, written in each dialect's own
+units: `G4 P` seconds for GRBL and LinuxCNC, `G4 P` milliseconds for Mach
+(its default setting) and Marlin, `G4 X` seconds for Fanuc, `M30 P` in
+1/18 s for KOSY. The files keep the `.nc` extension (KOSY: `.knc`); rename
+them if your control wants another (`.ngc`, `.tap`, `.gcode`) — the
+content is plain text. The KOSY dialect follows the KOSY post processor
+for Autodesk Fusion as adapted for nccad; its spindle relay and feed
+units are those of that setup, so run the first program in nccad's own
+simulation. KinetiC-NC (CNC-STEP)
+reads the GRBL dialect as it is.
+
 ## Using the planner directly
 
 ```python
-from cncguitarwizard.cam import GRBLWriter, MachiningParameters, plan_body_machining
+from cncguitarwizard.cam import GCodeWriter, MachiningParameters, plan_body_machining
 from cncguitarwizard.presets import Prototype001Parameters
 
 body = Prototype001Parameters().build().body
 plan = plan_body_machining(body, MachiningParameters(feed_rate=800.0))
 for setup in plan.setups:
     print(setup.name, round(setup.estimated_minutes(MachiningParameters()), 1), "min")
-source = GRBLWriter().render(plan.top, MachiningParameters(feed_rate=800.0))
+source = GCodeWriter("linuxcnc").render(plan.top, MachiningParameters(feed_rate=800.0))
 ```
 
 `pocket()`, `drill()` and `profile()` are also usable on their own with any

@@ -99,9 +99,23 @@ def test_floyd_rose_rejects_a_body_too_thin_for_its_spring_cavity() -> None:
         FloydRoseSpec().hardware(609.6, 30.0)
 
 
-def test_floyd_rose_rejects_a_body_too_thick_for_its_block_route() -> None:
+@pytest.mark.parametrize("thickness", [44.45, 46.0, 50.0])
+def test_floyd_rose_block_route_opens_into_the_back_in_a_thicker_body(
+    thickness: float,
+) -> None:
+    # The block hangs a fixed depth below the top: past the drawing's
+    # 1.75 in body, the spring cavity and block pocket reach deeper by as
+    # much, so the slot still runs 1.27 mm into the spring cavity.
+    hardware = FloydRoseSpec().hardware(609.6, thickness)
+    (route,) = hardware.through_cavities
+    (rear,) = hardware.rear_cavities
+    assert route.depth + rear.cavity.depth - thickness == pytest.approx(1.27)
+    assert rear.steps[0].depth - rear.cavity.depth == pytest.approx(28.19 - 16.13)
+
+
+def test_floyd_rose_rejects_a_block_route_too_shallow_to_open() -> None:
     with pytest.raises(BodyGeometryError, match="too thick"):
-        FloydRoseSpec().hardware(609.6, 46.0)
+        FloydRoseSpec(block_route_depth=20.0).hardware(609.6, 46.0)
 
 
 def test_floyd_rose_rejects_an_impossible_layout() -> None:

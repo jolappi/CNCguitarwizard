@@ -4,6 +4,7 @@ from dataclasses import replace
 
 import pytest
 
+from cncguitarwizard.cam import MachiningParameters, plan_cover_machining
 from cncguitarwizard.geometry.body import (
     FloydRoseSpec,
     cover_screw_points,
@@ -158,3 +159,28 @@ def test_a_gibson_cavity_moves_clear_of_a_floyd_rose(template: str) -> None:
     assert not outlines_overlap(cavity.outline, recess.outline)
     unmoved = replace(parameters, body_bridge=Prototype001Parameters().body_bridge)
     assert cavity.min_y > unmoved.build().body.control_cavity.cavity.min_y
+
+
+def test_a_floyd_rose_spring_cavity_gets_a_six_screw_cover() -> None:
+    geometry = replace(Prototype001Parameters(), body_bridge=FloydRoseSpec()).build()
+    (rear,) = geometry.body.extra_rear_cavities
+    (cover,) = [
+        c for c in geometry.covers if c.name == "Floyd Rose spring cavity cover"
+    ]
+
+    assert cover.face == "back"
+    assert cover.outline == rear.cover_recess.outline
+    assert cover.thickness == rear.cover_recess.depth
+    assert len(cover.holes) == 6
+    marks = [
+        m for m in geometry.body.control_back_marks if m.name.startswith("Floyd Rose")
+    ]
+    assert len(marks) == 6
+    for mark in marks:
+        # On the ledge: inside the recess, outside the spring cavity.
+        centre = Point2D(mark.center_x, mark.center_y)
+        assert point_in_polygon(centre, rear.cover_recess.outline)
+        assert not point_in_polygon(centre, rear.cavity.outline)
+    plan = plan_cover_machining(geometry.covers, MachiningParameters())
+    assert plan is not None
+    assert "Cover_floyd_rose_spring_cavity" in [s.name for s in plan.covers]

@@ -151,6 +151,10 @@ class KahlerBridgeSpec:
         )
 
 
+FLOYD_ROSE_DRAWN_THICKNESS = 44.45
+"""The body thickness Floyd Rose's routing diagrams are drawn for (1.75 in)."""
+
+
 @dataclass(frozen=True, slots=True)
 class FloydRoseSpec:
     """Recessed Floyd Rose Original double-locking tremolo.
@@ -171,7 +175,10 @@ class FloydRoseSpec:
     wider and the block slot sits 5.44 mm toward it. Floyd Rose puts the
     stud centre line 25.03 in from the nut on a 25.5 in scale, i.e.
     11.9 mm ahead of the scale line (StewMac's rule of thumb is 0.415 in
-    / 10.5 mm) — ``pivot_offset``.
+    / 10.5 mm) — ``pivot_offset``. The drawing is for a 1.75 in
+    (``FLOYD_ROSE_DRAWN_THICKNESS``) body, where the slot runs 1.27 mm into
+    the spring cavity; in a thicker body the spring cavity and the block
+    pocket are that much deeper, so the slot still opens into the back.
 
     Args:
         treble_side: Which side of the centreline carries the treble
@@ -210,7 +217,9 @@ class FloydRoseSpec:
         block_pocket_length: Length of the deeper block clearance pocket
             at the spring cavity's tail end.
         block_pocket_depth: Its depth from the back face.
-        cover_margin: Cover recess overhang around the spring cavity.
+        cover_margin: Cover recess overhang around the spring cavity: room
+            for the cover's six screws on the ledge (a Strat-style cover's
+            overlap; the routing diagram leaves the cover to the builder).
         cover_depth: Cover recess depth.
     """
 
@@ -241,7 +250,7 @@ class FloydRoseSpec:
     spring_cavity_tail_offset: float = 48.27
     block_pocket_length: float = 11.43
     block_pocket_depth: float = 28.19
-    cover_margin: float = 5.0
+    cover_margin: float = 8.0
     cover_depth: float = 2.0
 
     def hardware(self, scale_length: float, body_thickness: float) -> BridgeHardware:
@@ -340,6 +349,10 @@ class FloydRoseSpec:
         )
         tail = front + self.spring_cavity_tail_offset
         rear_radius = min(5.0, self.block_pocket_length / 2.0)
+        # The block hangs a fixed depth below the top; a body thicker than
+        # the drawing's puts it further from the back, so the spring
+        # cavity and the block pocket reach that much deeper.
+        extra = max(0.0, body_thickness - FLOYD_ROSE_DRAWN_THICKNESS)
         spring_cavity = RearCavity(
             RectangularCavity(
                 "Floyd Rose spring cavity",
@@ -347,7 +360,7 @@ class FloydRoseSpec:
                 0.0,
                 self.spring_cavity_length,
                 self.spring_cavity_width,
-                self.spring_cavity_depth,
+                self.spring_cavity_depth + extra,
                 corner_radius=rear_radius,
             ),
             RectangularCavity(
@@ -366,7 +379,7 @@ class FloydRoseSpec:
                     0.0,
                     self.block_pocket_length,
                     self.spring_cavity_width,
-                    self.block_pocket_depth,
+                    self.block_pocket_depth + extra,
                     corner_radius=rear_radius,
                 ),
             ),
@@ -431,9 +444,13 @@ class FloydRoseSpec:
             raise BodyGeometryError(
                 "Floyd Rose spring cavity must be deeper than its cover recess."
             )
+        # The rear depths as routed in this body (see ``hardware``).
+        extra = max(0.0, body_thickness - FLOYD_ROSE_DRAWN_THICKNESS)
+        spring_depth = self.spring_cavity_depth + extra
+        pocket_depth = self.block_pocket_depth + extra
         if (
-            self.block_pocket_depth + self.fine_tuner_depth >= body_thickness
-            or self.spring_cavity_depth + self.fine_tuner_depth >= body_thickness
+            pocket_depth + self.fine_tuner_depth >= body_thickness
+            or spring_depth + self.fine_tuner_depth >= body_thickness
         ):
             raise BodyGeometryError(
                 "Floyd Rose routes would meet: the body is too thin for the "
@@ -443,7 +460,7 @@ class FloydRoseSpec:
             raise BodyGeometryError(
                 "Floyd Rose stud holes would pass through the body: too thin."
             )
-        if self.block_route_depth + self.spring_cavity_depth <= body_thickness:
+        if self.block_route_depth + spring_depth <= body_thickness:
             raise BodyGeometryError(
                 "Floyd Rose block route would not open into the spring cavity: "
                 "the body is too thick for the routed depths."

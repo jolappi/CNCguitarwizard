@@ -1,8 +1,19 @@
-"""Tests for the GRBL G-code writer."""
+"""Tests for the G-code writer and its dialects."""
 
 import re
+from dataclasses import replace
 
-from cncguitarwizard.cam import GRBLWriter, MachiningParameters, Setup, Toolpath
+import pytest
+
+from cncguitarwizard.cam import (
+    POST_PROCESSOR_LABELS,
+    GCodeWriter,
+    GRBLWriter,
+    MachiningParameters,
+    Setup,
+    Toolpath,
+)
+from cncguitarwizard.cam.exceptions import ToolpathError
 from cncguitarwizard.cam.toolpath import Move, PathBuilder
 
 
@@ -136,3 +147,108 @@ def test_writer_names_a_setups_own_work_zero() -> None:
     assert "(Start over the work zero - check it here)" in lines
     assert lines[-3] == "(Return over the work zero)"
     assert not any("index pin" in line for line in lines)
+
+
+def moves(source: str) -> list[str]:
+    """Return the program's G0/G1 lines, which every dialect shares."""
+    return [line for line in source.splitlines() if re.match(r"G[01] ", line)]
+
+
+def test_every_dialect_writes_the_same_moves() -> None:
+    setup, parameters = make_setup(), MachiningParameters()
+    grbl = GCodeWriter().render(setup, parameters)
+    # KOSY writes two decimals and nccad's own feed units (see below).
+    for dialect in (d for d in POST_PROCESSOR_LABELS if d != "kosy"):
+        source = GCodeWriter(dialect).render(setup, parameters)
+        assert moves(source) == moves(grbl), dialect
+
+
+def test_the_default_writer_is_grbl() -> None:
+    setup, parameters = make_setup(), MachiningParameters()
+
+    assert GRBLWriter is GCodeWriter
+    assert GCodeWriter().render(setup, parameters) == GCodeWriter("grbl").render(
+        setup, parameters
+    )
+    assert "G4" not in GCodeWriter().render(setup, parameters)
+
+
+def test_marlin_uses_semicolon_comments_and_no_end_code() -> None:
+    lines = (
+        GCodeWriter("marlin").render(make_setup(), MachiningParameters()).splitlines()
+    )
+
+    # A ; comment runs to the end of the line: brackets need no escaping.
+    assert "; Setup: Test setup (square)" in lines
+    assert not any(line.startswith("(") for line in lines)
+    assert "G17" not in lines and "G94" not in lines
+    assert lines[-1] == "G0 X0.000 Y0.000"
+
+
+def test_fanuc_wraps_the_program_and_changes_the_tool() -> None:
+    lines = (
+        GCodeWriter("fanuc").render(make_setup(), MachiningParameters()).splitlines()
+    )
+
+    assert lines[0] == "%" and lines[-1] == "%"
+    assert lines[1] == "O1000 (CNCGUITARWIZARD TEST)"
+    assert "(SETUP: TEST SETUP [SQUARE])" in lines
+    assert lines.index("T1 M6") < lines.index("S10000 M3")
+    assert lines[-2] == "M30"
+
+
+def test_the_spindle_dwell_is_written_in_each_dialects_units() -> None:
+    parameters = MachiningParameters(spindle_dwell=2.5)
+    expected = {
+        "grbl": "G4 P2.500",
+        "linuxcnc": "G4 P2.500",
+        "mach3": "G4 P2500",
+        "marlin": "G4 P2500",
+        "fanuc": "G4 X2.500",
+    }
+    for dialect, dwell in expected.items():
+        writer = GCodeWriter.for_parameters(replace(parameters, post_processor=dialect))
+        lines = writer.render(make_setup(), parameters).splitlines()
+        spindle = next(i for i, line in enumerate(lines) if "M3" in line)
+        assert lines[spindle + 1] == dwell, dialect
+
+
+def test_an_unknown_post_processor_is_rejected() -> None:
+    with pytest.raises(ToolpathError, match="post_processor"):
+        MachiningParameters(post_processor="haas")  # type: ignore[arg-type]
+
+
+def test_kosy_writes_a_knc_program_in_nccads_units() -> None:
+    writer = GCodeWriter("kosy")
+    lines = writer.render(make_setup(), MachiningParameters()).splitlines()
+
+    assert writer.extension == ".knc" and GCodeWriter().extension == ".nc"
+    assert lines[:2] == ["_", "_"]
+    assert "; Setup: Test setup (square)" in lines
+    assert "G90" in lines and "G21" not in lines
+    # Relay 6 switches the spindle; nccad takes no spindle speed.
+    assert lines.index("M10 O6.1") < lines.index("M10 O6.0")
+    assert not any(line.startswith("M3") for line in lines)
+    body = [line for line in lines if re.match(r"G[01] ", line)]
+    # Two decimals, and feeds in nccad's units: mm/min / 6.
+    assert "G1 Z-2.00 F50.0" in body
+    assert "G1 X10.00 F166.7" in body
+    assert lines[-1] == "G99"
+
+
+def test_kosy_caps_feeds_at_ncads_fastest_and_says_so() -> None:
+    parameters = MachiningParameters(
+        feed_rate=1800.0, spindle_dwell=2.0, post_processor="kosy"
+    )
+    builder = PathBuilder("Fast", safe_height=5.0, feed_rate=1800.0, plunge_rate=300.0)
+    builder.rapid_to(0.0, 0.0)
+    builder.plunge_to(-1.0)
+    builder.cut_to(20.0, 0.0)
+    setup = Setup("Fast", "Fast cut", (builder.build(),))
+    writer = GCodeWriter.for_parameters(parameters)
+    lines = writer.render(setup, parameters).splitlines()
+
+    assert "; Feeds over 1200 mm/min are cut at nccad's F200" in lines
+    assert any(line.endswith("F200.0") for line in lines)
+    # The dwell counts 1/18 s.
+    assert lines[lines.index("M10 O6.1") + 1] == "M30 P36"

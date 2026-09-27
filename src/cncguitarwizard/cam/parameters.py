@@ -4,8 +4,22 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from typing import Literal
 
 from .exceptions import ToolpathError
+
+PostProcessor = Literal["grbl", "linuxcnc", "mach3", "marlin", "fanuc", "kosy"]
+"""The G-code dialect the programs are written in (see ``cam.gcode``)."""
+
+POST_PROCESSOR_LABELS: dict[str, str] = {
+    "grbl": "GRBL (grblHAL, FluidNC, Carbide Motion, UGS, Candle)",
+    "linuxcnc": "LinuxCNC",
+    "mach3": "Mach3 / Mach4 / UCCNC",
+    "marlin": "Marlin",
+    "fanuc": "Fanuc-style industrial control",
+    "kosy": "KOSY / nccad (.KNC)",
+}
+"""A readable name for each post processor."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -57,6 +71,13 @@ class MachiningParameters:
             the mid-plane so the two half-depth cuts meet.
         raster_link_spacing: Sample spacing when checking whether a link
             between raster rows can stay in the cut.
+        post_processor: The G-code dialect: ``"grbl"`` (default; also
+            grblHAL, FluidNC and similar senders), ``"linuxcnc"``,
+            ``"mach3"`` (Mach3/4, UCCNC), ``"marlin"``, ``"fanuc"``
+            (Fanuc-style industrial controls) or ``"kosy"`` (KOSY / nccad
+            ``.KNC`` programs).
+        spindle_dwell: Seconds to wait after starting the spindle, for a
+            spindle that needs time to reach speed; ``0`` for none.
 
     Raises:
         ToolpathError: If any value is non-finite or out of its range.
@@ -84,6 +105,8 @@ class MachiningParameters:
     small_hole_tool_diameter: float = 3.0
     profile_overlap: float = 0.5
     raster_link_spacing: float = 1.0
+    post_processor: PostProcessor = "grbl"
+    spindle_dwell: float = 0.0
 
     def __post_init__(self) -> None:
         """Reject parameters the planner cannot cut safely with."""
@@ -111,10 +134,16 @@ class MachiningParameters:
             "through_overshoot": self.through_overshoot,
             "profile_overlap": self.profile_overlap,
             "index_pin_wall": self.index_pin_wall,
+            "spindle_dwell": self.spindle_dwell,
         }
         for name, value in non_negative.items():
             if not math.isfinite(value) or value < 0.0:
                 raise ToolpathError(f"{name} must be finite and non-negative.")
+        if self.post_processor not in POST_PROCESSOR_LABELS:
+            raise ToolpathError(
+                "post_processor must be one of "
+                f"{', '.join(POST_PROCESSOR_LABELS)}."
+            )
         if self.tool_tip not in ("flat", "ball"):
             raise ToolpathError('tool_tip must be "flat" or "ball".')
         if not 0.0 < self.step_over <= 1.0:

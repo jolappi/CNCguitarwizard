@@ -73,6 +73,19 @@ class ControlFeatures:
     covers: tuple[CoverPlate, ...] = ()
     battery_cavity: RearCavity | None = None
 
+    def with_covers(self, other: ControlFeatures) -> ControlFeatures:
+        """Return these features with another's screw spots and covers added."""
+        return ControlFeatures(
+            self.control_cavity,
+            self.switch_cavity,
+            self.top_cavities,
+            self.holes,
+            (*self.back_marks, *other.back_marks),
+            self.top_marks,
+            (*self.covers, *other.covers),
+            self.battery_cavity,
+        )
+
     def with_battery(self, battery: ControlFeatures) -> ControlFeatures:
         """Return these features with a battery box's cavity, spots and cover."""
         return ControlFeatures(
@@ -85,6 +98,44 @@ class ControlFeatures:
             (*self.covers, *battery.covers),
             battery.battery_cavity,
         )
+
+
+def rear_cover(rear: RearCavity, count: int) -> ControlFeatures:
+    """Return the sheet cover for a rear cavity and its screw spots.
+
+    ``count`` screws are spread round the ledge between the cavity and
+    its cover recess (``cover_screw_points``); each gets a clearance hole
+    in the plate and a shallow spot 1 mm into the ledge's floor. The plate
+    is the recess's outline, as thick as the recess is deep.
+    """
+    depth = rear.cover_recess.depth
+    screws = cover_screw_points(
+        rear.cavity.outline,
+        rear.cover_recess.outline,
+        count,
+        SCREW_CLEARANCE + 2.0,
+    )
+    marks = tuple(
+        DrilledHole(
+            f"{rear.cavity.name} cover screw {index}",
+            point.x,
+            point.y,
+            SCREW_SPOT_DIAMETER,
+            depth + SCREW_SPOT_DEPTH,
+        )
+        for index, point in enumerate(screws, start=1)
+    )
+    plate = CoverPlate(
+        f"{rear.cavity.name} cover",
+        "back",
+        rear.cover_recess.outline,
+        depth,
+        holes=tuple(
+            DrilledHole(f"Screw {index}", point.x, point.y, SCREW_CLEARANCE, depth)
+            for index, point in enumerate(screws, start=1)
+        ),
+    )
+    return ControlFeatures(back_marks=marks, covers=(plate,))
 
 
 BATTERY_CAVITY_CORNER_RADIUS = 5.0
@@ -275,37 +326,9 @@ def control_features(
     marks: list[DrilledHole] = []
     covers: list[CoverPlate] = []
     for rear, count in ((control, 4), (switch, 3)):
-        screws = cover_screw_points(
-            rear.cavity.outline,
-            rear.cover_recess.outline,
-            count,
-            SCREW_CLEARANCE + 2.0,
-        )
-        # Spotted 1 mm into the ledge, which is the cover recess's floor.
-        marks += [
-            DrilledHole(
-                f"{rear.cavity.name} cover screw {index}",
-                point.x,
-                point.y,
-                SCREW_SPOT_DIAMETER,
-                cover_depth + SCREW_SPOT_DEPTH,
-            )
-            for index, point in enumerate(screws, start=1)
-        ]
-        covers.append(
-            CoverPlate(
-                f"{rear.cavity.name} cover",
-                "back",
-                rear.cover_recess.outline,
-                cover_depth,
-                holes=tuple(
-                    DrilledHole(
-                        f"Screw {index}", point.x, point.y, SCREW_CLEARANCE, cover_depth
-                    )
-                    for index, point in enumerate(screws, start=1)
-                ),
-            )
-        )
+        plate = rear_cover(rear, count)
+        marks += plate.back_marks
+        covers += plate.covers
     return ControlFeatures(
         control_cavity=control,
         switch_cavity=switch,

@@ -197,7 +197,7 @@ rules, and how Prototype001's body was digitised from a DXF drawing.
 | `plan_body_machining(body, parameters)` | Two-sided `BodyMachiningPlan` for a `BodySolid`. |
 | `pocket()`, `drill()`, `profile()` | 2.5D operations on closed polygons in a machine frame. |
 | `Toolpath`, `Move`, `PathBuilder` | Tool-centre move sequences. |
-| `Setup`, `GRBLWriter` | One fixturing's toolpaths and its GRBL G-code. |
+| `Setup`, `GCodeWriter` (`GRBLWriter`), `POST_PROCESSOR_LABELS` | One fixturing's toolpaths and its G-code, in the dialect `MachiningParameters.post_processor` names (GRBL by default). |
 | `render_setup_svg()` | Toolpath plot over the part outline. |
 | `clear_intervals()`, `offset_polygon()`, `disc_fits()` | Exact planar clearance helpers. |
 

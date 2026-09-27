@@ -1,5 +1,27 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- G-code dialects: `MachiningParameters.post_processor` writes every
+  program for GRBL (default), LinuxCNC, Mach3/4 / UCCNC, Marlin or a
+  Fanuc-style control, or as KOSY / nccad `.knc` programs (feeds in
+  nccad's units, spindle on relay 6, `G99` end) (`cam.GCodeWriter`;
+  `GRBLWriter` stays the GRBL default), and `spindle_dwell` waits for the
+  spindle in each dialect's own units. Both are basic fields in the web
+  app's machining form.
+- A Floyd Rose's spring cavity gets its sheet cover: six screws spotted
+  on the ledge and `Cover_floyd_rose_spring_cavity.nc`, like the cavity
+  covers (`controls.rear_cover`). Its cover recess is 8 mm wider all
+  round (was 5 mm, too narrow for the screws).
+
+### Changed
+
+- A Floyd Rose's spring cavity and block pocket reach deeper in a body
+  thicker than the routing diagram's 1.75 in, so the block route still
+  opens into the back (bodies over 45.7 mm were refused).
+
 ## v1.0.0-beta1 - 2026-09-27
 
 ### Added

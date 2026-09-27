@@ -15,7 +15,7 @@ from .fretboard import (
     fretboard_outline_polygon,
     plan_fretboard_machining,
 )
-from .gcode import GRBLWriter, Setup
+from .gcode import GCodeWriter, GRBLWriter, Setup
 from .neck import (
     NeckMachiningParameters,
     NeckMachiningPlan,
@@ -23,7 +23,7 @@ from .neck import (
     plan_neck_machining,
 )
 from .operations import depth_levels, drill, pocket, profile
-from .parameters import MachiningParameters
+from .parameters import POST_PROCESSOR_LABELS, MachiningParameters
 from .planar import clear_intervals, disc_fits, offset_polygon
 from .preview import render_setup_svg
 from .surfacing import (
@@ -43,7 +43,9 @@ __all__ = [
     "CoverMachiningPlan",
     "FretboardMachiningParameters",
     "FretboardMachiningPlan",
+    "GCodeWriter",
     "GRBLWriter",
+    "POST_PROCESSOR_LABELS",
     "MachiningParameters",
     "Move",
     "NeckMachiningParameters",

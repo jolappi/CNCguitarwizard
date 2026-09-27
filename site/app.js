@@ -451,8 +451,9 @@ function showResult(result) {
   const files = document.getElementById("files");
   files.innerHTML = "";
   const gcode = result.report.gcode;
-  const stemOf = (name) => name.replace(/\.(nc|svg)$/, "");
-  const programOf = (name) => (/\.(nc|svg)$/.test(name) ? gcode[stemOf(name)] : undefined);
+  const isProgram = (name) => /\.k?nc$/.test(name);
+  const stemOf = (name) => name.replace(/\.(nc|knc|svg)$/, "");
+  const programOf = (name) => (/\.(nc|knc|svg)$/.test(name) ? gcode[stemOf(name)] : undefined);
   // build.json lists the programs alphabetically: order by part, then step.
   const partOrder = ["Model and report", "Body", "Neck", "Fretboard", "Covers"];
   const groups = new Map(partOrder.map((part) => [part, []]));
@@ -483,7 +484,7 @@ function showResult(result) {
   function addFile(name) {
     const text = result.files[name];
     const info = programOf(name);
-    const number = info && name.endsWith(".nc") ? `${info.step}.` : "";
+    const number = info && isProgram(name) ? `${info.step}.` : "";
     const type = name.endsWith(".svg") ? "image/svg+xml"
       : name.endsWith(".json") ? "application/json" : "text/plain";
     const url = URL.createObjectURL(new Blob([text], { type }));
@@ -492,7 +493,7 @@ function showResult(result) {
     row.innerHTML =
       `<td class="step">${number}</td><td>${name}</td><td>${(text.length / 1024).toFixed(0)} kB</td>` +
       `<td><a class="download" href="${url}" download="${name}">Download</a></td>`;
-    if (name.endsWith(".nc")) {
+    if (isProgram(name)) {
       const button = document.createElement("button");
       button.className = "simulate";
       button.textContent = "Simulate";

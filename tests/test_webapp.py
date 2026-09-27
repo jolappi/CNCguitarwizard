@@ -447,3 +447,23 @@ def test_the_multiscale_fields_sit_with_the_scale() -> None:
     }
     for name in ("bass_scale_length", "perpendicular_fret", "fret_slant_angle"):
         assert groups[name] == "Scale and fretboard"
+
+
+def test_the_post_processor_is_a_basic_choice_with_readable_names() -> None:
+    fields = {
+        field["name"]: field
+        for group in parameter_schema()["machining"]
+        for field in group["fields"]
+    }
+    choice = fields["post_processor"]
+    assert choice["advanced"] is False and choice["default"] == "grbl"
+    assert choice["options"] == [
+        "grbl",
+        "linuxcnc",
+        "mach3",
+        "marlin",
+        "fanuc",
+        "kosy",
+    ]
+    assert choice["labels"]["mach3"] == "Mach3 / Mach4 / UCCNC"
+    assert fields["spindle_dwell"]["default"] == 0.0
