@@ -4,7 +4,11 @@ from dataclasses import replace
 
 import pytest
 
-from cncguitarwizard.geometry.body import cover_screw_points
+from cncguitarwizard.geometry.body import (
+    FloydRoseSpec,
+    cover_screw_points,
+    outlines_overlap,
+)
 from cncguitarwizard.geometry.primitives import Point2D, point_in_polygon
 from cncguitarwizard.presets import Prototype001Parameters
 from cncguitarwizard.presets.body_shapes import YOUR_DESIGN_TEMPLATES
@@ -24,7 +28,7 @@ def test_every_layout_has_a_label() -> None:
 @pytest.mark.parametrize("layout", LAYOUTS)
 def test_every_layout_builds_on_every_drawn_template(layout: str) -> None:
     for name, (_, shape) in YOUR_DESIGN_TEMPLATES.items():
-        instrument = "bass_guitar" if name.startswith("bass") else "electric_guitar"
+        instrument = "bass_guitar" if "bass" in name else "electric_guitar"
         parameters = replace(
             Prototype001Parameters.for_instrument(instrument),
             body_shape=shape,
@@ -134,3 +138,23 @@ def test_screw_points_go_to_the_corners_of_a_rectangular_ledge() -> None:
     }
     # A ledge narrower than the minimum gets no screws at all.
     assert cover_screw_points(rectangle(30, 20), rectangle(32, 22), 4, 5.0) == ()
+
+
+@pytest.mark.parametrize("template", ["stratocaster", "les_paul", "jackson_rr"])
+def test_a_gibson_cavity_moves_clear_of_a_floyd_rose(template: str) -> None:
+    # In place, the Gibson cavity would rout into the Floyd Rose's
+    # fine-tuner recess with no wood between the floors; the layout moves
+    # out (and along the neck) until it clears, pots and cover with it.
+    shape = YOUR_DESIGN_TEMPLATES[template][1]
+    parameters = replace(
+        Prototype001Parameters(),
+        body_shape=shape,
+        body_controls="gibson_4",
+        body_bridge=FloydRoseSpec(),
+    )
+    body = parameters.build().body
+    cavity = body.control_cavity.cavity
+    recess = next(c for c in body.extra_cavities if "fine-tuner" in c.name)
+    assert not outlines_overlap(cavity.outline, recess.outline)
+    unmoved = replace(parameters, body_bridge=Prototype001Parameters().body_bridge)
+    assert cavity.min_y > unmoved.build().body.control_cavity.cavity.min_y

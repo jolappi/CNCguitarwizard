@@ -4,6 +4,54 @@
 
 ### Added
 
+- A Gibson or three-pot rear cavity that would rout into a deep top
+  route (a Floyd Rose's fine-tuner recess) moves, pots and cover with it,
+  to the nearest clear place up to 20 mm out and along the neck, so the
+  Gibson layout now works with a Floyd Rose on every template.
+- A headstock-adjusted truss rod's route opens the middle of the nut
+  seat; `Neck_top.nc`'s notes now ask for a wooden filler over the fitted
+  rod, flush with the seat (its width and the seat's length given), before
+  the nut is glued. At the heel the seat is whole.
+- Neck bolts keep `body_neck_bolt_end_wall` (3 mm, was a fixed 4 mm) of
+  wood between their holes and the neck's heel end, now checked for every
+  bolt; the default rectangle's tail pair and the Design by Jone and Les
+  Paul tail bolts sit right at it, 5.5 mm ahead of the heel end, so the
+  bolts spread further along the neck and hold it better.
+- The web app credits its author after the motto and links the GitHub
+  repository there and in a new footer.
+- The truss rod's adjuster openings can be left out: `truss_rod_sleeve_bore`
+  (the heel sleeve's hand-drilled bore) and `truss_rod_trough` (the
+  headstock trough and its cover), both on by default.
+- The neck G-code runs the truss rod's channel, step and pocket each a
+  tool radius on over its neighbour, and the pocket toward the adjuster,
+  so the round cutter leaves no corner standing into the rod's square
+  step and block.
+- The web app's downloads come in one list per part (model and report,
+  body, neck, fretboard, covers), each program numbered in the order it
+  is run with its plot beneath it; `build.json` gives each program's
+  `step`, and the summary numbers them too.
+- Stock truss-rod lengths: rods are sold by overall length in 20 mm steps
+  (`truss_rod_stock_lengths`, 300–600 mm), only the thin part growing.
+  With no `truss_rod_rod_length` the neck is routed for the longest stock
+  rod that fits (440 mm on the default guitar, 480 mm on the seven-string,
+  600 mm on the bass); a given rod is checked, and one too long is
+  rejected naming the longest stock rod that fits. The adjusting end
+  stays put and the anchor end moves. `Prototype001Parameters.truss_rod_fit`
+  returns a `TrussRodFit`; `build.json` (`truss_rod`) and the web app's
+  summary report the rod, its route, the longest the neck takes and the
+  recommendation.
+- An optional rear 9 V battery box (`body_battery_box`, off by default):
+  a 56 × 30 mm box (r 5) routed 22 mm up from the back in a 70 × 44 mm
+  cover recess (`body_battery_cavity_length`, `_width`, `_depth`,
+  `body_battery_cover_margin`), cut in `Body_back_controls.nc`, with a
+  two-screw cover cut from sheet in `Cover_battery_cavity.nc`. The body
+  shape's `battery_offset`, `battery_y` and `battery_angle_degrees` place
+  it; every shape and template puts it as near its control cavity as the
+  two covers allow (the lead's channel is drilled by hand), in a spot
+  that clears every control layout, bridge and pickup, and the body
+  editor drags it.
+  `BodySolid` now rejects overlapping rear cover recesses and any hole
+  that would open into the battery box.
 - Interchangeable bridges (`geometry.body.bridges`): `KahlerBridgeSpec`
   (default), `FloydRoseSpec` (studs, recess, through block route, rear
   spring cavity with cover), `TuneOMaticSpec` (posts and stop-bar studs)
@@ -56,6 +104,92 @@
   trapezoid on the Design by Jone body, whose treble cutaway is deep),
   else a 32 × 40 mm rectangle near the heel end; ferrules must sit in
   wood. The body editor drags the bolts too.
+- The Les Paul style body template is a new mockup, labelled "Les Paul
+  style (mockup, not the original)": traced from a reference render (60
+  control points, 442 × 328 mm) and reshaped by hand at the neck joint and
+  treble horn, with its selector switch on the bass-side upper bout.
+- The Stratocaster style body template is a new mockup too, labelled
+  "Stratocaster style (mockup, not the original)": traced from a reference
+  DXF drawing's outermost edge (76 control points, 459 × 323 mm, aligned
+  on its neck pocket) and reshaped by hand at both horns and the neck
+  joint. A new drawing still starts from the original 42-point outline.
+- The Jackson RR style body template is a new mockup too, labelled
+  "Jackson RR style (mockup, not the original)": traced from a reference
+  render (64 control points, 549 × 415 mm, scaled from its humbucker covers
+  and placed from its neck pickup) and reshaped by hand at the neck joint,
+  both wing tips and the V notch. Its selector switch sits on the bass
+  wing, the pots and control cavity forward on the treble wing and the
+  jack in the treble wing's outer edge.
+- A Jazz Bass style body template (`jazz_bass`) is new, also a mockup:
+  "Jazz Bass style (mockup, not the original)", traced from a reference
+  render (76 control points, about 510 × 333 mm, straightened on the
+  body's centre stripe and scaled from its bridge pickup) and reshaped by
+  hand at both horns and the treble cutaway. It replaces the offset bass
+  (the Stratocaster-style outline stretched) as the bass guitar's default
+  body, which is gone from the template menu.
+- Neck bolts move out toward the neck's edge (`body_neck_bolts_outward`)
+  until 5 mm of wood is left beside the hole (`body_neck_bolt_edge_wall`)
+  or, by a cutaway, until the ferrule keeps 1 mm of wood to the body's
+  edge; they must keep 3 mm of wood to the truss rod and 1 mm between
+  ferrules, and a ferrule may run past the neck pocket but not out of the
+  body. The Design by Jone treble pair moves to x = -24 and -6, clear of
+  the rod.
+- Web app: **Save design** downloads every setting — the instrument and
+  the drawn body and headstock included — as a JSON file, and **Load
+  design** restores it into the form and editors, skipping and listing
+  settings the running version does not know.
+- Truss rod adjusting end (`truss_rod_adjustment`: heel or headstock) and
+  its hardware: the channel (now 6 × 7.5 mm) steps down to a 7.5 × 10.5 ×
+  14 mm step and a 9 × 11 × 32 mm pocket at the adjusting end
+  (`TrussRodChannel.pockets`). At the heel the adjuster's 12 mm sleeve bore
+  (drilled by hand; in the model and the neck program's notes) runs on to
+  the heel end on the rod's axis (7.5 mm below the glue face,
+  `truss_rod_axis_depth`) and its Ø 15 × 6 mm head sits in a `Truss rod access`
+  notch in the body; at the headstock the route starts under the nut and
+  the adjuster sits in a trough in the headstock face, with a sheet-cut
+  truss-rod cover (`Cover_truss_rod.nc`). Every size is a parameter, and
+  the route is fitted to the neck by default (`truss_rod_length` empty).
+- Slanted frets (`fret_slant_angle`, 0° by default): every fret, the
+  fretboard's nut end and far end tilt about the centerline (`slant` on
+  `FretLayout`, `Fretboard` and `FretboardSurface`), block inlays follow
+  them, and the fretboard program cuts each slot along its own line. The
+  fret spacing stays exact on the centerline; the neck, bridge and
+  pickups are unchanged.
+- Multiscale (fanned) frets: `bass_scale_length` (with `scale_length` as
+  the treble scale) and `perpendicular_fret`. Every fret is straight and
+  exact on every string (`FretSkew`, replacing the plain slant on
+  `FretLayout`, `Fretboard` and `FretboardSurface`), the centerline gets
+  the mean scale, and the pickups turn to the frets at their centres
+  (`body_pickups_follow_fan`: auto, yes or no; auto keeps them square
+  with a Tune-o-matic). Any bridge can be used, square at the centerline
+  scale with its saddles set per string — except a Tune-o-matic, whose
+  posts always turn to the fanned bridge line as its saddles have too
+  little travel (the stop-bar studs stay); a hardtail can turn its
+  string-through holes the same way (`body_bridge_follows_fan`,
+  `turned_hardware`). A
+  leaning nut end lengthens the neck's nut shelf so the nut keeps 5 mm.
+  Inlays follow slanted and fanned frets: blocks lean with them, barbed
+  wire turns to their angle and dots move onto their lines.
+- The FreeCAD neck has a flat nut seat as long as the nut shelf (as the
+  neck G-code already cut it); before, the modelled top tilted from the
+  nut itself. The seat is built into the neck loft and the headstock face
+  is cut down to its true plane from the end of the shelf, so `NeckBack`
+  stays one solid.
+  `BodySolid` now tests cavities' real outlines, not just their bounding
+  boxes, for overlap.
+- Edge finishes, all optional: a roundover on the top and back edges
+  (`body_top_edge_radius`, `body_back_edge_radius`), a binding channel
+  instead (`body_*_binding_width` / `_depth`), a Strat-style arm contour
+  on the top (`body_arm_contour_*`) and a belly cut on the back
+  (`body_belly_cut_*`), tapering along the bass-side bouts
+  (`EdgeProfile`, `ContourCut`). New ball-nose programs
+  `Body_top_edges.nc` / `Body_back_edges.nc` rough and finish the
+  contours and sweep the roundovers; the binding channel is cut with the
+  outline. The FreeCAD model terraces them in 1 mm layers, the plan view
+  and body editor show the contours, and `BodySolid` checks them against
+  the cavities: a roundover may lower a nearby cavity's rim by up to
+  1 mm, and a contour plus its face's roundover must stay within half
+  the body.
 - Seven- and eight-string guitars (`for_instrument("seven_string_guitar")`,
   `"eight_string_guitar"`, both in the web form's instrument menu): 25.5-
   and 27-inch scales, wider nuts and heels, a hardtail with a hole per
@@ -135,6 +269,16 @@
 
 - The web app versions its script and wheel URLs by build id, so a cached
   `app.js` can no longer run against a newer wheel after a rebuild.
+- The joined neck loft no longer self-intersects at the headstock tip
+  (FreeCAD's `check(True)` reported it): the rounded headstock edge's
+  outermost sample sat 0.06 mm from the edge point, leaving a sliver face
+  the length of the loft.
+- The FreeCAD truss-rod channel is cut 5 mm above the neck's top instead
+  of stopping exactly at it; a headstock-adjusted rod's channel runs over
+  the nut shelf, where that left the neck self-intersecting.
+- The FreeCAD truss-rod nut pocket or trough is cut as a row of boxes at
+  most 5 mm long, so the neck passes `check(True)` (one long box left
+  C0 edges where its walls cross the neck's top).
 
 ## v0.2.0-alpha1 - 2026-09-16
 

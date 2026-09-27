@@ -9,6 +9,7 @@ from itertools import pairwise
 from ..exceptions import FretboardGeometryError
 from ..fret import FretCalculator
 from ..primitives import Point3D, QuadFace, SurfaceMesh
+from .skew import FretSkew
 
 
 @dataclass(frozen=True, slots=True)
@@ -28,6 +29,10 @@ class FretboardSurface:
         center_thickness: Centerline thickness above the flat underside.
         end_extension: Additional length after the final fret.
         profile_sample_count: Odd number of points across each radius section.
+        skew: Slanted or fanned frets: every row leans with its fret, a
+            point ``y`` off the centerline moving ``skew.at(x) * y`` along
+            the neck (see ``FretSkew``); ``station_positions`` stay on the
+            centerline.
 
     Raises:
         FretboardGeometryError: If dimensions cannot form a valid surface.
@@ -41,6 +46,7 @@ class FretboardSurface:
     center_thickness: float
     profile_sample_count: int = 33
     end_extension: float = 0.0
+    skew: FretSkew = field(default_factory=FretSkew)
     station_positions: tuple[float, ...] = field(init=False)
     mesh: SurfaceMesh = field(init=False)
 
@@ -81,6 +87,12 @@ class FretboardSurface:
             )
         )
 
+        steepest = max(abs(self.skew.at(position)) for position in station_positions)
+        if steepest > math.tan(math.radians(35.0)):
+            raise FretboardGeometryError(
+                f"A fret leans {math.degrees(math.atan(steepest)):.0f} degrees; "
+                "keep every fret within 35 degrees."
+            )
         object.__setattr__(self, "station_positions", station_positions)
         object.__setattr__(self, "mesh", SurfaceMesh(rows, faces))
 
@@ -154,7 +166,7 @@ class FretboardSurface:
             self.radius**2 - lateral**2
         )
         return Point3D(
-            position,
+            position + self.skew.at(position) * lateral,
             lateral,
             self.center_thickness - surface_drop,
         )

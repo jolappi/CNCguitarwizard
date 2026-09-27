@@ -119,19 +119,19 @@ left-handed like the DXF: the long upper horn at -Y, controls at +Y. The
 drawn body's starting loop closes across the horn gap about 52 mm ahead of
 the pocket end so the neck pocket opens onto the gap as the DXF body's does.
 
-`YOUR_DESIGN_TEMPLATES` offers four starting points for a drawn body, each
+`YOUR_DESIGN_TEMPLATES` offers five starting points for a drawn body, each
 a complete `YourDesignShape` (outline and electronics placements):
 
 | Key | Label | Outline |
 | --- | --- | --- |
 | `design_by_jone` | Design by Jone | The traced DXF outline resampled to 64 evenly spaced control points, with that body's own switch, pot and jack placements |
-| `les_paul` | Les Paul style | Single cutaway: a full round bass bout sweeping into the neck and a rounded cutaway under a short treble horn |
-| `stratocaster` | Stratocaster style | The offset double cutaway the drawn body starts as |
-| `jackson_rr` | Jackson RR style | An offset V: a long pointed bass horn, a short treble horn and a swept tail with the longer treble wing |
-| `bass_offset` | Offset bass (P/J style) | The Stratocaster-style outline stretched 18 % along the neck and 8 % across it; the bass guitar's default body (`BASS_BODY`) |
+| `les_paul` | Les Paul style (mockup, not the original) | Single cutaway traced from a reference render and reshaped by hand — a genre mockup, not the original outline; its selector switch sits on the bass-side upper bout |
+| `stratocaster` | Stratocaster style (mockup, not the original) | Offset double cutaway traced from a reference DXF drawing (aligned on its neck pocket) and reshaped by hand at both horns and the neck joint — a genre mockup, not the original outline |
+| `jackson_rr` | Jackson RR style (mockup, not the original) | Offset V traced from a reference render and reshaped by hand at the neck joint, both wing tips and the V notch — a genre mockup, not the original outline; the switch on the bass wing, the pots, control cavity and jack on the treble wing |
+| `jazz_bass` | Jazz Bass style (mockup, not the original) | Offset waist traced from a reference render (straightened on its centre stripe, scaled from its bridge pickup) and reshaped by hand at both horns and the treble cutaway — a genre mockup, not the original outline; its pots and control cavity on the lower bout behind the bridge pickup; the bass guitar's default body (`BASS_BODY`) |
 
-The last three are original outlines in the genre named, not tracings of
-any instrument.
+The Les Paul, Stratocaster, Jackson RR and Jazz Bass ones are mockups:
+traced and then reshaped by hand, so they are not the original outlines.
 
 `Prototype001Parameters.body_layout()` returns the outline and every
 feature (`BodyLayout`) without building the neck surfaces or validating
@@ -188,16 +188,29 @@ gets a ferrule counterbore (`body_neck_ferrule_diameter` 14 mm,
 `body_neck_ferrule_depth` 5 mm) and, on from its floor, a bolt hole
 (`body_neck_bolt_hole_diameter` 5 mm) through to the neck pocket — both in
 `BodySolid.rear_holes`, drilled from the back. The body shape's
-`neck_bolts` (X from the heel end, Y) place them; left empty they form a
-rectangle `body_neck_bolt_spacing_x` (32 mm) by `_y` (40 mm) with the tail
-pair 4 mm of wood from the pocket's end (or centred
-`body_neck_bolt_center_offset` ahead of the heel end). The Design by Jone
-body's deep treble cutaway leaves room for a ferrule only near the heel end
-on that side, so it uses a trapezoid, (-40, -20), (-8, -20), (-28, 6),
-(-8, 6); the Les Paul template moves its treble pair in to y = 12. Every
-bolt must land in the pocket and every ferrule in wood with 2 mm to spare,
-or the build says which one to move — in the body editor the bolts can be
-dragged like the cavities.
+`neck_bolts` (X from the heel end, Y) place them along the neck; left empty
+they form a rectangle `body_neck_bolt_spacing_x` (32 mm) by `_y` (40 mm)
+with the tail pair as close to the pocket's end as
+`body_neck_bolt_end_wall` (3 mm of wood between the hole and the neck's
+heel end) allows (or centred `body_neck_bolt_center_offset` ahead of the
+heel end). No bolt may come closer to the heel end than that wall; the
+templates' own tail bolts sit right at it (5.5 mm ahead of the heel end),
+since bolts spread further along the neck hold it better.
+
+With `body_neck_bolts_outward` (the default) every bolt then moves out
+across the neck, on its own side, as far from the truss rod as it can go:
+until `body_neck_bolt_edge_wall` (5 mm) of wood is left between its hole
+and the neck's edge (about ±20 mm on a 56 mm heel), or — beside a
+cutaway — until its ferrule keeps `NECK_FERRULE_BODY_WALL` (1 mm) of wood
+to the body's edge. A ferrule may run past the neck pocket but never out
+of the body. Every bolt must leave that wall to the neck's edge, the end wall to the
+heel end, at least
+3 mm of wood to the truss-rod channel and a heel-adjusted rod's nut
+pocket, and 1 mm between ferrules, or the build says which one to move.
+The Design by Jone body's deep treble cutaway leaves room for ferrules
+only near the heel end on that side, so its treble pair sits at x = -24
+and -6 (y about 10 and 19). In the body editor the bolts can be dragged
+along the neck like the cavities.
 
 ## Controls and cover plates
 
@@ -221,9 +234,84 @@ spots (Ø 3 mm, 1 mm into the ledge floor) are in
 `BodySolid.control_back_marks`; a Tele plate's in `control_top_marks`, and
 its recess and cavity in `control_top_cavities`.
 
+A generated rear cavity (`gibson_4`, `rear_3`) that would rout into a
+deep top route over it — a Floyd Rose's fine-tuner recess or a pickup,
+leaving no wood between the floors — moves with its pots and cover to the
+nearest place, out from the centreline and along the neck by up to
+`CONTROL_CLEARANCE_SHIFT` (20 mm) in 1 mm steps, that clears them with
+its cover in the body and off the spring-cavity and battery covers
+(`Prototype001Parameters._placed_controls`). The drawn almond stays put.
+The one combination still refused is a Gibson cavity with a Floyd Rose
+and the battery box on the Jackson RR, whose narrow treble wing the
+battery box already takes; drag the box aside.
+
 Every cover is a `geometry.body.CoverPlate` (`Prototype001Geometry.covers`):
 the recess outline, the recess depth as the sheet thickness, 3.2 mm screw
 clearance holes, and for the Tele plate its pot holes and switch slot.
+
+### Battery box
+
+`body_battery_box` (off by default) adds a rear 9 V battery box with any
+layout, `none` included (`controls.battery_features`):
+
+| Parameter | Default | Meaning |
+| --- | --- | --- |
+| `body_battery_cavity_length` × `_width` | 56 × 30 mm | The box (r 5); a 9 V battery is 48.5 × 26.5 × 17.5 mm |
+| `body_battery_cavity_depth` | 22 mm | Up from the back face; at most `body_thickness - body_rear_cavity_top_wall` |
+| `body_battery_cover_margin` | 7 mm | The cover recess is this much wider all round (70 × 44 mm by default) |
+
+The body shape places it: `battery_offset` (X from the heel end),
+`battery_y` and `battery_angle_degrees` (the box's long axis from the
+neck's). Its cover (`Battery cavity cover`, `Cover_battery_cavity.nc`) is
+held by two screws on the ledge at the box's ends. The battery lead's
+channel to the control cavity is drilled by hand, so each shape and
+template puts the box near its control cavity (18–32 mm between the
+cavities), in a spot that clears every control
+layout, bridge and pickup: beside the control cavity behind the bridge,
+turned 15°, on the drawn bodies; behind the bridge next to the almond,
+nearly across the neck (85°) with 10 mm of wood to the tail's edge, on
+Design by Jone; along the treble wing behind the controls (60°)
+on the Jackson RR; and between the pickups just ahead of the controls
+(−15°) on the Jazz Bass, whose string-through holes take the space behind
+the bridge. The body editor drags the box like the switch.
+
+`BodySolid` rejects two rear cover recesses that overlap (their plates
+would sit on each other) and any hole that would open into the battery
+box: a top hole deep enough to reach its floor (a string-through hole) or
+a hole from the back under its cover.
+
+## Edge finishes and contours
+
+Optional, and off by default (`geometry.body.edges`):
+
+| Parameter | Effect |
+| --- | --- |
+| `body_top_edge_radius`, `body_back_edge_radius` | Roundover radius of each edge (`EdgeProfile.radius`) |
+| `body_top_binding_width` / `_depth`, `body_back_binding_width` / `_depth` | A binding channel (rabbet) instead of a roundover; the default depth is 6 mm |
+| `body_arm_contour_depth`, `_width`, `_length`, `_position` | A Strat-style arm contour on the top of the bass-side rear bout |
+| `body_belly_cut_depth`, `_width`, `_length`, `_position` | A belly cut on the back of the bass-side upper bout |
+
+A `ContourCut` follows `length` of the outline (resampled every 4 mm)
+centred on its deepest point. Across the edge it is a straight ramp from
+the face, `width` in, down to `depth` at the edge; along the edge width
+and depth fade with a `cos²` taper, so it blends into the square edge at
+both ends. Its deepest point is the outline point furthest out on the
+bass side — for the arm contour from 120 mm behind the heel end, for the
+belly cut from 40 mm ahead of it to 120 mm behind — or the one nearest
+`_position` (X from the heel end). The defaults are 60 × 240 mm for the
+arm contour and 70 × 260 mm for the belly cut.
+
+`BodySolid` checks that each edge finish reaches less than half the
+thickness less 2 mm; that a roundover lowers the rim of a cavity near the
+edge (the neck pocket excepted) by no more than `EDGE_RIM_TOLERANCE`
+(1 mm, hidden by a pickup ring or cover; `rim_drop`), the error naming
+the largest radius that would fit (`max_radius_for`); that a binding
+channel leaves 1 mm of wood before a cavity; that a contour stays under
+half the thickness less 2 mm, and together with its face's roundover
+(which runs on down from the contour's floor) within half the thickness,
+the depth each face can be machined to; and that a contour cuts into no
+cavity or hole on its own face and leaves 3 mm of wood over any cavity
+routed from the other face.
 
 ## Bridges
 
@@ -275,7 +363,7 @@ cavities overlap.
 
 | Feature | Value |
 | --- | --- |
-| Thickness | 44 mm flat slab |
+| Thickness | 44 mm flat slab (edges square unless finished, see *Edge finishes and contours*) |
 | Neck pocket | Neck's own taper + 0.15 mm clearance, 79.5 mm long, ends at heel end (461.2), 20 mm deep, opens onto the horn gap |
 | Pickup routes | DXF humbucker route with ears, 41 × 85.9 mm, 22 mm deep, centres 491.7 and 587.9 |
 | Pickup screw recesses | Ø 6 mm, 8 mm below the route floor, at ±39.95 mm |

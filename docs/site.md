@@ -30,14 +30,15 @@ Python.
    are handles to drag (double-click the outline to add one, Alt-click or
    right-click to remove one; *Start from* + *Load* replaces the drawing
    with a template — Design by Jone, Les Paul, Stratocaster or Jackson RR
-   style — and its cavity placements), drawn
+   style or Jazz Bass style (mockups, not the original outlines) — and its cavity placements), drawn
    over the neck, pocket, pickup and bridge routes and dashed rear
    cavities that `webapp.body_editor_layout()` lays out from the other
    settings. The control cavity (carrying its pots), each pot, the switch
-   cavity, each neck bolt (dashed: drilled from the back) and the jack can
-   be dragged too, and the pickup routes slide
+   cavity, the battery box (when `body_battery_box` is on), each neck bolt
+   (dashed: drilled from the back) and the jack can be dragged too, and the pickup routes slide
    along the neck; a drop moves the fields that place them
-   (`control_shift`, `pot_offsets`, `switch_*`, `neck_bolts`, `jack_*`,
+   (`control_shift`, `pot_offsets`, `switch_*`, `battery_*`, `neck_bolts`,
+   `jack_*`,
    `body_*_pickup_offset`) and the layout is fetched again. The neck, its
    pocket and the bridge follow the neck and scale and stay put. The
    panel reports the body's size
@@ -50,7 +51,17 @@ Python.
    the edge comes too close to, and writes `headstock_bass_edge` /
    `headstock_treble_edge` (`webapp.headstock_editor_layout()` supplies
    the holes and the fitted start edges).
-3. On **Build** runs the build in stages — `start_build()`, then
+3. **Save design** downloads every setting as one JSON file on the user's
+   own computer — the instrument, all `prototype` and `machining` values,
+   the drawn body's `control_points` and the drawn headstock edges
+   included (`{"format": "cncguitarwizard-design", "version": 1,
+   "instrument", "prototype", "machining"}`). **Load design** opens such a
+   file: it switches to the saved instrument, puts every value back into
+   the form (variant kinds first, then their fields) and redraws the
+   editors; settings this version does not know are skipped and listed,
+   and a file that is not a design is refused. Nothing is stored on a
+   server.
+4. On **Build** runs the build in stages — `start_build()`, then
    `advance_build()` once per stage of `workflows.Prototype001Build`
    (geometry, body, neck and fretboard toolpaths, cover plates, G-code,
    FreeCAD script),
@@ -58,13 +69,17 @@ Python.
    button between stages, since Pyodide runs Python on the page's own
    thread. Everything lands in Pyodide's in-memory file system and comes
    back as text.
-4. Shows the whole-instrument plan view, the three toolpath plots, download
+5. Shows the whole-instrument plan view, the three toolpath plots, download
    links for the FreeCAD script (`.py` and `.FCMacro`), every `.nc`
    program (body, electronics, neck, fretboard and one per cover plate), the SVG plots and `build.json`, and a summary with stock size
-   and time estimates. Each `.nc` row also has a *Simulate* button: it
+   and time estimates. The downloads come in one list per part — the
+   model and report first, then body, neck, fretboard and covers — each
+   program numbered in the order it is run (`build.json` gives it as the
+   program's `step`) with its toolpath plot beneath it. Each `.nc` row also has a *Simulate* button: it
    copies that program to the clipboard and opens
-   [NC Viewer](https://ncviewer.com) in a panel below, where pasting into
-   the editor (or dropping the downloaded file) runs the simulation — the
+   [NC Viewer](https://ncviewer.com) in a panel below, where selecting all
+   in its editor (Ctrl/Cmd+A), pasting (Ctrl/Cmd+V) and pressing *Plot*
+   (or dropping the downloaded file) runs the simulation — the
    viewer has no URL or message API a page could feed directly.
 
 FreeCAD cannot run in a browser, so `.FCStd` and STEP are made locally:

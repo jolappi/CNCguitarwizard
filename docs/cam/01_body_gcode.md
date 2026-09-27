@@ -62,13 +62,39 @@ Three programs are written, in running order:
 | `Body_top_small_holes.nc` | Top up, on the dowels (only when needed) | Holes narrower than the main tool — a hardtail's string-through and pilot holes — with the `small_hole_tool_diameter` drill |
 | `Body_top_controls.nc` | Top up, on the dowels (Tele plate only) | The control plate recess, then the control cavity from its floor |
 | `Body_back.nc` | Flipped, on the dowels | Any tremolo spring cavity with its cover recess and deeper block clearance pocket, the neck-bolt ferrules, outline to half depth + overlap with tabs |
-| `Body_back_controls.nc` | Back up, on the dowels (rear control layouts) | The control and switch cover recesses and cavities |
+| `Body_back_controls.nc` | Back up, on the dowels (rear control layouts or a battery box) | The control, switch and battery cover recesses and cavities (the battery lead's channel is drilled by hand) |
+| `Body_top_edges.nc` | Top up, on the dowels (only with an arm contour or top roundover) | The arm contour (roughed in step-down layers, then finished with 1 mm passes) and the top roundover, with a ball nose the main tool's size |
 | `Body_back_small_holes.nc` | Back up, on the dowels | The neck-bolt holes (narrower than the main tool) with the `small_hole_tool_diameter` drill, from each ferrule's floor into the neck pocket, and the cover-screw spots on the recess ledges |
+| `Body_back_edges.nc` | Back up, on the dowels (only with a belly cut or back roundover) | The belly cut and the back roundover, with the ball nose |
 | `Cover_<name>.nc` | A sheet on a spoilboard | One program per cover plate (below) |
 
 The electronics are in their own programs so the body can be cut with or
 without them and the cavities re-run on their own. The Tele plate's screw
 spots go in `Body_top_small_holes.nc`.
+
+### Edge finishes
+
+All optional and off by default (`cam.body_edges`):
+
+- **Roundover** (`body_top_edge_radius`, `body_back_edge_radius`): the ball's
+  centre sweeps a quarter circle `radius + ball radius` about the fillet's
+  own centre, one loop of the outline per 1 mm of that arc, from the face
+  down into the outline's slot. Offsets come from the outline resampled
+  every 1.5 mm and pushed along smoothed normals; where a sample would come
+  too close to a pointed horn or a tight cutaway the pass lifts over it.
+  Inside an arm contour or belly cut the passes follow the bevel down.
+- **Arm contour / belly cut**: the bevel's depth map is sampled on a 1 mm
+  grid over its area plus the outline's slot, offset for the ball
+  (drop-cutter), roughed in step-down layers and finished with passes 1 mm
+  apart that run only where the surface is below the face; the waste past
+  the slot is left alone.
+- **Binding channel** (`body_top_binding_width` / `_depth`, and the back's):
+  a profile with the main end mill, `binding_width` inside the outline,
+  after the outline pass of the same face.
+
+The top face's edge work goes no deeper than the upper outline's slot; the
+back's stays 0.5 mm above the outline's holding tabs, so near the deepest
+point of a belly cut the roundover may leave a small lip to sand off.
 
 ### Cover plates
 
@@ -121,7 +147,6 @@ cut, and the back setup's final passes lift over evenly spaced tabs.
 
 - The jack bore enters from the edge and needs a drill jig.
 - Wire channels between cavities are not modelled.
-- Arm and belly contours do not exist on the flat slab.
 - Every `.nc` file should be run through a simulator or air-cut before the
   first real blank; the planner has been checked geometrically (every
   cutting move lies inside its own feature), not on a machine.

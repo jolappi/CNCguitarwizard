@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any, Literal
 
 from ..geometry.body import (
@@ -12,20 +12,26 @@ from ..geometry.body import (
     BridgeMounting,
     BridgeSpec,
     Cavity,
+    ContourCut,
     CoverPlate,
     DrilledHole,
+    EdgeProfile,
     HardtailSpec,
     JackHole,
     KahlerBridgeSpec,
     RearCavity,
     TracedCavity,
     TracedOutline,
+    TuneOMaticSpec,
+    outlines_overlap,
+    turned_hardware,
 )
 from ..geometry.exceptions import BodyGeometryError, NeckGeometryError
 from ..geometry.fretboard import (
     Fretboard,
     FretboardSurface,
     FretLayout,
+    FretSkew,
     InlayLayout,
     InlayStyle,
 )
@@ -40,7 +46,7 @@ from ..geometry.neck import (
     TrussRodChannel,
     TunerLayout,
 )
-from ..geometry.primitives import Point2D, point_in_polygon
+from ..geometry.primitives import Point2D, point_in_polygon, rounded_polygon_points
 from .body_shapes import (
     BASS_BODY,
     BODY_WIDENING_PER_STRING,
@@ -48,7 +54,13 @@ from .body_shapes import (
     DesignByJoneShape,
     widened_shape,
 )
-from .controls import ControlFeatures, ControlLayout, control_features
+from .controls import (
+    SCREW_CLEARANCE,
+    ControlFeatures,
+    ControlLayout,
+    battery_features,
+    control_features,
+)
 from .pickups import (
     PICKUP_CONFIGURATIONS,
     PickupConfiguration,
@@ -62,6 +74,20 @@ Instrument = Literal[
     "electric_guitar", "seven_string_guitar", "eight_string_guitar", "bass_guitar"
 ]
 """Which instrument's defaults a parameter set starts from."""
+
+MAX_FRET_SLANT_ANGLE = 10.0
+"""The largest fret slant accepted, in degrees."""
+
+NECK_FERRULE_BODY_WALL = 1.0
+"""Least wood, in mm, between a neck-bolt ferrule and the body's edge, and
+between two ferrules."""
+
+CONTROL_CLEARANCE_SHIFT = 20.0
+"""How far, in mm, a generated control cavity may move out from the
+centreline to clear a deep top route (see ``_placed_controls``)."""
+
+MAX_MULTISCALE_RATIO = 1.15
+"""The longest bass scale accepted, as a multiple of the treble scale."""
 
 HeadstockStyle = Literal[
     "3+3",
@@ -180,6 +206,11 @@ class BodyLayout:
             and bolt holes).
         controls: The electronics layout's cavities, screw spots and
             cover plates (see ``controls.control_features``).
+        top_edge: The top edge's roundover or binding channel.
+        back_edge: The back edge's roundover or binding channel.
+        contours: The arm contour and belly cut that are switched on.
+        truss_rod_access: The notch past the neck pocket for a
+            heel-adjusted truss rod's spoke wheel, or ``None``.
     """
 
     heel_end: float
@@ -198,6 +229,40 @@ class BodyLayout:
     middle_pickup: TracedCavity | None = None
     rear_holes: tuple[DrilledHole, ...] = ()
     controls: ControlFeatures = field(default_factory=ControlFeatures)
+    top_edge: EdgeProfile = field(default_factory=EdgeProfile)
+    back_edge: EdgeProfile = field(default_factory=EdgeProfile)
+    contours: tuple[ContourCut, ...] = ()
+    truss_rod_access: TracedCavity | None = None
+
+
+TRUSS_ROD_STOCK_LENGTHS: tuple[float, ...] = tuple(
+    float(length) for length in range(300, 601, 20)
+)
+"""Truss rods as sold: 300 to 600 mm overall in 20 mm steps."""
+
+
+@dataclass(frozen=True, slots=True)
+class TrussRodFit:
+    """How a truss rod fits the neck (see ``Prototype001Parameters.truss_rod_fit``).
+
+    Args:
+        longest: The longest rod, overall, the neck takes: its route from
+            ``truss_rod_start`` (or the nut shelf) to the adjusting end.
+        recommended: The longest stock length (``truss_rod_stock_lengths``)
+            that fits, or ``None`` when none does.
+        rod_length: The rod the neck is routed for: ``truss_rod_rod_length``,
+            else ``recommended``; ``None`` when ``truss_rod_length`` sets
+            the route directly.
+        route_length: The routed channel, step and pocket together.
+        outside: How much of the rod lies outside the route: the adjuster's
+            head, and at the heel its sleeve in the hand-drilled bore.
+    """
+
+    longest: float
+    recommended: float | None
+    rod_length: float | None
+    route_length: float
+    outside: float
 
 
 @dataclass(frozen=True, slots=True)
@@ -231,6 +296,25 @@ class Prototype001Parameters:
     string_count: int = 6
     scale_length: float = 609.6
     fret_count: int = 24
+    # fret_slant_angle tilts every fret, and the fretboard's nut and far
+    # ends with them, about the centerline (degrees; positive moves each
+    # fret's treble end toward the bridge). Fret spacing stays exact on
+    # the centerline; the bridge and pickups are unchanged.
+    fret_slant_angle: float = 0.0
+    # Multiscale (fanned frets): with bass_scale_length set, scale_length
+    # is the treble (outermost string's) scale and bass_scale_length the
+    # bass one; perpendicular_fret is square to the neck (0 = the nut).
+    # Each fret runs straight through its exact positions on the two
+    # outer strings, the centerline gets the mean scale, and the pickups
+    # turn with the frets. The bridge stays square on the centerline
+    # scale, each saddle set to its string's scale — except a
+    # Tune-o-matic's posts, as its saddles have too little travel, which
+    # always turn to the fanned bridge line (its stop-bar studs stay),
+    # and a hardtail's holes when body_bridge_follows_fan is on.
+    # body_pickups_follow_fan turns the pickups to the frets: "auto" turns
+    # them except with a Tune-o-matic, "yes" and "no" always and never.
+    bass_scale_length: float | None = None
+    perpendicular_fret: float = 7.0
     nut_width: float = 42.0
     final_fret_width: float = 56.0
     heel_width: float = 56.0
@@ -327,12 +411,38 @@ class Prototype001Parameters:
     # themselves keep the DXF's shapes. In the web form it is a dropdown
     # of kinds with the chosen kind's placements beneath it.
     body_shape: BodyShapeSpec = field(default_factory=DesignByJoneShape)
+    body_bridge_follows_fan: bool = False
+    body_pickups_follow_fan: Literal["auto", "yes", "no"] = "auto"
     # body_widening opens the body along its centreline for a wider neck:
     # each half, with its cavities, pots, switch and jack, moves out by
     # half of it. Left empty it is BODY_WIDENING_PER_STRING (12 mm) for
     # every string past six, so a seven- or eight-string heel and its
     # longer pickups fit a shape drawn for six strings.
     body_widening: float | None = None
+    # Edge finishes, all optional (0 = off). body_top_edge_radius /
+    # body_back_edge_radius round the edges over; instead of a roundover
+    # an edge can take a binding channel body_*_binding_width wide and
+    # body_*_binding_depth deep. body_arm_contour_depth bevels the top
+    # over the bass-side rear bout (a Strat-style arm contour),
+    # reaching body_arm_contour_width in from the edge and fading out
+    # along body_arm_contour_length of it; body_belly_cut_* does the same
+    # on the back of the bass-side upper bout (a belly cut). Each is
+    # deepest at the bout's outermost point, or at body_*_position (X
+    # from the heel end) when that is set.
+    body_top_edge_radius: float = 0.0
+    body_back_edge_radius: float = 0.0
+    body_top_binding_width: float = 0.0
+    body_top_binding_depth: float = 6.0
+    body_back_binding_width: float = 0.0
+    body_back_binding_depth: float = 6.0
+    body_arm_contour_depth: float = 0.0
+    body_arm_contour_width: float = 60.0
+    body_arm_contour_length: float = 240.0
+    body_arm_contour_position: float | None = None
+    body_belly_cut_depth: float = 0.0
+    body_belly_cut_width: float = 70.0
+    body_belly_cut_length: float = 260.0
+    body_belly_cut_position: float | None = None
     # Rear-routed electronics cavities are cut up from the back face to
     # within body_rear_cavity_top_wall of the top so the pot and switch
     # bushings can pass through, and closed by a cover plate seated in a
@@ -345,6 +455,19 @@ class Prototype001Parameters:
     body_controls: ControlLayout = "almond_2"
     body_rear_cavity_top_wall: float = 8.0
     body_cover_recess_depth: float = 2.0
+    # An optional 9 V battery box (for active pickups or a preamp) routed
+    # from the back: body_battery_cavity_length x _width (a 9 V battery is
+    # 48.5 x 26.5 x 17.5 mm; the room left is for its snap and wires),
+    # body_battery_cavity_depth up from the back face, closed by a plate in
+    # a recess body_battery_cover_margin wider all round and
+    # body_cover_recess_depth deep, held by two screws at the box's ends.
+    # The body shape's battery_offset, battery_y and battery_angle_degrees
+    # place it. The wire to the control cavity is drilled by hand.
+    body_battery_box: bool = False
+    body_battery_cavity_length: float = 56.0
+    body_battery_cavity_width: float = 30.0
+    body_battery_cavity_depth: float = 22.0
+    body_battery_cover_margin: float = 7.0
     # Shaft holes through the top wall: a 1/2" toggle bushing at the
     # switch cavity's centre, and 3/8" pot bushings at the shape's pot
     # positions.
@@ -356,21 +479,78 @@ class Prototype001Parameters:
     # Bolt-on neck: the body shape's own neck_bolts, or else four bolts
     # in a rectangle centred across the neck, body_neck_bolt_spacing_x
     # along it and _y across it, the tail pair as close to the pocket's end
-    # as the bolt hole allows (4 mm of wood) unless
+    # as the bolt hole allows (body_neck_bolt_end_wall of wood between the
+    # hole and the neck's heel end; no bolt may come closer: the further
+    # apart the bolts along the neck, the better they hold it) unless
     # body_neck_bolt_center_offset puts the pattern's centre that far
-    # ahead of the heel end. Each bolt gets a ferrule counterbore in the
-    # back of the body and a bolt hole on from its floor to the neck
-    # pocket; every ferrule must sit in wood with 2 mm to spare.
+    # ahead of the heel end. With body_neck_bolts_outward (the default)
+    # every bolt then moves out across the neck, as far from the truss rod
+    # as it can go (3 mm of wood to the rod is the least): until
+    # body_neck_bolt_edge_wall of wood is left beside its hole to the
+    # neck's edge, or its ferrule keeps 1 mm of wood to the body's edge.
+    # Each bolt gets a ferrule counterbore in the back of the body (it may
+    # run past the neck pocket, never out of the body) and a bolt hole on
+    # from its floor to the neck pocket.
     body_neck_bolt_spacing_x: float = 32.0
     body_neck_bolt_spacing_y: float = 40.0
     body_neck_bolt_center_offset: float | None = None
+    body_neck_bolt_end_wall: float = 3.0
     body_neck_ferrule_diameter: float = 14.0
     body_neck_ferrule_depth: float = 5.0
     body_neck_bolt_hole_diameter: float = 5.0
+    body_neck_bolt_edge_wall: float = 5.0
+    body_neck_bolts_outward: bool = True
+    # Truss rod: a plain channel truss_rod_width x truss_rod_depth, then,
+    # at the adjusting end, a step (truss_rod_step_*) and a wider, deeper
+    # pocket (truss_rod_pocket_*) for the rod's anchor and adjuster. The
+    # rod's axis lies truss_rod_axis_depth below the neck's top (the
+    # fretboard's glue face): the adjuster's sleeve bore and head centre
+    # on it.
+    # truss_rod_adjustment picks the adjusting end. "heel": the route ends
+    # truss_rod_sleeve_length before the heel end, the adjuster's sleeve
+    # runs on through a bore of truss_rod_sleeve_diameter (drilled by hand;
+    # a router cannot cut it) and its round head, truss_rod_nut_diameter x
+    # truss_rod_nut_length, sits past the heel end on the body side, in a
+    # notch the body's neck pocket gets truss_rod_access_length past its
+    # end. "headstock": the route starts under the nut, pockets first,
+    # and the adjuster sits in a trough truss_rod_access_length long in
+    # the headstock face, under a truss-rod cover cut from sheet
+    # (truss_rod_cover). Empty access length: the head's length + 2 mm at
+    # the heel, up to 32 mm (clear of the tuners) at the headstock. An
+    # Rods are sold by overall length (adjuster head included) in steps of
+    # 20 mm, only the thin part growing: truss_rod_rod_length is the rod
+    # in hand, the route cut for it (the adjusting end stays put, the
+    # anchor end moves). Empty, it is the longest of
+    # truss_rod_stock_lengths that fits between truss_rod_start (at the
+    # headstock, the nut shelf) and the adjusting end: at the heel the
+    # route ends where the sleeve's bore starts, from the headstock 12 mm
+    # before the heel end. truss_rod_length sets the route itself instead.
     truss_rod_start: float = 12.0
-    truss_rod_length: float = 440.0
+    truss_rod_rod_length: float | None = None
+    truss_rod_stock_lengths: tuple[float, ...] = TRUSS_ROD_STOCK_LENGTHS
+    truss_rod_length: float | None = None
     truss_rod_width: float = 6.0
-    truss_rod_depth: float = 9.0
+    truss_rod_depth: float = 7.5
+    truss_rod_step_length: float = 14.0
+    truss_rod_step_width: float = 7.5
+    truss_rod_step_depth: float = 10.5
+    truss_rod_pocket_length: float = 32.0
+    truss_rod_pocket_width: float = 9.0
+    truss_rod_pocket_depth: float = 11.0
+    truss_rod_sleeve_length: float = 12.0
+    truss_rod_sleeve_diameter: float = 9.0
+    truss_rod_axis_depth: float = 7.5
+    truss_rod_adjustment: Literal["heel", "headstock"] = "heel"
+    truss_rod_nut_diameter: float = 15.0
+    truss_rod_nut_length: float = 6.0
+    truss_rod_access_length: float | None = None
+    truss_rod_cover: bool = True
+    # truss_rod_sleeve_bore: model the adjuster sleeve's hand-drilled bore
+    # at the heel (and note it in the neck's G-code); truss_rod_trough: rout
+    # the adjuster's trough in the headstock face (and cut its cover). Turn
+    # either off to leave that part to be made by hand, or not at all.
+    truss_rod_sleeve_bore: bool = True
+    truss_rod_trough: bool = True
     # Headstock style: "3+3" mirrors tuner_station_distances /
     # tuner_side_offsets onto both sides. The row styles (six in line on
     # the bass or, for "reverse", the treble edge; 4+2 with the pair at
@@ -467,7 +647,7 @@ class Prototype001Parameters:
         applies ``INSTRUMENT_OVERRIDES["bass_guitar"]`` — a four-string,
         34-inch-scale bass with a wider, deeper neck, four in-line 19 mm
         tuner holes, a Precision Bass neck pickup and a Jazz Bass bridge
-        pickup, a four-string hardtail and an offset bass body.
+        pickup, a four-string hardtail and the Jazz Bass style body.
 
         Raises:
             NeckGeometryError: For an unknown instrument.
@@ -591,7 +771,7 @@ class Prototype001Parameters:
                 self.nut_string_spacing
                 + (self.nut_string_spacing - self.bridge_string_spacing)
                 * distance
-                / self.scale_length
+                / self.centre_scale
             )
             return ((self.string_count + 1) / 2.0 - string) * spacing
 
@@ -824,14 +1004,25 @@ class Prototype001Parameters:
         return tuple(centres)
 
     def _neck_bolt_holes(
-        self, heel_end: float, pocket: TracedCavity
+        self, outline: NeckOutline, heel_end: float, pocket: TracedCavity
     ) -> tuple[DrilledHole, ...]:
-        """Return the ferrule counterbores and bolt holes, from the back.
+        """Return the neck bolts' ferrule counterbores and bolt holes.
+
+        Each bolt keeps its place along the neck (the body shape's
+        ``neck_bolts`` or the default rectangle) and, with
+        ``body_neck_bolts_outward``, moves out across the neck, on its own
+        side, as far from the truss rod as it can: until
+        ``body_neck_bolt_edge_wall`` of wood is left between its hole and
+        the neck's edge, or — nearer the body's edge — until its ferrule
+        keeps ``NECK_FERRULE_BODY_WALL`` of wood to it. A ferrule may run
+        past the neck pocket, but must stay in the body.
 
         Raises:
-            BodyGeometryError: If the sizes are not positive, the bolt
-                hole is not narrower than its ferrule, or a bolt misses the
-                neck pocket.
+            BodyGeometryError: If the sizes are not positive, the bolt hole
+                is not narrower than its ferrule, a bolt leaves less than
+                the edge wall to the neck's edge or less than 3 mm of wood to
+                the truss-rod channel or its nut pocket, a ferrule leaves the
+                body, or two ferrules overlap.
         """
         sizes = (
             self.body_neck_bolt_spacing_x,
@@ -839,6 +1030,8 @@ class Prototype001Parameters:
             self.body_neck_ferrule_diameter,
             self.body_neck_ferrule_depth,
             self.body_neck_bolt_hole_diameter,
+            self.body_neck_bolt_edge_wall,
+            self.body_neck_bolt_end_wall,
         )
         if not all(math.isfinite(value) and value > 0.0 for value in sizes):
             raise BodyGeometryError("Neck-bolt sizes must be finite and positive.")
@@ -847,13 +1040,11 @@ class Prototype001Parameters:
                 "The neck-bolt hole must be narrower than its ferrule."
             )
         if self.body_shape.neck_bolts:
-            centres = [
-                (heel_end + x, y) for x, y in self.body_shape.neck_bolts
-            ]
+            centres = [(heel_end + x, y) for x, y in self.body_shape.neck_bolts]
         else:
             offset = (
                 self.body_neck_bolt_hole_diameter / 2.0
-                + 4.0
+                + self.body_neck_bolt_end_wall
                 + self.body_neck_bolt_spacing_x / 2.0
                 if self.body_neck_bolt_center_offset is None
                 else self.body_neck_bolt_center_offset
@@ -866,32 +1057,108 @@ class Prototype001Parameters:
                 )
                 for sx, sy in ((-1.0, -1.0), (1.0, -1.0), (-1.0, 1.0), (1.0, 1.0))
             ]
-        bolt_depth = self.body_thickness - pocket.depth
+        radius = self.body_neck_bolt_hole_diameter / 2.0
+        wall = self.body_neck_bolt_edge_wall
+        ferrule_reach = self.body_neck_ferrule_diameter / 2.0 + NECK_FERRULE_BODY_WALL
+
+        def neck_half_width(x: float) -> float:
+            if x >= outline.last_fret_position:
+                return outline.heel_width / 2.0
+            fraction = x / outline.last_fret_position
+            return (
+                outline.nut_width
+                + (outline.last_fret_width - outline.nut_width) * fraction
+            ) / 2.0
+
+        keep_clear = self.truss_rod(outline).keep_clear()
+
+        def rod_gap(x: float, y: float) -> float:
+            gaps = [
+                abs(y) - radius - half
+                for front, back, half in keep_clear
+                if front - radius < x < back + radius
+            ]
+            return min(gaps, default=math.inf)
+
         body_outline = self.body_shape.outline_points(
             heel_end, self.body_widening_amount()
         )
-        reach = self.body_neck_ferrule_diameter / 2.0 + 2.0
-        holes: list[DrilledHole] = []
-        for index, (x, y) in enumerate(centres, start=1):
-            if not point_in_polygon(Point2D(x, y), pocket.outline):
-                raise BodyGeometryError(
-                    f"Neck bolt {index} at ({x - heel_end:.1f}, {y:.1f}) from the "
-                    "heel end misses the neck pocket; move it or reduce the bolt "
-                    "spacing."
+
+        def ferrule_in_body(x: float, y: float) -> bool:
+            return point_in_polygon(Point2D(x, y), body_outline) and all(
+                point_in_polygon(
+                    Point2D(
+                        x + ferrule_reach * math.cos(math.pi * step / 18.0),
+                        y + ferrule_reach * math.sin(math.pi * step / 18.0),
+                    ),
+                    body_outline,
                 )
-            rim = (
-                Point2D(
-                    x + reach * math.cos(math.pi * step / 12.0),
-                    y + reach * math.sin(math.pi * step / 12.0),
-                )
-                for step in range(24)
+                for step in range(36)
             )
-            if not all(point_in_polygon(point, body_outline) for point in rim):
+
+        placed: list[tuple[float, float]] = []
+        for index, (x, y) in enumerate(centres, start=1):
+            limit = neck_half_width(x) - wall - radius
+            side = 1.0 if y > 0.0 else -1.0 if y < 0.0 else 1.0
+            if self.body_neck_bolts_outward:
+                # From the neck's edge in toward the rod, the first spot
+                # whose ferrule keeps its wood to the body's edge.
+                steps = int(max(0.0, limit) / 0.25)
+                found = None
+                for step in range(steps + 1):
+                    candidate = side * (limit - 0.25 * step)
+                    if rod_gap(x, candidate) < 3.0:
+                        break
+                    if ferrule_in_body(x, candidate):
+                        found = candidate
+                        break
+                if found is None:
+                    raise BodyGeometryError(
+                        f"Neck bolt {index} at {x - heel_end:.1f} mm from the heel "
+                        "end has no room: nowhere between the truss rod (3 mm of "
+                        f"wood) and the neck's edge ({wall:g} mm) does its ferrule "
+                        f"keep {NECK_FERRULE_BODY_WALL:g} mm of wood to the body's "
+                        "edge; move it along the neck (drag it in the body editor)."
+                    )
+                y = found
+            where = f"({x - heel_end:.1f}, {y:.1f}) from the heel end"
+            end_wall = heel_end - (x + radius)
+            if end_wall < self.body_neck_bolt_end_wall - 1e-6:
                 raise BodyGeometryError(
-                    f"Neck bolt {index} ferrule at ({x - heel_end:.1f}, {y:.1f}) "
-                    "from the heel end runs out of the body; move it (drag it in "
-                    "the body editor) or reduce the bolt spacing."
+                    f"Neck bolt {index} at {where} leaves {end_wall:.1f} mm of wood "
+                    f"to the neck's heel end, under {self.body_neck_bolt_end_wall:g} "
+                    "mm; move it toward the neck."
                 )
+            if abs(y) > limit + 1e-6:
+                raise BodyGeometryError(
+                    f"Neck bolt {index} at {where} leaves under {wall:g} mm of "
+                    "wood to the neck's edge; move it in."
+                )
+            if rod_gap(x, y) < 3.0:
+                raise BodyGeometryError(
+                    f"Neck bolt {index} at {where} is within 3 mm of the truss "
+                    "rod, and its ferrule has no room further out; move it along "
+                    "the neck (drag it in the body editor)."
+                )
+            if not ferrule_in_body(x, y):
+                raise BodyGeometryError(
+                    f"Neck bolt {index} ferrule at {where} leaves under "
+                    f"{NECK_FERRULE_BODY_WALL:g} mm of wood to the body's edge; move "
+                    "it along the neck (drag it in the body editor)."
+                )
+            for other, (ox, oy) in enumerate(placed, start=1):
+                if math.hypot(x - ox, y - oy) < (
+                    self.body_neck_ferrule_diameter + NECK_FERRULE_BODY_WALL
+                ):
+                    raise BodyGeometryError(
+                        f"Neck bolts {other} and {index} ferrules overlap; move "
+                        "them further apart along the neck."
+                    )
+            placed.append((x, y))
+
+        bolt_depth = self.body_thickness - pocket.depth
+        holes: list[DrilledHole] = []
+        for index, (x, y) in enumerate(placed, start=1):
             holes.append(
                 DrilledHole(
                     f"Neck bolt {index} ferrule",
@@ -911,6 +1178,224 @@ class Prototype001Parameters:
                 )
             )
         return tuple(holes)
+
+    @property
+    def centre_scale(self) -> float:
+        """Return the scale on the centerline: the mean of a multiscale's two."""
+        if self.bass_scale_length is None:
+            return self.scale_length
+        return (self.scale_length + self.bass_scale_length) / 2.0
+
+    @property
+    def fret_skew(self) -> FretSkew:
+        """Return how the frets lean: slant and multiscale fan together."""
+        bass_sign = -1.0 if self.headstock_bass_side == "-y" else 1.0
+        outer = (self.string_count - 1) / 2.0
+        fan = (
+            0.0
+            if self.bass_scale_length is None
+            else self.bass_scale_length - self.scale_length
+        )
+        return FretSkew(
+            self.fret_slant,
+            fan,
+            1.0 - 2.0 ** (-self.perpendicular_fret / 12.0),
+            self.centre_scale,
+            outer * self.nut_string_spacing,
+            outer * self.bridge_string_spacing,
+            bass_sign,
+        )
+
+    @property
+    def bridge_follows_fan(self) -> bool:
+        """Return whether the bridge turns to a multiscale's bridge line.
+
+        Always for a Tune-o-matic (its saddles cannot travel far enough),
+        for a hardtail when ``body_bridge_follows_fan`` is set, else never.
+        """
+        return isinstance(self.body_bridge, TuneOMaticSpec) or (
+            self.body_bridge_follows_fan and isinstance(self.body_bridge, HardtailSpec)
+        )
+
+    @property
+    def pickups_follow_fan(self) -> bool:
+        """Return whether a multiscale's pickups turn to the frets.
+
+        ``body_pickups_follow_fan`` decides: ``"auto"`` turns them unless
+        the bridge is a Tune-o-matic.
+        """
+        if self.body_pickups_follow_fan == "auto":
+            return not isinstance(self.body_bridge, TuneOMaticSpec)
+        return self.body_pickups_follow_fan == "yes"
+
+    def truss_rod(self, outline: NeckOutline) -> TrussRodChannel:
+        """Return the truss-rod channel with its adjusting nut's pocket."""
+        heel = self.truss_rod_adjustment == "heel"
+        shelf = self.nut_shelf_length + self.nut_shelf_reach()
+        access = self.truss_rod_access_length
+        if access is None:
+            access = self.truss_rod_nut_length + 2.0
+            if not heel:
+                # Up to 32 mm, shortened to keep 3 mm from the first tuner
+                # hole (a fanned neck's longer shelf pushes the trough back).
+                _, tuners = self.headstock_design()
+                room = min(
+                    -(hole.center.x + hole.diameter / 2.0) for hole in tuners.holes
+                ) - shelf - 3.0
+                access = max(self.truss_rod_nut_length, min(32.0, room))
+        fit = self.truss_rod_fit(outline)
+        start = self.truss_rod_start if heel else -shelf
+        length = fit.route_length
+        if heel and self.truss_rod_length is None:
+            # The adjuster stays at the heel: a shorter rod starts later.
+            start += fit.longest - fit.outside - length
+        channel = TrussRodChannel(
+            outline,
+            start,
+            length,
+            self.truss_rod_width,
+            self.truss_rod_depth,
+            adjustment_side="heel" if heel else "nut",
+            step_length=self.truss_rod_step_length,
+            step_width=self.truss_rod_step_width,
+            step_depth=self.truss_rod_step_depth,
+            pocket_length=self.truss_rod_pocket_length,
+            pocket_width=self.truss_rod_pocket_width,
+            pocket_depth=self.truss_rod_pocket_depth,
+            sleeve_length=self.truss_rod_sleeve_length if heel else 0.0,
+            sleeve_diameter=(
+                self.truss_rod_sleeve_diameter if self.truss_rod_sleeve_bore else 0.0
+            ),
+            nut_diameter=self.truss_rod_nut_diameter,
+            nut_length=self.truss_rod_nut_length,
+            access_length=access if heel or self.truss_rod_trough else 0.0,
+            shelf_length=shelf,
+            rod_axis_depth=self.truss_rod_axis_depth,
+        )
+        if not heel and channel.adjuster_boundary:
+            trough_end = min(p.x for p in channel.adjuster_boundary)
+            _, tuners = self.headstock_design()
+            for hole in tuners.holes:
+                gap = trough_end - (hole.center.x + hole.diameter / 2.0)
+                if gap < 3.0:
+                    raise NeckGeometryError(
+                        f"The truss-rod trough reaches {-trough_end:.0f} mm into the "
+                        f"headstock, too close to tuner {hole.side} {hole.index}; "
+                        "shorten truss_rod_access_length."
+                    )
+        return channel
+
+    def truss_rod_fit(self, outline: NeckOutline) -> TrussRodFit:
+        """Return the longest rod the neck takes and the one it is routed for.
+
+        Raises:
+            NeckGeometryError: When ``truss_rod_rod_length`` is longer than
+                the neck takes, or no stock length fits.
+        """
+        heel = self.truss_rod_adjustment == "heel"
+        shelf = self.nut_shelf_length + self.nut_shelf_reach()
+        start = self.truss_rod_start if heel else -shelf
+        heel_end = outline.last_fret_position + outline.heel_length
+        end = heel_end - (self.truss_rod_sleeve_length if heel else 12.0)
+        outside = self.truss_rod_nut_length + (
+            self.truss_rod_sleeve_length if heel else 0.0
+        )
+        longest = end - start + outside
+        fitting = [
+            length
+            for length in self.truss_rod_stock_lengths
+            if length <= longest + 1e-6
+        ]
+        recommended = max(fitting) if fitting else None
+        if self.truss_rod_length is not None:
+            return TrussRodFit(
+                longest, recommended, None, self.truss_rod_length, outside
+            )
+        rod = self.truss_rod_rod_length
+        if rod is None:
+            if recommended is None:
+                raise NeckGeometryError(
+                    f"No stock truss rod fits this neck: it takes at most "
+                    f"{longest:.0f} mm; set truss_rod_rod_length."
+                )
+            rod = recommended
+        elif rod > longest + 1e-6:
+            advice = (
+                f"; the longest stock rod that fits is {recommended:g} mm"
+                if recommended is not None
+                else ""
+            )
+            raise NeckGeometryError(
+                f"A {rod:g} mm truss rod is {rod - longest:.1f} mm too long for "
+                f"this neck, which takes at most {longest:.1f} mm{advice}."
+            )
+        return TrussRodFit(longest, recommended, rod, rod - outside, outside)
+
+    def truss_rod_cover_plate(self, channel: TrussRodChannel) -> CoverPlate | None:
+        """Return the cover over a headstock trough, or ``None``.
+
+        It overlaps the trough by 6 mm all round except at the nut, where
+        it stops 0.5 mm short of the nut shelf; two screws near the nut
+        and one at the far end hold it.
+        """
+        if (
+            not self.truss_rod_cover
+            or channel.adjustment_side != "nut"
+            or not channel.adjuster_boundary
+        ):
+            return None
+        trough = channel.adjuster_boundary
+        front = min(p.x for p in trough) - 6.0
+        back = max(p.x for p in trough) - 0.5
+        half = max(p.y for p in trough) + 6.0
+        corners = [
+            Point2D(front, -half),
+            Point2D(back, -half),
+            Point2D(back, half),
+            Point2D(front, half),
+        ]
+        outline = rounded_polygon_points(
+            corners, [half * 0.9, 2.0, 2.0, half * 0.9], samples_per_corner=8
+        )
+        screws = (
+            (back - 3.5, -(half - 3.0)),
+            (back - 3.5, half - 3.0),
+            (front + 4.0, 0.0),
+        )
+        return CoverPlate(
+            "Truss rod cover",
+            "top",
+            outline,
+            self.body_cover_recess_depth,
+            holes=tuple(
+                DrilledHole(
+                    f"Screw {index}",
+                    x,
+                    y,
+                    SCREW_CLEARANCE,
+                    self.body_cover_recess_depth,
+                )
+                for index, (x, y) in enumerate(screws, start=1)
+            ),
+        )
+
+    def nut_shelf_reach(self) -> float:
+        """Return how far a leaning nut end reaches back into the nut shelf.
+
+        The neck's shelf is lengthened by this much, so the nut keeps its
+        full ``nut_shelf_length`` where the nut end leans furthest back.
+        """
+        return abs(self.fret_skew.at(0.0)) * self.nut_width / 2.0
+
+    @property
+    def fret_slant(self) -> float:
+        """Return the shear of slanted frets: X gained per mm of Y.
+
+        Positive ``fret_slant_angle`` moves each fret's treble end, on the
+        side away from ``headstock_bass_side``, toward the bridge.
+        """
+        bass_sign = -1.0 if self.headstock_bass_side == "-y" else 1.0
+        return -bass_sign * math.tan(math.radians(self.fret_slant_angle))
 
     def body_widening_amount(self) -> float:
         """Return how much the body is opened along its centreline, in mm."""
@@ -943,7 +1428,7 @@ class Prototype001Parameters:
     def neck_outline(self) -> NeckOutline:
         """Return the neck's plan outline (cheap: no surfaces are built)."""
         return NeckOutline(
-            self.scale_length,
+            self.centre_scale,
             self.fret_count,
             self.nut_width,
             self.final_fret_width,
@@ -963,10 +1448,46 @@ class Prototype001Parameters:
             self._neck_pocket_outline(outline, heel_end),
             self.heel_thickness,
         )
+        neck_bolts = self._neck_bolt_holes(outline, heel_end, neck_pocket)
+        truss_rod = self.truss_rod(outline)
+        truss_rod_access = (
+            TracedCavity(
+                "Truss rod access",
+                # From 3 mm inside the pocket, so no wall is left between.
+                tuple(
+                    Point2D(heel_end - 3.0, p.y) if math.isclose(p.x, heel_end) else p
+                    for p in truss_rod.access_boundary
+                ),
+                truss_rod.adjuster_depth,
+            )
+            if truss_rod.access_boundary
+            else None
+        )
 
         bass_sign = -1.0 if self.headstock_bass_side == "-y" else 1.0
 
-        bridge = self.body_bridge.hardware(self.scale_length, self.body_thickness)
+        scale = self.centre_scale
+        # A multiscale's pickups turn with the fanned frets (a slant alone
+        # leaves them square). The bridge stays square with its saddles
+        # set per string, but a Tune-o-matic's saddles have too little
+        # travel, so it always turns with the fan (a hardtail on request).
+        fan = self.fret_skew.fan_only()
+
+        def fan_angle(x: float) -> float:
+            if not fan.fan or not self.pickups_follow_fan:
+                return 0.0
+            return math.degrees(math.atan(-bass_sign * fan.at(x)))
+
+        bridge = turned_hardware(
+            self.body_bridge.hardware(scale, self.body_thickness),
+            Point2D(scale, 0.0),
+            fan.at(scale) if self.bridge_follows_fan else 0.0,
+            # A Tune-o-matic turns only where the strings rest; its
+            # stop-bar studs stay square.
+            (lambda name: name.startswith("Bridge post"))
+            if isinstance(self.body_bridge, TuneOMaticSpec)
+            else None,
+        )
         bridge_mounting = bridge.mounting
         if isinstance(self.body_bridge, HardtailSpec):
             if self.body_bridge.string_count != self.string_count:
@@ -984,10 +1505,21 @@ class Prototype001Parameters:
             )
         strings = self.string_count
         neck_type, middle_type, bridge_type = self.pickup_types()
-        bridge_angle = (
+        single_slant = (
             self.body_bridge_single_coil_angle if bridge_type == "single_coil" else 0.0
         )
+        bridge_angle = single_slant + fan_angle(scale - self.body_bridge_pickup_offset)
+        # A pickup turned with fanned frets reaches further along the neck;
+        # it moves back by that much, so its near edge keeps the same gap
+        # to the neck pocket (or the bridge).
+        def turned_reach(kind: PickupType, angle: float) -> float:
+            return pickup_half_length(
+                kind, angle, bass_sign, strings
+            ) - pickup_half_length(kind, 0.0, bass_sign, strings)
+
         neck_pickup_x = heel_end + self.body_neck_pickup_offset
+        neck_pickup_x += turned_reach(neck_type, fan_angle(neck_pickup_x))
+        neck_angle = fan_angle(neck_pickup_x)
         route_half_length = pickup_half_length(
             bridge_type, bridge_angle, bass_sign, strings
         )
@@ -995,23 +1527,26 @@ class Prototype001Parameters:
             cavity.min_x for cavity in (*bridge.top_cavities, *bridge.through_cavities)
         ]
         needed_offset = (
-            self.scale_length
+            scale
             - min(bridge_fronts)
             + route_half_length
             + self.body_bridge_pickup_clearance
             if bridge_fronts and bridge_type != "none"
             else -math.inf
         )
-        bridge_pickup_x = self.scale_length - max(
-            self.body_bridge_pickup_offset, needed_offset
+        bridge_pickup_x = scale - max(
+            self.body_bridge_pickup_offset
+            + turned_reach(bridge_type, bridge_angle - single_slant),
+            needed_offset,
         )
+        bridge_angle = single_slant + fan_angle(bridge_pickup_x)
         # Left empty, the middle pickup goes in the middle of the gap
         # between the neck and bridge routes' facing edges, so a single
         # coil between a single coil and a wide humbucker looks centred.
         middle_pickup_x = (
             (
                 neck_pickup_x
-                + pickup_half_length(neck_type, 0.0, bass_sign, strings)
+                + pickup_half_length(neck_type, neck_angle, bass_sign, strings)
                 + bridge_pickup_x
                 - pickup_half_length(bridge_type, bridge_angle, bass_sign, strings)
             )
@@ -1019,12 +1554,14 @@ class Prototype001Parameters:
             if self.body_middle_pickup_offset is None
             else heel_end + self.body_middle_pickup_offset
         )
+        middle_angle = fan_angle(middle_pickup_x)
         neck_pickup = pickup_route(
             neck_type,
             "Neck pickup route",
             neck_pickup_x,
             self.body_pickup_route_depth,
             bass_sign,
+            neck_angle,
             string_count=strings,
         )
         middle_pickup = pickup_route(
@@ -1033,6 +1570,7 @@ class Prototype001Parameters:
             middle_pickup_x,
             self.body_pickup_route_depth,
             bass_sign,
+            middle_angle,
             string_count=strings,
         )
         bridge_pickup = pickup_route(
@@ -1044,16 +1582,48 @@ class Prototype001Parameters:
             bridge_angle,
             string_count=strings,
         )
-        controls = control_features(
-            self.body_controls,
+        battery: ControlFeatures | None = None
+        if self.body_battery_box:
+            room = self.body_thickness - self.body_rear_cavity_top_wall
+            if not 0.0 < self.body_battery_cavity_depth <= room:
+                raise BodyGeometryError(
+                    f"Battery cavity depth must be positive and leave "
+                    f"{self.body_rear_cavity_top_wall:g} mm of the top: at most "
+                    f"{room:g} mm in this body."
+                )
+            battery = battery_features(
+                shape,
+                heel_end,
+                length=self.body_battery_cavity_length,
+                width=self.body_battery_cavity_width,
+                depth=self.body_battery_cavity_depth,
+                cover_margin=self.body_battery_cover_margin,
+                cover_depth=self.body_cover_recess_depth,
+            )
+        controls = self._placed_controls(
             shape,
             heel_end,
-            thickness=self.body_thickness,
-            top_wall=self.body_rear_cavity_top_wall,
-            cover_depth=self.body_cover_recess_depth,
-            pot_hole_diameter=self.body_pot_shaft_hole_diameter,
-            switch_hole_diameter=self.body_switch_shaft_hole_diameter,
+            body_outline.points,
+            (
+                neck_pocket,
+                *bridge.top_cavities,
+                *(
+                    route
+                    for route in (neck_pickup, middle_pickup, bridge_pickup)
+                    if route is not None
+                ),
+            ),
+            tuple(
+                rear.cover_recess.outline
+                for rear in (
+                    *bridge.rear_cavities,
+                    *((battery.battery_cavity,) if battery is not None else ()),
+                )
+                if rear is not None
+            ),
         )
+        if battery is not None:
+            controls = controls.with_battery(battery)
         jack_hole = JackHole(
             heel_end + shape.jack_offset,
             shape.jack_y,
@@ -1063,8 +1633,8 @@ class Prototype001Parameters:
         )
         holes: list[DrilledHole] = [*bridge.holes, *controls.holes]
         for label, kind, pickup_x, angle in (
-            ("Neck", neck_type, neck_pickup_x, 0.0),
-            ("Middle", middle_type, middle_pickup_x, 0.0),
+            ("Neck", neck_type, neck_pickup_x, neck_angle),
+            ("Middle", middle_type, middle_pickup_x, middle_angle),
             ("Bridge", bridge_type, bridge_pickup_x, bridge_angle),
         ):
             for side, screw_x, screw_y in pickup_screws(
@@ -1100,9 +1670,168 @@ class Prototype001Parameters:
             bridge.through_cavities,
             bridge.rear_cavities,
             middle_pickup,
-            self._neck_bolt_holes(heel_end, neck_pocket),
+            neck_bolts,
             controls,
+            EdgeProfile(
+                self.body_top_edge_radius,
+                self.body_top_binding_width,
+                self.body_top_binding_depth if self.body_top_binding_width else 0.0,
+            ),
+            EdgeProfile(
+                self.body_back_edge_radius,
+                self.body_back_binding_width,
+                self.body_back_binding_depth if self.body_back_binding_width else 0.0,
+            ),
+            self._contours(body_outline.points, heel_end, bass_sign),
+            truss_rod_access,
         )
+
+    def _placed_controls(
+        self,
+        shape: BodyShapeSpec,
+        heel_end: float,
+        outline: tuple[Point2D, ...],
+        top_cavities: tuple[Cavity, ...],
+        other_covers: tuple[tuple[Point2D, ...], ...] = (),
+    ) -> ControlFeatures:
+        """Return the electronics layout, moved clear of the top routes.
+
+        A generated rear cavity (``gibson_4``, ``rear_3``) sits where the
+        shape's pots put it. Where it would rout into a deep top route over
+        it (a Floyd Rose's fine-tuner recess, a pickup), leaving no wood
+        between the two floors, the whole layout — cavity, cover and pots —
+        moves to the nearest place, out from the centreline and along the
+        neck by up to ``CONTROL_CLEARANCE_SHIFT`` in 1 mm steps, that clears
+        them with its cover in the body and off ``other_covers`` (the
+        bridge's spring-cavity cover, the battery box's). The drawn almond
+        keeps its place;
+        if nothing clears, the layout stays put and the body's own check
+        reports it.
+        """
+        pots = shape.pot_offsets
+        side = 1.0 if sum(y for _, y in pots) >= 0.0 else -1.0
+
+        def build(dx: float, dy: float) -> ControlFeatures:
+            moved = shape
+            if dx or dy:
+                moved = replace(
+                    shape,
+                    pot_offsets=tuple((x + dx, y + side * dy) for x, y in pots),
+                )
+            return control_features(
+                self.body_controls,
+                moved,
+                heel_end,
+                thickness=self.body_thickness,
+                top_wall=self.body_rear_cavity_top_wall,
+                cover_depth=self.body_cover_recess_depth,
+                pot_hole_diameter=self.body_pot_shaft_hole_diameter,
+                switch_hole_diameter=self.body_switch_shaft_hole_diameter,
+            )
+
+        def clear(controls: ControlFeatures) -> bool:
+            rear = controls.control_cavity
+            if rear is None:
+                return True
+            return not any(
+                rear.cavity.depth + top.depth >= self.body_thickness
+                and outlines_overlap(rear.cavity.outline, top.outline)
+                for top in top_cavities
+            ) and not any(
+                outlines_overlap(rear.cover_recess.outline, cover)
+                for cover in other_covers
+            )
+
+        controls = build(0.0, 0.0)
+        if self.body_controls not in ("gibson_4", "rear_3") or clear(controls):
+            return controls
+        reach = int(CONTROL_CLEARANCE_SHIFT)
+        shifts = sorted(
+            (
+                (float(dx), float(dy))
+                for dx in range(-reach, reach + 1)
+                for dy in range(reach + 1)
+                if 0 < math.hypot(dx, dy) <= reach
+            ),
+            key=lambda shift: (math.hypot(*shift), -shift[1]),
+        )
+        for dx, dy in shifts:
+            moved = build(dx, dy)
+            rear = moved.control_cavity
+            if (
+                clear(moved)
+                and rear is not None
+                and all(point_in_polygon(p, outline) for p in rear.cover_recess.outline)
+            ):
+                return moved
+        return controls
+
+    def _contours(
+        self, outline: tuple[Point2D, ...], heel_end: float, bass_sign: float
+    ) -> tuple[ContourCut, ...]:
+        """Return the arm contour and belly cut that are switched on.
+
+        Both sit on the bass side: the arm contour over the rear bout
+        (from 120 mm behind the heel end), the belly cut over the upper
+        bout (40 mm ahead of it to 120 mm behind). Each is deepest at the
+        outline point furthest out on that side, or the one nearest
+        ``body_*_position`` behind the heel end.
+        """
+        contours: list[ContourCut] = []
+        for name, face, depth, width, length, position, span in (
+            (
+                "Arm contour",
+                "top",
+                self.body_arm_contour_depth,
+                self.body_arm_contour_width,
+                self.body_arm_contour_length,
+                self.body_arm_contour_position,
+                (120.0, math.inf),
+            ),
+            (
+                "Belly cut",
+                "back",
+                self.body_belly_cut_depth,
+                self.body_belly_cut_width,
+                self.body_belly_cut_length,
+                self.body_belly_cut_position,
+                (-40.0, 120.0),
+            ),
+        ):
+            if depth <= 0.0:
+                continue
+            bass_side = [
+                index
+                for index, point in enumerate(outline)
+                if point.y * bass_sign > 0.0
+            ]
+            if position is not None:
+                apex = min(
+                    bass_side, key=lambda i: abs(outline[i].x - heel_end - position)
+                )
+            else:
+                in_span = [
+                    index
+                    for index in bass_side
+                    if span[0] <= outline[index].x - heel_end <= span[1]
+                ]
+                if not in_span:
+                    raise BodyGeometryError(
+                        f"The body has no bass-side edge for the {name.lower()}."
+                    )
+                apex = max(in_span, key=lambda i: outline[i].y * bass_sign)
+            contours.append(
+                ContourCut.along_edge(
+                    name,
+                    face,  # type: ignore[arg-type]
+                    outline,
+                    apex,
+                    length,
+                    width,
+                    depth,
+                )
+            )
+        return tuple(contours)
 
     def build(self) -> Prototype001Geometry:
         """Build and validate all geometry from this parameter set.
@@ -1150,6 +1879,38 @@ class Prototype001Parameters:
             )
         if self.string_count < 1:
             raise NeckGeometryError("The instrument needs at least one string.")
+        if not math.isfinite(self.fret_slant_angle) or abs(
+            self.fret_slant_angle
+        ) > MAX_FRET_SLANT_ANGLE:
+            raise NeckGeometryError(
+                f"Fret slant must be within {MAX_FRET_SLANT_ANGLE:g} degrees."
+            )
+        if self.bass_scale_length is not None:
+            if not math.isfinite(self.bass_scale_length) or not (
+                self.scale_length
+                < self.bass_scale_length
+                <= self.scale_length * MAX_MULTISCALE_RATIO
+            ):
+                raise NeckGeometryError(
+                    "The bass scale must be longer than the treble scale "
+                    f"(scale_length) and at most {MAX_MULTISCALE_RATIO:g} times it."
+                )
+            if (
+                not math.isfinite(self.perpendicular_fret)
+                or not 0.0 <= self.perpendicular_fret <= self.fret_count
+            ):
+                raise NeckGeometryError(
+                    f"The perpendicular fret must lie between the nut (0) and "
+                    f"fret {self.fret_count}."
+                )
+            if self.body_bridge_follows_fan and not isinstance(
+                self.body_bridge, HardtailSpec | TuneOMaticSpec
+            ):
+                raise NeckGeometryError(
+                    "Only the hardtail and the Tune-o-matic turn to the fanned "
+                    "bridge line; leave body_bridge_follows_fan off and set the "
+                    "saddles instead."
+                )
         if self.body_widening is not None and (
             not math.isfinite(self.body_widening) or self.body_widening < 0.0
         ):
@@ -1232,7 +1993,7 @@ class Prototype001Parameters:
             twelfth_fret_wood_thickness,
             self.heel_thickness,
             nut_transition_thickness=self.headstock_thickness,
-            nut_shelf_length=self.nut_shelf_length,
+            nut_shelf_length=self.nut_shelf_length + self.nut_shelf_reach(),
             nut_transition_length=self.headstock_volute_length,
             # Keep the underlying D-profile surface independent from the
             # inspection-only U-shaped end trim emitted by the FreeCAD
@@ -1253,7 +2014,7 @@ class Prototype001Parameters:
             segments_per_region=self.segments_per_region,
         )
         fretboard_surface = FretboardSurface(
-            self.scale_length,
+            self.centre_scale,
             self.fret_count,
             self.nut_width,
             self.final_fret_width,
@@ -1261,6 +2022,7 @@ class Prototype001Parameters:
             self.fretboard_thickness,
             end_extension=self.fretboard_end_extension,
             profile_sample_count=self.profile_sample_count,
+            skew=self.fret_skew,
         )
         final_fret_fraction = 1.0 - 2.0 ** (-self.fret_count / 12.0)
         width_at_scale_end = (
@@ -1268,13 +2030,14 @@ class Prototype001Parameters:
             + (self.final_fret_width - self.nut_width) / final_fret_fraction
         )
         fretboard = Fretboard(
-            self.scale_length,
+            self.centre_scale,
             self.nut_width,
             width_at_scale_end,
-            Centerline(self.scale_length),
+            Centerline(self.centre_scale),
             nut_corner_radius=self.fretboard_nut_corner_radius,
+            skew=self.fret_skew,
         )
-        fret_layout = FretLayout(fretboard, self.fret_count)
+        fret_layout = FretLayout(fretboard, self.fret_count, self.fret_skew)
         # Markers listed beyond the last fret (the 24th-fret pair on a
         # 22-fret neck, say) are simply not cut.
         inlay_layout = InlayLayout(
@@ -1295,14 +2058,7 @@ class Prototype001Parameters:
             block_length_fraction=self.inlay_block_length_fraction,
             block_edge_margin=self.inlay_block_edge_margin,
         )
-        truss_rod_channel = TrussRodChannel(
-            outline,
-            self.truss_rod_start,
-            self.truss_rod_length,
-            self.truss_rod_width,
-            self.truss_rod_depth,
-            adjustment_side="heel",
-        )
+        truss_rod_channel = self.truss_rod(outline)
         headstock_plan, tuner_layout = self.headstock_design()
         headstock = HeadstockSolid(
             headstock_plan,
@@ -1323,6 +2079,7 @@ class Prototype001Parameters:
             body_parts.jack_hole,
             control_cavity=body_parts.control_cavity,
             switch_cavity=body_parts.switch_cavity,
+            battery_cavity=body_parts.controls.battery_cavity,
             extra_cavities=(
                 *(
                     (body_parts.middle_pickup,)
@@ -1338,6 +2095,10 @@ class Prototype001Parameters:
             control_top_cavities=body_parts.controls.top_cavities,
             control_back_marks=body_parts.controls.back_marks,
             control_top_marks=body_parts.controls.top_marks,
+            top_edge=body_parts.top_edge,
+            back_edge=body_parts.back_edge,
+            contours=body_parts.contours,
+            truss_rod_access=body_parts.truss_rod_access,
         )
         return Prototype001Geometry(
             outline,
@@ -1359,7 +2120,14 @@ class Prototype001Parameters:
             self.headstock_outer_d_profile_guide_extension,
             self.heel_nose_radius,
             heel_flat_start_offset + self.heel_block_overlap,
-            body_parts.controls.covers,
+            (
+                *body_parts.controls.covers,
+                *(
+                    (cover,)
+                    if (cover := self.truss_rod_cover_plate(truss_rod_channel))
+                    else ()
+                ),
+            ),
         )
 
 

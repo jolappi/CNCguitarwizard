@@ -73,7 +73,17 @@ def test_default_preset_builds_every_locked_component() -> None:
     assert geometry.neck_surface.station_positions[-1] == pytest.approx(
         geometry.neck_outline.last_fret_position + parameters.heel_length
     )
-    assert geometry.truss_rod_channel.length == 440.0
+    # The route: a 6 x 7.5 mm channel, a 7.5 x 10.5 x 14 mm step and a
+    # 9 x 11 x 32 mm pocket, ending where the adjuster's 12 mm sleeve bore
+    # runs on to the heel end.
+    rod = geometry.truss_rod_channel
+    heel_end = (
+        geometry.neck_outline.last_fret_position + geometry.neck_outline.heel_length
+    )
+    assert (rod.width, rod.depth) == (6.0, 7.5)
+    assert rod.end_position == pytest.approx(heel_end - 12.0)
+    # A 440 mm stock rod: its 12 mm sleeve and 6 mm head lie outside the route.
+    assert rod.length == pytest.approx(440.0 - 18.0)
     assert geometry.headstock.thickness == 16.0
     assert parameters.headstock_root_length == 45.0
     assert parameters.headstock_shoulder_distance == 45.0
@@ -391,11 +401,13 @@ def test_body_follows_the_neck_and_bridge_follows_the_scale() -> None:
 
 
 def test_fewer_frets_keep_the_neck_in_its_pocket() -> None:
-    # A 22-fret neck is shorter, so the physical 440 mm truss rod no longer
-    # fits; a shorter rod is a separate hardware choice.
-    geometry = replace(
-        Prototype001Parameters(), fret_count=22, truss_rod_length=400.0
-    ).build()
+    # A 22-fret neck is shorter; the truss-rod channel is fitted to it.
+    geometry = replace(Prototype001Parameters(), fret_count=22).build()
+    rod = geometry.truss_rod_channel
+    heel_end = (
+        geometry.neck_outline.last_fret_position + geometry.neck_outline.heel_length
+    )
+    assert rod.end_position == pytest.approx(heel_end - 12.0)
     assert {marker.fret_number for marker in geometry.inlay_layout.markers} == {
         3, 5, 7, 9, 12, 15, 17, 19, 21
     }

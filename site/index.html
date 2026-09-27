@@ -33,6 +33,18 @@
   }
   header h1 { margin: 0; font-size: 20px; }
   header .motto { color: var(--muted); font-style: italic; }
+  header .credit { color: var(--muted); font-size: 13px; }
+  header a, footer a { color: var(--accent); font-weight: 600; text-decoration: none; }
+  header a:hover, footer a:hover { text-decoration: underline; }
+  footer {
+    padding: 14px 22px;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 13px;
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
   #status { margin-left: auto; color: var(--muted); }
   #status.ok { color: var(--ok); }
   #status.bad { color: var(--bad); }
@@ -109,6 +121,9 @@
   table { border-collapse: collapse; font-size: 13px; }
   td, th { text-align: left; padding: 4px 10px 4px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
   th { color: var(--muted); font-weight: 600; }
+  #files .file-group th { color: var(--ink); padding-top: 14px; }
+  #files td:nth-child(3) { white-space: nowrap; }
+  #files td.step { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
   a.download { color: var(--accent); font-weight: 600; text-decoration: none; }
   a.download:hover { text-decoration: underline; }
   .note { color: var(--muted); font-size: 13px; }
@@ -126,6 +141,8 @@
 <header>
   <h1>CNCguitarwizard</h1>
   <span class="motto">Measure twice. Generate once.</span>
+  <span class="credit">Created by yours truly, Jouni Lappi ·
+    <a href="https://github.com/jolappi/CNCguitarwizard" target="_blank" rel="noopener">GitHub</a></span>
   <span id="status">Loading Python runtime…</span>
 </header>
 <main>
@@ -133,6 +150,13 @@
     <div class="actions">
       <button id="build" disabled>Build Prototype001</button>
       <button id="reset" class="secondary" disabled>Reset</button>
+    </div>
+    <div class="actions design-file">
+      <button id="save-design" class="secondary" type="button" disabled
+        title="Download every setting, the drawn body and headstock included, as a JSON file">Save design</button>
+      <button id="load-design" class="secondary" type="button" disabled
+        title="Open a design saved with Save design">Load design</button>
+      <input id="load-design-file" type="file" accept=".json,application/json" hidden>
     </div>
     <div id="progress" class="progress hidden" aria-live="polite">
       <div class="bar"><div class="fill"></div></div>
@@ -153,10 +177,10 @@
       <h2>Your design <span id="body-editor-size" class="note"></span></h2>
       <p class="note">Drag the round handles to shape the body. Double-click the outline to add a
         handle there; Alt/Option-click or right-click a handle to remove it. <em>Start from</em> loads a
-        template — Design by Jone, Les Paul, Stratocaster or Jackson RR style — with its own cavity
+        template — Design by Jone, or a Les Paul, Stratocaster, Jackson RR or Jazz Bass style mockup — with its own cavity
         placements. Drag the control cavity
-        (its pots come along), a single pot, the switch cavity, a neck bolt (dashed, drilled from the
-        back) or the jack to move it; the pickup routes
+        (its pots come along), a single pot, the switch cavity, the battery box, a neck bolt (dashed,
+        drilled from the back) or the jack to move it; the pickup routes
         slide along the neck. The neck, its pocket and the bridge follow the neck and scale and stay put.
         The grid is 50 mm.</p>
       <div class="actions">
@@ -195,9 +219,11 @@
       <div id="tabs" class="tabs"></div>
       <div id="toolpath" class="preview"></div>
       <h2>Downloads</h2>
-      <p class="note">The <em>Simulate</em> button copies that program to the clipboard and opens
+      <p class="note">Each part has its own list, its programs numbered in the order to run them.
+        The <em>Simulate</em> button copies that program to the clipboard and opens
         <a href="https://ncviewer.com" target="_blank" rel="noopener">NC Viewer</a> below: click into its
-        editor and paste (Ctrl/Cmd+V) to see the toolpath simulated.</p>
+        editor, select all (Ctrl/Cmd+A), paste (Ctrl/Cmd+V) and press <em>Plot</em> to see the toolpath
+        simulated.</p>
       <table id="files"></table>
       <div id="simulator" class="simulator hidden">
         <h2>Simulator <span id="simulator-file" class="note"></span></h2>
@@ -209,6 +235,11 @@
     </div>
   </section>
 </main>
+<footer>
+  <span>CNCguitarwizard — created by yours truly, Jouni Lappi</span>
+  <span>Source, documentation and issues on
+    <a href="https://github.com/jolappi/CNCguitarwizard" target="_blank" rel="noopener">GitHub</a></span>
+</footer>
 <script src="https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.js"></script>
 <script>
   // Load the manifest fresh, then the app script versioned by its build id,

@@ -5,11 +5,11 @@ from __future__ import annotations
 import json
 import math
 import re
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from pathlib import Path
 
-from ...geometry.body import BodySolid
+from ...geometry.body import BodySolid, ContourCut
 from ...geometry.fretboard import FretboardSurface, FretLayout, InlayLayout
 from ...geometry.neck import (
     HeadstockSolid,
@@ -22,6 +22,22 @@ from ...presets import Prototype001Geometry
 from .exceptions import FreeCADBackendError
 
 _VALID_IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+HEADSTOCK_FACE_ALLOWANCE = 0.5
+"""Extra height of the lofted headstock top, cut back to the true face (mm).
+
+The joined neck loft keeps its top edge at the nut height over the whole
+nut shelf and then eases down onto the headstock's tilted face. Lofting the
+headstock this much proud of that face, and cutting the true face off
+afterwards, gives the same vertical step at the end of the shelf as the
+neck G-code: the cutter crosses the loft cleanly instead of touching it.
+"""
+
+HEADSTOCK_FACE_EASE_LENGTH = 8.0
+"""Length over which the lofted top edge eases from the shelf down (mm)."""
+
+TRUSS_ROD_POCKET_PIECE_LENGTH = 5.0
+"""Longest box a truss-rod nut pocket or trough is cut with (mm)."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -532,13 +548,19 @@ class FreeCADScriptExporter:
             "        if cos_angle >= cos_tolerance:\n"
             "            edges.append(edge)\n"
             "    return edges\n\n"
-            "def nut_corner_edges(shape, nut_x, nut_half_width, x_tolerance):\n"
-            '    """Return the two vertical edges at the nut corners."""\n'
+            "def nut_corner_edges(\n"
+            "    shape, nut_x, nut_half_width, x_tolerance, slope=0.0\n"
+            "):\n"
+            '    """Return the two vertical edges at the nut corners.\n\n'
+            "    With slanted frets the nut end runs along X by `slope` per\n"
+            '    unit of Y."""\n'
             "    return [\n"
             "        edge\n"
             "        for edge in shape.Edges\n"
-            "        if edge.BoundBox.XMin >= nut_x - x_tolerance\n"
-            "        and edge.BoundBox.XMax <= nut_x + x_tolerance\n"
+            "        if edge.BoundBox.XMin\n"
+            "        >= nut_x + slope * edge.BoundBox.Center.y - x_tolerance\n"
+            "        and edge.BoundBox.XMax\n"
+            "        <= nut_x + slope * edge.BoundBox.Center.y + x_tolerance\n"
             "        and edge.BoundBox.ZLength > x_tolerance\n"
             "        and max(\n"
             "            abs(edge.BoundBox.YMin),\n"
@@ -727,6 +749,7 @@ class FreeCADScriptExporter:
             "        0.0,\n"
             f"        {fretboard_surface.nut_width / 2.0},\n"
             "        0.01,\n"
+            f"        {fretboard_surface.skew.at(0.0)!r},\n"
             "    )\n"
             "    fretboard_shape = safe_fillet(\n"
             "        fretboard_shape,\n"
@@ -880,6 +903,7 @@ class FreeCADScriptExporter:
             # neck_shape rather than into a separate piece to fuse in.
             return (
                 f"{root_source}"
+                f"{self._render_headstock_face_cut(headstock, neck_surface)}"
                 f"{tuner_source}"
                 f"{feature_source}"
                 f"{guide_source}"
@@ -898,6 +922,58 @@ class FreeCADScriptExporter:
             f"{root_source}"
             f"{feature_source}"
             f"{guide_source}"
+        )
+
+    @staticmethod
+    def _render_headstock_face_cut(
+        headstock: HeadstockSolid,
+        neck_surface: NeckBackSurface,
+    ) -> str:
+        """Return source that cuts the lofted headstock down to its face.
+
+        The joined loft keeps its top flat over the nut shelf and lofts the
+        headstock ``HEADSTOCK_FACE_ALLOWANCE`` proud of its tilted face
+        (see ``_headstock_transition_sections``). Cutting away everything
+        above that face, from the end of the shelf out past the tip, leaves
+        the flat nut shelf, a vertical step at its end and the true, planar
+        headstock face — as the neck G-code machines them. The cutter's
+        faces all cross the loft rather than touching it, so the cut stays
+        a clean boolean.
+
+        Args:
+            headstock: Headstock whose tilted face is cut.
+            neck_surface: Neck surface supplying the nut shelf length.
+
+        Returns:
+            FreeCAD source for the cut, or an empty string without a shelf.
+        """
+        shelf = neck_surface.nut_shelf_length
+        if shelf <= 0.0:
+            return ""
+        slope = math.tan(math.radians(headstock.angle.angle_degrees))
+        far_x = -headstock.plan.length - 10.0
+        half_width = (
+            max(abs(point.y) for point in headstock.top_boundary) + 10.0
+        )
+        face_points = (
+            (-shelf, -shelf * slope),
+            (-shelf, 10.0),
+            (far_x, 10.0),
+            (far_x, far_x * slope),
+        )
+        return (
+            f"HEADSTOCK_FACE_CUT_POINTS = {face_points!r}\n"
+            "headstock_face_cutter = Part.Face(Part.makePolygon(\n"
+            f"    [App.Vector(x, {-half_width!r}, z)\n"
+            "     for x, z in HEADSTOCK_FACE_CUT_POINTS\n"
+            "     + HEADSTOCK_FACE_CUT_POINTS[:1]]\n"
+            ")).extrude(\n"
+            f"    App.Vector(0.0, {2.0 * half_width!r}, 0.0)\n"
+            ")\n"
+            "neck_shape = require_shape(\n"
+            "    neck_shape.cut(headstock_face_cutter).removeSplitter(),\n"
+            '    "headstock face cut",\n'
+            ")\n"
         )
 
     @staticmethod
@@ -1111,13 +1187,11 @@ class FreeCADScriptExporter:
         end_row = neck_surface._build_profile_row(blend_end)
         sections: list[tuple[Point3D, ...]] = []
         if root_start < 0.0:
-            sections.extend(
-                FreeCADScriptExporter._headstock_tip_sections(
-                    headstock,
-                    neck_surface,
-                    lateral_edge_fillet_radius,
-                    blend_start,
-                )
+            tip_rows = FreeCADScriptExporter._headstock_tip_sections(
+                headstock,
+                neck_surface,
+                lateral_edge_fillet_radius,
+                blend_start,
             )
             epsilon = 0.05
             headstock_before = FreeCADScriptExporter._angled_headstock_root_section(
@@ -1181,14 +1255,28 @@ class FreeCADScriptExporter:
             # between the two), is recomputed so the top edge is flat
             # from x = 0 on, easing smoothly back to the headstock's real
             # tilt a little further into the headstock instead.
+            #
+            # With a nut shelf the top edge stays flat over the whole
+            # shelf, and the headstock's top is lofted
+            # HEADSTOCK_FACE_ALLOWANCE proud of its real face; the
+            # exporter cuts the real face off afterwards (see
+            # _render_headstock_face_cut). The flat shelf is therefore
+            # part of the loft itself: a flat nut-seat block fused on top
+            # instead has to meet the loft's own top exactly at z = 0,
+            # tangent to it just behind the nut, and FreeCAD's boolean
+            # fuse silently loses the block there.
+            shelf = neck_surface.nut_shelf_length
+            flat_end = -shelf if shelf > 0.0 else 0.0
             sections.extend(
                 FreeCADScriptExporter._offset_edge_pivot(
                     headstock,
                     neck_surface,
-                    hermite_rows,
-                    lateral_edge_fillet_radius,
-                    flat_end=0.0,
-                    tilt_resume=-8.0,
+                    (*tip_rows, *hermite_rows),
+                    flat_end=flat_end,
+                    tilt_resume=flat_end - HEADSTOCK_FACE_EASE_LENGTH,
+                    face_allowance=(
+                        HEADSTOCK_FACE_ALLOWANCE if shelf > 0.0 else 0.0
+                    ),
                 )
             )
         elif not sections:
@@ -1200,9 +1288,9 @@ class FreeCADScriptExporter:
         headstock: HeadstockSolid,
         neck_surface: NeckBackSurface,
         rows: tuple[tuple[Point3D, ...], ...],
-        lateral_edge_fillet_radius: float,
         flat_end: float,
         tilt_resume: float,
+        face_allowance: float = 0.0,
     ) -> tuple[tuple[Point3D, ...], ...]:
         """Replace each row's two true edge points with a delayed pivot.
 
@@ -1226,6 +1314,21 @@ class FreeCADScriptExporter:
         the very tip of each side — accepted deliberately here, since it
         keeps every other point of the back surface, including that
         run-in, byte-identical to the already-approved curve.
+
+        ``face_allowance`` raises the edge points by up to that much, with
+        the same weight, so that from ``tilt_resume`` on the top sits that
+        far above the headstock's real face, to be cut back to it.
+
+        Args:
+            headstock: Headstock whose tilt and plan the edges follow.
+            neck_surface: Neck surface supplying the row sample count.
+            rows: Loft rows, ordered by X.
+            flat_end: X up to which (toward the neck) the edges stay flat.
+            tilt_resume: X past which the edges follow the headstock tilt.
+            face_allowance: Height the edges end up above the real face.
+
+        Returns:
+            The rows with their two edge points replaced.
         """
         radians = math.radians(headstock.angle.angle_degrees)
         count = neck_surface.profile_sample_count
@@ -1236,7 +1339,7 @@ class FreeCADScriptExporter:
             raw_top_z = position * math.tan(radians)
             t = max(0.0, min(1.0, (flat_end - position) / span))
             weight = NeckBackSurface._smootherstep(t)
-            top_z = raw_top_z * weight
+            top_z = (raw_top_z + face_allowance) * weight
             # The top edge's own distance-from-nut reference shifts with
             # this same weight: at weight = 0 the top face is level with
             # the nut (distance 0, i.e. full nut_width), at weight = 1 it
@@ -1378,12 +1481,6 @@ class FreeCADScriptExporter:
             else 0.0
         )
         flat_fraction = 1.0 - rounding_fraction
-        # The innermost interior index reaches abs_u == 1.0 exactly. Sizing
-        # the rounding zone's own denominator a little past that keeps blend
-        # just short of 1.0 there, so that point stays distinct from the
-        # true edge point (index 0 / count - 1) instead of landing exactly
-        # on top of it — a coincident point that also breaks the loft.
-        rounding_span = rounding_fraction * 1.08
         points: list[Point3D] = []
         for index in range(count):
             if index == 0:
@@ -1392,11 +1489,22 @@ class FreeCADScriptExporter:
             if index == count - 1:
                 points.append(Point3D(position, top_edges[1.0], top_z))
                 continue
-            lateral_u = 2.0 * (index - 1) / (count - 3) - 1.0
+            if rounding_fraction > 0.0:
+                # The true edge points are the rounding's own last samples
+                # (lateral_u = +-1), so the outermost interior point sits a
+                # full sample step in from them. Squeezing every interior
+                # point into -1..1 instead put it a few hundredths of a
+                # millimetre from the edge, and the loft's sliver face
+                # between the two self-intersected at the headstock tip.
+                lateral_u = 2.0 * index / (count - 1) - 1.0
+            else:
+                # Without rounding the interior points span the full flat
+                # back, so its two bottom corners are sampled exactly.
+                lateral_u = 2.0 * (index - 1) / (count - 3) - 1.0
             abs_u = abs(lateral_u)
             side = 1.0 if lateral_u >= 0.0 else -1.0
             if rounding_fraction > 0.0 and abs_u > flat_fraction:
-                edge_progress = (abs_u - flat_fraction) / rounding_span
+                edge_progress = (abs_u - flat_fraction) / rounding_fraction
                 blend = NeckBackSurface._smootherstep(edge_progress)
                 y = bottom_edges[side] + (top_edges[side] - bottom_edges[side]) * blend
                 z = bottom_z + (top_z - bottom_z) * blend
@@ -1615,26 +1723,32 @@ class FreeCADScriptExporter:
             "    FRET_SURFACE_ROWS,\n"
             "    start=1,\n"
             "):\n"
-            "    position = surface_row[0][0]\n"
-            "    profile_x = position - fret_slot_width / 2.0\n"
             "    first = surface_row[0]\n"
             "    last = surface_row[-1]\n"
+            "    # A slanted slot's row runs along X as Y changes; the slot\n"
+            "    # profile stays in that row's own vertical plane.\n"
+            "    slope = (last[0] - first[0]) / (last[1] - first[1])\n"
             "    extended_row = [\n"
-            "        (first[0], first[1] - fret_slot_side_overcut, first[2]),\n"
+            "        (\n"
+            "            first[0] - slope * fret_slot_side_overcut,\n"
+            "            first[1] - fret_slot_side_overcut,\n"
+            "            first[2],\n"
+            "        ),\n"
             "        *surface_row,\n"
-            "        (last[0], last[1] + fret_slot_side_overcut, last[2]),\n"
+            "        (\n"
+            "            last[0] + slope * fret_slot_side_overcut,\n"
+            "            last[1] + fret_slot_side_overcut,\n"
+            "            last[2],\n"
+            "        ),\n"
             "    ]\n"
+            "    half = fret_slot_width / 2.0\n"
             "    profile = [\n"
-            "        App.Vector(\n"
-            "            profile_x,\n"
-            "            y,\n"
-            "            z + fret_slot_surface_overcut,\n"
-            "        )\n"
-            "        for _, y, z in extended_row\n"
+            "        App.Vector(x - half, y, z + fret_slot_surface_overcut)\n"
+            "        for x, y, z in extended_row\n"
             "    ]\n"
             "    profile.extend(\n"
-            "        App.Vector(profile_x, y, z - fret_slot_depth)\n"
-            "        for _, y, z in reversed(extended_row)\n"
+            "        App.Vector(x - half, y, z - fret_slot_depth)\n"
+            "        for x, y, z in reversed(extended_row)\n"
             "    )\n"
             "    profile.append(profile[0])\n"
             "    slot_face = Part.Face(Part.makePolygon(profile))\n"
@@ -1760,6 +1874,8 @@ class FreeCADScriptExporter:
             'body_shape = require_shape(body_shape, "body outline extrude")\n',
         ]
         cavity_cuts = [(body.neck_pocket, "neck pocket cut")]
+        if body.truss_rod_access is not None:
+            cavity_cuts.append((body.truss_rod_access, "truss-rod access cut"))
         if body.bridge_pickup is not None:
             cavity_cuts.append((body.bridge_pickup, "bridge pickup route cut"))
         if body.neck_pickup is not None:
@@ -1863,6 +1979,9 @@ class FreeCADScriptExporter:
             '    "jack bore cut",\n'
             ")\n"
         )
+        # The edge finishes come last: the cavities cut quicker into the
+        # plain slab.
+        lines += _body_edge_lines(body, outline_literal)
         lines.append(
             "body_feature = document.addObject(\n"
             f'    "Part::Feature", "{object_name}"\n'
@@ -1879,18 +1998,80 @@ class FreeCADScriptExporter:
         if channel is None:
             return ""
 
-        start = channel.start_position
-        lateral_start = -channel.width / 2.0
-        vertical_start = -channel.depth
-        return (
+        def pieces(
+            boundary: tuple[Point2D, ...], depth: float, name: str, label: str
+        ) -> str:
+            # A pocket is cut as a row of short boxes in one boolean. Where
+            # one long box wall crosses the lofted top, FreeCAD can join its
+            # approximated intersection line from two pieces with a C0
+            # knot, which check(True) reports as GeomAbs_C0; a short wall's
+            # line comes out in one piece. Each box reaches 5 mm above the
+            # top so no face lies in it.
+            xs = [point.x for point in boundary]
+            ys = [point.y for point in boundary]
+            length = max(xs) - min(xs)
+            count = max(1, math.ceil(length / TRUSS_ROD_POCKET_PIECE_LENGTH))
+            return (
+                f"{name} = [\n"
+                "    Part.makeBox(\n"
+                f"        {length / count!r}, {max(ys) - min(ys)!r}, "
+                f"{depth + 5.0!r},\n"
+                f"        App.Vector({min(xs)!r} + index * {length / count!r}, "
+                f"{min(ys)!r}, {-depth!r}),\n"
+                "    )\n"
+                f"    for index in range({count})\n"
+                "]\n"
+                "neck_shape = require_shape(\n"
+                f"    neck_shape.cut({name}).removeSplitter(),\n"
+                f"    {label!r},\n"
+                ")\n"
+            )
+
+        # The plain channel (one box reaching 5 mm above the top: over the
+        # nut shelf the lofted top only approximates z = 0), then the step
+        # and pocket at the adjusting end and a headstock-adjusted rod's
+        # trough, each open to the top.
+        xs = [point.x for point in channel.top_boundary]
+        source = (
             "truss_rod_shape = Part.makeBox("
-            f"{channel.length}, {channel.width}, {channel.depth}, "
-            f"App.Vector({start}, {lateral_start}, {vertical_start}))\n"
+            f"{max(xs) - min(xs)!r}, {channel.width!r}, {channel.depth + 5.0!r}, "
+            f"App.Vector({min(xs)!r}, {-channel.width / 2.0!r}, {-channel.depth!r}))\n"
             "neck_shape = require_shape(\n"
             "    neck_shape.cut(truss_rod_shape),\n"
             '    "truss-rod cut",\n'
             ")\n"
         )
+        for index, part in enumerate(channel.pockets):
+            source += pieces(
+                part.boundary,
+                part.depth,
+                f"truss_rod_pocket_shapes_{index}",
+                f"{part.name.lower()} cut",
+            )
+        if channel.adjuster_boundary:
+            source += pieces(
+                channel.adjuster_boundary,
+                channel.adjuster_depth,
+                "truss_rod_nut_shapes",
+                "truss-rod access trough cut",
+            )
+        if channel.bore is not None:
+            # The adjuster sleeve's bore through the heel end: drilled by
+            # hand, shown here for the fit.
+            bore = channel.bore
+            source += (
+                "truss_rod_bore = Part.makeCylinder(\n"
+                f"    {bore.diameter / 2.0!r},\n"
+                f"    {bore.end - bore.start + 1.0!r},\n"
+                f"    App.Vector({bore.start!r}, 0.0, {-bore.axis_depth!r}),\n"
+                "    App.Vector(1.0, 0.0, 0.0),\n"
+                ")\n"
+                "neck_shape = require_shape(\n"
+                "    neck_shape.cut(truss_rod_bore),\n"
+                '    "truss-rod sleeve bore",\n'
+                ")\n"
+            )
+        return source
 
     def write_script(self, path: Path, source: str) -> None:
         """Write generated FreeCAD source using UTF-8 encoding.
@@ -2161,3 +2342,126 @@ class FreeCADScriptExporter:
             raise FreeCADBackendError(
                 "Inlay layout must be built from the same fretboard surface."
             )
+
+
+EDGE_LAYER = 1.0
+"""Height of the layers a roundover or contour is modelled in, in mm."""
+
+
+def _body_edge_lines(
+    body: BodySolid, outline_literal: Callable[[Iterable[Point2D]], str]
+) -> list[str]:
+    """Return script lines modelling the edge finishes and contours.
+
+    FreeCAD's own fillet fails on outlines with pointed horns and tight
+    cutaways, so a roundover is modelled as ``EDGE_LAYER``-thick rings,
+    each trimmed back to the inset the fillet has at that depth (with
+    FreeCAD's 2D offset, which copes with sharp corners); a binding
+    channel is one such ring. Contours are terraced the same way from
+    their depth map, and every layer is cut in one boolean. The G-code
+    cuts the true surfaces.
+    """
+    top, back = body.top_edge, body.back_edge
+    if not (
+        top.radius or back.radius or top.has_binding or back.has_binding
+    ) and not body.contours:
+        return []
+    lines = [
+        "body_outline_face = Part.Face(Part.makePolygon(\n"
+        "    [App.Vector(x, y, 0.0) for x, y in BODY_OUTLINE_POINTS]\n"
+        "    + [App.Vector(*BODY_OUTLINE_POINTS[0], 0.0)]\n"
+        "))\n",
+        "body_box = body_outline_face.BoundBox\n",
+        "edge_cutters = []\n",
+        "def edge_ring(inset, z_top, z_bottom):\n",
+        "    # Everything outside the outline inset by `inset`, between two\n",
+        "    # heights.\n",
+        "    height = z_top - z_bottom\n",
+        "    slab = Part.makeBox(\n",
+        "        body_box.XLength + 40.0, body_box.YLength + 40.0, height,\n",
+        "        App.Vector(body_box.XMin - 20.0, body_box.YMin - 20.0, z_bottom),\n",
+        "    )\n",
+        "    inner = body_outline_face.makeOffset2D(-inset, join=0) if inset > 1e-3 "
+        "else body_outline_face.copy()\n",
+        "    inner.translate(App.Vector(0.0, 0.0, z_bottom - 0.01))\n",
+        "    edge_cutters.append(\n",
+        "        slab.cut(inner.extrude(App.Vector(0.0, 0.0, height + 0.02)))\n",
+        "    )\n",
+        "def terrace(outline_points, z_top, z_bottom):\n",
+        "    face = Part.Face(Part.makePolygon(\n",
+        "        [App.Vector(x, y, z_bottom) for x, y in outline_points]\n",
+        "        + [App.Vector(*outline_points[0], z_bottom)]\n",
+        "    ))\n",
+        "    if face.isValid():\n",
+        "        rise = App.Vector(0.0, 0.0, z_top - z_bottom)\n",
+        "        edge_cutters.append(face.extrude(rise))\n",
+    ]
+    for face, edge in (("top", top), ("back", back)):
+        # Depth d below this face maps to model Z.
+        def z_of(depth: float, face: str = face) -> float:
+            return -depth if face == "top" else -body.thickness + depth
+
+        if edge.radius > 0.0:
+            layers = max(4, math.ceil(edge.radius / EDGE_LAYER))
+            for index in range(layers):
+                upper = edge.radius * index / layers
+                lower = edge.radius * (index + 1) / layers
+                middle = (upper + lower) / 2.0
+                inset = edge.radius - math.sqrt(
+                    max(0.0, edge.radius**2 - (edge.radius - middle) ** 2)
+                )
+                high, low = sorted((z_of(upper), z_of(lower)), reverse=True)
+                if index == 0:
+                    # The first ring also clears the overcut past the face.
+                    high, low = (
+                        (high + 0.6, low) if face == "top" else (high, low - 0.6)
+                    )
+                lines.append(f"edge_ring({inset!r}, {high!r}, {low!r})\n")
+        if edge.has_binding:
+            high, low = sorted(
+                (z_of(0.0), z_of(edge.binding_depth)), reverse=True
+            )
+            high, low = (high + 0.6, low) if face == "top" else (high, low - 0.6)
+            lines.append(f"edge_ring({edge.binding_width!r}, {high!r}, {low!r})\n")
+    for contour in body.contours:
+        layers = max(2, math.ceil(contour.depth / EDGE_LAYER))
+        for index in range(1, layers + 1):
+            level = contour.depth * index / layers
+            region = _contour_level(contour, level - contour.depth / layers / 2.0)
+            if len(region) < 3:
+                continue
+            if contour.face == "top":
+                high, low = 0.6, -level
+            else:
+                high, low = -body.thickness + level, -body.thickness - 0.6
+            lines.append(
+                f"terrace({outline_literal(region)}, {high!r}, {low!r})\n"
+            )
+    # One general boolean for every layer is far quicker than one cut per
+    # layer.
+    lines.append(
+        "body_shape = require_shape(\n"
+        "    body_shape.cut(edge_cutters), 'edge finishes and contours'\n"
+        ")\n"
+    )
+    return lines
+
+
+def _contour_level(contour: ContourCut, level: float) -> tuple[Point2D, ...]:
+    """Return the area where ``contour`` is deeper than ``level``.
+
+    Bounded by the ramp's contour line inside the body and a line 10 mm
+    past the edge (into the waste) outside it.
+    """
+    inner: list[Point2D] = []
+    outer: list[Point2D] = []
+    for point, normal, arc in zip(
+        contour.edge, contour.normals, contour.arc, strict=True
+    ):
+        edge_depth = contour.depth * contour.taper(arc)
+        if edge_depth <= level:
+            continue
+        reach = contour.width * contour.taper(arc) * (1.0 - level / edge_depth)
+        inner.append(Point2D(point.x + normal.x * reach, point.y + normal.y * reach))
+        outer.append(Point2D(point.x - normal.x * 10.0, point.y - normal.y * 10.0))
+    return (*inner, *reversed(outer))

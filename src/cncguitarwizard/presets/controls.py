@@ -8,11 +8,14 @@ cavities close with a plate seated flush in a cover recess; a Telecaster
 style control plate sits flush in a recess in the top instead, with the
 pots and the blade switch mounted through the plate itself. Every plate
 is a ``CoverPlate`` to cut from sheet, and the body gets a shallow spot
-for each of its screws.
+for each of its screws. An optional 9 V battery box (``battery_features``)
+is one more rear cavity with its own cover, placed by the shape's
+``battery_offset``, ``battery_y`` and ``battery_angle_degrees``.
 """
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import Literal
 
@@ -58,6 +61,7 @@ class ControlFeatures:
         back_marks: Cover-screw spots drilled from the back.
         top_marks: Cover-screw spots drilled from the top.
         covers: The plates to cut from sheet.
+        battery_cavity: The rear 9 V battery box, or ``None``.
     """
 
     control_cavity: RearCavity | None = None
@@ -67,6 +71,102 @@ class ControlFeatures:
     back_marks: tuple[DrilledHole, ...] = ()
     top_marks: tuple[DrilledHole, ...] = ()
     covers: tuple[CoverPlate, ...] = ()
+    battery_cavity: RearCavity | None = None
+
+    def with_battery(self, battery: ControlFeatures) -> ControlFeatures:
+        """Return these features with a battery box's cavity, spots and cover."""
+        return ControlFeatures(
+            self.control_cavity,
+            self.switch_cavity,
+            self.top_cavities,
+            self.holes,
+            (*self.back_marks, *battery.back_marks),
+            self.top_marks,
+            (*self.covers, *battery.covers),
+            battery.battery_cavity,
+        )
+
+
+BATTERY_CAVITY_CORNER_RADIUS = 5.0
+"""Corner radius of the battery box, in mm (a 9 V battery still fits the
+default 56 × 30 mm box with it)."""
+
+
+def battery_features(
+    shape: BodyShapeSpec,
+    heel_end: float,
+    *,
+    length: float,
+    width: float,
+    depth: float,
+    cover_margin: float,
+    cover_depth: float,
+) -> ControlFeatures:
+    """Return a rear 9 V battery box: its cavity, cover, and screw spots.
+
+    The box is ``length`` along its own axis by ``width`` and ``depth``
+    deep from the back, centred ``shape.battery_offset`` behind the heel
+    end at ``shape.battery_y`` and turned ``shape.battery_angle_degrees``
+    from the neck's axis. Its cover recess is ``cover_margin`` wider all
+    round; the plate is held by two screws in the ledge at the box's ends.
+    """
+    centre = Point2D(heel_end + shape.battery_offset, shape.battery_y)
+    angle = math.radians(shape.battery_angle_degrees)
+    cos, sin = math.cos(angle), math.sin(angle)
+
+    def placed(
+        name: str, along: float, across: float, radius: float, deep: float
+    ) -> TracedCavity:
+        box = RectangularCavity(name, 0.0, 0.0, along, across, deep, radius)
+        return TracedCavity(
+            name,
+            tuple(
+                Point2D(
+                    centre.x + p.x * cos - p.y * sin, centre.y + p.x * sin + p.y * cos
+                )
+                for p in box.outline
+            ),
+            deep,
+        )
+
+    cavity = placed(
+        "Battery cavity", length, width, BATTERY_CAVITY_CORNER_RADIUS, depth
+    )
+    recess = placed(
+        "Battery cavity cover recess",
+        length + 2.0 * cover_margin,
+        width + 2.0 * cover_margin,
+        BATTERY_CAVITY_CORNER_RADIUS + cover_margin,
+        cover_depth,
+    )
+    reach = length / 2.0 + cover_margin / 2.0
+    screws = [
+        Point2D(centre.x + side * reach * cos, centre.y + side * reach * sin)
+        for side in (-1.0, 1.0)
+    ]
+    marks = tuple(
+        DrilledHole(
+            f"Battery cavity cover screw {index}",
+            point.x,
+            point.y,
+            SCREW_SPOT_DIAMETER,
+            cover_depth + SCREW_SPOT_DEPTH,
+        )
+        for index, point in enumerate(screws, start=1)
+    )
+    cover = CoverPlate(
+        "Battery cavity cover",
+        "back",
+        recess.outline,
+        cover_depth,
+        holes=tuple(
+            DrilledHole(f"Screw {index}", p.x, p.y, SCREW_CLEARANCE, cover_depth)
+            for index, p in enumerate(screws, start=1)
+        ),
+    )
+    return ControlFeatures(
+        back_marks=marks, covers=(cover,), battery_cavity=RearCavity(cavity, recess)
+    )
 
 
 def control_features(

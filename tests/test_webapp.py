@@ -226,7 +226,10 @@ def test_stepwise_build_reports_progress_between_stages(tmp_path: Path) -> None:
 
 
 def test_stepwise_build_surfaces_stage_errors(tmp_path: Path) -> None:
-    started = start_build({"prototype": {"fret_count": 22}}, str(tmp_path))
+    # A 440 mm rod does not fit a 22-fret neck.
+    started = start_build(
+        {"prototype": {"fret_count": 22, "truss_rod_length": 440.0}}, str(tmp_path)
+    )
 
     assert "stages" in started
     step = advance_build()
@@ -262,13 +265,28 @@ def test_body_editor_layout_lists_the_fixed_features_relative_to_the_heel() -> N
         "les_paul",
         "stratocaster",
         "jackson_rr",
-        "bass_offset",
+        "jazz_bass",
     ]
-    assert templates["les_paul"]["label"] == "Les Paul style"
-    assert (
-        templates["stratocaster"]["shape"]["control_points"] == layout["start_points"]
+    assert templates["les_paul"]["label"] == "Les Paul style (mockup, not the original)"
+    assert templates["stratocaster"]["label"] == (
+        "Stratocaster style (mockup, not the original)"
     )
+    # The Stratocaster template is traced from a reference drawing (76
+    # points); a new drawing still starts from the 42-point default.
+    strat_points = templates["stratocaster"]["shape"]["control_points"]
+    assert len(strat_points) == 76 and strat_points != layout["start_points"]
     assert len(templates["design_by_jone"]["shape"]["control_points"]) == 64
+    # The Jackson RR is a mockup too, its switch moved onto the bass wing.
+    assert templates["jackson_rr"]["label"] == (
+        "Jackson RR style (mockup, not the original)"
+    )
+    rr = templates["jackson_rr"]["shape"]
+    assert len(rr["control_points"]) == 64
+    assert rr["switch_cavity_y"] < 0.0 < min(y for _, y in rr["pot_offsets"])
+    assert templates["jazz_bass"]["label"] == (
+        "Jazz Bass style (mockup, not the original)"
+    )
+    assert len(templates["jazz_bass"]["shape"]["control_points"]) == 76
     assert len(layout["start_points"]) == 42
     roles = {polygon["name"]: polygon["role"] for polygon in layout["polygons"]}
     assert roles["Neck pocket"] == "pocket"
@@ -387,3 +405,45 @@ def test_the_control_layout_is_a_basic_choice_and_shows_in_the_editor() -> None:
     gibson = body_editor_layout({"prototype": {"body_controls": "gibson_4"}})
     marks = [c for c in gibson["circles"] if "cover screw" in c["name"]]
     assert len(marks) == 7 and all(c.get("rear") for c in marks)
+
+
+def test_edge_finishes_are_basic_fields_and_contours_show_in_the_editor() -> None:
+    fields = {
+        field["name"]: field
+        for group in parameter_schema()["prototype"]
+        for field in group["fields"]
+    }
+    for name in (
+        "body_top_edge_radius",
+        "body_back_edge_radius",
+        "body_top_binding_width",
+        "body_arm_contour_depth",
+        "body_belly_cut_depth",
+    ):
+        assert fields[name]["advanced"] is False
+        assert fields[name]["default"] == 0.0
+    assert fields["body_arm_contour_width"]["advanced"] is True
+
+    layout = body_editor_layout(
+        {
+            "prototype": {
+                "body_shape": {"kind": "your_design"},
+                "body_arm_contour_depth": 12.0,
+                "body_belly_cut_depth": 10.0,
+            }
+        }
+    )
+    roles = {p["name"]: p["role"] for p in layout["polygons"]}
+    assert roles["Arm contour"] == "contour_top"
+    assert roles["Belly cut"] == "contour_back"
+    assert layout["widening"] == 0.0
+
+
+def test_the_multiscale_fields_sit_with_the_scale() -> None:
+    groups = {
+        field["name"]: group["title"]
+        for group in parameter_schema()["prototype"]
+        for field in group["fields"]
+    }
+    for name in ("bass_scale_length", "perpendicular_fret", "fret_slant_angle"):
+        assert groups[name] == "Scale and fretboard"

@@ -128,19 +128,20 @@ class FretboardMachiningPlan:
 
 
 def fretboard_outline_polygon(geometry: Prototype001Geometry) -> tuple[Point2D, ...]:
-    """Return the board's plan outline with its rounded nut corners."""
+    """Return the board's plan outline with its rounded nut corners.
+
+    The corners are the surface's own end rows, so slanted frets give a
+    slanted nut end and board end.
+    """
     surface = geometry.fretboard_surface
     first = surface.mesh.rows[0]
     last = surface.mesh.rows[-1]
-    nut_half = abs(first[0].y)
-    end_half = abs(last[0].y)
-    end_x = last[0].x
     radius = geometry.fret_layout.fretboard.nut_corner_radius
     vertices = [
-        Point2D(0.0, -nut_half),
-        Point2D(end_x, -end_half),
-        Point2D(end_x, end_half),
-        Point2D(0.0, nut_half),
+        Point2D(first[0].x, first[0].y),
+        Point2D(last[0].x, last[0].y),
+        Point2D(last[-1].x, last[-1].y),
+        Point2D(first[-1].x, first[-1].y),
     ]
     return rounded_polygon_points(
         vertices, [radius, 0.0, 0.0, radius], samples_per_corner=8
@@ -283,7 +284,13 @@ def plan_fretboard_machining(
             feed_rate=slot_tool.feed_rate,
             plunge_rate=slot_tool.plunge_rate,
         )
-        model_x = slot.start.x
+        # A slanted slot runs along its own line: X follows Y.
+        centre_x = (slot.start.x + slot.end.x) / 2.0
+        slope = (
+            (slot.end.x - slot.start.x) / (slot.end.y - slot.start.y)
+            if abs(slot.end.y - slot.start.y) > 1e-9
+            else 0.0
+        )
         sample_ys = _steps(-half, half, 1.0)
         for index in range(1, passes + 1):
             depth = geometry.fret_slot_depth * index / passes
@@ -291,12 +298,16 @@ def plan_fretboard_machining(
             start_y = ordered[0]
             start_z = -(surface_depth(start_y) + depth)
             if index == 1:
-                builder.rapid_to(model_x - origin_x, start_y - origin_y)
+                builder.rapid_to(
+                    centre_x + slope * start_y - origin_x, start_y - origin_y
+                )
                 builder.rapid_down_to(-surface_depth(start_y))
             builder.plunge_to(start_z)
             for y in ordered[1:]:
                 builder.cut_to(
-                    model_x - origin_x, y - origin_y, -(surface_depth(y) + depth)
+                    centre_x + slope * y - origin_x,
+                    y - origin_y,
+                    -(surface_depth(y) + depth),
                 )
         slot_paths.append(builder.build())
     slots = Setup(

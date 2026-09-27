@@ -3,14 +3,40 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from ..exceptions import BodyGeometryError
 from ..primitives import Point2D, nudge_inward, point_in_polygon
+from .edges import ContourCut, EdgeProfile
 from .hardware import BridgeMounting, Cavity, DrilledHole, JackHole, RearCavity
 from .outline import BodyOutline, TracedOutline
 
 Outline = BodyOutline | TracedOutline
+
+EDGE_RIM_TOLERANCE = 1.0
+"""How far a roundover may lower a cavity's rim, in mm (a pickup ring or
+cover hides it)."""
+
+
+def rim_drop(radius: float, inset: float) -> float:
+    """Return how far below the face a roundover of ``radius`` is at ``inset``.
+
+    ``inset`` is measured in from the edge; past the radius the face is
+    untouched.
+    """
+    if radius <= 0.0 or inset >= radius:
+        return 0.0
+    return radius - math.sqrt(radius**2 - (radius - inset) ** 2)
+
+
+def max_radius_for(inset: float) -> float:
+    """Return the largest roundover that lowers a rim at ``inset`` by the tolerance.
+
+    Solving ``rim_drop(r, inset) = t`` for ``r`` gives
+    ``r = t + inset + sqrt(2 t inset)``.
+    """
+    t = EDGE_RIM_TOLERANCE
+    return t + inset + math.sqrt(2.0 * t * max(inset, 0.0))
 
 
 @dataclass(frozen=True, slots=True)
@@ -21,8 +47,9 @@ class BodySolid:
     bridge mounting, the rear control and switch cavities, and the jack
     bore, and cross-checks that every cavity both fits within the
     body's thickness and falls inside the outline's own bounding box.
-    This is the first, un-contoured pass: arm and belly bevels are not
-    modelled yet, so the top and back faces are both flat.
+    The faces are flat unless ``contours`` bevel them, and the edges
+    square unless ``top_edge`` / ``back_edge`` round them over or cut a
+    binding channel.
 
     Args:
         outline: The body's plan-view silhouette.
@@ -60,6 +87,13 @@ class BodySolid:
         extra_rear_cavities: Further rear-routed cavities with cover
             recesses beyond the named electronics cavities — a tremolo
             spring cavity, for example.
+        top_edge: Roundover or binding channel on the top edge.
+        back_edge: Roundover or binding channel on the back edge.
+        contours: Planar bevels — an arm contour on the top, a belly cut
+            on the back.
+        truss_rod_access: A notch out of the neck pocket's tail wall so a
+            heel-adjusted truss rod's spoke wheel can be turned; it starts
+            inside the pocket, so its overlap with it is allowed.
 
     Raises:
         BodyGeometryError: If any cavity is deeper than the slab, falls
@@ -88,6 +122,10 @@ class BodySolid:
     control_top_cavities: tuple[Cavity, ...] = ()
     control_back_marks: tuple[DrilledHole, ...] = ()
     control_top_marks: tuple[DrilledHole, ...] = ()
+    top_edge: EdgeProfile = field(default_factory=EdgeProfile)
+    back_edge: EdgeProfile = field(default_factory=EdgeProfile)
+    contours: tuple[ContourCut, ...] = ()
+    truss_rod_access: Cavity | None = None
 
     def __post_init__(self) -> None:
         """Cross-check every cavity against the slab and outline bounds."""
@@ -146,7 +184,12 @@ class BodySolid:
                     and second.min_x < first.max_x
                     and first.min_y < second.max_y
                     and second.min_y < first.max_y
-                ):
+                ) or not outlines_overlap(first.outline, second.outline):
+                    continue
+                if {id(first), id(second)} == {
+                    id(self.neck_pocket),
+                    id(self.truss_rod_access),
+                }:
                     continue
                 if self.is_step(second, first) or self.is_step(first, second):
                     continue
@@ -158,6 +201,35 @@ class BodySolid:
                 raise BodyGeometryError(
                     f"{first.name} overlaps {second.name}."
                 )
+        # Each rear cavity closes with its own plate, so two cover
+        # recesses must not overlap: the plates would sit on each other.
+        rears = self.rear_cavities
+        for index, rear in enumerate(rears):
+            for other in rears[index + 1 :]:
+                a, b = rear.cover_recess, other.cover_recess
+                if (
+                    a.min_x < b.max_x
+                    and b.min_x < a.max_x
+                    and a.min_y < b.max_y
+                    and b.min_y < a.max_y
+                    and outlines_overlap(a.outline, b.outline)
+                ):
+                    raise BodyGeometryError(f"{a.name} overlaps {b.name}.")
+        # No hole is meant to open into the battery box: a top hole must
+        # stop short of its floor (string-through holes would run into
+        # it), and a hole from the back must stay off its cover.
+        if self.battery_cavity is not None:
+            box = self.battery_cavity
+            for hole in (*self.holes, *self.rear_holes):
+                from_back = hole in self.rear_holes
+                for pocket in (box.cavity, box.cover_recess):
+                    reaches = from_back or hole.depth + pocket.depth >= self.thickness
+                    if reaches and _circle_meets_outline(
+                        hole.center_x, hole.center_y, hole.diameter / 2.0, pocket
+                    ):
+                        raise BodyGeometryError(
+                            f"{hole.name} would break into {pocket.name}."
+                        )
         # A rear cavity and a top cavity that overlap in plan must
         # together leave wood between their floors, or the two rout
         # into one another.
@@ -171,6 +243,7 @@ class BodySolid:
                         and top.min_x < pocket.max_x
                         and pocket.min_y < top.max_y
                         and top.min_y < pocket.max_y
+                        and outlines_overlap(pocket.outline, top.outline)
                     )
                     if overlaps and pocket.depth + top.depth >= self.thickness:
                         raise BodyGeometryError(
@@ -229,6 +302,102 @@ class BodySolid:
                 raise BodyGeometryError(
                     "Bridge pivot hole falls outside the body outline."
                 )
+        self._validate_edges()
+
+    def _validate_edges(self) -> None:
+        """Check the edge finishes and bevels against the cavities."""
+        half = self.thickness / 2.0
+        outline = self.outline.points
+        for face, edge in (("Top", self.top_edge), ("Back", self.back_edge)):
+            if edge.reach > half - 2.0:
+                raise BodyGeometryError(
+                    f"{face} edge finish reaches too deep for a "
+                    f"{self.thickness:g} mm body."
+                )
+        # A roundover lowers the rim of a cavity near the edge by the
+        # fillet's depth at that inset; up to EDGE_RIM_TOLERANCE is hidden
+        # under a pickup ring or cover. A binding channel must leave a
+        # wall of wood between itself and the cavity.
+        faces: tuple[tuple[str, EdgeProfile, tuple[Cavity, ...]], ...] = (
+            (
+                "top",
+                self.top_edge,
+                tuple(c for c in self.top_cavities if c is not self.neck_pocket),
+            ),
+            (
+                "back",
+                self.back_edge,
+                tuple(rear.cover_recess for rear in self.rear_cavities),
+            ),
+        )
+        for face, edge, cavities in faces:
+            if edge.radius <= 0.0 and not edge.has_binding:
+                continue
+            for cavity in cavities:
+                gap = min(_distance_to_outline(p, outline) for p in cavity.outline)
+                if edge.has_binding and gap < edge.binding_width + 1.0:
+                    raise BodyGeometryError(
+                        f"{cavity.name} is {gap:.1f} mm from the edge; the {face} "
+                        f"binding channel ({edge.binding_width:g} mm) needs "
+                        f"{edge.binding_width + 1.0:g} mm."
+                    )
+                drop = rim_drop(edge.radius, gap)
+                if drop > EDGE_RIM_TOLERANCE:
+                    raise BodyGeometryError(
+                        f"{cavity.name} is {gap:.1f} mm from the edge, so the "
+                        f"{edge.radius:g} mm {face} roundover would lower its rim "
+                        f"by {drop:.1f} mm; use a radius under "
+                        f"{max_radius_for(gap):.1f} mm or move the cavity."
+                    )
+        # A roundover runs on down from a contour's floor; each face can
+        # only be machined to the body's middle.
+        for contour in self.contours:
+            edge = self.top_edge if contour.face == "top" else self.back_edge
+            reach = contour.depth + edge.radius
+            if edge.radius > 0.0 and reach > half:
+                raise BodyGeometryError(
+                    f"{contour.name} ({contour.depth:g} mm) and the "
+                    f"{edge.radius:g} mm {contour.face} roundover reach "
+                    f"{reach:g} mm into the {self.thickness:g} mm body; from the "
+                    f"{contour.face} it can be machined to {half:g} mm, so keep "
+                    "their sum at most that."
+                )
+        for contour in self.contours:
+            deepest = contour.max_depth(outline)
+            if deepest > half - 2.0:
+                raise BodyGeometryError(
+                    f"{contour.name} is {deepest:.1f} mm deep; keep it under "
+                    f"{half - 2.0:g} mm."
+                )
+            same_face: tuple[Cavity, ...]
+            if contour.face == "top":
+                same_face = self.top_cavities
+                other_face = tuple(
+                    pocket for rear in self.rear_cavities for pocket in rear.pockets
+                )
+                holes = (*self.holes, *self.control_top_marks)
+            else:
+                same_face = tuple(
+                    pocket for rear in self.rear_cavities for pocket in rear.pockets
+                )
+                other_face = self.top_cavities
+                holes = (*self.rear_holes, *self.control_back_marks)
+            for cavity in same_face:
+                if any(contour.depth_at(p) > 0.0 for p in cavity.outline):
+                    raise BodyGeometryError(f"{contour.name} cuts into {cavity.name}.")
+            for hole in holes:
+                if contour.depth_at(hole.center) > 0.0:
+                    raise BodyGeometryError(f"{contour.name} cuts into {hole.name}.")
+            # A cavity routed from the other face must keep 3 mm of wood
+            # under the bevel.
+            for cavity in other_face:
+                if cavity in self.through_cavities:
+                    continue
+                bevel = max(contour.depth_at(p) for p in cavity.outline)
+                if bevel > 0.0 and cavity.depth + bevel > self.thickness - 3.0:
+                    raise BodyGeometryError(
+                        f"{contour.name} leaves too little wood over {cavity.name}."
+                    )
 
     @staticmethod
     def encloses(outer: Cavity, inner: Cavity) -> bool:
@@ -311,6 +480,8 @@ class BodySolid:
     def top_cavities(self) -> tuple[Cavity, ...]:
         """Return every cavity cut down from the top face, through routes last."""
         cavities: list[Cavity] = [self.neck_pocket]
+        if self.truss_rod_access is not None:
+            cavities.append(self.truss_rod_access)
         cavities.extend(
             pickup
             for pickup in (self.neck_pickup, self.bridge_pickup)
@@ -336,3 +507,55 @@ class BodySolid:
         outline_min_y = min(point.y for point in self.outline.points)
         outline_max_y = max(point.y for point in self.outline.points)
         return (outline_max_y - outline_min_y) / 2.0
+
+
+def _distance_to_outline(point: Point2D, outline: tuple[Point2D, ...]) -> float:
+    """Return the distance from ``point`` to the closed polyline ``outline``."""
+    best = math.inf
+    for a, b in zip(outline, (*outline[1:], outline[0]), strict=True):
+        ex, ey = b.x - a.x, b.y - a.y
+        length_squared = ex * ex + ey * ey
+        t = 0.0
+        if length_squared > 0.0:
+            t = ((point.x - a.x) * ex + (point.y - a.y) * ey) / length_squared
+            t = min(1.0, max(0.0, t))
+        best = min(best, math.hypot(a.x + ex * t - point.x, a.y + ey * t - point.y))
+    return best
+
+
+def outlines_overlap(first: tuple[Point2D, ...], second: tuple[Point2D, ...]) -> bool:
+    """Return whether two closed outlines share any area.
+
+    Their bounding boxes may overlap without the shapes doing so (two
+    pickups turned for fanned frets), so this tests the edges themselves:
+    two edges crossing, or one outline lying inside the other.
+    """
+
+    def cross(o: Point2D, a: Point2D, b: Point2D) -> float:
+        return (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x)
+
+    edges_first = list(zip(first, (*first[1:], first[0]), strict=True))
+    edges_second = list(zip(second, (*second[1:], second[0]), strict=True))
+    for a, b in edges_first:
+        for c, d in edges_second:
+            if (
+                max(a.x, b.x) < min(c.x, d.x)
+                or max(c.x, d.x) < min(a.x, b.x)
+                or max(a.y, b.y) < min(c.y, d.y)
+                or max(c.y, d.y) < min(a.y, b.y)
+            ):
+                continue
+            d1, d2 = cross(c, d, a), cross(c, d, b)
+            d3, d4 = cross(a, b, c), cross(a, b, d)
+            if d1 * d2 <= 0.0 and d3 * d4 <= 0.0:
+                return True
+    return point_in_polygon(first[0], second) or point_in_polygon(second[0], first)
+
+
+def _circle_meets_outline(x: float, y: float, radius: float, cavity: Cavity) -> bool:
+    """Return whether a hole of ``radius`` at (x, y) opens into ``cavity``."""
+    centre = Point2D(x, y)
+    return (
+        point_in_polygon(centre, cavity.outline)
+        or _distance_to_outline(centre, cavity.outline) < radius
+    )

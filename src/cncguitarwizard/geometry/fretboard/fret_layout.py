@@ -9,6 +9,7 @@ from ..exceptions import FretboardGeometryError
 from ..fret import FretCalculator, FretLine
 from ..primitives import Line2D, Point2D
 from .fretboard import Fretboard
+from .skew import FretSkew
 
 
 @dataclass(frozen=True, slots=True)
@@ -16,11 +17,14 @@ class FretLayout:
     """Compose equal-temperament fret slots with a fretboard outline.
 
     Each slot is perpendicular to the fretboard centerline and terminates
-    exactly at the tapered left and right edges.
+    exactly at the tapered left and right edges — or, with a ``skew``,
+    leans along the neck by ``skew.at(x) * y`` as the fretboard's own
+    outline does (slanted or fanned frets).
 
     Args:
         fretboard: Fretboard whose outline bounds every slot.
         fret_count: Number of fret slots to generate.
+        skew: How each fret leans (see ``FretSkew``).
 
     Raises:
         FretboardGeometryError: If the fret count or fretboard dimensions
@@ -29,6 +33,7 @@ class FretLayout:
 
     fretboard: Fretboard
     fret_count: int
+    skew: FretSkew = field(default_factory=FretSkew)
     slots: tuple[Line2D, ...] = field(init=False)
 
     def __post_init__(self) -> None:
@@ -78,4 +83,8 @@ class FretLayout:
             location.x - direction.x * half_width,
             location.y - direction.y * half_width,
         )
+        lean = self.skew.at(location.x)
+        if lean:
+            left = Point2D(left.x + lean * left.y, left.y)
+            right = Point2D(right.x + lean * right.y, right.y)
         return Line2D(left, right)

@@ -51,7 +51,12 @@ def test_plan_has_its_setups_in_running_order(plan) -> None:  # type: ignore[no-
         "Index pin 2",
     ]
     names = [path.name for path in plan.top.toolpaths]
-    assert names[:3] == ["Neck pocket", "Neck pickup route", "Bridge pickup route"]
+    assert names[:4] == [
+        "Neck pocket",
+        "Truss rod access",
+        "Neck pickup route",
+        "Bridge pickup route",
+    ]
     assert "Bridge baseplate cutout" in names
     assert names[-1] == "Outline, upper half"
     back_names = [path.name for path in plan.back.toolpaths]
@@ -139,7 +144,11 @@ def test_every_top_cut_stays_inside_its_own_feature(body, plan, parameters) -> N
     """No cutting move on the top face leaves the cavity or hole it belongs to."""
     radius = parameters.tool_radius
     cavities = {cavity.name: cavity for cavity in (
-        body.neck_pocket, body.neck_pickup, body.bridge_pickup, *body.extra_cavities
+        body.neck_pocket,
+        body.truss_rod_access,
+        body.neck_pickup,
+        body.bridge_pickup,
+        *body.extra_cavities,
     )}
     holes = {hole.name: hole for hole in body.holes}
     for path in plan.top.toolpaths:

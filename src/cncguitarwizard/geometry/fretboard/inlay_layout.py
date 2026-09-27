@@ -14,6 +14,7 @@ from typing import Literal
 from ..exceptions import FretboardGeometryError
 from ..fret import FretCalculator
 from ..primitives import Point2D, rounded_polygon_points
+from .skew import FretSkew
 from .surface import FretboardSurface
 
 InlayStyle = Literal["barbed_wire", "dot", "block"]
@@ -156,6 +157,19 @@ class InlayLayout:
                             self._marker(position, sign * offset, half_span),
                         )
                     )
+        skew = self.fretboard_surface.skew
+        if not skew.is_square:
+            # Every marker follows the slanted or fanned frets around it:
+            # a block leans point by point with them, barbed wire turns to
+            # their angle at its centre, a dot moves onto their line.
+            markers = [
+                InlayMarker(
+                    marker.fret_number,
+                    marker.position,
+                    _slanted(marker.outline, skew, self.style),
+                )
+                for marker in markers
+            ]
         object.__setattr__(
             self,
             "markers",
@@ -295,4 +309,36 @@ def _barbed_wire_outline(
     return tuple(
         Point2D(position + longitudinal, lateral_offset + lateral)
         for lateral, longitudinal in loop
+    )
+
+
+def _slanted(
+    outline: tuple[Point2D, ...], skew: FretSkew, style: str
+) -> tuple[Point2D, ...]:
+    """Return a marker moved with slanted or fanned frets.
+
+    A block leans every point with the frets there, so its front and back
+    stay parallel to the frets either side. Barbed wire turns about its
+    own centre to the frets' angle there, keeping its shape. A dot keeps
+    its shape and moves by the lean at its centre, onto the line between
+    the two frets.
+    """
+    if style == "block":
+        return tuple(Point2D(p.x + skew.at(p.x) * p.y, p.y) for p in outline)
+    centre_x = sum(p.x for p in outline) / len(outline)
+    centre_y = sum(p.y for p in outline) / len(outline)
+    lean = skew.at(centre_x)
+    moved_x = centre_x + lean * centre_y
+    if style == "dot":
+        return tuple(Point2D(p.x - centre_x + moved_x, p.y) for p in outline)
+    # Turn so the marker's across-the-board axis (0, 1) runs along the
+    # fret direction (lean, 1).
+    angle = -math.atan(lean)
+    cosine, sine = math.cos(angle), math.sin(angle)
+    return tuple(
+        Point2D(
+            moved_x + (p.x - centre_x) * cosine - (p.y - centre_y) * sine,
+            centre_y + (p.x - centre_x) * sine + (p.y - centre_y) * cosine,
+        )
+        for p in outline
     )

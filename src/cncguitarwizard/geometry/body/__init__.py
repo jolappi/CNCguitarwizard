@@ -1,6 +1,6 @@
 """Parametric solid-body geometry."""
 
-from .body_solid import BodySolid
+from .body_solid import BodySolid, outlines_overlap
 from .bridges import (
     BRIDGE_KINDS,
     BRIDGE_LABELS,
@@ -12,8 +12,10 @@ from .bridges import (
     KahlerBridgeSpec,
     TuneOMaticSpec,
     bridge_spec_from_dict,
+    turned_hardware,
 )
 from .covers import CoverPlate, cover_screw_points
+from .edges import ContourCut, EdgeProfile
 from .hardware import (
     BridgeMounting,
     Cavity,
@@ -32,13 +34,16 @@ __all__ = [
     "BRIDGE_MAX_STRINGS",
     "BodyOutline",
     "BodySolid",
+    "outlines_overlap",
     "BridgeHardware",
     "BridgeMounting",
     "BridgeSpec",
     "Cavity",
+    "ContourCut",
     "CoverPlate",
     "CircularCavity",
     "DrilledHole",
+    "EdgeProfile",
     "FloydRoseSpec",
     "HardtailSpec",
     "JackHole",
@@ -50,4 +55,5 @@ __all__ = [
     "TuneOMaticSpec",
     "bridge_spec_from_dict",
     "cover_screw_points",
+    "turned_hardware",
 ]

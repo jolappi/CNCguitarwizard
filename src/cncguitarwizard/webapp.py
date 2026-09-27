@@ -43,7 +43,14 @@ from .workflows import Prototype001Build
 _VARIANT_LABELS: dict[str, str] = {**BRIDGE_LABELS, **BODY_SHAPE_LABELS}
 
 # Readable names for choice fields whose options are short codes.
-_CHOICE_LABELS: dict[str, dict[str, str]] = {"body_controls": CONTROL_LABELS}
+_CHOICE_LABELS: dict[str, dict[str, str]] = {
+    "body_controls": CONTROL_LABELS,
+    "body_pickups_follow_fan": {
+        "auto": "Auto (turn, except with a Tune-o-matic)",
+        "yes": "Turn with the frets",
+        "no": "Keep square",
+    },
+}
 
 INSTRUMENT_LABELS: dict[str, str] = {
     "electric_guitar": "Electric guitar",
@@ -59,6 +66,11 @@ _BASIC_FIELDS: frozenset[str] = frozenset(
         "string_count",
         "scale_length",
         "fret_count",
+        "fret_slant_angle",
+        "truss_rod_adjustment",
+        "truss_rod_rod_length",
+        "bass_scale_length",
+        "perpendicular_fret",
         "nut_width",
         "fretboard_radius",
         "fretboard_thickness",
@@ -80,6 +92,14 @@ _BASIC_FIELDS: frozenset[str] = frozenset(
         "body_pickups",
         "body_bridge",
         "body_controls",
+        "body_battery_box",
+        "body_pickups_follow_fan",
+        "body_bridge_follows_fan",
+        "body_top_edge_radius",
+        "body_back_edge_radius",
+        "body_top_binding_width",
+        "body_arm_contour_depth",
+        "body_belly_cut_depth",
         "body_neck_pickup_offset",
         "body_bridge_pickup_offset",
         "tool_diameter",
@@ -109,7 +129,16 @@ _BASIC_VARIANT_FIELDS: dict[str, frozenset[str]] = {
 _GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
     (
         "Scale and fretboard",
-        ("string_count", "scale_length", "fret_count", "nut_width", "fret", "inlay"),
+        (
+            "string_count",
+            "scale_length",
+            "bass_scale_length",
+            "perpendicular_fret",
+            "fret_count",
+            "nut_width",
+            "fret",
+            "inlay",
+        ),
     ),
     ("Neck", ("final_fret", "first_fret", "twelfth", "neck", "nut_", "truss")),
     ("Heel", ("heel",)),
@@ -160,14 +189,16 @@ def _editor_group(name: str) -> str | None:
     screws, a layout's own pots, a control plate), ``switch`` (cavity,
     cover and shaft hole), ``pot:N`` (one pot hole, zero-based),
     ``pickup:neck`` / ``pickup:middle`` / ``pickup:bridge`` (a route and
-    its screw recesses)
-    ``bolt:N`` (a neck bolt's ferrule and hole) and ``jack``; the neck, its
+    its screw recesses), ``battery`` (the battery box, its cover and
+    screws), ``bolt:N`` (a neck bolt's ferrule and hole) and ``jack``; the neck, its
     pocket and the bridge do not move.
     """
     if name.startswith("Control "):
         return "control"
     if name.startswith("Switch"):
         return "switch"
+    if name.startswith("Battery"):
+        return "battery"
     if name.startswith("Pot ") and name.endswith("shaft hole"):
         return f"pot:{int(name.split()[1]) - 1}"
     if name.startswith("Neck bolt "):
@@ -195,15 +226,18 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         payload: ``{"prototype": {...}}`` as for ``start_build``.
 
     Returns:
-        ``{"heel_end", "samples_per_segment", "widening", "start_points",
-        "templates", "polygons", "circles", "jack"}``, or ``{"error":
-        message}``. ``widening`` is the body's opening along the centreline
-        (see ``body_shapes.widen_points``), which the editor applies to
-        the drawn control points as Python does.
+        ``{"heel_end", "scale_line", "samples_per_segment", "widening",
+        "start_points", "templates", "polygons", "circles", "jack"}``, or
+        ``{"error": message}``. ``scale_line`` is the bridge line's X on
+        the centerline (a multiscale's mean scale). ``widening`` is the
+        body's opening along the centreline (see
+        ``body_shapes.widen_points``), which the editor applies to the
+        drawn control points as Python does.
         ``templates`` maps a key to ``{"label", "shape"}``, the shape as
         the form's JSON. ``polygons`` is a list of ``{"name", "role",
         "group", "points"}`` with ``role`` one of ``neck``, ``pocket``,
-        ``pickup``, ``bridge``, ``top_control``, ``rear`` or ``cover``;
+        ``pickup``, ``bridge``, ``top_control``, ``rear``, ``cover``,
+        ``contour_top`` (an arm contour) or ``contour_back`` (a belly cut);
         ``circles`` a list of ``{"name", "group", "x", "y", "r"}``;
         ``jack`` ``{"group", "x", "y", "x2", "y2", "r"}``.
     """
@@ -229,6 +263,11 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
     polygons: list[dict[str, Any]] = [
         polygon("Neck", "neck", neck.boundary),
         polygon(layout.neck_pocket.name, "pocket", layout.neck_pocket.outline),
+        *(
+            [polygon(access.name, "pocket", access.outline)]
+            if (access := layout.truss_rod_access) is not None
+            else []
+        ),
     ]
     for pickup in (layout.neck_pickup, layout.middle_pickup, layout.bridge_pickup):
         if pickup is None:
@@ -238,9 +277,16 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         polygons.append(polygon(cavity.name, "bridge", cavity.outline))
     for cavity in layout.controls.top_cavities:
         polygons.append(polygon(cavity.name, "top_control", cavity.outline))
+    # Contours go under everything else on the body (after the neck).
+    for offset, contour in enumerate(layout.contours, start=1):
+        polygons.insert(
+            offset,
+            polygon(contour.name, f"contour_{contour.face}", contour.region()),
+        )
     for rear in (
         layout.control_cavity,
         layout.switch_cavity,
+        layout.controls.battery_cavity,
         *layout.extra_rear_cavities,
     ):
         if rear is None:
@@ -295,6 +341,7 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
     radians = math.radians(jack.direction_degrees)
     return {
         "heel_end": round(heel_end, 2),
+        "scale_line": round(parameters.centre_scale, 3),
         "samples_per_segment": OUTLINE_SAMPLES_PER_SEGMENT,
         "widening": parameters.body_widening_amount(),
         "start_points": [list(point) for point in YOUR_DESIGN_START_POINTS],

@@ -15,6 +15,9 @@ const output = document.getElementById("output");
 const intro = document.getElementById("intro");
 const showAdvanced = document.getElementById("show-advanced");
 const instrumentSelect = document.getElementById("instrument");
+const saveDesignButton = document.getElementById("save-design");
+const loadDesignButton = document.getElementById("load-design");
+const loadDesignFile = document.getElementById("load-design-file");
 
 let pyodide = null;
 let schema = null;
@@ -60,6 +63,8 @@ async function boot() {
     renderForm();
     buildButton.disabled = false;
     resetButton.disabled = false;
+    saveDesignButton.disabled = false;
+    loadDesignButton.disabled = false;
     setStatus(`Ready — ${manifest.wheel} (build ${manifest.build || "dev"})`, "ok");
   } catch (error) {
     console.error(error);
@@ -440,26 +445,52 @@ function showResult(result) {
     if (name === "Body_top.svg" || (previews.length === 1 && index === 0)) button.click();
   });
 
+  // One list per part (body, neck, fretboard, covers), each program
+  // numbered in the order it is run, its toolpath plot beneath it; the
+  // model scripts and the report come first.
   const files = document.getElementById("files");
-  files.innerHTML = "<tr><th>File</th><th>Size</th><th></th></tr>";
-  const order = Object.keys(result.report.gcode);
+  files.innerHTML = "";
+  const gcode = result.report.gcode;
+  const stemOf = (name) => name.replace(/\.(nc|svg)$/, "");
+  const programOf = (name) => (/\.(nc|svg)$/.test(name) ? gcode[stemOf(name)] : undefined);
+  // build.json lists the programs alphabetically: order by part, then step.
+  const partOrder = ["Model and report", "Body", "Neck", "Fretboard", "Covers"];
+  const groups = new Map(partOrder.map((part) => [part, []]));
+  for (const info of Object.values(gcode)) if (!groups.has(info.part)) groups.set(info.part, []);
+  for (const name of Object.keys(result.files)) {
+    const info = programOf(name);
+    groups.get(info ? info.part : "Model and report").push(name);
+  }
   const rank = (name) => {
-    if (name.startsWith("Prototype001")) return 0;
-    const stem = name.replace(/\.(nc|svg)$/, "");
-    const index = order.indexOf(stem);
-    if (index >= 0) return 10 + index * 2 + (name.endsWith(".svg") ? 1 : 0);
-    return 1000;
+    const info = programOf(name);
+    return info ? info.step * 2 + (name.endsWith(".svg") ? 1 : 0) : 0;
   };
-  const names = Object.keys(result.files).sort((a, b) => rank(a) - rank(b));
-  for (const name of names) {
+  const titles = {
+    Body: "Body — top face up first, then flipped onto the dowels",
+    Neck: "Neck",
+    Fretboard: "Fretboard",
+    Covers: "Covers — cut from sheet, in any order",
+  };
+  for (const [part, members] of groups) {
+    if (!members.length) continue;
+    const heading = document.createElement("tr");
+    heading.className = "file-group";
+    heading.innerHTML = `<th colspan="4">${titles[part] || part}</th>`;
+    files.appendChild(heading);
+    for (const name of members.sort((a, b) => rank(a) - rank(b))) addFile(name);
+  }
+
+  function addFile(name) {
     const text = result.files[name];
+    const info = programOf(name);
+    const number = info && name.endsWith(".nc") ? `${info.step}.` : "";
     const type = name.endsWith(".svg") ? "image/svg+xml"
       : name.endsWith(".json") ? "application/json" : "text/plain";
     const url = URL.createObjectURL(new Blob([text], { type }));
     blobUrls.push(url);
     const row = document.createElement("tr");
     row.innerHTML =
-      `<td>${name}</td><td>${(text.length / 1024).toFixed(0)} kB</td>` +
+      `<td class="step">${number}</td><td>${name}</td><td>${(text.length / 1024).toFixed(0)} kB</td>` +
       `<td><a class="download" href="${url}" download="${name}">Download</a></td>`;
     if (name.endsWith(".nc")) {
       const button = document.createElement("button");
@@ -478,8 +509,22 @@ function showResult(result) {
   for (const [part, stock] of Object.entries(report.stock)) {
     rows.push([`${part} blank`, `${stock.length_mm} × ${stock.width_mm} × ${stock.thickness_mm} mm, pins at machine X ${stock.index_pins_machine_xy.map((p) => p[0]).join(" / ")}`]);
   }
-  for (const [name, info] of Object.entries(report.gcode)) {
-    rows.push([name, `${info.tool}: ${info.estimated_minutes} min, ${(info.cutting_length_mm / 1000).toFixed(1)} m of cutting, ${info.operations.length} operations`]);
+  const partRank = (part) => (partOrder.includes(part) ? partOrder.indexOf(part) : partOrder.length);
+  const programs = Object.entries(report.gcode).sort(([, a], [, b]) => (
+    partRank(a.part) - partRank(b.part) || a.step - b.step
+  ));
+  for (const [name, info] of programs) {
+    rows.push([`${info.step}. ${name}`, `${info.tool}: ${info.estimated_minutes} min, ${(info.cutting_length_mm / 1000).toFixed(1)} m of cutting, ${info.operations.length} operations`]);
+  }
+  const rod = report.truss_rod;
+  if (rod) {
+    const chosen = rod.rod_length_mm === null
+      ? `route set by hand, ${rod.route_length_mm} mm`
+      : `${rod.rod_length_mm} mm rod (route ${rod.route_length_mm} mm)`;
+    const advice = rod.recommended_stock_mm === null
+      ? "no stock length fits"
+      : `longest stock rod that fits: ${rod.recommended_stock_mm} mm`;
+    rows.push(["Truss rod", `${chosen}; the neck takes up to ${rod.longest_fitting_mm} mm, ${advice}`]);
   }
   rows.push(["Version", report.version]);
   summary.innerHTML = rows.map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join("");
@@ -526,7 +571,7 @@ async function simulate(name, text) {
   }
   hint.className = copied ? "note ok" : "note bad";
   hint.textContent = copied
-    ? `${name} is on the clipboard: click into the NC Viewer editor below and paste (Ctrl/Cmd+V), or drop the downloaded file onto it.`
+    ? `${name} is on the clipboard: click into the NC Viewer editor below, select all (Ctrl/Cmd+A), paste (Ctrl/Cmd+V) and press Plot — or drop the downloaded file onto it.`
     : `Could not copy to the clipboard: download ${name} and drop it onto NC Viewer below, or open it there with its file button.`;
   panel.scrollIntoView({ behavior: "smooth", block: "start" });
 }
@@ -534,6 +579,123 @@ async function simulate(name, text) {
 function reset() {
   renderForm();
   clearError();
+}
+
+// ---------------------------------------------------------------------------
+// Save and load a design: every form value — the instrument, the drawn body
+// outline and headstock edges included — as one JSON file on the user's own
+// computer.
+
+const DESIGN_FORMAT = "cncguitarwizard-design";
+
+function designDocument() {
+  const values = collectValues();
+  const { instrument, ...prototype } = values.prototype;
+  return {
+    format: DESIGN_FORMAT,
+    version: 1,
+    saved: new Date().toISOString(),
+    app: window.CNCGW_MANIFEST ? window.CNCGW_MANIFEST.wheel : null,
+    instrument,
+    prototype,
+    machining: values.machining,
+  };
+}
+
+function saveDesign() {
+  let design;
+  try {
+    design = designDocument();
+  } catch (error) {
+    showError(`Cannot save the design: ${error.message}`);
+    return;
+  }
+  const blob = new Blob([JSON.stringify(design, null, 2) + "\n"], { type: "application/json" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `cncguitarwizard-${design.instrument}-${design.saved.slice(0, 10)}.json`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+  setStatus(`Saved ${link.download}`, "ok");
+}
+
+// Put one saved value into its form control, as if typed or picked.
+function setControlValue(control, value) {
+  if (control.tagName === "SELECT") {
+    control.value = String(value);
+    control.dispatchEvent(new Event("change", { bubbles: true }));
+    return;
+  }
+  const type = control.dataset.type;
+  if (type === "bool") control.checked = Boolean(value);
+  else if (type === "float" || type === "int") control.value = String(value);
+  else if (type === "optional_float") control.value = value === null ? "" : String(value);
+  else control.value = JSON.stringify(value);
+  control.dispatchEvent(new Event("input", { bubbles: true }));
+  control.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
+// Apply saved values to one parameter set; return the names the form
+// does not know (from another version), which are skipped.
+function applyValues(set, values) {
+  const unknown = [];
+  for (const [name, value] of Object.entries(values || {})) {
+    const variant = form.querySelector(`.variant[data-set="${set}"][data-name="${name}"]`);
+    if (variant && value && typeof value === "object" && "kind" in value) {
+      const kind = variant.querySelector("select.kind");
+      if (![...kind.options].some((option) => option.value === value.kind)) {
+        unknown.push(`${name}.kind`);
+        continue;
+      }
+      kind.value = value.kind;
+      kind.dispatchEvent(new Event("change"));
+      const { kind: _, ...fields } = value;
+      unknown.push(...applyValues(`${set}.${name}`, fields).map((n) => `${name}.${n}`));
+      continue;
+    }
+    const control = form.querySelector(`[data-set="${set}"][data-name="${name}"]`);
+    if (!control) {
+      unknown.push(name);
+      continue;
+    }
+    setControlValue(control, value);
+  }
+  return unknown;
+}
+
+function applyDesign(design) {
+  if (!design || design.format !== DESIGN_FORMAT) {
+    throw new Error("This is not a CNCguitarwizard design file.");
+  }
+  if (!(design.instrument in schema.instruments)) {
+    throw new Error(`Unknown instrument ${JSON.stringify(design.instrument)}.`);
+  }
+  instrumentSelect.value = design.instrument;
+  instrumentSelect.dataset.current = design.instrument;
+  renderForm();
+  const unknown = [
+    ...applyValues("prototype", design.prototype),
+    ...applyValues("machining", design.machining),
+  ];
+  applyStringLimits();
+  headstockEditor.sync();
+  bodyEditor.scheduleRefresh();
+  return unknown;
+}
+
+async function loadDesign(file) {
+  clearError();
+  try {
+    const unknown = applyDesign(JSON.parse(await file.text()));
+    setStatus(`Loaded ${file.name}`, "ok");
+    if (unknown.length) {
+      showError(`Loaded ${file.name}, but skipped settings this version does not have: ${unknown.join(", ")}.`);
+    }
+  } catch (error) {
+    showError(`Cannot load ${file.name}: ${error.message}`);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -685,6 +847,8 @@ const bodyEditor = {
       pickup: { fill: "#f2c4b3", stroke: "#7a3a1a", "stroke-width": 0.5 },
       bridge: { fill: "#f2c4b3", stroke: "#7a3a1a", "stroke-width": 0.5 },
       top_control: { fill: "#c9b7e6", "fill-opacity": 0.55, stroke: "#5a3a8a", "stroke-width": 0.6 },
+      contour_top: { fill: "#9cc79a", "fill-opacity": 0.45, stroke: "#3d6b3a", "stroke-width": 0.5 },
+      contour_back: { fill: "#9aa9d6", "fill-opacity": 0.35, stroke: "#34457a", "stroke-width": 0.5, "stroke-dasharray": "3,2" },
       cover: { fill: "#c9b7e6", "fill-opacity": 0.35, stroke: "#5a3a8a", "stroke-width": 0.5, "stroke-dasharray": "3,2" },
       rear: { fill: "#c9b7e6", "fill-opacity": 0.55, stroke: "#5a3a8a", "stroke-width": 0.6, "stroke-dasharray": "3,2" },
     };
@@ -851,6 +1015,9 @@ const bodyEditor = {
         index === target ? [round(x + dx), round(y + dy)] : [x, y]
       ));
       this.setField(input, bolts);
+    } else if (group === "battery") {
+      this.shiftField(shape, "battery_offset", dx);
+      this.shiftField(shape, "battery_y", dy);
     } else if (group === "jack") {
       this.shiftField(shape, "jack_offset", dx);
       this.shiftField(shape, "jack_y", dy);
@@ -870,7 +1037,8 @@ const bodyEditor = {
       const route = this.layout.polygons.find((p) => p.group === "pickup:bridge");
       const xs = route.points.map((p) => p[0]);
       const centre = (Math.min(...xs) + Math.max(...xs)) / 2;
-      const scale = readValue(this.field("prototype", "scale_length")) - this.layout.heel_end;
+      // The bridge line is on the centerline scale (a multiscale's mean).
+      const scale = this.layout.scale_line - this.layout.heel_end;
       this.setField(this.field("prototype", "body_bridge_pickup_offset"), round(scale - (centre + dx)));
     }
   },
@@ -944,7 +1112,8 @@ const bodyEditor = {
     this.size.textContent = `— ${(Math.max(...xs) - Math.min(...xs)).toFixed(0)} × ${(Math.max(...ys) - Math.min(...ys)).toFixed(0)} mm`;
     const outside = new Set();
     for (const polygon of this.layout.polygons) {
-      if (polygon.role === "neck") continue;
+      // Contours follow the outline itself, so they are laid out from it.
+      if (polygon.role === "neck" || polygon.role.startsWith("contour")) continue;
       // The pocket opens onto the horn gap: only its tail wall must be in wood.
       const points = polygon.role === "pocket" ? polygon.points.filter((p) => p[0] > -1) : polygon.points;
       if (points.some(([x, y]) => !pointInPolygon(x, y, outline))) outside.add(polygon.name);
@@ -1306,5 +1475,17 @@ instrumentSelect.addEventListener("change", () => {
 
 buildButton.addEventListener("click", build);
 resetButton.addEventListener("click", reset);
+saveDesignButton.addEventListener("click", saveDesign);
+loadDesignButton.addEventListener("click", () => {
+  if (form.querySelector(".changed") && !window.confirm(
+    "Load a design? Every current value is replaced by the file's."
+  )) return;
+  loadDesignFile.click();
+});
+loadDesignFile.addEventListener("change", () => {
+  const [file] = loadDesignFile.files;
+  loadDesignFile.value = "";
+  if (file) loadDesign(file);
+});
 showAdvanced.addEventListener("change", applyAdvancedToggle);
 boot();

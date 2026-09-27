@@ -34,7 +34,7 @@ and beyond the heel, on the centerline.
 | Program | Setup | Contents |
 | --- | --- | --- |
 | `Neck_index_pins.nc` | glue face up | Both dowel holes through the blank |
-| `Neck_top.nc` | glue face up, on dowels | Truss-rod channel; the 8° headstock face as Z-limited roughing plus a finishing raster with the flat tool; 0.5 mm centre marks for the six tuner holes |
+| `Neck_top.nc` | glue face up, on dowels | Truss-rod channel; the 8° headstock face as Z-limited roughing plus a finishing raster with the flat tool; the truss rod's step and pocket at its adjusting end, each run 3 mm on over its neighbour so no round corner is left for the rod's square blocks (and a headstock-adjusted rod's access trough, unless `truss_rod_trough` is off in the headstock face; the heel adjuster's sleeve bore is drilled by hand, as the notes say); 0.5 mm centre marks for the six tuner holes |
 | `Neck_back_rough.nc` | flipped about the centerline | Z-limited roughing of the neck back and headstock back, 3 mm layers, 60 % step-over |
 | `Neck_back_finish.nc` | same, ball nose | Finishing raster along the neck, 0.75 mm step-over (≈ 0.023 mm scallop) |
 | `Neck_back_outline.nc` | same, flat tool | Plan outline through the 2 mm skin, six tabs |
@@ -69,6 +69,10 @@ the top in one fixturing.
 | `Fretboard_inlays.nc` | 1 mm | Twelve barbed-wire pockets 2 mm below the crown; barbs narrower than the tool are left uncut |
 | `Fretboard_slots.nc` | 0.6 mm | 24 slots that follow the radius across the board, 2.7 mm below the surface, three 0.9 mm passes, 1 mm past each edge |
 | `Fretboard_outline.nc` | flat | Tapered outline with square nut corners (`fretboard_nut_corner_radius`, 0 by default) and tabs |
+
+With slanted or fanned frets (`fret_slant_angle`, `bass_scale_length`)
+each slot runs along its own line, still following the radius, and the
+outline's nut end and far end lean with the first and last frets.
 
 ## Checks
 

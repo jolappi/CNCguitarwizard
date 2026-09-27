@@ -1,6 +1,7 @@
 """Tests for dependency-free FreeCAD script generation."""
 
 import ast
+import math
 from dataclasses import replace
 from pathlib import Path
 from typing import Callable
@@ -463,7 +464,7 @@ def test_neck_assembly_can_cut_the_truss_rod_channel() -> None:
 
     assert (
         "truss_rod_shape = Part.makeBox("
-        "440.0, 6.0, 9.0, App.Vector(12.0, -3.0, -9.0))"
+        "440.0, 6.0, 14.0, App.Vector(12.0, -3.0, -9.0))"
         in source
     )
     assert "neck_shape.cut(truss_rod_shape)" in source
@@ -498,7 +499,8 @@ def test_neck_assembly_can_cut_radius_following_fret_slots() -> None:
     assert "fret_slot_surface_overcut = 0.2" in source
     assert "fret_slot_side_overcut = 1.0" in source
     assert "for fret_index, surface_row in enumerate(" in source
-    assert "for _, y, z in reversed(extended_row)" in source
+    assert "for x, y, z in reversed(extended_row)" in source
+    assert "slope = (last[0] - first[0]) / (last[1] - first[1])" in source
     assert "slot_face = Part.Face(Part.makePolygon(profile))" in source
     assert "slot_shape = slot_face.extrude(" in source
     assert "fretboard_shape.cut(slot_shape)" in source
@@ -1065,3 +1067,109 @@ def test_neck_assembly_rejects_an_invalid_headstock_join() -> None:
             headstock=incompatible_headstock,
             join_headstock_to_neck=True,
         )
+
+
+def _neck_section_rows(source: str) -> list[list[tuple[float, float, float]]]:
+    """Return the neck loft rows a generated script serializes."""
+    module = ast.parse(source)
+    for node in module.body:
+        if (
+            isinstance(node, ast.Assign)
+            and isinstance(node.targets[0], ast.Name)
+            and node.targets[0].id == "NECK_SECTION_POINTS"
+        ):
+            rows: list[list[tuple[float, float, float]]] = ast.literal_eval(
+                node.value
+            )
+            return rows
+    raise AssertionError("NECK_SECTION_POINTS not found")
+
+
+def _fanned_seven_string() -> Prototype001Parameters:
+    return replace(
+        Prototype001Parameters.for_instrument("seven_string_guitar"),
+        scale_length=647.7,
+        bass_scale_length=685.8,
+    )
+
+
+@pytest.mark.parametrize(
+    "parameters",
+    [Prototype001Parameters(), _fanned_seven_string()],
+    ids=["plain", "fanned"],
+)
+def test_the_neck_loft_is_flat_over_the_whole_nut_shelf(
+    parameters: Prototype001Parameters,
+) -> None:
+    source = FreeCADScriptExporter().render_prototype001(parameters.build())
+    shelf = 5.0 + parameters.nut_shelf_reach()
+
+    shelf_rows = [
+        row
+        for row in _neck_section_rows(source)
+        if -shelf <= row[0][0] <= 0.0
+    ]
+
+    assert shelf_rows
+    for row in shelf_rows:
+        assert row[0][2] == pytest.approx(0.0, abs=1e-9)
+        assert row[-1][2] == pytest.approx(0.0, abs=1e-9)
+    # The shelf is part of the loft, not a block fused (or compounded) on.
+    assert "nut_seat" not in source
+    assert "makeCompound([*neck_shape.Solids" not in source
+
+
+@pytest.mark.parametrize(
+    "parameters",
+    [Prototype001Parameters(), _fanned_seven_string()],
+    ids=["plain", "fanned"],
+)
+def test_the_headstock_face_is_cut_from_the_end_of_the_nut_shelf(
+    parameters: Prototype001Parameters,
+) -> None:
+    source = FreeCADScriptExporter().render_prototype001(parameters.build())
+    shelf = 5.0 + parameters.nut_shelf_reach()
+    slope = math.tan(math.radians(parameters.headstock_angle))
+
+    face_cut = source.index("HEADSTOCK_FACE_CUT_POINTS = ")
+    assert f"(({-shelf!r}, {-shelf * slope!r}), ({-shelf!r}, 10.0)" in source
+    assert face_cut < source.index("neck_feature.Shape = neck_shape\n", face_cut)
+    assert "neck_shape.cut(headstock_face_cutter)" in source
+
+
+def test_headstock_loft_rows_keep_their_edge_points_apart() -> None:
+    # Regression: the rounded run-in's outermost point used to sit a few
+    # hundredths of a millimetre from the row's edge point, leaving a
+    # sliver face along the loft that FreeCAD's check(True) reported as
+    # self-intersecting at the headstock tip.
+    source = FreeCADScriptExporter().render_prototype001(
+        Prototype001Parameters().build()
+    )
+
+    headstock_rows = [
+        row for row in _neck_section_rows(source) if row[0][0] < -30.0
+    ]
+
+    assert headstock_rows
+    for row in headstock_rows:
+        for edge, inner in ((row[0], row[1]), (row[-1], row[-2])):
+            assert math.dist(edge, inner) > 1.0
+
+
+def test_the_truss_rod_nut_pocket_is_cut_with_short_boxes() -> None:
+    # Regression: one 12 mm pocket box left C0 edges on the neck's top
+    # that FreeCAD's check(True) reported as GeomAbs_C0.
+    source = FreeCADScriptExporter().render_prototype001(
+        Prototype001Parameters().build()
+    )
+
+    # The 14 mm step (7.5 wide, 10.5 deep) in three boxes, the 32 mm
+    # pocket (9 wide, 11 deep) in seven.
+    assert f"Part.makeBox(\n        {14.0 / 3!r}, 7.5, 15.5," in source
+    assert "for index in range(3)" in source
+    assert f"Part.makeBox(\n        {32.0 / 7!r}, 9.0, 16.0," in source
+    assert "for index in range(7)" in source
+    assert "neck_shape.cut(truss_rod_pocket_shapes_0).removeSplitter()" in source
+    assert "neck_shape.cut(truss_rod_pocket_shapes_1).removeSplitter()" in source
+    # The adjuster sleeve's bore, drilled by hand, is shown in the model.
+    assert '"truss-rod sleeve bore"' in source

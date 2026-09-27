@@ -73,11 +73,40 @@ def test_build_writes_gcode_and_toolpath_previews_for_every_part(
     assert report["machining"]["tool_diameter"] == 6.0
     assert report["gcode"]["Body_top"]["file"] == "Body_top.nc"
     assert report["gcode"]["Body_top"]["part"] == "Body"
+    # Each part's programs are numbered in running order.
+    steps = {
+        part: sorted(
+            (info["step"], name)
+            for name, info in report["gcode"].items()
+            if info["part"] == part
+        )
+        for part in ("Body", "Neck", "Fretboard")
+    }
+    assert steps["Body"][:2] == [(1, "Body_index_pins"), (2, "Body_top")]
+    assert steps["Neck"] == [
+        (1, "Neck_index_pins"),
+        (2, "Neck_top"),
+        (3, "Neck_back_rough"),
+        (4, "Neck_back_finish"),
+        (5, "Neck_back_outline"),
+    ]
+    assert [name for _, name in steps["Fretboard"]] == [
+        "Fretboard_index_pins",
+        "Fretboard_radius",
+        "Fretboard_inlays",
+        "Fretboard_slots",
+        "Fretboard_outline",
+    ]
+    assert [step for step, _ in steps["Fretboard"]] == [1, 2, 3, 4, 5]
     assert report["gcode"]["Neck_back_finish"]["tool"] == "6 mm ball"
     assert report["gcode"]["Fretboard_slots"]["tool"] == "0.6 mm flat"
     assert set(report["stock"]) == {"Body", "Neck", "Fretboard", "Covers"}
     assert report["gcode"]["Cover_control_cavity"]["tool"] == "3 mm flat"
     assert report["stock"]["Body"]["thickness_mm"] == 44.0
+    # The default 24-fret neck takes a 440 mm stock rod (455 mm at most).
+    assert report["truss_rod"]["rod_length_mm"] == 440.0
+    assert report["truss_rod"]["recommended_stock_mm"] == 440.0
+    assert report["truss_rod"]["longest_fitting_mm"] == pytest.approx(455.2)
     assert report["stock"]["Neck"]["thickness_mm"] == 40.0
     assert len(report["stock"]["Fretboard"]["index_pins_model_xy"]) == 2
 

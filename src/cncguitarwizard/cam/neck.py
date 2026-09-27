@@ -42,6 +42,7 @@ from .surfacing import (
 )
 
 if TYPE_CHECKING:
+    from ..geometry.neck import TrussRodChannel
     from ..presets import Prototype001Geometry
 
 
@@ -139,6 +140,77 @@ class NeckMachiningPlan:
         )
 
 
+def _nut_filler_note(truss: TrussRodChannel, shelf: float) -> tuple[str, ...]:
+    """Return the note to fill the route under the nut, if it runs there.
+
+    A headstock-adjusted rod's route starts under the nut seat, so the
+    nut would rest only on the wood either side of it; a filler glued
+    over the rod, flush with the seat, gives it its whole width back.
+    """
+    under_nut = [
+        boundary
+        for boundary in (truss.top_boundary, *(part.boundary for part in truss.pockets))
+        if min(p.x for p in boundary) < 0.0 and max(p.x for p in boundary) > -shelf
+    ]
+    if not under_nut:
+        return ()
+    width = max(2.0 * max(abs(p.y) for p in boundary) for boundary in under_nut)
+    return (
+        f"The truss rod's route runs under the nut seat: after fitting the rod, "
+        f"glue a wooden filler {width:g} mm wide and {round(shelf, 1):g} mm long (the "
+        "seat, from the end of the nut shelf to the fretboard) into it over "
+        "the rod, flush with the seat, before gluing the nut, so the nut sits "
+        "on wood over its whole width.",
+    )
+
+
+def _overrun_truss_route(
+    truss: TrussRodChannel, overrun: float
+) -> list[tuple[str, tuple[Point2D, ...], float]]:
+    """Return the channel, step and pocket, each run on over its neighbours.
+
+    A round cutter leaves its radius in every corner, so where a pocket
+    meets the next, narrower part of the route, its end corners would
+    stand into the rod's square step and block. Each part therefore runs
+    ``overrun`` (the tool's radius) on over its neighbour, deeper than
+    that neighbour for that short stretch, and the pocket at the
+    adjusting end runs on as far toward the adjuster (its sleeve's bore,
+    or the headstock trough); only the channel's anchor end stays as
+    drawn. The channel is returned first.
+    """
+    parts = [
+        ("Truss-rod channel", truss.top_boundary, truss.depth),
+        *((part.name, part.boundary, part.depth) for part in truss.pockets),
+    ]
+    spans = [
+        (min(p.x for p in boundary), max(p.x for p in boundary))
+        for _, boundary, _ in parts
+    ]
+    first = min(start for start, _ in spans)
+    last = max(end for _, end in spans)
+    heel = truss.adjustment_side == "heel"
+    route = []
+    for index, ((name, boundary, depth), (start, end)) in enumerate(
+        zip(parts, spans, strict=True)
+    ):
+        # Every end that meets another part, plus the adjusting end; the
+        # channel (first) keeps its anchor end.
+        pocket_part = index > 0
+        meets_before = start > first + 1e-9 or (not heel and pocket_part)
+        meets_after = end < last - 1e-9 or (heel and pocket_part)
+        before = overrun if meets_before else 0.0
+        after = overrun if meets_after else 0.0
+        moved = tuple(
+            Point2D(
+                p.x - before if abs(p.x - start) < 1e-9 else p.x + after,
+                p.y,
+            )
+            for p in boundary
+        )
+        route.append((name, moved, depth))
+    return route
+
+
 def neck_plan_polygon(geometry: Prototype001Geometry) -> tuple[Point2D, ...]:
     """Return the whole neck's plan outline: headstock, neck, and heel."""
     neck = geometry.neck_outline.boundary
@@ -234,13 +306,10 @@ def plan_neck_machining(
         return 0.0 if model_x >= -shelf else model_x * tangent
 
     truss = geometry.truss_rod_channel
+    route = _overrun_truss_route(truss, flat.tool_radius)
     top_paths = [
-        pocket(
-            "Truss-rod channel",
-            top_frame.polygon(truss.top_boundary),
-            truss.depth,
-            flat,
-        )
+        pocket(name, top_frame.polygon(boundary), depth, flat)
+        for name, boundary, depth in route[:1]
     ]
     face_x = (tip_x - radius, -shelf)
     face_y = (min_y - radius, max_y + radius)
@@ -272,6 +341,21 @@ def plan_neck_machining(
             step_over=parameters.face_finish_step_over,
         )
     )
+    # The step and pocket carry the channel on at the adjusting end; a
+    # headstock-adjusted rod's trough follows the face.
+    top_paths += [
+        pocket(name, top_frame.polygon(boundary), depth, flat)
+        for name, boundary, depth in route[1:]
+    ]
+    if truss.adjuster_boundary:
+        top_paths.append(
+            pocket(
+                "Truss-rod access trough",
+                top_frame.polygon(truss.adjuster_boundary),
+                truss.adjuster_depth,
+                flat,
+            )
+        )
     for hole in geometry.tuner_layout.holes:
         surface_depth = -face_depth(hole.center.x)
         top_paths.append(
@@ -294,6 +378,21 @@ def plan_neck_machining(
             f"degrees; the flat nut shelf keeps {shelf:g} mm before the nut.",
             "Tuner holes get 0.5 mm centre marks only: drill them perpendicular "
             "to the angled face on a drill press with a wedge.",
+            f"The truss-rod step and pocket each run {flat.tool_radius:g} mm on "
+            "over their neighbours, so the cutter's round corners stay out of "
+            "the rod's square blocks.",
+            *(
+                (
+                    f"Drill the truss-rod adjuster's sleeve bore by hand: "
+                    f"{truss.bore.diameter:g} mm, "
+                    f"{truss.bore.end - truss.bore.start:g} mm in from the heel "
+                    "end along the rod's axis, "
+                    f"{truss.bore.axis_depth:g} mm below the glue face.",
+                )
+                if truss.bore is not None
+                else ()
+            ),
+            *_nut_filler_note(truss, shelf),
         ),
         reference_points,
         flat,

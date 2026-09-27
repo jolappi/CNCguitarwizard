@@ -272,6 +272,11 @@ up from the back face, drilled holes and pivot studs as vertical cylinders,
 and the jack as a horizontal bore; the STEP file includes the body solid.
 Inlay pockets are cut into the fretboard in the same script.
 
+The joined neck is one solid that passes FreeCAD's `check(True)`. The flat
+nut seat is part of the neck loft, and the headstock face is cut down to
+its true plane from the end of the nut shelf, as the neck G-code cuts it,
+instead of a seat block being fused on where the fuse silently lost it.
+
 The first CAD backend was introduced without coupling FreeCAD to the geometry
 engine. Deterministic standalone scripts can now loft the sampled neck-back
 and fretboard sections into FreeCAD solids for visual inspection.

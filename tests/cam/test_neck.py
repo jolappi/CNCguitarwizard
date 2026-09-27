@@ -191,3 +191,36 @@ def test_plan_follows_a_longer_scale(geometry) -> None:  # type: ignore[no-untyp
 
     assert plan.index_pin_positions[1][0] > 489.8
     assert plan.stock_length > 681.0
+
+
+def _cut_span(path) -> float:  # type: ignore[no-untyped-def]
+    """Return how far along X the tool centre travels while cutting."""
+    xs = [move.x for move in path.moves if not move.rapid and move.z < 0.0]
+    return max(xs) - min(xs)
+
+
+@pytest.mark.parametrize("adjustment", ["heel", "headstock"])
+def test_truss_rod_steps_run_over_their_neighbours(adjustment: str) -> None:
+    # A round cutter leaves its radius in every corner: each pocket runs a
+    # tool radius on over the next part (and toward the adjuster), so the
+    # rod's square blocks meet no corner; the channel's anchor end stays.
+    geometry = replace(
+        Prototype001Parameters(), truss_rod_adjustment=adjustment
+    ).build()
+    parameters = NeckMachiningParameters()
+    radius = MachiningParameters(stock_margin=35.0).tool_radius
+    paths = {p.name: p for p in plan_neck_machining(geometry, parameters).top.toolpaths}
+    truss = geometry.truss_rod_channel
+
+    # Tool-centre travel = part length + 2 overruns - the tool's diameter.
+    assert _cut_span(paths["Truss-rod step"]) == pytest.approx(
+        truss.step_length, abs=0.05
+    )
+    assert _cut_span(paths["Truss-rod pocket"]) == pytest.approx(
+        truss.pocket_length, abs=0.05
+    )
+    assert _cut_span(paths["Truss-rod channel"]) == pytest.approx(
+        truss.channel_length - radius, abs=0.05
+    )
+    notes = " ".join(plan_neck_machining(geometry, parameters).top.notes)
+    assert "each run 3 mm on over their neighbours" in notes

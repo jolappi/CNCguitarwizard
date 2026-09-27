@@ -197,7 +197,11 @@ class Prototype001Build:
     def _write_gcode(self) -> None:
         writer = GRBLWriter()
         for part, plan in self._plans:
-            for setup, outline in zip(plan.setups, plan.preview_outlines, strict=True):
+            # Each part's programs are listed, and numbered, in the order
+            # they are run (``plan.setups``).
+            for step, (setup, outline) in enumerate(
+                zip(plan.setups, plan.preview_outlines, strict=True), start=1
+            ):
                 gcode_path = self.destination / f"{setup.name}.nc"
                 gcode_path.write_text(
                     writer.render(setup, self.machining), encoding="utf-8"
@@ -212,6 +216,7 @@ class Prototype001Build:
                 self._preview_paths.append(preview_path)
                 self._gcode_report[setup.name] = {
                     "part": part,
+                    "step": step,
                     "file": gcode_path.name,
                     "preview": preview_path.name,
                     "tool": f"{tool.tool_diameter:g} mm {tool.tool_tip}",
@@ -269,8 +274,20 @@ class Prototype001Build:
             "machining": asdict(self.machining),
             "gcode": self._gcode_report,
             "stock": self._stock_report,
+            "truss_rod": self._truss_rod_report(),
         }
         _write_report(self._report_path, self._report)
+
+    def _truss_rod_report(self) -> dict[str, float | None]:
+        """Return the rod the neck is routed for and the longest it takes."""
+        assert self.geometry is not None
+        fit = self.parameters.truss_rod_fit(self.geometry.neck_outline)
+        return {
+            "rod_length_mm": fit.rod_length,
+            "route_length_mm": round(fit.route_length, 1),
+            "longest_fitting_mm": round(fit.longest, 1),
+            "recommended_stock_mm": fit.recommended,
+        }
 
     def _run_freecad(self) -> None:
         try:

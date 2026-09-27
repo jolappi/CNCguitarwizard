@@ -77,7 +77,9 @@ The same package runs client-side on GitHub Pages: `site/` loads it into
 Pyodide, draws a form from the parameter dataclasses, and builds the
 FreeCAD script, body G-code, toolpath plots and report in the browser —
 no installation needed. Only the `.FCStd`/STEP step still needs a local
-FreeCAD. See [Web app](docs/site.md) for local preview and deployment.
+FreeCAD. **Save design** and **Load design** keep your settings and your
+drawn body and headstock in a JSON file on your own computer. See
+[Web app](docs/site.md) for local preview and deployment.
 
 ## Architecture
 

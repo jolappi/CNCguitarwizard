@@ -19,6 +19,10 @@ toisin mainita.
 | Otelaudan pää | 4 mm 24. nauhan jälkeen; samassa tasossa kannan lopun kanssa |
 | Satulahylly | Kiinteä 5 mm ennen otelautaa; ei saa muuttua |
 | Nauhaurat | 0,6 mm × 2,7 mm |
+| Vinot nauhat | Valinnainen `fret_slant_angle` (oletus 0°, enintään 10°): nauhat, otelaudan satulapää ja loppupää kallistuvat keskilinjan ympäri, diskanttipää kohti tallaa positiivisella kulmalla. Nauhajako pysyy tarkkana keskilinjalla; talla ja mikit pysyvät ennallaan |
+| Multiscale | Valinnainen `bass_scale_length`: `scale_length` on silloin diskanttimensuuri ja `bass_scale_length` bassomensuuri (pidempi, enintään 1,15-kertainen); `perpendicular_fret` (oletus 7, 0 = satula) on kohtisuorassa. Jokainen nauha on suora ja osuu jokaisella kielellä tarkalleen oikeaan kohtaan; keskilinja saa mensuurien keskiarvon. Talla voi olla mikä tahansa: se pysyy suorana keskilinjan mensuurin kohdalla ja tallapalat säädetään kunkin kielen mensuuriin (säätövaran on riitettävä puoleen mensuurierosta kumpaankin suuntaan). Poikkeus on Tune-o-matic, jonka säätövara on liian pieni: sen tolpat (kohta, jolla kielet lepäävät) käännetään aina nauhojen mukaan, stop tail pysyy paikallaan. Hardtailin läpivientireiät voi kääntää samoin (`body_bridge_follows_fan`). Mikkien kääntö on valinta (`body_pickups_follow_fan`): auto kääntää ne paitsi Tune-o-maticin kanssa, yes aina, no ei koskaan |
+| Satulahylly vinolla satulalla | Pitenee satulapään vinouden verran, jotta satulalle jää 5 mm siltäkin puolelta, jolla satulapää on taaimpana; hylly on tasainen koko pituudeltaan |
+| Inlayt vinoilla nauhoilla | Seuraavat nauhoja: blockit kallistuvat nauhojen mukana, piikkilanka kääntyy nauhojen kulmaan, pisteet siirtyvät nauhojen väliselle linjalle |
 | Inlayt | 2 mm syvät välissä 3, 5, 7, 9, 15, 17, 19, 21 (12 ja 24 kaksois-); tyyli `inlay_style`: piikkilanka (oletus), pyöreä dotti (Ø 6) tai Gibson-tyylinen kapeneva blokki (yksi/väli, 60 % nauhavälistä, 5 mm reunasta) |
 
 ## Kanta ja kiinnitys
@@ -66,17 +70,28 @@ kielelle, joten ne eivät ole valittavissa 7- ja 8-kielisille.
 paksuudet 21 / 23 mm ja kanta 22 mm, otelaudan säde 305 mm, kielijako 10 mm
 satulassa ja 19 mm tallassa, neljä 19 mm viritinreikää rivissä 38 mm välein
 ja 20 mm reunasta, Precision-mikki kaulassa ja Jazz-mikki tallalla,
-nelikielinen läpimenevä talla ja offset-bassorunko. Mikkityypit ovat
+nelikielinen läpimenevä talla ja Jazz Bass -henkinen runko. Mikkityypit ovat
 valittavissa kummallekin paikalle (humbucker, Jazz Bass, Precision Bass,
 bassohumbucker tai ei mikkiä). Bassoarvot ovat lähtöarvoja.
 
 ## Kaulan kiinnitys
 
 Neljä kaulapulttia rungon takaa: holkkiupotus Ø 14 mm, 5 mm syvä, ja sen
-pohjasta Ø 5 mm pulttireikä kaulataskuun. Paikat tulevat rungon muodosta
-(`neck_bolts`): Design by Jone -rungossa puolisuunnikas, koska diskanttipuolen
-cutaway on syvä, muuten 32 × 40 mm suorakulmio heel-päädyn lähellä. Holkin on
-jäätävä puuhun 2 mm varalla; piirtoeditorissa pultteja voi raahata.
+pohjasta Ø 5 mm pulttireikä kaulataskuun. Paikat kaulan suunnassa tulevat
+rungon muodosta (`neck_bolts`), muuten 32 mm välein heel-päädyn lähellä.
+Takimmaiset pultit ovat niin lähellä kaulataskun päätä kuin 3 mm puuta
+pultin reiän ja kaulan pään välissä sallii (`body_neck_bolt_end_wall`,
+5,5 mm päädystä), jotta pultit ovat mahdollisimman kaukana toisistaan
+kaulan suunnassa ja pitävät kaulan paremmin; lähemmäs ei mikään pultti
+saa tulla.
+Poikittain jokainen pultti siirretään niin lähelle kaulan reunaa kuin voi,
+jotta ne pysyvät kaukana kaularaudasta: reiän ja kaulan reunan väliin jää
+5 mm (`body_neck_bolt_edge_wall`), tai cutawayn kohdalla holkin ja rungon
+reunan väliin 1 mm puuta. Holkki saa ulottua kaulataskun ohi, mutta sen on
+oltava rungossa. Kaularaudan kanavaan tai mutterin taskuun jää vähintään
+3 mm ja holkkien väliin 1 mm. Design by Jone -rungossa diskanttipuolen pultit
+ovat syvän cutawayn takia kannan pään lähellä (x = −24 ja −6). Piirtoeditorissa
+pultteja voi raahata kaulan suunnassa.
 
 ## Kontrollit ja kannet
 
@@ -85,12 +100,27 @@ potikalla (oletus), Gibson-tyylinen kolo neljällä potikalla, takakolo kolmella
 potikalla rivissä, Telecaster-tyylinen kontrollilevy rungon päälle upotettuna
 (2 potikkaa ja teräkytkimen aukko) tai ei kontrolleja. Takakoloissa on
 myös pyöreä kytkinkolo. Kolot ajetaan omissa ohjelmissaan
-(`Body_back_controls.nc`, Telellä `Body_top_controls.nc`). Kansien ruuvit
+(`Body_back_controls.nc`, Telellä `Body_top_controls.nc`). Jos Gibson- tai
+rivikolo osuisi syvään yläpuolen koloon (esim. Floydin hienosäätimien
+kolo) niin, ettei välissä jää puuta, kolo potikoineen ja kansineen siirtyy
+lähimpään vapaaseen paikkaan, enintään 20 mm ulospäin ja kaulan suunnassa. Kansien ruuvit
 (4 kontrollikanteen, 3 kytkinkanteen) merkitään kansiupotuksen reunalle Ø 3 mm,
 1 mm syvä. Jokainen kansi ja kontrollilevy saa oman `Cover_<nimi>.nc`
 -ohjelmansa pleksistä tai muovista leikattavaksi: 3 mm terä, reiät ja aukot
 ensin, sitten ulkoreuna 0,2 mm upotusta pienempänä neljällä pidikkeellä;
 nollapiste kannen keskellä levyn pinnalla.
+
+Valinnainen 9 V:n paristokotelo (`body_battery_box`, oletuksena pois)
+jyrsitään takaa samaan `Body_back_controls.nc`-ohjelmaan: 56 × 30 mm kolo
+(r 5), 22 mm syvä takapinnasta, ja sen ympärillä 7 mm leveämpi
+kansiupotus (70 × 44 mm). Kansi kiinnitetään kahdella ruuvilla kolon
+päistä ja leikataan omana `Cover_battery_cavity.nc`-ohjelmanaan. Kotelon
+paikka on rungon muodossa (`battery_offset`, `battery_y`,
+`battery_angle_degrees`), ja jokaisella pohjalla se on oletuksena niin
+lähellä kontrollikoloa (kolojen väli 18–32 mm), jotta
+johdon reikä jää lyhyeksi; editorissa kotelon voi raahata. Pariston johdon kanava
+ohjainkoloon porataan käsin. Kahden takakolon kansiupotukset eivät saa
+mennä päällekkäin, eikä mikään reikä saa avautua paristokoteloon.
 
 ## Mikit
 
@@ -130,8 +160,15 @@ säilyy 5 mm:nä kaikissa lapaliitoksen muutoksissa.
 
 | Kohta | Speksi |
 | --- | --- |
-| Kaularauta | Kaksitoiminen 440 × 6 × 9 mm |
-| Säätö | Kannan puolen spoke wheel |
+| Kaularauta | Kaksitoiminen; kanava 6 mm leveä, 7,5 mm syvä, säätöpäässä porras 7,5 × 10,5 × 14 mm (leveys × syvyys × pituus) ja tasku 9 × 11 × 32 mm |
+| Pituus | Kaularaudat myydään kokonaispituuksina 20 mm:n välein (300–600 mm, `truss_rod_stock_lengths`), ja vain ohuin osa pitenee. Oletuksena valitaan pisin kaulaan mahtuva vakiopituus (24-nauhainen 25,5" kitara 440 mm, 7-kielinen 480 mm, basso 600 mm); oman raudan pituus annetaan `truss_rod_rod_length`, ja liian pitkä hylätään suosituksen kera. Säätöpää pysyy paikallaan, lyhyemmän raudan ankkuripää siirtyy. Rauta, ura, pisin mahtuva ja suositus näkyvät build-raportissa ja web-yhteenvedossa |
+| Säätö | Valittava (`truss_rod_adjustment`): kannan puolen spoke wheel (oletus) tai lavan puoli |
+| Säätöholkki | Säädettävät mitat: pyöreä pää Ø 15 × 6 mm rungon puolella, kaulan puolella 12 mm pitkä Ø 9 mm reikä raudan akselilla; akseli 7,5 mm liimapinnasta (mitattu, `truss_rod_axis_depth`) |
+| Kannan säätö | Holkin reikä porataan käsin (CNC ei aja vaakasuoraa porausta; mukana mallissa ja G-coden ohjeissa); rungon kaulataskun päähän lovi holkin päälle, 1 mm välys, 15,5 mm syvä |
+| Lavan säätö | Kanava jatkuu satulan alta; mutteri 32 mm urassa lavan pinnassa, uralle Gibson-tyylinen kansi (3 ruuvia) levystä omana NC-ohjelmanaan |
+| Satulan istukka | Kannan säädössä satulahylly on tasainen koko satulan leveydeltä (myös monimensuurin vinolla satulalla). Lavan säädössä raudan tasku kulkee satulan alta, joten G-koodin ohje pyytää liimaamaan taskuun raudan päälle puisen täytepalan (esim. 9 × 5 mm) satulahyllyn tasoon ennen satulan liimausta |
+| Valinnaiset aukot | Holkin reikä (`truss_rod_sleeve_bore`) ja lavan ura kansineen (`truss_rod_trough`) ovat oletuksena mukana, mutta ne voi jättää pois |
+| Jyrsintä | Porras ja tasku ajetaan terän säteen (3 mm) verran naapurikolon päälle ja tasku säätöpään suuntaan, jotta pyöreä terä ei jätä kulmiin ulkonemia raudan kanttisille paloille; kanavan ankkuripää jyrsitään sellaisenaan |
 | Kohdistus | 2 × 6 mm kohdistustappi kaksipuoliseen koneistukseen |
 
 ## Runko
@@ -141,7 +178,9 @@ jäljitetty omasta `assets/reference/omarunko.dxf`-piirustuksesta
 (`presets/_omarunko_outline.py`), tai "Your design", jonka ääriviiva
 piirretään web-sovelluksessa raahaamalla spline-ohjauspisteitä; pohjaksi
 voi ladata Design by Jone -rungon, Les Paul-, Stratocaster- tai Jackson
-RR -henkisen muodon (oletus Stratocaster); editorissa voi myös raahata kontrollikoloa
+RR -henkisen muodon (Les Paul, Stratocaster, Jackson RR ja Jazz Bass ovat
+mockuppeja, eivät alkuperäisiä ääriviivoja) tai Jazz Bass -henkisen
+muodon (basson oletus, myös mockup) (oletus Stratocaster); editorissa voi myös raahata kontrollikoloa
 (potit mukana), yksittäisiä potteja, kytkinkoloa ja jakkia sekä liu'uttaa
 mikkikoloja kaulan suunnassa, kun taas kaulatasku ja talla pysyvät
 paikallaan. Kytkinkolon, pottien ja
@@ -154,7 +193,7 @@ mensuurilla.
 
 | Kohta | Speksi |
 | --- | --- |
-| Paksuus | 44 mm tasainen laatta (ei vielä käsi-/vatsaviisteitä) |
+| Paksuus | 44 mm laatta; reunat ja viisteet valinnaisia (alla) |
 | Kaulatasku | Kaulan oma kapeneva ääriviiva + 0,15 mm välys/puoli, 79,5 mm pitkä, päättyy kannan päähän, 20 mm syvä; avautuu sarvien väliin |
 | Mikkikolot | DXF:n humbucker-kolo korvakkeineen, 41 × 85,9 mm, 22 mm syvä; keskipisteet x = 491,7 ja 587,9 |
 | Säätöruuvien syvennykset | Ø 6 mm, 8 mm kolon pohjan alle, ±39,95 mm keskilinjasta |
@@ -163,6 +202,27 @@ mensuurilla.
 | Kytkinkolo | DXF:n ympyrä Ø 44 yläsakaran juuressa, takaa 36 mm, kansiura Ø 59,5 × 2 mm |
 | Akselireiät | Kytkin Ø 12,7; potikat 2 × Ø 10 kohdissa (642, 86) ja (682, 87) |
 | Jakki | Ø 12,5 poraus reunasta (742, 107,5) suuntaan 202,5°, 55 mm, päättyy potikkakoloon |
+
+## Reunat ja viisteet
+
+Kaikki valinnaisia ja oletuksena pois: reunojen pyöristys päältä ja takaa
+(`body_top_edge_radius`, `body_back_edge_radius`), pyöristyksen sijaan
+reunanauhan ura (`body_*_binding_width` / `_depth`, syvyys oletuksena 6 mm),
+soittokäden viiste päälle bassopuolen takakaaren kohdalle
+(`body_arm_contour_*`, oletuksena 60 mm leveä ja 240 mm pitkä) ja mahaviiste
+taakse bassopuolen yläkaaren kohdalle (`body_belly_cut_*`, 70 × 260 mm).
+Viisteet kapenevat reunaa pitkin molempiin päihin. Viisteet ja pyöristykset
+ajetaan ball nose -terällä omissa ohjelmissaan (`Body_top_edges.nc`,
+`Body_back_edges.nc`), reunanauhan ura pääterällä ääriviivan jälkeen.
+FreeCAD-mallissa ne ovat 1 mm porrastuksina.
+
+## Omat suunnitelmat
+
+Web-sovelluksen **Save design** tallentaa kaikki asetukset, myös soittimen,
+piirretyn rungon ja lavan reunat, JSON-tiedostoksi omalle koneelle.
+**Load design** lataa tiedoston takaisin lomakkeeseen ja editoreihin. Asetukset,
+joita käytössä oleva versio ei tunne, ohitetaan ja luetellaan. Mitään ei
+tallenneta palvelimelle.
 
 ## CNC
 

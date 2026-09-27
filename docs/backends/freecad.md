@@ -199,10 +199,35 @@ sits in the neck-pocket cavity. The script then cuts, in order:
 3. pivot-stud holes (when the bridge has any) and every `DrilledHole` as
    vertical cylinders from the top face — a hole as deep as the slab is
    overcut at both ends so it breaks out cleanly;
-4. the jack bore as a horizontal cylinder at half the slab thickness.
+4. the jack bore as a horizontal cylinder at half the slab thickness;
+5. the edge finishes and contours, when any are set. FreeCAD's own fillet
+   fails on outlines with pointed horns and tight cutaways, so a roundover
+   is modelled as 1 mm rings, each trimmed back to the fillet's inset at
+   that depth with FreeCAD's 2D offset; a binding channel is one ring; an
+   arm contour or belly cut is terraced in 1 mm steps from its depth map.
+   All the layers go in one boolean cut. The model is therefore stepped;
+   the G-code cuts the true surfaces.
 
 Every cavity profile is overcut by 0.6 mm above its entry face so no boolean
 operation meets a coincident face. A requested STEP file includes the body.
+
+## Nut seat
+
+The headstock's top tilts from the nut, but the nut shelf in front of it
+stays flat at the neck's top, as the neck G-code leaves it: the neck has a
+flat seat `nut_shelf_length` long (5 mm, lengthened by a slanted or fanned
+nut end's reach). The seat is part of the joined neck loft itself: its top
+edge stays at z = 0 over the whole shelf, then eases down onto the
+headstock, which is lofted `HEADSTOCK_FACE_ALLOWANCE` (0.5 mm) proud of its
+tilted face. One cut then removes everything above the true face from the
+end of the shelf out past the tip, leaving the vertical step at the end of
+the shelf and a planar headstock face. `NeckBack` is one solid that passes
+FreeCAD's `check(True)`.
+
+A flat seat block fused onto the neck does not work: its top has to meet
+the loft's own top at z = 0, tangentially just behind the nut, and
+FreeCAD's fuse then silently drops the block (it reports it as already
+inside the neck). The face cut's faces all cross the loft instead.
 
 ## Current limitations
 

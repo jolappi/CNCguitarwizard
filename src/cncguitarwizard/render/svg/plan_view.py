@@ -76,7 +76,20 @@ def render_plan_view_svg(geometry: Prototype001Geometry) -> str:
         parts.append(path(marker.outline, inlay))
     for tuner in geometry.tuner_layout.holes:
         parts.append(circle(tuner.center.x, tuner.center.y, tuner.diameter / 2.0, hole))
+    # A headstock-adjusted truss rod's trough shows in the headstock face.
+    truss = geometry.truss_rod_channel
+    if truss.adjustment_side == "nut" and truss.adjuster_boundary:
+        parts.append(path(truss.adjuster_boundary, pocket))
 
+    # Arm contour (top) and belly cut (back), under the cavities.
+    for contour in body.contours:
+        look = (
+            'fill="#9cc79a" fill-opacity="0.45" stroke="#3d6b3a" stroke-width="0.4"'
+            if contour.face == "top"
+            else 'fill="#9aa9d6" fill-opacity="0.35" stroke="#34457a" '
+            'stroke-width="0.4" stroke-dasharray="3,2"'
+        )
+        parts.append(path(contour.region(), look))
     for cavity in body.top_cavities:
         parts.append(path(cavity.outline, pocket))
     for rear_cavity in body.rear_cavities:
@@ -112,14 +125,15 @@ def render_plan_view_svg(geometry: Prototype001Geometry) -> str:
 
 
 def _fretboard_polygon(geometry: Prototype001Geometry) -> Sequence[Point2D]:
-    """Return the fretboard's plan trapezoid from the nut to its end."""
-    outline = geometry.neck_outline
-    end_x = outline.last_fret_position + geometry.fretboard_surface.end_extension
-    half_nut = outline.nut_width / 2.0
-    half_end = outline.last_fret_width / 2.0
+    """Return the fretboard's plan outline from the nut to its end.
+
+    Taken from the surface's end rows, so slanted frets slant both ends.
+    """
+    rows = geometry.fretboard_surface.mesh.rows
+    first, last = rows[0], rows[-1]
     return (
-        Point2D(0.0, -half_nut),
-        Point2D(end_x, -half_end),
-        Point2D(end_x, half_end),
-        Point2D(0.0, half_nut),
+        Point2D(first[0].x, first[0].y),
+        Point2D(last[0].x, last[0].y),
+        Point2D(last[-1].x, last[-1].y),
+        Point2D(first[-1].x, first[-1].y),
     )

@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 
 from ..neck import Centerline
 from ..primitives import Line2D, Point2D, Vector2D
+from .skew import FretSkew
 
 
 @dataclass(frozen=True, slots=True)
@@ -17,6 +18,8 @@ class Fretboard:
         nut_width: Width of the fretboard at the nut in millimetres.
         bridge_width: Width of the fretboard at the bridge in millimetres.
         centerline: Reference axis that determines the fretboard orientation.
+        skew: How the frets lean: the nut and bridge lines lean with them
+            (see ``FretSkew``).
     """
 
     scale_length: float
@@ -24,6 +27,7 @@ class Fretboard:
     bridge_width: float
     centerline: Centerline
     nut_corner_radius: float = 8.0
+    skew: FretSkew = field(default_factory=FretSkew)
     left_edge: Line2D = field(init=False)
     right_edge: Line2D = field(init=False)
     nut_line: Line2D = field(init=False)
@@ -61,6 +65,15 @@ class Fretboard:
             bridge_center.y - left_direction.y * self.bridge_width / 2.0,
         )
 
+        if not self.skew.is_square:
+
+            def lean(point: Point2D, station: float) -> Point2D:
+                return Point2D(point.x + self.skew.at(station) * point.y, point.y)
+
+            nut_left = lean(nut_left, 0.0)
+            nut_right = lean(nut_right, 0.0)
+            bridge_left = lean(bridge_left, self.scale_length)
+            bridge_right = lean(bridge_right, self.scale_length)
         nut_line = Line2D(nut_left, nut_right)
         bridge_line = Line2D(bridge_left, bridge_right)
         left_edge = Line2D(nut_left, bridge_left)

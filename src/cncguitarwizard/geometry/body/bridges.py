@@ -17,8 +17,8 @@ scale whatever the neck does.
 from __future__ import annotations
 
 import math
-from collections.abc import Mapping
-from dataclasses import dataclass, fields
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass, fields, replace
 from typing import Any, Literal
 
 from ..exceptions import BodyGeometryError
@@ -54,6 +54,59 @@ class BridgeHardware:
     rear_cavities: tuple[RearCavity, ...] = ()
     holes: tuple[DrilledHole, ...] = ()
     notes: tuple[str, ...] = ()
+
+
+def turned_hardware(
+    hardware: BridgeHardware,
+    centre: Point2D,
+    lean: float,
+    turns: Callable[[str], bool] | None = None,
+) -> BridgeHardware:
+    """Return ``hardware`` turned about ``centre`` to follow a leaning line.
+
+    ``lean`` is the bridge line's ``dx/dy`` (a fanned-fret bridge); every
+    cavity and hole turns with it, a cavity becoming a ``TracedCavity`` of
+    its turned outline — or, given ``turns``, only the holes whose names it
+    accepts (a Tune-o-matic's posts, leaving the stop-bar studs square).
+    The mounting's pivot studs do not turn; only the hardtail and the
+    Tune-o-matic, which have none, are turned.
+    """
+    if lean == 0.0:
+        return hardware
+    angle = -math.atan(lean)
+    cosine, sine = math.cos(angle), math.sin(angle)
+
+    def turn(point: Point2D) -> Point2D:
+        dx, dy = point.x - centre.x, point.y - centre.y
+        return Point2D(
+            centre.x + dx * cosine - dy * sine, centre.y + dx * sine + dy * cosine
+        )
+
+    def turn_cavity(cavity: Cavity) -> TracedCavity:
+        return TracedCavity(
+            cavity.name, tuple(turn(point) for point in cavity.outline), cavity.depth
+        )
+
+    def turn_hole(hole: DrilledHole) -> DrilledHole:
+        if turns is not None and not turns(hole.name):
+            return hole
+        moved = turn(hole.center)
+        return replace(hole, center_x=moved.x, center_y=moved.y)
+
+    return replace(
+        hardware,
+        top_cavities=tuple(turn_cavity(c) for c in hardware.top_cavities),
+        through_cavities=tuple(turn_cavity(c) for c in hardware.through_cavities),
+        rear_cavities=tuple(
+            RearCavity(
+                turn_cavity(rear.cavity),
+                turn_cavity(rear.cover_recess),
+                tuple(turn_cavity(step) for step in rear.steps),
+            )
+            for rear in hardware.rear_cavities
+        ),
+        holes=tuple(turn_hole(hole) for hole in hardware.holes),
+    )
 
 
 @dataclass(frozen=True, slots=True)

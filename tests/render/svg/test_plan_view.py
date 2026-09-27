@@ -16,6 +16,6 @@ def test_plan_view_draws_every_feature_once() -> None:
     assert svg.count("<line") == 24 + 1
     assert svg.count('fill="#e8e2d0"') == 12
     assert svg.count("<circle") == 6 + 7 + 1 + 8 + 7
-    # Body outline, headstock, neck, fretboard, 4 top cavities, 2 rear
-    # cavities with their covers.
-    assert svg.count("<path") == 4 + 12 + 4 + 4
+    # Body outline, headstock, neck, fretboard, 4 top cavities and the
+    # truss-rod access notch, 2 rear cavities with their covers.
+    assert svg.count("<path") == 4 + 12 + 4 + 4 + 1

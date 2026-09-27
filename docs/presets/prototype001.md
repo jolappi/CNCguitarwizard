@@ -48,7 +48,7 @@ default; `"seven_string_guitar"`, `"eight_string_guitar"` and
 | Headstock | 3+3, 10 mm holes | 7 in line (or 4+3 / 3+4) | 8 in line (or 4+4) | 4 in line, 19 mm holes 38 mm apart, 20 mm from the edge |
 | Pickups | humbucker + humbucker | stretched 12 mm | stretched 24 mm | Precision Bass (neck) + Jazz Bass (bridge) |
 | Bridge | Kahler 7300 | seven-string hardtail | eight-string hardtail (6 screws) | four-string string-through hardtail |
-| Body | Design by Jone | opened 12 mm | opened 24 mm | offset bass body (a drawn body) |
+| Body | Design by Jone | opened 12 mm | opened 24 mm | Jazz Bass style body (a drawn mockup) |
 
 The Kahler 7300, Floyd Rose and Tune-o-matic specs are drawn for six
 strings (`BRIDGE_MAX_STRINGS`): the build refuses them for more, and the
@@ -59,8 +59,8 @@ six-string route stretched across the strings by 12 mm per extra string
 (`pickups.pickup_stretch`), with its screws spread by the same amount.
 The body shapes are drawn for a six-string neck, so `body_widening`
 (empty: 12 mm per string past six, `BODY_WIDENING_PER_STRING`) opens the
-body along its centreline: each half, with its cavities, pots, switch and
-jack, moves out by half of it (`body_shapes.widened_shape`); the web
+body along its centreline: each half, with its cavities, pots, switch,
+battery box and jack, moves out by half of it (`body_shapes.widened_shape`); the web
 editor draws a drawn body the same way. A row headstock opposite three or
 four tuners (4+3) stretches `tuner_inline_spacing` in 0.5 mm steps until
 every pair of holes keeps `tuner_hole_clearance`.
@@ -125,6 +125,7 @@ Building the preset creates and cross-validates:
   derived from the neck's own taper, humbucker routes with mounting ears, an
   interchangeable bridge (`body_bridge`: Kahler 7300 by default, Floyd Rose,
   Tune-o-matic or hardtail), rear control and switch cavities with 2 mm cover recesses,
+  an optional rear 9 V battery box with its own cover (`body_battery_box`),
   pot and switch shaft holes, pickup-screw recesses, and the jack bore — see
   [Solid body](../geometry/12_body.md).
 

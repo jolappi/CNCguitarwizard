@@ -105,6 +105,35 @@ def test_body_solid_accepts_a_rear_battery_cavity() -> None:
     assert body.rear_cavities == (body.control_cavity, battery)
 
 
+def test_body_solid_rejects_two_rear_covers_on_top_of_each_other() -> None:
+    # 40 mm apart: the 80 mm covers overlap though the cavities do not touch.
+    with pytest.raises(BodyGeometryError, match="cover recess overlaps"):
+        make_body(switch_cavity=make_rear_cavity("Switch cavity", 650.0, 90.0, 10.0))
+
+
+def test_body_solid_rejects_a_hole_breaking_into_the_battery_box() -> None:
+    battery = make_rear_cavity("Battery cavity", 680.0, 20.0, 10.0)
+    through = DrilledHole("String 1 through hole", 680.0, 20.0, 3.0, 44.0)
+
+    with pytest.raises(BodyGeometryError, match="String 1 through hole would break"):
+        make_body(battery_cavity=battery, holes=(through,))
+
+
+def test_body_solid_accepts_a_shallow_hole_over_the_battery_box() -> None:
+    battery = make_rear_cavity("Battery cavity", 680.0, 20.0, 10.0)
+    screw = DrilledHole("Bridge screw 1 pilot hole", 680.0, 20.0, 3.0, 12.0)
+
+    assert make_body(battery_cavity=battery, holes=(screw,)).holes == (screw,)
+
+
+def test_body_solid_rejects_a_rear_hole_under_the_battery_cover() -> None:
+    battery = make_rear_cavity("Battery cavity", 680.0, 20.0, 10.0)
+    ferrule = DrilledHole("Neck bolt 1 ferrule", 715.0, 20.0, 9.0, 5.0)
+
+    with pytest.raises(BodyGeometryError, match="Neck bolt 1 ferrule would break"):
+        make_body(battery_cavity=battery, rear_holes=(ferrule,))
+
+
 def test_body_solid_rejects_a_rear_cavity_breaking_into_a_top_cavity() -> None:
     # Directly under the bridge pickup route (22 mm deep): 22 + 30 >= 44.
     with pytest.raises(BodyGeometryError, match="break through"):

@@ -13,9 +13,11 @@ from __future__ import annotations
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
+from typing import Literal
 
 from ..geometry.body import BodySolid, Cavity, DrilledHole, RearCavity
 from ..geometry.primitives import Point2D, point_in_polygon
+from .body_edges import ball_tool, binding_path, contour_paths, roundover_path
 from .fixturing import StockBounds, resolve_index_pins
 from .gcode import Setup
 from .operations import drill, pocket, profile
@@ -37,6 +39,10 @@ class BodyMachiningPlan:
             control plate's recess and cavity), or ``None``.
         back_controls: Back-face program for the electronics cavities
             and their cover recesses, or ``None``.
+        top_edges: Top-face ball-nose program for an arm contour and a
+            top roundover, or ``None``.
+        back_edges: Back-face ball-nose program for a belly cut and a
+            back roundover, or ``None``.
         back: Back-face setup after the flip: rear cavities, cover
             recesses, rear holes, and the lower half of the outline with
             tabs.
@@ -62,6 +68,8 @@ class BodyMachiningPlan:
     back_small_holes: Setup | None = None
     top_controls: Setup | None = None
     back_controls: Setup | None = None
+    top_edges: Setup | None = None
+    back_edges: Setup | None = None
 
     @property
     def setups(self) -> tuple[Setup, ...]:
@@ -75,9 +83,11 @@ class BodyMachiningPlan:
             self.top,
             self.top_controls,
             self.top_small_holes,
+            self.top_edges,
             self.back,
             self.back_controls,
             self.back_small_holes,
+            self.back_edges,
         )
         return tuple(setup for setup in candidates if setup is not None)
 
@@ -198,6 +208,15 @@ def plan_body_machining(
             parameters,
         )
     )
+    if body.top_edge.has_binding:
+        top_paths.append(
+            binding_path(
+                "Top binding channel",
+                top_frame.polygon(body.outline.points),
+                body.top_edge,
+                parameters,
+            )
+        )
     top = Setup(
         "Body_top",
         "Body top face - pockets, holes, upper half of the outline",
@@ -285,6 +304,14 @@ def plan_body_machining(
                 "outline's tabs).",
                 "The cover-screw spots are in Body_back_small_holes; drill the "
                 "screw pilots by hand to suit the screws.",
+                *(
+                    (
+                        "Drill the battery lead's channel from the battery box "
+                        "to the control cavity by hand.",
+                    )
+                    if body.battery_cavity is not None
+                    else ()
+                ),
             ),
             reference_points,
         )
@@ -300,6 +327,15 @@ def plan_body_machining(
             with_tabs=True,
         )
     )
+    if body.back_edge.has_binding:
+        back_paths.append(
+            binding_path(
+                "Back binding channel",
+                back_frame.polygon(body.outline.points),
+                body.back_edge,
+                parameters,
+            )
+        )
     back = Setup(
         "Body_back",
         "Body back face - bridge cavities, rear holes, lower half of the outline",
@@ -337,18 +373,30 @@ def plan_body_machining(
             small_tool,
         )
 
+    # The top's edge work stays within the upper outline's slot; the
+    # back's stays above the holding tabs.
+    top_edges = _edge_setup(
+        body, "top", top_frame, parameters, reference_points, half_depth
+    )
+    back_edges = _edge_setup(
+        body,
+        "back",
+        back_frame,
+        parameters,
+        reference_points,
+        half_depth - parameters.tab_height - 0.5,
+    )
+
     top_outline = top_frame.polygon(body.outline.points)
     back_outline = back_frame.polygon(body.outline.points)
     previews = [top_outline, top_outline]
-    if top_controls is not None:
-        previews.append(top_outline)
-    if top_small_holes is not None:
-        previews.append(top_outline)
+    for optional in (top_controls, top_small_holes, top_edges):
+        if optional is not None:
+            previews.append(top_outline)
     previews.append(back_outline)
-    if back_controls is not None:
-        previews.append(back_outline)
-    if back_small_holes is not None:
-        previews.append(back_outline)
+    for optional in (back_controls, back_small_holes, back_edges):
+        if optional is not None:
+            previews.append(back_outline)
     return BodyMachiningPlan(
         pin_setup,
         top,
@@ -364,6 +412,62 @@ def plan_body_machining(
         back_small_holes=back_small_holes,
         top_controls=top_controls,
         back_controls=back_controls,
+        top_edges=top_edges,
+        back_edges=back_edges,
+    )
+
+
+def _edge_setup(
+    body: BodySolid,
+    face: Literal["top", "back"],
+    frame: _Frame,
+    parameters: MachiningParameters,
+    reference_points: tuple[tuple[float, float], ...],
+    floor: float,
+) -> Setup | None:
+    """Return the ball-nose program for one face's contour and roundover.
+
+    Nothing goes deeper than ``floor``.
+    """
+    contours = [contour for contour in body.contours if contour.face == face]
+    edge = body.top_edge if face == "top" else body.back_edge
+    if not contours and edge.radius <= 0.0:
+        return None
+    ball = ball_tool(parameters)
+    paths: list[Toolpath] = []
+    for contour in contours:
+        paths += contour_paths(contour, frame.model, ball, floor)
+    if edge.radius > 0.0:
+        paths.append(
+            roundover_path(
+                f"{face.capitalize()} edge roundover",
+                frame.polygon(body.outline.points),
+                edge.radius,
+                ball,
+                lambda point: max(
+                    (contour.depth_at(frame.model(point)) for contour in contours),
+                    default=0.0,
+                ),
+                floor,
+            )
+        )
+    other = "Body_top" if face == "top" else "Body_back"
+    what = " and ".join(
+        [contour.name.lower() for contour in contours]
+        + ([f"{edge.radius:g} mm roundover"] if edge.radius > 0.0 else [])
+    )
+    return Setup(
+        f"Body_{face}_edges",
+        f"Body {face} face - {what} with a ball nose",
+        tuple(paths),
+        (
+            f"Same fixture and X/Y zero as {other}; change to a "
+            f"{ball.tool_diameter:g} mm ball nose and re-touch Z on the stock top.",
+            "Run it after the outline so the roundover has the outline's slot "
+            "to work in.",
+        ),
+        reference_points,
+        ball,
     )
 
 
@@ -387,6 +491,12 @@ class _Frame:
 
     def polygon(self, points: Sequence[Point2D]) -> tuple[Point2D, ...]:
         return tuple(self.point(point) for point in points)
+
+    def model(self, point: Point2D) -> Point2D:
+        """Return the model position of a machine point (``point``'s inverse)."""
+        if self.mirror_y:
+            return Point2D(point.x + self.origin_x, self.origin_y - point.y)
+        return Point2D(point.x + self.origin_x, point.y + self.origin_y)
 
 
 def _top_cavities(body: BodySolid) -> tuple[Cavity, ...]:
