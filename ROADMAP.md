@@ -33,7 +33,9 @@
   shape and dragged in the body editor.
 - **Stock truss-rod lengths** — done: the neck is routed for the longest
   20 mm stock rod that fits, or checks the rod in hand.
-- Release v1.
+- **v1.0.0-beta1** — released 2026-09-27 with everything above; v1.0.0
+  follows once the toolpaths are machine-verified (air cuts and first real
+  blanks).
 
 ## Later
 
@@ -43,6 +45,6 @@
 
 ```mermaid
 flowchart TD
-    Done["Done: guitar, bass, 7/8-string, CAD and CAM, slanted and fanned frets"] --> V1["v1"]
+    Done["Done: guitar, bass, 7/8-string, CAD and CAM, slanted and fanned frets"] --> V1["v1.0.0-beta1"]
     V1 --> Later["DXF export, wire channels, machine verification"]
 ```
