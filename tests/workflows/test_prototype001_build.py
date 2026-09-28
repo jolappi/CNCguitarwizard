@@ -108,7 +108,11 @@ def test_build_writes_gcode_and_toolpath_previews_for_every_part(
     assert report["truss_rod"]["rod_length_mm"] == 440.0
     assert report["truss_rod"]["recommended_stock_mm"] == 440.0
     assert report["truss_rod"]["longest_fitting_mm"] == pytest.approx(455.2)
-    assert report["stock"]["Neck"]["thickness_mm"] == 40.0
+    # The 8 degree headstock needs 36.6 mm; or a 20 mm plank with a block.
+    neck = report["stock"]["Neck"]
+    assert neck["thickness_mm"] == 36.6
+    assert neck["laminated"]["plank_thickness_mm"] == 20.0
+    assert neck["laminated"]["headstock_block_mm"]["thickness"] == 16.6
     assert len(report["stock"]["Fretboard"]["index_pins_model_xy"]) == 2
 
 

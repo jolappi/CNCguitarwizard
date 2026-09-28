@@ -99,7 +99,7 @@ class Prototype001Build:
         self._gcode_paths: list[Path] = []
         self._preview_paths: list[Path] = []
         self._gcode_report: dict[str, object] = {}
-        self._stock_report: dict[str, object] = {}
+        self._stock_report: dict[str, dict[str, object]] = {}
         self._report: dict[str, object] = {}
         self._macro_path = self.destination / "Prototype001.FCMacro"
         self._python_path = self.destination / "Prototype001_freecad.py"
@@ -242,6 +242,21 @@ class Prototype001Build:
                     for x, y in plan.index_pin_positions
                 ],
             }
+            if isinstance(plan, NeckMachiningPlan):
+                # The same blank laminated: the neck's own plank with a block
+                # glued under the headstock end (none needed when flat).
+                block = plan.headstock_block
+                self._stock_report[part]["laminated"] = {
+                    "plank_thickness_mm": plan.plank_thickness,
+                    "headstock_block_mm": None
+                    if block is None
+                    else {
+                        "length": block.length,
+                        "width": block.width,
+                        "thickness": block.thickness,
+                        "from_nut": -block.start_x,
+                    },
+                }
 
     def _write_script_and_report(self) -> None:
         assert self.geometry is not None

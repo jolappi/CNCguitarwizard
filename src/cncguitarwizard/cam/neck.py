@@ -42,7 +42,7 @@ from .surfacing import (
 )
 
 if TYPE_CHECKING:
-    from ..geometry.neck import TrussRodChannel
+    from ..geometry.neck import HeadstockSolid, TrussRodChannel
     from ..presets import Prototype001Geometry
 
 
@@ -62,9 +62,9 @@ class NeckMachiningParameters:
         flat: The 6 mm flat end mill used for the truss-rod channel,
             headstock face, tuner marks, roughing, and the outline.
         ball: The ball nose of the same diameter used to finish the back.
-        blank_thickness: Planed thickness of the neck blank; raised
-            automatically when the headstock tip needs more. Must exceed
-            the headstock's lowest point below the glue plane.
+        blank_thickness: Planed thickness of the neck blank; ``None`` (the
+            default) for the thinnest that holds the neck and headstock.
+            Raised automatically when the headstock needs more.
         skin: Wood left under the part (at the glue-plane side) outside
             the outline and along the back's edges, so the neck stays in
             its waste frame until the tabbed outline cut.
@@ -85,7 +85,7 @@ class NeckMachiningParameters:
 
     flat: MachiningParameters = field(default_factory=_flat_tool)
     ball: MachiningParameters = field(default_factory=_ball_tool)
-    blank_thickness: float = 40.0
+    blank_thickness: float | None = None
     skin: float = 2.0
     roughing_step_over: float = 0.6
     finishing_step_over: float = 0.75
@@ -95,8 +95,11 @@ class NeckMachiningParameters:
     tuner_mark_depth: float = 0.5
 
     def __post_init__(self) -> None:
+        if self.blank_thickness is not None and (
+            not math.isfinite(self.blank_thickness) or self.blank_thickness <= 0.0
+        ):
+            raise ToolpathError("blank_thickness must be finite and positive.")
         for name, value in (
-            ("blank_thickness", self.blank_thickness),
             ("skin", self.skin),
             ("finishing_step_over", self.finishing_step_over),
             ("face_finish_step_over", self.face_finish_step_over),
@@ -113,8 +116,39 @@ class NeckMachiningParameters:
 
 
 @dataclass(frozen=True, slots=True)
+class HeadstockBlock:
+    """The block glued under a plank's headstock end to make a laminated blank.
+
+    Model frame: X from the nut (the headstock is at negative X), Y across.
+
+    Args:
+        start_x: Where the block starts, nut side: where the headstock's
+            back first reaches below the plank.
+        end_x: Where it ends, at the blank's headstock end.
+        width: Its width, centred on the neck.
+        thickness: Its thickness below the plank.
+    """
+
+    start_x: float
+    end_x: float
+    width: float
+    thickness: float
+
+    @property
+    def length(self) -> float:
+        """Return the block's length along the neck."""
+        return self.start_x - self.end_x
+
+
+@dataclass(frozen=True, slots=True)
 class NeckMachiningPlan:
-    """The setups that machine one neck, in running order."""
+    """The setups that machine one neck, in running order.
+
+    ``stock_thickness`` is the whole blank's; the same blank can instead be
+    a ``plank_thickness`` plank with ``headstock_block`` glued under its
+    headstock end (``None`` when the plank alone is thick enough), which
+    the same programs cut.
+    """
 
     index_pins: Setup
     top: Setup
@@ -128,6 +162,8 @@ class NeckMachiningPlan:
     origin_y: float
     index_pin_positions: tuple[tuple[float, float], ...]
     preview_outlines: tuple[tuple[Point2D, ...], ...]
+    plank_thickness: float = 0.0
+    headstock_block: HeadstockBlock | None = None
 
     @property
     def setups(self) -> tuple[Setup, ...]:
@@ -138,6 +174,44 @@ class NeckMachiningPlan:
             self.back_finish,
             self.back_outline,
         )
+
+
+def _round_up(depth: float) -> float:
+    """Return ``depth`` rounded up to the next 0.1 mm."""
+    return math.ceil(round(depth * 10.0, 6)) / 10.0
+
+
+def _headstock_block(
+    headstock: HeadstockSolid,
+    plank: float,
+    thickness: float,
+    blank_end_x: float,
+    tool_diameter: float,
+) -> HeadstockBlock | None:
+    """Return the block a ``plank``-thick blank needs under its headstock.
+
+    It starts where the headstock's back first falls below the plank and
+    runs to the blank's end (so the tip's index pin goes through it), as
+    wide as the headstock plus room for the outline cut either side, and
+    makes up the rest of ``thickness``. ``None`` when the plank is enough.
+    """
+    extra = thickness - plank
+    if extra <= 1e-9:
+        return None
+    radians = math.radians(headstock.angle.angle_degrees)
+    back_offset = headstock.thickness / math.cos(radians)
+    tangent = math.tan(radians)
+    # The back plane: face_z(x) - back_offset, falling toward the tip.
+    if tangent > 0.0:
+        start = headstock.face_pivot_x + (
+            -plank + headstock.face_drop + back_offset
+        ) / tangent
+    else:
+        start = 0.0
+    start = min(0.0, math.floor(start))
+    half = max(abs(point.y) for point in headstock.plan.boundary)
+    width = math.ceil(2.0 * (half + tool_diameter + 2.0))
+    return HeadstockBlock(start, math.floor(blank_end_x), width, _round_up(extra))
 
 
 def _face_depth_at(
@@ -239,10 +313,14 @@ def plan_neck_machining(
 ) -> NeckMachiningPlan:
     """Return toolpaths for every machinable feature of the neck.
 
-    The blank is ``blank_thickness`` thick, or thicker when the angled
-    headstock's tip reaches lower than that — a longer in-line headstock
-    needs a thicker blank, and the plan's ``stock_thickness`` and the
-    index-pin program's blank note say how much.
+    The blank is as thick as the neck and headstock need — their deepest
+    point below the glue face — or ``blank_thickness`` when that is more.
+    A flat headstock needs no more than the neck (20 mm); an angled one
+    needs a thicker blank, either one solid plank or the neck's own plank
+    with a block glued under the headstock (``headstock_block``). The
+    same programs cut both: they are planned for the full thickness, with
+    Z zero on the blank's back — the block's underside on a laminated
+    blank — so over the neck the first passes cut air.
 
     Raises:
         ToolpathError: If an index pin cannot be placed.
@@ -254,9 +332,13 @@ def plan_neck_machining(
     tangent = math.tan(angle)
     back_plane_offset = headstock.thickness / math.cos(angle)
     tip_x = -headstock.plan.length
-    lowest = headstock.face_z(tip_x) - back_plane_offset
-    needed = math.ceil((-lowest + parameters.skin) * 10.0) / 10.0
-    thickness = max(parameters.blank_thickness, needed)
+    headstock_lowest = headstock.face_z(tip_x) - back_plane_offset
+    neck_lowest = min(
+        point.z for row in geometry.neck_surface.mesh.rows for point in row
+    )
+    plank = _round_up(-neck_lowest)
+    needed = _round_up(-min(headstock_lowest, neck_lowest))
+    thickness = max(parameters.blank_thickness or 0.0, needed)
 
     outline = neck_plan_polygon(geometry)
     min_x, min_y, max_x, max_y = polygon_bounds(outline)
@@ -268,6 +350,9 @@ def plan_neck_machining(
         Point2D(min_x - radius, max_y + radius),
     )
     stock = StockBounds.around(outline, flat.stock_margin)
+    headstock_block = _headstock_block(
+        headstock, plank, thickness, stock.min_x, flat.tool_diameter
+    )
     pins, stock = resolve_index_pins(outline, [sweep], flat, stock)
     origin_x, origin_y = pins[0]
     top_frame = _Frame(origin_x, origin_y, mirror_y=False)
@@ -293,13 +378,25 @@ def plan_neck_machining(
             "Both dowels sit in the waste on the centerline, beyond the "
             "headstock tip and beyond the heel.",
             f"Blank: at least {stock.length:.0f} x {stock.width:.0f} x "
-            f"{thickness:g} mm."
+            f"{thickness:g} mm"
             + (
-                f" (the {headstock.plan.length:g} mm headstock needs "
-                f"{thickness:g} mm, more than the {parameters.blank_thickness:g} "
-                "mm blank_thickness)"
-                if thickness > parameters.blank_thickness
-                else ""
+                f" (more than the {parameters.blank_thickness:g} mm "
+                "blank_thickness: the headstock needs it)."
+                if parameters.blank_thickness is not None
+                and thickness > parameters.blank_thickness
+                else "."
+            ),
+            *(
+                (
+                    f"Or laminate it: a {stock.length:.0f} x {stock.width:.0f} x "
+                    f"{plank:g} mm plank with a {block.length:.0f} x "
+                    f"{block.width:.0f} x {block.thickness:g} mm block glued "
+                    f"under its headstock end, from {-block.start_x:.0f} mm "
+                    "behind the nut to the blank's end; the programs are the "
+                    "same (Z zero on the block's underside when flipped).",
+                )
+                if (block := headstock_block) is not None
+                else ()
             ),
         ),
         reference_points,
@@ -456,7 +553,9 @@ def plan_neck_machining(
         ),
         (
             "Flip the blank about the neck centerline onto the same two index pins.",
-            "Keep X/Y zero at index pin 1; set Z zero on the (new) blank top.",
+            "Keep X/Y zero at index pin 1; set Z zero on the (new) blank top "
+            "(on a laminated blank, the headstock block's underside: the "
+            "passes over the neck cut air down to the plank).",
             f"Roughing stops {parameters.skin:g} mm short of the glue plane "
             "everywhere, so the neck stays attached to its waste frame.",
         ),
@@ -523,6 +622,8 @@ def plan_neck_machining(
         origin_x=origin_x,
         origin_y=origin_y,
         index_pin_positions=pins,
+        plank_thickness=plank,
+        headstock_block=headstock_block,
         preview_outlines=(
             top_outline,
             top_outline,

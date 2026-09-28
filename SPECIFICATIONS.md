@@ -241,7 +241,7 @@ tallenneta palvelimelle.
 | Ääriviiva | puolet paksuudesta + 0,5 mm kummaltakin puolelta; takapuolella 6 kpl 8 × 4 mm pidiketappia |
 | Jakin poraus | käsin/porausjigillä reunasta (ei G-koodissa) |
 | Kaulan G-koodi | `Neck_index_pins` → `Neck_top` (kaularauta, lavan pinta 8°, viritinreikien merkit) → käännä → `Neck_back_rough` (6 mm tasa) → `Neck_back_finish` (6 mm pallo, 0,75 mm askel) → `Neck_back_outline` (tapit) |
-| Kaulan aihio | 40 mm paksu, höylätty; yläpinta = otelaudan liimapinta; 2 mm nahka pitää kaulan kehyksessä |
+| Kaulan aihio | Paksuus lasketaan tarpeesta (kaulan tai lavan syvin kohta liimapinnasta; `blank_thickness` voi pakottaa paksumman). Suora lapa: 20 mm lankku riittää. Kallistettu lapa kahdella tavalla: (1) yksi paksu lankku (8°: 36,6 mm) tai (2) kaulan 20 mm lankku + lavan alle liimattava pala (8°: 152 × 78 × 16,6 mm, 33 mm satulasta aihion päähän); samat ohjelmat, liimatussa Z-nolla palan alapintaan. Yläpinta = otelaudan liimapinta; 2 mm nahka pitää kaulan kehyksessä |
 | Viritinreiät | vain 0,5 mm keskimerkit lavan pintaan — porataan pylväsporalla 8° kiilalla kohtisuoraan lapaan |
 | Otelaudan G-koodi | `Fretboard_index_pins` → `Fretboard_radius` (pallo) → `Fretboard_inlays` (1 mm) → `Fretboard_slots` (0,6 mm, 3 × 0,9 mm sädettä seuraten) → `Fretboard_outline` (tapit) |
 | Otelaudan aihio | 7 mm; harja 1 mm aihion pinnan alle |

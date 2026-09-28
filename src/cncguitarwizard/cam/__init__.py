@@ -17,6 +17,7 @@ from .fretboard import (
 )
 from .gcode import GCodeWriter, GRBLWriter, Setup
 from .neck import (
+    HeadstockBlock,
     NeckMachiningParameters,
     NeckMachiningPlan,
     neck_plan_polygon,
@@ -44,6 +45,7 @@ __all__ = [
     "FretboardMachiningParameters",
     "FretboardMachiningPlan",
     "GCodeWriter",
+    "HeadstockBlock",
     "GRBLWriter",
     "POST_PROCESSOR_LABELS",
     "MachiningParameters",

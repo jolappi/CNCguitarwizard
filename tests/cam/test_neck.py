@@ -101,7 +101,7 @@ def test_truss_rod_and_headstock_face_depths(plan, geometry) -> None:  # type: i
 
 def test_ball_finish_never_cuts_below_the_neck_back(plan, geometry, parameters) -> None:  # type: ignore[no-untyped-def]
     """Every finishing move keeps the ball above every sampled back-surface point."""
-    thickness = parameters.blank_thickness
+    thickness = plan.stock_thickness
     r = parameters.ball.tool_radius
     origin_x, origin_y = plan.index_pin_positions[0]
     rows = geometry.neck_surface.mesh.rows[::6]
@@ -131,18 +131,18 @@ def test_roughing_stays_above_the_finished_surface_and_within_the_blank(  # type
 ) -> None:
     rough = plan.back_rough.toolpaths[0]
     finish = plan.back_finish.toolpaths[0]
-    skin_level = -(parameters.blank_thickness - parameters.skin)
+    skin_level = -(plan.stock_thickness - parameters.skin)
 
     assert rough.deepest_z() >= skin_level - 1e-6
     assert finish.deepest_z() >= skin_level - 1e-6
     # The heel back (20 mm thick) is the shallowest neck-wood cut: 20 mm
-    # into a 40 mm blank.
-    assert finish.deepest_z() <= -20.0
+    # above the glue plane, whatever the blank's thickness.
+    assert finish.deepest_z() <= -(plan.stock_thickness - 20.0)
 
 
 def test_outline_cuts_the_skin_with_tabs(plan, parameters) -> None:  # type: ignore[no-untyped-def]
     outline = plan.back_outline.toolpaths[0]
-    thickness = parameters.blank_thickness
+    thickness = plan.stock_thickness
     cut_moves = [move for move in outline.moves if not move.rapid]
 
     assert outline.deepest_z() == pytest.approx(
@@ -161,8 +161,8 @@ def test_blank_too_thin_for_the_headstock_is_thickened(geometry) -> None:  # typ
     plan = plan_neck_machining(geometry, NeckMachiningParameters(blank_thickness=30.0))
 
     # The face falls from the nut's 5 mm seat: the last 145 mm at 8 deg drop
-    # 20.38 mm, plus 16 mm / cos 8 deg and the 2 mm skin.
-    assert plan.stock_thickness == pytest.approx(38.6, abs=0.05)
+    # 20.38 mm, plus 16 mm / cos 8 deg.
+    assert plan.stock_thickness == pytest.approx(36.6, abs=0.05)
     assert "more than the 30 mm blank_thickness" in " ".join(plan.setups[0].notes)
 
 
@@ -174,8 +174,7 @@ def test_a_six_in_line_headstock_thickens_the_blank() -> None:
     geometry = replace(Prototype001Parameters(), headstock_style="6_inline").build()
     plan = plan_neck_machining(geometry, NeckMachiningParameters())
 
-    assert plan.stock_thickness == pytest.approx(44.9, abs=0.05)
-    assert plan.stock_thickness > 40.0
+    assert plan.stock_thickness == pytest.approx(42.9, abs=0.05)
 
 
 def test_setups_render_with_their_own_tool_lines(plan) -> None:  # type: ignore[no-untyped-def]
@@ -251,3 +250,44 @@ def test_a_flat_headstock_not_set_down_leaves_its_face_unmilled() -> None:
     assert "Headstock face roughing" not in names
     assert "Headstock face finishing" not in names
     assert any("level with the glue face" in note for note in top.notes)
+
+
+def test_a_flat_headstock_neck_comes_from_a_20_mm_plank() -> None:
+    # The neck and the set-down flat headstock both end 20 mm below the
+    # glue face: the plank alone is enough, with no block to glue on.
+    geometry = replace(Prototype001Parameters(), headstock_angle=0.0).build()
+    plan = plan_neck_machining(geometry, NeckMachiningParameters())
+
+    assert plan.stock_thickness == 20.0
+    assert plan.plank_thickness == 20.0
+    assert plan.headstock_block is None
+    assert not any("laminate" in note for note in plan.index_pins.notes)
+
+
+def test_an_angled_headstock_blank_can_be_laminated(geometry) -> None:  # type: ignore[no-untyped-def]
+    plan = plan_neck_machining(geometry, NeckMachiningParameters())
+    block = plan.headstock_block
+    headstock = geometry.headstock
+
+    assert block is not None
+    # The neck's own 20 mm plank, and a block making up the rest.
+    assert plan.plank_thickness == 20.0
+    assert plan.plank_thickness + block.thickness == pytest.approx(plan.stock_thickness)
+    # It starts where the headstock's back first falls below the plank.
+    back = headstock.face_z(block.start_x) - headstock.thickness / math.cos(
+        math.radians(headstock.angle.angle_degrees)
+    )
+    assert -21.0 < back <= -20.0 + 1e-6
+    # It runs to the blank's end and is wide enough for the outline cut.
+    assert block.end_x <= -headstock.plan.length
+    assert block.width >= 2.0 * max(abs(p.y) for p in headstock.plan.boundary) + 12
+    assert any("Or laminate it" in note for note in plan.index_pins.notes)
+
+
+def test_a_given_blank_thickness_is_raised_when_too_thin_and_kept_when_thicker() -> (
+    None
+):
+    geometry = Prototype001Parameters().build()
+    thick = plan_neck_machining(geometry, NeckMachiningParameters(blank_thickness=45.0))
+
+    assert thick.stock_thickness == 45.0

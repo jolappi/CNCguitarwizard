@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### Changed
+
+- The neck blank is as thick as the neck and headstock need, not a fixed
+  40 mm (`NeckMachiningParameters.blank_thickness` now defaults to none):
+  a flat headstock's neck comes from a 20 mm plank. An angled headstock's
+  blank is given two ways, one solid plank or the neck's 20 mm plank with
+  a block glued under the headstock (`NeckMachiningPlan.headstock_block`),
+  cut by the same programs, in the index-pin notes, `build.json`
+  (`stock.Neck.laminated`) and the web summary. The needless 2 mm skin
+  under the headstock's lowest point is gone.
+
 ### Fixed
 
 - A 0 degree (flat, Fender-style) headstock is accepted (it was refused

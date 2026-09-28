@@ -25,10 +25,24 @@ pin 1 → pin 2 → pin 1 check.
 
 ## Neck (`NeckMachiningParameters`, five programs)
 
-The blank is planed to `blank_thickness` (40 mm) with its top face the
-fretboard glue plane; a headstock whose angled tip reaches lower (a 195 mm
-six-in-line headstock needs 45.6 mm) raises the blank thickness on its own,
-and the stock report and the index-pin program's blank note say so. Two dowels sit in the waste beyond the headstock tip
+The blank's top face is the fretboard glue plane, and it is as thick as the
+neck and headstock need — their deepest point below that plane — unless
+`blank_thickness` asks for more. The neck itself needs 20 mm (the heel), so
+a flat headstock (set down to end 20 mm below the fretboard) comes from a
+plain 20 mm plank. An angled one needs more (8 degrees: 36.6 mm; a 197 mm
+six-in-line at 8 degrees: 42.9 mm), and the blank can be either:
+
+1. one solid plank that thick, or
+2. the neck's 20 mm plank with a block glued under its headstock end
+   (`NeckMachiningPlan.headstock_block`: from where the headstock's back
+   first falls below the plank to the blank's end, the headstock's width
+   plus room for the outline cut, the rest of the thickness).
+
+The same programs cut both: they are planned for the full thickness with
+Z zero on the blank's back, which on a laminated blank is the block's
+underside, so over the neck the first passes cut air. The index-pin
+program's notes, `build.json` (`stock.Neck.laminated`) and the web app's
+summary give both. Two dowels sit in the waste beyond the headstock tip
 and beyond the heel, on the centerline.
 
 | Program | Setup | Contents |

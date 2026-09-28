@@ -509,6 +509,12 @@ function showResult(result) {
   const rows = [];
   for (const [part, stock] of Object.entries(report.stock)) {
     rows.push([`${part} blank`, `${stock.length_mm} × ${stock.width_mm} × ${stock.thickness_mm} mm, pins at machine X ${stock.index_pins_machine_xy.map((p) => p[0]).join(" / ")}`]);
+    // The neck blank can instead be the neck's own plank with a block
+    // glued under the headstock end; the programs are the same.
+    const block = stock.laminated && stock.laminated.headstock_block_mm;
+    if (block) {
+      rows.push([`${part} blank, laminated`, `${stock.length_mm} × ${stock.width_mm} × ${stock.laminated.plank_thickness_mm} mm plank + ${block.length} × ${block.width} × ${block.thickness} mm block glued under the headstock, from ${block.from_nut} mm behind the nut to the end (Z zero on the block's underside when flipped)`]);
+    }
   }
   const partRank = (part) => (partOrder.includes(part) ? partOrder.indexOf(part) : partOrder.length);
   const programs = Object.entries(report.gcode).sort(([, a], [, b]) => (
