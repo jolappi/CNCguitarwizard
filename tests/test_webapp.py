@@ -467,3 +467,15 @@ def test_the_post_processor_is_a_basic_choice_with_readable_names() -> None:
     ]
     assert choice["labels"]["mach3"] == "Mach3 / Mach4 / UCCNC"
     assert fields["spindle_dwell"]["default"] == 0.0
+
+
+def test_the_pickup_selector_is_a_basic_choice() -> None:
+    fields = {
+        field["name"]: field
+        for group in parameter_schema()["prototype"]
+        for field in group["fields"]
+    }
+    choice = fields["body_switch"]
+    assert choice["advanced"] is False and choice["default"] == "toggle"
+    assert choice["options"] == ["toggle", "micro"]
+    assert choice["labels"]["micro"].startswith("Micro")

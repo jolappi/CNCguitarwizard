@@ -46,6 +46,10 @@ _VARIANT_LABELS: dict[str, str] = {**BRIDGE_LABELS, **BODY_SHAPE_LABELS}
 _CHOICE_LABELS: dict[str, dict[str, str]] = {
     "body_controls": CONTROL_LABELS,
     "post_processor": POST_PROCESSOR_LABELS,
+    "body_switch": {
+        "toggle": "3-way toggle (1/2 in hole, 12.7 mm)",
+        "micro": "Micro (mini) toggle (1/4 in hole, 6.35 mm)",
+    },
     "body_pickups_follow_fan": {
         "auto": "Auto (turn, except with a Tune-o-matic)",
         "yes": "Turn with the frets",
@@ -93,6 +97,7 @@ _BASIC_FIELDS: frozenset[str] = frozenset(
         "body_pickups",
         "body_bridge",
         "body_controls",
+        "body_switch",
         "body_battery_box",
         "body_pickups_follow_fan",
         "body_bridge_follows_fan",

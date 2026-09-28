@@ -184,3 +184,16 @@ def test_a_floyd_rose_spring_cavity_gets_a_six_screw_cover() -> None:
     plan = plan_cover_machining(geometry.covers, MachiningParameters())
     assert plan is not None
     assert "Cover_floyd_rose_spring_cavity" in [s.name for s in plan.covers]
+
+
+def test_the_pickup_selector_can_be_a_micro_toggle() -> None:
+    def switch_hole(**overrides: object) -> float:
+        body = replace(Prototype001Parameters(), **overrides).build().body
+        (hole,) = [h for h in body.holes if h.name == "Switch shaft hole"]
+        return hole.diameter
+
+    # A 3-way toggle's 1/2 in bushing by default, a micro toggle's 1/4 in.
+    assert switch_hole() == 12.7
+    assert switch_hole(body_switch="micro") == 6.35
+    # A hole given by hand wins.
+    assert switch_hole(body_switch="micro", body_switch_shaft_hole_diameter=7.0) == 7.0

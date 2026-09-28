@@ -226,6 +226,12 @@ follows the shape and moves with the control group in the body editor.
 | `tele` | Telecaster-style plate | A 160 × 32 mm plate recess (cover depth) routed into the **top**, with a 140 × 22 mm control cavity from its floor; the plate carries 2 pot holes, a 20 × 7 mm blade switch slot and 2 screws |
 | `none` | No controls | No control or switch cavity, pots or covers |
 
+The rear layouts' pickup selector is chosen with `body_switch`: a 3-way
+toggle (`toggle`, the default) through a 1/2 in (12.7 mm) hole, or a micro
+(mini) toggle (`micro`) through a 1/4 in (6.35 mm) one
+(`SWITCH_SHAFT_HOLE_DIAMETERS`); `body_switch_shaft_hole_diameter` sets the
+hole by hand instead. The Tele plate carries its own blade switch.
+
 Rear layouts spread their cover screws round the ledge between the cavity
 and its recess (`geometry.body.cover_screw_points`: rays from the cover's
 centre toward its corners, turned up to 30° where the ledge is narrower

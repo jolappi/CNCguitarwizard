@@ -83,6 +83,13 @@ NECK_FERRULE_BODY_WALL = 1.0
 """Least wood, in mm, between a neck-bolt ferrule and the body's edge, and
 between two ferrules."""
 
+SWITCH_SHAFT_HOLE_DIAMETERS: dict[str, float] = {
+    "toggle": 12.7,
+    "micro": 6.35,
+}
+"""The pickup selector's bushing hole, in mm: a 3-way toggle's 1/2 in, a
+micro (mini) toggle's 1/4 in."""
+
 FLAT_HEADSTOCK_FACE_DROP = 4.0
 """How far a flat headstock's face is set below the glue face, in mm: its
 16 mm in the bottom of a 20 mm blank below the fretboard, so the strings
@@ -474,10 +481,14 @@ class Prototype001Parameters:
     body_battery_cavity_width: float = 30.0
     body_battery_cavity_depth: float = 22.0
     body_battery_cover_margin: float = 7.0
-    # Shaft holes through the top wall: a 1/2" toggle bushing at the
-    # switch cavity's centre, and 3/8" pot bushings at the shape's pot
-    # positions.
-    body_switch_shaft_hole_diameter: float = 12.7
+    # Shaft holes through the top wall: the pickup selector's bushing at
+    # the switch cavity's centre, and 3/8" pot bushings at the shape's pot
+    # positions. body_switch picks the selector: a "toggle" (a 3-way
+    # Switchcraft-style toggle, 1/2" bushing) or a "micro" (mini) toggle,
+    # 1/4" bushing (SWITCH_SHAFT_HOLE_DIAMETERS); a
+    # body_switch_shaft_hole_diameter overrides the hole.
+    body_switch: Literal["toggle", "micro"] = "toggle"
+    body_switch_shaft_hole_diameter: float | None = None
     body_pot_shaft_hole_diameter: float = 10.0
     # Output jack bore, in from the edge at the shape's jack position.
     body_jack_diameter: float = 12.5
@@ -1197,6 +1208,15 @@ class Prototype001Parameters:
         return tuple(holes)
 
     @property
+    def switch_shaft_hole_diameter(self) -> float:
+        """Return the selector's hole: ``body_switch_shaft_hole_diameter``,
+        else the chosen ``body_switch``'s own (``SWITCH_SHAFT_HOLE_DIAMETERS``).
+        """
+        if self.body_switch_shaft_hole_diameter is not None:
+            return self.body_switch_shaft_hole_diameter
+        return SWITCH_SHAFT_HOLE_DIAMETERS[self.body_switch]
+
+    @property
     def face_drop(self) -> float:
         """Return how far the headstock face lies below the glue face.
 
@@ -1761,7 +1781,7 @@ class Prototype001Parameters:
                 top_wall=self.body_rear_cavity_top_wall,
                 cover_depth=self.body_cover_recess_depth,
                 pot_hole_diameter=self.body_pot_shaft_hole_diameter,
-                switch_hole_diameter=self.body_switch_shaft_hole_diameter,
+                switch_hole_diameter=self.switch_shaft_hole_diameter,
             )
 
         def clear(controls: ControlFeatures) -> bool:

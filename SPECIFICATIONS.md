@@ -99,7 +99,10 @@ Kontrollikolot valitaan (`body_controls`): Design by Jone -manteli kahdella
 potikalla (oletus), Gibson-tyylinen kolo neljällä potikalla, takakolo kolmella
 potikalla rivissä, Telecaster-tyylinen kontrollilevy rungon päälle upotettuna
 (2 potikkaa ja teräkytkimen aukko) tai ei kontrolleja. Takakoloissa on
-myös pyöreä kytkinkolo. Kolot ajetaan omissa ohjelmissaan
+myös pyöreä kytkinkolo. Mikkivalitsimeksi valitaan (`body_switch`)
+3-asentoinen vipukytkin (oletus, 1/2" eli 12,7 mm reikä) tai mikro- eli
+minivipukytkin (1/4" eli 6,35 mm reikä); `body_switch_shaft_hole_diameter`
+antaa reiän käsin. Kolot ajetaan omissa ohjelmissaan
 (`Body_back_controls.nc`, Telellä `Body_top_controls.nc`). Jos Gibson- tai
 rivikolo osuisi syvään yläpuolen koloon (esim. Floydin hienosäätimien
 kolo) niin, ettei välissä jää puuta, kolo potikoineen ja kansineen siirtyy
