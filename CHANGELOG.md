@@ -22,6 +22,9 @@
 
 ### Changed
 
+- The plan view stands upright, headstock at the top (the side view
+  turned a quarter turn clockwise, not mirrored), and the web app fits it
+  to the window.
 - The neck blank is as thick as the neck and headstock need, not a fixed
   40 mm (`NeckMachiningParameters.blank_thickness` now defaults to none):
   a flat headstock's neck comes from a 20 mm plank. An angled headstock's

@@ -69,7 +69,8 @@ Python.
    button between stages, since Pyodide runs Python on the page's own
    thread. Everything lands in Pyodide's in-memory file system and comes
    back as text.
-5. Shows the whole-instrument plan view, the three toolpath plots, download
+5. Shows the whole-instrument plan view (standing upright, headstock at
+   the top, sized to fit the window), the three toolpath plots, download
    links for the FreeCAD script (`.py` and `.FCMacro`), every `.nc`
    program (body, electronics, neck, fretboard and one per cover plate), the SVG plots and `build.json`, and a summary with stock size
    and time estimates. The downloads come in one list per part — the

@@ -14,8 +14,10 @@ if TYPE_CHECKING:
 def render_plan_view_svg(geometry: Prototype001Geometry) -> str:
     """Return an SVG of the body, neck, headstock, and every routed feature.
 
-    The drawing uses the model frame seen from the front: X runs from
-    the nut toward the tail, +Y is up. Top-face cavities are filled,
+    The drawing is the model seen from the front, standing up: the
+    headstock at the top, the model's X (nut toward tail) running down
+    the page and +Y to the right — the side view turned a quarter turn
+    clockwise, not mirrored. Top-face cavities are filled,
     rear cavities are dashed, holes are circles, frets are lines, and
     the inlays are drawn as their own outlines.
     """
@@ -26,24 +28,30 @@ def render_plan_view_svg(geometry: Prototype001Geometry) -> str:
     max_x = max(point.x for point in points) + 15.0
     min_y = min(point.y for point in points) - 15.0
     max_y = max(point.y for point in points) + 15.0
-    width = max_x - min_x
-    height = max_y - min_y
+    # Portrait: the page is as wide as the instrument and as tall as it
+    # is long.
+    width = max_y - min_y
+    height = max_x - min_x
 
-    def sx(x: float) -> str:
-        return f"{x - min_x:.2f}"
-
-    def sy(y: float) -> str:
-        return f"{max_y - y:.2f}"
+    def screen(x: float, y: float) -> tuple[str, str]:
+        # A quarter turn clockwise of "X right, +Y up": the headstock (at
+        # negative X) goes to the top and +Y to the right.
+        return f"{y - min_y:.2f}", f"{x - min_x:.2f}"
 
     def path(polygon: Iterable[Point2D], style: str) -> str:
         data = " ".join(
-            f"{'M' if index == 0 else 'L'}{sx(point.x)},{sy(point.y)}"
+            f"{'M' if index == 0 else 'L'}{','.join(screen(point.x, point.y))}"
             for index, point in enumerate(polygon)
         )
         return f'<path d="{data} Z" {style}/>'
 
     def circle(x: float, y: float, radius: float, style: str) -> str:
-        return f'<circle cx="{sx(x)}" cy="{sy(y)}" r="{radius:.2f}" {style}/>'
+        cx, cy = screen(x, y)
+        return f'<circle cx="{cx}" cy="{cy}" r="{radius:.2f}" {style}/>'
+
+    def line(x1: float, y1: float, x2: float, y2: float, style: str) -> str:
+        (ax, ay), (bx, by) = screen(x1, y1), screen(x2, y2)
+        return f'<line x1="{ax}" y1="{ay}" x2="{bx}" y2="{by}" {style}/>'
 
     wood = 'fill="#f1e4c8" stroke="#6b4a1f" stroke-width="0.8"'
     fretboard = 'fill="#3b2a1a" stroke="#1f150c" stroke-width="0.5"'
@@ -68,10 +76,7 @@ def render_plan_view_svg(geometry: Prototype001Geometry) -> str:
     ]
     parts.append(path(_fretboard_polygon(geometry), fretboard))
     for slot in geometry.fret_layout.slots:
-        parts.append(
-            f'<line x1="{sx(slot.start.x)}" y1="{sy(slot.start.y)}" '
-            f'x2="{sx(slot.end.x)}" y2="{sy(slot.end.y)}" {fret}/>'
-        )
+        parts.append(line(slot.start.x, slot.start.y, slot.end.x, slot.end.y, fret))
     for marker in geometry.inlay_layout.markers:
         parts.append(path(marker.outline, inlay))
     for tuner in geometry.tuner_layout.holes:
@@ -116,9 +121,13 @@ def render_plan_view_svg(geometry: Prototype001Geometry) -> str:
     jack = body.jack_hole
     parts.append(circle(jack.start_x, jack.start_y, jack.diameter / 2.0, hole))
     parts.append(
-        f'<line x1="{sx(min_x + 5.0)}" y1="{sy(0.0)}" '
-        f'x2="{sx(max_x - 5.0)}" y2="{sy(0.0)}" '
-        'stroke="#999" stroke-width="0.3" stroke-dasharray="4,3"/>'
+        line(
+            min_x + 5.0,
+            0.0,
+            max_x - 5.0,
+            0.0,
+            'stroke="#999" stroke-width="0.3" stroke-dasharray="4,3"',
+        )
     )
     parts.append("</svg>")
     return "\n".join(parts)
