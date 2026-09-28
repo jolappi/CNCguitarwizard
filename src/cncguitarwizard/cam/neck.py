@@ -21,7 +21,7 @@ offset grids in ``surfacing`` keep the tool from gouging.
 from __future__ import annotations
 
 import math
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -140,6 +140,13 @@ class NeckMachiningPlan:
         )
 
 
+def _face_depth_at(
+    face_depth: Callable[[float, float], float], point: Point2D
+) -> float:
+    """Return ``face_depth`` at a model-frame point."""
+    return face_depth(point.x, point.y)
+
+
 def _nut_filler_note(truss: TrussRodChannel, shelf: float) -> tuple[str, ...]:
     """Return the note to fill the route under the nut, if it runs there.
 
@@ -158,9 +165,9 @@ def _nut_filler_note(truss: TrussRodChannel, shelf: float) -> tuple[str, ...]:
     return (
         f"The truss rod's route runs under the nut seat: after fitting the rod, "
         f"glue a wooden filler {width:g} mm wide and {round(shelf, 1):g} mm long (the "
-        "seat, from the end of the nut shelf to the fretboard) into it over "
-        "the rod, flush with the seat, before gluing the nut, so the nut sits "
-        "on wood over its whole width.",
+        "nut's seat, behind the fretboard) into it over the rod, flush with "
+        "the seat, before gluing the nut, so the nut sits on wood over its "
+        "whole width.",
     )
 
 
@@ -247,7 +254,7 @@ def plan_neck_machining(
     tangent = math.tan(angle)
     back_plane_offset = headstock.thickness / math.cos(angle)
     tip_x = -headstock.plan.length
-    lowest = tip_x * tangent - back_plane_offset
+    lowest = headstock.face_z(tip_x) - back_plane_offset
     needed = math.ceil((-lowest + parameters.skin) * 10.0) / 10.0
     thickness = max(parameters.blank_thickness, needed)
 
@@ -302,8 +309,10 @@ def plan_neck_machining(
     # ---- top face: truss rod, headstock face, tuner marks -----------------
     shelf = geometry.neck_surface.nut_shelf_length
 
-    def face_depth(model_x: float) -> float:
-        return 0.0 if model_x >= -shelf else model_x * tangent
+    # The nut's flat seat runs nut_shelf_length behind the nut line, level
+    # with the glue face; the face starts right behind it.
+    def face_depth(model_x: float, model_y: float = 0.0) -> float:
+        return headstock.top_z(model_x, model_y)
 
     truss = geometry.truss_rod_channel
     route = _overrun_truss_route(truss, flat.tool_radius)
@@ -311,36 +320,41 @@ def plan_neck_machining(
         pocket(name, top_frame.polygon(boundary), depth, flat)
         for name, boundary, depth in route[:1]
     ]
-    face_x = (tip_x - radius, -shelf)
-    face_y = (min_y - radius, max_y + radius)
-    face_grid = build_offset_grid(
-        lambda xm, ym: face_depth(top_frame.model_point(Point2D(xm, ym)).x),
-        top_frame.x_range(face_x),
-        top_frame.y_range(face_y),
-        flat,
-        spacing_x=parameters.grid_spacing_x,
-        spacing_y=parameters.grid_spacing_y,
-    )
-    top_paths.append(
-        raster_rough(
-            "Headstock face roughing",
-            face_grid,
+    # A flat headstock not set down has the blank's own top for its face:
+    # nothing to mill there.
+    if not headstock.is_flat:
+        face_x = (tip_x - radius, headstock.nut_reach - headstock.nut_seat_length)
+        face_y = (min_y - radius, max_y + radius)
+        face_grid = build_offset_grid(
+            lambda xm, ym: _face_depth_at(
+                face_depth, top_frame.model_point(Point2D(xm, ym))
+            ),
+            top_frame.x_range(face_x),
+            top_frame.y_range(face_y),
             flat,
-            x_range=top_frame.x_range(face_x),
-            y_range=top_frame.y_range(face_y),
-            step_over=flat.tool_diameter * parameters.roughing_step_over,
+            spacing_x=parameters.grid_spacing_x,
+            spacing_y=parameters.grid_spacing_y,
         )
-    )
-    top_paths.append(
-        raster_finish(
-            "Headstock face finishing",
-            face_grid,
-            flat,
-            x_range=top_frame.x_range(face_x),
-            y_range=top_frame.y_range(face_y),
-            step_over=parameters.face_finish_step_over,
+        top_paths.append(
+            raster_rough(
+                "Headstock face roughing",
+                face_grid,
+                flat,
+                x_range=top_frame.x_range(face_x),
+                y_range=top_frame.y_range(face_y),
+                step_over=flat.tool_diameter * parameters.roughing_step_over,
+            )
         )
-    )
+        top_paths.append(
+            raster_finish(
+                "Headstock face finishing",
+                face_grid,
+                flat,
+                x_range=top_frame.x_range(face_x),
+                y_range=top_frame.y_range(face_y),
+                step_over=parameters.face_finish_step_over,
+            )
+        )
     # The step and pocket carry the channel on at the adjusting end; a
     # headstock-adjusted rod's trough follows the face.
     top_paths += [
@@ -357,7 +371,7 @@ def plan_neck_machining(
             )
         )
     for hole in geometry.tuner_layout.holes:
-        surface_depth = -face_depth(hole.center.x)
+        surface_depth = -face_depth(hole.center.x, hole.center.y)
         top_paths.append(
             drill(
                 f"Tuner {hole.side} {hole.index} centre mark",
@@ -374,10 +388,27 @@ def plan_neck_machining(
         tuple(top_paths),
         (
             "Blank on the two index pins, glue face up, same work zero.",
-            f"The headstock face is milled to {headstock.angle.angle_degrees:g} "
-            f"degrees; the flat nut shelf keeps {shelf:g} mm before the nut.",
-            "Tuner holes get 0.5 mm centre marks only: drill them perpendicular "
-            "to the angled face on a drill press with a wedge.",
+            (
+                f"The headstock face is milled to {headstock.angle.angle_degrees:g} "
+                f"degrees right behind the nut's {shelf:g} mm flat seat, which "
+                "stays level with the glue face; the nut is glued to the seat "
+                "and to the fretboard's end."
+                if tangent > 0.0
+                else f"The headstock is flat (0 degrees), its face milled "
+                f"{headstock.face_drop:g} mm below the glue face right behind "
+                f"the nut's {shelf:g} mm flat seat, so the strings break over "
+                "the nut; the nut is glued to the seat and to the fretboard."
+                if headstock.face_drop > 0.0
+                else "The headstock is flat (0 degrees): its face is the blank's "
+                "top, level with the glue face, and is not milled."
+            ),
+            (
+                "Tuner holes get 0.5 mm centre marks only: drill them perpendicular "
+                "to the angled face on a drill press with a wedge."
+                if tangent > 0.0
+                else "Tuner holes get 0.5 mm centre marks only: drill them "
+                "straight through on a drill press."
+            ),
             f"The truss-rod step and pocket each run {flat.tool_radius:g} mm on "
             "over their neighbours, so the cutter's round corners stay out of "
             "the rod's square blocks.",
@@ -559,8 +590,8 @@ class _BackSurface:
         ]
         headstock = geometry.headstock
         angle = math.radians(headstock.angle.angle_degrees)
-        self._tangent = math.tan(angle)
         self._plane_offset = headstock.thickness / math.cos(angle)
+        self._headstock = headstock
         self._headstock_back = tuple(
             Point2D(point.x, point.y) for point in headstock.bottom_boundary
         )
@@ -572,7 +603,7 @@ class _BackSurface:
         if mesh_z is not None:
             candidates.append(mesh_z)
         if point_in_polygon(Point2D(x, y), self._headstock_back):
-            candidates.append(x * self._tangent - self._plane_offset)
+            candidates.append(self._headstock.face_z(x) - self._plane_offset)
         if not candidates:
             return -self._skin
         return min(min(candidates), -self._skin)

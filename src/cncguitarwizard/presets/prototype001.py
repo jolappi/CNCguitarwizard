@@ -83,6 +83,11 @@ NECK_FERRULE_BODY_WALL = 1.0
 """Least wood, in mm, between a neck-bolt ferrule and the body's edge, and
 between two ferrules."""
 
+FLAT_HEADSTOCK_FACE_DROP = 4.0
+"""How far a flat headstock's face is set below the glue face, in mm: its
+16 mm in the bottom of a 20 mm blank below the fretboard, so the strings
+break over the nut toward the tuners."""
+
 CONTROL_CLEARANCE_SHIFT = 20.0
 """How far, in mm, a generated control cavity may move out from the
 centreline to clear a deep top route (see ``_placed_controls``)."""
@@ -585,8 +590,19 @@ class Prototype001Parameters:
     headstock_outline: Literal["fitted", "drawn"] = "fitted"
     headstock_bass_edge: tuple[tuple[float, float], ...] = ()
     headstock_treble_edge: tuple[tuple[float, float], ...] = ()
+    # headstock_angle tilts the face back from the nut (0 for a flat,
+    # Fender-style headstock). headstock_face_drop sets the face that far
+    # below the glue face at the nut; empty, a flat headstock is set down
+    # FLAT_HEADSTOCK_FACE_DROP (4 mm: its 16 mm in the bottom of a 20 mm
+    # blank below the fretboard) so the strings still break over the nut,
+    # and an angled one is not.
     headstock_angle: float = 8.0
     headstock_thickness: float = 16.0
+    headstock_face_drop: float | None = None
+    # Behind the nut's seat the top eases onto the headstock face over
+    # headstock_face_transition, Stratocaster style (a smooth curve, level
+    # at the seat and meeting the face at its slope); 0 for a sharp break.
+    headstock_face_transition: float = 12.0
     tuner_hole_diameter: float = 10.0
     tuner_station_distances: tuple[float, ...] = (55.0, 85.0, 110.0)
     tuner_side_offsets: tuple[float, ...] = (15.0, 12.0, 10.0)
@@ -1179,6 +1195,17 @@ class Prototype001Parameters:
                 )
             )
         return tuple(holes)
+
+    @property
+    def face_drop(self) -> float:
+        """Return how far the headstock face lies below the glue face.
+
+        ``headstock_face_drop``, or when empty ``FLAT_HEADSTOCK_FACE_DROP``
+        for a flat (0 degree) headstock and nothing for an angled one.
+        """
+        if self.headstock_face_drop is not None:
+            return self.headstock_face_drop
+        return FLAT_HEADSTOCK_FACE_DROP if self.headstock_angle == 0.0 else 0.0
 
     @property
     def centre_scale(self) -> float:
@@ -2076,6 +2103,10 @@ class Prototype001Parameters:
                 self.headstock_angle,
             ),
             self.headstock_thickness,
+            self.face_drop,
+            self.fret_skew.at(0.0),
+            self.nut_shelf_length,
+            self.headstock_face_transition,
         )
         body_parts = self._body_layout(outline)
         body = BodySolid(

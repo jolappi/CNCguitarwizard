@@ -36,6 +36,9 @@ neck G-code: the cutter crosses the loft cleanly instead of touching it.
 HEADSTOCK_FACE_EASE_LENGTH = 8.0
 """Length over which the lofted top edge eases from the shelf down (mm)."""
 
+TRANSITION_CUT_SAMPLES = 12
+"""Points along the Stratocaster-style seat-to-face transition in the face cut."""
+
 TRUSS_ROD_POCKET_PIECE_LENGTH = 5.0
 """Longest box a truss-rod nut pocket or trough is cut with (mm)."""
 
@@ -909,42 +912,60 @@ class FreeCADScriptExporter:
     ) -> str:
         """Return source that cuts the lofted headstock down to its face.
 
-        The joined loft keeps its top flat over the nut shelf and lofts the
-        headstock ``HEADSTOCK_FACE_ALLOWANCE`` proud of its tilted face
-        (see ``_headstock_transition_sections``). Cutting away everything
-        above that face, from the end of the shelf out past the tip, leaves
-        the flat nut shelf, a vertical step at its end and the true, planar
-        headstock face — as the neck G-code machines them. The cutter's
-        faces all cross the loft rather than touching it, so the cut stays
-        a clean boolean.
+        The joined loft keeps its top flat over the nut's seat and lofts the
+        headstock ``HEADSTOCK_FACE_ALLOWANCE`` proud of its face (see
+        ``_headstock_transition_sections``). Cutting away everything above
+        that face, from right behind the seat out past the tip, leaves the
+        nut's flat seat (level with the glue face: the nut is glued to it
+        and to the fretboard's end), a vertical step behind it and the
+        true, planar headstock face, as the neck G-code machines them. A
+        leaning (slanted or fanned) nut line is followed: the seat stays a
+        strip of even length behind it, and the cutter is clipped to the
+        plan area behind that. The cutter's faces all cross
+        the loft rather than touching it, so the cut stays a clean boolean.
 
         Args:
-            headstock: Headstock whose tilted face is cut.
-            neck_surface: Neck surface supplying the nut shelf length.
+            headstock: Headstock whose face is cut.
+            neck_surface: The neck surface (kept for the call's shape).
 
         Returns:
-            FreeCAD source for the cut, or an empty string without a shelf.
+            FreeCAD source for the cut, or an empty string for a flat
+            headstock not set down (``is_flat``).
         """
-        shelf = neck_surface.nut_shelf_length
-        if shelf <= 0.0:
+        if headstock.is_flat:
+            # A flat headstock not set down is lofted flush with the glue
+            # face: a cutter at z = 0 would only touch it, and FreeCAD's
+            # boolean fails silently on such a touching face.
             return ""
-        slope = math.tan(math.radians(headstock.angle.angle_degrees))
         far_x = -headstock.plan.length - 10.0
         half_width = max(abs(point.y) for point in headstock.top_boundary) + 10.0
-        face_points = (
-            (-shelf, -shelf * slope),
-            (-shelf, 10.0),
-            (far_x, 10.0),
-            (far_x, far_x * slope),
-        )
+        length = headstock.face_transition_length
+        samples = TRANSITION_CUT_SAMPLES if length > 0.0 else 0
+
+        def profile(y: float) -> list[tuple[float, float, float]]:
+            # Down the seat's back edge, along the transition curve onto the
+            # face, out past the tip, and back over the top.
+            seat_end = headstock.face_start_x(y)
+            points = [(seat_end, y, 10.0), (seat_end, y, 0.0)]
+            for index in range(1, samples + 1):
+                x = seat_end - length * index / samples
+                points.append((x, y, headstock.top_z(x, y)))
+            if samples == 0:
+                points.append((seat_end, y, headstock.face_z(seat_end)))
+            points += [(far_x, y, headstock.face_z(far_x)), (far_x, y, 10.0)]
+            return [(round(x, 6), y, round(z, 6)) for x, y, z in points]
+
+        # Two side profiles joined by a ruled loft: across the neck every
+        # point moves along a straight line, exactly as the seat's leaning
+        # edge and the square face do.
+        profiles = [profile(-half_width), profile(half_width)]
         return (
-            f"HEADSTOCK_FACE_CUT_POINTS = {face_points!r}\n"
-            "headstock_face_cutter = Part.Face(Part.makePolygon(\n"
-            f"    [App.Vector(x, {-half_width!r}, z)\n"
-            "     for x, z in HEADSTOCK_FACE_CUT_POINTS\n"
-            "     + HEADSTOCK_FACE_CUT_POINTS[:1]]\n"
-            ")).extrude(\n"
-            f"    App.Vector(0.0, {2.0 * half_width!r}, 0.0)\n"
+            f"HEADSTOCK_FACE_CUT_PROFILES = {profiles!r}\n"
+            "headstock_face_cutter = Part.makeLoft(\n"
+            "    [Part.makePolygon([App.Vector(*p) for p in profile + profile[:1]])\n"
+            "     for profile in HEADSTOCK_FACE_CUT_PROFILES],\n"
+            "    True,\n"
+            "    True,\n"
             ")\n"
             "neck_shape = require_shape(\n"
             "    neck_shape.cut(headstock_face_cutter).removeSplitter(),\n"
@@ -1049,8 +1070,8 @@ class FreeCADScriptExporter:
         nut_row = neck_surface._build_profile_row(0.0)
         outside_points = (nut_row[1], nut_row[-2])
         radians = math.radians(headstock.angle.angle_degrees)
-        headstock_back_z = -extension * math.tan(
-            radians
+        headstock_back_z = headstock.face_z(
+            -extension
         ) - headstock.thickness / math.cos(radians)
         guide_lines = tuple(
             (
@@ -1238,8 +1259,15 @@ class FreeCADScriptExporter:
             # instead has to meet the loft's own top exactly at z = 0,
             # tangent to it just behind the nut, and FreeCAD's boolean
             # fuse silently loses the block there.
-            shelf = neck_surface.nut_shelf_length
-            flat_end = -shelf if shelf > 0.0 else 0.0
+            # The top stays flat over the nut's seat (to its furthest-back
+            # point for a leaning nut) and on through the transition behind
+            # it, which the face cut then carves: the cutter must lie below
+            # the loft all along it.
+            flat_end = -(
+                headstock.nut_seat_length
+                + headstock.nut_reach
+                + headstock.face_transition_length
+            )
             sections.extend(
                 FreeCADScriptExporter._offset_edge_pivot(
                     headstock,
@@ -1247,7 +1275,11 @@ class FreeCADScriptExporter:
                     (*tip_rows, *hermite_rows),
                     flat_end=flat_end,
                     tilt_resume=flat_end - HEADSTOCK_FACE_EASE_LENGTH,
-                    face_allowance=(HEADSTOCK_FACE_ALLOWANCE if shelf > 0.0 else 0.0),
+                    # A flat (0 degree) headstock's face is the glue face
+                    # itself: lofted to it exactly, with nothing to cut.
+                    face_allowance=(
+                        0.0 if headstock.is_flat else HEADSTOCK_FACE_ALLOWANCE
+                    ),
                 )
             )
         elif not sections:
@@ -1301,13 +1333,12 @@ class FreeCADScriptExporter:
         Returns:
             The rows with their two edge points replaced.
         """
-        radians = math.radians(headstock.angle.angle_degrees)
         count = neck_surface.profile_sample_count
         span = flat_end - tilt_resume
         rebuilt: list[tuple[Point3D, ...]] = []
         for row in rows:
             position = row[0].x
-            raw_top_z = position * math.tan(radians)
+            raw_top_z = headstock.face_z(position)
             t = max(0.0, min(1.0, (flat_end - position) / span))
             weight = NeckBackSurface._smootherstep(t)
             top_z = (raw_top_z + face_allowance) * weight
@@ -1435,7 +1466,7 @@ class FreeCADScriptExporter:
         }
         bottom_centre = (bottom_edges[1.0] + bottom_edges[-1.0]) / 2.0
         bottom_half_width = (bottom_edges[1.0] - bottom_edges[-1.0]) / 2.0
-        top_z = position * math.tan(radians)
+        top_z = headstock.face_z(position)
         bottom_z = top_z - headstock.thickness / math.cos(radians)
         count = neck_surface.profile_sample_count
         # The rounded outer part occupies this fraction of each side's
@@ -1620,13 +1651,11 @@ class FreeCADScriptExporter:
         if layout is None:
             return ""
 
-        radians = math.radians(headstock.angle.angle_degrees)
-        tangent = math.tan(radians)
         holes = [
             [
                 hole.center.x,
                 hole.center.y,
-                hole.center.x * tangent,
+                headstock.face_z(hole.center.x),
                 hole.diameter,
             ]
             for hole in layout.holes

@@ -10,6 +10,7 @@ import pytest
 
 from cncguitarwizard.backends.freecad import FreeCADScriptExporter
 from cncguitarwizard.backends.freecad.exceptions import FreeCADBackendError
+from cncguitarwizard.backends.freecad.script_exporter import TRANSITION_CUT_SAMPLES
 from cncguitarwizard.geometry.body import (
     BodyOutline,
     BodySolid,
@@ -1094,17 +1095,63 @@ def test_the_neck_loft_is_flat_over_the_whole_nut_shelf(
     [Prototype001Parameters(), _fanned_seven_string()],
     ids=["plain", "fanned"],
 )
-def test_the_headstock_face_is_cut_from_the_end_of_the_nut_shelf(
+def test_the_headstock_face_is_cut_from_the_end_of_the_nut_seat(
     parameters: Prototype001Parameters,
 ) -> None:
-    source = FreeCADScriptExporter().render_prototype001(parameters.build())
-    shelf = 5.0 + parameters.nut_shelf_reach()
-    slope = math.tan(math.radians(parameters.headstock_angle))
+    geometry = parameters.build()
+    source = FreeCADScriptExporter().render_prototype001(geometry)
+    headstock = geometry.headstock
 
-    face_cut = source.index("HEADSTOCK_FACE_CUT_POINTS = ")
-    assert f"(({-shelf!r}, {-shelf * slope!r}), ({-shelf!r}, 10.0)" in source
+    face_cut = source.index("HEADSTOCK_FACE_CUT_PROFILES = ")
     assert face_cut < source.index("neck_feature.Shape = neck_shape\n", face_cut)
     assert "neck_shape.cut(headstock_face_cutter)" in source
+    line = source[face_cut:].split("\n", 1)[0]
+    profiles = ast.literal_eval(line.split("=", 1)[1].strip())
+    assert len(profiles) == 2 and len(profiles[0]) == len(profiles[1])
+    for profile in profiles:
+        # Each side profile runs down the seat's back edge (5 mm behind the
+        # nut line there), along the transition onto the face, which it
+        # meets at the face's own height, then out past the tip.
+        (x0, y, z0), (x1, _, z1) = profile[0], profile[1]
+        assert x0 == x1 == pytest.approx(headstock.face_start_x(y), abs=1e-5)
+        assert (z0, z1) == (10.0, 0.0)
+        end_x, _, end_z = profile[1 + TRANSITION_CUT_SAMPLES]
+        assert end_x == pytest.approx(x0 - headstock.face_transition_length)
+        assert end_z == pytest.approx(min(headstock.face_z(end_x), 0.0), abs=1e-5)
+        assert all(z <= 1e-9 for _, _, z in profile[1:-1])
+
+
+def test_a_flat_headstock_is_set_down_below_the_nut_seat() -> None:
+    # At 0 degrees the face is cut 4 mm below the glue face behind the
+    # nut's seat, eased onto it Stratocaster style, so the 16 mm headstock
+    # ends 20 mm down.
+    geometry = replace(Prototype001Parameters(), headstock_angle=0.0).build()
+    source = FreeCADScriptExporter().render_prototype001(geometry)
+    headstock = geometry.headstock
+
+    assert headstock.face_drop == 4.0
+    assert "HEADSTOCK_FACE_CUT_PROFILES = [[(-5.0, " in source
+    assert min(p.z for p in headstock.bottom_boundary) == -20.0
+    # A Stratocaster style cove: the seat's edge falls away, three quarters
+    # of the way down midway, and flattens onto the face 12 mm behind it.
+    assert headstock.top_z(-5.0, 0.0) == 0.0
+    assert headstock.top_z(-5.1, 0.0) < -0.06
+    assert headstock.top_z(-11.0, 0.0) == pytest.approx(-3.0)
+    assert headstock.top_z(-17.0, 0.0) == pytest.approx(-4.0)
+    assert headstock.top_z(-16.9, 0.0) == pytest.approx(-4.0, abs=1e-3)
+
+
+def test_a_flat_headstock_not_set_down_is_lofted_flush_with_nothing_to_cut() -> None:
+    # With no drop the face is the glue face: no allowance to loft proud
+    # and no face cut, whose cutter would only touch the loft at z = 0
+    # (a boolean FreeCAD fails silently on).
+    geometry = replace(
+        Prototype001Parameters(), headstock_angle=0.0, headstock_face_drop=0.0
+    ).build()
+    source = FreeCADScriptExporter().render_prototype001(geometry)
+
+    assert "HEADSTOCK_FACE_CUT_POINTS" not in source
+    assert geometry.headstock.is_flat
 
 
 def test_headstock_loft_rows_keep_their_edge_points_apart() -> None:
@@ -1141,3 +1188,16 @@ def test_the_truss_rod_nut_pocket_is_cut_with_short_boxes() -> None:
     assert "neck_shape.cut(truss_rod_pocket_shapes_1).removeSplitter()" in source
     # The adjuster sleeve's bore, drilled by hand, is shown in the model.
     assert '"truss-rod sleeve bore"' in source
+
+
+def test_the_nut_seat_is_a_strip_along_the_nut_line() -> None:
+    # The nut is glued to its seat and to the fretboard's end: the seat is
+    # nut_shelf_length (5 mm) behind the nut line, however it leans, and
+    # the face starts right behind it.
+    parameters = _fanned_seven_string()
+    headstock = parameters.build().headstock
+
+    assert headstock.nut_seat_length == 5.0
+    assert headstock.nut_lean == pytest.approx(parameters.fret_skew.at(0.0))
+    for y in (-20.0, 0.0, 20.0):
+        assert headstock.face_start_x(y) == pytest.approx(headstock.nut_lean * y - 5.0)

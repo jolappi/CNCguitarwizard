@@ -70,6 +70,39 @@ drop = 150 mm × tan(8°)
 drop ≈ 21.081 mm
 ```
 
+`headstock_angle` takes any angle from 0 up to (not including) 90 degrees.
+The headstock is always `headstock_thickness` (16 mm) thick, measured normal
+to its face. The nut is glued both to the fretboard's end and to the neck,
+so the neck keeps a flat seat for it, level with the glue face and only as
+long as the nut: `nut_shelf_length` (5 mm) behind the nut line, as a strip
+of even length along a slanted or fanned nut (`HeadstockSolid.nut_lean`,
+`nut_seat_length`, `face_start_x`).
+
+Behind the seat the top eases onto the face over
+`headstock_face_transition` (12 mm), meeting it at its own slope, so there
+is no step (`HeadstockSolid.top_z`): an angled face is eased in with a
+smooth curve (`smoothstep`, level at the seat as well), and a face set
+down (a flat headstock's 4 mm) is reached through a Stratocaster style
+cove, a concave cup that leaves the seat's edge falling at about 34
+degrees and flattens onto the face. The face itself is a plane
+square to the neck that falls at the angle from the seat's front-most end
+(`face_pivot_x`), so an angled headstock starts to fall right behind a
+square seat, and a fanned nut only turns the transition, never the
+headstock. At 0 degrees the headstock is flat, Fender style, and set down:
+its face lies `headstock_face_drop` below the glue face — empty, 4 mm for
+a flat headstock (`FLAT_HEADSTOCK_FACE_DROP`: its 16 mm in the bottom of a
+20 mm blank below the fretboard) and nothing for an angled one — so the
+strings still break over the nut toward the tuners; the tuner centre marks
+are drilled straight through. A flat headstock with
+`headstock_face_drop=0` keeps the glue face as its face: the FreeCAD loft
+is flush with it and nothing is milled; the strings then need a string
+tree.
+
+The FreeCAD script lofts the neck flat over the seat and the transition
+and a little proud of the face, then cuts the transition and face with one
+ruled loft between two side profiles (`HEADSTOCK_FACE_CUT_PROFILES`); the
+neck G-code mills the same surface.
+
 Prototype001 uses a true joined root transition: a smooth longitudinal curve
 blends the fixed 5 mm nut shelf into the normal D profile, and the outer
 shoulders continue farther into the headstock root than the center does. The

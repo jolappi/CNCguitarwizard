@@ -139,7 +139,7 @@ sitä voi raahata kaulan suunnassa.
 | --- | --- |
 | Muoto | Oma, moderni malli; `headstock_style` valitsee 3+3 (oletus), 6 rivissä bassopuolella tai diskanttipuolella (`6_inline`, `6_inline_reverse`) tai 4+2 / 2+4. Reunat seuraavat viritinreikiä 15 mm:n päässä (`tuner_edge_offset`), mutta rivityyleissä aihioon jää varapuu: 6 rivissä Strat-lobelle vastakkaisella puolella (hartia 71, kärki 62 mm), 4+2:ssa Music Man -muodolle (hartia 76, kärki 45 mm) |
 | Pituus | 150 mm; kasvaa automaattisesti, kun viritinrivi tarvitsee (6 rivissä 195 mm) |
-| Kulma | 8° |
+| Kulma | 8° (`headstock_angle`, 0–90°). Lapa on aina 16 mm paksu. Satula liimataan sekä otelaudan päähän että kaulaan: kaulassa on satulan kokoinen 5 mm tasainen istukka liimapinnan tasossa (vinolla satulalla tasalevyinen kaistale satulalinjan takana), ja sen takaa kaula laskee 12 mm siirtymällä (`headstock_face_transition`) lavan pintaan ilman porrasta: kallistetulla lavalla pehmeä S-kaari, suoralla lavalla Strat-tyylinen kovera kuppi 4 mm alas. Lavan pinta on aina kohtisuorassa kaulaan nähden ja kallistus alkaa istukan takareunasta; vinolla satulalla vain siirtymä seuraa satulaa. 0° on suora Fender-tyylinen lapa, jonka pinta jyrsitään satulahyllyn takaa 4 mm liimapinnan alle (`headstock_face_drop`), jolloin 16 mm lapa on 20 mm:n alaosassa otelaudan alapinnasta ja kielet saavat kulman virittimille |
 | Paksuus | Säädettävä 14–16 mm; oletus 16 mm |
 | Hartialeveys | reikien mukaan (3+3: 61,7 mm; 65 mm reunalla, jolla ei ole virittimiä) |
 | Kärjen leveys | reikien mukaan (3+3: 42,5 mm; 40 mm reunalla, jolla ei ole virittimiä) |

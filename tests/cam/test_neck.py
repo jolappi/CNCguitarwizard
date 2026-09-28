@@ -83,18 +83,20 @@ def test_index_pins_sit_in_the_waste_beyond_tip_and_heel(  # type: ignore[no-unt
 def test_truss_rod_and_headstock_face_depths(plan, geometry) -> None:  # type: ignore[no-untyped-def]
     paths = {path.name: path for path in plan.top.toolpaths}
     truss = geometry.truss_rod_channel
-    tangent = math.tan(math.radians(geometry.headstock.angle.angle_degrees))
+    headstock = geometry.headstock
 
     assert paths["Truss-rod channel"].deepest_z() == pytest.approx(-truss.depth)
     # A flat tool can go no deeper than the highest surface point under
     # it, so the face pass bottoms out at the headstock tip's own height.
     face = paths["Headstock face finishing"]
     assert face.deepest_z() == pytest.approx(
-        -geometry.headstock.plan.length * tangent, abs=0.1
+        headstock.face_z(-headstock.plan.length), abs=0.1
     )
     mark = paths["Tuner bass 1 centre mark"]
     hole = geometry.tuner_layout.holes[0]
-    assert mark.deepest_z() == pytest.approx(hole.center.x * tangent - 0.5, abs=1e-6)
+    assert mark.deepest_z() == pytest.approx(
+        headstock.face_z(hole.center.x) - 0.5, abs=1e-6
+    )
 
 
 def test_ball_finish_never_cuts_below_the_neck_back(plan, geometry, parameters) -> None:  # type: ignore[no-untyped-def]
@@ -158,8 +160,9 @@ def test_outline_cuts_the_skin_with_tabs(plan, parameters) -> None:  # type: ign
 def test_blank_too_thin_for_the_headstock_is_thickened(geometry) -> None:  # type: ignore[no-untyped-def]
     plan = plan_neck_machining(geometry, NeckMachiningParameters(blank_thickness=30.0))
 
-    # 150 mm at 8 deg drops 21.08 mm, plus 16 mm / cos 8 deg and the 2 mm skin.
-    assert plan.stock_thickness == pytest.approx(39.3, abs=0.05)
+    # The face falls from the nut's 5 mm seat: the last 145 mm at 8 deg drop
+    # 20.38 mm, plus 16 mm / cos 8 deg and the 2 mm skin.
+    assert plan.stock_thickness == pytest.approx(38.6, abs=0.05)
     assert "more than the 30 mm blank_thickness" in " ".join(plan.setups[0].notes)
 
 
@@ -171,7 +174,7 @@ def test_a_six_in_line_headstock_thickens_the_blank() -> None:
     geometry = replace(Prototype001Parameters(), headstock_style="6_inline").build()
     plan = plan_neck_machining(geometry, NeckMachiningParameters())
 
-    assert plan.stock_thickness == pytest.approx(45.6, abs=0.05)
+    assert plan.stock_thickness == pytest.approx(44.9, abs=0.05)
     assert plan.stock_thickness > 40.0
 
 
@@ -224,3 +227,27 @@ def test_truss_rod_steps_run_over_their_neighbours(adjustment: str) -> None:
     )
     notes = " ".join(plan_neck_machining(geometry, parameters).top.notes)
     assert "each run 3 mm on over their neighbours" in notes
+
+
+def test_a_flat_headstock_face_is_milled_4_mm_down() -> None:
+    # At 0 degrees the face is set 4 mm below the glue face behind the nut
+    # shelf, so the strings break over the nut toward the tuners.
+    geometry = replace(Prototype001Parameters(), headstock_angle=0.0).build()
+    top = plan_neck_machining(geometry, NeckMachiningParameters()).top
+    paths = {path.name: path for path in top.toolpaths}
+
+    assert paths["Headstock face finishing"].deepest_z() == pytest.approx(-4.0)
+    assert any("milled 4 mm below the glue face" in note for note in top.notes)
+    assert any("straight through" in note for note in top.notes)
+
+
+def test_a_flat_headstock_not_set_down_leaves_its_face_unmilled() -> None:
+    geometry = replace(
+        Prototype001Parameters(), headstock_angle=0.0, headstock_face_drop=0.0
+    ).build()
+    top = plan_neck_machining(geometry, NeckMachiningParameters()).top
+    names = [path.name for path in top.toolpaths]
+
+    assert "Headstock face roughing" not in names
+    assert "Headstock face finishing" not in names
+    assert any("level with the glue face" in note for note in top.notes)

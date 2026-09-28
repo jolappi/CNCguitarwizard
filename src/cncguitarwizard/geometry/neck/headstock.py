@@ -295,7 +295,7 @@ class HeadstockAngleReference:
             )
         if (
             not math.isfinite(self.angle_degrees)
-            or self.angle_degrees <= 0.0
+            or self.angle_degrees < 0.0
             or self.angle_degrees >= 90.0
         ):
             raise HeadstockGeometryError(
@@ -319,12 +319,29 @@ class HeadstockSolid:
     """Represent an angled headstock blank with configurable thickness.
 
     Thickness is measured normal to the headstock face. Prototype001 uses
-    16 mm, while the supported manufacturing range is 14–16 mm.
+    16 mm, while the supported manufacturing range is 14–16 mm. The face
+    passes ``face_drop`` below the glue plane at the nut and falls at the
+    angle from there: a flat (0 degree) headstock is set down this way so
+    the strings still break over the nut toward the tuners.
 
     Args:
         plan: Two-dimensional headstock boundary.
         angle: Angled center-plane reference matching the plan length.
         thickness: Finished headstock thickness in millimetres.
+        face_drop: How far the face lies below the glue plane at the nut,
+            in millimetres (0 for a face through the nut line).
+        nut_lean: The nut line's lean, X gained per millimetre of Y (a
+            slanted or fanned nut; 0 for a square one).
+        nut_seat_length: The nut's flat seat behind the nut line, level
+            with the glue face: the nut is glued to it and to the
+            fretboard's end. The face starts right behind it, following
+            the nut line.
+        face_transition_length: How far behind the seat the top eases
+            from the seat down onto the face (see ``top_z``: a smooth S for
+            an angled face, a Stratocaster style cove for one set down); 0
+            for a sharp break. The face
+            itself stays square to the neck: it falls from the seat's
+            front-most end, so a leaning seat only turns the transition.
 
     Raises:
         HeadstockGeometryError: If references disagree or thickness is
@@ -334,6 +351,10 @@ class HeadstockSolid:
     plan: HeadstockPlan
     angle: HeadstockAngleReference
     thickness: float = 16.0
+    face_drop: float = 0.0
+    nut_lean: float = 0.0
+    nut_seat_length: float = 0.0
+    face_transition_length: float = 0.0
     top_boundary: tuple[Point3D, ...] = field(init=False)
     bottom_boundary: tuple[Point3D, ...] = field(init=False)
     extrusion_vector: Point3D = field(init=False)
@@ -348,17 +369,27 @@ class HeadstockSolid:
             raise HeadstockGeometryError(
                 "Headstock thickness must be between 14 and 16 mm."
             )
+        if not math.isfinite(self.nut_lean):
+            raise HeadstockGeometryError("Headstock nut lean must be finite.")
+        if not math.isfinite(self.nut_seat_length) or self.nut_seat_length < 0.0:
+            raise HeadstockGeometryError("The nut seat length must be zero or more.")
+        if (
+            not math.isfinite(self.face_transition_length)
+            or self.face_transition_length < 0.0
+        ):
+            raise HeadstockGeometryError(
+                "The headstock face transition must be zero or longer."
+            )
+        if not math.isfinite(self.face_drop) or self.face_drop < 0.0:
+            raise HeadstockGeometryError(
+                "Headstock face drop must be zero or more."
+            )
 
         radians = math.radians(self.angle.angle_degrees)
         cosine = math.cos(radians)
         sine = math.sin(radians)
-        tangent = math.tan(radians)
         top_boundary = tuple(
-            Point3D(
-                point.x,
-                point.y,
-                point.x * tangent,
-            )
+            Point3D(point.x, point.y, self.face_z(point.x))
             for point in self.plan.boundary
         )
         extrusion_vector = Point3D(
@@ -378,6 +409,61 @@ class HeadstockSolid:
         object.__setattr__(self, "top_boundary", top_boundary)
         object.__setattr__(self, "bottom_boundary", bottom_boundary)
         object.__setattr__(self, "extrusion_vector", extrusion_vector)
+
+    @property
+    def face_pivot_x(self) -> float:
+        """Return where the face plane leaves the glue plane (before any drop).
+
+        The seat's front-most end: the face falls square to the neck from
+        there, so it starts right behind a square seat and never rises
+        above the glue plane behind a leaning one.
+        """
+        return self.nut_reach - self.nut_seat_length
+
+    def face_z(self, x: float) -> float:
+        """Return the face plane's height at ``x`` (behind the seat)."""
+        tangent = math.tan(math.radians(self.angle.angle_degrees))
+        return (x - self.face_pivot_x) * tangent - self.face_drop
+
+    def top_z(self, x: float, y: float) -> float:
+        """Return the neck's top height at (x, y) near and past the nut.
+
+        Level with the glue face over the seat (and toward the neck), the
+        face past the transition, and between them a curve that meets the
+        face at its own slope. An angled face that starts at the glue
+        plane is eased in with a ``smoothstep`` (level at the seat too); a
+        face set down (``face_drop``) is reached through a Stratocaster
+        style cove, a concave cup that leaves the seat's edge falling
+        (at about 34 degrees for 4 mm over 12 mm) and flattens onto the
+        face.
+        """
+        seat_end = self.face_start_x(y)
+        if x >= seat_end:
+            return 0.0
+        # Never above the glue plane: out past the nut's width a leaning
+        # seat's line runs ahead of the face's pivot.
+        face = min(self.face_z(x), 0.0)
+        length = self.face_transition_length
+        if length <= 0.0 or x <= seat_end - length:
+            return face
+        t = (seat_end - x) / length
+        if self.face_drop > 0.0:
+            return (1.0 - (1.0 - t) ** 2) * face
+        return (3.0 * t * t - 2.0 * t * t * t) * face
+
+    def face_start_x(self, y: float) -> float:
+        """Return where the face starts at ``y``: right behind the nut seat."""
+        return self.nut_lean * y - self.nut_seat_length
+
+    @property
+    def nut_reach(self) -> float:
+        """Return how far a leaning nut line reaches back past x = 0."""
+        return abs(self.nut_lean) * self.plan.nut_width / 2.0
+
+    @property
+    def is_flat(self) -> bool:
+        """Return whether the face neither falls nor is set down."""
+        return self.angle.angle_degrees == 0.0 and self.face_drop == 0.0
 
 
 @dataclass(frozen=True, slots=True)

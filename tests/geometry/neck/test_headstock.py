@@ -108,7 +108,7 @@ def test_headstock_geometry_is_immutable() -> None:
         lambda: HeadstockPlan(150.0, 42.0, 30.0, 65.0, -40.0),
         lambda: HeadstockPlan(150.0, 42.0, 30.0, 65.0, 40.0, 1),
         lambda: HeadstockAngleReference(0.0, 8.0),
-        lambda: HeadstockAngleReference(150.0, 0.0),
+        lambda: HeadstockAngleReference(150.0, -1.0),
         lambda: HeadstockAngleReference(150.0, 90.0),
         lambda: HeadstockSolid(
             make_plan(),
@@ -133,3 +133,22 @@ def test_headstock_rejects_invalid_dimensions(
 ) -> None:
     with pytest.raises(HeadstockGeometryError):
         create_geometry()
+
+
+def test_a_flat_headstock_has_no_tip_drop() -> None:
+    # 0 degrees: a Fender-style flat headstock, level with the glue face.
+    reference = HeadstockAngleReference(150.0, 0.0)
+
+    assert reference.tip_drop == 0.0
+    assert reference.reference_line.end.y == 0.0
+
+
+def test_a_headstock_face_can_be_set_down_below_the_nut() -> None:
+    plan = make_plan()
+    solid = HeadstockSolid(plan, HeadstockAngleReference(plan.length, 0.0), 16.0, 4.0)
+
+    assert {p.z for p in solid.top_boundary} == {-4.0}
+    assert {p.z for p in solid.bottom_boundary} == {-20.0}
+    assert solid.face_z(-100.0) == -4.0 and not solid.is_flat
+    with pytest.raises(HeadstockGeometryError, match="face drop"):
+        HeadstockSolid(plan, HeadstockAngleReference(plan.length, 0.0), 16.0, -1.0)

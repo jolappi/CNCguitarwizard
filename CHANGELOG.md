@@ -2,6 +2,27 @@
 
 ## Unreleased
 
+### Fixed
+
+- A 0 degree (flat, Fender-style) headstock is accepted (it was refused
+  with "Headstock angle must be between zero and 90 degrees"). It stays 16
+  mm thick and is set down: its face is milled 4 mm below the glue face
+  behind the nut shelf (`headstock_face_drop`, empty = 4 mm when flat), so
+  the headstock ends 20 mm below the fretboard and the strings break over
+  the nut toward the tuners.
+- The nut's seat on the neck is only as long as the nut (5 mm), level
+  with the glue face, and follows a slanted or fanned nut line as a strip
+  of even length; the headstock face starts right behind it. A fanned
+  nut's seat used to be a square shelf lengthened to reach behind the
+  whole nut, leaving up to 20 mm of flat glue face on the treble side.
+- Behind the nut's seat the neck eases onto the headstock face over
+  `headstock_face_transition` (12 mm) instead of a vertical step or sharp
+  corner: a smooth curve for an angled face, a Stratocaster style concave
+  cove down to a flat headstock's set-down face. An
+  angled face now falls from the seat's back edge (so the tip sits 0.7 mm
+  higher and the neck blank is 0.7 mm thinner at 8 degrees), and stays
+  square to the neck behind a fanned nut, where only the transition turns.
+
 ### Added
 
 - G-code dialects: `MachiningParameters.post_processor` writes every
