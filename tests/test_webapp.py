@@ -479,3 +479,15 @@ def test_the_pickup_selector_is_a_basic_choice() -> None:
     assert choice["advanced"] is False and choice["default"] == "toggle"
     assert choice["options"] == ["toggle", "micro"]
     assert choice["labels"]["micro"].startswith("Micro")
+
+
+def test_the_neck_blank_is_a_basic_machining_choice() -> None:
+    fields = {
+        field["name"]: field
+        for group in parameter_schema()["machining"]
+        for field in group["fields"]
+    }
+    choice = fields["neck_blank"]
+    assert choice["advanced"] is False and choice["default"] == "solid"
+    assert choice["options"] == ["solid", "laminated"]
+    assert choice["labels"]["laminated"].startswith("Neck plank first")

@@ -23,27 +23,40 @@ changer, so after each change the operator re-touches Z on the blank top;
 X/Y zero stays at index pin 1 and every program still starts with the
 pin 1 → pin 2 → pin 1 check.
 
-## Neck (`NeckMachiningParameters`, five programs)
+## Neck (`NeckMachiningParameters`, five programs, or eight laminated)
 
 The blank's top face is the fretboard glue plane, and it is as thick as the
 neck and headstock need — their deepest point below that plane — unless
 `blank_thickness` asks for more. The neck itself needs 20 mm (the heel), so
 a flat headstock (set down to end 20 mm below the fretboard) comes from a
 plain 20 mm plank. An angled one needs more (8 degrees: 36.6 mm; a 197 mm
-six-in-line at 8 degrees: 42.9 mm), and the blank can be either:
+six-in-line at 8 degrees: 42.9 mm), and the blank is chosen with
+`blank` (the web form's machining `neck_blank`):
 
-1. one solid plank that thick, or
-2. the neck's 20 mm plank with a block glued under its headstock end
+1. `"solid"` (the default): one plank that thick, cut by the five programs
+   below.
+2. `"laminated"`: the neck is cut from its own 20 mm plank first, and a
+   block is glued under the headstock end afterwards
    (`NeckMachiningPlan.headstock_block`: from where the headstock's back
-   first falls below the plank to the blank's end, the headstock's width
-   plus room for the outline cut, the rest of the thickness).
+   first falls below the plank to just past the tip, short of the tip's
+   dowel; the headstock's width plus room for the outline cut; as thick
+   as the plank — usually cut from the same wood — or thicker when the
+   headstock needs it). The headstock then gets programs of its own:
 
-The same programs cut both: they are planned for the full thickness with
-Z zero on the blank's back, which on a laminated blank is the block's
-underside, so over the neck the first passes cut air. The index-pin
-program's notes, `build.json` (`stock.Neck.laminated`) and the web app's
-summary give both. Two dowels sit in the waste beyond the headstock tip
-and beyond the heel, on the centerline.
+   | Order | Program | Setup | Contents |
+   | --- | --- | --- | --- |
+   | 1 | `Neck_index_pins.nc` | glue face up | Both dowel holes through the plank |
+   | 2 | `Neck_top.nc` | glue face up | The truss-rod route only |
+   | 3–4 | `Neck_back_rough.nc`, `Neck_back_finish.nc` | flipped, Z zero on the plank's back | The neck's back from the block's start to the heel |
+   | — | glue the block on | | |
+   | 5 | `Headstock_top.nc` | glue face up, the neck end on a spacer as thick as the block, long dowels | The headstock face and tuner marks |
+   | 6–7 | `Headstock_back_rough.nc`, `Headstock_back_finish.nc` | flipped, Z zero on the block's underside | The headstock's back and root through the full thickness |
+   | 8 | `Neck_back_outline.nc` | same | The whole outline, through both layers |
+
+The index-pin program's notes, `build.json` (`stock.Neck.blank`,
+`stock.Neck.laminated`) and the web app's summary give the blank; a solid
+blank's notes also offer the laminated way. Two dowels sit in the waste
+beyond the headstock tip and beyond the heel, on the centerline.
 
 | Program | Setup | Contents |
 | --- | --- | --- |

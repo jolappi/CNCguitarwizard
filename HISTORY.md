@@ -248,6 +248,14 @@ playing surface. Cross-section rows now coincide with the nut and every fret,
 providing exact longitudinal references for CAD lofting and future fret-slot
 operations.
 
+The headstock learned to lie flat. At 0 degrees it is a Fender-style
+peghead set 4 mm below the glue face, so its 16 mm end 20 mm below the
+fretboard and the strings still break over the nut. The nut sits on a flat
+seat only as long as the nut — a strip of even length along a fanned nut
+— glued to it and to the fretboard, and behind it the neck eases onto the
+face: a smooth curve into an angled face, a Stratocaster-style cove down
+to a flat one. The face always stays square to the neck.
+
 ## CAM
 
 The first G-code comes from the project's own, dependency-free 2.5D planner
@@ -263,6 +271,18 @@ pure `Y -> -Y`; `build-prototype001` writes `Body_index_pins.nc`,
 `Body_top.nc` and `Body_back.nc` alongside the FreeCAD outputs. Every
 cutting move is checked to lie inside its own feature before the files
 are trusted.
+
+After v1.0.0-beta1 the programs learned to speak more than GRBL: one
+`GCodeWriter` writes the same moves for GRBL, LinuxCNC, Mach3/4, Marlin, a
+Fanuc-style control or KOSY's nccad (`.knc`), each with its own comments,
+start and end, and a spindle dwell in its own units.
+
+The neck blank stopped being a fixed 40 mm. It is as thick as the neck and
+headstock need, so a flat headstock's neck comes from a 20 mm plank. For
+an angled headstock the neck can instead be laminated the way it is made
+by hand: the neck is cut from its own 20 mm plank first, a block of the
+same plank is glued under the headstock end, and the headstock gets
+programs of its own before the whole outline is cut through both layers.
 
 ## FreeCAD Backend
 

@@ -112,7 +112,8 @@ def test_build_writes_gcode_and_toolpath_previews_for_every_part(
     neck = report["stock"]["Neck"]
     assert neck["thickness_mm"] == 36.6
     assert neck["laminated"]["plank_thickness_mm"] == 20.0
-    assert neck["laminated"]["headstock_block_mm"]["thickness"] == 16.6
+    assert neck["blank"] == "solid"
+    assert neck["laminated"]["headstock_block_mm"]["thickness"] == 20.0
     assert len(report["stock"]["Fretboard"]["index_pins_model_xy"]) == 2
 
 
@@ -294,3 +295,19 @@ def test_build_writes_kosy_programs_as_knc_files(tmp_path: Path) -> None:
     assert report["gcode"]["Body_top"]["file"] == "Body_top.knc"
     first = result.gcode_paths[0].read_text(encoding="utf-8").splitlines()
     assert first[:2] == ["_", "_"] and first[-1] == "G99"
+
+
+def test_build_writes_the_laminated_neck_programs(tmp_path: Path) -> None:
+    result = build_prototype001(
+        tmp_path / "output",
+        run_freecad=False,
+        machining=MachiningParameters(neck_blank="laminated"),
+    )
+    names = [path.name for path in result.gcode_paths]
+    report = json.loads(result.report_path.read_text(encoding="utf-8"))
+
+    assert names.index("Neck_back_finish.nc") < names.index("Headstock_top.nc")
+    assert names.index("Headstock_back_finish.nc") < names.index("Neck_back_outline.nc")
+    assert report["stock"]["Neck"]["blank"] == "laminated"
+    assert report["stock"]["Neck"]["thickness_mm"] == 40.0
+    assert report["gcode"]["Headstock_top"]["part"] == "Neck"

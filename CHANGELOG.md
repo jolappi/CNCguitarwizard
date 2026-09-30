@@ -4,6 +4,12 @@
 
 ### Added
 
+- A laminated neck blank (`neck_blank` / `NeckMachiningParameters.blank`
+  = `"laminated"`): the neck is cut from its own 20 mm plank first, then a
+  block as thick as the plank is glued under the headstock end, and the
+  headstock gets programs of its own (`Headstock_top`,
+  `Headstock_back_rough`, `Headstock_back_finish`) before the whole
+  outline (`Neck_back_outline`).
 - The pickup selector can be a micro (mini) toggle: `body_switch`
   chooses a 3-way toggle (1/2 in, 12.7 mm hole, the default) or a micro
   toggle (1/4 in, 6.35 mm); `body_switch_shaft_hole_diameter` now only
@@ -27,11 +33,8 @@
   to the window.
 - The neck blank is as thick as the neck and headstock need, not a fixed
   40 mm (`NeckMachiningParameters.blank_thickness` now defaults to none):
-  a flat headstock's neck comes from a 20 mm plank. An angled headstock's
-  blank is given two ways, one solid plank or the neck's 20 mm plank with
-  a block glued under the headstock (`NeckMachiningPlan.headstock_block`),
-  cut by the same programs, in the index-pin notes, `build.json`
-  (`stock.Neck.laminated`) and the web summary. The needless 2 mm skin
+  a flat headstock's neck comes from a 20 mm plank. The index-pin notes,
+  `build.json` (`stock.Neck`) and the web summary give the blank. The needless 2 mm skin
   under the headstock's lowest point is gone.
 - A Floyd Rose's spring cavity and block pocket reach deeper in a body
   thicker than the routing diagram's 1.75 in, so the block route still

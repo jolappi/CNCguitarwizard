@@ -46,6 +46,10 @@ _VARIANT_LABELS: dict[str, str] = {**BRIDGE_LABELS, **BODY_SHAPE_LABELS}
 _CHOICE_LABELS: dict[str, dict[str, str]] = {
     "body_controls": CONTROL_LABELS,
     "post_processor": POST_PROCESSOR_LABELS,
+    "neck_blank": {
+        "solid": "One plank as thick as the headstock needs",
+        "laminated": "Neck plank first, headstock block glued on after",
+    },
     "body_switch": {
         "toggle": "3-way toggle (1/2 in hole, 12.7 mm)",
         "micro": "Micro (mini) toggle (1/4 in hole, 6.35 mm)",
@@ -112,6 +116,7 @@ _BASIC_FIELDS: frozenset[str] = frozenset(
         "tool_tip",
         "post_processor",
         "spindle_dwell",
+        "neck_blank",
         "spindle_speed",
         "feed_rate",
         "plunge_rate",

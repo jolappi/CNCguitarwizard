@@ -78,6 +78,10 @@ class MachiningParameters:
             ``.KNC`` programs).
         spindle_dwell: Seconds to wait after starting the spindle, for a
             spindle that needs time to reach speed; ``0`` for none.
+        neck_blank: The neck blank the build plans for: ``"solid"``, one
+            plank as thick as the headstock needs, or ``"laminated"``, the
+            neck cut from its own plank first and the headstock after a
+            block is glued under it (``NeckMachiningParameters.blank``).
 
     Raises:
         ToolpathError: If any value is non-finite or out of its range.
@@ -107,6 +111,7 @@ class MachiningParameters:
     raster_link_spacing: float = 1.0
     post_processor: PostProcessor = "grbl"
     spindle_dwell: float = 0.0
+    neck_blank: Literal["solid", "laminated"] = "solid"
 
     def __post_init__(self) -> None:
         """Reject parameters the planner cannot cut safely with."""
@@ -144,6 +149,8 @@ class MachiningParameters:
                 "post_processor must be one of "
                 f"{', '.join(POST_PROCESSOR_LABELS)}."
             )
+        if self.neck_blank not in ("solid", "laminated"):
+            raise ToolpathError('neck_blank must be "solid" or "laminated".')
         if self.tool_tip not in ("flat", "ball"):
             raise ToolpathError('tool_tip must be "flat" or "ball".')
         if not 0.0 < self.step_over <= 1.0:

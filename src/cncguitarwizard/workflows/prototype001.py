@@ -8,7 +8,7 @@ import os
 import shutil
 import subprocess
 from collections.abc import Callable, Mapping
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -176,7 +176,16 @@ class Prototype001Build:
     def _plan_neck(self) -> None:
         assert self.geometry is not None
         self._plans.append(
-            ("Neck", plan_neck_machining(self.geometry, self.neck_machining))
+            (
+                "Neck",
+                plan_neck_machining(
+                    self.geometry,
+                    # The machining form's neck_blank picks a laminated blank.
+                    replace(self.neck_machining, blank="laminated")
+                    if self.machining.neck_blank == "laminated"
+                    else self.neck_machining,
+                ),
+            )
         )
 
     def _plan_fretboard(self) -> None:
@@ -246,6 +255,9 @@ class Prototype001Build:
                 # The same blank laminated: the neck's own plank with a block
                 # glued under the headstock end (none needed when flat).
                 block = plan.headstock_block
+                self._stock_report[part]["blank"] = (
+                    "laminated" if plan.headstock_setups else "solid"
+                )
                 self._stock_report[part]["laminated"] = {
                     "plank_thickness_mm": plan.plank_thickness,
                     "headstock_block_mm": None
