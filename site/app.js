@@ -949,6 +949,7 @@ const bodyEditor = {
       return handle;
     });
     this.check();
+    this.showTemplate();
   },
 
   toModel(event) {
@@ -1255,13 +1256,30 @@ const bodyEditor = {
   fillTemplates() {
     const select = document.getElementById("body-editor-template");
     if (select.options.length) return;
+    // Shown when the drawing matches no template (it has been edited).
+    const own = document.createElement("option");
+    own.value = "";
+    own.textContent = "Your own drawing";
+    own.disabled = true;
+    select.appendChild(own);
     for (const [key, template] of Object.entries(this.layout.templates)) {
       const option = document.createElement("option");
       option.value = key;
       option.textContent = template.label;
       select.appendChild(option);
     }
-    select.value = "stratocaster";
+  },
+
+  // Show the template the drawing is, or "Your own drawing" once its
+  // outline has been changed.
+  showTemplate() {
+    const select = document.getElementById("body-editor-template");
+    if (!this.layout || !select.options.length) return;
+    const drawn = JSON.stringify(this.points);
+    const match = Object.entries(this.layout.templates).find(
+      ([, template]) => JSON.stringify(template.shape.control_points) === drawn
+    );
+    select.value = match ? match[0] : "";
   },
 
   // Replace the drawing with a template: its outline and its switch, pot

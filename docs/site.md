@@ -31,8 +31,9 @@ Python.
    names the traced `design_by_jone` body loads as that template). A
    drawing panel above the results edits it: the outline's control points
    are handles to drag (click the outline to add one, Alt-click or
-   right-click to remove one; *Start from* + *Load* replaces the drawing
-   with a template — Design by Jone, Les Paul, Stratocaster or Jackson RR
+   right-click to remove one; *Start from* shows the template the drawing
+   is ("Your own drawing" once its outline has been changed); choosing
+   one and *Load* replaces the drawing with that template — Design by Jone, Les Paul, Stratocaster or Jackson RR
    style or Jazz Bass style (mockups, not the original outlines) — and its cavity placements), drawn
    over the neck, pocket, pickup and bridge routes and dashed rear
    cavities that `webapp.body_editor_layout()` lays out from the other
