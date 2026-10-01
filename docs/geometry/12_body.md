@@ -158,6 +158,7 @@ neck, middle and bridge types; `custom` takes them from `body_neck_pickup`,
 | `JJ` | Jazz Bass | — | Jazz Bass |
 | `P` | Precision Bass | — | — |
 | `MM` | — | — | bass soapbar |
+| `RR` | Rickenbacker | — | Rickenbacker |
 
 Every route sits on the centreline: the neck one `body_neck_pickup_offset`
 past the heel end, the bridge one `body_bridge_pickup_offset` ahead of the
@@ -176,6 +177,7 @@ extra top cavities. The route types:
 | `jazz_bass` | 96 × 20 mm bar (Warmoth's 3.75 × 0.79 in bridge rout; the neck pickup is 3-5/8 in) with two round recesses (R8) in each long side, 19.6 mm either side of the middle | four, one in each side recess, 12 mm out from the middle: through the ears on the pickup's sides, 2.9 mm clear of a 94.4 × 18.2 mm pickup (Seymour Duncan SJB-1b) |
 | `precision_bass` | Two 58 × 28.5 mm coils one behind the other along the neck (57 mm, Warmoth's 2.28 in) and 23 mm over each other across the strings (93 mm, 3.678 in), the bass coil nut-ward on the bass side, each with a round mounting ear (R7) at both ends: four in all | two per coil, one in each ear, 1.2 mm inside the coil's end |
 | `bass_soapbar` | 44 × 102 mm bar with R12 corners (MM style) | two, 90 mm apart |
+| `rickenbacker` | 92 × 38 mm bar with R3 corners: a Rickenbacker style bass humbucker (a 4003's, or a Seymour Duncan SRB-1), a 90 × 36 mm block, with 1 mm round it | two, 82 mm apart, through the pickup's base |
 | `none` | No route in that position | — |
 
 The bass routes are labelled starting values; check them against the

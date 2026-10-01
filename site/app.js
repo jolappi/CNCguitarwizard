@@ -105,8 +105,61 @@ function renderForm() {
   }
   applyAdvancedToggle();
   applyStringLimits();
+  mirrorEditorFields();
   setTimeout(() => headstockEditor.sync(), 0);
 }
+
+// The settings that shape an editor's drawing are shown in its own pane:
+// each is a copy of the form's field, which stays the one that is saved,
+// loaded and built (its row in the form is hidden). A change on either
+// side is passed to the other.
+const EDITOR_FIELDS = {
+  "body-editor-options": ["body_pickups", "body_controls", "body_switch", "body_battery_box", "body_battery_count"],
+  "headstock-editor-options": ["headstock_style"],
+};
+const mirrors = new Map();
+
+function mirrorEditorFields() {
+  mirrors.clear();
+  for (const [id, names] of Object.entries(EDITOR_FIELDS)) {
+    const holder = document.getElementById(id);
+    holder.innerHTML = "";
+    for (const name of names) {
+      const original = form.querySelector(`[data-set="prototype"][data-name="${name}"]`);
+      if (!original) continue;
+      const row = original.closest(".field");
+      row.classList.add("mirrored");
+      const copy = original.cloneNode(true);
+      copy.id = `${id}.${name}`;
+      delete copy.dataset.set;
+      delete copy.dataset.name;
+      const label = document.createElement("label");
+      label.textContent = name;
+      label.htmlFor = copy.id;
+      const pass = () => {
+        const value = copy.type === "checkbox" ? copy.checked : copy.tagName === "SELECT" ? copy.value : readValue(copy);
+        if (typeof value === "number" && Number.isNaN(value)) return;  // still being typed
+        setControlValue(original, value);
+      };
+      copy.addEventListener("change", pass);
+      if (copy.tagName !== "SELECT") copy.addEventListener("input", pass);
+      holder.append(label, copy);
+      mirrors.set(original, copy);
+    }
+  }
+  syncMirrors();
+}
+
+function syncMirrors() {
+  for (const [original, copy] of mirrors) {
+    if (copy.type === "checkbox") copy.checked = original.checked;
+    else if (document.activeElement !== copy) copy.value = original.value;
+    copy.classList.toggle("changed", original.classList.contains("changed"));
+  }
+}
+
+form.addEventListener("change", syncMirrors);
+form.addEventListener("input", syncMirrors);
 
 // Hide the kinds drawn for fewer strings than the instrument has (the
 // Kahler, Floyd Rose and Tune-o-matic on a seven- or eight-string); if one
@@ -1026,6 +1079,17 @@ const bodyEditor = {
       window.removeEventListener("pointerup", end);
       window.removeEventListener("pointercancel", end);
       if (delta[0] || delta[1]) {
+        // Dropped wholly outside the body: offer to remove it instead.
+        const removal = this.leftBody(group, delta) ? this.removal(group) : null;
+        if (removal) {
+          if (window.confirm(`Remove ${removal.label}?`)) {
+            removal.apply();
+            this.refresh();
+          } else {
+            for (const member of members) member.removeAttribute("transform");
+          }
+          return;
+        }
         this.applyMove(group, delta);
         this.refresh();
       } else {
@@ -1039,6 +1103,85 @@ const bodyEditor = {
 
   field(set, name) {
     return form.querySelector(`[data-set="${set}"][data-name="${name}"]`);
+  },
+
+  // Whether a group moved by [dx, dy] lies wholly outside the outline.
+  leftBody(group, [dx, dy]) {
+    const outline = this.outline();
+    const points = [];
+    for (const polygon of this.layout.polygons) {
+      if (polygon.group === group) points.push(...polygon.points);
+    }
+    for (const circle of this.layout.circles) {
+      if (circle.group !== group) continue;
+      for (const [cx, cy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        points.push([circle.x + cx * circle.r, circle.y + cy * circle.r]);
+      }
+    }
+    if (group === this.layout.jack.group) points.push([this.layout.jack.x, this.layout.jack.y]);
+    return points.length > 0 && points.every(([x, y]) => !pointInPolygon(x + dx, y + dy, outline));
+  },
+
+  // What dropping a group off the body removes, or null when it cannot
+  // go on its own (the switch cavity, the jack, a last pot or bolt).
+  removal(group) {
+    const shape = "prototype.body_shape";
+    if (group.startsWith("pickup:")) {
+      const position = group.split(":")[1];
+      return {
+        label: `the ${position} pickup`,
+        apply: () => {
+          const layoutField = this.field("prototype", "body_pickups");
+          const names = ["neck", "middle", "bridge"];
+          const types = layoutField.value === "custom"
+            ? names.map((name) => this.field("prototype", `body_${name}_pickup`).value)
+            : schema.pickup_configurations[layoutField.value];
+          names.forEach((name, index) => {
+            const value = name === position ? "none" : types[index];
+            setControlValue(this.field("prototype", `body_${name}_pickup`), value);
+          });
+          setControlValue(layoutField, "custom");
+        },
+      };
+    }
+    if (group === "control") {
+      return {
+        label: "the controls (control cavity, pots and switch cavity)",
+        apply: () => setControlValue(this.field("prototype", "body_controls"), "none"),
+      };
+    }
+    if (group === "battery") {
+      return {
+        label: "the battery box",
+        apply: () => setControlValue(this.field("prototype", "body_battery_box"), false),
+      };
+    }
+    if (group.startsWith("pot:")) {
+      const input = this.field(shape, "pot_offsets");
+      const pots = readValue(input);
+      const index = Number(group.split(":")[1]);
+      if (pots.length < 2) return null;
+      return {
+        label: `pot ${index + 1}`,
+        apply: () => this.setField(input, pots.filter((_, i) => i !== index)),
+      };
+    }
+    if (group.startsWith("bolt:")) {
+      const input = this.field(shape, "neck_bolts");
+      let bolts = readValue(input);
+      if (!bolts.length) {
+        bolts = this.layout.circles
+          .filter((c) => c.rear && c.name.endsWith("ferrule"))
+          .map((c) => [c.x, c.y]);
+      }
+      const index = Number(group.split(":")[1]);
+      if (bolts.length < 2) return null;
+      return {
+        label: `neck bolt ${index + 1}`,
+        apply: () => this.setField(input, bolts.filter((_, i) => i !== index)),
+      };
+    }
+    return null;
   },
 
   setField(input, value) {

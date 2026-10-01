@@ -84,6 +84,11 @@
   .body-editor svg { display: block; width: 100%; height: auto; max-height: 75vh; border: 1px solid var(--line);
     border-radius: 6px; background: #fff; touch-action: none; user-select: none; }
   .body-editor .actions { margin: 6px 0; flex-wrap: wrap; }
+  .editor-options { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 10px; align-items: center; margin: 8px 0; max-width: 520px; }
+  .editor-options label { font-size: 13px; }
+  .editor-options select, .editor-options input[type=number] { max-width: 100%; }
+  .editor-options input[type=checkbox] { justify-self: start; }
+  .field.mirrored { display: none; }
   #body-editor-template { min-width: 0; max-width: 100%; flex: 1 1 160px; }
   .body-editor select { padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; font: inherit; background: #fff; }
   #body-editor-status.ok, #headstock-editor-status.ok { color: var(--ok); }
@@ -211,8 +216,9 @@
         box or the jack to turn it (round ones only move); drag one of the control cavity's square end
         handles to stretch or shrink it and its cover from that end, or a side handle to make them wider
         or narrower; the pickup routes
-        slide along the neck. The neck, its pocket and the bridge follow the neck and scale and stay put.
+        slide along the neck. Drag a feature right off the body to remove it (you are asked first). The neck, its pocket and the bridge follow the neck and scale and stay put.
         The grid is 50 mm.</p>
+      <div id="body-editor-options" class="editor-options"></div>
       <div class="actions">
         <label class="note" for="body-editor-template">Start from</label>
         <select id="body-editor-template"></select>
@@ -229,6 +235,7 @@
         it. The tuner holes come from the headstock style and stay put; every hole must keep its
         distance from the edge. Until you move a handle the outline follows the fitted one (a changed
         style redraws it); <em>Start over</em> goes back to it. The grid is 10 mm.</p>
+      <div id="headstock-editor-options" class="editor-options"></div>
       <div class="actions">
         <button id="headstock-editor-reset" class="secondary" type="button">Start over</button>
       </div>

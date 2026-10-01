@@ -38,6 +38,7 @@ from .presets.body_shapes import (
     body_shape_from_dict,
 )
 from .presets.controls import CONTROL_LABELS
+from .presets.pickups import PICKUP_CONFIGURATIONS
 from .presets.prototype001 import INSTRUMENT_OVERRIDES
 from .render.svg import render_plan_view_svg
 from .workflows import Prototype001Build
@@ -204,7 +205,10 @@ def parameter_schema() -> dict[str, Any]:
         ``variants``: ``{kind: {"label", "fields"}}``. ``advanced`` is
         true for the rarely changed fields the form folds away.
         ``locking_nut_widths`` maps each locking nut to its width, the
-        least ``nut_width`` it fits (the form widens the neck to it).
+        least ``nut_width`` it fits (the form widens the neck to it);
+        ``pickup_configurations`` each named pickup layout to its
+        ``[neck, middle, bridge]`` types (the body editor turns a layout
+        into "custom" to remove one pickup).
     """
     return {
         "instruments": {
@@ -215,6 +219,9 @@ def parameter_schema() -> dict[str, Any]:
             for instrument, overrides in INSTRUMENT_OVERRIDES.items()
         },
         "prototype": _group_fields(Prototype001Parameters),
+        "pickup_configurations": {
+            name: list(types) for name, types in PICKUP_CONFIGURATIONS.items()
+        },
         "locking_nut_widths": {
             kind: spec.width for kind, spec in LOCKING_NUT_SPECS.items()
         },

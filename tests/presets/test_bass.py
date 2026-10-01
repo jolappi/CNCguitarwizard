@@ -156,3 +156,23 @@ def test_the_bass_routes_follow_warmoths_rout_diagrams() -> None:
     assert coil_ends
     assert precision.max_y - precision.min_y > 93.0
     assert len(pickup_screws("precision_bass", 0.0, -1.0, 79.9)) == 4
+
+
+def test_a_bass_can_take_rickenbacker_style_humbuckers() -> None:
+    body = (
+        replace(Prototype001Parameters.for_instrument("bass_guitar"), body_pickups="RR")
+        .build()
+        .body
+    )
+    neck, bridge = body.neck_pickup, body.bridge_pickup
+    assert neck is not None and bridge is not None
+
+    # A 90 x 36 mm block with 1 mm round it, screwed 82 mm apart.
+    for route in (neck, bridge):
+        assert route.max_y - route.min_y == pytest.approx(92.0)
+        assert route.max_x - route.min_x == pytest.approx(38.0)
+    screws = [h for h in body.holes if h.name.startswith("Bridge pickup")]
+    assert len(screws) == 2
+    assert abs(screws[0].center_y - screws[1].center_y) == pytest.approx(82.0)
+    for screw in screws:
+        assert point_in_polygon(screw.center, bridge.outline)

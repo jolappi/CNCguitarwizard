@@ -22,7 +22,13 @@ Python.
    bridge, body thickness, tool and feeds…) are shown up front; the rest of
    each group sits behind an *Advanced* fold, marked `advanced` in the
    schema (`_BASIC_FIELDS`, `_BASIC_VARIANT_FIELDS` in `webapp.py`), with a
-   page-wide checkbox to open them all. Choosing a locking nut wider
+   page-wide checkbox to open them all. The settings that shape an
+   editor's drawing sit in that editor's own pane instead
+   (`EDITOR_FIELDS` in `app.js`): the pickup layout, controls, pickup
+   selector and battery box in the body editor, the tuner layout
+   (`headstock_style`) in the headstock editor. Each is a copy of the
+   form's field, whose row in the form is hidden; the field itself is
+   what is saved, loaded and built. Choosing a locking nut wider
    than the neck (`locking_nut` "r3") widens `nut_width` to it, to the
    next half millimetre (`locking_nut_widths` in the schema). A field whose type is a union of
    kinded dataclasses — the bridge — becomes a dropdown of kinds with the
@@ -45,7 +51,12 @@ Python.
    along the neck. Shift-dragging the control cavity (with its cover and
    pots, or the Tele plate), the battery box or the jack turns it about
    its centre (the jack about its socket) instead; round cavities only
-   move. The square handles at the control cover's two ends stretch or
+   move. A feature dropped wholly outside the outline asks whether to
+   remove it: a pickup (the layout turns "custom" with that position
+   empty, from `pickup_configurations` in the schema), the controls
+   (`body_controls` "none"), the battery box, one of several pots or neck
+   bolts; declined, it goes back. The switch cavity and the jack cannot go
+   on their own and just move. The square handles at the control cover's two ends stretch or
    shrink the cavity and its cover from that end (`control_stretch`; the
    centre and the pots move half the drag, so the other end stays), and
    those at its two sides widen or narrow it (`control_stretch_across`). A

@@ -361,6 +361,14 @@ Bass's with its two round recesses in each side, the Precision Bass's
 split coil wider along the neck with a round screw ear at each end of
 both coils.
 
+A bass can now take Rickenbacker style humbuckers too (`RR`).
+
+The pickup, control and tuner layouts moved into the editor panes, next
+to the drawings they change.
+
+Dragging a pickup, the controls, the battery box, a pot or a neck bolt
+right off the body now offers to remove it.
+
 ## Documentation
 
 - Added public package reference with API tables, examples, and diagrams.

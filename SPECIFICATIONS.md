@@ -141,7 +141,9 @@ mennä päällekkäin, eikä mikään reikä saa avautua paristokoteloon.
 ## Mikit
 
 Mikkikokoonpano valitaan (`body_pickups`): kitaralle HH (oletus), HSH, HSS, H,
-SSS tai SS, bassolle PJ (oletus), JJ, P tai MM; "custom" ottaa jokaisen
+SSS tai SS, bassolle PJ (oletus), JJ, P, MM tai RR (kaksi Rickenbacker-tyylistä
+bassohumbuckeria, 4003-koko: 90 × 36 mm palikka, kolo 92 × 38 mm, ruuvit
+82 mm välein); "custom" ottaa jokaisen
 paikan (kaula, keski, talla) tyypin omasta parametristaan. Single coil -kolo
 on 20 × 88 mm pyöreäpäinen; keskimikki on oletuksena kaula- ja tallamikin
 välisen raon keskellä (`body_middle_pickup_offset` siirtää sen), tallan

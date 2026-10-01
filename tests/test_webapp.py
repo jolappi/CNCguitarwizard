@@ -110,6 +110,7 @@ def test_schema_lists_every_parameter_with_a_form_type() -> None:
         "JJ",
         "P",
         "MM",
+        "RR",
         "custom",
     ]
     assert prototype_fields["body_pickups"]["advanced"] is False
@@ -121,6 +122,7 @@ def test_schema_lists_every_parameter_with_a_form_type() -> None:
         "jazz_bass",
         "precision_bass",
         "bass_soapbar",
+        "rickenbacker",
         "none",
     ]
     assert prototype_fields["string_count"]["advanced"] is False
@@ -523,3 +525,12 @@ def test_body_editor_layout_gives_the_control_cavity_stretch_handles() -> None:
     assert wide1 - wide0 == pytest.approx(90.0)
     no_controls = body_editor_layout({"prototype": {"body_controls": "none"}})
     assert no_controls["control"] is None
+
+
+def test_schema_lists_each_pickup_layouts_types() -> None:
+    layouts = parameter_schema()["pickup_configurations"]
+
+    # The body editor turns a layout into "custom" to drop one pickup.
+    assert layouts["HH"] == ["humbucker", "none", "humbucker"]
+    assert layouts["RR"] == ["rickenbacker", "none", "rickenbacker"]
+    assert "custom" not in layouts

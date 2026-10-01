@@ -4,6 +4,15 @@
 
 ### Added
 
+- The body editor asks to remove a feature dropped wholly outside the
+  body: a pickup (the layout turns "custom" with that position empty),
+  the controls, the battery box, or one of several pots or neck bolts;
+  declined, it goes back. The schema lists each pickup layout's types
+  (`pickup_configurations`).
+- Rickenbacker style bass humbuckers: the pickup type `rickenbacker` (a
+  4003's, or a Seymour Duncan SRB-1: a 90 x 36 mm block, routed 92 x
+  38 mm, screwed 82 mm apart) and the bass layout `RR`, one at the neck
+  and one at the bridge.
 - A drawn headstock's tip can be shaped: one click on the tip in the
   headstock editor adds a handle (`headstock_tip_points`, how far past
   the tip line and Y), dragged out for a pointed or rounded tip or in for
@@ -68,6 +77,11 @@
 
 ### Changed
 
+- The web app shows the settings that shape an editor's drawing in that
+  editor's pane: the pickup layout, controls, pickup selector and
+  battery box beside the body drawing, the tuner layout beside the
+  headstock's (their rows leave the form; saving and loading are as
+  before).
 - The bass pickup routes follow Warmoth's rout diagrams: the Jazz Bass
   route is 96 x 20 mm with two round recesses (R8) in each long side
   (it was a plain 100 x 21 mm bar), a screw in each recess outside the

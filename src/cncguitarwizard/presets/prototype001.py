@@ -393,11 +393,12 @@ class Prototype001Parameters:
     body_bridge_pickup_clearance: float = 3.0
     body_pickup_route_depth: float = 22.0
     # body_pickups picks a named layout (see PICKUP_CONFIGURATIONS): HH,
-    # HSH, HSS, H, SSS, SS for a guitar, PJ, JJ, P, MM for a bass. With
+    # HSH, HSS, H, SSS, SS for a guitar, PJ, JJ, P, MM, RR for a bass. With
     # "custom" each position takes its own type from body_neck_pickup /
     # body_middle_pickup / body_bridge_pickup: the guitar humbucker or
     # single coil, a Jazz Bass single coil, a Precision Bass split coil,
-    # a bass soapbar humbucker, or none. The middle pickup sits
+    # a bass soapbar humbucker, a Rickenbacker style bass humbucker, or
+    # none. The middle pickup sits
     # body_middle_pickup_offset past the heel end, or, left empty, in the
     # middle of the gap between the neck and bridge routes. A bridge
     # single coil slants body_bridge_single_coil_angle degrees, its treble

@@ -19,7 +19,13 @@ from ..geometry.primitives import Point2D, rounded_polygon_points
 from ._omarunko_outline import OMARUNKO_PICKUP_ROUTE_LOCAL_POINTS
 
 PickupType = Literal[
-    "humbucker", "single_coil", "jazz_bass", "precision_bass", "bass_soapbar", "none"
+    "humbucker",
+    "single_coil",
+    "jazz_bass",
+    "precision_bass",
+    "bass_soapbar",
+    "rickenbacker",
+    "none",
 ]
 """A pickup family, or ``"none"`` for no pickup in that position."""
 
@@ -29,13 +35,14 @@ PICKUP_LABELS: dict[str, str] = {
     "jazz_bass": "Jazz Bass single coil",
     "precision_bass": "Precision Bass split coil",
     "bass_soapbar": "Bass humbucker (MM-style soapbar)",
+    "rickenbacker": "Rickenbacker style bass humbucker (4003 size)",
     "none": "None",
 }
 
 PickupConfiguration = Literal[
-    "HH", "HSH", "HSS", "H", "SSS", "SS", "PJ", "JJ", "P", "MM", "custom"
+    "HH", "HSH", "HSS", "H", "SSS", "SS", "PJ", "JJ", "P", "MM", "RR", "custom"
 ]
-"""A pickup layout: H humbucker, S single coil, P/J/MM the bass types."""
+"""A pickup layout: H humbucker, S single coil, P/J/MM/R the bass types."""
 
 PICKUP_CONFIGURATIONS: dict[str, tuple[PickupType, PickupType, PickupType]] = {
     "HH": ("humbucker", "none", "humbucker"),
@@ -48,6 +55,7 @@ PICKUP_CONFIGURATIONS: dict[str, tuple[PickupType, PickupType, PickupType]] = {
     "JJ": ("jazz_bass", "none", "jazz_bass"),
     "P": ("precision_bass", "none", "none"),
     "MM": ("none", "none", "bass_soapbar"),
+    "RR": ("rickenbacker", "none", "rickenbacker"),
 }
 """The (neck, middle, bridge) pickup types of each named configuration.
 
@@ -75,6 +83,10 @@ _JAZZ_SCREW_ACROSS = _JAZZ_PICKUP_WIDTH / 2.0 + 2.9
 """How far out from the route's middle its screws sit (12 mm): through the
 ears on the pickup's sides, 2.9 mm clear of them, in the side recesses."""
 _SOAPBAR_LENGTH, _SOAPBAR_WIDTH, _SOAPBAR_SCREW = 102.0, 44.0, 45.0
+# Rickenbacker style bass humbucker (a 4003's, or a Seymour Duncan SRB-1):
+# a 90 x 36 mm block screwed down through its base 82 mm apart; the route
+# leaves 1 mm round it.
+_RICK_LENGTH, _RICK_WIDTH, _RICK_SCREW = 92.0, 38.0, 41.0
 _P_COIL_LENGTH, _P_COIL_WIDTH, _P_COIL_OFFSET, _P_COIL_SHIFT = 58.0, 28.5, 17.5, 14.25
 _P_EAR_RADIUS, _P_EAR_INSET = 7.0, 1.2
 """A Precision coil's ear: its radius, and how far inside the coil's end
@@ -249,6 +261,8 @@ def _local_outline(
         return _jazz()
     if kind == "bass_soapbar":
         return _bar(_SOAPBAR_LENGTH, _SOAPBAR_WIDTH, 12.0)
+    if kind == "rickenbacker":
+        return _bar(_RICK_LENGTH, _RICK_WIDTH, 3.0)
     return _precision(bass_sign)
 
 
@@ -357,6 +371,8 @@ def pickup_screws(
         ]
     elif kind == "bass_soapbar":
         local = pair(2.0 * _SOAPBAR_SCREW)
+    elif kind == "rickenbacker":
+        local = pair(2.0 * _RICK_SCREW)
     else:
         # Each coil is screwed through the ears at both of its ends; local
         # Y has the bass side negative, as in _precision.
