@@ -94,6 +94,13 @@ class DesignByJoneShape:
         control_angle_degrees: How far the control cavity, its cover and
             the layout's own pots (or the Tele plate) are turned about the
             cavity's centre, counter-clockwise in the plan.
+        control_stretch: How much longer (negative: shorter) the control
+            cavity and its cover are made along their long axis, from
+            their centre; the layout's pots, the Tele plate's screws and
+            switch slot move out with the ends.
+        control_stretch_across: Likewise across the long axis: the cavity
+            and its cover get that much wider (negative: narrower), the
+            Gibson layout's two rows of pots move apart with the sides.
     """
 
     kind: Literal["design_by_jone"] = "design_by_jone"
@@ -121,6 +128,8 @@ class DesignByJoneShape:
     battery_y: float = 2.5
     battery_angle_degrees: float = 85.0
     control_angle_degrees: float = 0.0
+    control_stretch: float = 0.0
+    control_stretch_across: float = 0.0
 
     def outline_points(
         self, heel_end: float, widening: float = 0.0
@@ -239,6 +248,13 @@ class YourDesignShape:
         control_angle_degrees: How far the control cavity, its cover and
             the layout's own pots (or the Tele plate) are turned about the
             cavity's centre, counter-clockwise in the plan.
+        control_stretch: How much longer (negative: shorter) the control
+            cavity and its cover are made along their long axis, from
+            their centre; the layout's pots, the Tele plate's screws and
+            switch slot move out with the ends.
+        control_stretch_across: Likewise across the long axis: the cavity
+            and its cover get that much wider (negative: narrower), the
+            Gibson layout's two rows of pots move apart with the sides.
 
     Raises:
         BodyGeometryError: For fewer than four or non-finite control points.
@@ -264,6 +280,8 @@ class YourDesignShape:
     battery_y: float = 47.5
     battery_angle_degrees: float = 15.0
     control_angle_degrees: float = 0.0
+    control_stretch: float = 0.0
+    control_stretch_across: float = 0.0
 
     def __post_init__(self) -> None:
         """Reject a control polygon that cannot describe a body."""
@@ -833,6 +851,11 @@ treble wing; the Jazz Bass style one, a mockup the same way, is the bass
 guitar's default body (``BASS_BODY``), its pots and control cavity moved
 onto the lower bout behind the bridge pickup. The other templates share
 the drawn body's default pot and jack placements.
+The "Design by Jone" one is also the guitar's default body
+(``GUITAR_BODY``).
 Loading one in the web app replaces the outline and the placements, which
 then stay editable.
 """
+
+GUITAR_BODY = YOUR_DESIGN_TEMPLATES["design_by_jone"][1]
+"""The guitar's default drawn body: the Design by Jone template."""

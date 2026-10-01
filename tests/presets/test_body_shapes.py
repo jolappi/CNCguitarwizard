@@ -14,14 +14,15 @@ from cncguitarwizard.presets import (
     YourDesignShape,
     body_shape_from_dict,
 )
-from cncguitarwizard.presets.body_shapes import YOUR_DESIGN_TEMPLATES
+from cncguitarwizard.presets.body_shapes import GUITAR_BODY, YOUR_DESIGN_TEMPLATES
 
 
-def test_the_default_body_is_the_design_by_jone_tracing() -> None:
+def test_the_default_body_is_the_drawn_design_by_jone_template() -> None:
     parameters = Prototype001Parameters()
     body = parameters.build().body
 
-    assert parameters.body_shape == DesignByJoneShape()
+    assert parameters.body_shape == GUITAR_BODY
+    assert GUITAR_BODY == YOUR_DESIGN_TEMPLATES["design_by_jone"][1]
     assert [hole.name for hole in body.holes[:3]] == [
         "Switch shaft hole",
         "Pot 1 shaft hole",

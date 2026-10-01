@@ -16,7 +16,7 @@ is one more rear cavity with its own cover, placed by the shape's
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Literal
 
 from ..geometry.body import (
@@ -29,6 +29,7 @@ from ..geometry.body import (
     TracedCavity,
     cover_screw_points,
 )
+from ..geometry.exceptions import BodyGeometryError
 from ..geometry.primitives import Point2D
 from .body_shapes import BodyShapeSpec
 
@@ -62,6 +63,10 @@ class ControlFeatures:
         top_marks: Cover-screw spots drilled from the top.
         covers: The plates to cut from sheet.
         battery_cavity: The rear 9 V battery box, or ``None``.
+        control_centre: The control cavity's (or Tele plate's) centre: it
+            turns about this point and stretches from it.
+        control_axis: Its long axis, a unit vector (turned with it); the
+            cavity's width runs square to it.
     """
 
     control_cavity: RearCavity | None = None
@@ -72,32 +77,20 @@ class ControlFeatures:
     top_marks: tuple[DrilledHole, ...] = ()
     covers: tuple[CoverPlate, ...] = ()
     battery_cavity: RearCavity | None = None
+    control_centre: Point2D | None = None
+    control_axis: Point2D | None = None
 
     def with_covers(self, other: ControlFeatures) -> ControlFeatures:
         """Return these features with another's screw spots and covers added."""
-        return ControlFeatures(
-            self.control_cavity,
-            self.switch_cavity,
-            self.top_cavities,
-            self.holes,
-            (*self.back_marks, *other.back_marks),
-            self.top_marks,
-            (*self.covers, *other.covers),
-            self.battery_cavity,
+        return replace(
+            self,
+            back_marks=(*self.back_marks, *other.back_marks),
+            covers=(*self.covers, *other.covers),
         )
 
     def with_battery(self, battery: ControlFeatures) -> ControlFeatures:
         """Return these features with a battery box's cavity, spots and cover."""
-        return ControlFeatures(
-            self.control_cavity,
-            self.switch_cavity,
-            self.top_cavities,
-            self.holes,
-            (*self.back_marks, *battery.back_marks),
-            self.top_marks,
-            (*self.covers, *battery.covers),
-            battery.battery_cavity,
-        )
+        return replace(self.with_covers(battery), battery_cavity=battery.battery_cavity)
 
 
 def rear_cover(rear: RearCavity, count: int) -> ControlFeatures:
@@ -142,6 +135,10 @@ BATTERY_CAVITY_CORNER_RADIUS = 5.0
 """Corner radius of the battery box, in mm (a 9 V battery still fits the
 default 56 × 30 mm box with it)."""
 
+BATTERY_PITCH = 28.0
+"""How much wider a box for two 9 V batteries is, in mm: one battery's
+26.5 mm plus 1.5 mm between them."""
+
 
 def battery_features(
     shape: BodyShapeSpec,
@@ -152,15 +149,26 @@ def battery_features(
     depth: float,
     cover_margin: float,
     cover_depth: float,
+    count: int = 1,
 ) -> ControlFeatures:
     """Return a rear 9 V battery box: its cavity, cover, and screw spots.
 
     The box is ``length`` along its own axis by ``width`` and ``depth``
     deep from the back, centred ``shape.battery_offset`` behind the heel
     end at ``shape.battery_y`` and turned ``shape.battery_angle_degrees``
-    from the neck's axis. Its cover recess is ``cover_margin`` wider all
-    round; the plate is held by two screws in the ledge at the box's ends.
+    from the neck's axis. A box for two batteries (``count`` 2) holds
+    them side by side, ``BATTERY_PITCH`` wider. Its cover recess is
+    ``cover_margin`` wider all round; the plate is held by two screws in
+    the ledge at the box's ends.
+
+    Raises:
+        BodyGeometryError: For a ``count`` other than 1 or 2.
     """
+    if count not in (1, 2):
+        raise BodyGeometryError(
+            f"A battery box holds one or two 9 V batteries, not {count}."
+        )
+    width += (count - 1) * BATTERY_PITCH
     centre = Point2D(heel_end + shape.battery_offset, shape.battery_y)
     angle = math.radians(shape.battery_angle_degrees)
     cos, sin = math.cos(angle), math.sin(angle)
@@ -237,6 +245,39 @@ def _turned(
     )
 
 
+def _principal_axis(points: tuple[Point2D, ...]) -> Point2D:
+    """Return the long axis of ``points`` (a unit vector, X never negative)."""
+    n = len(points)
+    mx = sum(p.x for p in points) / n
+    my = sum(p.y for p in points) / n
+    sxx = sum((p.x - mx) ** 2 for p in points)
+    syy = sum((p.y - my) ** 2 for p in points)
+    sxy = sum((p.x - mx) * (p.y - my) for p in points)
+    angle = 0.5 * math.atan2(2.0 * sxy, sxx - syy)
+    ux, uy = math.cos(angle), math.sin(angle)
+    return Point2D(ux, uy) if ux >= 0.0 else Point2D(-ux, -uy)
+
+
+def _stretched(
+    points: tuple[Point2D, ...], centre: Point2D, axis: Point2D, amount: float
+) -> tuple[Point2D, ...]:
+    """Return ``points`` stretched ``amount`` along ``axis`` from ``centre``.
+
+    Each half moves half the amount outward along the axis (inward for a
+    negative amount, never past the centre), so the ends keep their shape
+    and only the middle grows or shrinks.
+    """
+    if not amount:
+        return points
+    stretched = []
+    for p in points:
+        along = (p.x - centre.x) * axis.x + (p.y - centre.y) * axis.y
+        moved = math.copysign(max(abs(along) + amount / 2.0, 0.0), along)
+        shift = moved - along if along else 0.0
+        stretched.append(Point2D(p.x + axis.x * shift, p.y + axis.y * shift))
+    return tuple(stretched)
+
+
 def _box(
     name: str,
     centre: Point2D,
@@ -266,7 +307,14 @@ def control_features(
     pot_hole_diameter: float,
     switch_hole_diameter: float,
 ) -> ControlFeatures:
-    """Return the cavities, holes and plates of one electronics layout."""
+    """Return the cavities, holes and plates of one electronics layout.
+
+    Raises:
+        BodyGeometryError: When ``shape.control_stretch`` shortens the
+            control cavity or its cover past its rounded ends, or
+            ``shape.control_stretch_across`` leaves the cavity narrower
+            than ``MIN_CONTROL_CAVITY_WIDTH``.
+    """
     if layout == "none":
         return ControlFeatures()
     depth = thickness - top_wall
@@ -278,6 +326,18 @@ def control_features(
     # The whole layout turns about its cavity's centre (the shape's
     # control_angle_degrees); round cavities are left as they are.
     turn = shape.control_angle_degrees
+    # The cavity and its cover grow (or shrink) by control_stretch along
+    # their long axis, from their centre; whatever sits off the centre
+    # along that axis moves out with its end.
+    stretch = shape.control_stretch
+    # control_stretch_across does the same square to that axis.
+    widen = shape.control_stretch_across
+
+    def spread(dx: float) -> float:
+        return dx + math.copysign(stretch / 2.0, dx) if dx else 0.0
+
+    def spread_across(dy: float) -> float:
+        return dy + math.copysign(widen / 2.0, dy) if dy else 0.0
 
     if layout == "tele":
         # The long plate sits 10 mm in from the pots' line, toward the
@@ -288,6 +348,8 @@ def control_features(
             cover_depth,
             pot_hole_diameter,
             turn,
+            stretch,
+            widen,
         )
 
     if layout == "almond_2":
@@ -297,13 +359,21 @@ def control_features(
         centre = Point2D(
             sum(p.x for p in drawn) / len(drawn), sum(p.y for p in drawn) / len(drawn)
         )
-        cavity: Cavity = TracedCavity(
-            "Control cavity", _turned(drawn, centre, turn), depth
-        )
+        axis = _principal_axis(drawn)
+        across = Point2D(-axis.y, axis.x)
+        drawn_cover = shape.control_cover_points(heel_end)
+        if stretch < 0.0:
+            _check_shortening("almond control cavity", drawn, centre, axis, stretch)
+            _check_shortening("almond cover", drawn_cover, centre, axis, stretch)
+        _check_width(_extent(drawn, across) + widen)
+
+        def reshaped(points: tuple[Point2D, ...]) -> tuple[Point2D, ...]:
+            longer = _stretched(points, centre, axis, stretch)
+            return _turned(_stretched(longer, centre, across, widen), centre, turn)
+
+        cavity: Cavity = TracedCavity("Control cavity", reshaped(drawn), depth)
         cover: Cavity = TracedCavity(
-            "Control cavity cover recess",
-            _turned(shape.control_cover_points(heel_end), centre, turn),
-            cover_depth,
+            "Control cavity cover recess", reshaped(drawn_cover), cover_depth
         )
     elif layout == "gibson_4":
         centre = Point2D(anchor_x, anchor_y + inward * 6.0)
@@ -311,7 +381,7 @@ def control_features(
             (p.x, p.y)
             for p in _turned(
                 tuple(
-                    Point2D(centre.x + dx, centre.y + dy)
+                    Point2D(centre.x + spread(dx), centre.y + spread_across(dy))
                     for dx, dy in (
                         (-21.0, -17.0),
                         (21.0, -17.0),
@@ -323,23 +393,54 @@ def control_features(
                 turn,
             )
         ]
-        cavity = _box("Control cavity", centre, 78.0, 70.0, depth, 16.0, turn)
+        axis = Point2D(1.0, 0.0)
+        _check_width(70.0 + widen)
+        cavity = _box(
+            "Control cavity", centre, 78.0 + stretch, 70.0 + widen, depth, 16.0, turn
+        )
         cover = _box(
-            "Control cavity cover recess", centre, 90.0, 82.0, cover_depth, 22.0, turn
+            "Control cavity cover recess",
+            centre,
+            90.0 + stretch,
+            82.0 + widen,
+            cover_depth,
+            22.0,
+            turn,
         )
     else:  # rear_3
         centre = Point2D(anchor_x, anchor_y)
         pots = [
             (p.x, p.y)
             for p in _turned(
-                tuple(Point2D(anchor_x + dx, anchor_y) for dx in (-30.0, 0.0, 30.0)),
+                tuple(
+                    Point2D(anchor_x + spread(dx), anchor_y)
+                    for dx in (-30.0, 0.0, 30.0)
+                ),
                 centre,
                 turn,
             )
         ]
-        cavity = _box("Control cavity", centre, 94.0, 34.0, depth, 16.9, turn)
+        axis = Point2D(1.0, 0.0)
+        # Round-ended: the ends stay half circles at any width.
+        width = 34.0 + widen
+        _check_width(width)
+        cavity = _box(
+            "Control cavity",
+            centre,
+            94.0 + stretch,
+            width,
+            depth,
+            width / 2.0 - 0.1,
+            turn,
+        )
         cover = _box(
-            "Control cavity cover recess", centre, 106.0, 46.0, cover_depth, 22.9, turn
+            "Control cavity cover recess",
+            centre,
+            106.0 + stretch,
+            width + 12.0,
+            cover_depth,
+            width / 2.0 + 5.9,
+            turn,
         )
 
     control = RearCavity(cavity, cover)
@@ -388,7 +489,49 @@ def control_features(
         holes=tuple(holes),
         back_marks=tuple(marks),
         covers=tuple(covers),
+        control_centre=centre,
+        control_axis=_turned((axis,), Point2D(0.0, 0.0), turn)[0],
     )
+
+
+MIN_CONTROL_CAVITY_WIDTH = 16.0
+"""The narrowest a control cavity may be made, in mm: a mini pot's body."""
+
+
+def _extent(points: tuple[Point2D, ...], direction: Point2D) -> float:
+    """Return how far ``points`` reach along ``direction``, end to end."""
+    along = [p.x * direction.x + p.y * direction.y for p in points]
+    return max(along) - min(along)
+
+
+def _check_width(width: float) -> None:
+    """Refuse a control cavity narrower than ``MIN_CONTROL_CAVITY_WIDTH``."""
+    if width < MIN_CONTROL_CAVITY_WIDTH:
+        raise BodyGeometryError(
+            f"control_stretch_across leaves the control cavity {width:.1f} mm "
+            f"wide; it needs at least {MIN_CONTROL_CAVITY_WIDTH:g} mm for a pot."
+        )
+
+
+def _check_shortening(
+    name: str,
+    points: tuple[Point2D, ...],
+    centre: Point2D,
+    axis: Point2D,
+    stretch: float,
+) -> None:
+    """Refuse shortening a drawn outline by half its length or more.
+
+    Past that its rounded ends would fold onto the centre.
+    """
+    half_length = max(
+        abs((p.x - centre.x) * axis.x + (p.y - centre.y) * axis.y) for p in points
+    )
+    if -stretch >= half_length:
+        raise BodyGeometryError(
+            f"control_stretch {stretch:g} mm shortens the {name} too much: "
+            f"less than {half_length:.1f} mm shorter, please."
+        )
 
 
 def _tele(
@@ -397,21 +540,46 @@ def _tele(
     cover_depth: float,
     pot_hole_diameter: float,
     turn: float = 0.0,
+    stretch: float = 0.0,
+    widen: float = 0.0,
 ) -> ControlFeatures:
     """A Telecaster-style plate: flush in the top, parallel to the neck.
 
     The 160 × 32 mm round-ended plate carries the blade switch's slot at
     its front and two pots behind it; the cavity under it is 140 × 22 mm;
-    two screws hold it at its ends. All of it turns ``turn`` degrees about
-    the plate's centre.
+    two screws hold it at its ends. ``stretch`` makes the plate and cavity
+    that much longer, moving the screws, the slot and the rear pot out
+    with the ends, and ``widen`` that much wider, their ends staying half
+    circles. All of it turns ``turn`` degrees about the plate's
+    centre.
     """
 
     def at(dx: float) -> Point2D:
+        if dx:
+            dx += math.copysign(stretch / 2.0, dx)
         (point,) = _turned((Point2D(centre.x + dx, centre.y),), centre, turn)
         return point
 
-    recess = _box("Control plate recess", centre, 160.0, 32.0, cover_depth, 15.99, turn)
-    cavity = _box("Control cavity", centre, 140.0, 22.0, depth, 10.99, turn)
+    width = 22.0 + widen
+    _check_width(width)
+    recess = _box(
+        "Control plate recess",
+        centre,
+        160.0 + stretch,
+        width + 10.0,
+        cover_depth,
+        width / 2.0 + 4.99,
+        turn,
+    )
+    cavity = _box(
+        "Control cavity",
+        centre,
+        140.0 + stretch,
+        width,
+        depth,
+        width / 2.0 - 0.01,
+        turn,
+    )
     screws = [at(-75.0), at(75.0)]
     pots = [at(0.0), at(45.0)]
     plate = CoverPlate(
@@ -446,5 +614,9 @@ def _tele(
         for index, p in enumerate(screws, start=1)
     )
     return ControlFeatures(
-        top_cavities=(recess, cavity), top_marks=marks, covers=(plate,)
+        top_cavities=(recess, cavity),
+        top_marks=marks,
+        covers=(plate,),
+        control_centre=centre,
+        control_axis=_turned((Point2D(1.0, 0.0),), Point2D(0.0, 0.0), turn)[0],
     )

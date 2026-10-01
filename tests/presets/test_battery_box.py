@@ -165,3 +165,30 @@ def test_the_battery_box_is_cut_with_the_electronics_and_its_cover_from_sheet() 
     assert cover_setup_name(battery_cover) == "Cover_battery_cavity"
     assert "Cover_battery_cavity" in [setup.name for setup in covers.covers]
     assert not math.isnan(battery_cover.thickness)
+
+
+def test_a_box_for_two_batteries_holds_them_side_by_side() -> None:
+    # Further out than the single box's test, clear of the bridge.
+    shape = replace(
+        DesignByJoneShape(),
+        battery_offset=210.0,
+        battery_y=-75.0,
+        battery_angle_degrees=0.0,
+    )
+    one = with_battery(body_shape=shape).build().body.battery_cavity
+    two = with_battery(body_shape=shape, body_battery_count=2).build()
+    battery = two.body.battery_cavity
+
+    assert one is not None and battery is not None
+    # 28 mm wider: a second 26.5 mm battery and 1.5 mm between the two.
+    assert span(battery.cavity.outline) == pytest.approx((56.0, 58.0), abs=0.01)
+    assert span(battery.cover_recess.outline) == pytest.approx((70.0, 72.0), abs=0.01)
+    (cover,) = [c for c in two.covers if c.name == "Battery cavity cover"]
+    assert cover.outline == battery.cover_recess.outline
+    assert len(cover.holes) == 2
+
+
+@pytest.mark.parametrize("count", [0, 3])
+def test_a_battery_box_holds_one_or_two_batteries(count: int) -> None:
+    with pytest.raises(BodyGeometryError, match="one or two"):
+        with_battery(body_battery_count=count).build()

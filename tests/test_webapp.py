@@ -33,8 +33,10 @@ def test_schema_lists_every_parameter_with_a_form_type() -> None:
     assert prototype_fields["fret_count"]["type"] == "int"
     shape = prototype_fields["body_shape"]
     assert shape["type"] == "variant" and shape["advanced"] is False
-    assert shape["default"]["kind"] == "design_by_jone"
-    assert set(shape["variants"]) == {"design_by_jone", "your_design"}
+    # The form's body is always drawn: the Design by Jone template.
+    assert shape["default"]["kind"] == "your_design"
+    assert len(shape["default"]["control_points"]) == 64
+    assert set(shape["variants"]) == {"your_design"}
     assert shape["variants"]["your_design"]["label"].startswith("Your design")
     strat_fields = {f["name"]: f for f in shape["variants"]["your_design"]["fields"]}
     assert strat_fields["control_points"]["type"] == "json"
@@ -491,3 +493,33 @@ def test_the_neck_blank_is_a_basic_machining_choice() -> None:
     assert choice["advanced"] is False and choice["default"] == "solid"
     assert choice["options"] == ["solid", "laminated"]
     assert choice["labels"]["laminated"].startswith("Neck plank first")
+
+
+def test_body_editor_layout_gives_the_control_cavity_stretch_handles() -> None:
+    def control(**shape: object) -> dict[str, object]:
+        layout = body_editor_layout(
+            {
+                "prototype": {
+                    "body_controls": "gibson_4",
+                    "body_shape": {"kind": "your_design", **shape},
+                }
+            }
+        )
+        return layout["control"]
+
+    plain = control()
+    assert plain["axis"] == [1.0, 0.0]
+    (x0, y0), (x1, y1) = plain["ends"]
+    # The ends of the 90 mm cover, either side of the centre.
+    assert x1 - x0 == pytest.approx(90.0)
+    assert (x0 + x1) / 2 == pytest.approx(plain["centre"][0])
+    stretched = control(control_stretch=20.0)
+    (sx0, _), (sx1, _) = stretched["ends"]
+    assert (sx0, sx1) == pytest.approx((x0 - 10.0, x1 + 10.0))
+    # The sides of the 82 mm wide cover, square to the axis.
+    (_, side0), (_, side1) = plain["sides"]
+    assert side1 - side0 == pytest.approx(82.0)
+    (_, wide0), (_, wide1) = control(control_stretch_across=8.0)["sides"]
+    assert wide1 - wide0 == pytest.approx(90.0)
+    no_controls = body_editor_layout({"prototype": {"body_controls": "none"}})
+    assert no_controls["control"] is None

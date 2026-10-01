@@ -11,6 +11,16 @@
   or the jack; round cavities only move. One click on the outline now
   adds a handle there (it took a double-click, which also caught the body
   inside it).
+- The control cavity stretches: the body shape's `control_stretch` makes
+  the cavity and its cover longer (or shorter) along their long axis from
+  their centre, moving a generated layout's end pots (the Tele plate's
+  screws, slot and rear pot) out with the ends; `control_stretch_across`
+  makes them wider (or narrower), the Gibson layout's pot rows moving
+  apart, down to 16 mm wide. The body editor has a square handle at each
+  end and each side of the cover to drag.
+- A battery box for two 9 V batteries side by side
+  (`body_battery_count` 2): 28 mm wider, 56 × 58 mm in a 70 × 72 mm cover
+  recess. A basic field in the web form.
 - A laminated neck blank (`neck_blank` / `NeckMachiningParameters.blank`
   = `"laminated"`): the neck is cut from its own 20 mm plank first, then a
   block as thick as the plank is glued under the headstock end, and the
@@ -35,6 +45,16 @@
 
 ### Changed
 
+- The web app's intro ("What this page does") heads the left column.
+  On a narrow screen it comes first, then the buttons
+  and the instrument choice with the body and headstock editors and the
+  results right under them, and the long form last. The body editor's
+  template row wraps instead of running off a phone's screen.
+- The body is always drawn: the web form has no body shape dropdown, and
+  the default body is the Design by Jone template (`GUITAR_BODY`, a
+  `YourDesignShape`) on a guitar and the Jazz Bass style one on a bass.
+  `DesignByJoneShape` (the traced DXF) remains in Python; a saved design
+  that names it loads as the template.
 - The plan view stands upright, headstock at the top (the side view
   turned a quarter turn clockwise, not mirrored), and the web app fits it
   to the window.

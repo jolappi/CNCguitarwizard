@@ -23,10 +23,13 @@ Python.
    each group sits behind an *Advanced* fold, marked `advanced` in the
    schema (`_BASIC_FIELDS`, `_BASIC_VARIANT_FIELDS` in `webapp.py`), with a
    page-wide checkbox to open them all. A field whose type is a union of
-   kinded dataclasses — the bridge, the body shape —
-   becomes a dropdown of kinds with the chosen kind's own fields beneath
-   it (`variant` in the schema). Choosing the body shape "Your design"
-   opens a drawing panel above the results: the outline's control points
+   kinded dataclasses — the bridge — becomes a dropdown of kinds with the
+   chosen kind's own fields beneath it (`variant` in the schema). The body
+   shape offers only its drawn kind (`_FORM_KINDS`), so it has no dropdown:
+   the body is always drawn, starting from the Design by Jone template on
+   a guitar and the Jazz Bass style one on a bass (a saved design that
+   names the traced `design_by_jone` body loads as that template). A
+   drawing panel above the results edits it: the outline's control points
    are handles to drag (click the outline to add one, Alt-click or
    right-click to remove one; *Start from* + *Load* replaces the drawing
    with a template — Design by Jone, Les Paul, Stratocaster or Jackson RR
@@ -39,8 +42,14 @@ Python.
    along the neck. Shift-dragging the control cavity (with its cover and
    pots, or the Tele plate), the battery box or the jack turns it about
    its centre (the jack about its socket) instead; round cavities only
-   move. A drop moves the fields that place them
-   (`control_shift`, `control_angle_degrees`, `pot_offsets`, `switch_*`,
+   move. The square handles at the control cover's two ends stretch or
+   shrink the cavity and its cover from that end (`control_stretch`; the
+   centre and the pots move half the drag, so the other end stays), and
+   those at its two sides widen or narrow it (`control_stretch_across`). A
+   drop moves the fields that place them
+   (`control_shift`, `control_angle_degrees`, `control_stretch`,
+   `control_stretch_across`,
+   `pot_offsets`, `switch_*`,
    `battery_*`, `neck_bolts`, `jack_*`,
    `body_*_pickup_offset`) and the layout is fetched again. The neck, its
    pocket and the bridge follow the neck and scale and stay put. The
@@ -121,7 +130,7 @@ job prints the page URL.
 
 | File | Purpose |
 | --- | --- |
-| `site/index.html` | Layout and styling |
+| `site/index.html` | Layout and styling; the intro heads the left column, and on a narrow screen (≤ 900 px) the intro comes first, then the buttons and instrument choice, the editors and the results, and the form last |
 | `site/app.js` | Pyodide bootstrap, form generation, build, downloads, NC Viewer simulator panel |
 | `src/cncguitarwizard/webapp.py` | Schema and build glue called from the page |
 | `src/cncguitarwizard/render/svg/plan_view.py` | The plan-view SVG |

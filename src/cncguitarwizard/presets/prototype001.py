@@ -50,8 +50,8 @@ from ..geometry.primitives import Point2D, point_in_polygon, rounded_polygon_poi
 from .body_shapes import (
     BASS_BODY,
     BODY_WIDENING_PER_STRING,
+    GUITAR_BODY,
     BodyShapeSpec,
-    DesignByJoneShape,
     widened_shape,
 )
 from .controls import (
@@ -416,14 +416,15 @@ class Prototype001Parameters:
     # routes, rear cavities and holes relative to the scale line. In the
     # web form it is edited as JSON with a "kind" entry.
     body_bridge: BridgeSpec = field(default_factory=KahlerBridgeSpec)
-    # The body shape is an interchangeable spec (see body_shapes): the
-    # user's own Design by Jone outline traced from the DXF (default) or
-    # a Stratocaster-inspired silhouette. Each carries its own outline
-    # and the placements that belong to the silhouette - switch cavity,
-    # pot holes, jack - measured from the heel end; the rear cavities
-    # themselves keep the DXF's shapes. In the web form it is a dropdown
-    # of kinds with the chosen kind's placements beneath it.
-    body_shape: BodyShapeSpec = field(default_factory=DesignByJoneShape)
+    # The body shape is a spec (see body_shapes): a drawn body
+    # (YourDesignShape) — by default the Design by Jone template, the
+    # user's own DXF outline resampled to control points (the bass gets
+    # the Jazz Bass style one) — or the traced DXF itself
+    # (DesignByJoneShape). Each carries its own outline and the placements
+    # that belong to the silhouette - switch cavity, pot holes, jack -
+    # measured from the heel end. The web form always edits a drawn body,
+    # in the body editor.
+    body_shape: BodyShapeSpec = field(default_factory=lambda: GUITAR_BODY)
     body_bridge_follows_fan: bool = False
     body_pickups_follow_fan: Literal["auto", "yes", "no"] = "auto"
     # body_widening opens the body along its centreline for a wider neck:
@@ -476,7 +477,10 @@ class Prototype001Parameters:
     # body_cover_recess_depth deep, held by two screws at the box's ends.
     # The body shape's battery_offset, battery_y and battery_angle_degrees
     # place it. The wire to the control cavity is drilled by hand.
+    # body_battery_count 2 makes the box hold two batteries side by side
+    # (18 V for some preamps), BATTERY_PITCH (28 mm) wider.
     body_battery_box: bool = False
+    body_battery_count: int = 1
     body_battery_cavity_length: float = 56.0
     body_battery_cavity_width: float = 30.0
     body_battery_cavity_depth: float = 22.0
@@ -1650,6 +1654,7 @@ class Prototype001Parameters:
                 depth=self.body_battery_cavity_depth,
                 cover_margin=self.body_battery_cover_margin,
                 cover_depth=self.body_cover_recess_depth,
+                count=self.body_battery_count,
             )
         controls = self._placed_controls(
             shape,

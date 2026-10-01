@@ -101,14 +101,14 @@ line is `Y = 0`. Everything else in the drawing follows from that one offset.
 ## Body shapes
 
 The silhouette is an interchangeable *spec* too (`presets.body_shapes`),
-chosen with `Prototype001Parameters.body_shape` — a dropdown in the web
-form, sent back as a JSON object with a `kind` entry
-(`body_shape_from_dict` rebuilds it):
+chosen with `Prototype001Parameters.body_shape`, sent from the web form
+as a JSON object with a `kind` entry (`body_shape_from_dict` rebuilds it).
+The web form always edits a drawn body; Python takes either:
 
 | Spec | `kind` | Outline |
 | --- | --- | --- |
-| `DesignByJoneShape` (default) | `design_by_jone` | The user's own body traced from `assets/reference/omarunko.dxf` |
-| `YourDesignShape` | `your_design` | A body the user draws: a closed Catmull-Rom spline (`geometry.primitives.closed_catmull_rom`, 8 samples per segment) through `control_points`, edited by dragging in the web app; it starts as a Stratocaster-inspired offset double cutaway (`YOUR_DESIGN_START_POINTS`) |
+| `YourDesignShape` (default) | `your_design` | A body the user draws: a closed Catmull-Rom spline (`geometry.primitives.closed_catmull_rom`, 8 samples per segment) through `control_points`, edited by dragging in the web app. The guitar's default is the Design by Jone template (`GUITAR_BODY`), the bass's the Jazz Bass style one (`BASS_BODY`); the bare class starts as a Stratocaster-inspired offset double cutaway (`YOUR_DESIGN_START_POINTS`) |
+| `DesignByJoneShape` | `design_by_jone` | The user's own body traced from `assets/reference/omarunko.dxf` |
 
 A shape carries the outline and the placements that belong to it — the
 round switch cavity (centre, cover), the pot shaft holes and the jack bore —
@@ -235,6 +235,24 @@ battery box turns with `battery_angle_degrees` and the jack with
 `jack_direction_degrees`; round cavities only move. In the body editor a
 Shift-drag turns them.
 
+`control_stretch` makes the control cavity and its cover that much longer
+(negative: shorter) along their long axis, from their centre: each end
+moves out half of it and keeps its rounded shape, the width stays. A
+Gibson or three-pot layout's end pots move out with the ends, as do the
+Tele plate's screws, blade slot and rear pot; the drawn almond stretches
+along its own long axis (its pots are its own). A cavity cannot shrink
+past its rounded ends (`BodyGeometryError`). The body editor draws a
+square handle at each end of the cover: dragging one stretches the
+cavity from that end while the other end stays put.
+
+`control_stretch_across` does the same square to the long axis: the
+cavity and its cover get that much wider (negative: narrower) from their
+centre. The Gibson layout's two rows of pots move apart with the sides;
+the round-ended three-pot cavity and Tele plate keep half-circle ends at
+any width. A cavity narrower than `MIN_CONTROL_CAVITY_WIDTH` (16 mm, a
+mini pot's body) is refused. The editor's side handles, square to the
+end handles, widen it from one side with the other held still.
+
 The rear layouts' pickup selector is chosen with `body_switch`: a 3-way
 toggle (`toggle`, the default) through a 1/2 in (12.7 mm) hole, or a micro
 (mini) toggle (`micro`) through a 1/4 in (6.35 mm) one
@@ -274,6 +292,7 @@ layout, `none` included (`controls.battery_features`):
 | `body_battery_cavity_length` × `_width` | 56 × 30 mm | The box (r 5); a 9 V battery is 48.5 × 26.5 × 17.5 mm |
 | `body_battery_cavity_depth` | 22 mm | Up from the back face; at most `body_thickness - body_rear_cavity_top_wall` |
 | `body_battery_cover_margin` | 7 mm | The cover recess is this much wider all round (70 × 44 mm by default) |
+| `body_battery_count` | 1 | 2 holds two batteries side by side (18 V): the box is `BATTERY_PITCH` (28 mm) wider, 56 × 58 mm in a 70 × 72 mm recess |
 
 The body shape places it: `battery_offset` (X from the heel end),
 `battery_y` and `battery_angle_degrees` (the box's long axis from the

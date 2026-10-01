@@ -83,13 +83,17 @@
   .body-editor { margin-bottom: 20px; }
   .body-editor svg { display: block; width: 100%; height: auto; max-height: 75vh; border: 1px solid var(--line);
     border-radius: 6px; background: #fff; touch-action: none; user-select: none; }
-  .body-editor .actions { margin: 6px 0; }
+  .body-editor .actions { margin: 6px 0; flex-wrap: wrap; }
+  #body-editor-template { min-width: 0; max-width: 100%; flex: 1 1 160px; }
   .body-editor select { padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; font: inherit; background: #fff; }
   #body-editor-status.ok, #headstock-editor-status.ok { color: var(--ok); }
   #body-editor-status.bad, #headstock-editor-status.bad { color: var(--bad); }
   .body-editor .handle { fill: #fff; stroke: var(--accent); stroke-width: 0.8; cursor: grab; }
   .body-editor .handle:hover, .body-editor .handle.dragging { fill: var(--accent); }
   .body-editor .movable { cursor: move; }
+  .body-editor .stretch-handle { fill: #fff; stroke: #5a3a8a; stroke-width: 0.8; cursor: ew-resize; }
+  .body-editor .stretch-handle.across { cursor: ns-resize; }
+  .body-editor .stretch-handle:hover, .body-editor .stretch-handle.dragging { fill: #5a3a8a; }
   .body-editor .movable:hover { filter: brightness(0.9); }
   .body-editor .outline { fill: var(--wood); fill-opacity: 0.85; stroke: #6b4a1f; stroke-width: 1; }
   .body-editor .outline-hit { fill: none; stroke: transparent; stroke-width: 8; pointer-events: stroke; cursor: copy; }
@@ -137,7 +141,13 @@
   #simulator-hint.bad { color: var(--bad); }
   @media (max-width: 900px) {
     main { grid-template-columns: 1fr; }
-    aside { max-height: none; border-right: 0; border-bottom: 1px solid var(--line); }
+    /* One column: the intro, the buttons and the instrument first, then
+       the editors and the results, and the long form last. */
+    aside { display: contents; }
+    #intro { order: -1; padding: 14px 16px 0; }
+    .aside-top { order: 0; padding: 0 16px; }
+    section.results { order: 1; padding: 8px 16px 24px; min-width: 0; }
+    .aside-form { order: 2; padding: 14px 16px 40px; border-top: 1px solid var(--line); }
   }
 </style>
 </head>
@@ -151,6 +161,15 @@
 </header>
 <main>
   <aside>
+    <div id="intro">
+      <h2>What this page does</h2>
+      <p>It runs the real <code>cncguitarwizard</code> Python package in your browser (via Pyodide) and
+        builds the complete Prototype001 package: the FreeCAD script, the body G-code for a GRBL
+        machine, toolpath plots and the build report — all without a server.</p>
+      <p>The <code>.FCStd</code> and STEP models need FreeCAD itself: download
+        <code>Prototype001_freecad.py</code> and run it with <code>freecadcmd</code> or as a macro.</p>
+    </div>
+    <div class="aside-top">
     <div class="actions">
       <button id="build" disabled>Build Prototype001</button>
       <button id="reset" class="secondary" disabled>Reset</button>
@@ -170,11 +189,14 @@
       <label for="instrument">Instrument</label>
       <select id="instrument"></select>
     </div>
+    </div>
+    <div class="aside-form">
     <p class="note">Every value below is a field of <code>Prototype001Parameters</code> or
       <code>MachiningParameters</code>. Changed values are highlighted. Lists are edited as JSON.
       Rarely needed fields sit behind each group's <em>Advanced</em> fold.</p>
     <label class="note toggle"><input type="checkbox" id="show-advanced"> Show all advanced settings</label>
     <form id="form"></form>
+    </div>
   </aside>
   <section class="results">
     <div id="body-editor" class="body-editor hidden">
@@ -185,7 +207,9 @@
         placements. Drag the control cavity
         (its pots come along), a single pot, the switch cavity, the battery box, a neck bolt (dashed,
         drilled from the back) or the jack to move it; Shift-drag the control cavity, the battery
-        box or the jack to turn it (round ones only move); the pickup routes
+        box or the jack to turn it (round ones only move); drag one of the control cavity's square end
+        handles to stretch or shrink it and its cover from that end, or a side handle to make them wider
+        or narrower; the pickup routes
         slide along the neck. The neck, its pocket and the bridge follow the neck and scale and stay put.
         The grid is 50 mm.</p>
       <div class="actions">
@@ -209,14 +233,6 @@
       <svg id="headstock-editor-svg" xmlns="http://www.w3.org/2000/svg"></svg>
     </div>
     <div id="error" class="error hidden"></div>
-    <div id="intro">
-      <h2>What this page does</h2>
-      <p>It runs the real <code>cncguitarwizard</code> Python package in your browser (via Pyodide) and
-        builds the complete Prototype001 package: the FreeCAD script, the body G-code for a GRBL
-        machine, toolpath plots and the build report — all without a server.</p>
-      <p>The <code>.FCStd</code> and STEP models need FreeCAD itself: download
-        <code>Prototype001_freecad.py</code> and run it with <code>freecadcmd</code> or as a macro.</p>
-    </div>
     <div id="output" class="hidden">
       <h2>Plan view</h2>
       <div id="plan" class="preview"></div>

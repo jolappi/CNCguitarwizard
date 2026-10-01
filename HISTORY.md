@@ -313,6 +313,18 @@ The body editor also turns things now: a Shift-drag turns the control
 cavity with its cover and pots, the battery box or the jack about its
 centre, and one click on the outline adds a handle there.
 
+The control cavity can be stretched or shrunk from its ends
+(`control_stretch`): the cavity and its cover change length along their
+long axis while their rounded ends and width stay, and a generated
+layout's end pots move with the ends. The editor's square end handles do
+it with the far end held still, and its side handles make the cavity
+wider or narrower the same way (`control_stretch_across`). The battery box can also hold two 9 V
+batteries side by side (`body_battery_count`).
+
+The body shape choice is gone from the web form: the body is always a
+drawn one, starting from the Design by Jone template on a guitar and the
+Jazz Bass style one on a bass, which are also Python's defaults.
+
 ## Documentation
 
 - Added public package reference with API tables, examples, and diagrams.

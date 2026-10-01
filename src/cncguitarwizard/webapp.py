@@ -26,6 +26,7 @@ from .geometry.body import (
     BRIDGE_MAX_STRINGS,
     bridge_spec_from_dict,
 )
+from .geometry.primitives import Point2D
 from .presets import Prototype001Parameters
 from .presets.body_shapes import (
     BODY_SHAPE_KINDS,
@@ -103,6 +104,7 @@ _BASIC_FIELDS: frozenset[str] = frozenset(
         "body_controls",
         "body_switch",
         "body_battery_box",
+        "body_battery_count",
         "body_pickups_follow_fan",
         "body_bridge_follows_fan",
         "body_top_edge_radius",
@@ -125,6 +127,13 @@ _BASIC_FIELDS: frozenset[str] = frozenset(
         "tab_count",
     }
 )
+
+# Variant fields whose form offers only some of their kinds. The body is
+# always a drawn one, edited in the body editor (the traced DXF is its
+# "Design by Jone" template); Python still takes every kind.
+_FORM_KINDS: dict[str, frozenset[str]] = {
+    "body_shape": frozenset({"your_design"}),
+}
 
 # Per variant kind (bridges and body shapes), the fields worth checking
 # against the hardware in hand; the rest of a kind's fields are its
@@ -252,7 +261,12 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         ``pickup``, ``bridge``, ``top_control``, ``rear``, ``cover``,
         ``contour_top`` (an arm contour) or ``contour_back`` (a belly cut);
         ``circles`` a list of ``{"name", "group", "x", "y", "r"}``;
-        ``jack`` ``{"group", "x", "y", "x2", "y2", "r"}``.
+        ``jack`` ``{"group", "x", "y", "x2", "y2", "r"}``; ``control``
+        ``{"centre", "axis", "ends", "sides"}`` — the control cavity's
+        centre, its long axis (a unit vector), the two ends of its cover
+        (or the Tele plate) on that axis and its two sides square to it,
+        the editor's stretch handles — or ``None`` without a control
+        layout.
     """
     try:
         parameters = Prototype001Parameters(**_coerce(payload.get("prototype", {})))
@@ -350,6 +364,28 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         }
         for pivot in mounting.pivot_holes
     ]
+    control: dict[str, Any] | None = None
+    controls = layout.controls
+    if controls.control_centre is not None and controls.control_axis is not None:
+        centre, axis = controls.control_centre, controls.control_axis
+        across = Point2D(-axis.y, axis.x)
+
+        def handles(direction: Point2D) -> list[list[float]]:
+            reach = [
+                (p.x - centre.x) * direction.x + (p.y - centre.y) * direction.y
+                for p in controls.covers[0].outline
+            ]
+            return local(
+                Point2D(centre.x + direction.x * r, centre.y + direction.y * r)
+                for r in (min(reach), max(reach))
+            )
+
+        control = {
+            "centre": local((centre,))[0],
+            "axis": [round(axis.x, 6), round(axis.y, 6)],
+            "ends": handles(axis),
+            "sides": handles(across),
+        }
     jack = layout.jack_hole
     radians = math.radians(jack.direction_degrees)
     return {
@@ -372,6 +408,7 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
             "y2": round(jack.start_y + jack.depth * math.sin(radians), 2),
             "r": jack.diameter / 2.0,
         },
+        "control": control,
     }
 
 
@@ -595,6 +632,12 @@ def _describe_fields(
             if field.name in _CHOICE_LABELS:
                 entry["labels"] = _CHOICE_LABELS[field.name]
         variants = _variant_classes(hints[field.name])
+        if field.name in _FORM_KINDS:
+            variants = {
+                kind: variant
+                for kind, variant in variants.items()
+                if kind in _FORM_KINDS[field.name]
+            }
         if variants:
             entry["type"] = "variant"
             entry["variants"] = {

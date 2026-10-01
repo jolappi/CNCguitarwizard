@@ -11,6 +11,7 @@ from cncguitarwizard.geometry.body import (
     cover_screw_points,
     outlines_overlap,
 )
+from cncguitarwizard.geometry.exceptions import BodyGeometryError
 from cncguitarwizard.geometry.primitives import Point2D, point_in_polygon
 from cncguitarwizard.presets import Prototype001Parameters
 from cncguitarwizard.presets.body_shapes import YOUR_DESIGN_TEMPLATES, YourDesignShape
@@ -271,3 +272,177 @@ def test_the_tele_plate_turns_with_its_pots_screws_and_slot() -> None:
     ) == pytest.approx(8.0)
     (slot,) = plate.slots
     assert all(point_in_polygon(p, plate.outline) for p in slot.outline)
+
+
+def _axis_length(outline, axis) -> float:  # type: ignore[no-untyped-def]
+    along = [p.x * axis[0] + p.y * axis[1] for p in outline]
+    return max(along) - min(along)
+
+
+@pytest.mark.parametrize("layout", ["almond_2", "gibson_4", "rear_3"])
+@pytest.mark.parametrize("stretch", [24.0, -12.0])
+def test_the_control_cavity_stretches_from_its_centre(
+    layout: str, stretch: float
+) -> None:
+    def build_stretched(amount: float):  # type: ignore[no-untyped-def]
+        shape = replace(
+            YourDesignShape(), control_stretch=amount, control_angle_degrees=20.0
+        )
+        parameters = replace(
+            Prototype001Parameters(), body_shape=shape, body_controls=layout
+        )
+        return parameters.body_layout().controls
+
+    plain, stretched = build_stretched(0.0), build_stretched(stretch)
+    axis = (plain.control_axis.x, plain.control_axis.y)
+    assert stretched.control_centre == plain.control_centre
+    # Both the cavity and its cover grow (or shrink) by the stretch along
+    # the turned long axis, and keep their width across it.
+    across = (-axis[1], axis[0])
+    for old, new in (
+        (plain.control_cavity.cavity, stretched.control_cavity.cavity),
+        (plain.control_cavity.cover_recess, stretched.control_cavity.cover_recess),
+    ):
+        assert _axis_length(new.outline, axis) == pytest.approx(
+            _axis_length(old.outline, axis) + stretch, abs=0.05
+        )
+        assert _axis_length(new.outline, across) == pytest.approx(
+            _axis_length(old.outline, across), abs=0.05
+        )
+    # The cover still holds the cavity and its screws sit on the ledge.
+    rear = stretched.control_cavity
+    assert all(
+        point_in_polygon(p, rear.cover_recess.outline) for p in rear.cavity.outline
+    )
+    for mark in stretched.back_marks:
+        if mark.name.startswith("Control cavity cover screw"):
+            spot = Point2D(mark.center_x, mark.center_y)
+            assert point_in_polygon(spot, rear.cover_recess.outline)
+            assert not point_in_polygon(spot, rear.cavity.outline)
+
+
+@pytest.mark.parametrize("layout", ["gibson_4", "rear_3"])
+def test_a_stretched_layout_moves_its_end_pots_out(layout: str) -> None:
+    def pots(amount: float):  # type: ignore[no-untyped-def]
+        shape = replace(YourDesignShape(), control_stretch=amount)
+        body = (
+            replace(Prototype001Parameters(), body_shape=shape, body_controls=layout)
+            .build()
+            .body
+        )
+        return sorted(
+            (h.center_x, h.center_y)
+            for h in body.holes
+            if h.name.startswith("Control pot")
+        )
+
+    before, after = pots(0.0), pots(20.0)
+    assert after[0][0] == pytest.approx(before[0][0] - 10.0)
+    assert after[-1][0] == pytest.approx(before[-1][0] + 10.0)
+
+
+def test_the_tele_plate_stretches_with_its_screws_and_slot() -> None:
+    def plate(amount: float):  # type: ignore[no-untyped-def]
+        shape = replace(YourDesignShape(), control_stretch=amount)
+        (cover,) = (
+            replace(Prototype001Parameters(), body_shape=shape, body_controls="tele")
+            .build()
+            .covers
+        )
+        return cover
+
+    before, after = plate(0.0), plate(30.0)
+    assert span_x(after.outline) == pytest.approx(span_x(before.outline) + 30.0)
+    screws = sorted(h.center_x for h in after.holes if h.name.startswith("Screw"))
+    old_screws = sorted(h.center_x for h in before.holes if h.name.startswith("Screw"))
+    assert screws[0] == pytest.approx(old_screws[0] - 15.0)
+    assert screws[1] == pytest.approx(old_screws[1] + 15.0)
+    (slot,) = after.slots
+    assert all(point_in_polygon(p, after.outline) for p in slot.outline)
+
+
+def span_x(points) -> float:  # type: ignore[no-untyped-def]
+    xs = [p.x for p in points]
+    return max(xs) - min(xs)
+
+
+@pytest.mark.parametrize(
+    ("layout", "stretch"),
+    [("almond_2", -200.0), ("gibson_4", -60.0), ("tele", -150.0)],
+)
+def test_a_control_cavity_cannot_shrink_past_its_rounded_ends(
+    layout: str, stretch: float
+) -> None:
+    shape = replace(YourDesignShape(), control_stretch=stretch)
+    parameters = replace(
+        Prototype001Parameters(), body_shape=shape, body_controls=layout
+    )
+
+    with pytest.raises(BodyGeometryError):
+        parameters.body_layout()
+
+
+@pytest.mark.parametrize("layout", ["almond_2", "gibson_4", "rear_3", "tele"])
+@pytest.mark.parametrize("widen", [10.0, -4.0])
+def test_the_control_cavity_widens_across_its_long_axis(
+    layout: str, widen: float
+) -> None:
+    def build_widened(amount: float):  # type: ignore[no-untyped-def]
+        shape = replace(
+            YourDesignShape(),
+            control_stretch_across=amount,
+            control_angle_degrees=20.0,
+        )
+        parameters = replace(
+            Prototype001Parameters(), body_shape=shape, body_controls=layout
+        )
+        return parameters.body_layout().controls
+
+    plain, widened = build_widened(0.0), build_widened(widen)
+    axis = (plain.control_axis.x, plain.control_axis.y)
+    across = (-axis[1], axis[0])
+    assert widened.control_centre == plain.control_centre
+
+    def shapes(controls):  # type: ignore[no-untyped-def]
+        if controls.control_cavity is not None:
+            rear = controls.control_cavity
+            return rear.cavity, rear.cover_recess
+        return controls.top_cavities[1], controls.top_cavities[0]
+
+    for old, new in zip(shapes(plain), shapes(widened), strict=True):
+        assert _axis_length(new.outline, across) == pytest.approx(
+            _axis_length(old.outline, across) + widen, abs=0.05
+        )
+        assert _axis_length(new.outline, axis) == pytest.approx(
+            _axis_length(old.outline, axis), abs=0.05
+        )
+
+
+def test_a_widened_gibson_layout_moves_its_pot_rows_apart() -> None:
+    def pots(amount: float):  # type: ignore[no-untyped-def]
+        shape = replace(YourDesignShape(), control_stretch_across=amount)
+        body = (
+            replace(
+                Prototype001Parameters(), body_shape=shape, body_controls="gibson_4"
+            )
+            .build()
+            .body
+        )
+        return sorted(
+            h.center_y for h in body.holes if h.name.startswith("Control pot")
+        )
+
+    before, after = pots(0.0), pots(12.0)
+    assert after[0] == pytest.approx(before[0] - 6.0)
+    assert after[-1] == pytest.approx(before[-1] + 6.0)
+
+
+@pytest.mark.parametrize("layout", ["almond_2", "gibson_4", "rear_3", "tele"])
+def test_a_control_cavity_cannot_be_narrower_than_a_pot(layout: str) -> None:
+    shape = replace(YourDesignShape(), control_stretch_across=-60.0)
+    parameters = replace(
+        Prototype001Parameters(), body_shape=shape, body_controls=layout
+    )
+
+    with pytest.raises(BodyGeometryError, match="at least 16 mm"):
+        parameters.body_layout()

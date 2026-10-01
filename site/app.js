@@ -264,6 +264,8 @@ function renderVariantField(set, field) {
   }
   row.appendChild(label);
   row.appendChild(select);
+  // With a single kind (the body, always drawn) there is nothing to choose.
+  row.hidden = Object.keys(field.variants).length < 2;
   holder.appendChild(row);
   const sub = document.createElement("div");
   sub.className = "subfields";
@@ -651,7 +653,16 @@ function setControlValue(control, value) {
 // does not know (from another version), which are skipped.
 function applyValues(set, values) {
   const unknown = [];
-  for (const [name, value] of Object.entries(values || {})) {
+  for (let [name, value] of Object.entries(values || {})) {
+    // Older designs could name the traced DXF body; its drawn template
+    // ("Design by Jone", the guitar's default body) is the same body with
+    // the same placements, so the saved placements go onto it.
+    if (set === "prototype" && name === "body_shape" && value?.kind === "design_by_jone") {
+      const guitarBody = schema.prototype
+        .flatMap((group) => group.fields)
+        .find((field) => field.name === "body_shape").default;
+      value = { ...guitarBody, ...value, kind: "your_design" };
+    }
     const variant = form.querySelector(`.variant[data-set="${set}"][data-name="${name}"]`);
     if (variant && value && typeof value === "object" && "kind" in value) {
       const kind = variant.querySelector("select.kind");
@@ -906,6 +917,22 @@ const bodyEditor = {
     const socket = this.element("circle", { cx: jack.x, cy: -jack.y, r: jack.r, fill: "#fff", "fill-opacity": 0.6, stroke: "#222", "stroke-width": 0.8 }, features);
     place(socket, jack.group, "Output jack");
 
+    // Square handles at the control cavity's ends and sides: dragging one
+    // stretches (or shrinks) the cavity and its cover from that end, or
+    // widens (narrows) them from that side.
+    if (layout.control) {
+      for (const along of [true, false]) {
+        const points = along ? layout.control.ends : layout.control.sides;
+        points.forEach(([ex, ey], end) => {
+          const handle = this.element("rect", { class: `stretch-handle ${along ? "along" : "across"}`, x: ex - 3, y: -ey - 3, width: 6, height: 6 });
+          handle.addEventListener("pointerdown", (event) => this.startStretch(event, along, end, handle));
+          this.element("title", {}, handle).textContent = along
+            ? "Control cavity end — drag to stretch or shrink it"
+            : "Control cavity side — drag to widen or narrow it";
+        });
+      }
+    }
+
     // A wide, invisible stroke over the outline: one click on the line
     // adds a handle there (the body inside it is left alone).
     this.outlineHit = this.element("path", { class: "outline-hit", d: this.pathData(this.outline()) });
@@ -1026,6 +1053,7 @@ const bodyEditor = {
   // end): the cavity's centre, or the jack's socket.
   turnCentre(group) {
     if (group === "jack") return [this.layout.jack.x, this.layout.jack.y];
+    if (group === "control" && this.layout.control) return this.layout.control.centre;
     const names = group === "battery"
       ? ["Battery cavity"]
       : ["Control cavity", "Control plate recess"];
@@ -1094,6 +1122,45 @@ const bodyEditor = {
         this.setField(input, pots);
       }
     }
+  },
+
+  // Drag one end of the control cavity along its long axis (or one side
+  // square to it): the far end stays, so the stretch changes by the drag
+  // and the centre (the cover, the pots) moves half of it toward the
+  // dragged end.
+  startStretch(event, along, end, handle) {
+    event.preventDefault();
+    event.stopPropagation();
+    const [lx, ly] = this.layout.control.axis;
+    const [ax, ay] = along ? [lx, ly] : [-ly, lx];
+    const [ex, ey] = (along ? this.layout.control.ends : this.layout.control.sides)[end];
+    const field = along ? "control_stretch" : "control_stretch_across";
+    const what = along ? "longer" : "wider";
+    const start = this.toModel(event);
+    let moved = 0;
+    handle.classList.add("dragging");
+    const move = (moveEvent) => {
+      const [x, y] = this.toModel(moveEvent);
+      moved = Math.round(((x - start[0]) * ax + (y - start[1]) * ay) * 10) / 10;
+      handle.setAttribute("x", ex + ax * moved - 3);
+      handle.setAttribute("y", -(ey + ay * moved) - 3);
+      const change = end === 1 ? moved : -moved;
+      this.setStatus(`Control cavity ${change >= 0 ? "+" : ""}${change} mm ${what}`, "");
+    };
+    const finish = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", finish);
+      window.removeEventListener("pointercancel", finish);
+      handle.classList.remove("dragging");
+      if (moved) {
+        this.shiftField("prototype.body_shape", field, end === 1 ? moved : -moved);
+        this.applyMove("control", [ax * moved / 2, ay * moved / 2]);
+        this.refresh();
+      }
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", finish);
+    window.addEventListener("pointercancel", finish);
   },
 
   applyMove(group, [dx, dy]) {

@@ -99,7 +99,7 @@ Kontrollikolot valitaan (`body_controls`): Design by Jone -manteli kahdella
 potikalla (oletus), Gibson-tyylinen kolo neljällä potikalla, takakolo kolmella
 potikalla rivissä, Telecaster-tyylinen kontrollilevy rungon päälle upotettuna
 (2 potikkaa ja teräkytkimen aukko) tai ei kontrolleja. Takakoloissa on
-myös pyöreä kytkinkolo. Ohjainkolon voi kääntää (`control_angle_degrees`) kolon keskipisteen ympäri kansineen ja potikoineen (Tele-levy ruuveineen ja teräkytkimen aukkoineen); akun kotelolla ja jakilla on omat kulmansa, pyöreitä koloja ei käännetä. Runkoeditorissa kääntö tehdään Shift-raahauksella, ja uusi piirtopiste lisätään klikkaamalla ääriviivaa. Mikkivalitsimeksi valitaan (`body_switch`)
+myös pyöreä kytkinkolo. Ohjainkolon voi kääntää (`control_angle_degrees`) kolon keskipisteen ympäri kansineen ja potikoineen (Tele-levy ruuveineen ja teräkytkimen aukkoineen); akun kotelolla ja jakilla on omat kulmansa, pyöreitä koloja ei käännetä. Runkoeditorissa kääntö tehdään Shift-raahauksella, ja uusi piirtopiste lisätään klikkaamalla ääriviivaa. Ohjainkoloa ja sen kantta voi venyttää tai lyhentää pituusakselinsa suunnassa (`control_stretch`, mm keskeltä molempiin päihin puoliksi); päät säilyttävät pyöristyksensä, leveys ei muutu, ja Gibson- ja rivikolon reunimmaiset potikat sekä Tele-levyn ruuvit, kytkinaukko ja takimmainen potikka siirtyvät päiden mukana. Liian lyhyeksi kutistettu kolo hylätään. Samoin kolon ja kannen voi leventää tai kaventaa poikittain (`control_stretch_across`); Gibson-kolon potikkarivit siirtyvät kauemmas toisistaan, ja rivikolon sekä Tele-levyn päät pysyvät puoliympyröinä. Kolon on oltava vähintään 16 mm leveä (minipotikan runko). Editorissa kannen päissä ja sivuilla on neliökahvat: kahvaa raahatessa vastakkainen pää tai sivu pysyy paikallaan. Mikkivalitsimeksi valitaan (`body_switch`)
 3-asentoinen vipukytkin (oletus, 1/2" eli 12,7 mm reikä) tai mikro- eli
 minivipukytkin (1/4" eli 6,35 mm reikä); `body_switch_shaft_hole_diameter`
 antaa reiän käsin. Kolot ajetaan omissa ohjelmissaan
@@ -122,7 +122,9 @@ paikka on rungon muodossa (`battery_offset`, `battery_y`,
 `battery_angle_degrees`), ja jokaisella pohjalla se on oletuksena niin
 lähellä kontrollikoloa (kolojen väli 18–32 mm), jotta
 johdon reikä jää lyhyeksi; editorissa kotelon voi raahata. Pariston johdon kanava
-ohjainkoloon porataan käsin. Kahden takakolon kansiupotukset eivät saa
+ohjainkoloon porataan käsin. `body_battery_count` 2 tekee kotelon
+kahdelle paristolle rinnakkain (18 V): kolo on 28 mm leveämpi, 56 × 58 mm
+ja kansiupotus 70 × 72 mm. Kahden takakolon kansiupotukset eivät saa
 mennä päällekkäin, eikä mikään reikä saa avautua paristokoteloon.
 
 ## Mikit
@@ -176,10 +178,14 @@ säilyy 5 mm:nä kaikissa lapaliitoksen muutoksissa.
 
 ## Runko
 
-Rungon muoto valitaan (`body_shape`): oletuksena "Design by Jone", joka on
-jäljitetty omasta `assets/reference/omarunko.dxf`-piirustuksesta
-(`presets/_omarunko_outline.py`), tai "Your design", jonka ääriviiva
-piirretään web-sovelluksessa raahaamalla spline-ohjauspisteitä; pohjaksi
+Runko on aina piirretty (`body_shape`, "Your design"): sen ääriviiva
+piirretään web-sovelluksessa raahaamalla spline-ohjauspisteitä, eikä
+lomakkeessa ole enää rungon tyypin valintaa. Kitaran oletus on Design by
+Jone -pohja (`GUITAR_BODY`, omasta `assets/reference/omarunko.dxf`-piirustuksesta
+jäljitetty ja 64 pisteeseen uudelleennäytteistetty ääriviiva), basson
+Jazz Bass -henkinen pohja. Pythonissa jäljitetty runko
+(`DesignByJoneShape`) on yhä käytettävissä, ja sitä käyttävä tallennettu
+design latautuu Design by Jone -pohjana; pohjaksi
 voi ladata Design by Jone -rungon, Les Paul-, Stratocaster- tai Jackson
 RR -henkisen muodon (Les Paul, Stratocaster, Jackson RR ja Jazz Bass ovat
 mockuppeja, eivät alkuperäisiä ääriviivoja) tai Jazz Bass -henkisen
