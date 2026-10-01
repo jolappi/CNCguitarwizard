@@ -27,7 +27,7 @@ Python.
    becomes a dropdown of kinds with the chosen kind's own fields beneath
    it (`variant` in the schema). Choosing the body shape "Your design"
    opens a drawing panel above the results: the outline's control points
-   are handles to drag (double-click the outline to add one, Alt-click or
+   are handles to drag (click the outline to add one, Alt-click or
    right-click to remove one; *Start from* + *Load* replaces the drawing
    with a template — Design by Jone, Les Paul, Stratocaster or Jackson RR
    style or Jazz Bass style (mockups, not the original outlines) — and its cavity placements), drawn
@@ -36,9 +36,12 @@ Python.
    settings. The control cavity (carrying its pots), each pot, the switch
    cavity, the battery box (when `body_battery_box` is on), each neck bolt
    (dashed: drilled from the back) and the jack can be dragged too, and the pickup routes slide
-   along the neck; a drop moves the fields that place them
-   (`control_shift`, `pot_offsets`, `switch_*`, `battery_*`, `neck_bolts`,
-   `jack_*`,
+   along the neck. Shift-dragging the control cavity (with its cover and
+   pots, or the Tele plate), the battery box or the jack turns it about
+   its centre (the jack about its socket) instead; round cavities only
+   move. A drop moves the fields that place them
+   (`control_shift`, `control_angle_degrees`, `pot_offsets`, `switch_*`,
+   `battery_*`, `neck_bolts`, `jack_*`,
    `body_*_pickup_offset`) and the layout is fetched again. The neck, its
    pocket and the bridge follow the neck and scale and stay put. The
    panel reports the body's size

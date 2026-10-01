@@ -1,5 +1,6 @@
 """Tests for the electronics layouts: cavities, screw spots and cover plates."""
 
+import math
 from dataclasses import replace
 
 import pytest
@@ -12,7 +13,7 @@ from cncguitarwizard.geometry.body import (
 )
 from cncguitarwizard.geometry.primitives import Point2D, point_in_polygon
 from cncguitarwizard.presets import Prototype001Parameters
-from cncguitarwizard.presets.body_shapes import YOUR_DESIGN_TEMPLATES
+from cncguitarwizard.presets.body_shapes import YOUR_DESIGN_TEMPLATES, YourDesignShape
 from cncguitarwizard.presets.controls import CONTROL_LABELS
 
 LAYOUTS = tuple(CONTROL_LABELS)
@@ -197,3 +198,76 @@ def test_the_pickup_selector_can_be_a_micro_toggle() -> None:
     assert switch_hole(body_switch="micro") == 6.35
     # A hole given by hand wins.
     assert switch_hole(body_switch="micro", body_switch_shaft_hole_diameter=7.0) == 7.0
+
+
+def _centre(points):  # type: ignore[no-untyped-def]
+    return (
+        sum(p.x for p in points) / len(points),
+        sum(p.y for p in points) / len(points),
+    )
+
+
+@pytest.mark.parametrize("layout", ["almond_2", "gibson_4", "rear_3"])
+def test_the_control_cavity_turns_about_its_centre(layout: str) -> None:
+    def build_turned(degrees: float):  # type: ignore[no-untyped-def]
+        shape = replace(YourDesignShape(), control_angle_degrees=degrees)
+        return (
+            replace(Prototype001Parameters(), body_shape=shape, body_controls=layout)
+            .build()
+            .body
+        )
+
+    square, turned = build_turned(0.0), build_turned(30.0)
+    before, after = square.control_cavity, turned.control_cavity
+    # The same cavity, turned in place: its centre stays, its corners move.
+    assert _centre(after.cavity.outline) == pytest.approx(
+        _centre(before.cavity.outline), abs=1e-6
+    )
+    assert after.cavity.outline != before.cavity.outline
+    # The cover turns with it, about the same centre.
+    cx, cy = _centre(before.cavity.outline)
+    (bx, by), (ax, ay) = (
+        _centre(before.cover_recess.outline),
+        _centre(after.cover_recess.outline),
+    )
+    assert math.hypot(ax - cx, ay - cy) == pytest.approx(
+        math.hypot(bx - cx, by - cy), abs=0.05
+    )
+    if layout != "almond_2":
+        # A generated layout's own pots turn about the cavity's centre.
+        def pots(body):  # type: ignore[no-untyped-def]
+            return [
+                (h.center_x, h.center_y)
+                for h in body.holes
+                if h.name.startswith("Control pot")
+            ]
+
+        for (x0, y0), (x1, y1) in zip(pots(square), pots(turned), strict=True):
+            assert math.hypot(x1 - cx, y1 - cy) == pytest.approx(
+                math.hypot(x0 - cx, y0 - cy)
+            )
+            if math.hypot(x0 - cx, y0 - cy) < 1e-6:
+                continue  # A pot at the centre stays put.
+            bearing = math.degrees(
+                math.atan2(y1 - cy, x1 - cx) - math.atan2(y0 - cy, x0 - cx)
+            )
+            assert (bearing + 360.0) % 360.0 == pytest.approx(30.0, abs=1e-6)
+
+
+def test_the_tele_plate_turns_with_its_pots_screws_and_slot() -> None:
+    shape = replace(YourDesignShape(), control_angle_degrees=8.0)
+    geometry = replace(
+        Prototype001Parameters(), body_shape=shape, body_controls="tele"
+    ).build()
+    (plate,) = geometry.covers
+    recess = next(c for c in geometry.body.control_top_cavities if "recess" in c.name)
+
+    assert plate.outline == recess.outline
+    pots = [h for h in plate.holes if h.name.startswith("Pot")]
+    # The two pots lie on the plate's turned long axis.
+    (a, b) = pots
+    assert math.degrees(
+        math.atan2(b.center_y - a.center_y, b.center_x - a.center_x)
+    ) == pytest.approx(8.0)
+    (slot,) = plate.slots
+    assert all(point_in_polygon(p, plate.outline) for p in slot.outline)

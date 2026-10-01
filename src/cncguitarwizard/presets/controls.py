@@ -220,6 +220,41 @@ def battery_features(
     )
 
 
+def _turned(
+    points: tuple[Point2D, ...], centre: Point2D, degrees: float
+) -> tuple[Point2D, ...]:
+    """Return ``points`` turned ``degrees`` counter-clockwise about ``centre``."""
+    if not degrees:
+        return points
+    angle = math.radians(degrees)
+    cos, sin = math.cos(angle), math.sin(angle)
+    return tuple(
+        Point2D(
+            centre.x + (p.x - centre.x) * cos - (p.y - centre.y) * sin,
+            centre.y + (p.x - centre.x) * sin + (p.y - centre.y) * cos,
+        )
+        for p in points
+    )
+
+
+def _box(
+    name: str,
+    centre: Point2D,
+    length_x: float,
+    length_y: float,
+    depth: float,
+    corner_radius: float,
+    degrees: float,
+) -> Cavity:
+    """Return a rounded rectangle about ``centre``, turned ``degrees``."""
+    box = RectangularCavity(
+        name, centre.x, centre.y, length_x, length_y, depth, corner_radius=corner_radius
+    )
+    if not degrees:
+        return box
+    return TracedCavity(name, _turned(box.outline, centre, degrees), depth)
+
+
 def control_features(
     layout: ControlLayout,
     shape: BodyShapeSpec,
@@ -240,53 +275,71 @@ def control_features(
     anchor_y = sum(y for _, y in pots) / len(pots)
     inward = -1.0 if anchor_y > 0.0 else 1.0
 
+    # The whole layout turns about its cavity's centre (the shape's
+    # control_angle_degrees); round cavities are left as they are.
+    turn = shape.control_angle_degrees
+
     if layout == "tele":
         # The long plate sits 10 mm in from the pots' line, toward the
         # centreline, so its ends stay clear of the body edge.
         return _tele(
-            anchor_x, anchor_y + inward * 10.0, depth, cover_depth, pot_hole_diameter
+            Point2D(anchor_x, anchor_y + inward * 10.0),
+            depth,
+            cover_depth,
+            pot_hole_diameter,
+            turn,
         )
 
     if layout == "almond_2":
+        # The drawn almond turns about its own centre; its pots are the
+        # shape's own pot_offsets, placed (and turned) by the editor.
+        drawn = shape.control_cavity_points(heel_end)
+        centre = Point2D(
+            sum(p.x for p in drawn) / len(drawn), sum(p.y for p in drawn) / len(drawn)
+        )
         cavity: Cavity = TracedCavity(
-            "Control cavity", shape.control_cavity_points(heel_end), depth
+            "Control cavity", _turned(drawn, centre, turn), depth
         )
         cover: Cavity = TracedCavity(
             "Control cavity cover recess",
-            shape.control_cover_points(heel_end),
+            _turned(shape.control_cover_points(heel_end), centre, turn),
             cover_depth,
         )
     elif layout == "gibson_4":
-        centre_y = anchor_y + inward * 6.0
+        centre = Point2D(anchor_x, anchor_y + inward * 6.0)
         pots = [
-            (anchor_x + dx, centre_y + dy)
-            for dx, dy in ((-21.0, -17.0), (21.0, -17.0), (-21.0, 17.0), (21.0, 17.0))
+            (p.x, p.y)
+            for p in _turned(
+                tuple(
+                    Point2D(centre.x + dx, centre.y + dy)
+                    for dx, dy in (
+                        (-21.0, -17.0),
+                        (21.0, -17.0),
+                        (-21.0, 17.0),
+                        (21.0, 17.0),
+                    )
+                ),
+                centre,
+                turn,
+            )
         ]
-        cavity = RectangularCavity(
-            "Control cavity", anchor_x, centre_y, 78.0, 70.0, depth, corner_radius=16.0
-        )
-        cover = RectangularCavity(
-            "Control cavity cover recess",
-            anchor_x,
-            centre_y,
-            90.0,
-            82.0,
-            cover_depth,
-            corner_radius=22.0,
+        cavity = _box("Control cavity", centre, 78.0, 70.0, depth, 16.0, turn)
+        cover = _box(
+            "Control cavity cover recess", centre, 90.0, 82.0, cover_depth, 22.0, turn
         )
     else:  # rear_3
-        pots = [(anchor_x + dx, anchor_y) for dx in (-30.0, 0.0, 30.0)]
-        cavity = RectangularCavity(
-            "Control cavity", anchor_x, anchor_y, 94.0, 34.0, depth, corner_radius=16.9
-        )
-        cover = RectangularCavity(
-            "Control cavity cover recess",
-            anchor_x,
-            anchor_y,
-            106.0,
-            46.0,
-            cover_depth,
-            corner_radius=22.9,
+        centre = Point2D(anchor_x, anchor_y)
+        pots = [
+            (p.x, p.y)
+            for p in _turned(
+                tuple(Point2D(anchor_x + dx, anchor_y) for dx in (-30.0, 0.0, 30.0)),
+                centre,
+                turn,
+            )
+        ]
+        cavity = _box("Control cavity", centre, 94.0, 34.0, depth, 16.9, turn)
+        cover = _box(
+            "Control cavity cover recess", centre, 106.0, 46.0, cover_depth, 22.9, turn
         )
 
     control = RearCavity(cavity, cover)
@@ -339,52 +392,39 @@ def control_features(
 
 
 def _tele(
-    anchor_x: float,
-    anchor_y: float,
+    centre: Point2D,
     depth: float,
     cover_depth: float,
     pot_hole_diameter: float,
+    turn: float = 0.0,
 ) -> ControlFeatures:
     """A Telecaster-style plate: flush in the top, parallel to the neck.
 
     The 160 × 32 mm round-ended plate carries the blade switch's slot at
     its front and two pots behind it; the cavity under it is 140 × 22 mm;
-    two screws hold it at its ends.
+    two screws hold it at its ends. All of it turns ``turn`` degrees about
+    the plate's centre.
     """
-    recess = RectangularCavity(
-        "Control plate recess",
-        anchor_x,
-        anchor_y,
-        160.0,
-        32.0,
-        cover_depth,
-        corner_radius=15.99,
-    )
-    cavity = RectangularCavity(
-        "Control cavity",
-        anchor_x,
-        anchor_y,
-        140.0,
-        22.0,
-        depth,
-        corner_radius=10.99,
-    )
-    screws = [Point2D(anchor_x - 75.0, anchor_y), Point2D(anchor_x + 75.0, anchor_y)]
+
+    def at(dx: float) -> Point2D:
+        (point,) = _turned((Point2D(centre.x + dx, centre.y),), centre, turn)
+        return point
+
+    recess = _box("Control plate recess", centre, 160.0, 32.0, cover_depth, 15.99, turn)
+    cavity = _box("Control cavity", centre, 140.0, 22.0, depth, 10.99, turn)
+    screws = [at(-75.0), at(75.0)]
+    pots = [at(0.0), at(45.0)]
     plate = CoverPlate(
         "Control plate",
         "top",
         recess.outline,
         cover_depth,
         holes=(
-            DrilledHole(
-                "Pot 1 shaft hole", anchor_x, anchor_y, pot_hole_diameter, cover_depth
-            ),
-            DrilledHole(
-                "Pot 2 shaft hole",
-                anchor_x + 45.0,
-                anchor_y,
-                pot_hole_diameter,
-                cover_depth,
+            *(
+                DrilledHole(
+                    f"Pot {index} shaft hole", p.x, p.y, pot_hole_diameter, cover_depth
+                )
+                for index, p in enumerate(pots, start=1)
             ),
             *(
                 DrilledHole(f"Screw {index}", p.x, p.y, SCREW_CLEARANCE, cover_depth)
@@ -392,15 +432,7 @@ def _tele(
             ),
         ),
         slots=(
-            RectangularCavity(
-                "Blade switch slot",
-                anchor_x - 45.0,
-                anchor_y,
-                20.0,
-                7.0,
-                cover_depth,
-                corner_radius=3.49,
-            ),
+            _box("Blade switch slot", at(-45.0), 20.0, 7.0, cover_depth, 3.49, turn),
         ),
     )
     marks = tuple(

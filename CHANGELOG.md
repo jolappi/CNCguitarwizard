@@ -4,6 +4,13 @@
 
 ### Added
 
+- The control layout can be turned: the body shape's
+  `control_angle_degrees` turns the cavity, its cover and its pots (or the
+  Tele plate with its screws and blade slot) about the cavity's centre. In
+  the body editor a Shift-drag turns the control cavity, the battery box
+  or the jack; round cavities only move. One click on the outline now
+  adds a handle there (it took a double-click, which also caught the body
+  inside it).
 - A laminated neck blank (`neck_blank` / `NeckMachiningParameters.blank`
   = `"laminated"`): the neck is cut from its own 20 mm plank first, then a
   block as thick as the plank is glued under the headstock end, and the

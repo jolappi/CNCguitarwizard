@@ -226,6 +226,15 @@ follows the shape and moves with the control group in the body editor.
 | `tele` | Telecaster-style plate | A 160 × 32 mm plate recess (cover depth) routed into the **top**, with a 140 × 22 mm control cavity from its floor; the plate carries 2 pot holes, a 20 × 7 mm blade switch slot and 2 screws |
 | `none` | No controls | No control or switch cavity, pots or covers |
 
+The body shape's `control_angle_degrees` turns the whole layout about its
+cavity's centre, counter-clockwise in the plan: the drawn almond and its
+cover (its pots are the shape's own `pot_offsets`, which the body editor
+turns with it), a Gibson or three-pot cavity with its cover and its own
+pots, or the Tele plate with its cavity, pots, screws and blade slot. The
+battery box turns with `battery_angle_degrees` and the jack with
+`jack_direction_degrees`; round cavities only move. In the body editor a
+Shift-drag turns them.
+
 The rear layouts' pickup selector is chosen with `body_switch`: a 3-way
 toggle (`toggle`, the default) through a 1/2 in (12.7 mm) hole, or a micro
 (mini) toggle (`micro`) through a 1/4 in (6.35 mm) one

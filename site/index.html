@@ -91,7 +91,9 @@
   .body-editor .handle:hover, .body-editor .handle.dragging { fill: var(--accent); }
   .body-editor .movable { cursor: move; }
   .body-editor .movable:hover { filter: brightness(0.9); }
-  .body-editor .outline { fill: var(--wood); fill-opacity: 0.85; stroke: #6b4a1f; stroke-width: 1; cursor: copy; }
+  .body-editor .outline { fill: var(--wood); fill-opacity: 0.85; stroke: #6b4a1f; stroke-width: 1; }
+  .body-editor .outline-hit { fill: none; stroke: transparent; stroke-width: 8; pointer-events: stroke; cursor: copy; }
+  .body-editor .outline-hit:hover { stroke: var(--accent); stroke-opacity: 0.25; }
   .actions { display: flex; gap: 8px; align-items: center; margin: 10px 0 14px; }
   button {
     padding: 8px 16px; border-radius: 6px; border: 1px solid var(--accent);
@@ -177,12 +179,13 @@
   <section class="results">
     <div id="body-editor" class="body-editor hidden">
       <h2>Your design <span id="body-editor-size" class="note"></span></h2>
-      <p class="note">Drag the round handles to shape the body. Double-click the outline to add a
+      <p class="note">Drag the round handles to shape the body. Click the outline to add a
         handle there; Alt/Option-click or right-click a handle to remove it. <em>Start from</em> loads a
         template — Design by Jone, or a Les Paul, Stratocaster, Jackson RR or Jazz Bass style mockup — with its own cavity
         placements. Drag the control cavity
         (its pots come along), a single pot, the switch cavity, the battery box, a neck bolt (dashed,
-        drilled from the back) or the jack to move it; the pickup routes
+        drilled from the back) or the jack to move it; Shift-drag the control cavity, the battery
+        box or the jack to turn it (round ones only move); the pickup routes
         slide along the neck. The neck, its pocket and the bridge follow the neck and scale and stay put.
         The grid is 50 mm.</p>
       <div class="actions">

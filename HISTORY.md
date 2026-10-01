@@ -309,6 +309,10 @@ it back. Loading now also puts the drawn body back into the body editor,
 which had kept showing its start shape, so the next drag wrote that shape
 over the loaded one.
 
+The body editor also turns things now: a Shift-drag turns the control
+cavity with its cover and pots, the battery box or the jack about its
+centre, and one click on the outline adds a handle there.
+
 ## Documentation
 
 - Added public package reference with API tables, examples, and diagrams.

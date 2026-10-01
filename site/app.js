@@ -863,7 +863,6 @@ const bodyEditor = {
     this.element("line", { x1: minX, y1: 0, x2: maxX, y2: 0, stroke: "#bbb", "stroke-width": 0.5, "stroke-dasharray": "4,3" });
 
     this.outlinePath = this.element("path", { class: "outline", d: this.pathData(this.outline()) });
-    this.outlinePath.addEventListener("dblclick", (event) => this.addPoint(event));
 
     const styles = {
       neck: { fill: "#3b2a1a", "fill-opacity": 0.85, stroke: "none" },
@@ -887,7 +886,8 @@ const bodyEditor = {
       } else {
         node.setAttribute("pointer-events", "none");
       }
-      this.element("title", {}, node).textContent = group ? `${name} — drag to move` : name;
+      const turn = this.turnable(group) ? ", Shift-drag to turn" : "";
+      this.element("title", {}, node).textContent = group ? `${name} — drag to move${turn}` : name;
     };
     for (const polygon of layout.polygons) {
       const node = this.element("path", { d: this.pathData(polygon.points), ...styles[polygon.role] }, features);
@@ -905,6 +905,14 @@ const bodyEditor = {
     place(bore, jack.group, "Output jack");
     const socket = this.element("circle", { cx: jack.x, cy: -jack.y, r: jack.r, fill: "#fff", "fill-opacity": 0.6, stroke: "#222", "stroke-width": 0.8 }, features);
     place(socket, jack.group, "Output jack");
+
+    // A wide, invisible stroke over the outline: one click on the line
+    // adds a handle there (the body inside it is left alone).
+    this.outlineHit = this.element("path", { class: "outline-hit", d: this.pathData(this.outline()) });
+    this.outlineHit.addEventListener("click", (event) => {
+      if (event.detail <= 1) this.addPoint(event);
+    });
+    this.element("title", {}, this.outlineHit).textContent = "Click the outline to add a handle";
 
     this.handles = this.points.map((point, index) => {
       const [hx, hy] = this.widen(point);
@@ -937,6 +945,7 @@ const bodyEditor = {
       handle.setAttribute("cx", shown[0]);
       handle.setAttribute("cy", -shown[1]);
       this.outlinePath.setAttribute("d", this.pathData(this.outline()));
+      this.outlineHit.setAttribute("d", this.pathData(this.outline()));
       this.check();
     };
     const end = () => {
@@ -960,6 +969,10 @@ const bodyEditor = {
   startMove(event, group, node) {
     event.preventDefault();
     event.stopPropagation();
+    if (event.shiftKey && this.turnable(group)) {
+      this.startTurn(event, group);
+      return;
+    }
     const start = this.toModel(event);
     const members = [...this.svg.querySelectorAll(`[data-group="${group}"]`)];
     if (group === "control") members.push(...this.svg.querySelectorAll('[data-group^="pot:"]'));
@@ -1001,6 +1014,86 @@ const bodyEditor = {
   shiftField(set, name, amount) {
     const input = this.field(set, name);
     if (input) this.setField(input, Math.round((readValue(input) + amount) * 10) / 10);
+  },
+
+  // The groups Shift-drag turns: the control cavity (with its cover, pots
+  // or plate), the battery box and the jack. Round ones only move.
+  turnable(group) {
+    return group === "control" || group === "battery" || group === "jack";
+  },
+
+  // The point a group turns about, in the editor's frame (from the heel
+  // end): the cavity's centre, or the jack's socket.
+  turnCentre(group) {
+    if (group === "jack") return [this.layout.jack.x, this.layout.jack.y];
+    const names = group === "battery"
+      ? ["Battery cavity"]
+      : ["Control cavity", "Control plate recess"];
+    const polygon = this.layout.polygons.find((p) => names.includes(p.name) && p.group === group)
+      || this.layout.polygons.find((p) => p.group === group);
+    const n = polygon.points.length;
+    return [
+      polygon.points.reduce((sum, p) => sum + p[0], 0) / n,
+      polygon.points.reduce((sum, p) => sum + p[1], 0) / n,
+    ];
+  },
+
+  startTurn(event, group) {
+    const [cx, cy] = this.turnCentre(group);
+    const members = [...this.svg.querySelectorAll(`[data-group="${group}"]`)];
+    if (group === "control") members.push(...this.svg.querySelectorAll('[data-group^="pot:"]'));
+    const bearing = (point) => Math.atan2(point[1] - cy, point[0] - cx) * 180 / Math.PI;
+    const start = bearing(this.toModel(event));
+    let degrees = 0;
+    const move = (moveEvent) => {
+      degrees = bearing(this.toModel(moveEvent)) - start;
+      degrees = ((degrees + 540) % 360) - 180;
+      // The SVG's Y runs down: a counter-clockwise turn in the plan is
+      // a negative SVG rotation.
+      for (const member of members) member.setAttribute("transform", `rotate(${-degrees} ${cx} ${-cy})`);
+      this.setStatus(`Turning ${group === "control" ? "the controls" : `the ${group}`} ${Math.round(degrees * 10) / 10}°`, "");
+    };
+    const end = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", end);
+      window.removeEventListener("pointercancel", end);
+      const rounded = Math.round(degrees * 10) / 10;
+      if (rounded) {
+        this.applyTurn(group, rounded, [cx, cy]);
+        this.refresh();
+      } else {
+        for (const member of members) member.removeAttribute("transform");
+      }
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", end);
+    window.addEventListener("pointercancel", end);
+  },
+
+  // Turn a group by `degrees` (counter-clockwise in the plan) about
+  // `centre`: the fields that hold its angle, and a drawn almond's own
+  // pots with it.
+  applyTurn(group, degrees, [cx, cy]) {
+    const shape = "prototype.body_shape";
+    if (group === "battery") {
+      this.shiftField(shape, "battery_angle_degrees", degrees);
+    } else if (group === "jack") {
+      this.shiftField(shape, "jack_direction_degrees", degrees);
+    } else if (group === "control") {
+      this.shiftField(shape, "control_angle_degrees", degrees);
+      const layoutField = this.field("prototype", "body_controls");
+      if (layoutField && layoutField.value === "almond_2") {
+        const input = this.field(shape, "pot_offsets");
+        const angle = degrees * Math.PI / 180;
+        const cos = Math.cos(angle), sin = Math.sin(angle);
+        const round = (value) => Math.round(value * 10) / 10;
+        const pots = readValue(input).map(([x, y]) => [
+          round(cx + (x - cx) * cos - (y - cy) * sin),
+          round(cy + (x - cx) * sin + (y - cy) * cos),
+        ]);
+        this.setField(input, pots);
+      }
+    }
   },
 
   applyMove(group, [dx, dy]) {

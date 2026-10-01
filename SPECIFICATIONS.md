@@ -99,7 +99,7 @@ Kontrollikolot valitaan (`body_controls`): Design by Jone -manteli kahdella
 potikalla (oletus), Gibson-tyylinen kolo neljällä potikalla, takakolo kolmella
 potikalla rivissä, Telecaster-tyylinen kontrollilevy rungon päälle upotettuna
 (2 potikkaa ja teräkytkimen aukko) tai ei kontrolleja. Takakoloissa on
-myös pyöreä kytkinkolo. Mikkivalitsimeksi valitaan (`body_switch`)
+myös pyöreä kytkinkolo. Ohjainkolon voi kääntää (`control_angle_degrees`) kolon keskipisteen ympäri kansineen ja potikoineen (Tele-levy ruuveineen ja teräkytkimen aukkoineen); akun kotelolla ja jakilla on omat kulmansa, pyöreitä koloja ei käännetä. Runkoeditorissa kääntö tehdään Shift-raahauksella, ja uusi piirtopiste lisätään klikkaamalla ääriviivaa. Mikkivalitsimeksi valitaan (`body_switch`)
 3-asentoinen vipukytkin (oletus, 1/2" eli 12,7 mm reikä) tai mikro- eli
 minivipukytkin (1/4" eli 6,35 mm reikä); `body_switch_shaft_hole_diameter`
 antaa reiän käsin. Kolot ajetaan omissa ohjelmissaan

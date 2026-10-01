@@ -91,6 +91,9 @@ class DesignByJoneShape:
             with ``Prototype001Parameters.body_battery_box``).
         battery_y: Battery box centre Y.
         battery_angle_degrees: The box's long axis from the neck's axis.
+        control_angle_degrees: How far the control cavity, its cover and
+            the layout's own pots (or the Tele plate) are turned about the
+            cavity's centre, counter-clockwise in the plan.
     """
 
     kind: Literal["design_by_jone"] = "design_by_jone"
@@ -117,6 +120,7 @@ class DesignByJoneShape:
     battery_offset: float = 242.5
     battery_y: float = 2.5
     battery_angle_degrees: float = 85.0
+    control_angle_degrees: float = 0.0
 
     def outline_points(
         self, heel_end: float, widening: float = 0.0
@@ -232,6 +236,9 @@ class YourDesignShape:
             with ``Prototype001Parameters.body_battery_box``).
         battery_y: Battery box centre Y.
         battery_angle_degrees: The box's long axis from the neck's axis.
+        control_angle_degrees: How far the control cavity, its cover and
+            the layout's own pots (or the Tele plate) are turned about the
+            cavity's centre, counter-clockwise in the plan.
 
     Raises:
         BodyGeometryError: For fewer than four or non-finite control points.
@@ -256,6 +263,7 @@ class YourDesignShape:
     battery_offset: float = 281.0
     battery_y: float = 47.5
     battery_angle_degrees: float = 15.0
+    control_angle_degrees: float = 0.0
 
     def __post_init__(self) -> None:
         """Reject a control polygon that cannot describe a body."""
