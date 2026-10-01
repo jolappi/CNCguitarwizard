@@ -3,9 +3,10 @@
   "configurations": [
     {
       "name": "site",
-      "runtimeExecutable": ".venv/bin/python",
-      "runtimeArgs": ["-m", "http.server", "8765", "--directory", "site"],
-      "port": 8765
+      "runtimeExecutable": "sh",
+      "runtimeArgs": ["-c", "exec .venv/bin/python -m http.server \"${PORT:-8765}\" --directory site"],
+      "port": 8765,
+      "autoPort": true
     }
   ]
 }
