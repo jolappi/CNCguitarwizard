@@ -369,6 +369,10 @@ to the drawings they change.
 Dragging a pickup, the controls, the battery box, a pot or a neck bolt
 right off the body now offers to remove it.
 
+A feature left out of a body already cut can now be cut on its own:
+dropped on *Create NC file*, it gets programs zeroed at its own centre,
+with its cover.
+
 ## Documentation
 
 - Added public package reference with API tables, examples, and diagrams.

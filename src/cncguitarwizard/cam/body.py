@@ -146,18 +146,7 @@ def plan_body_machining(
     )
 
     def top_pocket(cavity: Cavity) -> Toolpath:
-        depth = cavity.depth
-        if cavity in body.through_cavities and depth >= body.thickness:
-            depth = body.thickness + parameters.through_overshoot
-        # A stepped floor (or a through route inside a recess) starts
-        # where the enclosing pocket, cut earlier, already ended.
-        return pocket(
-            cavity.name,
-            top_frame.polygon(cavity.outline),
-            depth,
-            parameters,
-            start_depth=body.step_start_depth(cavity),
-        )
+        return _top_pocket(cavity, body, top_frame, parameters)
 
     top_paths: list[Toolpath] = [
         top_pocket(cavity)
@@ -251,32 +240,7 @@ def plan_body_machining(
         )
 
     def rear_pockets(rear: RearCavity) -> list[Toolpath]:
-        paths = [
-            pocket(
-                rear.cover_recess.name,
-                back_frame.polygon(rear.cover_recess.outline),
-                rear.cover_recess.depth,
-                parameters,
-            ),
-            pocket(
-                rear.cavity.name,
-                back_frame.polygon(rear.cavity.outline),
-                rear.cavity.depth,
-                parameters,
-                start_depth=rear.cover_recess.depth,
-            ),
-        ]
-        paths += [
-            pocket(
-                step.name,
-                back_frame.polygon(step.outline),
-                step.depth,
-                parameters,
-                start_depth=rear.cavity.depth,
-            )
-            for step in rear.steps
-        ]
-        return paths
+        return _rear_pockets(rear, back_frame, parameters)
 
     electronics = [
         rear
@@ -495,6 +459,61 @@ class _Frame:
         if self.mirror_y:
             return Point2D(point.x + self.origin_x, self.origin_y - point.y)
         return Point2D(point.x + self.origin_x, point.y + self.origin_y)
+
+
+def _top_pocket(
+    cavity: Cavity,
+    body: BodySolid,
+    frame: _Frame,
+    parameters: MachiningParameters,
+) -> Toolpath:
+    """Pocket one top cavity; a through route runs on past the back."""
+    depth = cavity.depth
+    if cavity in body.through_cavities and depth >= body.thickness:
+        depth = body.thickness + parameters.through_overshoot
+    # A stepped floor (or a through route inside a recess) starts where
+    # the enclosing pocket, cut earlier, already ended.
+    return pocket(
+        cavity.name,
+        frame.polygon(cavity.outline),
+        depth,
+        parameters,
+        start_depth=body.step_start_depth(cavity),
+    )
+
+
+def _rear_pockets(
+    rear: RearCavity,
+    frame: _Frame,
+    parameters: MachiningParameters,
+) -> list[Toolpath]:
+    """Pocket one rear cavity: its cover recess, the cavity, its steps."""
+    paths = [
+        pocket(
+            rear.cover_recess.name,
+            frame.polygon(rear.cover_recess.outline),
+            rear.cover_recess.depth,
+            parameters,
+        ),
+        pocket(
+            rear.cavity.name,
+            frame.polygon(rear.cavity.outline),
+            rear.cavity.depth,
+            parameters,
+            start_depth=rear.cover_recess.depth,
+        ),
+    ]
+    paths += [
+        pocket(
+            step.name,
+            frame.polygon(step.outline),
+            step.depth,
+            parameters,
+            start_depth=rear.cavity.depth,
+        )
+        for step in rear.steps
+    ]
+    return paths
 
 
 def _top_cavities(body: BodySolid) -> tuple[Cavity, ...]:

@@ -124,6 +124,13 @@ lähimpään vapaaseen paikkaan, enintään 20 mm ulospäin ja kaulan suunnassa.
 ensin, sitten ulkoreuna 0,2 mm upotusta pienempänä neljällä pidikkeellä;
 nollapiste kannen keskellä levyn pinnalla.
 
+Yksittäisen elementin (esim. ensimmäisestä jyrsinnästä unohtunut
+paristokotelo) voi jyrsiä erikseen: runkoeditorissa elementti raahataan
+*Create NC file* -painikkeeseen, ja siitä tehdään omat ohjelmat
+(`Feature_<nimi>_top` / `_back`, pienet reiät omanaan, kansi `Cover_…`),
+joiden nollapiste on elementin keskellä eikä ohjaustapeissa. Takapuolen
+elementti jyrsitään runko käännettynä keskilinjan ympäri kuten `Body_back`.
+
 Valinnainen 9 V:n paristokotelo (`body_battery_box`, oletuksena pois)
 jyrsitään takaa samaan `Body_back_controls.nc`-ohjelmaan: 56 × 30 mm kolo
 (r 5), 22 mm syvä takapinnasta, ja sen ympärillä 7 mm leveämpi

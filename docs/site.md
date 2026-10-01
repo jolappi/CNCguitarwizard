@@ -56,7 +56,12 @@ Python.
    empty, from `pickup_configurations` in the schema), the controls
    (`body_controls` "none"), the battery box, one of several pots or neck
    bolts; declined, it goes back. The switch cavity and the jack cannot go
-   on their own and just move. The square handles at the control cover's two ends stretch or
+   on their own and just move. A feature dropped on *Create NC file*
+   (above the drawing) stays put and gets its own NC programs instead,
+   zeroed at its centre, its cover plates included
+   (`webapp.feature_programs`), listed there as downloads, each with a
+   *Simulate* button that opens the NC Viewer panel right under the list
+   (no build needed). The square handles at the control cover's two ends stretch or
    shrink the cavity and its cover from that end (`control_stretch`; the
    centre and the pots move half the drag, so the other end stays), and
    those at its two sides widen or narrow it (`control_stretch_across`). A

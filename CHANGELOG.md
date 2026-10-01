@@ -4,6 +4,11 @@
 
 ### Added
 
+- One feature on its own: dragged onto *Create NC file* in the body
+  editor, a feature (a battery box forgotten in the first build, say)
+  gets its own NC programs with the work zero at its centre instead of
+  the index pins, its cover plates included (`cam.plan_feature_machining`,
+  `webapp.feature_programs`); each file has a *Simulate* button too.
 - The body editor asks to remove a feature dropped wholly outside the
   body: a pickup (the layout turns "custom" with that position empty),
   the controls, the battery box, or one of several pots or neck bolts;

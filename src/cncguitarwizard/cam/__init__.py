@@ -8,6 +8,7 @@ from .covers import (
     plan_cover_machining,
 )
 from .exceptions import CAMError, ToolpathError
+from .feature import plan_feature_machining
 from .fixturing import StockBounds, automatic_index_pins, pin_fits
 from .fretboard import (
     FretboardMachiningParameters,
@@ -72,6 +73,7 @@ __all__ = [
     "offset_polygon",
     "offset_sampled_surface",
     "plan_cover_machining",
+    "plan_feature_machining",
     "pin_fits",
     "plan_body_machining",
     "plan_fretboard_machining",

@@ -630,8 +630,12 @@ function simulatorPanel() {
   return panel;
 }
 
-async function simulate(name, text) {
+// ``after``: the element the panel shows under — the downloads table, or
+// the body editor's own list of a single feature's files (the results,
+// and so the table, may still be hidden before the first build).
+async function simulate(name, text, after = document.getElementById("files")) {
   const panel = simulatorPanel();
+  if (panel.previousElementSibling !== after) after.after(panel);
   const frame = document.getElementById("simulator-frame");
   const hint = document.getElementById("simulator-hint");
   document.getElementById("simulator-file").textContent = `— ${name}`;
@@ -1069,15 +1073,38 @@ const bodyEditor = {
     if (group === "control") members.push(...this.svg.querySelectorAll('[data-group^="pot:"]'));
     const alongNeck = group.startsWith("pickup:");
     let delta = [0, 0];
+    const drop = document.getElementById("body-editor-nc");
+    this.svg.classList.add("dragging");
+    const overDrop = (event) => {
+      const box = drop.getBoundingClientRect();
+      return event.clientX >= box.left && event.clientX <= box.right
+        && event.clientY >= box.top && event.clientY <= box.bottom;
+    };
+    const svgBox = this.svg.getBoundingClientRect();
+    const inDrawing = (event) => event.clientX >= svgBox.left && event.clientX <= svgBox.right
+      && event.clientY >= svgBox.top && event.clientY <= svgBox.bottom;
     const move = (moveEvent) => {
       const [x, y] = this.toModel(moveEvent);
       delta = [x - start[0], alongNeck ? 0 : y - start[1]];
-      for (const member of members) member.setAttribute("transform", `translate(${delta[0]} ${-delta[1]})`);
+      // Out of the drawing (on its way to Create NC file, say) a pickup
+      // follows the pointer too; in it, it only slides along the neck.
+      const shown = inDrawing(moveEvent) ? delta : [x - start[0], y - start[1]];
+      for (const member of members) member.setAttribute("transform", `translate(${shown[0]} ${-shown[1]})`);
+      drop.classList.toggle("over", overDrop(moveEvent));
     };
-    const end = () => {
+    const end = (endEvent) => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", end);
       window.removeEventListener("pointercancel", end);
+      drop.classList.remove("over");
+      this.svg.classList.remove("dragging");
+      // Dropped on "Create NC file": the feature stays put and gets its
+      // own programs instead.
+      if (endEvent && overDrop(endEvent)) {
+        for (const member of members) member.removeAttribute("transform");
+        this.createNc(group);
+        return;
+      }
       if (delta[0] || delta[1]) {
         // Dropped wholly outside the body: offer to remove it instead.
         const removal = this.leftBody(group, delta) ? this.removal(group) : null;
@@ -1103,6 +1130,47 @@ const bodyEditor = {
 
   field(set, name) {
     return form.querySelector(`[data-set="${set}"][data-name="${name}"]`);
+  },
+
+  // Make a feature's own NC programs (zeroed at its centre, its cover
+  // plates included) and list them as downloads under the drop target.
+  async createNc(group) {
+    const list = document.getElementById("body-editor-nc-files");
+    let payload;
+    try {
+      payload = collectValues();
+    } catch (error) {
+      this.setStatus(error.message, "bad");
+      return;
+    }
+    this.setStatus("Making the NC files…", "");
+    pyodide.globals.set("payload_json", JSON.stringify(payload));
+    pyodide.globals.set("feature_group", group);
+    const result = await runPython(
+      "import json\nfrom cncguitarwizard.webapp import feature_programs\n" +
+      "json.dumps(feature_programs(json.loads(payload_json), feature_group))"
+    );
+    if (result.error) {
+      this.setStatus(result.error, "bad");
+      return;
+    }
+    list.innerHTML = "";
+    for (const file of result.files) {
+      const item = document.createElement("li");
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(new Blob([file.text], { type: "text/plain" }));
+      link.download = file.name;
+      link.textContent = file.name;
+      const button = document.createElement("button");
+      button.className = "simulate";
+      button.type = "button";
+      button.textContent = "Simulate";
+      button.title = "Copy this program to the clipboard and open NC Viewer below";
+      button.addEventListener("click", () => simulate(file.name, file.text, list));
+      item.append(link, " ", button);
+      list.appendChild(item);
+    }
+    this.setStatus(`NC files for the ${result.title}, zeroed at its centre: download them below.`, "ok");
   },
 
   // Whether a group moved by [dx, dy] lies wholly outside the outline.

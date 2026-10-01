@@ -18,7 +18,12 @@ import typing
 from pathlib import Path
 from typing import Any
 
-from .cam import POST_PROCESSOR_LABELS, MachiningParameters
+from .cam import (
+    POST_PROCESSOR_LABELS,
+    GCodeWriter,
+    MachiningParameters,
+    plan_feature_machining,
+)
 from .exceptions import CNCGuitarWizardError
 from .geometry.body import (
     BRIDGE_KINDS,
@@ -499,6 +504,65 @@ def headstock_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 _ACTIVE_BUILD: Prototype001Build | None = None
+
+
+def _group_title(group: str) -> str:
+    """Return what an editor group is called in a feature program's name."""
+    if group.startswith("pickup:"):
+        return f"{group.split(':')[1]} pickup"
+    if group.startswith(("pot:", "bolt:")):
+        kind, index = group.split(":")
+        return f"{'pot' if kind == 'pot' else 'neck bolt'} {int(index) + 1}"
+    return {
+        "control": "controls",
+        "switch": "switch cavity",
+        "battery": "battery box",
+    }.get(group, group)
+
+
+def feature_programs(payload: dict[str, Any], group: str) -> dict[str, Any]:
+    """Return NC programs for one body feature, zeroed on the feature.
+
+    The body editor's groups (see ``_editor_group``) name the feature: its
+    pockets and holes are cut on their own with the work zero at their
+    centre, for a feature left out of a body already cut, and its cover
+    plates get their sheet programs (``cam.plan_feature_machining``).
+
+    Args:
+        payload: ``{"prototype": {...}, "machining": {...}}`` as for
+            ``start_build``.
+        group: The dragged feature's group, e.g. ``"battery"``.
+
+    Returns:
+        ``{"title", "files": [{"name", "text"}]}`` or ``{"error": message}``.
+    """
+    if group == "jack":
+        return {"error": "The jack's bore enters from the edge: drill it by hand."}
+    try:
+        parameters = Prototype001Parameters(**_coerce(payload.get("prototype", {})))
+        machining = MachiningParameters(**_coerce(payload.get("machining", {})))
+        geometry = parameters.build()
+        title = _group_title(group)
+        setups = plan_feature_machining(
+            geometry.body,
+            geometry.covers,
+            lambda name: _editor_group(name) == group,
+            title,
+            machining,
+        )
+    except (CNCGuitarWizardError, TypeError, ValueError) as error:
+        return {"error": f"{type(error).__name__}: {error}"}
+    writer = GCodeWriter.for_parameters(machining)
+    return {
+        "title": title,
+        "files": [
+            {
+                "name": f"{setup.name}{writer.extension}",
+                "text": writer.render(setup, machining),
+            }
+            for setup in setups
+        ],
+    }
 
 
 def start_build(

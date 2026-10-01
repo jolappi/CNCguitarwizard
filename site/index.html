@@ -89,6 +89,12 @@
   .editor-options select, .editor-options input[type=number] { max-width: 100%; }
   .editor-options input[type=checkbox] { justify-self: start; }
   .field.mirrored { display: none; }
+  /* While a feature is dragged it may leave the drawing (to Create NC
+     file, or off the body): draw it over the page instead of clipping it. */
+  .body-editor svg.dragging { overflow: visible; position: relative; z-index: 5; }
+  .nc-drop { border: 2px dashed var(--line); border-radius: 6px; padding: 10px 12px; margin: 8px 0; font-size: 13px; color: var(--muted); text-align: center; }
+  .nc-drop.over { border-color: var(--accent); color: var(--accent); background: #fff7ec; }
+  .nc-files { margin: 0 0 8px; padding-left: 18px; font-size: 13px; }
   #body-editor-template { min-width: 0; max-width: 100%; flex: 1 1 160px; }
   .body-editor select { padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; font: inherit; background: #fff; }
   #body-editor-status.ok, #headstock-editor-status.ok { color: var(--ok); }
@@ -216,9 +222,12 @@
         box or the jack to turn it (round ones only move); drag one of the control cavity's square end
         handles to stretch or shrink it and its cover from that end, or a side handle to make them wider
         or narrower; the pickup routes
-        slide along the neck. Drag a feature right off the body to remove it (you are asked first). The neck, its pocket and the bridge follow the neck and scale and stay put.
+        slide along the neck. Drag a feature right off the body to remove it (you are asked first), or onto <em>Create NC file</em> to cut it on its own. The neck, its pocket and the bridge follow the neck and scale and stay put.
         The grid is 50 mm.</p>
       <div id="body-editor-options" class="editor-options"></div>
+      <div id="body-editor-nc" class="nc-drop" title="Drop a feature here">Create NC file — drag a feature
+        here to cut it on its own, zeroed at its centre (with its cover)</div>
+      <ul id="body-editor-nc-files" class="nc-files"></ul>
       <div class="actions">
         <label class="note" for="body-editor-template">Start from</label>
         <select id="body-editor-template"></select>

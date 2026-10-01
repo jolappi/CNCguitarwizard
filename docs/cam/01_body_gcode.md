@@ -179,6 +179,20 @@ units are those of that setup, so run the first program in nccad's own
 simulation. KinetiC-NC (CNC-STEP)
 reads the GRBL dialect as it is.
 
+## One feature on its own
+
+A feature left out of a body already cut — a battery box, say — can be
+cut on its own (`cam.plan_feature_machining`): only its pockets and holes
+(chosen by name), with the work zero at the centre of the feature rather
+than at index pin 1, so the machine is zeroed on the spot marked on the
+body. A feature on the top face gets `Feature_<name>_top` (and
+`_top_small_holes`), one on the back `Feature_<name>_back` (and
+`_back_small_holes`), cut with the body flipped about its centerline as
+`Body_back` is; its cover plates get their usual sheet programs. In the
+web app, drag the feature onto *Create NC file* in the body editor
+(`webapp.feature_programs`). The jack's bore enters from the edge and is
+drilled by hand.
+
 ## Using the planner directly
 
 ```python
