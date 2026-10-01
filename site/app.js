@@ -691,6 +691,9 @@ function applyDesign(design) {
   ];
   applyStringLimits();
   headstockEditor.sync();
+  // The body editor draws the loaded outline, not the start shape it was
+  // shown while the form was being filled in.
+  bodyEditor.reloadPoints();
   bodyEditor.scheduleRefresh();
   return unknown;
 }
@@ -768,6 +771,17 @@ const bodyEditor = {
     // The form may still be mid-render (the rest of it not yet attached),
     // so read it for the layout only once this render has finished.
     setTimeout(() => this.refresh(), 0);
+  },
+
+  // Take the outline from the control_points field again (after a load).
+  reloadPoints() {
+    if (!this.input) return;
+    try {
+      const points = JSON.parse(this.input.value);
+      if (Array.isArray(points) && points.length >= 4) this.points = points;
+    } catch (error) {
+      // An unreadable field keeps the current outline.
+    }
   },
 
   async refresh() {
@@ -1455,12 +1469,13 @@ form.addEventListener("input", (event) => {
     bodyEditor.scheduleRefresh();
     return;
   }
-  // Points typed into the JSON field redraw the editor when they parse.
+  // Points typed into the JSON field, or loaded from a saved design, are
+  // the editor's from now on, even before it has a layout to draw them on.
   try {
     const points = JSON.parse(event.target.value);
-    if (Array.isArray(points) && points.length >= 4 && bodyEditor.layout) {
+    if (Array.isArray(points) && points.length >= 4) {
       bodyEditor.points = points;
-      bodyEditor.draw();
+      if (bodyEditor.layout) bodyEditor.draw();
     }
   } catch (error) {
     // Keep the last good drawing while the text is being edited.

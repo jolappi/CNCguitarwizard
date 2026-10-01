@@ -42,6 +42,10 @@
 
 ### Fixed
 
+- Loading a saved design shows its drawn body in the body editor. The
+  editor used to keep the start shape it showed while the form was being
+  filled in, so the loaded outline seemed lost and the next drag wrote the
+  start shape over it.
 - A 0 degree (flat, Fender-style) headstock is accepted (it was refused
   with "Headstock angle must be between zero and 90 degrees"). It stays 16
   mm thick and is set down: its face is milled 4 mm below the glue face

@@ -58,7 +58,9 @@ Python.
    "instrument", "prototype", "machining"}`). **Load design** opens such a
    file: it switches to the saved instrument, puts every value back into
    the form (variant kinds first, then their fields) and redraws the
-   editors; settings this version does not know are skipped and listed,
+   editors — the body editor from the loaded `control_points`, so a drag
+   afterwards changes the loaded outline, not the start shape; settings
+   this version does not know are skipped and listed,
    and a file that is not a design is refused. Nothing is stored on a
    server.
 4. On **Build** runs the build in stages — `start_build()`, then

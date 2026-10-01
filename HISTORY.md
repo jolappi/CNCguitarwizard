@@ -301,6 +301,14 @@ The first CAD backend was introduced without coupling FreeCAD to the geometry
 engine. Deterministic standalone scripts can now loft the sampled neck-back
 and fretboard sections into FreeCAD solids for visual inspection.
 
+## Web App
+
+The browser app saves a whole design — every setting, the drawn body and
+headstock included — as one JSON file on the user's own computer and loads
+it back. Loading now also puts the drawn body back into the body editor,
+which had kept showing its start shape, so the next drag wrote that shape
+over the loaded one.
+
 ## Documentation
 
 - Added public package reference with API tables, examples, and diagrams.
