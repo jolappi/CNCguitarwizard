@@ -832,9 +832,11 @@ YOUR_DESIGN_TEMPLATES: dict[str, tuple[str, YourDesignShape]] = {
             switch_cover_y=-85.0,
             pot_offsets=((170.8, 86.0), (210.8, 87.0)),
             control_shift=(-10.0, 0.0),
-            jack_offset=300.0,
-            jack_y=172.0,
-            jack_direction_degrees=250.0,
+            # The jack in the treble wing's outer edge where it passes
+            # nearest the control cavity, aimed at it (a 26 mm bore).
+            jack_offset=175.2,
+            jack_y=126.5,
+            jack_direction_degrees=291.8,
             # The neck bolts' front pair as far out as the narrow wings
             # leave 3-5 mm of wood beside its ferrules (the treble wing is
             # the nearer), the rear pair's ferrules wholly over the pocket.

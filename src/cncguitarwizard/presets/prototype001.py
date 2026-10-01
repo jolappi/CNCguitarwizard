@@ -106,6 +106,19 @@ CONTROL_CLEARANCE_SHIFT = 20.0
 """How far, in mm, a generated control cavity may move out from the
 centreline to clear a deep top route (see ``_placed_controls``)."""
 
+JACK_DEFAULT_DEPTH = 55.0
+"""The jack bore's length, in mm, when it aims at no control cavity."""
+
+JACK_CAVITY_OVERRUN = 3.0
+"""How far the jack bore runs on past the control cavity's wall, in mm."""
+
+JACK_CUP_DIAMETER, JACK_CUP_DEPTH = 22.2, 25.0
+"""A cup jack's or an Electrosocket's 7/8 in counterbore, 1 in deep, in mm."""
+
+JACK_STRAT_DIAMETER, JACK_STRAT_DEPTH, JACK_STRAT_WALL = 25.4, 32.0, 4.0
+"""A Stratocaster style jack's cavity under its top plate: a 1 in round
+pocket this deep, this much wood from the body's edge, in mm."""
+
 MAX_MULTISCALE_RATIO = 1.15
 """The longest bass scale accepted, as a multiple of the treble scale."""
 
@@ -237,7 +250,8 @@ class BodyLayout:
         jack_hole: The output jack bore.
         control_cavity: The rear control cavity with its cover recess.
         switch_cavity: The rear switch cavity with its cover recess.
-        extra_cavities: The bridge's top routes.
+        extra_cavities: The bridge's top routes, and a Stratocaster style
+            jack's cavity.
         holes: Drilled holes (switch, pots, pickup screws, bridge).
         through_cavities: Routes that open into a rear cavity.
         extra_rear_cavities: The bridge's rear cavities.
@@ -522,9 +536,21 @@ class Prototype001Parameters:
     body_switch: Literal["toggle", "micro"] = "toggle"
     body_switch_shaft_hole_diameter: float | None = None
     body_pot_shaft_hole_diameter: float = 10.0
-    # Output jack bore, in from the edge at the shape's jack position.
+    # The output jack (body_jack): "side", a bore in from the body's edge
+    # (a Les Paul style side plate or a barrel jack); "cup", that bore with
+    # a 7/8 in counterbore at the edge for a Telecaster cup jack or an
+    # Electrosocket (JACK_CUP_DIAMETER x JACK_CUP_DEPTH); "strat", a
+    # Stratocaster style plate on the top: a round jack cavity routed from
+    # the top just in from the edge (JACK_STRAT_DIAMETER x
+    # JACK_STRAT_DEPTH), the bore running on from it. The bore starts where
+    # the shape's jack line (jack_offset / jack_y along
+    # jack_direction_degrees) meets the outline, whatever the body, and
+    # runs on into the control cavity, JACK_CAVITY_OVERRUN past its wall;
+    # body_jack_depth fixes its length instead (JACK_DEFAULT_DEPTH when it
+    # aims at no control cavity).
+    body_jack: Literal["side", "cup", "strat"] = "side"
     body_jack_diameter: float = 12.5
-    body_jack_depth: float = 55.0
+    body_jack_depth: float | None = None
     # Bolt-on neck: the body shape's own neck_bolts, or else four bolts
     # in a rectangle centred across the neck, body_neck_bolt_spacing_x
     # along it and _y across it, the tail pair as close to the pocket's end
@@ -1786,12 +1812,11 @@ class Prototype001Parameters:
         # close with a six-screw sheet cover too.
         for rear in bridge.rear_cavities:
             controls = controls.with_covers(rear_cover(rear, 6))
-        jack_hole = JackHole(
-            heel_end + shape.jack_offset,
-            shape.jack_y,
+        jack_hole, jack_cavity = self._jack(
+            body_outline.points,
+            Point2D(heel_end + shape.jack_offset, shape.jack_y),
             shape.jack_direction_degrees,
-            diameter=self.body_jack_diameter,
-            depth=self.body_jack_depth,
+            controls,
         )
         holes: list[DrilledHole] = [*bridge.holes, *controls.holes]
         for label, kind, pickup_x, angle in (
@@ -1827,7 +1852,7 @@ class Prototype001Parameters:
             jack_hole,
             controls.control_cavity,
             controls.switch_cavity,
-            bridge.top_cavities,
+            (*bridge.top_cavities, *((jack_cavity,) if jack_cavity else ())),
             tuple(holes),
             bridge.through_cavities,
             bridge.rear_cavities,
@@ -1846,6 +1871,94 @@ class Prototype001Parameters:
             ),
             self._contours(body_outline.points, heel_end, bass_sign),
             truss_rod_access,
+        )
+
+    def _jack(
+        self,
+        outline: tuple[Point2D, ...],
+        aim: Point2D,
+        direction_degrees: float,
+        controls: ControlFeatures,
+    ) -> tuple[JackHole, TracedCavity | None]:
+        """Return the output jack's bore and a Strat style jack's cavity.
+
+        The bore's line runs through ``aim`` along the shape's direction; it
+        starts where that line enters the body (the crossing of the outline
+        nearest ``aim``), so it sits on the edge of whatever body is drawn,
+        and runs on into the control cavity (see ``body_jack``).
+
+        Raises:
+            BodyGeometryError: For an unknown ``body_jack``.
+        """
+        if self.body_jack not in ("side", "cup", "strat"):
+            raise BodyGeometryError(
+                f"Unknown jack {self.body_jack!r}: choose side, cup or strat."
+            )
+        radians = math.radians(direction_degrees)
+        ux, uy = math.cos(radians), math.sin(radians)
+
+        def along(origin: Point2D, distance: float) -> Point2D:
+            return Point2D(origin.x + ux * distance, origin.y + uy * distance)
+
+        entries = [
+            t
+            for t in _line_crossings(aim, ux, uy, outline)
+            if point_in_polygon(along(aim, t + 0.5), outline)
+            and not point_in_polygon(along(aim, t - 0.5), outline)
+        ]
+        start = along(aim, min(entries, key=abs)) if entries else aim
+        cavity: TracedCavity | None = None
+        if self.body_jack == "strat":
+            radius = JACK_STRAT_DIAMETER / 2.0
+            centre = along(start, radius + JACK_STRAT_WALL)
+            cavity = TracedCavity(
+                "Jack cavity",
+                tuple(
+                    Point2D(
+                        centre.x + radius * math.cos(2.0 * math.pi * k / 32),
+                        centre.y + radius * math.sin(2.0 * math.pi * k / 32),
+                    )
+                    for k in range(32)
+                ),
+                JACK_STRAT_DEPTH,
+            )
+            start = centre
+        depth = self.body_jack_depth
+        if depth is None:
+            depth = JACK_DEFAULT_DEPTH
+            # The rear control cavity, or a Tele plate's cavity in the top.
+            target = controls.control_cavity
+            targets = (
+                [target.cavity.outline]
+                if target is not None
+                else [
+                    top.outline
+                    for top in controls.top_cavities
+                    if top.name == "Control cavity"
+                ]
+            )
+            hits = [
+                t
+                for polygon in targets
+                for t in _line_crossings(start, ux, uy, polygon)
+                if t > 0.0
+            ]
+            if hits:
+                depth = min(hits) + JACK_CAVITY_OVERRUN
+        cup = self.body_jack == "cup"
+        if cup:
+            depth = max(depth, JACK_CUP_DEPTH + 5.0)
+        return (
+            JackHole(
+                start.x,
+                start.y,
+                direction_degrees,
+                diameter=self.body_jack_diameter,
+                depth=depth,
+                cup_diameter=JACK_CUP_DIAMETER if cup else 0.0,
+                cup_depth=JACK_CUP_DEPTH if cup else 0.0,
+            ),
+            cavity,
         )
 
     def _placed_controls(
@@ -2422,6 +2535,24 @@ bridge, a string-through four-string hardtail, and neck bolts 56 mm
 apart along the neck, the outer pair near the body's edge and the
 rear pair's ferrules wholly over the neck pocket.
 """
+
+
+def _line_crossings(
+    origin: Point2D, ux: float, uy: float, polygon: tuple[Point2D, ...]
+) -> list[float]:
+    """Return where the line ``origin + t (ux, uy)`` crosses ``polygon``'s sides."""
+    crossings = []
+    for a, b in zip(polygon, (*polygon[1:], polygon[0]), strict=True):
+        ex, ey = b.x - a.x, b.y - a.y
+        determinant = ex * uy - ux * ey
+        if abs(determinant) < 1e-12:
+            continue
+        dx, dy = a.x - origin.x, a.y - origin.y
+        t = (ex * dy - ey * dx) / determinant
+        s = (ux * dy - uy * dx) / determinant
+        if 0.0 <= s <= 1.0:
+            crossings.append(t)
+    return crossings
 
 
 def distance_to_headstock_edge(plan: HeadstockPlan, point: Point2D) -> float:

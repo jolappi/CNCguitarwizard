@@ -32,7 +32,7 @@ from .geometry.body import (
     bridge_spec_from_dict,
 )
 from .geometry.neck import LOCKING_NUT_SPECS
-from .geometry.primitives import Point2D
+from .geometry.primitives import Point2D, point_in_polygon
 from .presets import Prototype001Parameters
 from .presets.body_shapes import (
     BODY_SHAPE_KINDS,
@@ -63,6 +63,11 @@ _CHOICE_LABELS: dict[str, dict[str, str]] = {
         "none": "Plain nut",
         "r2": "Floyd Rose R2 locking nut (41.3 mm)",
         "r3": "Floyd Rose R3 locking nut (42.85 mm)",
+    },
+    "body_jack": {
+        "side": "Side jack (Les Paul style plate or barrel jack)",
+        "cup": "Cup jack or Electrosocket (7/8 in counterbore)",
+        "strat": "Stratocaster style top plate (cavity from the top)",
     },
     "body_switch": {
         "toggle": "3-way toggle (1/2 in hole, 12.7 mm)",
@@ -117,6 +122,7 @@ _BASIC_FIELDS: frozenset[str] = frozenset(
         "body_bridge",
         "body_controls",
         "body_switch",
+        "body_jack",
         "body_battery_box",
         "body_battery_count",
         "locking_nut",
@@ -257,6 +263,8 @@ def _editor_group(name: str) -> str | None:
         return "switch"
     if name.startswith("Battery"):
         return "battery"
+    if name.startswith("Jack"):
+        return "jack"
     if name.startswith("Pot ") and name.endswith("shaft hole"):
         return f"pot:{int(name.split()[1]) - 1}"
     if name.startswith("Neck bolt "):
@@ -297,7 +305,10 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         ``pickup``, ``bridge``, ``top_control``, ``rear``, ``cover``,
         ``contour_top`` (an arm contour) or ``contour_back`` (a belly cut);
         ``circles`` a list of ``{"name", "group", "x", "y", "r"}``;
-        ``jack`` ``{"group", "x", "y", "x2", "y2", "r"}``; ``control``
+        ``jack`` ``{"group", "x", "y", "x2", "y2", "r", "cup",
+        "reaches_controls"}`` (``cup`` a cup jack's counterbore ``{"x2",
+        "y2", "r"}`` or ``None``; ``reaches_controls`` whether the bore
+        ends in the control cavity); ``control``
         ``{"centre", "axis", "ends", "sides"}`` — the control cavity's
         centre, its long axis (a unit vector), the two ends of its cover
         (or the Tele plate) on that axis and its two sides square to it,
@@ -424,6 +435,14 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         }
     jack = layout.jack_hole
     radians = math.radians(jack.direction_degrees)
+    jack_end = Point2D(
+        jack.start_x + jack.depth * math.cos(radians),
+        jack.start_y + jack.depth * math.sin(radians),
+    )
+    control_outlines = [
+        *((controls.control_cavity.cavity.outline,) if controls.control_cavity else ()),
+        *(top.outline for top in controls.top_cavities if top.name == "Control cavity"),
+    ]
     return {
         "heel_end": round(heel_end, 2),
         "scale_line": round(parameters.centre_scale, 3),
@@ -443,6 +462,20 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
             "x2": round(jack.start_x - heel_end + jack.depth * math.cos(radians), 2),
             "y2": round(jack.start_y + jack.depth * math.sin(radians), 2),
             "r": jack.diameter / 2.0,
+            "cup": (
+                {
+                    "x2": round(
+                        jack.start_x - heel_end + jack.cup_depth * math.cos(radians), 2
+                    ),
+                    "y2": round(jack.start_y + jack.cup_depth * math.sin(radians), 2),
+                    "r": jack.cup_diameter / 2.0,
+                }
+                if jack.cup_diameter
+                else None
+            ),
+            "reaches_controls": any(
+                point_in_polygon(jack_end, outline) for outline in control_outlines
+            ),
         },
         "control": control,
     }

@@ -376,6 +376,10 @@ with its cover.
 A five-string bass joined the instruments, with 4+1 (Jazz V style),
 3+2 and five-in-line headstocks.
 
+The output jack now starts on the body's own edge, whatever body is
+drawn, and runs into the control cavity; it can be a side jack, a cup
+jack or Electrosocket, or a Stratocaster style top plate.
+
 ## Documentation
 
 - Added public package reference with API tables, examples, and diagrams.

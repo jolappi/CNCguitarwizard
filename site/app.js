@@ -114,7 +114,7 @@ function renderForm() {
 // loaded and built (its row in the form is hidden). A change on either
 // side is passed to the other.
 const EDITOR_FIELDS = {
-  "body-editor-options": ["body_pickups", "body_controls", "body_switch", "body_battery_box", "body_battery_count"],
+  "body-editor-options": ["body_pickups", "body_controls", "body_switch", "body_jack", "body_battery_box", "body_battery_count"],
   "headstock-editor-options": ["headstock_style"],
 };
 const mirrors = new Map();
@@ -981,6 +981,10 @@ const bodyEditor = {
     const jack = layout.jack;
     const bore = this.element("line", { x1: jack.x, y1: -jack.y, x2: jack.x2, y2: -jack.y2, stroke: "#222", "stroke-width": jack.r * 2, "stroke-opacity": 0.25 }, features);
     place(bore, jack.group, "Output jack");
+    if (jack.cup) {
+      const cup = this.element("line", { x1: jack.x, y1: -jack.y, x2: jack.cup.x2, y2: -jack.cup.y2, stroke: "#222", "stroke-width": jack.cup.r * 2, "stroke-opacity": 0.2 }, features);
+      place(cup, jack.group, "Output jack (cup)");
+    }
     const socket = this.element("circle", { cx: jack.x, cy: -jack.y, r: jack.r, fill: "#fff", "fill-opacity": 0.6, stroke: "#222", "stroke-width": 0.8 }, features);
     place(socket, jack.group, "Output jack");
 
@@ -1544,8 +1548,15 @@ const bodyEditor = {
     for (const circle of this.layout.circles) {
       if (!pointInPolygon(circle.x, circle.y, outline)) outside.add(circle.name);
     }
+    const controls = this.field("prototype", "body_controls");
+    const jackMisses = !this.layout.jack.reaches_controls && controls && controls.value !== "none";
+    const jackNote = jackMisses
+      ? " The jack's bore misses the control cavity: Shift-drag the jack to turn it toward it."
+      : "";
     if (outside.size) {
-      this.setStatus(`Outside the outline: ${[...outside].join(", ")}.`, "bad");
+      this.setStatus(`Outside the outline: ${[...outside].join(", ")}.${jackNote}`, "bad");
+    } else if (jackMisses) {
+      this.setStatus(jackNote.trim(), "bad");
     } else {
       this.setStatus("Every feature fits inside the outline.", "ok");
     }

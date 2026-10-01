@@ -311,7 +311,8 @@ def test_body_editor_layout_lists_the_fixed_features_relative_to_the_heel() -> N
     names = {circle["name"] for circle in layout["circles"]}
     assert {"Switch shaft hole", "Pot 1 shaft hole"} <= names
     # The jack of the drawn body sits at its own placement.
-    assert layout["jack"]["x"] == pytest.approx(284.0)
+    # The jack starts on the outline, where its line meets it near 284 mm.
+    assert layout["jack"]["x"] == pytest.approx(284.0, abs=2.0)
     # Draggable groups: electronics and pickups move, neck and bridge do not.
     groups = {p["name"]: p["group"] for p in layout["polygons"]}
     assert groups["Control cavity"] == "control"

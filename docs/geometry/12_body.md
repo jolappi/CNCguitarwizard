@@ -255,6 +255,23 @@ any width. A cavity narrower than `MIN_CONTROL_CAVITY_WIDTH` (16 mm, a
 mini pot's body) is refused. The editor's side handles, square to the
 end handles, widen it from one side with the other held still.
 
+The output jack (`body_jack`, `Prototype001Parameters._jack`) starts where
+the shape's jack line — through `jack_offset` / `jack_y` along
+`jack_direction_degrees` — enters the body, whatever outline is drawn, and
+runs on into the control cavity, `JACK_CAVITY_OVERRUN` (3 mm) past its
+wall; `body_jack_depth` fixes its length instead, and it is
+`JACK_DEFAULT_DEPTH` (55 mm) when the line misses the cavity (the body
+editor then says so). The housings:
+
+| `body_jack` | Cut |
+| --- | --- |
+| `side` (default) | A Ø `body_jack_diameter` (12.5 mm) bore from the edge: a Les Paul style side plate or a barrel jack |
+| `cup` | The bore with a 7/8 in (22.2 mm) counterbore 25 mm deep at the edge: a Telecaster cup jack or an Electrosocket (`JackHole.cup_diameter`, `cup_depth`) |
+| `strat` | A Stratocaster style plate on the top: a Ø 25.4 × 32 mm cavity routed from the top 4 mm in from the edge (`Jack cavity`, cut with the top's pockets), the bore running on from its centre into the controls |
+
+The jack's line can be dragged and turned (Shift-drag) in the body editor;
+the bore follows the drawn outline and the cavity.
+
 The rear layouts' pickup selector is chosen with `body_switch`: a 3-way
 toggle (`toggle`, the default) through a 1/2 in (12.7 mm) hole, or a micro
 (mini) toggle (`micro`) through a 1/4 in (6.35 mm) one

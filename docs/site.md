@@ -70,7 +70,9 @@ Python.
    `control_stretch_across`,
    `pot_offsets`, `switch_*`,
    `battery_*`, `neck_bolts`, `jack_*`,
-   `body_*_pickup_offset`) and the layout is fetched again. The neck, its
+   `body_*_pickup_offset`) and the layout is fetched again. The jack's
+   bore starts wherever its line meets the drawn outline and runs into the
+   control cavity; the panel warns when it misses the cavity. The neck, its
    pocket and the bridge follow the neck and scale and stay put. The
    panel reports the body's size
    and any feature left outside the outline, and writes the points into

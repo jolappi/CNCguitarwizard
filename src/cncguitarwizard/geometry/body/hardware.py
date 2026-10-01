@@ -496,10 +496,14 @@ class JackHole:
             measured counter-clockwise from the positive X axis.
         diameter: Bore diameter in millimetres.
         depth: Bore length in millimetres, from the edge inward.
+        cup_diameter: A wider counterbore at the edge for a cup jack or an
+            Electrosocket (7/8 in), or 0 for none.
+        cup_depth: How deep that counterbore runs in from the edge.
 
     Raises:
         BodyGeometryError: If the diameter or depth is non-finite or
-            non-positive.
+            non-positive, or a counterbore is narrower than the bore or
+            longer than it.
     """
 
     start_x: float
@@ -507,6 +511,8 @@ class JackHole:
     direction_degrees: float
     diameter: float = 12.5
     depth: float = 30.0
+    cup_diameter: float = 0.0
+    cup_depth: float = 0.0
 
     def __post_init__(self) -> None:
         """Reject a bore that cannot be safely drilled."""
@@ -519,3 +525,14 @@ class JackHole:
             raise BodyGeometryError("Jack bore start position must be finite.")
         if not math.isfinite(self.direction_degrees):
             raise BodyGeometryError("Jack bore direction must be finite.")
+        if self.cup_diameter or self.cup_depth:
+            if not (
+                math.isfinite(self.cup_diameter)
+                and math.isfinite(self.cup_depth)
+                and self.cup_diameter > self.diameter
+                and 0.0 < self.cup_depth < self.depth
+            ):
+                raise BodyGeometryError(
+                    "A jack's counterbore must be wider than its bore and "
+                    "shorter than it."
+                )

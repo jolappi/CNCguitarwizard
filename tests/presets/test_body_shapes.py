@@ -28,7 +28,8 @@ def test_the_default_body_is_the_drawn_design_by_jone_template() -> None:
         "Pot 1 shaft hole",
         "Pot 2 shaft hole",
     ]
-    assert body.jack_hole.start_y == 107.5
+    # The jack starts where its line meets the outline, by 107.5 mm.
+    assert body.jack_hole.start_y == pytest.approx(107.5, abs=0.1)
 
 
 @pytest.mark.parametrize("kind", list(BODY_SHAPE_KINDS))

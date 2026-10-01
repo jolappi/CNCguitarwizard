@@ -4,6 +4,15 @@
 
 ### Added
 
+- Output jack housings (`body_jack`): a side jack (`side`, the default: a
+  Les Paul style plate or a barrel jack), a cup jack or Electrosocket
+  (`cup`, a 7/8 in counterbore at the edge) or a Stratocaster style top
+  plate (`strat`, a 1 in cavity routed from the top). The jack's bore
+  now starts where its line meets the drawn outline, whatever the body,
+  and runs on into the control cavity (`body_jack_depth`, now optional,
+  fixes its length); the body editor warns when it misses the cavity.
+  The Jackson RR style template's jack moved to the treble wing's edge by
+  its control cavity, aimed at it.
 - A five-string bass (`five_string_bass`, "5-string bass" in the web
   app), as the seven- and eight-string guitars are: the four-string's
   values with a 47 mm nut, 18 mm at the bridge, a 77 mm heel, a 4+1

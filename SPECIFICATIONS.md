@@ -244,7 +244,7 @@ mensuurilla.
 | Potikkakolo | DXF:n manteli tallan takana, takaa 36 mm (8 mm puuta kanteen), kansiura 2 mm |
 | Kytkinkolo | DXF:n ympyrä Ø 44 yläsakaran juuressa, takaa 36 mm, kansiura Ø 59,5 × 2 mm |
 | Akselireiät | Kytkin Ø 12,7; potikat 2 × Ø 10 kohdissa (642, 86) ja (682, 87) |
-| Jakki | Ø 12,5 poraus reunasta (742, 107,5) suuntaan 202,5°, 55 mm, päättyy potikkakoloon |
+| Jakki | Ø 12,5 poraus alkaa siitä, missä muodon jakkilinja (oletus 742, 107,5 suuntaan 202,5°) kohtaa rungon ääriviivan, millä tahansa rungolla, ja jatkuu 3 mm ohjainkolon seinän yli (muuten 55 mm; `body_jack_depth` kiinnittää pituuden). `body_jack`: side (kylkilevy tai putkijakki), cup (Tele-kuppi tai Electrosocket: 7/8" eli 22,2 mm upotus 25 mm syvä reunassa) tai strat (Strat-tyylinen kansilevy päällä: Ø 25,4 × 32 mm kolo ylhäältä 4 mm reunasta, poraus jatkuu siitä ohjainkoloon). Runkoeditori varoittaa, jos poraus ei osu ohjainkoloon |
 
 ## Reunat ja viisteet
 
