@@ -811,7 +811,13 @@ YOUR_DESIGN_TEMPLATES: dict[str, tuple[str, YourDesignShape]] = {
     ),
     "stratocaster": (
         "Stratocaster style (mockup, not the original)",
-        YourDesignShape(control_points=_STRATOCASTER_POINTS),
+        YourDesignShape(
+            control_points=_STRATOCASTER_POINTS,
+            # The neck bolts spread like the bass's: the pair at the
+            # pocket's mouth out near the body's edge, the rear pair's
+            # ferrules wholly over the pocket.
+            neck_bolts=((-63.5, -20.0), (-7.5, -20.0), (-63.5, 20.0), (-7.5, 20.0)),
+        ),
     ),
     "jackson_rr": (
         "Jackson RR style (mockup, not the original)",
@@ -829,6 +835,10 @@ YOUR_DESIGN_TEMPLATES: dict[str, tuple[str, YourDesignShape]] = {
             jack_offset=300.0,
             jack_y=172.0,
             jack_direction_degrees=250.0,
+            # The neck bolts' front pair as far out as the narrow wings
+            # leave 3-5 mm of wood beside its ferrules (the treble wing is
+            # the nearer), the rear pair's ferrules wholly over the pocket.
+            neck_bolts=((-50.0, -20.0), (-7.5, -20.0), (-44.0, 20.0), (-7.5, 20.0)),
             # The battery box behind the control cavity, on the treble
             # wing, turned along it.
             battery_offset=271.0,

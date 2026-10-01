@@ -105,3 +105,19 @@ def test_the_hardtail_follows_its_string_count() -> None:
     strings = [hole for hole in hardware.holes if hole.name.startswith("String")]
 
     assert [round(hole.center_y, 1) for hole in strings] == [-28.5, -9.5, 9.5, 28.5]
+
+
+def test_the_bass_neck_bolts_spread_toward_the_body_edge(bass) -> None:  # type: ignore[no-untyped-def]
+    parameters = Prototype001Parameters.for_instrument("bass_guitar")
+    heel_end = parameters.body_layout().heel_end
+    ferrules = [h for h in bass.body.rear_holes if h.name.endswith("ferrule")]
+    xs = sorted({round(h.center_x - heel_end, 1) for h in ferrules})
+
+    # 56 mm apart along the neck: the pair at the pocket's mouth sits
+    # near the body's edge, further out than a guitar's 32 mm pattern, and
+    # the rear pair's ferrules lie wholly over the pocket.
+    assert xs == [-63.5, -7.5]
+    pocket_end = max(p.x for p in bass.body.neck_pocket.outline)
+    for ferrule in ferrules:
+        assert point_in_polygon(ferrule.center, bass.body.outline.points)
+        assert ferrule.center_x + ferrule.diameter / 2.0 <= pocket_end

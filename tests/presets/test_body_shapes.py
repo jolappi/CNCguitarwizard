@@ -170,3 +170,27 @@ def test_the_design_by_jone_template_follows_the_traced_outline() -> None:
     # It keeps that body's own electronics placements.
     assert template.switch_cavity_y == DesignByJoneShape().switch_cavity_y
     assert template.jack_offset == DesignByJoneShape().jack_offset
+
+
+@pytest.mark.parametrize(
+    ("key", "front"), [("stratocaster", (-63.5, -63.5)), ("jackson_rr", (-50.0, -44.0))]
+)
+def test_the_strat_and_rr_templates_spread_their_neck_bolts(
+    key: str, front: tuple[float, float]
+) -> None:
+    _, shape = YOUR_DESIGN_TEMPLATES[key]
+    parameters = replace(Prototype001Parameters(), body_shape=shape)
+    layout = parameters.body_layout()
+    ferrules = [h for h in layout.rear_holes if h.name.endswith("ferrule")]
+    heel_end = layout.heel_end
+    pocket_end = max(p.x for p in layout.neck_pocket.outline)
+
+    # The front pair out toward the body's edge, on both sides.
+    fronts = sorted(
+        (h for h in ferrules if h.center_x - heel_end < -20.0),
+        key=lambda h: h.center_y,
+    )
+    assert [round(h.center_x - heel_end, 1) for h in fronts] == list(front)
+    # The rear pair's ferrules lie wholly over the pocket.
+    for ferrule in ferrules:
+        assert ferrule.center_x + ferrule.diameter / 2.0 <= pocket_end

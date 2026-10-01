@@ -2256,6 +2256,12 @@ INSTRUMENT_OVERRIDES: dict[str, dict[str, Any]] = {
             screw_offset=-12.0,
         ),
         "body_shape": BASS_BODY,
+        # The bass's long neck pocket takes its bolts further apart: the
+        # pair at the pocket's mouth moves out near the body's edge, and
+        # the rear pair 2 mm in from the pocket's end, so its ferrules lie
+        # wholly over the pocket.
+        "body_neck_bolt_spacing_x": 56.0,
+        "body_neck_bolt_end_wall": 5.0,
     },
 }
 """Parameter values that differ from the defaults, per instrument.
@@ -2273,7 +2279,9 @@ bass: 34-inch (863.6 mm) scale, 21 frets, a 38 mm nut and 62 mm heel, a
 12-inch fretboard radius, 10 mm string spacing at the nut and 19 mm at
 the bridge, Fender-style tuners in line (19 mm holes, 38 mm apart), a
 Precision Bass pickup 150 mm and a Jazz Bass pickup 45 mm ahead of the
-bridge, and a string-through four-string hardtail.
+bridge, a string-through four-string hardtail, and neck bolts 56 mm
+apart along the neck, the outer pair near the body's edge and the
+rear pair's ferrules wholly over the neck pocket.
 """
 
 

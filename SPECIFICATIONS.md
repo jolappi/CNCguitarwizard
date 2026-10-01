@@ -70,7 +70,13 @@ kielelle, joten ne eivät ole valittavissa 7- ja 8-kielisille.
 paksuudet 21 / 23 mm ja kanta 22 mm, otelaudan säde 305 mm, kielijako 10 mm
 satulassa ja 19 mm tallassa, neljä 19 mm viritinreikää rivissä 38 mm välein
 ja 20 mm reunasta, Precision-mikki kaulassa ja Jazz-mikki tallalla,
-nelikielinen läpimenevä talla ja Jazz Bass -henkinen runko. Mikkityypit ovat
+nelikielinen läpimenevä talla ja Jazz Bass -henkinen runko, jonka
+kaulapultit ovat 56 mm välein kaulan suunnassa (`body_neck_bolt_spacing_x`;
+kaulataskun suun puoleinen pari on lähellä rungon reunaa, ja taaempi pari
+on 5 mm taskun päästä (`body_neck_bolt_end_wall`), jolloin sen holkit ovat
+kokonaan taskun kohdalla). Stratocaster-pohjassa pultit ovat samoin, ja
+Jackson RR -pohjassa etummainen pari on niin ulkona kuin kapeat siivet
+sallivat (bassopuolella 50 mm, diskanttipuolella 44 mm kannan päästä). Mikkityypit ovat
 valittavissa kummallekin paikalle (humbucker, Jazz Bass, Precision Bass,
 bassohumbucker tai ei mikkiä). Bassoarvot ovat lähtöarvoja.
 

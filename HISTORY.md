@@ -325,6 +325,16 @@ The body shape choice is gone from the web form: the body is always a
 drawn one, starting from the Design by Jone template on a guitar and the
 Jazz Bass style one on a bass, which are also Python's defaults.
 
+The bass's outer pair of neck bolts moved out toward the body's edge: its
+bolts are now 56 mm apart along the neck instead of a guitar's 32 mm,
+and the rear pair sits 2 mm further in so its ferrules lie over the
+pocket. The Stratocaster style template got the same bolts, the Jackson
+RR style one its front pair as far out as its narrow wings allow.
+
+The Jackson RR and Les Paul style templates could not be machined: their
+neck pocket reached almost to the blank's front edge, so the first index
+pin had nowhere to go. The blank now grows past the pocket instead.
+
 ## Documentation
 
 - Added public package reference with API tables, examples, and diagrams.

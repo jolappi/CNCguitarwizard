@@ -45,6 +45,13 @@
 
 ### Changed
 
+- The bass's neck bolts are 56 mm apart along the neck with 5 mm to the
+  pocket's end (`body_neck_bolt_spacing_x`, `body_neck_bolt_end_wall` in
+  its defaults): the pair at the neck pocket's mouth moves 26 mm out,
+  near the body's edge, and the rear pair 2 mm in, its ferrules wholly
+  over the pocket. The Stratocaster style template takes the same
+  pattern, and the Jackson RR style one moves its front pair out as far
+  as its narrow wings allow (50 / 44 mm ahead of the heel end).
 - The web app's intro ("What this page does") heads the left column.
   On a narrow screen it comes first, then the buttons
   and the instrument choice with the body and headstock editors and the
@@ -69,6 +76,16 @@
 
 ### Fixed
 
+- The body editor's *Start from* list always showed the Stratocaster
+  style template; it now shows the template the drawing is (Design by
+  Jone on a guitar, Jazz Bass style on a bass), or "Your own drawing"
+  once the outline has been changed.
+- The Jackson RR and Les Paul style body templates failed their body
+  CAM: their neck pocket runs out past the body's face almost to the
+  blank's edge, leaving no room for index pin 1. When the pins do not
+  fit, the blank now grows past the furthest of the part and its cuts by
+  a dowel plus its clearances — at the end that needs it, front first,
+  and at both only when neither alone will do (`cam.fixturing`).
 - Loading a saved design shows its drawn body in the body editor. The
   editor used to keep the start shape it showed while the form was being
   filled in, so the loaded outline seemed lost and the next drag wrote the

@@ -65,6 +65,13 @@ editor draws a drawn body the same way. A row headstock opposite three or
 four tuners (4+3) stretches `tuner_inline_spacing` in 0.5 mm steps until
 every pair of holes keeps `tuner_hole_clearance`.
 
+The bass's long neck pocket takes its four neck bolts 56 mm apart along
+the neck (`body_neck_bolt_spacing_x`, 32 mm on a guitar) with 5 mm of
+wood to the pocket's end (`body_neck_bolt_end_wall`, 3 mm on a guitar):
+the pair at the pocket's mouth sits 63.5 mm ahead of the heel end, near
+the body's edge, and the rear pair at 7.5 mm, its ferrules wholly over
+the pocket.
+
 Every value stays editable; the bass numbers are labelled starting points
 for a common four-string bass. `instrument` records which defaults a set
 started from; `string_count` is what the tuners, the hardtail bridge and
