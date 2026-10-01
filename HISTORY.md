@@ -373,6 +373,9 @@ A feature left out of a body already cut can now be cut on its own:
 dropped on *Create NC file*, it gets programs zeroed at its own centre,
 with its cover.
 
+A five-string bass joined the instruments, with 4+1 (Jazz V style),
+3+2 and five-in-line headstocks.
+
 ## Documentation
 
 - Added public package reference with API tables, examples, and diagrams.

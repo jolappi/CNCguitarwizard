@@ -75,7 +75,11 @@ from .pickups import (
 )
 
 Instrument = Literal[
-    "electric_guitar", "seven_string_guitar", "eight_string_guitar", "bass_guitar"
+    "electric_guitar",
+    "seven_string_guitar",
+    "eight_string_guitar",
+    "bass_guitar",
+    "five_string_bass",
 ]
 """Which instrument's defaults a parameter set starts from."""
 
@@ -114,6 +118,12 @@ HeadstockStyle = Literal[
     "2+2",
     "4_inline",
     "4_inline_reverse",
+    "4+1",
+    "1+4",
+    "3+2",
+    "2+3",
+    "5_inline",
+    "5_inline_reverse",
     "4+3",
     "3+4",
     "7_inline",
@@ -133,6 +143,12 @@ HEADSTOCK_STYLES: dict[str, tuple[int, int]] = {
     "2+2": (2, 2),
     "4_inline": (4, 0),
     "4_inline_reverse": (0, 4),
+    "4+1": (4, 1),
+    "1+4": (1, 4),
+    "3+2": (3, 2),
+    "2+3": (2, 3),
+    "5_inline": (5, 0),
+    "5_inline_reverse": (0, 5),
     "4+3": (4, 3),
     "3+4": (3, 4),
     "7_inline": (7, 0),
@@ -152,6 +168,12 @@ HEADSTOCK_RESERVES: dict[
     "2+4": ((36.0, 15.0), (40.0, 30.0)),
     "4_inline": ((40.0, None), (45.0, 60.0)),
     "4_inline_reverse": ((40.0, None), (45.0, 60.0)),
+    "4+1": ((40.0, 15.0), (45.0, 30.0)),
+    "1+4": ((40.0, 15.0), (45.0, 30.0)),
+    "3+2": ((40.0, 15.0), (45.0, 30.0)),
+    "2+3": ((40.0, 15.0), (45.0, 30.0)),
+    "5_inline": ((40.0, None), (45.0, 60.0)),
+    "5_inline_reverse": ((40.0, None), (45.0, 60.0)),
     "4+3": ((36.0, 15.0), (40.0, 30.0)),
     "3+4": ((36.0, 15.0), (40.0, 30.0)),
     "7_inline": ((36.0, None), (35.0, 60.0)),
@@ -943,9 +965,34 @@ class Prototype001Parameters:
                     shoulder_half = max(shoulder_half, reserve_shoulder)
                 if reserve_tip is not None:
                     tip_half = max(tip_half, reserve_tip)
+            elif points:
+                # A lone tuner on this side (a 4+1's): the edge runs
+                # straight past it, tuner_edge_offset out.
+                ((_, edge),) = points
+                shoulder_half = max(reserve_shoulder or 0.0, edge)
+                tip_half = max(reserve_tip or 0.0, edge)
             else:
                 shoulder_half = reserve_shoulder or 0.0
                 tip_half = reserve_tip or 0.0
+
+            # The posts follow converging strings, so a row's holes are not
+            # quite in line and the fitted edge passes nearer the end ones;
+            # past the 0.5 mm the clearance check allows, move it out.
+            def edge_at(distance: float, shoulder: float, tip: float) -> float:
+                fraction = (distance - root) / (length - root)
+                return shoulder + (tip - shoulder) * fraction
+
+            short = max(
+                (
+                    edge - edge_at(d, shoulder_half, tip_half)
+                    for d, edge in points
+                    if d > root
+                ),
+                default=0.0,
+            )
+            if short > 0.5:
+                shoulder_half += short
+                tip_half += short
             for distance, _, u in stations:
                 fraction = (distance - root) / (length - root)
                 if fraction <= 0.0:
@@ -2259,6 +2306,51 @@ class Prototype001Parameters:
         )
 
 
+_BASS_OVERRIDES: dict[str, Any] = {
+    "string_count": 4,
+    "scale_length": 863.6,
+    "fret_count": 21,
+    "nut_width": 38.0,
+    "final_fret_width": 62.0,
+    "heel_width": 62.0,
+    "first_fret_thickness": 21.0,
+    "twelfth_fret_thickness": 23.0,
+    "heel_thickness": 22.0,
+    "fretboard_radius": 305.0,
+    "nut_string_spacing": 10.0,
+    "bridge_string_spacing": 19.0,
+    "headstock_style": "4_inline",
+    "headstock_length": 200.0,
+    "tuner_hole_diameter": 19.0,
+    "tuner_station_distances": (60.0, 110.0),
+    "tuner_side_offsets": (20.0, 16.0),
+    "tuner_inline_first_distance": 60.0,
+    "tuner_inline_spacing": 38.0,
+    "tuner_edge_offset": 20.0,
+    "tuner_post_diameter": 12.0,
+    "body_pickups": "PJ",
+    "body_neck_pickup": "precision_bass",
+    "body_bridge_pickup": "jazz_bass",
+    "body_neck_pickup_offset": 102.7,
+    "body_bridge_pickup_offset": 45.0,
+    "body_bridge": HardtailSpec(
+        string_count=4,
+        string_spacing=19.0,
+        string_hole_offset=30.0,
+        screw_count=5,
+        screw_spacing=15.0,
+        screw_offset=-12.0,
+    ),
+    "body_shape": BASS_BODY,
+    # The bass's long neck pocket takes its bolts further apart: the
+    # pair at the pocket's mouth moves out near the body's edge, and
+    # the rear pair 2 mm in from the pocket's end, so its ferrules lie
+    # wholly over the pocket.
+    "body_neck_bolt_spacing_x": 56.0,
+    "body_neck_bolt_end_wall": 5.0,
+}
+"""The four-string bass's values (see ``INSTRUMENT_OVERRIDES``)."""
+
 INSTRUMENT_OVERRIDES: dict[str, dict[str, Any]] = {
     "electric_guitar": {},
     "seven_string_guitar": {
@@ -2283,48 +2375,27 @@ INSTRUMENT_OVERRIDES: dict[str, dict[str, Any]] = {
         "tuner_side_offsets": (20.0, 17.0, 14.0, 11.0),
         "body_bridge": HardtailSpec(string_count=8, screw_count=6),
     },
-    "bass_guitar": {
-        "string_count": 4,
-        "scale_length": 863.6,
-        "fret_count": 21,
-        "nut_width": 38.0,
-        "final_fret_width": 62.0,
-        "heel_width": 62.0,
-        "first_fret_thickness": 21.0,
-        "twelfth_fret_thickness": 23.0,
-        "heel_thickness": 22.0,
-        "fretboard_radius": 305.0,
-        "nut_string_spacing": 10.0,
-        "bridge_string_spacing": 19.0,
-        "headstock_style": "4_inline",
-        "headstock_length": 200.0,
-        "tuner_hole_diameter": 19.0,
-        "tuner_station_distances": (60.0, 110.0),
-        "tuner_side_offsets": (20.0, 16.0),
-        "tuner_inline_first_distance": 60.0,
-        "tuner_inline_spacing": 38.0,
-        "tuner_edge_offset": 20.0,
-        "tuner_post_diameter": 12.0,
-        "body_pickups": "PJ",
-        "body_neck_pickup": "precision_bass",
-        "body_bridge_pickup": "jazz_bass",
-        "body_neck_pickup_offset": 102.7,
-        "body_bridge_pickup_offset": 45.0,
+    "bass_guitar": _BASS_OVERRIDES,
+    "five_string_bass": {
+        **_BASS_OVERRIDES,
+        # A Fender Jazz V-like five-string: a 47 mm nut, 18 mm at the
+        # bridge (72 mm over the outer strings), a 77 mm heel, tuners 4+1.
+        "string_count": 5,
+        "nut_width": 47.0,
+        "nut_string_spacing": 9.5,
+        "bridge_string_spacing": 18.0,
+        "final_fret_width": 77.0,
+        "heel_width": 77.0,
+        "headstock_style": "4+1",
+        "headstock_length": 210.0,
         "body_bridge": HardtailSpec(
-            string_count=4,
-            string_spacing=19.0,
+            string_count=5,
+            string_spacing=18.0,
             string_hole_offset=30.0,
             screw_count=5,
-            screw_spacing=15.0,
+            screw_spacing=18.0,
             screw_offset=-12.0,
         ),
-        "body_shape": BASS_BODY,
-        # The bass's long neck pocket takes its bolts further apart: the
-        # pair at the pocket's mouth moves out near the body's edge, and
-        # the rear pair 2 mm in from the pocket's end, so its ferrules lie
-        # wholly over the pocket.
-        "body_neck_bolt_spacing_x": 56.0,
-        "body_neck_bolt_end_wall": 5.0,
     },
 }
 """Parameter values that differ from the defaults, per instrument.
@@ -2336,6 +2407,11 @@ scales, 48 / 55 mm nuts and 66 / 76 mm heels (one more 7 mm nut and
 radius, tuners in line, stretched humbuckers (see
 ``pickups.pickup_stretch``) and a string-through hardtail with a hole per
 string; an eight-string can also take a 4+4 headstock.
+
+The five-string bass takes the four-string's values with a 47 mm nut
+(9.5 mm string spacing), 18 mm at the bridge, a 77 mm heel, a 4+1
+headstock (a Fender Jazz V's) and a five-string hardtail; its Jazz Bass
+pickup is the 4-1/8 in five-string route (see ``pickups.pickup_stretch``).
 
 The bass values are labelled starting points for a common four-string
 bass: 34-inch (863.6 mm) scale, 21 frets, a 38 mm nut and 62 mm heel, a

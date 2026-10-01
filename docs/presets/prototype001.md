@@ -35,20 +35,20 @@ source = FreeCADScriptExporter().render_prototype001(
 
 `Prototype001Parameters.for_instrument("electric_guitar")` is the plain
 default; `"seven_string_guitar"`, `"eight_string_guitar"` and
-`"bass_guitar"` apply `INSTRUMENT_OVERRIDES`:
+`"bass_guitar"` and `"five_string_bass"` apply `INSTRUMENT_OVERRIDES`:
 
-| Setting | Electric guitar | 7-string | 8-string | Bass guitar |
-| --- | --- | --- | --- | --- |
-| Strings (`string_count`) | 6 | 7 | 8 | 4 |
-| Scale / frets | 609.6 mm / 24 | 647.7 mm (25.5 in) / 24 | 685.8 mm (27 in) / 24 | 863.6 mm (34 in) / 21 |
-| Nut / heel width | 42 / 56 mm | 48 / 66 mm | 55 / 76 mm | 38 / 62 mm |
-| 1st / 12th fret thickness, heel | 17 / 19 / 20 mm | 17 / 19 / 20 mm | 17 / 19 / 20 mm | 21 / 23 / 22 mm |
-| Fretboard radius | 430 mm | 400 mm | 400 mm | 305 mm |
-| String spacing nut / bridge | 7 / 10.5 mm | 7 / 10.5 mm | 7 / 10.5 mm | 10 / 19 mm |
-| Headstock | 3+3, 10 mm holes | 7 in line (or 4+3 / 3+4) | 8 in line (or 4+4) | 4 in line, 19 mm holes 38 mm apart, 20 mm from the edge |
-| Pickups | humbucker + humbucker | stretched 12 mm | stretched 24 mm | Precision Bass (neck) + Jazz Bass (bridge) |
-| Bridge | Kahler 7300 | seven-string hardtail | eight-string hardtail (6 screws) | four-string string-through hardtail |
-| Body | Design by Jone | opened 12 mm | opened 24 mm | Jazz Bass style body (a drawn mockup) |
+| Setting | Electric guitar | 7-string | 8-string | Bass guitar | 5-string bass |
+| --- | --- | --- | --- | --- | --- |
+| Strings (`string_count`) | 6 | 7 | 8 | 4 | 5 |
+| Scale / frets | 609.6 mm / 24 | 647.7 mm (25.5 in) / 24 | 685.8 mm (27 in) / 24 | 863.6 mm (34 in) / 21 | 863.6 mm (34 in) / 21 |
+| Nut / heel width | 42 / 56 mm | 48 / 66 mm | 55 / 76 mm | 38 / 62 mm | 47 / 77 mm |
+| 1st / 12th fret thickness, heel | 17 / 19 / 20 mm | 17 / 19 / 20 mm | 17 / 19 / 20 mm | 21 / 23 / 22 mm | 21 / 23 / 22 mm |
+| Fretboard radius | 430 mm | 400 mm | 400 mm | 305 mm | 305 mm |
+| String spacing nut / bridge | 7 / 10.5 mm | 7 / 10.5 mm | 7 / 10.5 mm | 10 / 19 mm | 9.5 / 18 mm |
+| Headstock | 3+3, 10 mm holes | 7 in line (or 4+3 / 3+4) | 8 in line (or 4+4) | 4 in line, 19 mm holes 38 mm apart, 20 mm from the edge | 4+1 (Jazz V style; or 3+2 / 2+3 / 1+4 / 5 in line) |
+| Pickups | humbucker + humbucker | stretched 12 mm | stretched 24 mm | Precision Bass (neck) + Jazz Bass (bridge) | Precision Bass + five-string Jazz Bass (4-1/8 in, 104 mm) |
+| Bridge | Kahler 7300 | seven-string hardtail | eight-string hardtail (6 screws) | four-string string-through hardtail | five-string string-through hardtail |
+| Body | Design by Jone | opened 12 mm | opened 24 mm | Jazz Bass style body (a drawn mockup) | the same |
 
 The Kahler 7300, Floyd Rose and Tune-o-matic specs are drawn for six
 strings (`BRIDGE_MAX_STRINGS`): the build refuses them for more, and the

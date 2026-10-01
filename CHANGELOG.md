@@ -4,6 +4,15 @@
 
 ### Added
 
+- A five-string bass (`five_string_bass`, "5-string bass" in the web
+  app), as the seven- and eight-string guitars are: the four-string's
+  values with a 47 mm nut, 18 mm at the bridge, a 77 mm heel, a 4+1
+  headstock (Fender Jazz V style) and a five-string hardtail, its Jazz
+  Bass route Warmoth's 4-1/8 in five-string one (104 mm). New headstock
+  styles 4+1, 1+4, 3+2, 2+3, 5_inline and 5_inline_reverse; a lone tuner
+  on one side now gets its edge `tuner_edge_offset` out, and a row's
+  fitted edge moves out when its end tuners would sit more than 0.5 mm
+  too near it.
 - One feature on its own: dragged onto *Create NC file* in the body
   editor, a feature (a battery box forgotten in the first build, say)
   gets its own NC programs with the work zero at its centre instead of

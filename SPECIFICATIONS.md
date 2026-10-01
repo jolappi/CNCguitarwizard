@@ -55,7 +55,12 @@ liittymistä U-sylinteriin.
 ## Soitin
 
 Lomakkeen ensimmäinen valinta on soitin: sähkökitara (oletus), 7-kielinen,
-8-kielinen tai bassokitara (`Prototype001Parameters.for_instrument`).
+8-kielinen, bassokitara tai 5-kielinen basso
+(`Prototype001Parameters.for_instrument`). 5-kielinen basso on 4-kielisen
+oletukset 47 mm satulalla (kielijako 9,5 mm), 18 mm kielijaolla tallassa,
+77 mm kannalla, 4+1-lavalla (Jazz V -tyyli; myös 3+2, 2+3, 1+4 ja 5 rivissä)
+ja viisikielisellä tallalla; sen Jazz-mikin kolo on Warmothin 5-kielinen
+4-1/8" (104 mm).
 
 7-kielisen oletukset: 25,5" (647,7 mm) skaala, satula 48 mm, kanta 66 mm,
 otelaudan säde 400 mm, 7 viritintä rivissä (tai 4+3 / 3+4) ja seitsemän

@@ -176,3 +176,43 @@ def test_a_bass_can_take_rickenbacker_style_humbuckers() -> None:
     assert abs(screws[0].center_y - screws[1].center_y) == pytest.approx(82.0)
     for screw in screws:
         assert point_in_polygon(screw.center, bridge.outline)
+
+
+def test_a_five_string_bass_is_an_instrument_of_its_own() -> None:
+    parameters = Prototype001Parameters.for_instrument("five_string_bass")
+    geometry = parameters.build()
+    body = geometry.body
+
+    assert parameters.string_count == 5
+    assert parameters.nut_width == 47.0
+    # Five string-through holes and a 4+1 headstock, Fender Jazz V style.
+    assert sum(hole.name.startswith("String") for hole in body.holes) == 5
+    sides = [hole.side for hole in geometry.tuner_layout.holes]
+    assert sides.count("bass") == 4 and sides.count("treble") == 1
+    # The five-string Jazz Bass route is Warmoth's 4-1/8 in; its screws
+    # spread with it, still in its side recesses.
+    bridge = body.bridge_pickup
+    assert bridge is not None
+    assert bridge.max_y - bridge.min_y == pytest.approx(104.0)
+    for hole in body.holes:
+        if hole.name.startswith("Bridge pickup"):
+            assert point_in_polygon(hole.center, bridge.outline)
+            assert abs(hole.center_y) == pytest.approx(23.6)
+
+
+@pytest.mark.parametrize(
+    "style", ["4+1", "1+4", "3+2", "2+3", "5_inline", "5_inline_reverse"]
+)
+def test_every_five_string_headstock_keeps_its_tuners_off_the_edge(style: str) -> None:
+    from cncguitarwizard.presets.prototype001 import distance_to_headstock_edge
+
+    parameters = replace(
+        Prototype001Parameters.for_instrument("five_string_bass"), headstock_style=style
+    )
+    plan, tuners = parameters.headstock_design()
+
+    # A lone tuner (4+1) gets its edge too, and a row's end tuners are not
+    # left nearer than the check allows.
+    for hole in tuners.holes:
+        gap = distance_to_headstock_edge(plan, hole.center)
+        assert gap >= parameters.tuner_edge_offset - 0.01

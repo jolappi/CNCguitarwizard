@@ -107,6 +107,7 @@ def test_every_headstock_style_builds(style: str) -> None:
     # Each style belongs to the instrument with that many strings.
     instrument = {
         4: "bass_guitar",
+        5: "five_string_bass",
         6: "electric_guitar",
         7: "seven_string_guitar",
         8: "eight_string_guitar",

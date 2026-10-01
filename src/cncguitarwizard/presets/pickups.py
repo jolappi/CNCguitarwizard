@@ -101,12 +101,20 @@ grow by the same amount.
 """
 
 
+JAZZ_FIVE_STRING_STRETCH = 8.0
+"""How much longer a five-string Jazz Bass route is: Warmoth's 4-1/8 in
+bridge rout against the four-string's 3-3/4 in (96 to 104 mm)."""
+
+
 def pickup_stretch(kind: PickupType, string_count: int) -> float:
     """Return how much a pickup's route is lengthened for ``string_count``.
 
-    Only the guitar humbucker and single coil grow; the bass routes and
-    guitars of six strings or fewer keep their size.
+    The guitar humbucker and single coil grow past six strings, the Jazz
+    Bass route on a five-string bass; the Precision Bass route is the same
+    for five strings (Warmoth), and the other bass routes keep their size.
     """
+    if kind == "jazz_bass":
+        return JAZZ_FIVE_STRING_STRETCH if string_count == 5 else 0.0
     if kind not in ("humbucker", "single_coil") or string_count <= 6:
         return 0.0
     return (string_count - 6) * PICKUP_STRETCH_PER_STRING
@@ -363,10 +371,12 @@ def pickup_screws(
     elif kind == "jazz_bass":
         # One in each of the four side recesses, outside the pickup's own
         # sides (its ears are there); local Y has the bass side negative.
+        # They spread with the route's stretch, as its recesses do.
         across = _JAZZ_SCREW_ACROSS
+        along = _JAZZ_SIDE_RECESS + stretch / 2.0
         local = [
             (f"{end} {edge}", x, -bass_sign * y)
-            for end, y in (("bass", -_JAZZ_SIDE_RECESS), ("treble", _JAZZ_SIDE_RECESS))
+            for end, y in (("bass", -along), ("treble", along))
             for edge, x in (("front", -across), ("back", across))
         ]
     elif kind == "bass_soapbar":

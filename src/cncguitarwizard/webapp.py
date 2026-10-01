@@ -80,6 +80,7 @@ INSTRUMENT_LABELS: dict[str, str] = {
     "seven_string_guitar": "7-string guitar",
     "eight_string_guitar": "8-string guitar",
     "bass_guitar": "Bass guitar",
+    "five_string_bass": "5-string bass",
 }
 
 # The handful of parameters a builder normally touches; the form shows

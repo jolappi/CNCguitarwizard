@@ -89,6 +89,12 @@ def test_schema_lists_every_parameter_with_a_form_type() -> None:
         "2+2",
         "4_inline",
         "4_inline_reverse",
+        "4+1",
+        "1+4",
+        "3+2",
+        "2+3",
+        "5_inline",
+        "5_inline_reverse",
         "4+3",
         "3+4",
         "7_inline",
@@ -133,7 +139,9 @@ def test_schema_lists_every_parameter_with_a_form_type() -> None:
         "seven_string_guitar",
         "eight_string_guitar",
         "bass_guitar",
+        "five_string_bass",
     }
+    assert schema["instruments"]["five_string_bass"]["label"] == "5-string bass"
     eight = schema["instruments"]["eight_string_guitar"]
     assert eight["label"] == "8-string guitar"
     assert eight["overrides"]["body_bridge"] == {
