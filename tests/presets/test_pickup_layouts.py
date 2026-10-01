@@ -5,9 +5,14 @@ from dataclasses import replace
 import pytest
 
 from cncguitarwizard.geometry.exceptions import BodyGeometryError
-from cncguitarwizard.geometry.primitives import point_in_polygon
+from cncguitarwizard.geometry.primitives import Point2D, point_in_polygon
 from cncguitarwizard.presets import Prototype001Parameters
-from cncguitarwizard.presets.pickups import PICKUP_CONFIGURATIONS, pickup_route
+from cncguitarwizard.presets.pickups import (
+    PICKUP_CONFIGURATIONS,
+    PickupType,
+    pickup_openings,
+    pickup_route,
+)
 
 GUITAR = ("HH", "HSH", "HSS", "H", "SSS", "SS")
 BASS = ("PJ", "JJ", "P", "MM")
@@ -136,3 +141,35 @@ def test_the_slant_can_be_set_and_leaves_humbuckers_alone() -> None:
     assert hsh["Bridge pickup route"].max_x - hsh["Bridge pickup route"].min_x == (  # type: ignore[attr-defined]
         pytest.approx(41.0)
     )
+
+
+@pytest.mark.parametrize(
+    "kind",
+    [
+        "humbucker",
+        "single_coil",
+        "jazz_bass",
+        "precision_bass",
+        "bass_soapbar",
+        "rickenbacker",
+    ],
+)
+@pytest.mark.parametrize("string_count", [4, 5, 6])
+def test_every_pickguard_opening_is_a_rectangle_inside_its_route(
+    kind: PickupType, string_count: int
+) -> None:
+    route = pickup_route(kind, "Route", 500.0, 18.0, -1.0, 6.0, string_count)
+    openings = pickup_openings(kind, 500.0, -1.0, 6.0, string_count)
+
+    assert route is not None and openings
+    for opening in openings:
+        assert len(opening) == 4
+        # Square corners over the route's rounded ones: the pickup hides
+        # them, so only the sides are checked, a hair in from each.
+        cx = sum(p.x for p in opening) / 4.0
+        cy = sum(p.y for p in opening) / 4.0
+        for a, b in zip(opening, opening[1:] + opening[:1], strict=True):
+            mx, my = (a.x + b.x) / 2.0, (a.y + b.y) / 2.0
+            side = Point2D(mx + (cx - mx) * 0.02, my + (cy - my) * 0.02)
+            assert point_in_polygon(side, route.outline)
+    assert pickup_openings("none", 500.0, -1.0) == ()

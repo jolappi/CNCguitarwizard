@@ -69,6 +69,10 @@ _CHOICE_LABELS: dict[str, dict[str, str]] = {
         "cup": "Cup jack or Electrosocket (7/8 in counterbore)",
         "strat": "Stratocaster style top plate (cavity from the top)",
     },
+    "body_pickguard_style": {
+        "stratocaster": "Stratocaster (beside the neck, a tail past the bridge)",
+        "superstrat": "Superstrat (close round the pickups)",
+    },
     "body_switch": {
         "toggle": "3-way toggle (1/2 in hole, 12.7 mm)",
         "micro": "Micro (mini) toggle (1/4 in hole, 6.35 mm)",
@@ -123,6 +127,8 @@ _BASIC_FIELDS: frozenset[str] = frozenset(
         "body_controls",
         "body_switch",
         "body_jack",
+        "body_pickguard",
+        "body_pickguard_style",
         "body_battery_box",
         "body_battery_count",
         "locking_nut",
@@ -254,8 +260,9 @@ def _editor_group(name: str) -> str | None:
     cover and shaft hole), ``pot:N`` (one pot hole, zero-based),
     ``pickup:neck`` / ``pickup:middle`` / ``pickup:bridge`` (a route and
     its screw recesses), ``battery`` (the battery box, its cover and
-    screws), ``bolt:N`` (a neck bolt's ferrule and hole) and ``jack``; the neck, its
-    pocket and the bridge do not move.
+    screws), ``bolt:N`` (a neck bolt's ferrule and hole), ``jack`` and
+    ``pickguard`` (the guard and its screw spots in the body); the neck,
+    its pocket and the bridge do not move.
     """
     if name.startswith("Control "):
         return "control"
@@ -265,6 +272,8 @@ def _editor_group(name: str) -> str | None:
         return "battery"
     if name.startswith("Jack"):
         return "jack"
+    if name.startswith("Pickguard"):
+        return "pickguard"
     if name.startswith("Pot ") and name.endswith("shaft hole"):
         return f"pot:{int(name.split()[1]) - 1}"
     if name.startswith("Neck bolt "):
@@ -302,7 +311,9 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         ``templates`` maps a key to ``{"label", "shape"}``, the shape as
         the form's JSON. ``polygons`` is a list of ``{"name", "role",
         "group", "points"}`` with ``role`` one of ``neck``, ``pocket``,
-        ``pickup``, ``bridge``, ``top_control``, ``rear``, ``cover``,
+        ``pickup``, ``bridge``, ``bridge_plate`` (what a bridge such as a
+        Kahler covers on the top past its routes), ``top_control``,
+        ``rear``, ``cover``,
         ``contour_top`` (an arm contour) or ``contour_back`` (a belly cut);
         ``circles`` a list of ``{"name", "group", "x", "y", "r"}``;
         ``jack`` ``{"group", "x", "y", "x2", "y2", "r", "cup",
@@ -313,7 +324,9 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         centre, its long axis (a unit vector), the two ends of its cover
         (or the Tele plate) on that axis and its two sides square to it,
         the editor's stretch handles — or ``None`` without a control
-        layout.
+        layout; ``pickguard`` ``{"points", "automatic", "openings",
+        "holes"}`` — the guard's control points (laid out automatically or
+        drawn), its pickup and switch openings and its holes — or ``None``.
     """
     try:
         parameters = Prototype001Parameters(**_coerce(payload.get("prototype", {})))
@@ -347,6 +360,10 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         if pickup is None:
             continue
         polygons.append(polygon(pickup.name, "pickup", pickup.outline))
+    if layout.bridge_footprint:
+        polygons.append(
+            polygon("Bridge plate", "bridge_plate", layout.bridge_footprint)
+        )
     for cavity in (*layout.extra_cavities, *layout.through_cavities):
         polygons.append(polygon(cavity.name, "bridge", cavity.outline))
     for cavity in layout.controls.top_cavities:
@@ -478,6 +495,25 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
             ),
         },
         "control": control,
+        "pickguard": (
+            {
+                "points": local(layout.pickguard.control_points),
+                "automatic": layout.pickguard.automatic,
+                "openings": [
+                    local(slot.outline) for slot in layout.pickguard.plate.slots
+                ],
+                "holes": [
+                    {
+                        "x": round(hole.center_x - heel_end, 2),
+                        "y": round(hole.center_y, 2),
+                        "r": hole.diameter / 2.0,
+                    }
+                    for hole in layout.pickguard.plate.holes
+                ],
+            }
+            if layout.pickguard is not None
+            else None
+        ),
     }
 
 

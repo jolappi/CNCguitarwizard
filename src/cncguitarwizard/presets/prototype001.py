@@ -59,17 +59,30 @@ from .body_shapes import (
 )
 from .controls import (
     SCREW_CLEARANCE,
+    SCREW_SPOT_DEPTH,
+    SCREW_SPOT_DIAMETER,
     ControlFeatures,
     ControlLayout,
     battery_features,
     control_features,
     rear_cover,
 )
+from .pickguard import (
+    PICKGUARD_STYLES,
+    SADDLE_REACH,
+    Pickguard,
+    PickguardStyleName,
+    check_on_body,
+    clear_of_bridge,
+    pickguard,
+)
+from .pickguard import automatic_points as automatic_pickguard_points
 from .pickups import (
     PICKUP_CONFIGURATIONS,
     PickupConfiguration,
     PickupType,
     pickup_half_length,
+    pickup_openings,
     pickup_route,
     pickup_screws,
 )
@@ -265,6 +278,10 @@ class BodyLayout:
         contours: The arm contour and belly cut that are switched on.
         truss_rod_access: The notch past the neck pocket for a
             heel-adjusted truss rod's spoke wheel, or ``None``.
+        pickguard: The pickguard, or ``None`` (its plate is also one of
+            the ``controls``' covers).
+        bridge_footprint: What the bridge itself covers on the top past
+            its routes (a Kahler's plate), or empty.
     """
 
     heel_end: float
@@ -287,6 +304,8 @@ class BodyLayout:
     back_edge: EdgeProfile = field(default_factory=EdgeProfile)
     contours: tuple[ContourCut, ...] = ()
     truss_rod_access: TracedCavity | None = None
+    pickguard: Pickguard | None = None
+    bridge_footprint: tuple[Point2D, ...] = ()
 
 
 TRUSS_ROD_STOCK_LENGTHS: tuple[float, ...] = tuple(
@@ -521,6 +540,20 @@ class Prototype001Parameters:
     # place it. The wire to the control cavity is drilled by hand.
     # body_battery_count 2 makes the box hold two batteries side by side
     # (18 V for some preamps), BATTERY_PITCH (28 mm) wider.
+    # A pickguard (see presets.pickguard): body_pickguard puts one on, cut
+    # from body_pickguard_thickness sheet in its own cover program. It
+    # follows the outline body_pickguard_margin in, from the neck pocket to
+    # the bridge (or the shape's pickguard_points), with openings over the
+    # pickups and holes for the pots and selector under it, screwed round
+    # its edge. body_controls "pickguard" mounts the controls in it,
+    # Stratocaster style, over a cavity routed from the top.
+    # body_pickguard_style draws the automatic guard as a Stratocaster's
+    # ("stratocaster") or close round the pickups ("superstrat"); see
+    # presets.pickguard.PICKGUARD_STYLES.
+    body_pickguard: bool = False
+    body_pickguard_thickness: float = 2.5
+    body_pickguard_margin: float = 6.0
+    body_pickguard_style: PickguardStyleName = "stratocaster"
     body_battery_box: bool = False
     body_battery_count: int = 1
     body_battery_cavity_length: float = 56.0
@@ -1819,11 +1852,18 @@ class Prototype001Parameters:
             controls,
         )
         holes: list[DrilledHole] = [*bridge.holes, *controls.holes]
+        # A pickguard's square openings, one per pickup cover.
+        pickup_holes: list[tuple[str, tuple[Point2D, ...]]] = []
         for label, kind, pickup_x, angle in (
             ("Neck", neck_type, neck_pickup_x, neck_angle),
             ("Middle", middle_type, middle_pickup_x, middle_angle),
             ("Bridge", bridge_type, bridge_pickup_x, bridge_angle),
         ):
+            for index, opening in enumerate(
+                pickup_openings(kind, pickup_x, bass_sign, angle, strings), start=1
+            ):
+                suffix = f" {index}" if kind == "precision_bass" else ""
+                pickup_holes.append((f"{label} pickup opening{suffix}", opening))
             for side, screw_x, screw_y in pickup_screws(
                 kind,
                 pickup_x,
@@ -1842,6 +1882,43 @@ class Prototype001Parameters:
                         + self.body_pickup_screw_recess_extra_depth,
                     )
                 )
+        guard = self._pickguard(
+            shape,
+            heel_end,
+            body_outline.points,
+            [route for route in (neck_pickup, middle_pickup, bridge_pickup) if route],
+            [
+                *(route.outline for route in bridge.top_cavities),
+                # The bridge's own plate, where it reaches past its routes.
+                *((bridge.footprint,) if bridge.footprint else ()),
+                *(route.outline for route in bridge.through_cavities),
+                # A bridge with no route of its own (a string-through
+                # hardtail, a Tune-o-matic) has its holes, and its saddles
+                # reaching ahead of the scale line.
+                *(
+                    ((Point2D(scale - SADDLE_REACH, 0.0),),)
+                    if not bridge.top_cavities
+                    else ()
+                ),
+                *(
+                    tuple(
+                        Point2D(
+                            hole.center_x + dx * hole.diameter / 2.0,
+                            hole.center_y + dy * hole.diameter / 2.0,
+                        )
+                        for dx, dy in ((-1, -1), (1, -1), (1, 1), (-1, 1))
+                    )
+                    for hole in bridge.holes
+                ),
+            ],
+            controls,
+            neck_pocket.outline,
+            pickup_holes,
+        )
+        if guard is not None:
+            controls = controls.with_covers(
+                ControlFeatures(top_marks=guard.screw_spots, covers=(guard.plate,))
+            )
         return BodyLayout(
             heel_end,
             body_outline,
@@ -1871,7 +1948,96 @@ class Prototype001Parameters:
             ),
             self._contours(body_outline.points, heel_end, bass_sign),
             truss_rod_access,
+            guard,
+            bridge.footprint,
         )
+
+    def _pickguard(
+        self,
+        shape: BodyShapeSpec,
+        heel_end: float,
+        outline: tuple[Point2D, ...],
+        pickups: list[TracedCavity],
+        bridge_areas: list[tuple[Point2D, ...]],
+        controls: ControlFeatures,
+        neck_pocket: tuple[Point2D, ...],
+        openings: list[tuple[str, tuple[Point2D, ...]]],
+    ) -> Pickguard | None:
+        """Return the pickguard, or ``None`` without one (see ``body_pickguard``).
+
+        Raises:
+            BodyGeometryError: For pickguard-mounted controls without a
+                guard or not under it, or a guard that does not fit the
+                body.
+        """
+        in_guard = self.body_controls == "pickguard"
+        if not self.body_pickguard:
+            if in_guard:
+                raise BodyGeometryError(
+                    "Pickguard-mounted controls need a pickguard: turn on "
+                    "body_pickguard."
+                )
+            return None
+        if shape.pickguard_points:
+            # Drawn for one bridge; stepped round whichever is fitted.
+            points = clear_of_bridge(
+                [Point2D(heel_end + x, y) for x, y in shape.pickguard_points],
+                bridge_areas,
+                [route.outline for route in pickups],
+            )
+            automatic = False
+        else:
+            region = (
+                next(
+                    (
+                        c.outline
+                        for c in controls.top_cavities
+                        if c.name == "Control cavity"
+                    ),
+                    None,
+                )
+                if in_guard
+                else None
+            )
+            points = automatic_pickguard_points(
+                outline,
+                heel_end,
+                self.body_pickguard_margin,
+                bridge_areas,
+                region,
+                [route.outline for route in pickups],
+                neck_pocket,
+                -1.0 if self.headstock_bass_side == "-y" else 1.0,
+                PICKGUARD_STYLES[self.body_pickguard_style],
+            )
+            automatic = True
+        guard = pickguard(
+            points,
+            automatic=automatic,
+            thickness=self.body_pickguard_thickness,
+            pickup_openings=openings,
+            holes=[*controls.holes, *controls.guard_holes],
+            slots=controls.guard_slots,
+            screw_clearance=SCREW_CLEARANCE,
+            screw_spot_diameter=SCREW_SPOT_DIAMETER,
+            screw_spot_depth=self.body_pickguard_thickness + SCREW_SPOT_DEPTH,
+        )
+        # Controls mounted in a drawn guard must be under it.
+        cavities = [c for c in controls.top_cavities if c.name == "Control cavity"]
+        if (
+            in_guard
+            and not automatic
+            and not all(
+                point_in_polygon(p, guard.plate.outline)
+                for cavity in cavities
+                for p in cavity.outline
+            )
+        ):
+            raise BodyGeometryError(
+                "The pickguard does not cover its controls: move its points "
+                "out over the control cavity, or use Auto pickguard."
+            )
+        return guard
 
     def _jack(
         self,
@@ -2356,6 +2522,8 @@ class Prototype001Parameters:
             self.headstock_face_transition,
         )
         body_parts = self._body_layout(outline)
+        if body_parts.pickguard is not None:
+            check_on_body(body_parts.pickguard, body_parts.outline.points)
         body = BodySolid(
             body_parts.outline,
             self.body_thickness,

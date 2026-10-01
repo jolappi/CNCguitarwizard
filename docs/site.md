@@ -14,7 +14,9 @@ Python.
 2. Offers the instrument first — electric guitar or bass guitar — from the
    schema's `instruments` (`INSTRUMENT_OVERRIDES`); switching reloads the
    form with that instrument's defaults (after a confirmation when values
-   were changed) and sends it as `prototype.instrument`. Then asks
+   were changed — every yes/no question is asked in the page's own
+   dialog, `askConfirm`, not `window.confirm`, which some embedded
+   browsers answer unseen) and sends it as `prototype.instrument`. Then asks
    `cncguitarwizard.webapp.parameter_schema()` for every field of
    `Prototype001Parameters` and `MachiningParameters` and draws a grouped
    form from it. Changed values are highlighted; tuple fields are edited as
@@ -56,7 +58,15 @@ Python.
    empty, from `pickup_configurations` in the schema), the controls
    (`body_controls` "none"), the battery box, one of several pots or neck
    bolts; declined, it goes back. The switch cavity and the jack cannot go
-   on their own and just move. A feature dropped on *Create NC file*
+   on their own and just move. With `body_pickguard` on, the guard is drawn
+   over the features with square handles at its control points; dragging
+   one writes `pickguard_points`, and *Auto pickguard* empties them again
+   (the automatic guard's style, `body_pickguard_style`, is chosen beside
+   it). Dragging the guard by its edge moves all its points together (a click
+   without a drag still adds one), or onto *Create NC file* makes its
+   programs: its screw spots in the body zeroed on the guard, and
+   `Cover_pickguard`.
+   A feature dropped on *Create NC file*
    (above the drawing) stays put and gets its own NC programs instead,
    zeroed at its centre, its cover plates included
    (`webapp.feature_programs`), listed there as downloads, each with a

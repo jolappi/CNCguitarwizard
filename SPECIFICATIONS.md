@@ -135,6 +135,65 @@ paristokotelo) voi jyrsiä erikseen: runkoeditorissa elementti raahataan
 (`Feature_<nimi>_top` / `_back`, pienet reiät omanaan, kansi `Cover_…`),
 joiden nollapiste on elementin keskellä eikä ohjaustapeissa. Takapuolen
 elementti jyrsitään runko käännettynä keskilinjan ympäri kuten `Body_back`.
+Myös pleksin voi raahata reunastaan *Create NC file* -painikkeeseen:
+siitä tulevat ruuvien merkit runkoon pleksin keskeltä nollattuina ja
+`Cover_pickguard`-ohjelma. Muualle raahattuna koko pleksi siirtyy.
+
+Pleksi (`body_pickguard`, oletuksena pois) leikataan levystä
+(`body_pickguard_thickness` 2,5 mm) omana `Cover_pickguard.nc`-ohjelmanaan.
+Automaattisena se on 6 mm rungon ääriviivan sisäpuolella, jättää
+kaulalle loven ja ulottuu tallaan asti (vähintään 3 mm viimeisen mikin
+yli). Pidemmän sakaran
+puolella pleksi ei seuraa sakaraa: reuna kulkee 8 mm mikkien ohi tallalta
+kaulalle ja levenee tallaa kohti. Tyyli (`body_pickguard_style`)
+määrää loput: `stratocaster` (oletus, mitattu Straton HH-pleksistä) –
+kieleke kaulan vieressä 34 mm eteenpäin, reuna levenee 25 mm
+ensimmäisen mikin päästä viimeisen mikin keskelle ja lyhyemmän sakaran
+puolella pyöristetty häntä 55 mm tallan etureunan ohi; `superstrat` –
+10 mm kaulan vieressä, reuna kaartuu mikkien välissä 5 mm sisään ja
+levenee viimeisestä mikistä tallaa kohti 9 mm. Lyhyemmän
+sakaran puolella pleksi seuraa rungon reunaa sakaran kärkeen ja
+cutawayta pitkin takaisin kaulan loveen (ilman cutawayta se jatkuu
+kaulan viereen niin pitkälle kuin puuta on); jos bassopuoli on tämä
+puoli, reuna kaartuu 40 mm matkalla 8 mm mikkien ohi. V-mallissa
+(Jackson RR) sakarat ovat tallan taakse ulottuvia siipiä: pidemmän siiven
+puoli lasketaan pidemmäksi sakaraksi, ja lyhyemmän siiven puolella
+pleksi jatkuu siipeä pitkin 100 mm tallan etureunan ohi, sisäreuna
+V-loven mukaisesti ja pää pyöristettynä. Tallan kohdalla pleksi jatkuu
+vähintään 12 mm tallan etureunan ohi tallan molemmin puolin.
+Strato-pohjassa on valmiina piirretty pleksi, joka on jäljitetty Straton
+HH-pleksin kuvasta ja sovitettu runkoon. Jazz Bass -pohjassa on sama
+pleksi sovitettuna bassoon: venytetty kaulataskun päästä tallan
+etureunaan, levennetty bassomikeille (kattaa kaikki bassojen
+mikkiasetukset, myös 5-kielisellä), tallan ruuvien ohi ja yläreunasta
+tuotu 6 mm rungon reunan sisäpuolelle; pieni sakara on muotoiltu
+käsin editorissa. Design by Jone -pohjassa on sama pleksi Straton
+mittakaavassa, ja se seuraa sakaran ja syvän cutawayn kohdalla rungon
+reunaa 6 mm sisäpuolella; sitä on muotoiltu käsin niin, että sakaran
+kärki kulkee rungon suuntaisesti ja potikat jäävät pleksin ulkopuolelle.
+Jackson RR -pohjassa on editorissa piirretty pleksi: pidemmän siiven
+puolella kapea kaista mikkien ohi, lyhyemmän siiven puolella pleksi
+jatkuu siipeä pitkin kohti sen kärkeä (potikat menevät pleksin läpi).
+Les Paul -pohjassa on samoin piirretty pleksi: diskanttipuolella
+cutawayn sakaran ympäri, bassopuolella leveten tallaa kohti (ensimmäinen
+potikka menee pleksin läpi). Piirretty pleksi on piirretty yhdelle
+tallalle; muu talla kierretään: missä pleksi menisi tallan jyrsintöjen
+ja reikien päälle (3 mm välys, mutta lovi alkaa aikaisintaan 3 mm
+viimeisen mikin takaa), se leikataan suorakaiteen muotoisella lovella
+tallan ympäri. Kahler 7300:n levy on joka suuntaan 5 mm jyrsintää
+isompi (`plate_overhang`, editorissa katkoviivalla); pleksi jättää
+tilaa koko levylle. *Auto pickguard* vaihtaa
+kummankin automaattiseen. Piirretyn pleksin on peitettävä pleksiin asennettujen
+kontrollien kolo, muuten rakentaminen pysähtyy virheeseen. Runkoeditorissa sen kahvoja voi raahata, reunaa
+klikkaamalla lisätä pisteen ja Alt- tai oikealla klikkauksella poistaa
+(`pickguard_points`, *Auto pickguard* palauttaa automaattisen); aukot ja
+reiät näkyvät pleksissä. Pleksiin tulee suorakaiteen muotoinen, mikin kokoinen aukko
+jokaiselle valitun mikkiasetuksen mikille (P-mikille yksi kummallekin
+kelalle), reiät sen alle jääville potikoille ja kytkimelle sekä ruuvit
+reunaa kiertäen (runkoon 1 mm merkit). Kontrolliasettelu `pickguard`
+kiinnittää kolme potikkaa ja 5-asentoisen teräkytkimen pleksiin
+Strat-tyyliin; niiden alle jyrsitään kolo rungon päältä, eikä takakoloa
+tule, ja pleksi jatkuu tallan ohi kontrollien puolella.
 
 Valinnainen 9 V:n paristokotelo (`body_battery_box`, oletuksena pois)
 jyrsitään takaa samaan `Body_back_controls.nc`-ohjelmaan: 56 × 30 mm kolo

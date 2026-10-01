@@ -46,6 +46,9 @@ class BridgeHardware:
             cavity).
         holes: Vertical holes drilled from the top face.
         notes: Fitting notes for the operator or the FreeCAD reviewer.
+        footprint: The outline the bridge itself covers on the top where
+            that reaches past its routes (a Kahler's plate), or empty; a
+            pickguard keeps clear of it.
     """
 
     mounting: BridgeMounting
@@ -54,6 +57,7 @@ class BridgeHardware:
     rear_cavities: tuple[RearCavity, ...] = ()
     holes: tuple[DrilledHole, ...] = ()
     notes: tuple[str, ...] = ()
+    footprint: tuple[Point2D, ...] = ()
 
 
 def turned_hardware(
@@ -106,6 +110,7 @@ def turned_hardware(
             for rear in hardware.rear_cavities
         ),
         holes=tuple(turn_hole(hole) for hole in hardware.holes),
+        footprint=tuple(turn(point) for point in hardware.footprint),
     )
 
 
@@ -122,6 +127,8 @@ class KahlerBridgeSpec:
         baseplate_width: Cutout width across the body.
         baseplate_offset: Cutout centre behind the scale line.
         baseplate_depth: Cutout depth.
+        plate_overhang: How far the bridge's plate, sitting on the top,
+            reaches past the cutout all round (its footprint).
     """
 
     kind: Literal["kahler_7300"] = "kahler_7300"
@@ -129,9 +136,13 @@ class KahlerBridgeSpec:
     baseplate_width: float = 65.04
     baseplate_offset: float = 44.245
     baseplate_depth: float = 25.0
+    plate_overhang: float = 5.0
 
     def hardware(self, scale_length: float, body_thickness: float) -> BridgeHardware:
         _positive(self, "baseplate_length", "baseplate_width", "baseplate_depth")
+        centre_x = scale_length + self.baseplate_offset
+        half_length = self.baseplate_length / 2.0 + self.plate_overhang
+        half_width = self.baseplate_width / 2.0 + self.plate_overhang
         return BridgeHardware(
             BridgeMounting(
                 scale_length, pivot_stud_spacing=None, has_sustain_block=False
@@ -148,6 +159,12 @@ class KahlerBridgeSpec:
                 ),
             ),
             notes=("Kahler 7300: screw-mounted; verify the cutout against the unit.",),
+            footprint=(
+                Point2D(centre_x - half_length, -half_width),
+                Point2D(centre_x + half_length, -half_width),
+                Point2D(centre_x + half_length, half_width),
+                Point2D(centre_x - half_length, half_width),
+            ),
         )
 
 

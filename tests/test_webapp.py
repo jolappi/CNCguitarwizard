@@ -405,6 +405,7 @@ def test_the_control_layout_is_a_basic_choice_and_shows_in_the_editor() -> None:
         "gibson_4",
         "rear_3",
         "tele",
+        "pickguard",
         "none",
     ]
 

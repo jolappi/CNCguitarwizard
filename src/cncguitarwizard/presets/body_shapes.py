@@ -101,6 +101,9 @@ class DesignByJoneShape:
         control_stretch_across: Likewise across the long axis: the cavity
             and its cover get that much wider (negative: narrower), the
             Gibson layout's two rows of pots move apart with the sides.
+        pickguard_points: A drawn pickguard's control points (X from the
+            heel end, Y); empty for the automatic guard (used with
+            ``Prototype001Parameters.body_pickguard``).
     """
 
     kind: Literal["design_by_jone"] = "design_by_jone"
@@ -130,6 +133,7 @@ class DesignByJoneShape:
     control_angle_degrees: float = 0.0
     control_stretch: float = 0.0
     control_stretch_across: float = 0.0
+    pickguard_points: tuple[tuple[float, float], ...] = ()
 
     def outline_points(
         self, heel_end: float, widening: float = 0.0
@@ -255,6 +259,9 @@ class YourDesignShape:
         control_stretch_across: Likewise across the long axis: the cavity
             and its cover get that much wider (negative: narrower), the
             Gibson layout's two rows of pots move apart with the sides.
+        pickguard_points: A drawn pickguard's control points (X from the
+            heel end, Y); empty for the automatic guard (used with
+            ``Prototype001Parameters.body_pickguard``).
 
     Raises:
         BodyGeometryError: For fewer than four or non-finite control points.
@@ -282,6 +289,7 @@ class YourDesignShape:
     control_angle_degrees: float = 0.0
     control_stretch: float = 0.0
     control_stretch_across: float = 0.0
+    pickguard_points: tuple[tuple[float, float], ...] = ()
 
     def __post_init__(self) -> None:
         """Reject a control polygon that cannot describe a body."""
@@ -357,6 +365,7 @@ def widened_shape(shape: BodyShapeSpec, widening: float) -> BodyShapeSpec:
         jack_y=widen_y(shape.jack_y, widening),
         battery_y=widen_y(shape.battery_y, widening),
         control_shift=(shift_x, moved_almond - almond_y),
+        pickguard_points=widen_points(shape.pickguard_points, widening),
     )
 
 
@@ -754,8 +763,92 @@ cutaway and both horns' roots. About 510 × 333 mm, 76 control points. A
 genre starting point, free to use and change, not a reproduction of any
 maker's body."""
 
+_JAZZ_BASS_PICKGUARD_POINTS: tuple[tuple[float, float], ...] = (
+    (-59.4, 112.5),
+    (-47.6, 119.0),
+    (-33.5, 124.6),
+    (-14.1, 129.9),
+    (7.5, 132.5),
+    (30.7, 129.0),
+    (55.4, 121.7),
+    (80.2, 114.5),
+    (82.6, 116.4),
+    (104.3, 111.0),
+    (127.0, 110.1),
+    (141.1, 113.6),
+    (155.2, 117.1),
+    (175.0, 129.5),
+    (194.7, 142.0),
+    (208.9, 147.7),
+    (225.8, 152.8),
+    (242.7, 157.9),
+    (259.6, 162.9),
+    (276.1, 165.3),
+    (285.6, 163.4),
+    (302.9, 156.6),
+    (313.9, 148.5),
+    (310.3, 140.1),
+    (293.2, 123.5),
+    (276.1, 106.9),
+    (264.3, 91.7),
+    (257.2, 74.6),
+    (256.6, 58.9),
+    (256.1, 43.2),
+    (239.5, 42.3),
+    (236.0, 38.5),
+    (236.0, 12.5),
+    (236.0, -13.5),
+    (236.0, -39.4),
+    (239.5, -42.3),
+    (256.1, -42.3),
+    (254.9, -53.7),
+    (247.8, -65.1),
+    (237.2, -73.6),
+    (220.7, -78.4),
+    (204.1, -83.1),
+    (181.7, -81.7),
+    (159.3, -80.3),
+    (138.1, -73.6),
+    (116.8, -67.0),
+    (95.6, -60.3),
+    (76.7, -57.0),
+    (57.8, -53.7),
+    (39.3, -53.7),
+    (20.8, -53.7),
+    (2.4, -53.7),
+    (-17.7, -57.5),
+    (-37.8, -61.3),
+    (-48.4, -58.4),
+    (-51.9, -55.6),
+    (-53.1, -47.0),
+    (-46.0, -31.8),
+    (-27.1, -31.8),
+    (-8.3, -31.8),
+    (-2.4, -27.1),
+    (0.0, -13.8),
+    (-0.6, 4.3),
+    (-1.2, 22.3),
+    (-3.5, 29.0),
+    (-10.6, 32.8),
+    (1.2, 52.7),
+    (-3.1, 75.4),
+    (-15.6, 88.1),
+    (-25.9, 93.6),
+    (-38.7, 94.8),
+    (-52.4, 94.0),
+    (-64.1, 98.2),
+)
+"""The Jazz Bass style template's pickguard: the Stratocaster's traced HH
+guard (see ``_STRATOCASTER_PICKGUARD_POINTS``) fitted to this body —
+stretched along the neck from the neck pocket's end to the bridge's front,
+widened for the bass's pickups, its bass side stepping back clear of the
+bridge and whatever ran past the outline 6 mm in brought back onto that
+line, its small horn then reshaped by hand in the body editor — X from
+the heel end."""
+
 BASS_BODY = YourDesignShape(
     control_points=_JAZZ_BASS_POINTS,
+    pickguard_points=_JAZZ_BASS_PICKGUARD_POINTS,
     # The bass's bridge pickup sits where a guitar's controls go, so the
     # pots and control cavity move 64 mm tail-ward onto the lower bout
     # behind it, and 5.5 mm out; the switch keeps the drawn body's place.
@@ -771,6 +864,274 @@ BASS_BODY = YourDesignShape(
 """The bass guitar's default drawn body: the Jazz Bass style mockup (see
 ``_JAZZ_BASS_POINTS``)."""
 
+_STRATOCASTER_PICKGUARD_POINTS: tuple[tuple[float, float], ...] = (
+    (-58.2, 118.8),
+    (-55.8, 124.0),
+    (-41.0, 130.1),
+    (-28.3, 130.9),
+    (-15.6, 131.8),
+    (-3.7, 128.3),
+    (8.2, 124.8),
+    (24.1, 118.2),
+    (39.9, 111.5),
+    (55.8, 104.8),
+    (78.7, 105.7),
+    (91.4, 110.1),
+    (104.1, 114.4),
+    (120.5, 122.2),
+    (136.9, 130.1),
+    (153.3, 137.9),
+    (169.7, 145.7),
+    (184.1, 149.6),
+    (198.4, 153.6),
+    (205.8, 153.6),
+    (214.0, 150.1),
+    (218.1, 144.0),
+    (217.3, 130.9),
+    (206.1, 115.3),
+    (194.9, 99.6),
+    (183.7, 84.0),
+    (178.8, 68.3),
+    (178.3, 53.9),
+    (177.9, 39.6),
+    (166.5, 38.7),
+    (164.0, 35.2),
+    (164.0, 11.5),
+    (164.0, -12.3),
+    (164.0, -36.1),
+    (166.5, -38.7),
+    (177.9, -38.7),
+    (177.1, -49.2),
+    (172.2, -59.6),
+    (164.8, -67.4),
+    (152.5, -73.5),
+    (141.9, -76.1),
+    (122.2, -76.1),
+    (105.0, -71.8),
+    (85.7, -63.5),
+    (66.4, -55.2),
+    (53.3, -52.2),
+    (40.2, -49.2),
+    (20.9, -49.2),
+    (1.6, -49.2),
+    (-12.3, -52.6),
+    (-26.2, -56.1),
+    (-33.6, -53.5),
+    (-36.9, -43.1),
+    (-32.0, -29.1),
+    (-18.9, -29.1),
+    (-5.7, -29.1),
+    (-1.6, -24.8),
+    (-0.8, -6.1),
+    (0.0, 12.6),
+    (-1.6, 24.8),
+    (-7.4, 30.0),
+    (0.8, 48.3),
+    (2.5, 70.0),
+    (-3.3, 87.4),
+    (-18.9, 104.8),
+    (-37.7, 113.5),
+    (-54.9, 116.1),
+)
+"""The Stratocaster style template's pickguard: traced from a photo of a
+Stratocaster's HH guard (its outline to about 1.6 mm), scaled to fit this
+body — the notch on the neck pocket's end, the bass side's step on the
+bridge's front, clear of the bridge — X from the heel end."""
+
+_DESIGN_BY_JONE_PICKGUARD_POINTS: tuple[tuple[float, float], ...] = (
+    (215.7, 128.3),
+    (205.0, 113.5),
+    (182.0, 103.4),
+    (162.0, 85.5),
+    (172.7, 69.0),
+    (178.3, 53.9),
+    (177.9, 39.6),
+    (166.5, 38.7),
+    (164.2, 35.5),
+    (161.9, 35.5),
+    (161.9, 27.6),
+    (161.9, 19.7),
+    (161.9, 11.8),
+    (161.9, 4.0),
+    (161.9, -3.9),
+    (161.9, -11.8),
+    (161.9, -19.7),
+    (161.9, -27.6),
+    (161.9, -35.5),
+    (164.0, -35.5),
+    (164.0, -36.1),
+    (166.5, -38.7),
+    (177.9, -38.7),
+    (175.5, -53.5),
+    (164.8, -67.4),
+    (141.9, -76.1),
+    (122.2, -76.1),
+    (103.1, -69.6),
+    (84.0, -63.1),
+    (65.0, -56.5),
+    (45.9, -50.0),
+    (28.7, -49.2),
+    (11.5, -48.3),
+    (-7.4, -52.2),
+    (-26.2, -56.1),
+    (-35.7, -51.7),
+    (-36.9, -43.1),
+    (-32.0, -29.1),
+    (-18.9, -29.1),
+    (-5.7, -29.1),
+    (-1.6, -24.8),
+    (-1.7, -0.4),
+    (-1.7, 24.0),
+    (11.3, 40.0),
+    (15.3, 57.3),
+    (13.3, 71.5),
+    (7.6, 80.8),
+    (-5.6, 92.8),
+    (-19.4, 102.2),
+    (-30.7, 105.6),
+    (-16.0, 113.8),
+    (-2.4, 117.4),
+    (10.7, 115.7),
+    (23.8, 114.1),
+    (35.7, 107.6),
+    (47.6, 101.2),
+    (59.9, 88.9),
+    (72.2, 76.6),
+    (95.7, 69.7),
+    (109.6, 73.0),
+    (119.2, 78.6),
+    (124.4, 84.5),
+    (130.0, 103.2),
+    (146.9, 115.4),
+    (165.1, 121.1),
+    (183.3, 126.7),
+    (199.5, 127.5),
+)
+"""The Design by Jone template's pickguard: the Stratocaster's traced HH
+guard (see ``_STRATOCASTER_PICKGUARD_POINTS``), at the same scale on this
+body — its notch on the neck pocket's end, its bass side stepping back
+clear of the bridge — and wherever it ran past the outline 6 mm in, that
+line instead (round the horn and the deep cutaway) — then reshaped by
+hand in the body editor: its horn's tip turned along the body's edge, its
+edge kept off the pots' knobs — X from the heel end."""
+
+_JACKSON_RR_PICKGUARD_POINTS: tuple[tuple[float, float], ...] = (
+    (-29.6, -37.5),
+    (0.2, -40.9),
+    (76.9, -47.5),
+    (175.9, -55.2),
+    (168.9, -35.5),
+    (161.9, -35.5),
+    (161.9, -27.6),
+    (161.9, -19.7),
+    (161.9, -11.8),
+    (161.9, -3.9),
+    (161.9, 4.0),
+    (161.9, 11.8),
+    (161.9, 19.7),
+    (161.9, 27.6),
+    (161.9, 35.5),
+    (169.6, 35.5),
+    (177.3, 35.5),
+    (185.0, 35.5),
+    (192.6, 35.5),
+    (200.3, 35.5),
+    (208.0, 35.5),
+    (207.4, 55.3),
+    (226.6, 92.7),
+    (307.6, 166.1),
+    (222.7, 137.5),
+    (202.0, 130.0),
+    (181.3, 122.4),
+    (160.7, 114.8),
+    (140.0, 107.2),
+    (119.3, 99.7),
+    (98.6, 92.0),
+    (77.9, 84.5),
+    (57.2, 76.9),
+    (36.5, 69.4),
+    (15.9, 61.7),
+    (-4.9, 54.2),
+    (-25.6, 46.8),
+    (-41.0, 31.6),
+    (-41.0, 28.7),
+    (-20.5, 28.7),
+    (0.0, 28.7),
+    (0.0, 9.6),
+    (0.0, -9.5),
+    (0.0, -28.6),
+    (-16.5, -28.6),
+    (-33.0, -28.6),
+)
+"""The Jackson RR style template's pickguard, drawn in the body editor: a
+narrow strip past the pickups on the longer wing's side, the shorter
+wing's side running out along it toward its tip, stepped round the
+bridge — X from the heel end."""
+
+_LES_PAUL_PICKGUARD_POINTS: tuple[tuple[float, float], ...] = (
+    (-30.1, -54.5),
+    (-12.5, -43.0),
+    (13.6, -45.5),
+    (36.3, -48.2),
+    (53.6, -52.2),
+    (74.0, -58.3),
+    (92.4, -65.2),
+    (112.1, -73.5),
+    (133.2, -76.0),
+    (158.0, -72.5),
+    (175.9, -55.2),
+    (175.9, -35.5),
+    (168.9, -35.5),
+    (161.9, -35.5),
+    (161.9, -27.6),
+    (161.9, -19.7),
+    (161.9, -11.8),
+    (161.9, -3.9),
+    (161.9, 4.0),
+    (161.9, 11.8),
+    (161.9, 19.7),
+    (161.9, 27.6),
+    (161.9, 35.5),
+    (169.9, 35.5),
+    (177.9, 35.5),
+    (185.9, 35.5),
+    (193.9, 35.5),
+    (201.9, 35.5),
+    (209.9, 35.5),
+    (217.9, 35.5),
+    (217.9, 46.7),
+    (216.6, 69.0),
+    (211.8, 97.8),
+    (270.7, 145.4),
+    (235.5, 155.6),
+    (193.1, 150.8),
+    (172.5, 142.6),
+    (153.5, 131.0),
+    (135.9, 117.4),
+    (119.3, 102.6),
+    (101.3, 89.5),
+    (80.4, 82.6),
+    (58.6, 86.4),
+    (38.0, 94.8),
+    (17.5, 103.5),
+    (-4.1, 107.8),
+    (-19.6, 103.9),
+    (-4.9, 87.7),
+    (3.4, 67.1),
+    (1.4, 45.3),
+    (-12.8, 28.7),
+    (0.0, 28.7),
+    (0.0, 9.6),
+    (0.0, -9.5),
+    (0.0, -28.6),
+    (-16.5, -28.6),
+    (-33.0, -28.6),
+)
+"""The Les Paul style template's pickguard, drawn in the body editor:
+round the cutaway's horn on the treble side and down past the pickups,
+widening toward the bridge on the bass side, stepped round the bridge —
+X from the heel end."""
+
 _DESIGN_BY_JONE = DesignByJoneShape()
 
 YOUR_DESIGN_TEMPLATES: dict[str, tuple[str, YourDesignShape]] = {
@@ -780,6 +1141,7 @@ YOUR_DESIGN_TEMPLATES: dict[str, tuple[str, YourDesignShape]] = {
             control_points=_resampled(
                 OMARUNKO_OUTLINE_POINTS, 64, -OMARUNKO_HEEL_END_X
             ),
+            pickguard_points=_DESIGN_BY_JONE_PICKGUARD_POINTS,
             switch_cavity_offset=_DESIGN_BY_JONE.switch_cavity_offset,
             switch_cavity_y=_DESIGN_BY_JONE.switch_cavity_y,
             switch_cavity_diameter=_DESIGN_BY_JONE.switch_cavity_diameter,
@@ -800,6 +1162,7 @@ YOUR_DESIGN_TEMPLATES: dict[str, tuple[str, YourDesignShape]] = {
         "Les Paul style (mockup, not the original)",
         YourDesignShape(
             control_points=_LES_PAUL_POINTS,
+            pickguard_points=_LES_PAUL_PICKGUARD_POINTS,
             # The selector switch on the bass-side upper bout, as on the
             # original; the neck bolts move out as far as the cutaway lets.
             switch_cavity_offset=2.0,
@@ -813,6 +1176,7 @@ YOUR_DESIGN_TEMPLATES: dict[str, tuple[str, YourDesignShape]] = {
         "Stratocaster style (mockup, not the original)",
         YourDesignShape(
             control_points=_STRATOCASTER_POINTS,
+            pickguard_points=_STRATOCASTER_PICKGUARD_POINTS,
             # The neck bolts spread like the bass's: the pair at the
             # pocket's mouth out near the body's edge, the rear pair's
             # ferrules wholly over the pocket.
@@ -823,6 +1187,7 @@ YOUR_DESIGN_TEMPLATES: dict[str, tuple[str, YourDesignShape]] = {
         "Jackson RR style (mockup, not the original)",
         YourDesignShape(
             control_points=_JACKSON_RR_POINTS,
+            pickguard_points=_JACKSON_RR_PICKGUARD_POINTS,
             # The wings are narrow: the switch goes on the bass wing, the
             # pots and control cavity a little forward on the treble wing
             # and the jack into the treble wing's outer edge.

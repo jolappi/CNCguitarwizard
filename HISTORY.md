@@ -380,6 +380,20 @@ The output jack now starts on the body's own edge, whatever body is
 drawn, and runs into the control cavity; it can be a side jack, a cup
 jack or Electrosocket, or a Stratocaster style top plate.
 
+Pickguards arrived: shaped to the body and the chosen pickups, with
+rectangular pickup openings, a bass-side edge that hugs the pickups and
+an outline that follows the shorter horn but on the longer horn's side
+runs past the pickups — drawn as a Stratocaster's or a superstrat's,
+the Stratocaster template's traced from a real Strat guard and the
+Jazz Bass and Design by Jone templates' the same guard fitted to them,
+the Jackson RR's and the Les Paul's drawn for them,
+stepped round whichever bridge is fitted — editable
+in the body editor, with Stratocaster style controls mounted in them as
+an option, each cut from sheet in its own program.
+
+The web app asks its yes/no questions in its own dialog, so they show
+in embedded browsers too.
+
 ## Documentation
 
 - Added public package reference with API tables, examples, and diagrams.

@@ -305,6 +305,62 @@ def pickup_half_length(
     return max(abs(x) for x, _ in _rotated(local, angle_degrees, bass_sign))
 
 
+_OPENINGS: dict[str, tuple[tuple[float, float, float], ...]] = {
+    "humbucker": ((0.0, 39.0, 70.5),),
+    "single_coil": ((0.0, 18.5, 84.0),),
+    "jazz_bass": ((0.0, 19.5, 95.5),),
+    "precision_bass": ((-_P_COIL_SHIFT, 22.0, 58.5), (_P_COIL_SHIFT, 22.0, 58.5)),
+    "bass_soapbar": ((0.0, 44.0, 102.0),),
+    "rickenbacker": ((0.0, 36.0, 90.0),),
+}
+"""Each pickup's cover as a pickguard opening: (X offset, width along the
+neck, length across it) per rectangle — a Precision Bass has one per coil,
+each centred on its coil across the strings."""
+
+
+def pickup_openings(
+    kind: PickupType,
+    center_x: float,
+    bass_sign: float,
+    angle_degrees: float = 0.0,
+    string_count: int = 6,
+) -> tuple[tuple[Point2D, ...], ...]:
+    """Return the square-cornered pickguard openings for a pickup.
+
+    Each is the pickup cover's rectangle (``_OPENINGS``), lengthened with
+    the route for more strings and turned with it.
+
+    Args:
+        kind: The pickup type.
+        center_x: Where the pickup's centre sits along the neck.
+        bass_sign: Which side the bass strings are on (-1 or 1).
+        angle_degrees: How far the pickup is turned, as its route is.
+        string_count: How many strings, for the route's stretch.
+
+    Returns:
+        One rectangle per opening (a Precision has one per coil), none for
+        ``"none"``.
+    """
+    if kind == "none":
+        return ()
+    stretch = pickup_stretch(kind, string_count)
+    openings = []
+    for index, (dx, width, length) in enumerate(_OPENINGS[kind]):
+        half_x, half_y = width / 2.0, (length + stretch) / 2.0
+        # A Precision coil sits on its own side of the centreline.
+        dy = 0.0
+        if kind == "precision_bass":
+            offset = _P_COIL_OFFSET if index == 1 else -_P_COIL_OFFSET
+            dy = -bass_sign * offset
+        corners = tuple(
+            (dx + sx * half_x, dy + sy * half_y)
+            for sx, sy in ((-1, -1), (1, -1), (1, 1), (-1, 1))
+        )
+        turned = _rotated(corners, angle_degrees, bass_sign)
+        openings.append(tuple(Point2D(center_x + x, y) for x, y in turned))
+    return tuple(openings)
+
+
 def pickup_route(
     kind: PickupType,
     name: str,

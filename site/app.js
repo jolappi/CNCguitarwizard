@@ -23,6 +23,18 @@ let pyodide = null;
 let schema = null;
 let blobUrls = [];
 
+// Ask a yes/no question in the page's own dialog; resolves true for OK.
+// (window.confirm is answered unseen in some embedded browsers.)
+function askConfirm(message) {
+  const dialog = document.getElementById("confirm-dialog");
+  dialog.querySelector(".message").textContent = message;
+  dialog.returnValue = "";
+  return new Promise((resolve) => {
+    dialog.addEventListener("close", () => resolve(dialog.returnValue === "yes"), { once: true });
+    dialog.showModal();
+  });
+}
+
 function setStatus(text, kind) {
   status.textContent = text;
   status.className = kind || "";
@@ -114,7 +126,7 @@ function renderForm() {
 // loaded and built (its row in the form is hidden). A change on either
 // side is passed to the other.
 const EDITOR_FIELDS = {
-  "body-editor-options": ["body_pickups", "body_controls", "body_switch", "body_jack", "body_battery_box", "body_battery_count"],
+  "body-editor-options": ["body_pickups", "body_controls", "body_switch", "body_jack", "body_pickguard", "body_pickguard_style", "body_battery_box", "body_battery_count"],
   "headstock-editor-options": ["headstock_style"],
 };
 const mirrors = new Map();
@@ -947,6 +959,7 @@ const bodyEditor = {
       pocket: { fill: "#f2c4b3", "fill-opacity": 0.9, stroke: "#7a3a1a", "stroke-width": 0.5 },
       pickup: { fill: "#f2c4b3", stroke: "#7a3a1a", "stroke-width": 0.5 },
       bridge: { fill: "#f2c4b3", stroke: "#7a3a1a", "stroke-width": 0.5 },
+      bridge_plate: { fill: "#d8d0c2", "fill-opacity": 0.5, stroke: "#6b625a", "stroke-width": 0.5, "stroke-dasharray": "2,2" },
       top_control: { fill: "#c9b7e6", "fill-opacity": 0.55, stroke: "#5a3a8a", "stroke-width": 0.6 },
       contour_top: { fill: "#9cc79a", "fill-opacity": 0.45, stroke: "#3d6b3a", "stroke-width": 0.5 },
       contour_back: { fill: "#9aa9d6", "fill-opacity": 0.35, stroke: "#34457a", "stroke-width": 0.5, "stroke-dasharray": "3,2" },
@@ -1002,6 +1015,37 @@ const bodyEditor = {
             : "Control cavity side — drag to widen or narrow it";
         });
       }
+    }
+
+    // The pickguard, over the features, with square handles at its
+    // control points; dragging one draws the guard (pickguard_points).
+    this.guardPoints = layout.pickguard ? layout.pickguard.points.map((p) => [...p]) : null;
+    if (this.guardPoints) {
+      // The guard with its openings and holes cut out of it (even-odd).
+      this.guardPath = this.element("path", {
+        d: this.guardData(), "fill-rule": "evenodd",
+        fill: "#ffffff", "fill-opacity": 0.55, stroke: "#333", "stroke-width": 0.7,
+        "stroke-dasharray": layout.pickguard.automatic ? "4,2" : "none", "pointer-events": "none",
+      });
+      // One click on its edge adds a point there.
+      this.guardHit = this.element("path", { class: "outline-hit", d: this.pathData(closedCatmullRom(this.guardPoints, 8)) });
+      // Dragging the edge moves the whole guard, or onto Create NC file
+      // makes its programs; a click without a drag adds a point.
+      this.guardHit.addEventListener("pointerdown", (event) => this.startGuardMove(event));
+      this.guardHit.addEventListener("click", (event) => {
+        if (event.detail <= 1 && !this.guardMoved) this.addGuardPoint(event);
+      });
+      this.element("title", {}, this.guardHit).textContent =
+        "Click the pickguard's edge to add a point, drag it to move the guard (or onto Create NC file)";
+      this.guardPoints.forEach((point, index) => {
+        const handle = this.element("rect", { class: "guard-handle", x: point[0] - 2.5, y: -point[1] - 2.5, width: 5, height: 5 });
+        this.element("title", {}, handle).textContent = "Pickguard point — drag to shape the guard, Alt-click or right-click to remove it";
+        handle.addEventListener("pointerdown", (event) => {
+          if (event.altKey) { this.removeGuardPoint(index); return; }
+          this.startGuardDrag(event, index, handle);
+        });
+        handle.addEventListener("contextmenu", (event) => { event.preventDefault(); this.removeGuardPoint(index); });
+      });
     }
 
     // A wide, invisible stroke over the outline: one click on the line
@@ -1113,12 +1157,14 @@ const bodyEditor = {
         // Dropped wholly outside the body: offer to remove it instead.
         const removal = this.leftBody(group, delta) ? this.removal(group) : null;
         if (removal) {
-          if (window.confirm(`Remove ${removal.label}?`)) {
-            removal.apply();
-            this.refresh();
-          } else {
-            for (const member of members) member.removeAttribute("transform");
-          }
+          askConfirm(`Remove ${removal.label}?`).then((yes) => {
+            if (yes) {
+              removal.apply();
+              this.refresh();
+            } else {
+              for (const member of members) member.removeAttribute("transform");
+            }
+          });
           return;
         }
         this.applyMove(group, delta);
@@ -1134,6 +1180,124 @@ const bodyEditor = {
 
   field(set, name) {
     return form.querySelector(`[data-set="${set}"][data-name="${name}"]`);
+  },
+
+  // Drag one pickguard point; on drop the guard's points are written
+  // (drawn from now on: Auto pickguard goes back to the automatic one).
+  startGuardDrag(event, index, handle) {
+    event.preventDefault();
+    event.stopPropagation();
+    handle.classList.add("dragging");
+    const move = (moveEvent) => {
+      const [x, y] = this.toModel(moveEvent);
+      this.guardPoints[index] = [x, y];
+      handle.setAttribute("x", x - 2.5);
+      handle.setAttribute("y", -y - 2.5);
+      this.guardPath.setAttribute("d", this.guardData());
+      this.guardHit.setAttribute("d", this.pathData(closedCatmullRom(this.guardPoints, 8)));
+    };
+    const end = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", end);
+      window.removeEventListener("pointercancel", end);
+      handle.classList.remove("dragging");
+      // Stored like the body's points, before the body's widening.
+      this.commitGuard();
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", end);
+    window.addEventListener("pointercancel", end);
+  },
+
+  // Drag the whole guard by its edge. Dropped on "Create NC file" it stays
+  // put and gets its own programs; dropped elsewhere its points move.
+  startGuardMove(event) {
+    if (event.button !== 0 || event.altKey) return;
+    const start = this.toModel(event);
+    const startX = event.clientX, startY = event.clientY;
+    const members = [this.guardPath, this.guardHit, ...this.svg.querySelectorAll(".guard-handle")];
+    const drop = document.getElementById("body-editor-nc");
+    const overDrop = (pointer) => {
+      const box = drop.getBoundingClientRect();
+      return pointer.clientX >= box.left && pointer.clientX <= box.right
+        && pointer.clientY >= box.top && pointer.clientY <= box.bottom;
+    };
+    let delta = [0, 0];
+    this.guardMoved = false;
+    const move = (moveEvent) => {
+      // A few pixels of jitter is still a click.
+      if (!this.guardMoved && Math.hypot(moveEvent.clientX - startX, moveEvent.clientY - startY) < 4) return;
+      this.guardMoved = true;
+      this.svg.classList.add("dragging");
+      const [x, y] = this.toModel(moveEvent);
+      delta = [x - start[0], y - start[1]];
+      for (const member of members) member.setAttribute("transform", `translate(${delta[0]} ${-delta[1]})`);
+      drop.classList.toggle("over", overDrop(moveEvent));
+    };
+    const end = (endEvent) => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", end);
+      window.removeEventListener("pointercancel", end);
+      drop.classList.remove("over");
+      this.svg.classList.remove("dragging");
+      if (!this.guardMoved) return;
+      for (const member of members) member.removeAttribute("transform");
+      if (endEvent && overDrop(endEvent)) {
+        this.createNc("pickguard");
+        return;
+      }
+      this.guardPoints = this.guardPoints.map(([x, y]) => [x + delta[0], y + delta[1]]);
+      this.commitGuard();
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", end);
+    window.addEventListener("pointercancel", end);
+  },
+
+  // The guard's outline as path data, its openings and holes as more
+  // subpaths (cut out by the even-odd fill).
+  guardData() {
+    const guard = this.layout.pickguard;
+    let d = this.pathData(closedCatmullRom(this.guardPoints, 8));
+    for (const opening of guard.openings) d += " " + this.pathData(opening);
+    for (const hole of guard.holes) {
+      d += ` M${hole.x - hole.r},${-hole.y} a${hole.r},${hole.r} 0 1,0 ${2 * hole.r},0 a${hole.r},${hole.r} 0 1,0 ${-2 * hole.r},0`;
+    }
+    return d;
+  },
+
+  // Write the guard's points (drawn from now on) and lay the body out again.
+  commitGuard() {
+    const points = this.guardPoints.map((p) => this.unwiden(p).map((v) => Math.round(v * 10) / 10));
+    this.setField(this.field("prototype.body_shape", "pickguard_points"), points);
+    this.refresh();
+  },
+
+  addGuardPoint(event) {
+    const [x, y] = this.toModel(event);
+    // After the point whose span passes nearest the click (8 samples a span).
+    const outline = closedCatmullRom(this.guardPoints, 8);
+    let best = 0, bestDistance = Infinity;
+    outline.forEach(([ox, oy], i) => {
+      const distance = (ox - x) ** 2 + (oy - y) ** 2;
+      if (distance < bestDistance) { bestDistance = distance; best = i; }
+    });
+    this.guardPoints.splice(Math.floor(best / 8) + 1, 0, [x, y]);
+    this.commitGuard();
+  },
+
+  removeGuardPoint(index) {
+    if (this.guardPoints.length <= 4) {
+      this.setStatus("The pickguard needs at least four points.", "bad");
+      return;
+    }
+    this.guardPoints.splice(index, 1);
+    this.commitGuard();
+  },
+
+  autoGuard() {
+    this.setField(this.field("prototype.body_shape", "pickguard_points"), []);
+    this.refresh();
   },
 
   // Make a feature's own NC programs (zeroed at its centre, its cover
@@ -1509,12 +1673,12 @@ const bodyEditor = {
 
   // Replace the drawing with a template: its outline and its switch, pot
   // and jack placements, which all stay editable afterwards.
-  reset() {
+  async reset() {
     if (!this.layout) return;
     const key = document.getElementById("body-editor-template").value;
     const template = this.layout.templates[key];
     if (!template) return;
-    if (!window.confirm(`Replace your drawing with ${template.label}?`)) return;
+    if (!(await askConfirm(`Replace your drawing with ${template.label}?`))) return;
     const set = "prototype.body_shape";
     for (const [name, value] of Object.entries(template.shape)) {
       if (name === "kind" || name === "control_points") continue;
@@ -1569,6 +1733,7 @@ const bodyEditor = {
 };
 
 document.getElementById("body-editor-reset").addEventListener("click", () => bodyEditor.reset());
+document.getElementById("body-editor-auto-guard").addEventListener("click", () => bodyEditor.autoGuard());
 // ---------------------------------------------------------------------------
 // Headstock editor: drag the two edges of a "drawn" headstock over the
 // fixed tuner holes. Each edge is [distance from the nut, half-width]
@@ -1988,8 +2153,9 @@ const headstockEditor = {
 
   // Back to the fitted outline: the edge fields are emptied, so the
   // drawing follows the fitted outline again until the next edit.
-  reset() {
-    if (!this.layout || !window.confirm("Replace the drawn headstock with the fitted outline?")) return;
+  async reset() {
+    if (!this.layout) return;
+    if (!(await askConfirm("Replace the drawn headstock with the fitted outline?"))) return;
     const { bass, treble, tip } = this.inputs();
     bodyEditor.setField(bass, []);
     bodyEditor.setField(treble, []);
@@ -2075,10 +2241,10 @@ form.addEventListener("change", (event) => {
   if (event.target.dataset.name !== "control_points") bodyEditor.scheduleRefresh();
 });
 
-instrumentSelect.addEventListener("change", () => {
-  if (form.querySelector(".changed") && !window.confirm(
+instrumentSelect.addEventListener("change", async () => {
+  if (form.querySelector(".changed") && !(await askConfirm(
     "Switch instrument? Every value goes back to that instrument's defaults."
-  )) {
+  ))) {
     instrumentSelect.value = instrumentSelect.dataset.current;
     return;
   }
@@ -2090,10 +2256,10 @@ instrumentSelect.addEventListener("change", () => {
 buildButton.addEventListener("click", build);
 resetButton.addEventListener("click", reset);
 saveDesignButton.addEventListener("click", saveDesign);
-loadDesignButton.addEventListener("click", () => {
-  if (form.querySelector(".changed") && !window.confirm(
+loadDesignButton.addEventListener("click", async () => {
+  if (form.querySelector(".changed") && !(await askConfirm(
     "Load a design? Every current value is replaced by the file's."
-  )) return;
+  ))) return;
   loadDesignFile.click();
 });
 loadDesignFile.addEventListener("change", () => {

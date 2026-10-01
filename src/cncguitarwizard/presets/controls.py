@@ -33,7 +33,7 @@ from ..geometry.exceptions import BodyGeometryError
 from ..geometry.primitives import Point2D
 from .body_shapes import BodyShapeSpec
 
-ControlLayout = Literal["almond_2", "gibson_4", "rear_3", "tele", "none"]
+ControlLayout = Literal["almond_2", "gibson_4", "rear_3", "tele", "pickguard", "none"]
 """An electronics layout (see ``CONTROL_LABELS``)."""
 
 CONTROL_LABELS: dict[str, str] = {
@@ -41,6 +41,7 @@ CONTROL_LABELS: dict[str, str] = {
     "gibson_4": "Gibson style, 4 pots + round switch cavity",
     "rear_3": "Rear cavity, 3 pots in a row + round switch cavity",
     "tele": "Telecaster style control plate on the top (2 pots + blade switch)",
+    "pickguard": "Stratocaster style, in the pickguard (3 pots + 5-way blade switch)",
     "none": "No control cavities",
 }
 
@@ -67,6 +68,9 @@ class ControlFeatures:
             turns about this point and stretches from it.
         control_axis: Its long axis, a unit vector (turned with it); the
             cavity's width runs square to it.
+        guard_holes: Pot holes through the pickguard (the ``pickguard``
+            layout's pots are mounted in it).
+        guard_slots: Openings through the pickguard (its blade switch).
     """
 
     control_cavity: RearCavity | None = None
@@ -79,12 +83,15 @@ class ControlFeatures:
     battery_cavity: RearCavity | None = None
     control_centre: Point2D | None = None
     control_axis: Point2D | None = None
+    guard_holes: tuple[DrilledHole, ...] = ()
+    guard_slots: tuple[Cavity, ...] = ()
 
     def with_covers(self, other: ControlFeatures) -> ControlFeatures:
         """Return these features with another's screw spots and covers added."""
         return replace(
             self,
             back_marks=(*self.back_marks, *other.back_marks),
+            top_marks=(*self.top_marks, *other.top_marks),
             covers=(*self.covers, *other.covers),
         )
 
@@ -339,6 +346,16 @@ def control_features(
     def spread_across(dy: float) -> float:
         return dy + math.copysign(widen / 2.0, dy) if dy else 0.0
 
+    if layout == "pickguard":
+        return _pickguard_controls(
+            Point2D(anchor_x, anchor_y),
+            depth,
+            pot_hole_diameter,
+            turn,
+            stretch,
+            widen,
+        )
+
     if layout == "tele":
         # The long plate sits 10 mm in from the pots' line, toward the
         # centreline, so its ends stay clear of the body edge.
@@ -532,6 +549,54 @@ def _check_shortening(
             f"control_stretch {stretch:g} mm shortens the {name} too much: "
             f"less than {half_length:.1f} mm shorter, please."
         )
+
+
+def _pickguard_controls(
+    centre: Point2D,
+    depth: float,
+    pot_hole_diameter: float,
+    turn: float = 0.0,
+    stretch: float = 0.0,
+    widen: float = 0.0,
+) -> ControlFeatures:
+    """Stratocaster style controls, mounted in the pickguard.
+
+    Three pots 30 mm apart in a row along the neck through ``centre`` and
+    a 5-way blade switch's 5 x 22 mm slot 60 mm ahead of the middle one
+    go through the guard; under them a 127 x 50 mm cavity is routed from
+    the top. ``stretch`` / ``widen`` make the cavity longer / wider, the
+    end pots and the switch moving out with its ends; all of it turns
+    ``turn`` degrees about the cavity's centre.
+    """
+
+    def spread(dx: float) -> float:
+        return dx + math.copysign(stretch / 2.0, dx) if dx else 0.0
+
+    # The cavity's middle sits between the switch and the last pot.
+    middle = Point2D(centre.x - 17.5, centre.y)
+
+    def at(dx: float) -> Point2D:
+        (point,) = _turned((Point2D(middle.x + spread(dx), middle.y),), middle, turn)
+        return point
+
+    cavity = _box(
+        "Control cavity", middle, 127.0 + stretch, 50.0 + widen, depth, 12.0, turn
+    )
+    pots = [at(dx + 17.5) for dx in (-30.0, 0.0, 30.0)]
+    holes = tuple(
+        DrilledHole(
+            f"Control pot {index} shaft hole", p.x, p.y, pot_hole_diameter, depth
+        )
+        for index, p in enumerate(pots, start=1)
+    )
+    switch = _box("Control switch slot", at(-60.0 + 17.5), 22.0, 5.0, 1.0, 2.49, turn)
+    return ControlFeatures(
+        top_cavities=(cavity,),
+        guard_holes=holes,
+        guard_slots=(switch,),
+        control_centre=middle,
+        control_axis=_turned((Point2D(1.0, 0.0),), Point2D(0.0, 0.0), turn)[0],
+    )
 
 
 def _tele(

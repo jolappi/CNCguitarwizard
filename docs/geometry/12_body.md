@@ -272,6 +272,101 @@ editor then says so). The housings:
 The jack's line can be dragged and turned (Shift-drag) in the body editor;
 the bore follows the drawn outline and the cavity.
 
+### Pickguard
+
+`body_pickguard` puts on a pickguard (`presets.pickguard`), cut from
+`body_pickguard_thickness` (2.5 mm) sheet in its own cover program
+(`Cover_pickguard.nc`). Its outline is a closed Catmull-Rom spline through
+control points (about 22 mm apart), like a drawn body. Left automatic it
+lies `body_pickguard_margin` (6 mm) inside the body's outline, with a
+notch the neck sits in, and:
+
+- on the longer horn's side (the one reaching further toward the nut) it
+  does not follow the horn: its edge runs `PICKUP_HUG` (8 mm) past the
+  pickup routes (with none, `NECK_PASS`, 20 mm, past the pocket), from
+  a little forward beside the neck to the bridge, flaring out toward the
+  bridge as the style (`body_pickguard_style`, below) has it;
+- when neither horn reaches further toward the nut, but they are wings
+  reaching away from the neck past the bridge (a V's, the Jackson RR's),
+  the longer wing's side counts as the longer horn's, and on the shorter
+  wing's side the guard runs on past the bridge out along that wing,
+  `WING_REACH` (100 mm) past the bridge's front, its inner edge along the
+  V's and its end rounded off like a tail;
+- on the shorter horn's side it follows the body's edge round the horn,
+  when a cutaway parts the horn from the neck, and back down the cutaway
+  to the notch; with no cutaway it reaches forward beside the neck, up to
+  65 % of the pocket's length while there is wood there;
+- on the bass side, if that is the shorter horn's, the edge curves in
+  over 40 mm to run 8 mm past the pickups;
+- along the neck it stops 1 mm short of the bridge (its routes, or for a
+  hardtail or Tune-o-matic its holes and 15 mm ahead of the scale line),
+  but always 3 mm past the last pickup, and runs on `BRIDGE_WRAP`
+  (12 mm) past the bridge's front either side of it, 2 mm off it — on
+  the shorter horn's side the style's tail, its end rounded off over
+  `TAIL_ROUND` (30 mm).
+
+`body_pickguard_style` (`PICKGUARD_STYLES`) picks how:
+
+| Style | Beside the neck | Waist | Flare | Tail past the bridge |
+|---|---|---|---|---|
+| `stratocaster` (default) | 34 mm | none | 25 mm, from the first pickup's end to the last's centre | 55 mm |
+| `superstrat` | 10 mm | 5 mm between the first and last pickups | 9 mm, from the last pickup's centre to the guard's end | 12 mm |
+
+The Stratocaster style's numbers were measured off a Stratocaster's HH
+guard; the superstrat's were drawn in the body editor.
+
+The Stratocaster style template comes with that guard itself, drawn
+(`pickguard_points`): traced from a photo, scaled to the body — its
+notch on the neck pocket's end, its bass side stepping back clear of the
+bridge. The Jazz Bass style template (the bass's default body) has the
+same guard fitted to it: stretched along the neck from the pocket's end
+to the bridge's front, widened for the bass's pickups (it covers every
+bass pickup layout, four or five strings), clear of the bridge's screws,
+and wherever it ran past the outline 6 mm in brought back onto that
+line, its small horn then reshaped by hand. The Design by Jone template
+(the guitar's default body) has it too, at the Stratocaster's scale,
+following the outline 6 mm in round its horn and deep cutaway wherever
+it would run past, then reshaped by hand: the horn's tip turned along
+the body's edge and the edge kept off the pots' knobs. The Jackson RR
+style template has one drawn in the body editor: a narrow strip past the
+pickups on the longer wing's side, the shorter wing's side running out
+along it toward its tip (its pots go through the guard); the Les Paul
+style one too: round the cutaway's horn on the treble side, widening
+toward the bridge on the bass side (the first pot goes through it). *Auto pickguard* swaps any of them for the automatic
+one.
+
+A bridge that covers more of the top than its routes — the Kahler
+7300's plate reaches `plate_overhang` (5 mm) past its cutout all round
+(`BridgeHardware.footprint`, drawn dashed in the body editor) — is kept
+clear of by the guard as a whole: its footprint counts as part of the
+bridge.
+
+A drawn guard is drawn for one bridge; whichever is fitted, it is
+stepped round it (`clear_of_bridge`): where it runs into the box round
+the bridge's routes and holes (`DRAWN_BRIDGE_CLEARANCE`, 3 mm, all round,
+but starting no nearer the neck than 3 mm past the last pickup), it is
+cut back along the box's edges — the way round that keeps the box out,
+on to wherever the guard next comes out of it, so a guard that spans
+the box's whole front is cut there too — points `DRAWN_BRIDGE_STEP` (8 mm) apart
+so the spline keeps to them. A drawn guard
+must cover a `pickguard` control layout's cavity, or the build is
+refused (the traced HH guard has no room for one).
+
+The shape's `pickguard_points` (dragged in the body editor,
+where a click on its edge adds a point and Alt-click or right-click
+removes one; its openings and holes are drawn cut out of it) replace it. It gets a rectangular opening for every pickup of the
+chosen pickup layout — the pickup's own size, as a ring-less guard's are
+(`presets.pickups.pickup_openings`; a Precision gets one per coil) — a hole for every pot and the selector's bushing
+under it, and screws round its edge (4.5 mm in, about 60 mm apart, clear
+of the openings), each with a 1 mm spot in the body. A guard off the body
+is refused when the body is built.
+
+`body_controls` `"pickguard"` mounts the controls in it, Stratocaster
+style: three pots 30 mm apart and a 5-way blade switch's 5 × 22 mm slot
+through the guard, over a 127 × 50 mm cavity routed from the top (no rear
+control cavity); the automatic guard then runs on past the bridge on the
+controls' side, leaving a notch for the bridge. It needs `body_pickguard`.
+
 The rear layouts' pickup selector is chosen with `body_switch`: a 3-way
 toggle (`toggle`, the default) through a 1/2 in (12.7 mm) hole, or a micro
 (mini) toggle (`micro`) through a 1/4 in (6.35 mm) one

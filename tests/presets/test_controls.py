@@ -25,10 +25,19 @@ def build(layout: str, **overrides: object):  # type: ignore[no-untyped-def]
 
 
 def test_every_layout_has_a_label() -> None:
-    assert set(LAYOUTS) == {"almond_2", "gibson_4", "rear_3", "tele", "none"}
+    assert set(LAYOUTS) == {
+        "almond_2",
+        "gibson_4",
+        "rear_3",
+        "tele",
+        "pickguard",
+        "none",
+    }
 
 
-@pytest.mark.parametrize("layout", LAYOUTS)
+# The pickguard layout needs a pickguard and is tested with one
+# (tests/presets/test_pickguard.py).
+@pytest.mark.parametrize("layout", [name for name in LAYOUTS if name != "pickguard"])
 def test_every_layout_builds_on_every_drawn_template(layout: str) -> None:
     for name, (_, shape) in YOUR_DESIGN_TEMPLATES.items():
         instrument = "bass_guitar" if "bass" in name else "electric_guitar"

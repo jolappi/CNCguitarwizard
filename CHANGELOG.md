@@ -4,6 +4,32 @@
 
 ### Added
 
+- A pickguard (`body_pickguard`): shaped to the body (the outline 6 mm in,
+  reaching forward beside the neck with a notch for it as a
+  Stratocaster's does, on to the bridge, past every pickup, round the
+  shorter horn, but on the longer horn's side 8 mm past the pickups,
+  flaring out toward the bridge, and on past the bridge's front either
+  side of it; `body_pickguard_style` draws it as a Stratocaster's —
+  a tongue beside the neck, a rounded tail past the bridge — or a
+  superstrat's, close round the pickups; on a V (the Jackson RR) it runs
+  100 mm out along the shorter wing; the Stratocaster style template
+  comes with a guard traced from a Stratocaster's HH guard, and the Jazz
+  Bass style and Design by Jone ones with the same guard fitted to them,
+  the Jackson RR style and Les Paul style ones with guards drawn for
+  them;
+  a drawn guard steps round whichever bridge is fitted, and every guard
+  clears the Kahler 7300's plate, 5 mm bigger all round than its cutout
+  (`plate_overhang`, drawn dashed in the body editor)) or drawn with
+  its own handles in the body editor (`pickguard_points`; a click on its
+  edge adds a point, Alt- or right-click removes one, dragging the edge
+  moves the whole guard or, onto *Create NC file*, makes its own
+  programs, *Auto pickguard* goes back; its openings and holes show cut out of it), with rectangular openings the size of the
+  chosen pickup layout's pickups, holes for the pots and selector under it and screws round its
+  edge, cut from sheet in `Cover_pickguard.nc` (`presets.pickguard`).
+  The control layout `pickguard` mounts three pots and a 5-way blade
+  switch in it, Stratocaster style, over a cavity routed from the top;
+  the guard then runs on past the bridge on the controls' side; a drawn
+  guard that does not cover them is refused.
 - Output jack housings (`body_jack`): a side jack (`side`, the default: a
   Les Paul style plate or a barrel jack), a cup jack or Electrosocket
   (`cup`, a 7/8 in counterbore at the edge) or a Stratocaster style top
@@ -149,6 +175,10 @@
 
 ### Fixed
 
+- The web app's yes/no questions (*Start from* → *Load*, removing a
+  dragged-off feature, switching instrument, loading a design, resetting
+  the headstock) are asked in the page's own dialog: some embedded
+  browsers answered `window.confirm` unseen, so *Load* did nothing.
 - The FreeCAD model's headstock top sank in wedges either side of the
   nut's seat and the transition behind it: the loft held its top edge to
   the nut's width there, so the top beside it fell away down the rounded
