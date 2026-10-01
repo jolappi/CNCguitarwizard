@@ -35,6 +35,20 @@ class StockBounds:
         return self.max_y - self.min_y
 
 
+def _pin_clearance(parameters: MachiningParameters) -> float:
+    """Return how far a dowel's centre stays from the part and every cut."""
+    return (
+        parameters.index_pin_diameter / 2.0
+        + parameters.tool_diameter
+        + parameters.index_pin_wall
+    )
+
+
+def _pin_edge(parameters: MachiningParameters) -> float:
+    """Return how far a dowel's centre stays inside the blank's edge."""
+    return parameters.index_pin_diameter / 2.0 + parameters.stock_edge_margin
+
+
 def pin_fits(
     pin: Point2D,
     outline: Sequence[Point2D],
@@ -49,12 +63,8 @@ def pin_fits(
     every polygon in ``avoid`` (cavities that reach into the waste, areas
     a surfacing pass sweeps), and ``stock_edge_margin`` inside the blank.
     """
-    clearance = (
-        parameters.index_pin_diameter / 2.0
-        + parameters.tool_diameter
-        + parameters.index_pin_wall
-    )
-    edge = parameters.index_pin_diameter / 2.0 + parameters.stock_edge_margin
+    clearance = _pin_clearance(parameters)
+    edge = _pin_edge(parameters)
     if not (
         stock.min_x + edge <= pin.x <= stock.max_x - edge
         and stock.min_y + edge <= pin.y <= stock.max_y - edge
@@ -125,9 +135,11 @@ def resolve_index_pins(
     Explicit ``index_pin_positions`` are checked as given. Otherwise the
     pins are placed automatically; when the blank's ``stock_margin`` has
     no room for a dowel beyond an end of the part (a body without a tail
-    notch on the centerline), the blank is lengthened at both ends by a
-    dowel's worth of waste and the search is repeated, so the returned
-    blank may be longer than ``StockBounds.around`` gave.
+    notch on the centerline, or a neck pocket running out past the body's
+    face), the blank is lengthened until a dowel fits past the furthest of
+    the part and the cuts in ``avoid`` — at the front end alone, else the
+    back end alone, else both — and the search is repeated, so the
+    returned blank may be longer than ``StockBounds.around`` gave.
     """
     if parameters.index_pin_positions:
         pins: tuple[tuple[float, float], ...] = tuple(
@@ -137,16 +149,33 @@ def resolve_index_pins(
         try:
             pins = automatic_index_pins(outline, avoid, parameters, stock)
         except ToolpathError:
-            extra = (
-                parameters.index_pin_diameter
-                + 2.0 * parameters.index_pin_wall
-                + parameters.stock_edge_margin
-                + 2.0
+            # Room for a whole dowel (and a step of the scan) between the
+            # cuts' clearance and the blank's edge margin, at each end.
+            reach = (
+                _pin_clearance(parameters)
+                + _pin_edge(parameters)
+                + parameters.index_pin_diameter
+                + 1.0
             )
-            stock = StockBounds(
-                stock.min_x - extra, stock.min_y, stock.max_x + extra, stock.max_y
+            ends = [polygon_bounds(outline), *(polygon_bounds(a) for a in avoid)]
+            front = min(stock.min_x, min(b[0] for b in ends) - reach)
+            back = max(stock.max_x, max(b[2] for b in ends) + reach)
+            # The least wood first: the front end alone, the back end
+            # alone, then both.
+            candidates = (
+                StockBounds(front, stock.min_y, stock.max_x, stock.max_y),
+                StockBounds(stock.min_x, stock.min_y, back, stock.max_y),
+                StockBounds(front, stock.min_y, back, stock.max_y),
             )
-            pins = automatic_index_pins(outline, avoid, parameters, stock)
+            for grown in candidates:
+                try:
+                    pins = automatic_index_pins(outline, avoid, parameters, grown)
+                except ToolpathError:
+                    if grown is candidates[-1]:
+                        raise
+                    continue
+                stock = grown
+                break
     for x, y in pins:
         if not pin_fits(Point2D(x, y), outline, avoid, parameters, stock):
             raise ToolpathError(

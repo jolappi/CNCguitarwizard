@@ -15,6 +15,7 @@ from cncguitarwizard.cam.planar import disc_fits, distance_to_boundary
 from cncguitarwizard.geometry.body import BodySolid, CircularCavity
 from cncguitarwizard.geometry.primitives import Point2D, point_in_polygon
 from cncguitarwizard.presets import Prototype001Parameters
+from cncguitarwizard.presets.body_shapes import YOUR_DESIGN_TEMPLATES
 
 
 @pytest.fixture(scope="module")
@@ -367,3 +368,30 @@ def test_the_neck_bolts_are_drilled_from_the_back() -> None:
     assert hole.deepest_z() == pytest.approx(-(24.0 + 0.5))
     assert max(move.z for move in hole.moves if not move.rapid) <= -5.0 + 1e-9
     assert [setup.name for setup in plan.setups][-1] == "Body_back_small_holes"
+
+
+@pytest.mark.parametrize("key", list(YOUR_DESIGN_TEMPLATES))
+def test_every_body_template_gets_two_index_pins(key: str) -> None:
+    """Regression: the Jackson RR style body's neck pocket runs out past
+    its face almost to the blank's edge, which left no room for pin 1; the
+    blank now grows past the pocket instead."""
+    parameters = MachiningParameters()
+    body = (
+        replace(Prototype001Parameters(), body_shape=YOUR_DESIGN_TEMPLATES[key][1])
+        .build()
+        .body
+    )
+    plan = plan_body_machining(body, parameters)
+    clearance = (
+        parameters.index_pin_diameter / 2.0
+        + parameters.tool_diameter
+        + parameters.index_pin_wall
+    )
+
+    (x1, _), (x2, _) = plan.index_pin_positions
+    assert x1 < x2
+    for x in (x1, x2):
+        pin = Point2D(x, 0.0)
+        assert not point_in_polygon(pin, body.outline.points)
+        assert not point_in_polygon(pin, body.neck_pocket.outline)
+        assert distance_to_boundary(pin, body.neck_pocket.outline) >= clearance
