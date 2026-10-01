@@ -356,6 +356,11 @@ handle that pulls it out to a point or in to a notch. Edges and tip are
 rounded curves through their handles, so a Stratocaster or Schecter style
 headstock can be drawn.
 
+The bass pickup routes now follow Warmoth's rout diagrams: the Jazz
+Bass's with its two round recesses in each side, the Precision Bass's
+split coil wider along the neck with a round screw ear at each end of
+both coils.
+
 ## Documentation
 
 - Added public package reference with API tables, examples, and diagrams.

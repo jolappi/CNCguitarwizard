@@ -173,8 +173,8 @@ extra top cavities. The route types:
 | --- | --- | --- |
 | `humbucker` | The DXF's humbucker with mounting ears (41 × 85.9 mm) | two, `body_pickup_screw_spacing` apart |
 | `single_coil` | 20 × 88 mm bar with round ends | two, 76 mm apart |
-| `jazz_bass` | 21 × 100 mm bar with R6 corners | two, 94 mm apart |
-| `precision_bass` | Two 21 × 58 mm coils offset 21 mm along the neck and 38 mm across it, the bass coil nut-ward on the bass side | two per coil, 4 mm in from its ends |
+| `jazz_bass` | 96 × 20 mm bar (Warmoth's 3.75 × 0.79 in bridge rout; the neck pickup is 3-5/8 in) with two round recesses (R8) in each long side, 19.6 mm either side of the middle | four, one in each side recess, 12 mm out from the middle: through the ears on the pickup's sides, 2.9 mm clear of a 94.4 × 18.2 mm pickup (Seymour Duncan SJB-1b) |
+| `precision_bass` | Two 58 × 28.5 mm coils one behind the other along the neck (57 mm, Warmoth's 2.28 in) and 23 mm over each other across the strings (93 mm, 3.678 in), the bass coil nut-ward on the bass side, each with a round mounting ear (R7) at both ends: four in all | two per coil, one in each ear, 1.2 mm inside the coil's end |
 | `bass_soapbar` | 44 × 102 mm bar with R12 corners (MM style) | two, 90 mm apart |
 | `none` | No route in that position | — |
 

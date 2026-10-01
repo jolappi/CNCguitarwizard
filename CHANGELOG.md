@@ -68,6 +68,13 @@
 
 ### Changed
 
+- The bass pickup routes follow Warmoth's rout diagrams: the Jazz Bass
+  route is 96 x 20 mm with two round recesses (R8) in each long side
+  (it was a plain 100 x 21 mm bar), a screw in each recess outside the
+  pickup's sides (a 94.4 x 18.2 mm SJB-1b fits between them); the
+  Precision Bass route's two coils are 58 x 28.5 mm (57 mm along the
+  neck over both, was 42 mm) and 23 mm over each other, each with a
+  round ear (R7) at both ends that its screws go through.
 - The headstock is drawn by default (`headstock_outline` "drawn"), so the
   web app's headstock editor is open from the start. Until a handle is
   moved the edges stay empty and follow the fitted outline (a changed

@@ -6,7 +6,7 @@ import pytest
 
 from cncguitarwizard.geometry.body import HardtailSpec
 from cncguitarwizard.geometry.exceptions import NeckGeometryError
-from cncguitarwizard.geometry.primitives import point_in_polygon
+from cncguitarwizard.geometry.primitives import Point2D, point_in_polygon
 from cncguitarwizard.presets import Prototype001Parameters
 from cncguitarwizard.presets.pickups import (
     pickup_half_length,
@@ -54,13 +54,15 @@ def test_the_bass_body_carries_p_and_j_pickups_and_a_four_string_bridge(
 
     assert sum(name.startswith("String") for name in names) == 4
     assert "Neck pickup bass coil bass screw recess" in names
-    assert "Bridge pickup bass screw recess" in names
-    # The Precision Bass route is two offset coils, wider than a Jazz bar.
+    assert "Bridge pickup bass front screw recess" in names
+    # Warmoth's rout diagrams: the Precision Bass route two 28.5 mm coils
+    # one behind the other along the neck (2.28 in), the Jazz Bass a
+    # 20 mm bar whose side recesses reach 5 mm out of each side.
     neck = body.neck_pickup
     bridge = body.bridge_pickup
     assert neck is not None and bridge is not None
-    assert neck.max_x - neck.min_x == pytest.approx(42.0)
-    assert bridge.max_x - bridge.min_x == pytest.approx(21.0)
+    assert neck.max_x - neck.min_x == pytest.approx(57.0)
+    assert bridge.max_x - bridge.min_x == pytest.approx(30.0)
     for hole in body.holes:
         assert point_in_polygon(hole.center, body.outline.points), hole.name
 
@@ -89,7 +91,8 @@ def test_pickup_routes_and_screws_follow_the_bass_side() -> None:
     assert lefty is not None and righty is not None
     # The bass coil (nut-ward half) lies on the bass side.
     nut_ward_y = [p.y for p in lefty.outline if p.x < 100.0 - 1.0]
-    assert max(nut_ward_y) < 15.0 and min(nut_ward_y) < -40.0
+    # Its inner end's ear reaches 17.3 mm past the centreline.
+    assert max(nut_ward_y) < 20.0 and min(nut_ward_y) < -40.0
     assert [p.y for p in righty.outline] == pytest.approx([-p.y for p in lefty.outline])
     for _, x, y in pickup_screws("precision_bass", 100.0, -1.0, 79.9):
         from cncguitarwizard.geometry.primitives import Point2D
@@ -97,7 +100,7 @@ def test_pickup_routes_and_screws_follow_the_bass_side() -> None:
         assert point_in_polygon(Point2D(x, y), lefty.outline)
     assert pickup_route("none", "N", 0.0, 20.0, -1.0) is None
     assert pickup_screws("none", 0.0, -1.0, 79.9) == ()
-    assert pickup_half_length("jazz_bass") == pytest.approx(10.5)
+    assert pickup_half_length("jazz_bass") == pytest.approx(15.0)
 
 
 def test_the_hardtail_follows_its_string_count() -> None:
@@ -121,3 +124,35 @@ def test_the_bass_neck_bolts_spread_toward_the_body_edge(bass) -> None:  # type:
     for ferrule in ferrules:
         assert point_in_polygon(ferrule.center, bass.body.outline.points)
         assert ferrule.center_x + ferrule.diameter / 2.0 <= pocket_end
+
+
+def test_the_bass_routes_follow_warmoths_rout_diagrams() -> None:
+    jazz = pickup_route("jazz_bass", "J", 0.0, 19.0, -1.0)
+    precision = pickup_route("precision_bass", "P", 0.0, 19.0, -1.0)
+    assert jazz is not None and precision is not None
+
+    # Jazz: 96 x 20 mm (3.75 x 0.79 in) with two round recesses in each
+    # long side, 19.6 mm either side of the middle.
+    assert jazz.max_y - jazz.min_y == pytest.approx(96.0)
+    side = [p for p in jazz.outline if abs(p.x) > 10.0 + 1e-6]
+    assert {round(abs(p.y) // 10) for p in side} == {1, 2}
+    # The pickup itself (an SJB-1b, 94.4 x 18.2 mm) fits the route, and its
+    # four screws sit in the side recesses outside its sides, their 6 mm
+    # spring recesses inside the route.
+    pickup = [Point2D(x, y) for x in (-9.1, 9.1) for y in (-47.2, 47.2)]
+    assert all(point_in_polygon(p, jazz.outline) for p in pickup)
+    screws = pickup_screws("jazz_bass", 0.0, -1.0, 79.9)
+    assert len(screws) == 4
+    for _, x, y in screws:
+        assert (abs(x), abs(y)) == pytest.approx((12.0, 19.6))
+        assert abs(x) - 9.1 > 2.0  # clear of the pickup's side
+        assert all(
+            point_in_polygon(Point2D(x + 2.9 * dx, y + 2.9 * dy), jazz.outline)
+            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))
+        )
+    # Precision: 93 mm across the strings over both coils (3.678 in), the
+    # ears beyond that, and 57 mm along the neck.
+    coil_ends = [p.y for p in precision.outline if abs(abs(p.y) - 46.5) < 1e-6]
+    assert coil_ends
+    assert precision.max_y - precision.min_y > 93.0
+    assert len(pickup_screws("precision_bass", 0.0, -1.0, 79.9)) == 4

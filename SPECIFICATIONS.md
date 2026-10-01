@@ -70,7 +70,11 @@ kielelle, joten ne eivät ole valittavissa 7- ja 8-kielisille.
 4 kieltä, 34" (863,6 mm) skaala, 21 nauhaa, satula 38 mm ja kanta 62 mm,
 paksuudet 21 / 23 mm ja kanta 22 mm, otelaudan säde 305 mm, kielijako 10 mm
 satulassa ja 19 mm tallassa, neljä 19 mm viritinreikää rivissä 38 mm välein
-ja 20 mm reunasta, Precision-mikki kaulassa ja Jazz-mikki tallalla,
+ja 20 mm reunasta, Precision-mikki kaulassa ja Jazz-mikki tallalla (kolot
+Warmothin piirustusten mukaan: J 96 × 20 mm, kummassakin kyljessä kaksi
+pyöreää koloa, joissa ruuvien paikat mikin kylkien ulkopuolella (94,4 × 18,2 mm
+mikki mahtuu niiden väliin); P kaksi 58 × 28,5 mm kelaa, joiden molemmissa päissä pyöreä
+ruuvikorva, yhteensä neljä),
 nelikielinen läpimenevä talla ja Jazz Bass -henkinen runko, jonka
 kaulapultit ovat 56 mm välein kaulan suunnassa (`body_neck_bolt_spacing_x`;
 kaulataskun suun puoleinen pari on lähellä rungon reunaa, ja taaempi pari
