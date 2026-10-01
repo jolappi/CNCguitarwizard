@@ -335,6 +335,27 @@ The Jackson RR and Les Paul style templates could not be machined: their
 neck pocket reached almost to the blank's front edge, so the first index
 pin had nowhere to go. The blank now grows past the pocket instead.
 
+A Floyd Rose bridge now brings its locking nut: the Floyd Rose Original R2
+by default, or the R3. It is screwed down from the top on a 16 mm seat
+behind the nut line, so the headstock face starts further back; the R2
+stands on the fretboard run on under it and milled down to its shelf, the
+deeper R3 on the neck's own seat on a shim.
+
+With the locking nut's longer seat, sunken wedges showed in the FreeCAD
+model either side of it: the headstock loft's top edge was held to the
+nut's width over the seat, so the top beside it fell away. It now keeps
+to the headstock's outline; the plain nut's short seat had them too, only
+smaller.
+
+The headstock editor is now open from the start: the outline is drawn by
+default, following the fitted one until a handle is moved, and one click
+on an edge adds a handle.
+
+The headstock's tip can now be shaped as well: a click on the tip adds a
+handle that pulls it out to a point or in to a notch. Edges and tip are
+rounded curves through their handles, so a Stratocaster or Schecter style
+headstock can be drawn.
+
 ## Documentation
 
 - Added public package reference with API tables, examples, and diagrams.

@@ -121,6 +121,7 @@ assert translate(Point2D(1.0, 2.0), Vector2D(3.0, -1.0)) == Point2D(4.0, 1.0)
 | API | Purpose |
 | --- | --- |
 | `Centerline` | Immutable nut-to-bridge reference axis. |
+| `LockingNut`, `LOCKING_NUT_SPECS` | A top-mounted Floyd Rose locking nut (R2, R3), its shelf, seat and screws. |
 
 ```python
 from cncguitarwizard.geometry.neck import Centerline

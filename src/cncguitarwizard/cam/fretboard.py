@@ -8,7 +8,8 @@ changes between programs (re-touch Z on the blank top after each):
 1. ball nose — the radiused playing surface;
 2. small end mill — the inlay pockets, measured from the crown;
 3. fret-slot bit — 24 slots that follow the radius across the board;
-4. flat end mill — the tapered outline with rounded nut corners and tabs.
+4. flat end mill — a locking nut's shelf, when the board runs on under
+   the nut, then the tapered outline with rounded nut corners and tabs.
 """
 
 from __future__ import annotations
@@ -131,17 +132,20 @@ def fretboard_outline_polygon(geometry: Prototype001Geometry) -> tuple[Point2D, 
     """Return the board's plan outline with its rounded nut corners.
 
     The corners are the surface's own end rows, so slanted frets give a
-    slanted nut end and board end.
+    slanted nut end and board end. A board that runs on under a locking
+    nut ends the nut's seat behind the nut line instead.
     """
     surface = geometry.fretboard_surface
     first = surface.mesh.rows[0]
     last = surface.mesh.rows[-1]
     radius = geometry.fret_layout.fretboard.nut_corner_radius
+    nut = geometry.locking_nut
+    back = nut.seat_length if nut is not None and nut.on_fretboard else 0.0
     vertices = [
-        Point2D(first[0].x, first[0].y),
+        Point2D(first[0].x - back, first[0].y),
         Point2D(last[0].x, last[0].y),
         Point2D(last[-1].x, last[-1].y),
-        Point2D(first[-1].x, first[-1].y),
+        Point2D(first[-1].x - back, first[-1].y),
     ]
     return rounded_polygon_points(
         vertices, [radius, 0.0, 0.0, radius], samples_per_corner=8
@@ -322,10 +326,41 @@ def plan_fretboard_machining(
         slot_tool,
     )
 
+    shelf_paths: list[Toolpath] = []
+    shelf_notes: tuple[str, ...] = ()
+    nut = geometry.locking_nut
+    if nut is not None and nut.on_fretboard:
+        # Down to the shelf behind the nut line, the pocket reaching past
+        # the board's sides and end so only the nut line's wall is left.
+        reach = flat.tool_radius + 1.0
+        half = nut.neck_width / 2.0 + reach
+        pocket_outline = tuple(
+            Point2D(nut.lean * y + dx, y)
+            for dx, y in (
+                (0.0, -half),
+                (0.0, half),
+                (-nut.seat_length - reach, half),
+                (-nut.seat_length - reach, -half),
+            )
+        )
+        shelf_paths.append(
+            pocket(
+                f"{nut.spec.name} locking nut shelf",
+                machine_polygon(pocket_outline),
+                parameters.blank_thickness - nut.shelf_height,
+                flat,
+            )
+        )
+        shelf_notes = (
+            f"The board runs {nut.seat_length:g} mm on past the nut line under "
+            f"the {nut.spec.name} locking nut, milled down to its "
+            f"{nut.shelf_height:.2f} mm shelf first.",
+        )
     outline_setup = Setup(
         "Fretboard_outline",
         "Fretboard outline - tapered profile with tabs",
         (
+            *shelf_paths,
             profile(
                 "Fretboard outline with tabs",
                 machine_polygon(outline),
@@ -338,6 +373,7 @@ def plan_fretboard_machining(
             "Same fixture and X/Y zero; back to the flat end mill, re-touch Z.",
             f"Leaves {flat.tab_count} tabs {flat.tab_height:g} mm high; saw and "
             "sand them off.",
+            *shelf_notes,
         ),
         reference_points,
         flat,

@@ -1,5 +1,6 @@
 """Tests for headstocks with drawn edges."""
 
+import math
 from dataclasses import replace
 
 import pytest
@@ -9,6 +10,7 @@ from cncguitarwizard.geometry.exceptions import (
     NeckGeometryError,
 )
 from cncguitarwizard.geometry.neck import HeadstockPlan
+from cncguitarwizard.geometry.primitives import Point2D
 from cncguitarwizard.presets import Prototype001Parameters
 from cncguitarwizard.presets.prototype001 import distance_to_headstock_edge
 
@@ -139,3 +141,69 @@ def test_the_editor_start_edges_build_for_every_style(
     )
 
     assert plan.is_drawn
+
+
+def test_the_default_headstock_is_drawn_and_starts_as_the_fitted_outline() -> None:
+    default = Prototype001Parameters()
+    fitted = replace(default, headstock_outline="fitted")
+
+    assert default.headstock_outline == "drawn"
+    assert default.headstock_design() == fitted.headstock_design()
+
+
+def test_tip_points_shape_a_drawn_headstocks_tip() -> None:
+    plan = drawn(headstock_tip_points=((12.0, 0.0),)).build().headstock.plan
+
+    # A point 12 mm past the tip line in the middle: the tip curves out
+    # through it from both corners, rounding over it.
+    tip = plan.tip_outline()
+    assert Point2D(-182.0, 0.0) in tip
+    assert plan.reach == pytest.approx(182.0, abs=0.5)
+    assert min(p.x for p in plan.boundary) == pytest.approx(-plan.reach)
+    assert (tip[0].y, tip[-1].y) == (plan.edge_y(170.0, -1.0), plan.edge_y(170.0, 1.0))
+    # Measured straight to the curve: nearer than the 32 mm to its apex.
+    assert 20.0 < plan.tip_clearance(Point2D(-150.0, 0.0)) < 32.0
+
+
+def test_a_round_tip_leaves_its_corners_along_the_edges() -> None:
+    plan = drawn(headstock_tip_points=((10.0, -8.0), (14.0, 0.0), (10.0, 8.0))).build()
+    tip = plan.headstock.plan.tip_outline()
+
+    # The first span starts off along the edge: no corner at the tip.
+    for start, after, y_sign in ((tip[0], tip[1], -1.0), (tip[-1], tip[-2], 1.0)):
+        edge = plan.headstock.plan
+        slope = (edge.edge_y(170.0, y_sign) - edge.edge_y(169.5, y_sign)) / 0.5
+        # The first span heads off along the edge: its first sample (a
+        # sixteenth of the way round a tight curve) within 10 degrees of it.
+        turn = math.atan2(after.y - start.y, start.x - after.x) - math.atan(slope)
+        assert abs(math.degrees(turn)) < 10.0
+
+
+def test_a_notched_tip_keeps_the_tuners_clear_of_it() -> None:
+    plan = drawn(headstock_tip_points=((-8.0, 0.0),)).build().headstock.plan
+
+    assert Point2D(-162.0, 0.0) in plan.tip_outline()
+    assert plan.tip_clearance(Point2D(-150.0, 0.0)) == pytest.approx(12.0, abs=0.1)
+    # A notch deep enough to come near the last tuners is refused.
+    with pytest.raises((NeckGeometryError, HeadstockGeometryError), match="tip|edge"):
+        drawn(headstock_tip_points=((-80.0, 0.0),)).build()
+
+
+@pytest.mark.parametrize(
+    "tip",
+    [((5.0, 40.0),), ((5.0, 5.0), (5.0, -5.0)), ((-130.0, 0.0),)],
+    ids=["outside", "out_of_order", "past_shoulder"],
+)
+def test_tip_points_must_run_across_the_tip(tip: object) -> None:
+    with pytest.raises(HeadstockGeometryError):
+        drawn(headstock_tip_points=tip).build()
+
+
+def test_only_a_drawn_headstock_takes_tip_points() -> None:
+    fitted = replace(
+        Prototype001Parameters(),
+        headstock_outline="fitted",
+        headstock_tip_points=((10.0, 0.0),),
+    )
+    # The fitted outline ignores them, as it ignores drawn edges.
+    assert fitted.build().headstock.plan.tip_points == ()

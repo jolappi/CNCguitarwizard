@@ -22,7 +22,9 @@ Python.
    bridge, body thickness, tool and feeds…) are shown up front; the rest of
    each group sits behind an *Advanced* fold, marked `advanced` in the
    schema (`_BASIC_FIELDS`, `_BASIC_VARIANT_FIELDS` in `webapp.py`), with a
-   page-wide checkbox to open them all. A field whose type is a union of
+   page-wide checkbox to open them all. Choosing a locking nut wider
+   than the neck (`locking_nut` "r3") widens `nut_width` to it, to the
+   next half millimetre (`locking_nut_widths` in the schema). A field whose type is a union of
    kinded dataclasses — the bridge — becomes a dropdown of kinds with the
    chosen kind's own fields beneath it (`variant` in the schema). The body
    shape offers only its drawn kind (`_FORM_KINDS`), so it has no dropdown:
@@ -56,14 +58,21 @@ Python.
    pocket and the bridge follow the neck and scale and stay put. The
    panel reports the body's size
    and any feature left outside the outline, and writes the points into
-   the shape's `control_points` field. Likewise, choosing
-   `headstock_outline` "drawn" opens a headstock panel: both edges are
-   handle chains from the shoulder to the tip (the tip handles set the
-   length), drawn over the fixed tuner holes of the chosen style with a
-   keep-out circle `tuner_edge_offset` round each; the panel names any hole
-   the edge comes too close to, and writes `headstock_bass_edge` /
-   `headstock_treble_edge` (`webapp.headstock_editor_layout()` supplies
-   the holes and the fitted start edges).
+   the shape's `control_points` field. Likewise, with
+   `headstock_outline` "drawn" (the default) a headstock panel is open:
+   both edges are handle chains from the shoulder to the tip (the tip
+   handles set the length; click an edge to add a handle, click the tip
+   to shape it with one — `headstock_tip_points`, dragged out for a point
+   or a round end, in for a notch; edges and tip are rounded curves
+   through their handles, so a Stratocaster or Schecter style outline
+   can be drawn — Alt-click or right-click one to remove it), drawn over the fixed tuner holes of the
+   chosen style with a keep-out circle `tuner_edge_offset` round each; the
+   panel names any hole the edge comes too close to. Until a handle is
+   moved, `headstock_bass_edge` / `headstock_treble_edge` stay empty and
+   the drawing follows the fitted outline (a changed style or length
+   redraws it); the first edit writes them, and *Start over* empties them
+   again (`webapp.headstock_editor_layout()` supplies the holes and the
+   fitted start edges).
 3. **Save design** downloads every setting as one JSON file on the user's
    own computer — the instrument, all `prototype` and `machining` values,
    the drawn body's `control_points` and the drawn headstock edges

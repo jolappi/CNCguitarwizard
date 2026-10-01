@@ -95,7 +95,13 @@ the top in one fixturing.
 | `Fretboard_radius.nc` | ball | 430 mm radius; the crown ends `blank − 6` mm below the blank top, the edges 0.9 mm lower |
 | `Fretboard_inlays.nc` | 1 mm | Twelve barbed-wire pockets 2 mm below the crown; barbs narrower than the tool are left uncut |
 | `Fretboard_slots.nc` | 0.6 mm | 24 slots that follow the radius across the board, 2.7 mm below the surface, three 0.9 mm passes, 1 mm past each edge |
-| `Fretboard_outline.nc` | flat | Tapered outline with square nut corners (`fretboard_nut_corner_radius`, 0 by default) and tabs |
+| `Fretboard_outline.nc` | flat | A locking nut's shelf first, when the board runs on under it; then the tapered outline with square nut corners (`fretboard_nut_corner_radius`, 0 by default) and tabs |
+
+Under an R2 locking nut (see [Headstock](../geometry/06_headstock.md#locking-nut))
+the outline runs 16 mm on past the nut line and a pocket mills that end
+down to the nut's shelf, reaching past the board's sides and end so only
+the wall at the nut line is left. `Neck_top.nc`'s notes say how to fit the
+nut and drill its screws.
 
 With slanted or fanned frets (`fret_slant_angle`, `bass_scale_length`)
 each slot runs along its own line, still following the radius, and the

@@ -21,6 +21,7 @@ toisin mainita.
 | Nauhaurat | 0,6 mm × 2,7 mm |
 | Vinot nauhat | Valinnainen `fret_slant_angle` (oletus 0°, enintään 10°): nauhat, otelaudan satulapää ja loppupää kallistuvat keskilinjan ympäri, diskanttipää kohti tallaa positiivisella kulmalla. Nauhajako pysyy tarkkana keskilinjalla; talla ja mikit pysyvät ennallaan |
 | Multiscale | Valinnainen `bass_scale_length`: `scale_length` on silloin diskanttimensuuri ja `bass_scale_length` bassomensuuri (pidempi, enintään 1,15-kertainen); `perpendicular_fret` (oletus 7, 0 = satula) on kohtisuorassa. Jokainen nauha on suora ja osuu jokaisella kielellä tarkalleen oikeaan kohtaan; keskilinja saa mensuurien keskiarvon. Talla voi olla mikä tahansa: se pysyy suorana keskilinjan mensuurin kohdalla ja tallapalat säädetään kunkin kielen mensuuriin (säätövaran on riitettävä puoleen mensuurierosta kumpaankin suuntaan). Poikkeus on Tune-o-matic, jonka säätövara on liian pieni: sen tolpat (kohta, jolla kielet lepäävät) käännetään aina nauhojen mukaan, stop tail pysyy paikallaan. Hardtailin läpivientireiät voi kääntää samoin (`body_bridge_follows_fan`). Mikkien kääntö on valinta (`body_pickups_follow_fan`): auto kääntää ne paitsi Tune-o-maticin kanssa, yes aina, no ei koskaan |
+| Lukkosatula | `locking_nut`: auto (oletus) ottaa Floyd Rose Original R2 -lukkosatulan (41,3 mm), kun tallana on Floyd Rose, muuten tavallinen satula; none, r2 tai r3 (42,85 mm, vaatii yhtä leveän `nut_width`:n; web-lomake leventää satulan leveyden 43 mm:iin R3:a valittaessa) valitsevat suoraan. Satula ruuvataan päältä kahdella ruuvilla (13,59 mm välein, 7,5 mm satulalinjan takana, 2,5 mm × 8 mm esiporaus käsin satulan läpi). Sen etureuna on satulalinjalla ja hylly jatkuu 16 mm taaksepäin, joten lavan pinta, siirtymä ja lavan puolen truss rod -tasku alkavat sen verran taempaa. Satulan yläpinta on 0,38 mm nauhojen yläpintaa ylempänä (`fret_height` 1,2 mm): R2:n hylly on 1,73 mm liimapinnan yläpuolella, joten otelauta jatkuu satulan alle ja jyrsitään siinä hyllyn korkeuteen; R3:n hylly jäisi alle 1 mm:n, joten se istuu kaulan omalla hyllyllä 0,48 mm shimmin päällä |
 | Satulahylly vinolla satulalla | Pitenee satulapään vinouden verran, jotta satulalle jää 5 mm siltäkin puolelta, jolla satulapää on taaimpana; hylly on tasainen koko pituudeltaan |
 | Inlayt vinoilla nauhoilla | Seuraavat nauhoja: blockit kallistuvat nauhojen mukana, piikkilanka kääntyy nauhojen kulmaan, pisteet siirtyvät nauhojen väliselle linjalle |
 | Inlayt | 2 mm syvät välissä 3, 5, 7, 9, 15, 17, 19, 21 (12 ja 24 kaksois-); tyyli `inlay_style`: piikkilanka (oletus), pyöreä dotti (Ø 6) tai Gibson-tyylinen kapeneva blokki (yksi/väli, 60 % nauhavälistä, 5 mm reunasta) |
@@ -158,8 +159,17 @@ sitä voi raahata kaulan suunnassa.
 | Reunapuuta viritinreiällä | Vähintään 8 mm |
 | Reikäviiste | 45°, 0,2 mm |
 
-Lavan reunat voi myös piirtää (`headstock_outline = "drawn"`): web-sovelluksen
-lavaeditorissa raahataan kummankin reunan kahvoja ja kärkeä, kun virittimien
+Lavan reunat piirretään (`headstock_outline = "drawn"`, oletus): web-sovelluksen
+lavaeditori on auki, siinä raahataan kummankin reunan kahvoja ja kärkeä ja
+uusi kahva lisätään klikkaamalla reunaa. Myös lavan päähän voi lisätä
+pisteitä klikkaamalla (`headstock_tip_points`): kärki on pyöreä käyrä
+kulmasta pisteiden kautta toiseen kulmaan, ja se lähtee kulmista reunan
+suuntaan, joten pyöreä pää liittyy sivuihin ilman kulmaa. Ulospäin
+raahattu piste tekee terävän tai pyöreän pään ja sisäänpäin raahattu
+loven. Myös reunat ovat pyöreitä käyriä, jotka saavat kaartua kahvojen
+ohi, joten esimerkiksi Stratocaster- tai Schecter-tyylisen lavan voi
+piirtää. Kunnes kahvaa siirretään, reunat
+seuraavat sovitettua ääriviivaa (myös lavatyylin vaihtuessa), kun virittimien
 reiät pysyvät lavatyylin mukaisilla paikoillaan. Jokaisen reiän keskipisteen
 on jäätävä vähintään `tuner_edge_offset` (15 mm, bassolla 20 mm) reunasta;
 editori näyttää suoja-alueet ja build hylkää liian lähelle tulevan reunan.

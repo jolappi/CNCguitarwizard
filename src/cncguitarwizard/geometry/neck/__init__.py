@@ -10,6 +10,7 @@ from .headstock import (
     TunerHole,
     TunerLayout,
 )
+from .locking_nut import LOCKING_NUT_SPECS, LockingNut, LockingNutSpec
 from .outline import NeckOutline
 from .side_profile import (
     NeckBackCrossSection,
@@ -24,6 +25,9 @@ __all__ = [
     "HeadstockAngleReference",
     "HeadstockPlan",
     "HeadstockSolid",
+    "LOCKING_NUT_SPECS",
+    "LockingNut",
+    "LockingNutSpec",
     "NeckOutline",
     "NeckBackCrossSection",
     "NeckBackSurface",

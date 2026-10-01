@@ -26,6 +26,7 @@ from .geometry.body import (
     BRIDGE_MAX_STRINGS,
     bridge_spec_from_dict,
 )
+from .geometry.neck import LOCKING_NUT_SPECS
 from .geometry.primitives import Point2D
 from .presets import Prototype001Parameters
 from .presets.body_shapes import (
@@ -50,6 +51,12 @@ _CHOICE_LABELS: dict[str, dict[str, str]] = {
     "neck_blank": {
         "solid": "One plank as thick as the headstock needs",
         "laminated": "Neck plank first, headstock block glued on after",
+    },
+    "locking_nut": {
+        "auto": "Auto (Floyd Rose Original R2 with a Floyd Rose bridge)",
+        "none": "Plain nut",
+        "r2": "Floyd Rose R2 locking nut (41.3 mm)",
+        "r3": "Floyd Rose R3 locking nut (42.85 mm)",
     },
     "body_switch": {
         "toggle": "3-way toggle (1/2 in hole, 12.7 mm)",
@@ -105,6 +112,7 @@ _BASIC_FIELDS: frozenset[str] = frozenset(
         "body_switch",
         "body_battery_box",
         "body_battery_count",
+        "locking_nut",
         "body_pickups_follow_fan",
         "body_bridge_follows_fan",
         "body_top_edge_radius",
@@ -157,12 +165,22 @@ _GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
             "bass_scale_length",
             "perpendicular_fret",
             "fret_count",
-            "nut_width",
             "fret",
             "inlay",
         ),
     ),
-    ("Neck", ("final_fret", "first_fret", "twelfth", "neck", "nut_", "truss")),
+    (
+        "Neck",
+        (
+            "final_fret",
+            "first_fret",
+            "twelfth",
+            "neck",
+            "nut_",
+            "locking_nut",
+            "truss",
+        ),
+    ),
     ("Heel", ("heel",)),
     ("Headstock and tuners", ("headstock", "tuner")),
     ("Body", ("body",)),
@@ -185,6 +203,8 @@ def parameter_schema() -> dict[str, Any]:
         each carry a ``kind`` field (the bridge), described by
         ``variants``: ``{kind: {"label", "fields"}}``. ``advanced`` is
         true for the rarely changed fields the form folds away.
+        ``locking_nut_widths`` maps each locking nut to its width, the
+        least ``nut_width`` it fits (the form widens the neck to it).
     """
     return {
         "instruments": {
@@ -195,6 +215,9 @@ def parameter_schema() -> dict[str, Any]:
             for instrument, overrides in INSTRUMENT_OVERRIDES.items()
         },
         "prototype": _group_fields(Prototype001Parameters),
+        "locking_nut_widths": {
+            kind: spec.width for kind, spec in LOCKING_NUT_SPECS.items()
+        },
         "machining": [
             {
                 "title": "Machining",

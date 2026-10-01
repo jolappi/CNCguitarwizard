@@ -1201,3 +1201,58 @@ def test_the_nut_seat_is_a_strip_along_the_nut_line() -> None:
     assert headstock.nut_lean == pytest.approx(parameters.fret_skew.at(0.0))
     for y in (-20.0, 0.0, 20.0):
         assert headstock.face_start_x(y) == pytest.approx(headstock.nut_lean * y - 5.0)
+
+
+@pytest.mark.parametrize(
+    "parameters",
+    [
+        Prototype001Parameters(),
+        replace(Prototype001Parameters(), locking_nut="r2"),
+    ],
+    ids=["plain", "locking_nut"],
+)
+def test_the_loft_top_edge_follows_the_headstock_outline_to_the_nut(
+    parameters: Prototype001Parameters,
+) -> None:
+    """Regression: over the nut's seat and transition the loft's top edge
+    was held to the nut's width, so the top beside it sank down the
+    rounded run-in in wedges either side of the seat."""
+    geometry = parameters.build()
+    headstock = geometry.headstock
+    source = FreeCADScriptExporter().render_prototype001(geometry)
+    reach = headstock.nut_seat_length + headstock.face_transition_length
+
+    rows = [
+        row for row in _neck_section_rows(source) if -reach - 8.0 <= row[0][0] < 0.0
+    ]
+    assert rows
+    for row in rows:
+        distance = -row[0][0]
+        assert row[0][1] == pytest.approx(headstock.plan.edge_y(distance, -1.0))
+        assert row[-1][1] == pytest.approx(headstock.plan.edge_y(distance, 1.0))
+
+
+def test_a_shaped_tip_is_lofted_past_it_and_cut_back() -> None:
+    from cncguitarwizard.cam import neck_plan_polygon
+
+    plain = Prototype001Parameters()
+    edges = plain.build().headstock.plan
+    bass = tuple((d, edges.half_width_at(d, "bass")) for d in (45.0, 100.0, 150.0))
+    treble = tuple((d, edges.half_width_at(d, "treble")) for d in (45.0, 100.0, 150.0))
+    geometry = replace(
+        plain,
+        headstock_bass_edge=bass,
+        headstock_treble_edge=treble,
+        headstock_tip_points=((15.0, 0.0),),
+    ).build()
+    source = FreeCADScriptExporter().render_prototype001(geometry)
+    rows = _neck_section_rows(source)
+
+    assert "headstock tip cut" in source
+    # The loft runs 1 mm past the point, the cut takes it back to it.
+    assert min(row[0][0] for row in rows) == pytest.approx(-166.0)
+    assert "headstock tip cut" not in FreeCADScriptExporter().render_prototype001(
+        plain.build()
+    )
+    # The neck's CAM outline follows the point too.
+    assert min(p.x for p in neck_plan_polygon(geometry)) == pytest.approx(-165.0)

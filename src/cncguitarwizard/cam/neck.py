@@ -229,7 +229,7 @@ def _headstock_block(
         start = 0.0
     start = min(0.0, math.floor(start))
     room = tool_diameter + 2.0
-    end = math.floor(-headstock.plan.length - room)
+    end = math.floor(-headstock.plan.reach - room)
     half = max(abs(point.y) for point in headstock.plan.boundary)
     width = math.ceil(2.0 * (half + room))
     return HeadstockBlock(start, end, width, max(plank, _round_up(needed - plank)))
@@ -263,6 +263,26 @@ def _nut_filler_note(truss: TrussRodChannel, shelf: float) -> tuple[str, ...]:
         "nut's seat, behind the fretboard) into it over the rod, flush with "
         "the seat, before gluing the nut, so the nut sits on wood over its "
         "whole width.",
+    )
+
+
+def _locking_nut_notes(geometry: Prototype001Geometry) -> tuple[str, ...]:
+    """Return how to fit a top-mounted locking nut, if the neck has one."""
+    nut = geometry.locking_nut
+    if nut is None:
+        return ()
+    seat = (
+        f"it stands on the fretboard, which runs on under it {nut.shelf_height:.1f} "
+        "mm thick (cut in the fretboard's outline program)"
+        if nut.on_fretboard
+        else f"it stands on the neck's seat on a {nut.shim:.2f} mm shim"
+    )
+    return (
+        f"{nut.spec.name} locking nut, front face on the nut line: {seat}. "
+        f"Drill its two screws' {nut.screw_diameter:g} mm pilot holes by hand "
+        f"through the nut, {nut.screw_depth:g} mm into the neck, "
+        f"{nut.spec.screw_spacing:g} mm apart and {nut.spec.depth / 2.0:g} mm "
+        "behind the nut line.",
     )
 
 
@@ -352,7 +372,7 @@ def plan_neck_machining(
     angle = math.radians(headstock.angle.angle_degrees)
     tangent = math.tan(angle)
     back_plane_offset = headstock.thickness / math.cos(angle)
-    tip_x = -headstock.plan.length
+    tip_x = -headstock.plan.reach
     headstock_lowest = headstock.face_z(tip_x) - back_plane_offset
     neck_lowest = min(
         point.z for row in geometry.neck_surface.mesh.rows for point in row
@@ -441,10 +461,11 @@ def plan_neck_machining(
     )
 
     # ---- top face: truss rod, headstock face, tuner marks -----------------
-    shelf = geometry.neck_surface.nut_shelf_length
+    shelf = headstock.nut_seat_length + headstock.nut_reach
 
-    # The nut's flat seat runs nut_shelf_length behind the nut line, level
-    # with the glue face; the face starts right behind it.
+    # The nut's flat seat runs nut_seat_length behind the nut line (a
+    # locking nut's is longer), level with the glue face; the face starts
+    # right behind it.
     def face_depth(model_x: float, model_y: float = 0.0) -> float:
         return headstock.top_z(model_x, model_y)
 
@@ -550,6 +571,7 @@ def plan_neck_machining(
             else ()
         ),
         *_nut_filler_note(truss, shelf),
+        *_locking_nut_notes(geometry),
     )
     if laminated:
         top = Setup(

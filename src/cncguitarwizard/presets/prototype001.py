@@ -16,6 +16,7 @@ from ..geometry.body import (
     CoverPlate,
     DrilledHole,
     EdgeProfile,
+    FloydRoseSpec,
     HardtailSpec,
     JackHole,
     KahlerBridgeSpec,
@@ -36,10 +37,12 @@ from ..geometry.fretboard import (
     InlayStyle,
 )
 from ..geometry.neck import (
+    LOCKING_NUT_SPECS,
     Centerline,
     HeadstockAngleReference,
     HeadstockPlan,
     HeadstockSolid,
+    LockingNut,
     NeckBackSurface,
     NeckOutline,
     Side,
@@ -193,6 +196,8 @@ class Prototype001Geometry:
     heel_block_start_offset: float
     covers: tuple[CoverPlate, ...] = ()
     """Cavity covers and control plates, each cut from sheet."""
+    locking_nut: LockingNut | None = None
+    """The top-mounted locking nut, or ``None`` for a plain nut."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -601,10 +606,14 @@ class Prototype001Parameters:
     # per side, each ending at the tip. The tuner holes still come from
     # headstock_style, and every hole must stay at least
     # tuner_edge_offset from the drawn edge. Empty edges fall back to
-    # the fitted outline.
-    headstock_outline: Literal["fitted", "drawn"] = "fitted"
+    # the fitted outline, so the default "drawn" with no edges drawn yet
+    # is the fitted outline (and the web app's headstock editor is open).
+    headstock_outline: Literal["fitted", "drawn"] = "drawn"
     headstock_bass_edge: tuple[tuple[float, float], ...] = ()
     headstock_treble_edge: tuple[tuple[float, float], ...] = ()
+    # Points shaping a drawn headstock's tip, (how far past the tip line,
+    # y), across the tip from -Y to +Y; empty, the tip is a straight cut.
+    headstock_tip_points: tuple[tuple[float, float], ...] = ()
     # headstock_angle tilts the face back from the nut (0 for a flat,
     # Fender-style headstock). headstock_face_drop sets the face that far
     # below the glue face at the nut; empty, a flat headstock is set down
@@ -635,6 +644,21 @@ class Prototype001Parameters:
     heel_nose_radius: float = 0.0
     heel_block_overlap: float = 0.0
     nut_shelf_length: float = 5.0
+    # A Floyd Rose locking nut screwed down from the top (see
+    # geometry.neck.locking_nut): "auto" takes the Floyd Rose Original R2
+    # with a Floyd Rose bridge and a plain nut otherwise; "none" is always
+    # a plain nut; "r2" (41.3 mm) or "r3" (42.85 mm, needs nut_width at
+    # least that) always a locking nut. Its seat on the neck runs the
+    # nut's depth + 1 mm behind the nut line before the headstock face
+    # starts. Its shelf sits from the frets' tops (fret_height above the
+    # fretboard): the R2's on the fretboard, which runs on under the nut,
+    # the R3's on the neck's seat on a shim. The two mounting screws get
+    # locking_nut_screw_diameter pilot holes locking_nut_screw_depth below
+    # the glue face, drilled by hand through the nut.
+    locking_nut: Literal["auto", "none", "r2", "r3"] = "auto"
+    fret_height: float = 1.2
+    locking_nut_screw_diameter: float = 2.5
+    locking_nut_screw_depth: float = 8.0
     # A real volute is compact and sits right behind the nut, not a long
     # gradual ramp that keeps the neck close to the raw headstock thickness
     # nearly out to fret 1 (which the previous 30 mm length did: fret 1
@@ -995,6 +1019,7 @@ class Prototype001Parameters:
             bass_sign=layout.bass_sign,
             bass_edge=self.headstock_bass_edge if drawn else None,
             treble_edge=self.headstock_treble_edge if drawn else None,
+            tip_points=self.headstock_tip_points if drawn else (),
         )
         tuners = TunerLayout(
             plan,
@@ -1283,7 +1308,7 @@ class Prototype001Parameters:
     def truss_rod(self, outline: NeckOutline) -> TrussRodChannel:
         """Return the truss-rod channel with its adjusting nut's pocket."""
         heel = self.truss_rod_adjustment == "heel"
-        shelf = self.nut_shelf_length + self.nut_shelf_reach()
+        shelf = self.nut_seat_length() + self.nut_shelf_reach()
         access = self.truss_rod_access_length
         if access is None:
             access = self.truss_rod_nut_length + 2.0
@@ -1347,7 +1372,7 @@ class Prototype001Parameters:
                 the neck takes, or no stock length fits.
         """
         heel = self.truss_rod_adjustment == "heel"
-        shelf = self.nut_shelf_length + self.nut_shelf_reach()
+        shelf = self.nut_seat_length() + self.nut_shelf_reach()
         start = self.truss_rod_start if heel else -shelf
         heel_end = outline.last_fret_position + outline.heel_length
         end = heel_end - (self.truss_rod_sleeve_length if heel else 12.0)
@@ -1432,6 +1457,35 @@ class Prototype001Parameters:
                 for index, (x, y) in enumerate(screws, start=1)
             ),
         )
+
+    def locking_nut_placed(self) -> LockingNut | None:
+        """Return the locking nut on this neck, or ``None`` for a plain nut.
+
+        Raises:
+            NeckGeometryError: When the nut does not fit the neck (see
+                ``LockingNut``).
+        """
+        kind = self.locking_nut
+        if kind == "auto":
+            kind = "r2" if isinstance(self.body_bridge, FloydRoseSpec) else "none"
+        if kind == "none":
+            return None
+        if not math.isfinite(self.fret_height) or self.fret_height < 0.0:
+            raise NeckGeometryError("fret_height must be finite and non-negative.")
+        return LockingNut.placed(
+            LOCKING_NUT_SPECS[kind],
+            lean=self.fret_skew.at(0.0),
+            neck_width=self.nut_width,
+            fretboard_thickness=self.fretboard_thickness,
+            fret_height=self.fret_height,
+            screw_diameter=self.locking_nut_screw_diameter,
+            screw_depth=self.locking_nut_screw_depth,
+        )
+
+    def nut_seat_length(self) -> float:
+        """Return the flat seat behind the nut line: longer for a locking nut."""
+        nut = self.locking_nut_placed()
+        return self.nut_shelf_length if nut is None else nut.seat_length
 
     def nut_shelf_reach(self) -> float:
         """Return how far a leaning nut end reaches back into the nut shelf.
@@ -2090,12 +2144,19 @@ class Prototype001Parameters:
             self.nut_width
             + (self.final_fret_width - self.nut_width) / final_fret_fraction
         )
+        locking_nut = self.locking_nut_placed()
         fretboard = Fretboard(
             self.centre_scale,
             self.nut_width,
             width_at_scale_end,
             Centerline(self.centre_scale),
-            nut_corner_radius=self.fretboard_nut_corner_radius,
+            # A fretboard running on under a locking nut has no nut-end
+            # corners to round.
+            nut_corner_radius=(
+                0.0
+                if locking_nut is not None and locking_nut.on_fretboard
+                else self.fretboard_nut_corner_radius
+            ),
             skew=self.fret_skew,
         )
         fret_layout = FretLayout(fretboard, self.fret_count, self.fret_skew)
@@ -2130,7 +2191,7 @@ class Prototype001Parameters:
             self.headstock_thickness,
             self.face_drop,
             self.fret_skew.at(0.0),
-            self.nut_shelf_length,
+            self.nut_seat_length(),
             self.headstock_face_transition,
         )
         body_parts = self._body_layout(outline)
@@ -2193,6 +2254,7 @@ class Prototype001Parameters:
                     else ()
                 ),
             ),
+            locking_nut,
         )
 
 
@@ -2290,11 +2352,12 @@ def distance_to_headstock_edge(plan: HeadstockPlan, point: Point2D) -> float:
 
     Measured as the fitted outline is laid out: across the neck to each
     side's edge at the point's own distance from the nut, and along the
-    neck to the tip; the smallest of the three. The nut is not an edge.
+    neck to the tip (straight to a shaped tip's outline); the smallest
+    of the three. The nut is not an edge.
     """
     distance = -point.x
     return min(
         plan.edge_y(distance, 1.0) - point.y,
         point.y - plan.edge_y(distance, -1.0),
-        plan.length - distance,
+        plan.tip_clearance(point),
     )

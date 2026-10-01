@@ -8,7 +8,7 @@ from itertools import combinations
 from typing import Literal
 
 from ..exceptions import GeometryException, HeadstockGeometryError
-from ..primitives import Line2D, MonotoneCurve, Point2D, Point3D
+from ..primitives import Line2D, Point2D, Point3D, SmoothCurve
 
 Side = Literal["bass", "treble"]
 """Which physical side of the centerline a feature is on.
@@ -50,13 +50,23 @@ class HeadstockPlan:
         bass_edge: A drawn bass-side edge: ``(distance from the nut,
             half-width)`` points ending at the tip (``distance ==
             length``), or ``None`` for the tapered shape above. The edge
-            is a ``MonotoneCurve`` from the nut's half-width through them.
+            is a ``SmoothCurve`` from the nut's half-width through them,
+            rounding through its points (it may swing past them).
         treble_edge: The same for the treble side; give both or neither.
+        tip_points: Points shaping a drawn headstock's tip between the two
+            edges' tip corners: ``(how far past the tip line, y)``, with
+            ``y`` strictly between the corners' and increasing. The tip is
+            then a rounded curve (Catmull–Rom) from corner to corner
+            through them, leaving each corner along its edge, so a round
+            Stratocaster-like end meets its sides without a corner; empty,
+            it is the straight cut ``tip_line``. A negative distance
+            notches the tip.
 
     Raises:
         HeadstockGeometryError: If dimensions cannot form the tapered
-            outline, or a drawn edge does not end at the tip, does not
-            run away from the nut, or crosses the other edge.
+            outline, a drawn edge does not end at the tip, does not run
+            away from the nut, or crosses the other edge, or a tip point
+            lies outside the tip or reaches back to the nut.
     """
 
     length: float
@@ -70,6 +80,7 @@ class HeadstockPlan:
     bass_sign: float = 1.0
     bass_edge: tuple[tuple[float, float], ...] | None = None
     treble_edge: tuple[tuple[float, float], ...] | None = None
+    tip_points: tuple[tuple[float, float], ...] = ()
     nut_line: Line2D = field(init=False)
     shoulder_line: Line2D = field(init=False)
     tip_line: Line2D = field(init=False)
@@ -122,12 +133,14 @@ class HeadstockPlan:
             Line2D(shoulder_left, shoulder_right),
         )
         object.__setattr__(self, "tip_line", Line2D(tip_left, tip_right))
+        tip = self.tip_outline()[1:-1]
         object.__setattr__(
             self,
             "boundary",
             (
                 nut_left,
                 *right_side,
+                *tip,
                 *reversed(left_side[1:]),
             ),
         )
@@ -164,6 +177,7 @@ class HeadstockPlan:
         if self.bass_sign not in (1.0, -1.0):
             raise HeadstockGeometryError("Headstock bass_sign must be +1 or -1.")
         self._validate_drawn()
+        self._validate_tip()
         for side in ("bass", "treble"):
             if self._shoulder_half(side) < self.nut_width / 2.0:
                 raise HeadstockGeometryError(
@@ -176,10 +190,10 @@ class HeadstockPlan:
         """Return whether the edges were drawn rather than tapered."""
         return self.bass_edge is not None
 
-    def _edge_curve(self, side: Side) -> MonotoneCurve:
+    def _edge_curve(self, side: Side) -> SmoothCurve:
         edge = self.bass_edge if side == "bass" else self.treble_edge
         assert edge is not None
-        return MonotoneCurve(((0.0, self.nut_width / 2.0), *edge))
+        return SmoothCurve(((0.0, self.nut_width / 2.0), *edge))
 
     def _drawn_distances(self) -> tuple[float, ...]:
         """Sample the drawn edges every 2.5 mm and at every control point."""
@@ -203,7 +217,7 @@ class HeadstockPlan:
                     f"{self.length:g} mm from the nut."
                 )
             try:
-                MonotoneCurve(((0.0, self.nut_width / 2.0), *edge))
+                SmoothCurve(((0.0, self.nut_width / 2.0), *edge))
             except GeometryException as error:
                 raise HeadstockGeometryError(
                     f"The drawn {side} edge must run from the nut to the tip "
@@ -214,6 +228,118 @@ class HeadstockPlan:
                 raise HeadstockGeometryError(
                     f"The drawn edges meet or cross {distance:.0f} mm from the nut."
                 )
+
+    def _validate_tip(self) -> None:
+        if not self.tip_points:
+            return
+        if not self.is_drawn:
+            raise HeadstockGeometryError("Only a drawn headstock's tip takes points.")
+        low = -self.half_width_at_y(self.length, -1.0)
+        high = self.half_width_at_y(self.length, 1.0)
+        previous = low
+        for past, y in self.tip_points:
+            if not (math.isfinite(past) and math.isfinite(y)):
+                raise HeadstockGeometryError("Headstock tip points must be finite.")
+            if not previous < y < high:
+                raise HeadstockGeometryError(
+                    "Headstock tip points must run across the tip, between its "
+                    f"corners ({low:.1f} to {high:.1f} mm), in order."
+                )
+            if self.length + past <= self.shoulder_distance:
+                raise HeadstockGeometryError(
+                    "A headstock tip point must stay past the shoulder."
+                )
+            previous = y
+
+    TIP_SAMPLES_PER_SEGMENT = 16
+    """Points sampled per span of a shaped tip."""
+
+    def tip_outline(self) -> tuple[Point2D, ...]:
+        """Return the tip from its -Y corner to its +Y corner.
+
+        A straight cut without tip points; otherwise a Catmull–Rom curve
+        through them, leaving and reaching each corner along that side's
+        edge (its tangent as long as the span's chord).
+        """
+        low = Point2D(-self.length, self.edge_y(self.length, -1.0))
+        high = Point2D(-self.length, self.edge_y(self.length, 1.0))
+        if not self.tip_points:
+            return (low, high)
+        points = [
+            low,
+            *(Point2D(-(self.length + past), y) for past, y in self.tip_points),
+            high,
+        ]
+
+        def edge_direction(y_sign: float) -> tuple[float, float]:
+            # Along the edge away from the nut, per mm of distance.
+            step = min(0.5, self.length / 10.0)
+            slope = (
+                self.edge_y(self.length, y_sign)
+                - self.edge_y(self.length - step, y_sign)
+            ) / step
+            norm = math.hypot(1.0, slope)
+            return (-1.0 / norm, slope / norm)
+
+        tangents: list[tuple[float, float]] = []
+        for index, point in enumerate(points):
+            if index == 0:
+                chord = math.hypot(points[1].x - point.x, points[1].y - point.y)
+                dx, dy = edge_direction(-1.0)
+                tangents.append((dx * chord, dy * chord))
+            elif index == len(points) - 1:
+                chord = math.hypot(points[-2].x - point.x, points[-2].y - point.y)
+                dx, dy = edge_direction(1.0)
+                # Arriving: the edge's own direction, back toward the nut.
+                tangents.append((-dx * chord, -dy * chord))
+            else:
+                before, after = points[index - 1], points[index + 1]
+                tangents.append(
+                    ((after.x - before.x) / 2.0, (after.y - before.y) / 2.0)
+                )
+        samples = [points[0]]
+        count = self.TIP_SAMPLES_PER_SEGMENT
+        for index in range(len(points) - 1):
+            p0, p1 = points[index], points[index + 1]
+            (m0x, m0y), (m1x, m1y) = tangents[index], tangents[index + 1]
+            for step in range(1, count + 1):
+                t = step / count
+                t2, t3 = t * t, t * t * t
+                h00, h10 = 2 * t3 - 3 * t2 + 1, t3 - 2 * t2 + t
+                h01, h11 = -2 * t3 + 3 * t2, t3 - t2
+                samples.append(
+                    Point2D(
+                        h00 * p0.x + h10 * m0x + h01 * p1.x + h11 * m1x,
+                        h00 * p0.y + h10 * m0y + h01 * p1.y + h11 * m1y,
+                    )
+                )
+        return tuple(samples)
+
+    @property
+    def reach(self) -> float:
+        """Return how far the headstock reaches from the nut, tip included."""
+        return max(self.length, *(-point.x for point in self.tip_outline()))
+
+    def tip_clearance(self, point: Point2D) -> float:
+        """Return how far ``point`` lies from the tip, along its outline."""
+        outline = self.tip_outline()
+        return min(
+            _segment_distance(point, a, b)
+            for a, b in zip(outline, outline[1:], strict=False)
+        )
+
+    def envelope_y(self, distance: float, y_sign: float) -> float:
+        """Return the +Y (``1.0``) or -Y edge's Y, the shaped tip included.
+
+        Up to the tip line it is ``edge_y``; past it, the outer of the
+        tip corner's and the tip's own furthest reach on that side, so a
+        solid built to this envelope covers a tip that bulges out.
+        """
+        edge = self.edge_y(distance, y_sign)
+        if distance <= self.length or not self.tip_points:
+            return edge
+        reach = max(y_sign * point.y for point in self.tip_outline())
+        return y_sign * max(y_sign * edge, reach)
 
     def _shoulder_half(self, side: Side) -> float:
         sign = 1.0 if side == "bass" else -1.0
@@ -267,6 +393,17 @@ class HeadstockPlan:
     def _smoothstep(fraction: float) -> float:
         """Return cubic interpolation with zero slope at both ends."""
         return fraction * fraction * (3.0 - 2.0 * fraction)
+
+
+def _segment_distance(point: Point2D, a: Point2D, b: Point2D) -> float:
+    """Return the distance from ``point`` to the segment ``a``–``b``."""
+    dx, dy = b.x - a.x, b.y - a.y
+    length_squared = dx * dx + dy * dy
+    if length_squared == 0.0:
+        return math.hypot(point.x - a.x, point.y - a.y)
+    t = ((point.x - a.x) * dx + (point.y - a.y) * dy) / length_squared
+    t = max(0.0, min(1.0, t))
+    return math.hypot(point.x - (a.x + t * dx), point.y - (a.y + t * dy))
 
 
 @dataclass(frozen=True, slots=True)
@@ -603,7 +740,7 @@ class TunerLayout:
             distance = -hole.center.x
             if (
                 distance < required_clearance
-                or distance > self.headstock.length - required_clearance
+                or self.headstock.tip_clearance(hole.center) < required_clearance
             ):
                 raise HeadstockGeometryError(
                     f"Tuner {hole.side} {hole.index} violates nut or tip clearance."

@@ -4,6 +4,29 @@
 
 ### Added
 
+- A drawn headstock's tip can be shaped: one click on the tip in the
+  headstock editor adds a handle (`headstock_tip_points`, how far past
+  the tip line and Y), dragged out for a pointed or rounded tip or in for
+  a notch. Edges and tip are rounded curves through their handles (the
+  edges a `SmoothCurve` that may swing past them, the tip a Catmull–Rom
+  curve leaving each corner along its edge), so a Stratocaster or
+  Schecter style headstock can be drawn; the FreeCAD model,
+  the neck's outline program and blank, the plan view and the tuner
+  holes' tip clearance all follow it (`HeadstockPlan.tip_points`,
+  `reach`, `tip_outline`, `tip_clearance`). A drawn headstock's edges
+  were monotone curves that never bulged past their handles: saved
+  drawn headstocks now round a little more through theirs.
+- A top-mounted Floyd Rose locking nut (`locking_nut`): "auto" (the
+  default) takes the Floyd Rose Original R2 with a Floyd Rose bridge,
+  "none", "r2" or "r3" choose outright. Its seat runs 16 mm behind the nut
+  line (the headstock face and a headstock-adjusted truss rod's pocket
+  start behind it), its shelf sits from the frets' tops (`fret_height`):
+  the R2's on the fretboard, which runs on under the nut and is milled
+  down to it in `Fretboard_outline.nc`, the R3's on the neck on a shim.
+  The FreeCAD model drills its two screws' pilot holes; `Neck_top.nc`'s
+  notes say how to fit it (`geometry.neck.locking_nut`). In the web form
+  `nut_width` now sits in the Neck group beside it, and choosing a nut
+  wider than the neck (the R3) widens `nut_width` to it (43 mm).
 - The control layout can be turned: the body shape's
   `control_angle_degrees` turns the cavity, its cover and its pots (or the
   Tele plate with its screws and blade slot) about the cavity's centre. In
@@ -45,6 +68,12 @@
 
 ### Changed
 
+- The headstock is drawn by default (`headstock_outline` "drawn"), so the
+  web app's headstock editor is open from the start. Until a handle is
+  moved the edges stay empty and follow the fitted outline (a changed
+  style redraws them), so the form starts unchanged; *Start over* goes
+  back to that. One click on an edge now adds a handle (it took a
+  double-click).
 - The bass's neck bolts are 56 mm apart along the neck with 5 mm to the
   pocket's end (`body_neck_bolt_spacing_x`, `body_neck_bolt_end_wall` in
   its defaults): the pair at the neck pocket's mouth moves 26 mm out,
@@ -76,6 +105,11 @@
 
 ### Fixed
 
+- The FreeCAD model's headstock top sank in wedges either side of the
+  nut's seat and the transition behind it: the loft held its top edge to
+  the nut's width there, so the top beside it fell away down the rounded
+  edge. The edge now keeps to the headstock's outline all the way to the
+  nut (plain to see behind a locking nut's 16 mm seat, slight before).
 - The body editor's *Start from* list always showed the Stratocaster
   style template; it now shows the template the drawing is (Design by
   Jone on a guitar, Jazz Bass style on a bass), or "Your own drawing"

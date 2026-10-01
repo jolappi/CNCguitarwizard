@@ -97,6 +97,7 @@
   .body-editor .movable:hover { filter: brightness(0.9); }
   .body-editor .outline { fill: var(--wood); fill-opacity: 0.85; stroke: #6b4a1f; stroke-width: 1; }
   .body-editor .outline-hit { fill: none; stroke: transparent; stroke-width: 8; pointer-events: stroke; cursor: copy; }
+  #headstock-editor .outline-hit { stroke-width: 4; }
   .body-editor .outline-hit:hover { stroke: var(--accent); stroke-opacity: 0.25; }
   .actions { display: flex; gap: 8px; align-items: center; margin: 10px 0 14px; }
   button {
@@ -223,9 +224,11 @@
     <div id="headstock-editor" class="body-editor hidden">
       <h2>Headstock design <span id="headstock-editor-size" class="note"></span></h2>
       <p class="note">Drag the handles to shape the two edges; drag a tip handle to change the length.
-        Double-click an edge to add a handle there; Alt/Option-click or right-click a handle to remove
+        Click an edge to add a handle there, or the tip to shape it with one (drag it out for a point, in
+        for a notch); Alt/Option-click or right-click a handle to remove
         it. The tuner holes come from the headstock style and stay put; every hole must keep its
-        distance from the edge. The grid is 10 mm.</p>
+        distance from the edge. Until you move a handle the outline follows the fitted one (a changed
+        style redraws it); <em>Start over</em> goes back to it. The grid is 10 mm.</p>
       <div class="actions">
         <button id="headstock-editor-reset" class="secondary" type="button">Start over</button>
       </div>

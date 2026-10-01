@@ -1,7 +1,7 @@
 """Immutable two-dimensional geometry primitives."""
 
 from .line2d import Line2D
-from .monotone_curve import MonotoneCurve
+from .monotone_curve import MonotoneCurve, SmoothCurve
 from .nudge_inward import nudge_inward
 from .point2d import Point2D
 from .point3d import Point3D
@@ -14,6 +14,7 @@ from .vector2d import Vector2D
 __all__ = [
     "Line2D",
     "MonotoneCurve",
+    "SmoothCurve",
     "Point2D",
     "Point3D",
     "QuadFace",

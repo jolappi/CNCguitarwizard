@@ -231,10 +231,20 @@ function renderChoiceField(set, field) {
   }
   select.addEventListener("change", () => {
     select.classList.toggle("changed", JSON.stringify(select.value) !== select.dataset.default);
+    if (field.name === "locking_nut") fitNutWidth(select.value);
   });
   row.appendChild(label);
   row.appendChild(select);
   return row;
+}
+
+// A locking nut needs a neck at least as wide as itself at the nut: on
+// choosing one, widen nut_width to it (to the next half millimetre).
+function fitNutWidth(kind) {
+  const width = schema.locking_nut_widths?.[kind];
+  const input = form.querySelector('[data-set="prototype"][data-name="nut_width"]');
+  if (!width || !input || readValue(input) >= width) return;
+  setControlValue(input, Math.ceil(width * 2) / 2);
 }
 
 const variantFields = {};
@@ -1340,24 +1350,20 @@ document.getElementById("body-editor-reset").addEventListener("click", () => bod
 // ---------------------------------------------------------------------------
 // Headstock editor: drag the two edges of a "drawn" headstock over the
 // fixed tuner holes. Each edge is [distance from the nut, half-width]
-// points ending at the tip, joined by the same monotone cubic curve Python
-// uses (MonotoneCurve), starting flat from the nut's half-width.
+// points ending at the tip, joined by the same rounded curve Python uses
+// (SmoothCurve), starting flat from the nut's half-width; the tip may be
+// shaped with points of its own.
 
-function monotoneCurve(points) {
+// A rounded curve y(x) through points, as Python's SmoothCurve: each
+// interior point's slope is its neighbours' chord, the first zero, the
+// last its secant; it may swing past the points.
+function smoothCurve(points) {
   const n = points.length;
-  const widths = [], secants = [];
-  for (let i = 0; i < n - 1; i++) {
-    widths.push(points[i + 1][0] - points[i][0]);
-    secants.push((points[i + 1][1] - points[i][1]) / widths[i]);
-  }
   const slopes = [0];
   for (let i = 1; i < n - 1; i++) {
-    const before = secants[i - 1], after = secants[i];
-    if (before * after <= 0) { slopes.push(0); continue; }
-    const w1 = 2 * widths[i] + widths[i - 1], w2 = widths[i] + 2 * widths[i - 1];
-    slopes.push((w1 + w2) / (w1 / before + w2 / after));
+    slopes.push((points[i + 1][1] - points[i - 1][1]) / (points[i + 1][0] - points[i - 1][0]));
   }
-  slopes.push(secants[n - 2]);
+  slopes.push((points[n - 1][1] - points[n - 2][1]) / (points[n - 1][0] - points[n - 2][0]));
   return (x) => {
     if (x <= points[0][0]) return points[0][1];
     if (x >= points[n - 1][0]) return points[n - 1][1];
@@ -1376,14 +1382,18 @@ const headstockEditor = {
   status: document.getElementById("headstock-editor-status"),
   size: document.getElementById("headstock-editor-size"),
   edges: { bass: [], treble: [] },
+  // Points shaping the tip: [how far past the tip line, y], -Y to +Y.
+  tip: [],
   layout: null,
   paths: {},
+  hits: {},
   refreshTimer: null,
 
   inputs() {
     return {
       bass: form.querySelector("[data-set='prototype'][data-name='headstock_bass_edge']"),
       treble: form.querySelector("[data-set='prototype'][data-name='headstock_treble_edge']"),
+      tip: form.querySelector("[data-set='prototype'][data-name='headstock_tip_points']"),
       outline: form.querySelector("[data-set='prototype'][data-name='headstock_outline']"),
     };
   },
@@ -1397,6 +1407,11 @@ const headstockEditor = {
       this.edges = { bass: JSON.parse(bass.value), treble: JSON.parse(treble.value) };
     } catch (error) {
       this.edges = { bass: [], treble: [] };
+    }
+    try {
+      this.tip = JSON.parse(this.inputs().tip.value);
+    } catch (error) {
+      this.tip = [];
     }
     this.refresh();
   },
@@ -1420,11 +1435,23 @@ const headstockEditor = {
       return;
     }
     this.layout = layout;
-    if (!this.edges.bass.length || !this.edges.treble.length) {
+    // Until a handle is moved the edge fields stay empty and the drawing
+    // follows the fitted outline (a changed style or length redraws it);
+    // the first edit writes the edges.
+    if (this.untouched()) {
       this.edges = structuredClone(layout.start_edges);
-      this.commit();
+      this.tip = [];
     }
     this.draw();
+  },
+
+  untouched() {
+    const { bass, treble } = this.inputs();
+    try {
+      return !JSON.parse(bass.value).length || !JSON.parse(treble.value).length;
+    } catch (error) {
+      return true;
+    }
   },
 
   scheduleRefresh() {
@@ -1446,7 +1473,83 @@ const headstockEditor = {
   },
 
   curve(side) {
-    return monotoneCurve([[0, this.layout.nut_half_width], ...this.edges[side]]);
+    return smoothCurve([[0, this.layout.nut_half_width], ...this.edges[side]]);
+  },
+
+  // The tip corners' Y, low (-Y) and high (+Y).
+  tipCorners() {
+    const ys = ["bass", "treble"].map((side) => this.sign(side) * this.edges[side][this.edges[side].length - 1][1]);
+    return [Math.min(...ys), Math.max(...ys)];
+  },
+
+  // Model Y of the +Y (1) or -Y (-1) edge at a distance from the nut.
+  edgeY(distance, ySign) {
+    const side = ySign * this.layout.bass_sign > 0 ? "bass" : "treble";
+    return ySign * this.curve(side)(distance);
+  },
+
+  // The tip as model points from its -Y corner to its +Y corner, as
+  // Python's HeadstockPlan.tip_outline: straight without tip points,
+  // else a Catmull-Rom curve through them leaving each corner along its
+  // edge.
+  tipOutline() {
+    const length = this.length();
+    const low = [-length, this.edgeY(length, -1)], high = [-length, this.edgeY(length, 1)];
+    if (!this.tip.length) return [low, high];
+    const points = [low, ...this.tip.map(([past, y]) => [-(length + past), y]), high];
+    const step = Math.min(0.5, length / 10);
+    const direction = (ySign) => {
+      const slope = (this.edgeY(length, ySign) - this.edgeY(length - step, ySign)) / step;
+      const norm = Math.hypot(1, slope);
+      return [-1 / norm, slope / norm];
+    };
+    const n = points.length;
+    const tangents = points.map((point, i) => {
+      if (i === 0) {
+        const chord = Math.hypot(points[1][0] - point[0], points[1][1] - point[1]);
+        const [dx, dy] = direction(-1);
+        return [dx * chord, dy * chord];
+      }
+      if (i === n - 1) {
+        const chord = Math.hypot(points[n - 2][0] - point[0], points[n - 2][1] - point[1]);
+        const [dx, dy] = direction(1);
+        return [-dx * chord, -dy * chord];
+      }
+      return [(points[i + 1][0] - points[i - 1][0]) / 2, (points[i + 1][1] - points[i - 1][1]) / 2];
+    });
+    const samples = [points[0]];
+    for (let i = 0; i < n - 1; i++) {
+      const [p0, p1, m0, m1] = [points[i], points[i + 1], tangents[i], tangents[i + 1]];
+      for (let k = 1; k <= 16; k++) {
+        const t = k / 16, t2 = t * t, t3 = t2 * t;
+        const h00 = 2 * t3 - 3 * t2 + 1, h10 = t3 - 2 * t2 + t, h01 = -2 * t3 + 3 * t2, h11 = t3 - t2;
+        samples.push([0, 1].map((c) => h00 * p0[c] + h10 * m0[c] + h01 * p1[c] + h11 * m1[c]));
+      }
+    }
+    return samples;
+  },
+
+  // The tip from the bass corner to the treble corner, for the outline.
+  tipSamples() {
+    const tip = this.tipOutline();
+    return this.sign("bass") < 0 ? tip : [...tip].reverse();
+  },
+
+  // How far a point lies from the tip's outline (as Python measures it).
+  tipClearance(x, y) {
+    const tip = this.tipOutline();
+    let best = Infinity;
+    for (let i = 0; i + 1 < tip.length; i++) {
+      const [ax, ay] = tip[i], [bx, by] = tip[i + 1];
+      const dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy;
+      const t = l2 ? Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / l2)) : 0;
+      best = Math.min(best, Math.hypot(x - (ax + t * dx), y - (ay + t * dy)));
+    }
+    return best;
+  },
+
+  reach() {
+    return Math.max(this.length(), ...this.tipOutline().map(([x]) => -x));
   },
 
   // The outline as model points: one side nut to tip, the other back.
@@ -1466,7 +1569,8 @@ const headstockEditor = {
     const layout = this.layout;
     this.svg.innerHTML = "";
     const bass = this.samples("bass"), treble = this.samples("treble");
-    const all = [...bass, ...treble, ...layout.holes.map((h) => [h.x, h.y])];
+    const tip = this.tipSamples();
+    const all = [...bass, ...treble, ...tip, ...layout.holes.map((h) => [h.x, h.y])];
     const xs = all.map((p) => p[0]), ys = all.map((p) => p[1]);
     const margin = 25;
     const minX = Math.min(...xs) - margin, maxX = 70;
@@ -1480,21 +1584,33 @@ const headstockEditor = {
     const half = layout.nut_half_width;
     this.element("rect", { x: 0, y: -half, width: 70, height: 2 * half, fill: "#3b2a1a", "fill-opacity": 0.85 });
     this.element("path", {
-      d: this.pathData([...bass, ...[...treble].reverse()]) + " Z",
+      d: this.pathData([...bass, ...tip.slice(1, -1), ...[...treble].reverse()]) + " Z",
       fill: "#f1e4c8", stroke: "none",
     });
     for (const side of ["bass", "treble"]) {
-      const path = this.element("path", {
-        d: this.pathData(side === "bass" ? bass : treble),
-        fill: "none", stroke: "#6b4a1f", "stroke-width": 0.8, "stroke-linecap": "round", cursor: "copy",
+      const points = side === "bass" ? bass : treble;
+      this.paths[side] = this.element("path", {
+        d: this.pathData(points),
+        fill: "none", stroke: "#6b4a1f", "stroke-width": 0.8, "stroke-linecap": "round",
       });
-      path.addEventListener("dblclick", (event) => this.addPoint(event, side));
-      this.paths[side] = path;
+      // A wide, invisible stroke over the edge: one click adds a handle.
+      const hit = this.element("path", { class: "outline-hit", d: this.pathData(points), "stroke-width": 4 });
+      hit.addEventListener("click", (event) => {
+        if (event.detail <= 1) this.addPoint(event, side);
+      });
+      this.element("title", {}, hit).textContent = "Click the edge to add a handle";
+      this.hits = { ...this.hits, [side]: hit };
     }
     this.tipLine = this.element("path", {
-      d: this.pathData([bass[bass.length - 1], treble[treble.length - 1]]),
-      stroke: "#6b4a1f", "stroke-width": 0.8,
+      d: this.pathData(tip), fill: "none",
+      stroke: "#6b4a1f", "stroke-width": 0.8, "stroke-linejoin": "round",
     });
+    // One click on the tip adds a point that shapes it.
+    this.tipHit = this.element("path", { class: "outline-hit", d: this.pathData(tip), "stroke-width": 4 });
+    this.tipHit.addEventListener("click", (event) => {
+      if (event.detail <= 1) this.addTipPoint(event);
+    });
+    this.element("title", {}, this.tipHit).textContent = "Click the tip to add a handle";
     for (const hole of layout.holes) {
       this.element("circle", { cx: hole.x, cy: -hole.y, r: hole.r, fill: "#fff", stroke: "#222", "stroke-width": 0.4, "pointer-events": "none" });
       this.element("circle", { cx: hole.x, cy: -hole.y, r: layout.min_edge_distance, fill: "none", stroke: "#8a4b1e", "stroke-width": 0.25, "stroke-dasharray": "1.5,1.5", "pointer-events": "none" });
@@ -1507,6 +1623,11 @@ const headstockEditor = {
         handle.addEventListener("contextmenu", (event) => { event.preventDefault(); this.removePoint(side, index); });
       });
     }
+    this.tip.forEach(([past, y], index) => {
+      const handle = this.element("circle", { class: "handle", cx: -(this.length() + past), cy: -y, r: 2.2 });
+      handle.addEventListener("pointerdown", (event) => this.startTipDrag(event, index, handle));
+      handle.addEventListener("contextmenu", (event) => { event.preventDefault(); this.removeTipPoint(index); });
+    });
     this.check();
   },
 
@@ -1546,7 +1667,11 @@ const headstockEditor = {
       const bass = this.samples("bass"), treble = this.samples("treble");
       this.paths.bass.setAttribute("d", this.pathData(bass));
       this.paths.treble.setAttribute("d", this.pathData(treble));
-      this.tipLine.setAttribute("d", this.pathData([bass[bass.length - 1], treble[treble.length - 1]]));
+      this.hits.bass.setAttribute("d", this.pathData(bass));
+      this.hits.treble.setAttribute("d", this.pathData(treble));
+      const tip = this.tipSamples();
+      this.tipLine.setAttribute("d", this.pathData(tip));
+      this.tipHit.setAttribute("d", this.pathData(tip));
       const [d, h] = this.edges[side][index];
       handle.setAttribute("cx", -d);
       handle.setAttribute("cy", -this.sign(side) * h);
@@ -1575,6 +1700,60 @@ const headstockEditor = {
     this.draw();
   },
 
+  // A tip point keeps between its neighbours across the tip.
+  placeTip(index, [x, y]) {
+    const [low, high] = this.tipCorners();
+    const below = index > 0 ? this.tip[index - 1][1] : low;
+    const above = index + 1 < this.tip.length ? this.tip[index + 1][1] : high;
+    const clampedY = Math.min(Math.max(y, below + 0.5), above - 0.5);
+    this.tip[index] = [Math.round((-x - this.length()) * 10) / 10, Math.round(clampedY * 10) / 10];
+  },
+
+  startTipDrag(event, index, handle) {
+    if (event.altKey) {
+      this.removeTipPoint(index);
+      return;
+    }
+    event.preventDefault();
+    handle.classList.add("dragging");
+    const move = (moveEvent) => {
+      this.placeTip(index, this.toModel(moveEvent));
+      const tip = this.tipSamples();
+      this.tipLine.setAttribute("d", this.pathData(tip));
+      this.tipHit.setAttribute("d", this.pathData(tip));
+      const [past, y] = this.tip[index];
+      handle.setAttribute("cx", -(this.length() + past));
+      handle.setAttribute("cy", -y);
+      this.check();
+    };
+    const end = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", end);
+      window.removeEventListener("pointercancel", end);
+      this.commit();
+      this.draw();
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", end);
+    window.addEventListener("pointercancel", end);
+  },
+
+  addTipPoint(event) {
+    const [x, y] = this.toModel(event);
+    const [low, high] = this.tipCorners();
+    if (y <= low + 0.5 || y >= high - 0.5 || this.tip.some(([, py]) => Math.abs(py - y) < 0.5)) return;
+    this.tip.push([Math.round((-x - this.length()) * 10) / 10, Math.round(y * 10) / 10]);
+    this.tip.sort((a, b) => a[1] - b[1]);
+    this.commit();
+    this.draw();
+  },
+
+  removeTipPoint(index) {
+    this.tip.splice(index, 1);
+    this.commit();
+    this.draw();
+  },
+
   removePoint(side, index) {
     if (index === this.edges[side].length - 1) {
       this.setStatus("The tip handle sets the length and cannot be removed.", "bad");
@@ -1585,17 +1764,24 @@ const headstockEditor = {
     this.draw();
   },
 
+  // Back to the fitted outline: the edge fields are emptied, so the
+  // drawing follows the fitted outline again until the next edit.
   reset() {
     if (!this.layout || !window.confirm("Replace the drawn headstock with the fitted outline?")) return;
+    const { bass, treble, tip } = this.inputs();
+    bodyEditor.setField(bass, []);
+    bodyEditor.setField(treble, []);
+    bodyEditor.setField(tip, []);
     this.edges = structuredClone(this.layout.start_edges);
-    this.commit();
+    this.tip = [];
     this.draw();
   },
 
   commit() {
-    const { bass, treble } = this.inputs();
+    const { bass, treble, tip } = this.inputs();
     bodyEditor.setField(bass, this.edges.bass);
     bodyEditor.setField(treble, this.edges.treble);
+    bodyEditor.setField(tip, this.tip);
   },
 
   // Every hole must keep min_edge_distance from the edges and the tip,
@@ -1614,12 +1800,15 @@ const headstockEditor = {
       const gap = Math.min(
         edgeY(distance, 1) - hole.y,
         hole.y - edgeY(distance, -1),
-        this.length() - distance,
+        this.tipClearance(hole.x, hole.y),
       );
       if (gap < limit - 0.5) close.push(`${hole.side} at ${distance.toFixed(0)} mm (${gap.toFixed(1)} mm)`);
     }
-    this.size.textContent = `— ${this.length().toFixed(0)} mm long`;
-    if (close.length) {
+    this.size.textContent = `— ${this.reach().toFixed(0)} mm long`;
+    const [low, high] = this.tipCorners();
+    if (this.tip.some(([, y]) => y <= low || y >= high)) {
+      this.setStatus("A tip handle lies outside the tip's corners: move it in or remove it.", "bad");
+    } else if (close.length) {
       this.setStatus(`Too close to the edge (keep ${limit} mm): ${close.join(", ")}.`, "bad");
     } else {
       this.setStatus(`Every tuner hole is at least ${limit} mm from the edge.`, "ok");
@@ -1635,10 +1824,10 @@ const headstockEditor = {
 document.getElementById("headstock-editor-reset").addEventListener("click", () => headstockEditor.reset());
 form.addEventListener("change", (event) => {
   if (event.target.dataset.name === "headstock_outline") headstockEditor.sync();
-  else if (!/^headstock_(bass|treble)_edge$/.test(event.target.dataset.name || "")) headstockEditor.scheduleRefresh();
+  else if (!/^headstock_(bass_edge|treble_edge|tip_points)$/.test(event.target.dataset.name || "")) headstockEditor.scheduleRefresh();
 });
 form.addEventListener("input", (event) => {
-  if (/^headstock_(bass|treble)_edge$/.test(event.target.dataset.name || "")) return;
+  if (/^headstock_(treble_edge|bass_edge|tip_points)$/.test(event.target.dataset.name || "")) return;
   headstockEditor.scheduleRefresh();
 });
 

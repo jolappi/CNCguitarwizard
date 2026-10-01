@@ -13,6 +13,7 @@ from ...geometry.body import BodySolid, ContourCut
 from ...geometry.fretboard import FretboardSurface, FretLayout, InlayLayout
 from ...geometry.neck import (
     HeadstockSolid,
+    LockingNut,
     NeckBackSurface,
     TrussRodChannel,
     TunerLayout,
@@ -128,6 +129,7 @@ class FreeCADScriptExporter:
             fret_slot_depth=geometry.fret_slot_depth,
             inlay_layout=geometry.inlay_layout,
             nut_corner_radius=geometry.fret_layout.fretboard.nut_corner_radius,
+            locking_nut=geometry.locking_nut,
             body=geometry.body,
             fcstd_path=fcstd_path,
             step_path=step_path,
@@ -188,6 +190,7 @@ class FreeCADScriptExporter:
         fret_slot_depth: float = 2.7,
         inlay_layout: InlayLayout | None = None,
         nut_corner_radius: float = 8.0,
+        locking_nut: LockingNut | None = None,
         body: BodySolid | None = None,
         body_object_name: str = "Body",
         fcstd_path: Path | None = None,
@@ -452,6 +455,8 @@ class FreeCADScriptExporter:
             fret_slot_depth,
         )
         inlay_source = self._render_inlay_cuts(inlay_layout)
+        locking_nut_shelf_source = self._render_locking_nut_shelf(locking_nut)
+        locking_nut_screw_source = self._render_locking_nut_screws(locking_nut)
         body_source = self._render_body(body, body_object_name)
         serialized_fret_rows = (
             f"FRET_SURFACE_ROWS = {self._serialize_rows(fret_surface_rows)}\n"
@@ -744,14 +749,71 @@ class FreeCADScriptExporter:
             "        fretboard_nut_edges,\n"
             '        "fretboard nut-corner fillet",\n'
             "    )\n"
+            f"{locking_nut_shelf_source}"
             f"{fret_slot_source}"
             f"{inlay_source}"
             "fretboard_feature.Shape = fretboard_shape\n"
             f"{headstock_source}"
+            f"{locking_nut_screw_source}"
             f"{body_source}"
             "document.recompute()\n"
             f"{output_commands}"
         )
+
+    @staticmethod
+    def _render_locking_nut_shelf(locking_nut: LockingNut | None) -> str:
+        """Return the fretboard's run on under a locking nut, at its shelf."""
+        if locking_nut is None or not locking_nut.on_fretboard:
+            return ""
+        corners = ", ".join(
+            f"App.Vector({point.x!r}, {point.y!r}, 0.0)"
+            for point in locking_nut.seat_outline()
+        )
+        return (
+            "# The fretboard runs on under the locking nut, down at its shelf.\n"
+            f"locking_nut_corners = [{corners}]\n"
+            "locking_nut_shelf = Part.Face(\n"
+            "    Part.makePolygon(locking_nut_corners + locking_nut_corners[:1])\n"
+            f").extrude(App.Vector(0.0, 0.0, {locking_nut.shelf_height!r}))\n"
+            "fretboard_shape = require_shape(\n"
+            "    fretboard_shape.fuse(locking_nut_shelf).removeSplitter(),\n"
+            '    "locking nut shelf",\n'
+            ")\n"
+        )
+
+    @staticmethod
+    def _render_locking_nut_screws(locking_nut: LockingNut | None) -> str:
+        """Return the locking nut's two screw pilot holes.
+
+        They run from above the shelf through the fretboard (when it runs
+        on under the nut) and ``screw_depth`` into the neck.
+        """
+        if locking_nut is None:
+            return ""
+        top = locking_nut.shelf_height + 1.0
+        length = top + locking_nut.screw_depth
+        lines = []
+        for index, centre in enumerate(locking_nut.screw_centres(), start=1):
+            lines.append(
+                "locking_nut_screw = Part.makeCylinder(\n"
+                f"    {locking_nut.screw_diameter / 2.0!r},\n"
+                f"    {length!r},\n"
+                f"    App.Vector({centre.x!r}, {centre.y!r}, {top!r}),\n"
+                "    App.Vector(0.0, 0.0, -1.0),\n"
+                ")\n"
+                "neck_feature.Shape = require_shape(\n"
+                "    neck_feature.Shape.cut(locking_nut_screw),\n"
+                f'    "locking nut screw {index} in the neck",\n'
+                ")\n"
+            )
+            if locking_nut.on_fretboard:
+                lines.append(
+                    "fretboard_feature.Shape = require_shape(\n"
+                    "    fretboard_feature.Shape.cut(locking_nut_screw),\n"
+                    f'    "locking nut screw {index} in the fretboard",\n'
+                    ")\n"
+                )
+        return "# The locking nut's screw pilot holes.\n" + "".join(lines)
 
     def _render_headstock(
         self,
@@ -885,6 +947,7 @@ class FreeCADScriptExporter:
             return (
                 f"{root_source}"
                 f"{self._render_headstock_face_cut(headstock, neck_surface)}"
+                f"{self._render_headstock_tip_cut(headstock)}"
                 f"{tuner_source}"
                 f"{feature_source}"
                 f"{guide_source}"
@@ -903,6 +966,46 @@ class FreeCADScriptExporter:
             f"{root_source}"
             f"{feature_source}"
             f"{guide_source}"
+        )
+
+    @staticmethod
+    def _render_headstock_tip_cut(headstock: HeadstockSolid) -> str:
+        """Return source that cuts a lofted headstock back to its shaped tip.
+
+        The loft runs on 1 mm past the tip's furthest point at the tip
+        corners' width; a prism over everything past the tip line and the
+        tip's own points, wider than the headstock, cuts it back. Its
+        faces cross the loft rather than touching it.
+
+        Returns:
+            FreeCAD source for the cut, or an empty string for a straight
+            tip.
+        """
+        plan = headstock.plan
+        if not plan.tip_points:
+            return ""
+        tip = plan.tip_outline()
+        low = min(point.y for point in tip) - 10.0
+        high = max(point.y for point in tip) + 10.0
+        far = -(plan.reach + 10.0)
+        outline = [
+            (-plan.length, high),
+            (far, high),
+            (far, low),
+            (-plan.length, low),
+            *((point.x, point.y) for point in tip),
+        ]
+        corners = ", ".join(f"App.Vector({x!r}, {y!r}, -80.0)" for x, y in outline)
+        return (
+            "# The tip, lofted past its furthest point, cut back to its shape.\n"
+            f"headstock_tip_corners = [{corners}]\n"
+            "headstock_tip_cutter = Part.Face(\n"
+            "    Part.makePolygon(headstock_tip_corners + headstock_tip_corners[:1])\n"
+            ").extrude(App.Vector(0.0, 0.0, 120.0))\n"
+            "neck_shape = require_shape(\n"
+            "    neck_shape.cut(headstock_tip_cutter).removeSplitter(),\n"
+            '    "headstock tip cut",\n'
+            ")\n"
         )
 
     @staticmethod
@@ -937,7 +1040,7 @@ class FreeCADScriptExporter:
             # face: a cutter at z = 0 would only touch it, and FreeCAD's
             # boolean fails silently on such a touching face.
             return ""
-        far_x = -headstock.plan.length - 10.0
+        far_x = -headstock.plan.reach - 10.0
         half_width = max(abs(point.y) for point in headstock.top_boundary) + 10.0
         length = headstock.face_transition_length
         samples = TRANSITION_CUT_SAMPLES if length > 0.0 else 0
@@ -1342,12 +1445,13 @@ class FreeCADScriptExporter:
             t = max(0.0, min(1.0, (flat_end - position) / span))
             weight = NeckBackSurface._smootherstep(t)
             top_z = (raw_top_z + face_allowance) * weight
-            # The top edge's own distance-from-nut reference shifts with
-            # this same weight: at weight = 0 the top face is level with
-            # the nut (distance 0, i.e. full nut_width), at weight = 1 it
-            # is headstock.plan's own distance at this position, exactly
-            # as _angled_headstock_root_section computes it unmodified.
-            top_distance = max(0.0, -position) * weight
+            # The top edge keeps to the headstock's own plan outline all
+            # the way to the nut, over the flat seat too: held to the nut's
+            # width there instead, the top beside the nut's width fell
+            # away down the rounded run-in, leaving sunken wedges either
+            # side of the seat and its transition (as long as a locking
+            # nut's 16 mm seat made them, they were plain to see).
+            top_distance = max(0.0, -position)
             new_row = list(row)
             new_row[0] = Point3D(
                 position, headstock.plan.edge_y(top_distance, -1.0), top_z
@@ -1457,11 +1561,11 @@ class FreeCADScriptExporter:
         # may even sit past the centerline, so the row runs between the
         # two signed edge positions rather than +-half-widths.
         top_edges = {
-            y_sign: headstock.plan.edge_y(max(0.0, -position), y_sign)
+            y_sign: headstock.plan.envelope_y(max(0.0, -position), y_sign)
             for y_sign in (-1.0, 1.0)
         }
         bottom_edges = {
-            y_sign: headstock.plan.edge_y(max(0.0, -position + shear), y_sign)
+            y_sign: headstock.plan.envelope_y(max(0.0, -position + shear), y_sign)
             for y_sign in (-1.0, 1.0)
         }
         bottom_centre = (bottom_edges[1.0] + bottom_edges[-1.0]) / 2.0
@@ -1532,7 +1636,10 @@ class FreeCADScriptExporter:
         is no second rounding to disagree with — identical construction
         from the headstock's own tip all the way to the join.
         """
-        tip_x = -headstock.plan.length
+        # A shaped tip is lofted 1 mm past its furthest point and cut back
+        # to its outline afterwards (see _render_headstock_tip_cut).
+        plan = headstock.plan
+        tip_x = -(plan.reach + 1.0) if plan.tip_points else -plan.length
         segments = 32
         sections = []
         for step in range(segments + 1):
