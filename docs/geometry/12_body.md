@@ -300,7 +300,8 @@ notch the neck sits in, and:
   over 40 mm to run 8 mm past the pickups;
 - along the neck it stops 1 mm short of the bridge (its routes, or for a
   hardtail or Tune-o-matic its holes and 15 mm ahead of the scale line),
-  but always 3 mm past the last pickup, and runs on `BRIDGE_WRAP`
+  but 3 mm past the last pickup (halfway between the two where they
+  leave less room than that), and runs on `BRIDGE_WRAP`
   (12 mm) past the bridge's front either side of it, 2 mm off it — on
   the shorter horn's side the style's tail, its end rounded off over
   `TAIL_ROUND` (30 mm).
@@ -349,7 +350,8 @@ rounds its corners), so the spoke wheel can be turned with the guard on.
 A drawn guard is drawn for one bridge; whichever is fitted, it is
 stepped round it (`clear_of_bridge`): where it runs into the box round
 the bridge's routes and holes (`DRAWN_BRIDGE_CLEARANCE`, 3 mm, all round,
-but starting no nearer the neck than 3 mm past the last pickup), it is
+or, where that leaves under 3 mm past the last pickup, halfway between
+the bridge pickup and the bridge), it is
 cut back along the box's edges — the way round that keeps the box out,
 on to wherever the guard next comes out of it, so a guard that spans
 the box's whole front is cut there too — points `DRAWN_BRIDGE_STEP` (8 mm) apart

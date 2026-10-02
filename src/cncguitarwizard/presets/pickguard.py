@@ -193,9 +193,10 @@ def automatic_points(
       the edge curves in to ``PICKUP_HUG`` past the pickups over
       ``HUG_BLEND``.
     - It stops ``BRIDGE_CLEARANCE`` short of the bridge (``bridge_areas``:
-      its routes and holes) — never short of ``PICKUP_MARGIN`` past the
-      last pickup — and reaches ``BRIDGE_WRAP`` on past its front either
-      side of it, the shorter horn's side the style's ``tail``. With
+      its routes and holes) — or, with less room than ``PICKUP_MARGIN``
+      past the last pickup too, halfway between the two — and reaches
+      ``BRIDGE_WRAP`` on past its front either side of it, the shorter
+      horn's side the style's ``tail``. With
       ``controls_region`` (a pickguard control cavity) the controls' side
       runs on to ``CONTROLS_MARGIN`` past it.
 
@@ -212,7 +213,15 @@ def automatic_points(
         else max(p.x for p in inset)
     )
     pickup_points = [p for route in pickups for p in route]
-    if pickup_points:
+    if pickup_points and bridge_points:
+        last_pickup = max(p.x for p in pickup_points)
+        if bridge_front < last_pickup + PICKUP_MARGIN:
+            # Too little room for both gaps: halfway between the bridge
+            # pickup and the bridge (into the pickup, if they overlap).
+            bridge_front = max(
+                bridge_front, (last_pickup + min(p.x for p in bridge_points)) / 2.0
+            )
+    elif pickup_points:
         bridge_front = max(
             bridge_front, max(p.x for p in pickup_points) + PICKUP_MARGIN
         )
@@ -696,8 +705,9 @@ def clear_of_bridge(
     A drawn guard (a template's, say) is drawn for one bridge; another
     reaches elsewhere. Wherever the guard runs into the box round the
     bridge (``bridge_areas``: its routes and holes,
-    ``DRAWN_BRIDGE_CLEARANCE`` all round, but starting no nearer the neck
-    than ``PICKUP_MARGIN`` past the last of ``pickups``), it is cut back
+    ``DRAWN_BRIDGE_CLEARANCE`` all round; where that leaves under
+    ``PICKUP_MARGIN`` past the last of ``pickups``, starting halfway
+    between the two), it is cut back
     along the box's edges instead — the way round that leaves the box
     outside the guard — on to wherever the guard comes out of the box
     next.
@@ -708,10 +718,15 @@ def clear_of_bridge(
     points = [p for area in bridge_areas for p in area]
     if not points:
         return tuple(control_points)
-    front = min(p.x for p in points) - DRAWN_BRIDGE_CLEARANCE
+    bridge_front = min(p.x for p in points)
+    front = bridge_front - DRAWN_BRIDGE_CLEARANCE
     last_pickup = max((p.x for route in pickups for p in route), default=-math.inf)
+    if front < last_pickup + PICKUP_MARGIN:
+        # Too little room for both gaps: the edge goes halfway between the
+        # bridge pickup and the bridge (into the pickup, if they overlap).
+        front = max(front, (last_pickup + bridge_front) / 2.0)
     box = _Box(
-        max(front, last_pickup + PICKUP_MARGIN),
+        front,
         max(p.x for p in points) + DRAWN_BRIDGE_CLEARANCE,
         max(abs(p.y) for p in points) + DRAWN_BRIDGE_CLEARANCE,
     )
