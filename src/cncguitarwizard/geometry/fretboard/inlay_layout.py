@@ -1,8 +1,13 @@
 """Position marker inlays cut into the fretboard surface.
 
-Three styles share one layout: ``barbed_wire`` (the Prototype001 default),
-round ``dot`` markers, and Gibson-style ``block`` inlays that follow the
-board's taper.
+The styles share one layout: ``barbed_wire`` (the Prototype001 default)
+and round ``dot`` markers, two at the double-marker frets, and the
+shapes that span the board between the frets, one per fret, following
+its taper (``BOARD_STYLES``): Gibson-style ``block``, Les Paul style
+``trapezoid`` (long at the bass edge, short at the treble edge), Jackson
+style ``sharktooth`` (a triangle, its point at the treble edge), a
+leaning ``parallelogram``, a ``diamond``, and Gibson's ``split_block``
+(a block split along its diagonal into two pieces).
 """
 
 from __future__ import annotations
@@ -17,7 +22,42 @@ from ..primitives import Point2D, rounded_polygon_points
 from .skew import FretSkew
 from .surface import FretboardSurface
 
-InlayStyle = Literal["barbed_wire", "dot", "block"]
+InlayStyle = Literal[
+    "barbed_wire",
+    "dot",
+    "block",
+    "trapezoid",
+    "sharktooth",
+    "parallelogram",
+    "diamond",
+    "split_block",
+]
+
+INLAY_STYLES: tuple[str, ...] = (
+    "barbed_wire",
+    "dot",
+    "block",
+    "trapezoid",
+    "sharktooth",
+    "parallelogram",
+    "diamond",
+    "split_block",
+)
+"""Every inlay style, in the order the form offers them."""
+
+BOARD_STYLES: frozenset[str] = frozenset(INLAY_STYLES) - {"barbed_wire", "dot"}
+"""Styles that span the board between two frets, one per fret, leaning
+point by point with slanted frets."""
+
+TRAPEZOID_SHORT_SIDE = 0.55
+"""A trapezoid's treble edge as a share of its bass edge."""
+
+PARALLELOGRAM_LEAN = 0.35
+"""How far a parallelogram's treble edge sits toward the nut, as a share
+of its length."""
+
+SPLIT_BLOCK_GAP = 1.5
+"""The gap along a split block's diagonal, in mm."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,13 +94,15 @@ class InlayLayout:
             surface centerline.
         single_marker_frets: Frets that receive one centered marker.
         double_marker_frets: Frets that receive two offset markers.
-        style: ``barbed_wire``, ``dot`` or ``block``.
+        style: One of ``INLAY_STYLES``.
         dot_diameter: Diameter of a ``dot`` marker.
         block_length_fraction: A ``block``'s length along the neck as a
             fraction of the fret spacing it sits in.
         block_edge_margin: Wood left between a ``block`` and each board
             edge.
-        block_corner_radius: Corner rounding of a ``block``.
+        block_corner_radius: Corner rounding of the board-spanning shapes.
+        bass_sign: Which side the bass strings are on (-1: -Y, +1: +Y),
+            for the shapes that differ side to side.
 
     Raises:
         FretboardGeometryError: If the depth cannot fit the fretboard
@@ -77,6 +119,7 @@ class InlayLayout:
     block_length_fraction: float = 0.6
     block_edge_margin: float = 5.0
     block_corner_radius: float = 1.0
+    bass_sign: float = -1.0
     markers: tuple[InlayMarker, ...] = field(init=False)
 
     def __post_init__(self) -> None:
@@ -106,7 +149,7 @@ class InlayLayout:
             return width / 2.0
 
         markers: list[InlayMarker] = []
-        if self.style == "block":
+        if self.style in BOARD_STYLES:
             for fret_number in sorted(
                 (*self.single_marker_frets, *self.double_marker_frets)
             ):
@@ -115,23 +158,25 @@ class InlayLayout:
                 position = midpoint(fret_number)
                 half_length = spacing * self.block_length_fraction / 2.0
                 front, back = position - half_length, position + half_length
-                vertices = [
-                    Point2D(front, -(half_width_at(front) - self.block_edge_margin)),
-                    Point2D(back, -(half_width_at(back) - self.block_edge_margin)),
-                    Point2D(back, half_width_at(back) - self.block_edge_margin),
-                    Point2D(front, half_width_at(front) - self.block_edge_margin),
-                ]
-                markers.append(
-                    InlayMarker(
-                        fret_number,
-                        position,
-                        rounded_polygon_points(
-                            vertices,
-                            [self.block_corner_radius] * 4,
-                            samples_per_corner=6,
-                        ),
+                for vertices in _board_shape(
+                    self.style,
+                    front,
+                    back,
+                    half_width_at(front) - self.block_edge_margin,
+                    half_width_at(back) - self.block_edge_margin,
+                    self.bass_sign,
+                ):
+                    markers.append(
+                        InlayMarker(
+                            fret_number,
+                            position,
+                            rounded_polygon_points(
+                                vertices,
+                                [self.block_corner_radius] * len(vertices),
+                                samples_per_corner=6,
+                            ),
+                        )
                     )
-                )
         else:
             for fret_number in sorted(self.single_marker_frets):
                 position = midpoint(fret_number)
@@ -185,10 +230,13 @@ class InlayLayout:
 
     def _validate(self) -> None:
         """Reject an unsafe depth or an inconsistent marker-fret layout."""
-        if self.style not in ("barbed_wire", "dot", "block"):
+        if self.style not in INLAY_STYLES:
             raise FretboardGeometryError(
-                f"Unknown inlay style {self.style!r}; use barbed_wire, dot or block."
+                f"Unknown inlay style {self.style!r}; use one of "
+                f"{', '.join(INLAY_STYLES)}."
             )
+        if self.bass_sign not in (-1.0, 1.0):
+            raise FretboardGeometryError("Inlay bass_sign must be -1 or +1.")
         if not math.isfinite(self.dot_diameter) or self.dot_diameter <= 0.0:
             raise FretboardGeometryError("Inlay dot diameter must be positive.")
         if self.dot_diameter >= self.fretboard_surface.nut_width:
@@ -313,13 +361,14 @@ def _slanted(
 ) -> tuple[Point2D, ...]:
     """Return a marker moved with slanted or fanned frets.
 
-    A block leans every point with the frets there, so its front and back
-    stay parallel to the frets either side. Barbed wire turns about its
+    A board-spanning shape (a block, a trapezoid...) leans every point
+    with the frets there, so its front and back stay parallel to the frets
+    either side. Barbed wire turns about its
     own centre to the frets' angle there, keeping its shape. A dot keeps
     its shape and moves by the lean at its centre, onto the line between
     the two frets.
     """
-    if style == "block":
+    if style in BOARD_STYLES:
         return tuple(Point2D(p.x + skew.at(p.x) * p.y, p.y) for p in outline)
     centre_x = sum(p.x for p in outline) / len(outline)
     centre_y = sum(p.y for p in outline) / len(outline)
@@ -337,4 +386,125 @@ def _slanted(
             centre_y + (p.x - centre_x) * sine + (p.y - centre_y) * cosine,
         )
         for p in outline
+    )
+
+
+def _board_shape(
+    style: str,
+    front: float,
+    back: float,
+    front_half: float,
+    back_half: float,
+    bass_sign: float,
+) -> list[list[Point2D]]:
+    """Return the corners of one board-spanning marker's pieces.
+
+    ``front``/``back`` bound it along the neck, ``front_half``/``back_half``
+    are the board's half-width less the edge margin there; ``bass_sign``
+    says which side is the bass side.
+    """
+    bass, treble = bass_sign, -bass_sign
+    length = back - front
+    block = [
+        Point2D(front, treble * front_half),
+        Point2D(back, treble * back_half),
+        Point2D(back, bass * back_half),
+        Point2D(front, bass * front_half),
+    ]
+    if style == "block":
+        shapes = [block]
+    elif style == "trapezoid":
+        # Long at the bass edge, short at the treble edge.
+        inset = length * (1.0 - TRAPEZOID_SHORT_SIDE) / 2.0
+        shapes = [
+            [
+                Point2D(front + inset, treble * front_half),
+                Point2D(back - inset, treble * back_half),
+                Point2D(back, bass * back_half),
+                Point2D(front, bass * front_half),
+            ]
+        ]
+    elif style == "sharktooth":
+        # Across the board at the bridge side, along the bass edge, its
+        # point at the treble edge by the bridge-side fret.
+        shapes = [
+            [
+                Point2D(back, treble * back_half),
+                Point2D(back, bass * back_half),
+                Point2D(front, bass * front_half),
+            ]
+        ]
+    elif style == "parallelogram":
+        lean = length * PARALLELOGRAM_LEAN
+        shapes = [
+            [
+                Point2D(front - lean, treble * front_half),
+                Point2D(back - lean, treble * back_half),
+                Point2D(back, bass * back_half),
+                Point2D(front, bass * front_half),
+            ]
+        ]
+    elif style == "diamond":
+        middle = (front + back) / 2.0
+        half = (front_half + back_half) / 2.0
+        shapes = [
+            [
+                Point2D(front, 0.0),
+                Point2D(middle, treble * half),
+                Point2D(back, 0.0),
+                Point2D(middle, bass * half),
+            ]
+        ]
+    else:  # split_block
+        # Split along the diagonal from the treble front corner to the
+        # bass back corner, SPLIT_BLOCK_GAP apart.
+        start, end = block[0], block[2]
+        shapes = [
+            _clip_beside(block, start, end, SPLIT_BLOCK_GAP / 2.0, side)
+            for side in (1.0, -1.0)
+        ]
+    # Every outline counter-clockwise, as the rest of the layout's are.
+    return [
+        shape if _signed_area(shape) > 0.0 else list(reversed(shape))
+        for shape in shapes
+    ]
+
+
+def _clip_beside(
+    polygon: list[Point2D],
+    start: Point2D,
+    end: Point2D,
+    gap: float,
+    side: float,
+) -> list[Point2D]:
+    """Return the part of ``polygon`` more than ``gap`` to one ``side`` of a line."""
+    dx, dy = end.x - start.x, end.y - start.y
+    length = math.hypot(dx, dy)
+
+    def distance(point: Point2D) -> float:
+        return (
+            side * ((point.x - start.x) * dy - (point.y - start.y) * dx) / length - gap
+        )
+
+    clipped: list[Point2D] = []
+    for index, current in enumerate(polygon):
+        following = polygon[(index + 1) % len(polygon)]
+        here, there = distance(current), distance(following)
+        if here >= 0.0:
+            clipped.append(current)
+        if (here >= 0.0) != (there >= 0.0):
+            fraction = here / (here - there)
+            clipped.append(
+                Point2D(
+                    current.x + (following.x - current.x) * fraction,
+                    current.y + (following.y - current.y) * fraction,
+                )
+            )
+    return clipped
+
+
+def _signed_area(points: list[Point2D]) -> float:
+    """Return a polygon's signed area (positive counter-clockwise)."""
+    return 0.5 * sum(
+        a.x * b.y - b.x * a.y for a, b in zip(points, points[1:] + points[:1])
     )

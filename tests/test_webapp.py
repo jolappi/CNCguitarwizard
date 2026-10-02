@@ -52,8 +52,21 @@ def test_schema_lists_every_parameter_with_a_form_type() -> None:
         "type": "choice",
         "default": "barbed_wire",
         "advanced": False,
-        "options": ["barbed_wire", "dot", "block"],
+        "options": [
+            "barbed_wire",
+            "dot",
+            "block",
+            "trapezoid",
+            "sharktooth",
+            "parallelogram",
+            "diamond",
+            "split_block",
+        ],
+        "labels": prototype_fields["inlay_style"]["labels"],
     }
+    assert prototype_fields["inlay_style"]["labels"]["trapezoid"] == (
+        "Trapezoids (Les Paul)"
+    )
     bridge = prototype_fields["body_bridge"]
     assert bridge["type"] == "variant"
     assert bridge["default"]["kind"] == "kahler_7300"

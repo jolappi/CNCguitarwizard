@@ -4,6 +4,15 @@
 
 ### Added
 
+- More body engraving patterns (`body_engraving_pattern`, beside the
+  body editor too): Eddie Van Halen style taped `evh_stripes`, `flame`,
+  `ripples` and `crackle`, all laid out from the seed like the scrolls
+  (`pattern_lines`).
+- More fretboard markers (`inlay_style`): Les Paul `trapezoid`, Jackson
+  `sharktooth`, `parallelogram`, `diamond` and Gibson `split_block`,
+  each spanning the board between its frets like the blocks, sized to
+  its taper, leaning with slanted frets and cut from sheet as pieces;
+  the bass side follows `headstock_bass_side`.
 - A neck angle (`neck_angle`, degrees; empty: 2° with a Tune-o-matic,
   0° otherwise): the neck pocket's floor sinks toward its mouth
   (`TracedCavity.floor_slope`), cut in 0.1 mm terraces after the pocket in

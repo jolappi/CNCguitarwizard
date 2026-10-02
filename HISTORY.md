@@ -429,6 +429,12 @@ The neck can be angled back for a tall bridge, two degrees with a
 Tune-o-matic: the pocket's floor is stepped down toward its mouth, and
 the bridge moves so the scale holds along the tilted strings.
 
+The fretboard got more markers: trapezoids, sharktooth, parallelograms,
+diamonds and split blocks beside the barbed wire, dots and blocks.
+
+The top's engraving can be EVH stripes, flame, ripples or crackle as well
+as Design by Jone's scrolls.
+
 The bridge pickup now makes room for whichever bridge is chosen: it
 stays clear of a hardtail's mounting screws and a Tune-o-matic's posts,
 not only of a Floyd Rose's recess, and never reaches under the saddles.

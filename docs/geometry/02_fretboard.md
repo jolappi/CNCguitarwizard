@@ -51,3 +51,29 @@ pressed in. `Fretboard_outline.nc` and `Fretboard_slots.nc` say so in
 their notes. In the FreeCAD model the strips are their own object,
 `FretboardBinding`: two solids from the nut to the board's end, as tall
 as the board's edge, outside it.
+
+## Position markers
+
+`InlayLayout` (`Prototype001Parameters.inlay_style`, `inlay_depth` 2 mm)
+places the markers as flat-bottomed pockets in the playing surface, in
+one of `INLAY_STYLES`:
+
+| Style | Markers |
+| --- | --- |
+| `barbed_wire` (default) | A barbed-wire ribbon across the board; two at the double-marker frets (12, 24) |
+| `dot` | Round dots (`inlay_dot_diameter`, 6 mm); two at 12 and 24 |
+| `block` | Gibson blocks |
+| `trapezoid` | Les Paul trapezoids: long at the bass edge, the treble edge `TRAPEZOID_SHORT_SIDE` (55 %) of it |
+| `sharktooth` | Jackson sharktooth: a triangle across the board at its bridge-side end and along the bass edge, its point at the treble edge |
+| `parallelogram` | Leaning blocks, the treble edge `PARALLELOGRAM_LEAN` (35 % of the length) toward the nut |
+| `diamond` | A diamond, its points on the centreline and at the edges' margin |
+| `split_block` | Gibson split blocks: a block split along its diagonal (treble front corner to bass back corner) into two pieces `SPLIT_BLOCK_GAP` (1.5 mm) apart |
+
+Every style but barbed wire and dots spans the board between its frets
+(`BOARD_STYLES`): one per listed fret, `inlay_block_length_fraction`
+(60 %) of the fret spacing long, `inlay_block_edge_margin` (5 mm) inside
+each board edge with the board's taper, its corners rounded 1 mm. The
+bass side comes from `headstock_bass_side` (`bass_sign`). With slanted or
+fanned frets these lean point by point with the frets; barbed wire turns
+to their angle and dots move onto the line between them. Every style but
+dots gets the sheet program for its pieces (`Fretboard_inlay_pieces.nc`).

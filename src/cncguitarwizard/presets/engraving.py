@@ -1,6 +1,20 @@
-"""A decorative scroll pattern engraved into the body's top, laid out at random.
+"""Decorative patterns engraved into the body's top, laid out at random.
 
-The pattern is Design by Jone's surface design (``pintakuviodesignbyjone``):
+``pattern_lines`` lays out one of ``ENGRAVING_PATTERNS`` from a seed (the
+same seed always gives the same pattern), every line cut back to where
+the top may be engraved (``EngravingArea``):
+
+* ``scroll`` (``engraving_lines``), Design by Jone's scrolls, below;
+* ``evh_stripes``, criss-crossing taped stripes as on Eddie Van Halen's
+  "Frankenstrat": straight bands of random widths at random angles, each
+  band's two edges engraved and every later band covering the earlier
+  ones as tape would;
+* ``flame``, wavy lines across the body as in flamed maple;
+* ``ripples``, groups of concentric rings, each group covering the ones
+  laid before it;
+* ``crackle``, the cells of a random Voronoi pattern, as crazed lacquer.
+
+The scroll pattern is Design by Jone's surface design (``pintakuviodesignbyjone``):
 one motif of five arcs — a broad swirl, a curl and a small tip rolling
 out of it, a hook and a long sweep — scattered over the top, each copy
 turned one of the drawing's two ways (``MOTIF_TURNS``). Here the
@@ -14,11 +28,49 @@ from __future__ import annotations
 import bisect
 import math
 import random
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
+from typing import Literal
 
 from ..cam.planar import offset_polygon
 from ..geometry.primitives import Point2D
+
+EngravingPattern = Literal["scroll", "evh_stripes", "flame", "ripples", "crackle"]
+
+ENGRAVING_PATTERNS: tuple[str, ...] = (
+    "scroll",
+    "evh_stripes",
+    "flame",
+    "ripples",
+    "crackle",
+)
+"""Every pattern, in the order the form offers them."""
+
+STRIPE_WIDTHS = (6.0, 16.0)
+"""Narrowest and widest EVH stripe, in mm: wide enough that a V-bit's two
+grooves stay apart."""
+
+STRIPE_ANGLES = (0.0, 30.0, 60.0, 90.0, 120.0, 150.0)
+"""The directions the stripes lean round, in degrees from the neck."""
+
+STRIPE_SPREAD = 12.0
+"""How far a stripe turns off its direction at random, in degrees."""
+
+FLAME_WAVELENGTH = (60.0, 110.0)
+"""Shortest and longest wave of the flame lines, in mm."""
+
+FLAME_AMPLITUDE = (1.5, 4.0)
+"""Least and most a flame line swings either way, in mm."""
+
+MIN_PATTERN_LINE = 8.0
+"""Shortest piece of the other patterns' lines kept, in mm: shorter ones
+are stray marks."""
+
+RIPPLE_GAP = 8.0
+"""Distance between a ripple group's rings, in mm."""
+
+RIPPLE_RINGS = (2, 6)
+"""Fewest and most rings in a ripple group."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -372,3 +424,264 @@ def _length(points: Sequence[Point2D]) -> float:
         math.hypot(b.x - a.x, b.y - a.y)
         for a, b in zip(points, points[1:], strict=False)
     )
+
+
+def pattern_lines(
+    pattern: str, area: EngravingArea, seed: int, spacing: float
+) -> tuple[tuple[Point2D, ...], ...]:
+    """Return ``pattern``'s lines over ``area``, laid out from ``seed``.
+
+    ``spacing`` sets each pattern's scale: the scroll copies' spacing,
+    one stripe per twice its square of the area's bounds, a fifth of
+    it between flame lines, a ripple group per its square, a crackle cell
+    about its size. Pieces shorter than ``MIN_PATTERN_LINE`` are left out.
+
+    Raises:
+        ValueError: For an unknown pattern.
+    """
+    if pattern == "scroll":
+        return engraving_lines(area, seed, spacing)
+    if pattern not in ENGRAVING_PATTERNS:
+        raise ValueError(
+            f"Unknown engraving pattern {pattern!r}; use one of "
+            f"{', '.join(ENGRAVING_PATTERNS)}."
+        )
+    allows = area.allows()
+    xs = [p.x for p in area.outline]
+    ys = [p.y for p in area.outline]
+    bounds = (min(xs), max(xs), min(ys), max(ys))
+    rng = random.Random(seed)
+    if pattern == "evh_stripes":
+        lines = _stripes(bounds, rng, spacing)
+    elif pattern == "flame":
+        lines = _flame(bounds, rng, spacing)
+    elif pattern == "ripples":
+        lines = _ripples(bounds, rng, spacing)
+    else:
+        lines = _crackle(bounds, rng, spacing)
+    return tuple(
+        piece
+        for line in lines
+        for piece in _pieces(line, allows)
+        if _length(piece) >= MIN_PATTERN_LINE
+    )
+
+
+Bounds = tuple[float, float, float, float]
+
+
+def _straight(start: Point2D, end: Point2D) -> list[Point2D]:
+    """Return a straight line sampled ``ARC_STEP`` apart."""
+    count = max(1, math.ceil(math.hypot(end.x - start.x, end.y - start.y) / ARC_STEP))
+    return [
+        Point2D(
+            start.x + (end.x - start.x) * k / count,
+            start.y + (end.y - start.y) * k / count,
+        )
+        for k in range(count + 1)
+    ]
+
+
+def _runs(
+    points: Sequence[Point2D], keep: Callable[[Point2D], bool]
+) -> list[list[Point2D]]:
+    """Return the runs of ``points`` that ``keep`` accepts."""
+    runs: list[list[Point2D]] = []
+    run: list[Point2D] = []
+    for point in (*points, None):
+        if point is not None and keep(point):
+            run.append(point)
+            continue
+        if len(run) >= 2:
+            runs.append(run)
+        run = []
+    return runs
+
+
+def _stripes(bounds: Bounds, rng: random.Random, spacing: float) -> list[list[Point2D]]:
+    """Taped stripes: each band's edges, cut where later bands cover them."""
+    left, right, bottom, top = bounds
+    reach = math.hypot(right - left, top - bottom)
+    count = max(6, math.ceil((right - left) * (top - bottom) / (2.0 * spacing**2)))
+    bands: list[tuple[Point2D, tuple[float, float], float]] = []
+    for _ in range(count):
+        angle = math.radians(
+            rng.choice(STRIPE_ANGLES) + rng.uniform(-STRIPE_SPREAD, STRIPE_SPREAD)
+        )
+        centre = Point2D(rng.uniform(left, right), rng.uniform(bottom, top))
+        width = rng.uniform(*STRIPE_WIDTHS)
+        bands.append((centre, (math.cos(angle), math.sin(angle)), width))
+
+    def across(
+        point: Point2D, band: tuple[Point2D, tuple[float, float], float]
+    ) -> float:
+        centre, (ux, uy), _ = band
+        return (point.x - centre.x) * -uy + (point.y - centre.y) * ux
+
+    lines: list[list[Point2D]] = []
+    for index, band in enumerate(bands):
+        centre, (ux, uy), width = band
+        later = bands[index + 1 :]
+        for side in (-1.0, 1.0):
+            offset = side * width / 2.0
+            start = Point2D(
+                centre.x - ux * reach - uy * offset, centre.y - uy * reach + ux * offset
+            )
+            end = Point2D(
+                centre.x + ux * reach - uy * offset, centre.y + uy * reach + ux * offset
+            )
+            lines += _runs(
+                _straight(start, end),
+                lambda point: all(
+                    abs(across(point, other)) >= other[2] / 2.0 for other in later
+                ),
+            )
+    return lines
+
+
+def _flame(bounds: Bounds, rng: random.Random, spacing: float) -> list[list[Point2D]]:
+    """Wavy lines across the body, neighbours swinging nearly together."""
+    left, right, bottom, top = bounds
+    gap = max(6.0, spacing / 5.0)
+    wavelength = rng.uniform(*FLAME_WAVELENGTH)
+    phase = rng.uniform(0.0, 2.0 * math.pi)
+    amplitude = rng.uniform(*FLAME_AMPLITUDE)
+    lines: list[list[Point2D]] = []
+    x = left - FLAME_AMPLITUDE[1]
+    while x <= right + FLAME_AMPLITUDE[1]:
+        # Each line drifts a little from the last, so they never cross.
+        phase += rng.uniform(-0.25, 0.25)
+        amplitude = min(
+            FLAME_AMPLITUDE[1],
+            max(FLAME_AMPLITUDE[0], amplitude + rng.uniform(-0.4, 0.4)),
+        )
+        steps = max(2, math.ceil((top - bottom) / ARC_STEP))
+        lines.append(
+            [
+                Point2D(
+                    x + amplitude * math.sin(2.0 * math.pi * y / wavelength + phase),
+                    y,
+                )
+                for y in (bottom + (top - bottom) * k / steps for k in range(steps + 1))
+            ]
+        )
+        x += gap * rng.uniform(0.8, 1.25)
+    return lines
+
+
+def _ripples(bounds: Bounds, rng: random.Random, spacing: float) -> list[list[Point2D]]:
+    """Groups of rings, each covering the groups laid before it."""
+    left, right, bottom, top = bounds
+    count = max(3, math.ceil((right - left) * (top - bottom) / spacing**2 / 2.0))
+    groups: list[tuple[Point2D, float]] = []
+    for _ in range(count * PLACEMENT_TRIES):
+        if len(groups) >= count:
+            break
+        centre = Point2D(rng.uniform(left, right), rng.uniform(bottom, top))
+        if any(
+            math.hypot(centre.x - c.x, centre.y - c.y) < NEAREST * spacing
+            for c, _ in groups
+        ):
+            continue
+        rings = rng.randint(*RIPPLE_RINGS)
+        groups.append((centre, RIPPLE_GAP * rings))
+    lines: list[list[Point2D]] = []
+    for index, (centre, outer) in enumerate(groups):
+        later = groups[index + 1 :]
+        radius = RIPPLE_GAP
+        while radius <= outer + 1e-9:
+            steps = max(8, math.ceil(2.0 * math.pi * radius / ARC_STEP))
+            ring = [
+                Point2D(
+                    centre.x + radius * math.cos(2.0 * math.pi * k / steps),
+                    centre.y + radius * math.sin(2.0 * math.pi * k / steps),
+                )
+                for k in range(steps + 1)
+            ]
+            lines += _runs(
+                ring,
+                lambda point: all(
+                    math.hypot(point.x - c.x, point.y - c.y) > r + RIPPLE_GAP / 2.0
+                    for c, r in later
+                ),
+            )
+            radius += RIPPLE_GAP
+    return lines
+
+
+def _crackle(bounds: Bounds, rng: random.Random, spacing: float) -> list[list[Point2D]]:
+    """The edges of a random Voronoi pattern's cells, each edge once."""
+    left, right, bottom, top = bounds
+    count = max(4, math.ceil((right - left) * (top - bottom) / spacing**2 * 1.5))
+    seeds: list[Point2D] = []
+    for _ in range(count * PLACEMENT_TRIES):
+        if len(seeds) >= count:
+            break
+        point = Point2D(rng.uniform(left, right), rng.uniform(bottom, top))
+        if all(
+            math.hypot(point.x - s.x, point.y - s.y) >= 0.6 * spacing for s in seeds
+        ):
+            seeds.append(point)
+    box = [
+        Point2D(left, bottom),
+        Point2D(right, bottom),
+        Point2D(right, top),
+        Point2D(left, top),
+    ]
+    edges: dict[tuple[tuple[float, float], tuple[float, float]], None] = {}
+    for index, here in enumerate(seeds):
+        cell = box
+        for other in seeds:
+            if other is here:
+                continue
+            cell = _half_plane(cell, here, other)
+            if len(cell) < 3:
+                break
+        for a, b in zip(cell, (*cell[1:], cell[0]), strict=False):
+            key_a = (round(a.x, 3), round(a.y, 3))
+            key_b = (round(b.x, 3), round(b.y, 3))
+            if key_a == key_b:
+                continue
+            edges[(min(key_a, key_b), max(key_a, key_b))] = None
+
+    def on_box(point: tuple[float, float]) -> bool:
+        x, y = point
+        return (
+            abs(x - left) < 1e-3
+            or abs(x - right) < 1e-3
+            or abs(y - bottom) < 1e-3
+            or abs(y - top) < 1e-3
+        )
+
+    return [
+        _straight(Point2D(*a), Point2D(*b))
+        for a, b in edges
+        if not (on_box(a) and on_box(b))
+    ]
+
+
+def _half_plane(
+    polygon: Sequence[Point2D], keep: Point2D, other: Point2D
+) -> list[Point2D]:
+    """Return ``polygon`` cut to the side of the bisector nearer ``keep``."""
+    mx, my = (keep.x + other.x) / 2.0, (keep.y + other.y) / 2.0
+    nx, ny = other.x - keep.x, other.y - keep.y
+
+    def side(point: Point2D) -> float:
+        return (point.x - mx) * nx + (point.y - my) * ny
+
+    clipped: list[Point2D] = []
+    for index, current in enumerate(polygon):
+        following = polygon[(index + 1) % len(polygon)]
+        here, there = side(current), side(following)
+        if here <= 0.0:
+            clipped.append(current)
+        if (here <= 0.0) != (there <= 0.0):
+            t = here / (here - there)
+            clipped.append(
+                Point2D(
+                    current.x + (following.x - current.x) * t,
+                    current.y + (following.y - current.y) * t,
+                )
+            )
+    return clipped

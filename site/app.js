@@ -127,7 +127,7 @@ function renderForm() {
 // loaded and built (its row in the form is hidden). A change on either
 // side is passed to the other.
 const EDITOR_FIELDS = {
-  "body-editor-options": ["body_pickups", "body_bridge", "body_controls", "body_switch", "body_jack", "body_pickguard", "body_pickguard_style", "body_arm_contour_depth", "body_belly_cut_depth", "body_engraving", "body_engraving_seed", "body_battery_box", "body_battery_count"],
+  "body-editor-options": ["body_pickups", "body_bridge", "body_controls", "body_switch", "body_jack", "body_pickguard", "body_pickguard_style", "body_arm_contour_depth", "body_belly_cut_depth", "body_engraving", "body_engraving_pattern", "body_engraving_seed", "body_battery_box", "body_battery_count"],
   "headstock-editor-options": ["headstock_style", "headstock_engraving_text", "headstock_engraving_font", "headstock_engraving_height", "headstock_engraving_angle"],
 };
 const mirrors = new Map();

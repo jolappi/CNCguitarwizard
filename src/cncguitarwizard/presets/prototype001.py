@@ -83,7 +83,7 @@ from .controls import (
     control_features,
     rear_cover,
 )
-from .engraving import EngravingArea, engraving_lines
+from .engraving import EngravingArea, EngravingPattern, pattern_lines
 from .pickguard import (
     PICKGUARD_STYLES,
     SADDLE_REACH,
@@ -471,9 +471,12 @@ class Prototype001Parameters:
     fret_slot_width: float = 0.6
     fret_slot_depth: float = 2.7
     # Position markers, cut as flat-bottomed pockets into the playing
-    # surface: barbed wire (default), round dots, or Gibson-style blocks
-    # that follow the taper. 12 and 24 get the traditional double layout
-    # (blocks stay single); every other listed fret gets one marker.
+    # surface: barbed wire (default) or round dots, two at 12 and 24 and
+    # one at every other listed fret; or one shape per fret spanning the
+    # board with its taper (inlay_block_length_fraction of the fret
+    # spacing long, inlay_block_edge_margin from each edge): Gibson
+    # blocks, Les Paul trapezoids, Jackson sharktooth, parallelograms,
+    # diamonds or Gibson split blocks (see geometry.fretboard.inlay_layout).
     inlay_depth: float = 2.0
     inlay_single_marker_frets: tuple[int, ...] = (3, 5, 7, 9, 15, 17, 19, 21)
     inlay_double_marker_frets: tuple[int, ...] = (12, 24)
@@ -633,15 +636,18 @@ class Prototype001Parameters:
     body_pickguard_thickness: float = 2.5
     body_pickguard_margin: float = 6.0
     body_pickguard_style: PickguardStyleName = "stratocaster"
-    # A decorative scroll pattern engraved into the top (see
-    # presets.engraving): body_engraving puts it on, laid out at random
-    # from body_engraving_seed (the same seed, the same pattern), copies
-    # of the motif about body_engraving_spacing apart (as in the drawing), cut
+    # A decorative pattern engraved into the top (see presets.engraving):
+    # body_engraving puts it on, body_engraving_pattern picks it (Design by
+    # Jone's scrolls, EVH stripes, flame, ripples or crackle), laid out at
+    # random from body_engraving_seed (the same seed, the same pattern),
+    # body_engraving_spacing setting its scale (the scroll copies about that
+    # far apart, as in the drawing), cut
     # body_engraving_depth deep with a V-bit, body_engraving_margin in
     # from the edge and body_engraving_clearance clear of every top
     # cavity, hole, the bridge, the pickguard and the contours (the back's
     # cavities only when they leave less than ENGRAVING_WALL under it).
     body_engraving: bool = False
+    body_engraving_pattern: EngravingPattern = "scroll"
     body_engraving_seed: int = 1
     body_engraving_depth: float = 2.0
     body_engraving_spacing: float = 50.0
@@ -2500,8 +2506,11 @@ class Prototype001Parameters:
             self.body_engraving_clearance,
         )
         return Engraving(
-            engraving_lines(
-                area, self.body_engraving_seed, self.body_engraving_spacing
+            pattern_lines(
+                self.body_engraving_pattern,
+                area,
+                self.body_engraving_seed,
+                self.body_engraving_spacing,
             ),
             self.body_engraving_depth,
         )
@@ -3183,6 +3192,7 @@ class Prototype001Parameters:
             dot_diameter=self.inlay_dot_diameter,
             block_length_fraction=self.inlay_block_length_fraction,
             block_edge_margin=self.inlay_block_edge_margin,
+            bass_sign=-1.0 if self.headstock_bass_side == "-y" else 1.0,
         )
         truss_rod_channel = self.truss_rod(outline)
         headstock_plan, tuner_layout = self.headstock_design()

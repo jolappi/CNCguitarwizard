@@ -518,6 +518,22 @@ its own program, `Body_top_engraving.nc`, with a V-bit
 In the FreeCAD model it is drawn as lines on the top face (object
 `Body_engraving`), not cut, so the solid stays quick to build.
 
+### Other patterns
+
+`body_engraving_pattern` picks the pattern (`ENGRAVING_PATTERNS`,
+`pattern_lines`); every one is laid out from the same seed, scaled by
+`body_engraving_spacing` and cut back to the same area, pieces shorter
+than `MIN_PATTERN_LINE` (8 mm) left out (the cluster and lone-line rules
+are the scroll's own):
+
+| Pattern | Lines |
+| --- | --- |
+| `scroll` (default) | Design by Jone's scrolls, above |
+| `evh_stripes` | Eddie Van Halen "Frankenstrat" style taped stripes: straight bands `STRIPE_WIDTHS` (6–16 mm) wide round `STRIPE_ANGLES` (every 30°, ± `STRIPE_SPREAD` 12°), one per twice the spacing squared of the area's bounds; both edges of each are engraved, and every later band covers the earlier ones as tape would |
+| `flame` | Wavy lines across the body as in flamed maple, about a fifth of the spacing (at least 6 mm) apart, each drifting a little from the last so they never cross (`FLAME_WAVELENGTH`, `FLAME_AMPLITUDE`) |
+| `ripples` | Groups of `RIPPLE_RINGS` (2–6) rings `RIPPLE_GAP` (8 mm) apart, one group per twice the spacing squared, each covering the groups laid before it |
+| `crackle` | The cells of a random Voronoi pattern, as crazed lacquer, about the spacing across, each shared edge engraved once |
+
 ## Bridges
 
 The bridge is an interchangeable *spec* (`geometry.body.bridges`). Each spec

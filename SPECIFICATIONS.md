@@ -27,7 +27,7 @@ toisin mainita.
 | Telecaster-kaula | Lapaeditorin *Start from* → Telecaster neck (`NECK_TEMPLATES`): satula urassa, suora 0° lapa, 6 virittimen rivi (`6_inline`), Telecaster-lavan muoto piirrettynä (204 mm oletusrivin ympärillä, muokattavissa) ja kaularaudan säätö kantapäässä (vintage); `truss_rod_adjustment` headstock antaa modernin säädön satulan takaa |
 | Satulahylly vinolla satulalla | Pitenee satulapään vinouden verran, jotta satulalle jää 5 mm siltäkin puolelta, jolla satulapää on taaimpana; hylly on tasainen koko pituudeltaan |
 | Inlayt vinoilla nauhoilla | Seuraavat nauhoja: blockit kallistuvat nauhojen mukana, piikkilanka kääntyy nauhojen kulmaan, pisteet siirtyvät nauhojen väliselle linjalle |
-| Inlayt | 2 mm syvät välissä 3, 5, 7, 9, 15, 17, 19, 21 (12 ja 24 kaksois-); tyyli `inlay_style`: piikkilanka (oletus), pyöreä dotti (Ø 6) tai Gibson-tyylinen kapeneva blokki (yksi/väli, 60 % nauhavälistä, 5 mm reunasta) |
+| Inlayt | 2 mm syvät välissä 3, 5, 7, 9, 15, 17, 19, 21 (12 ja 24 kaksois-); tyyli `inlay_style`: piikkilanka (oletus) tai pyöreä dotti (Ø 6), joista 12. ja 24. nauhalla kaksi; tai yksi otelaudan yli ulottuva kuvio nauhavälissä (60 % nauhavälistä, 5 mm reunasta, kapenee otelaudan mukana): Gibson-blokki, Les Paul -trapetsi (pitkä bassopuolella, diskanttipuoli 55 %), Jackson-sharktooth (kolmio, kärki diskanttipuolella), suunnikas, vinoneliö tai Gibson split block (blokki halkaistu lävistäjää pitkin kahdeksi palaksi 1,5 mm välein) |
 
 ## Kanta ja kiinnitys
 
@@ -391,6 +391,19 @@ viivaryhmä jätetään pois. Kaiverrus on
 `Body_top_engraving.nc` V-terällä (`engraving_tool_angle` 60°, ura
 2,31 mm leveä, 1 mm kerroksin). FreeCAD-mallissa se näkyy viivoina
 kannen pinnalla (ei uria).
+
+Kuvion voi vaihtaa (`body_engraving_pattern`, myös runkoeditorin vieressä);
+kaikki arvotaan samasta siemenestä, `body_engraving_spacing` asettaa
+mittakaavan, ja kaikki rajataan samalle alueelle (alle 8 mm:n pätkät
+jätetään pois):
+
+| Kuvio | Kuvaus |
+| --- | --- |
+| `scroll` (oletus) | Design by Jonen kiehkurat, yllä |
+| `evh_stripes` | Eddie Van Halenin Frankenstrat-tyyliset teippiraidat: suoria 6–16 mm leveitä nauhoja ristiin (kuuteen suuntaan ±12°), yksi kaksinkertaista spacingin neliötä kohden; kummankin reunan viiva kaiverretaan, ja myöhempi raita peittää aiemmat kuin teippi |
+| `flame` | Liekkivaahteran tapaiset aaltoviivat rungon poikki, noin spacing/5 (vähintään 6 mm) välein, vierekkäiset lähes samassa vaiheessa, joten ne eivät leikkaa |
+| `ripples` | Ryhmiä sisäkkäisiä renkaita (2–6 kpl, 8 mm välein), myöhempi ryhmä peittää aiemmat |
+| `crackle` | Satunnainen solukuvio (Voronoi) kuin säröillyt lakka, solu noin spacingin kokoinen |
 
 ## Omat suunnitelmat
 
