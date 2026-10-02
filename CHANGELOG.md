@@ -217,6 +217,16 @@
   dragged-off feature, switching instrument, loading a design, resetting
   the headstock) are asked in the page's own dialog: some embedded
   browsers answered `window.confirm` unseen, so *Load* did nothing.
+- The bridge pickup sat in the same place whatever the bridge, so a
+  hardtail's baseplate screw pilots fell inside its route and a
+  Tune-o-matic's post holes cut within 4 mm behind it. It now keeps
+  `body_bridge_pickup_clearance` (3 mm) of wood ahead of the bridge's
+  holes as well as its routes, moving forward on its own (13.3 mm for
+  the hardtail, 4.4 mm for the Tune-o-matic on the default guitar), and
+  never reaches past the saddle line, fanned on a multiscale (the bass
+  soapbar on a guitar used to end 0.27 mm past it); the Kahler and
+  Floyd Rose placements are unchanged. A route that would then overlap
+  the next pickup is refused with a `BodyGeometryError`.
 - The FreeCAD model's headstock top sank in wedges either side of the
   nut's seat and the transition behind it: the loft held its top edge to
   the nut's width there, so the top beside it fell away down the rounded

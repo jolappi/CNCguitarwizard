@@ -236,6 +236,18 @@ single coil on 10° kulmassa diskanttipää tallaa kohti
 (`body_bridge_single_coil_angle`), ja piirtoeditorissa
 sitä voi raahata kaulan suunnassa.
 
+Tallamikki on `body_bridge_pickup_offset`:n (21,73 mm) verran mensuurilinjan
+edellä, mutta siirtyy itse eteenpäin niin, että sen kolon ja tallan lähimmän
+kolon tai sen kohdalla olevan reiän reunan väliin jää
+`body_bridge_pickup_clearance` (3 mm) puuta: Floyd Rosen upotus, hardtailin
+Ø3 kiinnitysruuvien esiporaukset (10 mm mensuurin edellä; kolo päättyy 14,5
+mm mensuurin edelle) ja Tune-o-maticin Ø11,2 tolppareiät (3 mm mensuurin
+takana; kolo päättyy 5,6 mm sen edelle). Kolo ei myöskään koskaan ulotu
+satulalinjan yli (viuhkanauhoilla linja kallistuu nauhojen mukana); Kahlerin
+kolo päättyy DXF:n mukaisesti 1,2 mm sen edelle. Käsin asetettu suurempi
+etäisyys voittaa. Jos siirretty kolo osuisi seuraavaan mikkikoloon (keski-
+tai kaulamikin), malli hylkää yhdistelmän `BodyGeometryError`-virheellä.
+
 ## Lapa
 
 | Kohta | Speksi |

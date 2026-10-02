@@ -532,10 +532,22 @@ dropdown of bridge kinds with that kind's dimensions beneath it, sent back as
 a JSON object with a `kind` entry (`bridge_spec_from_dict` rebuilds it).
 Every dimension is a labelled starting value to be checked against the real
 hardware. The bridge pickup keeps `body_bridge_pickup_offset` unless the
-chosen bridge's routes reach further forward — a Floyd Rose recess starts
-19.5 mm ahead of the scale line — in which case the route moves forward on
-its own to leave `body_bridge_pickup_clearance` (3 mm) of wood; a larger
-offset set by hand still wins. A Tune-o-matic on this flat body also wants a neck
+chosen bridge reaches further forward, in which case the route moves forward
+on its own to leave `body_bridge_pickup_clearance` (3 mm) of wood ahead of
+the bridge's nearest route edge, or of each hole's edge across from it (a
+hole is measured against the stretch of route between its own Y ± radius
+plus clearance, so turned hardware on a multiscale is not over-counted): a
+Floyd Rose recess starts 19.5 mm ahead of the scale line, a hardtail's Ø 3
+baseplate screw pilots sit 10 mm ahead of it (the route ends 14.5 mm ahead),
+a Tune-o-matic's Ø 11.2 post holes 3 mm behind it (the route ends 5.6 mm
+ahead). The route also never reaches past the saddle line, measured at each
+point of the route against the line where the strings leave the saddles (it
+fans on a multiscale; a slant alone leaves the bridge and pickups square);
+the Kahler's route ends 1.2 mm ahead of it, as in the DXF. A larger offset
+set by hand still wins. If the moved route would then overlap the next
+pickup route (the middle, else the neck one), `body_layout` refuses with a
+`BodyGeometryError` naming the bridge, rather than leaving the overlap for
+`BodySolid` to report. A Tune-o-matic on this flat body also wants a neck
 angle or a recessed bridge, which the model does not provide.
 
 Two new `BodySolid` fields carry bridge features: `through_cavities` (top

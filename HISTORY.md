@@ -405,6 +405,10 @@ A name can be engraved into the headstock face.
 
 Headless guitars and basses joined the instruments, with a headless bridge.
 
+The bridge pickup now makes room for whichever bridge is chosen: it
+stays clear of a hardtail's mounting screws and a Tune-o-matic's posts,
+not only of a Floyd Rose's recess, and never reaches under the saddles.
+
 ## Documentation
 
 - Added public package reference with API tables, examples, and diagrams.

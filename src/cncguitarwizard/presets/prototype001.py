@@ -10,6 +10,7 @@ from ..cam.planar import offset_polygon
 from ..geometry.body import (
     BRIDGE_MAX_STRINGS,
     BodySolid,
+    BridgeHardware,
     BridgeMounting,
     BridgeSpec,
     Cavity,
@@ -492,9 +493,11 @@ class Prototype001Parameters:
     # tabs).
     body_neck_pickup_offset: float = 30.5  # route centre past the heel end
     # The bridge pickup sits body_bridge_pickup_offset ahead of the scale
-    # line, but moves further forward on its own when the chosen bridge's
-    # routes reach ahead of the scale line (a recessed Floyd Rose), keeping
-    # body_bridge_pickup_clearance of wood between route and recess.
+    # line, but moves further forward on its own when the chosen bridge
+    # reaches closer (a recessed Floyd Rose, a hardtail's baseplate screws,
+    # a Tune-o-matic's posts), keeping body_bridge_pickup_clearance of wood
+    # between the route and the bridge's routes and holes, and never
+    # reaches past the saddle line.
     body_bridge_pickup_offset: float = 21.73  # route centre before the bridge
     body_bridge_pickup_clearance: float = 3.0
     body_pickup_route_depth: float = 22.0
@@ -1872,25 +1875,13 @@ class Prototype001Parameters:
         neck_pickup_x = heel_end + self.body_neck_pickup_offset
         neck_pickup_x += turned_reach(neck_type, fan_angle(neck_pickup_x))
         neck_angle = fan_angle(neck_pickup_x)
-        route_half_length = pickup_half_length(
-            bridge_type, bridge_angle, bass_sign, strings
+        own_offset = self.body_bridge_pickup_offset + turned_reach(
+            bridge_type, bridge_angle - single_slant
         )
-        bridge_fronts = [
-            cavity.min_x for cavity in (*bridge.top_cavities, *bridge.through_cavities)
-        ]
-        needed_offset = (
-            scale
-            - min(bridge_fronts)
-            + route_half_length
-            + self.body_bridge_pickup_clearance
-            if bridge_fronts and bridge_type != "none"
-            else -math.inf
+        needed_offset = self._bridge_pickup_clearance_offset(
+            bridge, bridge_type, bridge_angle, bass_sign
         )
-        bridge_pickup_x = scale - max(
-            self.body_bridge_pickup_offset
-            + turned_reach(bridge_type, bridge_angle - single_slant),
-            needed_offset,
-        )
+        bridge_pickup_x = scale - max(own_offset, needed_offset)
         bridge_angle = single_slant + fan_angle(bridge_pickup_x)
         # Left empty, the middle pickup goes in the middle of the gap
         # between the neck and bridge routes' facing edges, so a single
@@ -1934,6 +1925,23 @@ class Prototype001Parameters:
             bridge_angle,
             string_count=strings,
         )
+        # Moved forward to clear the bridge, the bridge pickup must still
+        # leave the next pickup's route alone; if it cannot, say so here
+        # rather than as a bare overlap when the body is built.
+        neighbour = middle_pickup or neck_pickup
+        if (
+            bridge_pickup is not None
+            and neighbour is not None
+            and needed_offset > own_offset
+            and outlines_overlap(bridge_pickup.outline, neighbour.outline)
+        ):
+            raise BodyGeometryError(
+                f"The bridge pickup cannot clear the {self.body_bridge.kind} "
+                f"bridge: moved to {scale - bridge_pickup_x:.1f} mm ahead of the "
+                f"scale line, its route overlaps the {neighbour.name.lower()}. "
+                "Choose another bridge or pickup layout, or move that pickup "
+                "toward the neck."
+            )
         battery: ControlFeatures | None = None
         if self.body_battery_box:
             room = self.body_thickness - self.body_rear_cavity_top_wall
@@ -2333,6 +2341,75 @@ class Prototype001Parameters:
                 "out over the control cavity, or use Auto pickguard."
             )
         return guard
+
+    def _bridge_pickup_clearance_offset(
+        self,
+        bridge: BridgeHardware,
+        kind: PickupType,
+        angle: float,
+        bass_sign: float,
+    ) -> float:
+        """Return the least bridge pickup offset that clears the bridge.
+
+        The offset is the route centre's distance ahead of the scale line.
+        The route keeps ``body_bridge_pickup_clearance`` of wood ahead of
+        everything the bridge cuts into or sets on the top — its routes, its
+        plate (``footprint``) and the edges of its holes (a hardtail's
+        baseplate screws, a Tune-o-matic's posts) — and never reaches past
+        the saddle line, where the strings
+        leave the saddles (fanned on a multiscale).
+
+        Args:
+            bridge: The bridge's features, placed (and turned) on the body.
+            kind: The bridge pickup's type.
+            angle: The bridge pickup's slant in degrees.
+            bass_sign: +1 when the bass side is +Y, -1 when it is -Y.
+
+        Returns:
+            The least offset in mm, or ``-inf`` without a bridge pickup.
+        """
+        # The route centred on the scale line's X = 0, so its points
+        # measure how far it reaches toward the tail.
+        route = pickup_route(
+            kind,
+            "Bridge pickup route",
+            0.0,
+            self.body_pickup_route_depth,
+            bass_sign,
+            angle,
+            string_count=self.string_count,
+        )
+        if route is None:
+            return -math.inf
+        scale = self.centre_scale
+        clearance = self.body_bridge_pickup_clearance
+        # A route keeps its wood from the bridge's nearest route edge
+        # wherever it is, as across the whole width.
+        reach = max(point.x for point in route.outline)
+        needed = [
+            scale - cavity.min_x + reach + clearance
+            for cavity in (*bridge.top_cavities, *bridge.through_cavities)
+        ]
+        # A plate on the top (a Kahler's, a headless unit's) is kept
+        # clear of as its routes are.
+        if bridge.footprint:
+            front = min(point.x for point in bridge.footprint)
+            needed.append(scale - front + reach + clearance)
+        # A hole only meets the part of the route across from it: a
+        # hardtail's screws, or a Tune-o-matic's posts turned with a fan,
+        # are measured against the route between their own Ys.
+        for hole in bridge.holes:
+            keep_out = hole.diameter / 2.0 + clearance
+            across = _reach_between(
+                route.outline, hole.center_y - keep_out, hole.center_y + keep_out
+            )
+            needed.append(scale - (hole.center_x - keep_out) + across)
+        # The saddle line leans with a fan (the strings' own bridge ends; a
+        # slant alone leaves the bridge square), so each route point is
+        # measured against the line at its own Y.
+        lean = self.fret_skew.fan_only().at(scale)
+        needed.append(max(point.x - lean * point.y for point in route.outline))
+        return max(needed)
 
     def _jack(
         self,
@@ -3052,6 +3129,28 @@ bridge, a string-through four-string hardtail, and neck bolts 56 mm
 apart along the neck, the outer pair near the body's edge and the
 rear pair's ferrules wholly over the neck pocket.
 """
+
+
+def _reach_between(outline: tuple[Point2D, ...], low: float, high: float) -> float:
+    """Return the outline's largest X between two Ys, or ``-inf`` if none.
+
+    Each edge is clipped to the band ``low <= y <= high``, so a long
+    straight edge counts even where it has no vertex inside the band.
+    """
+    reach = -math.inf
+    for start, end in zip(outline, (*outline[1:], outline[0]), strict=True):
+        if max(start.y, end.y) < low or min(start.y, end.y) > high:
+            continue
+        if start.y == end.y:
+            reach = max(reach, start.x, end.x)
+            continue
+        for y in (
+            max(low, min(start.y, end.y)),
+            min(high, max(start.y, end.y)),
+        ):
+            t = (y - start.y) / (end.y - start.y)
+            reach = max(reach, start.x + t * (end.x - start.x))
+    return reach
 
 
 def _line_crossings(
