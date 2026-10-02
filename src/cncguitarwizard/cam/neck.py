@@ -26,6 +26,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Literal
 
 from ..geometry.primitives import Point2D, point_in_polygon
+from .engraving import engraving_path, engraving_tool
 from .exceptions import ToolpathError
 from .fixturing import StockBounds, resolve_index_pins
 from .gcode import Setup
@@ -177,6 +178,7 @@ class NeckMachiningPlan:
     plank_thickness: float = 0.0
     headstock_block: HeadstockBlock | None = None
     headstock_setups: tuple[Setup, ...] = ()
+    top_engraving: Setup | None = None
 
     @property
     def setups(self) -> tuple[Setup, ...]:
@@ -188,11 +190,53 @@ class NeckMachiningPlan:
         return (
             self.index_pins,
             self.top,
+            *((self.top_engraving,) if self.top_engraving is not None else ()),
             self.back_rough,
             self.back_finish,
             *self.headstock_setups,
             self.back_outline,
         )
+
+
+def _lettering_setup(
+    geometry: Prototype001Geometry,
+    frame: _Frame,
+    flat: MachiningParameters,
+    face_depth: Callable[[float, float], float],
+    after: str,
+    reference_points: tuple[tuple[float, float], ...],
+) -> Setup | None:
+    """Return the V-bit program for the headstock's lettering, or ``None``.
+
+    It follows the finished face (``face_depth``: its Z at a model point),
+    so it runs right after ``after`` mills it, before the blank is turned.
+    """
+    lettering = geometry.headstock_engraving
+    if lettering is None:
+        return None
+    tool = engraving_tool(flat, lettering.depth)
+    return Setup(
+        "Headstock_engraving",
+        f"Headstock face - lettering {lettering.depth:g} mm deep with a V-bit",
+        (
+            engraving_path(
+                lettering,
+                frame.point,
+                tool,
+                lambda point: face_depth(point.x, point.y),
+                "Headstock lettering",
+            ),
+        ),
+        (
+            f"Same fixture, X/Y and Z zero as {after}, right after it, before "
+            f"the blank is turned over; change to a {flat.engraving_tool_angle:g} "
+            "degree V-bit and re-touch Z on the glue face.",
+            "The bit follows the finished headstock face; its grooves come out "
+            f"{tool.tool_diameter:.2f} mm wide.",
+        ),
+        reference_points,
+        tool,
+    )
 
 
 def _round_up(depth: float) -> float:
@@ -469,6 +513,15 @@ def plan_neck_machining(
     def face_depth(model_x: float, model_y: float = 0.0) -> float:
         return headstock.top_z(model_x, model_y)
 
+    lettering = _lettering_setup(
+        geometry,
+        top_frame,
+        flat,
+        face_depth,
+        "Headstock_top" if laminated else "Neck_top",
+        reference_points,
+    )
+
     truss = geometry.truss_rod_channel
     route = _overrun_truss_route(truss, flat.tool_radius)
     truss_paths = [
@@ -725,7 +778,12 @@ def plan_neck_machining(
                 "cut, below the block.",
             ),
         )
-        headstock_setups = (headstock_top, headstock_rough, headstock_finish)
+        headstock_setups = (
+            headstock_top,
+            *((lettering,) if lettering is not None else ()),
+            headstock_rough,
+            headstock_finish,
+        )
     else:
         back_rough, back_finish = back_setups(
             "Neck",
@@ -765,10 +823,16 @@ def plan_neck_machining(
     top_outline = top_frame.polygon(outline)
     back_outline_polygon = back_frame.polygon(outline)
     headstock_previews = (
-        (top_outline, back_outline_polygon, back_outline_polygon)
+        (
+            top_outline,
+            *((top_outline,) if lettering is not None else ()),
+            back_outline_polygon,
+            back_outline_polygon,
+        )
         if headstock_setups
         else ()
     )
+    top_engraving = None if laminated else lettering
     return NeckMachiningPlan(
         index_pins,
         top,
@@ -784,9 +848,11 @@ def plan_neck_machining(
         plank_thickness=plank,
         headstock_block=block,
         headstock_setups=headstock_setups,
+        top_engraving=top_engraving,
         preview_outlines=(
             top_outline,
             top_outline,
+            *((top_outline,) if top_engraving is not None else ()),
             back_outline_polygon,
             back_outline_polygon,
             *headstock_previews,

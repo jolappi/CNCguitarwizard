@@ -184,3 +184,53 @@ solid = HeadstockSolid(plan, angle, thickness=16.0)
 ```
 
 Values below 14 mm or above 16 mm are rejected before CAD export.
+
+## Lettering
+
+`headstock_engraving_text` engraves lettering into the headstock face in
+one of `geometry.lettering`'s single-stroke fonts (`FONTS`,
+`headstock_engraving_font`) — each letter a few centre lines a V-bit
+follows:
+
+- `sans` (the default), drawn here: a plain geometric sans with capitals
+  10 units tall, lowercase on a 7 unit x-height with 3 unit descenders,
+  digits and a little punctuation (`GLYPHS`);
+- `script`, Hershey Script (medium), a joined handwriting;
+- `gothic`, Hershey Gothic English, a blackletter.
+
+The last two are converted from Inkscape's single-stroke SVG fonts by
+`tools/import_svg_font.py` into `geometry.fonts` (curves sampled to lines,
+printable ASCII and ä ö å ü é), carrying the Hershey Fonts' required
+acknowledgement: they were originally created by Dr. A. V. Hershey at the
+U. S. National Bureau of Standards, in a data format originally created
+by James Hurt, Cognition, Inc. `text_lines` sets a string in any of them
+at any height (the capital H's), centre and angle. The capitals are
+`headstock_engraving_height` (6 mm) tall, centred on
+`headstock_engraving_x` / `_y` (by default `HEADSTOCK_ENGRAVING_SETBACK`,
+20 mm, behind the nut's seat, on the centreline), running along
+`headstock_engraving_angle` degrees from +X with the letters' tops to its
+left: 90° (the default) runs across the headstock, read with it pointing
+up. `Prototype001Parameters.headstock_lettering` refuses lettering the
+font has no glyph for, and lettering that comes within
+`HEADSTOCK_ENGRAVING_CLEARANCE` (2 mm) of the face's edge, the nut's
+seat, a tuner hole or a headstock truss rod adjuster's trough; the
+headstock editor draws it in blue, drags it (writing `_x` / `_y`) and
+shows why it does not fit. It is cut `headstock_engraving_depth` (1 mm)
+deep into the finished face in `Headstock_engraving.nc`, and drawn as
+lines on the face in the FreeCAD model (`HeadstockLettering`).
+
+## Headless
+
+`Prototype001Parameters.headless` (the `headless_guitar` and
+`headless_bass` instruments) has no headstock and no tuners: the neck ends
+`headless_length` (35 mm, 25–80 mm, `MIN_HEADLESS_LENGTH` for the neck's
+nut-end blend) behind the nut in a flat headpiece as wide as the nut, its
+top level with the glue face (angle 0, `headstock_face_drop` 0), where
+the string anchor screws on. `headstock_design` then returns that plan and
+an empty `TunerLayout` (no stations), `headstock_style` and the tuner
+values are not used, and the strings are tuned at the bridge
+(`HeadlessBridgeSpec`, see the body's bridges). The FreeCAD loft, the neck
+programs (no face raster, no tuner marks) and the web app (no headstock
+editor) all take the headpiece as a short headstock; the loft drops tip
+sections crowding within `MIN_SECTION_GAP` (0.2 mm) of the next, which a
+head this short otherwise produces.

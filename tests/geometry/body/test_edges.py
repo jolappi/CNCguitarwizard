@@ -161,3 +161,63 @@ def test_every_finish_is_off_by_default() -> None:
 
     assert body.top_edge == EdgeProfile() and body.back_edge == EdgeProfile()
     assert body.contours == ()
+
+
+def test_a_contour_drawn_as_a_line_reaches_in_to_it() -> None:
+    outline = square()
+    # A line from (-60, -100) on the edge up to 30 mm in and back out to
+    # (60, -100): a flat-topped arch.
+    line = (
+        Point2D(-60.0, -100.0),
+        Point2D(-30.0, -70.0),
+        Point2D(30.0, -70.0),
+        Point2D(60.0, -100.0),
+    )
+    contour = ContourCut.along_line("Arm contour", "top", outline, line, 10.0)
+
+    # It runs along the edge between the line's ends...
+    assert contour.length == pytest.approx(120.0, abs=6.0)
+    # ...reaching in to the line: deepest (full depth) where that is widest.
+    assert contour.width == pytest.approx(30.0, abs=0.5)
+    assert contour.depth_at(Point2D(0.0, -100.0)) == pytest.approx(10.0, abs=0.2)
+    assert contour.depth_at(Point2D(0.0, -85.0)) == pytest.approx(5.0, abs=0.2)
+    assert contour.depth_at(Point2D(0.0, -69.0)) == 0.0
+    # Halfway up the slope the line is 15 mm in: half as deep at the edge.
+    assert contour.depth_at(Point2D(-45.0, -100.0)) == pytest.approx(5.0, abs=0.5)
+    assert contour.depth_at(Point2D(-45.0, -84.0)) == 0.0
+
+
+def test_a_line_outside_the_body_is_refused() -> None:
+    line = (Point2D(-60.0, -100.0), Point2D(0.0, -130.0), Point2D(60.0, -100.0))
+    with pytest.raises(BodyGeometryError, match="inside the body"):
+        ContourCut.along_line("Arm contour", "top", square(), line, 10.0)
+
+
+def test_the_preset_takes_a_drawn_arm_contour_line() -> None:
+    from cncguitarwizard.webapp import body_editor_layout
+
+    automatic = replace(Prototype001Parameters(), body_arm_contour_depth=12.0)
+    (auto,) = automatic.body_layout().contours
+    editor = body_editor_layout({"prototype": {"body_arm_contour_depth": 12.0}})
+    assert editor["arm_contour"]["automatic"]
+    # Drawn through the automatic line's handles, the middle ones a little
+    # further in (the ends stay on the edge).
+    line = editor["arm_contour"]["points"]
+    points = tuple(
+        (x, y if index in (0, len(line) - 1) else y * 0.9)
+        for index, (x, y) in enumerate(line)
+    )
+    shape = replace(automatic.body_shape, arm_contour_points=points)
+    drawn = replace(automatic, body_shape=shape)
+    (cut,) = drawn.body_layout().contours
+
+    assert cut.reaches and not auto.reaches
+    assert cut.length == pytest.approx(auto.length, rel=0.05)
+    assert 0.0 < cut.width < auto.width + 15.0
+    assert drawn.build().body.contours == (cut,)
+    editor = body_editor_layout(
+        {"prototype": {"body_arm_contour_depth": 12.0, "body_shape": shape}}
+    )
+    assert not editor["arm_contour"]["automatic"]
+    # Without the arm contour on there is no line to draw.
+    assert body_editor_layout({"prototype": {}})["arm_contour"] is None

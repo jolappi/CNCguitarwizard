@@ -9,7 +9,7 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from pathlib import Path
 
-from ...geometry.body import BodySolid, ContourCut
+from ...geometry.body import BodySolid, ContourCut, Engraving
 from ...geometry.fretboard import FretboardSurface, FretLayout, InlayLayout
 from ...geometry.neck import (
     HeadstockSolid,
@@ -42,6 +42,9 @@ TRANSITION_CUT_SAMPLES = 12
 
 TRUSS_ROD_POCKET_PIECE_LENGTH = 5.0
 """Longest box a truss-rod nut pocket or trough is cut with (mm)."""
+
+MIN_SECTION_GAP = 0.2
+"""Least distance between two loft sections along the neck, in mm."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -131,6 +134,8 @@ class FreeCADScriptExporter:
             nut_corner_radius=geometry.fret_layout.fretboard.nut_corner_radius,
             locking_nut=geometry.locking_nut,
             body=geometry.body,
+            fretboard_binding_width=geometry.fretboard_binding_width,
+            headstock_engraving=geometry.headstock_engraving,
             fcstd_path=fcstd_path,
             step_path=step_path,
         )
@@ -193,6 +198,8 @@ class FreeCADScriptExporter:
         locking_nut: LockingNut | None = None,
         body: BodySolid | None = None,
         body_object_name: str = "Body",
+        fretboard_binding_width: float = 0.0,
+        headstock_engraving: Engraving | None = None,
         fcstd_path: Path | None = None,
         step_path: Path | None = None,
     ) -> str:
@@ -423,6 +430,8 @@ class FreeCADScriptExporter:
         export_feature_names = ["neck_feature", "fretboard_feature"]
         if headstock is not None and not join_headstock_to_neck and not hide_headstock:
             export_feature_names.append("headstock_feature")
+        if fretboard_binding_width > 0.0:
+            export_feature_names.append("fretboard_binding_feature")
         if body is not None:
             export_feature_names.append("body_feature")
         export_features = "[" + ", ".join(export_feature_names) + "]"
@@ -458,6 +467,9 @@ class FreeCADScriptExporter:
         locking_nut_shelf_source = self._render_locking_nut_shelf(locking_nut)
         locking_nut_screw_source = self._render_locking_nut_screws(locking_nut)
         body_source = self._render_body(body, body_object_name)
+        binding_source = self._render_fretboard_binding(
+            fretboard_surface, fretboard_binding_width, fretboard_object_name
+        ) + self._render_headstock_lettering(headstock, headstock_engraving)
         serialized_fret_rows = (
             f"FRET_SURFACE_ROWS = {self._serialize_rows(fret_surface_rows)}\n"
             if fret_layout is not None
@@ -753,11 +765,99 @@ class FreeCADScriptExporter:
             f"{fret_slot_source}"
             f"{inlay_source}"
             "fretboard_feature.Shape = fretboard_shape\n"
+            f"{binding_source}"
             f"{headstock_source}"
             f"{locking_nut_screw_source}"
             f"{body_source}"
             "document.recompute()\n"
             f"{output_commands}"
+        )
+
+    @staticmethod
+    def _spaced_sections(
+        sections: tuple[tuple[Point3D, ...], ...],
+    ) -> tuple[tuple[Point3D, ...], ...]:
+        """Return ``sections`` less any within ``MIN_SECTION_GAP`` of the next.
+
+        The tip's stations crowd together as they reach the blend; on a
+        short (headless) head they come within hundredths of a millimetre,
+        and FreeCAD's loft fails on sections that nearly coincide. The last
+        section, where the blend starts, is always kept.
+        """
+        if not sections:
+            return sections
+        kept = [sections[-1]]
+        for section in reversed(sections[:-1]):
+            if kept[-1][0].x - section[0].x >= MIN_SECTION_GAP:
+                kept.append(section)
+        return tuple(reversed(kept))
+
+    @staticmethod
+    def _render_headstock_lettering(
+        headstock: HeadstockSolid | None, lettering: Engraving | None
+    ) -> str:
+        """Return the headstock's lettering drawn as lines on its face.
+
+        Drawn, not cut: the grooves are left to the engraving program.
+        """
+        if headstock is None or lettering is None or not lettering.lines:
+            return ""
+        lines = [
+            [
+                (round(p.x, 3), round(p.y, 3), round(headstock.top_z(p.x, p.y), 3))
+                for p in line
+            ]
+            for line in lettering.lines
+        ]
+        label = f"Headstock lettering ({lettering.depth:g} mm deep, drawn only)"
+        return (
+            "# The headstock's lettering, drawn on its face.\n"
+            f"HEADSTOCK_LETTERING = {lines!r}\n"
+            "headstock_lettering_feature = document.addObject(\n"
+            '    "Part::Feature", "HeadstockLettering"\n'
+            ")\n"
+            "headstock_lettering_feature.Shape = Part.Compound([\n"
+            "    Part.makePolygon([App.Vector(*point) for point in line])\n"
+            "    for line in HEADSTOCK_LETTERING\n"
+            "])\n"
+            f"headstock_lettering_feature.Label = {label!r}\n"
+        )
+
+    @staticmethod
+    def _render_fretboard_binding(
+        surface: FretboardSurface, width: float, fretboard_object_name: str
+    ) -> str:
+        """Return the binding strips glued along the fretboard's long edges.
+
+        Each strip is ``width`` thick, outside the (narrowed) board's edge,
+        and as tall as the board's edge, from the nut to the board's end.
+        """
+        if width <= 0.0:
+            return ""
+        strips = []
+        for end in (0, -1):
+            sections = []
+            for row in surface.mesh.rows:
+                edge = row[end]
+                out = width if edge.y > 0.0 else -width
+                sections.append(
+                    [
+                        (edge.x, edge.y, 0.0),
+                        (edge.x, edge.y + out, 0.0),
+                        (edge.x, edge.y + out, edge.z),
+                        (edge.x, edge.y, edge.z),
+                    ]
+                )
+            strips.append(sections)
+        return (
+            "# The fretboard's binding strips along its long edges.\n"
+            f"FRETBOARD_BINDING_SECTIONS = {strips!r}\n"
+            "fretboard_binding_feature = document.addObject(\n"
+            f'    "Part::Feature", "{fretboard_object_name}Binding"\n'
+            ")\n"
+            "fretboard_binding_feature.Shape = Part.makeCompound(\n"
+            "    [make_loft(strip) for strip in FRETBOARD_BINDING_SECTIONS]\n"
+            ")\n"
         )
 
     @staticmethod
@@ -1286,11 +1386,13 @@ class FreeCADScriptExporter:
         end_row = neck_surface._build_profile_row(blend_end)
         sections: list[tuple[Point3D, ...]] = []
         if root_start < 0.0:
-            tip_rows = FreeCADScriptExporter._headstock_tip_sections(
-                headstock,
-                neck_surface,
-                lateral_edge_fillet_radius,
-                blend_start,
+            tip_rows = FreeCADScriptExporter._spaced_sections(
+                FreeCADScriptExporter._headstock_tip_sections(
+                    headstock,
+                    neck_surface,
+                    lateral_edge_fillet_radius,
+                    blend_start,
+                )
             )
             epsilon = 0.05
             headstock_before = FreeCADScriptExporter._angled_headstock_root_section(
@@ -2097,6 +2199,25 @@ class FreeCADScriptExporter:
             ")\n"
         )
         lines.append("body_feature.Shape = body_shape\n")
+        if body.engraving is not None and body.engraving.lines:
+            # The engraving is drawn as lines on the top face, not cut:
+            # a hundred-odd grooves would make the solid slow to build.
+            engraved = [
+                [(round(p.x, 3), round(p.y, 3)) for p in line]
+                for line in body.engraving.lines
+            ]
+            label = f"Engraving ({body.engraving.depth:g} mm deep, drawn only)"
+            lines.append(
+                f"engraving_lines = {engraved!r}\n"
+                "engraving_feature = document.addObject(\n"
+                f'    "Part::Feature", "{object_name}_engraving"\n'
+                ")\n"
+                "engraving_feature.Shape = Part.Compound([\n"
+                "    Part.makePolygon([App.Vector(x, y, 0.0) for x, y in line])\n"
+                "    for line in engraving_lines\n"
+                "])\n"
+                f"engraving_feature.Label = {label!r}\n"
+            )
         return "".join(lines)
 
     @staticmethod
@@ -2553,10 +2674,10 @@ def _contour_level(contour: ContourCut, level: float) -> tuple[Point2D, ...]:
     for point, normal, arc in zip(
         contour.edge, contour.normals, contour.arc, strict=True
     ):
-        edge_depth = contour.depth * contour.taper(arc)
+        edge_depth = contour.depth * contour.fade(arc)
         if edge_depth <= level:
             continue
-        reach = contour.width * contour.taper(arc) * (1.0 - level / edge_depth)
+        reach = contour.reach(arc) * (1.0 - level / edge_depth)
         inner.append(Point2D(point.x + normal.x * reach, point.y + normal.y * reach))
         outer.append(Point2D(point.x - normal.x * 10.0, point.y - normal.y * 10.0))
     return (*inner, *reversed(outer))

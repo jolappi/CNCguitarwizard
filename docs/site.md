@@ -11,7 +11,8 @@ Python.
 
 1. Loads Pyodide from the jsDelivr CDN and installs the project wheel from
    `site/wheels/` with micropip.
-2. Offers the instrument first — electric guitar or bass guitar — from the
+2. Offers the instrument first — electric guitar, 7- or 8-string guitar,
+   bass, 5-string bass, headless guitar or headless bass — from the
    schema's `instruments` (`INSTRUMENT_OVERRIDES`); switching reloads the
    form with that instrument's defaults (after a confirmation when values
    were changed — every yes/no question is asked in the page's own
@@ -26,8 +27,9 @@ Python.
    schema (`_BASIC_FIELDS`, `_BASIC_VARIANT_FIELDS` in `webapp.py`), with a
    page-wide checkbox to open them all. The settings that shape an
    editor's drawing sit in that editor's own pane instead
-   (`EDITOR_FIELDS` in `app.js`): the pickup layout, controls, pickup
-   selector and battery box in the body editor, the tuner layout
+   (`EDITOR_FIELDS` in `app.js`): the pickup layout, bridge (its kind;
+   its own sizes stay in the form), controls, pickup selector, jack,
+   pickguard, arm contour and battery box in the body editor, the tuner layout
    (`headstock_style`) in the headstock editor. Each is a copy of the
    form's field, whose row in the form is hidden; the field itself is
    what is saved, loaded and built. Choosing a locking nut wider
@@ -62,7 +64,13 @@ Python.
    over the features with square handles at its control points; dragging
    one writes `pickguard_points`, and *Auto pickguard* empties them again
    (the automatic guard's style, `body_pickguard_style`, is chosen beside
-   it). Dragging the guard by its edge moves all its points together (a click
+   it). With `body_arm_contour_depth` set (also beside the
+   editor), the line where the arm contour starts is drawn in green with
+   round handles: dragging one writes `arm_contour_points`, a click on the
+   line adds one, Alt- or right-click removes one, and *Auto arm contour*
+   empties them again. With `body_engraving` on (beside the editor too, with
+   `body_engraving_seed`) the decorative engraving is drawn in blue lines,
+   and *New pattern* sets a new random seed. Dragging the guard by its edge moves all its points together (a click
    without a drag still adds one), or onto *Create NC file* makes its
    programs: its screw spots in the body zeroed on the guard, and
    `Cover_pickguard`.

@@ -634,13 +634,104 @@ class HardtailSpec:
         )
 
 
-BridgeSpec = KahlerBridgeSpec | FloydRoseSpec | TuneOMaticSpec | HardtailSpec
+@dataclass(frozen=True, slots=True)
+class HeadlessBridgeSpec:
+    """A headless bridge: saddles and the tuners in one unit on the top.
+
+    The strings anchor at the headless neck's end and are tuned at the
+    bridge, its tuner knobs at the unit's tail. The unit is screwed flat to
+    the top: only its pilot holes are drilled, at the plate's four corners,
+    and its plate is the bridge's footprint (kept clear of the pickguard
+    and the engraving). The defaults are a typical six-string unit's
+    (Hipshot / ABM style); check the screw pattern against the unit.
+
+    Args:
+        string_count: Number of strings.
+        string_spacing: Centre distance between neighbouring strings.
+        front_reach: How far the plate reaches ahead of the scale line.
+        length: The unit's length along the neck, tuner knobs included.
+        side_margin: Plate past the outer strings on each side.
+        screw_inset: Pilot holes' distance in from the plate's edges.
+        screw_hole_diameter: Pilot hole diameter.
+        screw_hole_depth: Pilot hole depth.
+    """
+
+    kind: Literal["headless"] = "headless"
+    string_count: int = 6
+    string_spacing: float = 10.5
+    front_reach: float = 12.0
+    length: float = 90.0
+    side_margin: float = 10.0
+    screw_inset: float = 6.0
+    screw_hole_diameter: float = 3.0
+    screw_hole_depth: float = 12.0
+
+    def hardware(self, scale_length: float, body_thickness: float) -> BridgeHardware:
+        _positive(
+            self,
+            "string_spacing",
+            "front_reach",
+            "length",
+            "side_margin",
+            "screw_inset",
+            "screw_hole_diameter",
+            "screw_hole_depth",
+        )
+        if self.string_count < 1:
+            raise BodyGeometryError("A headless bridge needs at least one string.")
+        half = (self.string_count - 1) * self.string_spacing / 2.0 + self.side_margin
+        front = scale_length - self.front_reach
+        back = front + self.length
+        if self.screw_inset * 2.0 >= min(self.length, 2.0 * half):
+            raise BodyGeometryError(
+                "The headless bridge's screws do not fit its plate."
+            )
+        holes = tuple(
+            DrilledHole(
+                f"Bridge screw {index + 1} pilot",
+                x,
+                y,
+                self.screw_hole_diameter,
+                self.screw_hole_depth,
+            )
+            for index, (x, y) in enumerate(
+                (x, side * (half - self.screw_inset))
+                for x in (front + self.screw_inset, back - self.screw_inset)
+                for side in (-1.0, 1.0)
+            )
+        )
+        return BridgeHardware(
+            BridgeMounting(
+                scale_length, pivot_stud_spacing=None, has_sustain_block=False
+            ),
+            holes=holes,
+            notes=(
+                "Headless bridge: tuners at the bridge; check its screw pattern "
+                "against the unit before drilling.",
+            ),
+            footprint=(
+                Point2D(front, -half),
+                Point2D(back, -half),
+                Point2D(back, half),
+                Point2D(front, half),
+            ),
+        )
+
+
+BridgeSpec = (
+    KahlerBridgeSpec
+    | FloydRoseSpec
+    | TuneOMaticSpec
+    | HardtailSpec
+    | HeadlessBridgeSpec
+)
 
 BRIDGE_KINDS: dict[str, type[Any]] = {
     "kahler_7300": KahlerBridgeSpec,
     "floyd_rose": FloydRoseSpec,
     "tune_o_matic": TuneOMaticSpec,
     "hardtail": HardtailSpec,
+    "headless": HeadlessBridgeSpec,
 }
 
 BRIDGE_LABELS: dict[str, str] = {
@@ -648,6 +739,7 @@ BRIDGE_LABELS: dict[str, str] = {
     "floyd_rose": "Floyd Rose (recessed tremolo)",
     "tune_o_matic": "Tune-o-matic + stop bar",
     "hardtail": "Hardtail (string-through)",
+    "headless": "Headless (tuners at the bridge)",
 }
 
 BRIDGE_MAX_STRINGS: dict[str, int] = {

@@ -312,6 +312,11 @@ def plan_fretboard_machining(
                     -(surface_depth(y) + depth),
                 )
         slot_paths.append(builder.build())
+    binding = geometry.fretboard_binding_width
+
+    def binding_notes(note: str) -> tuple[str, ...]:
+        return (note,) if binding > 0.0 else ()
+
     slots = Setup(
         "Fretboard_slots",
         f"Fretboard fret slots - {geometry.fret_slot_width:g} mm wide, "
@@ -321,6 +326,10 @@ def plan_fretboard_machining(
             "Same fixture and X/Y zero; change to the fret-slot cutter and "
             "re-touch Z on the blank top.",
             f"Each slot follows the radius across the board in {passes} passes.",
+            *binding_notes(
+                "The slots run out through the board's edges; nip each fret's "
+                "tang back over the binding before pressing it in."
+            ),
         ),
         reference_points,
         slot_tool,
@@ -374,6 +383,11 @@ def plan_fretboard_machining(
             f"Leaves {flat.tab_count} tabs {flat.tab_height:g} mm high; saw and "
             "sand them off.",
             *shelf_notes,
+            *binding_notes(
+                f"The board is cut {binding:g} mm narrower each side for its "
+                f"binding: glue {binding:g} mm strips along both long edges, "
+                "flush with the top, then level them to the radius."
+            ),
         ),
         reference_points,
         flat,

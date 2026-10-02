@@ -106,6 +106,12 @@
   .body-editor .stretch-handle.across { cursor: ns-resize; }
   .body-editor .guard-handle { fill: #fff; stroke: #333; stroke-width: 0.7; cursor: grab; }
   .body-editor .guard-handle:hover, .body-editor .guard-handle.dragging { fill: #333; }
+  #headstock-editor .lettering-line { fill: none; stroke: #1f6fb2; stroke-width: 0.9; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+  #headstock-editor .lettering-hit { fill: none; stroke: transparent; stroke-width: 5; pointer-events: stroke; cursor: move; }
+  .body-editor .engraving { fill: none; stroke: #1f6fb2; stroke-width: 1.2; stroke-linecap: round; pointer-events: none; }
+  .body-editor .arm-line { fill: none; stroke: #3d6b3a; stroke-width: 0.9; pointer-events: none; }
+  .body-editor .arm-handle { fill: #fff; stroke: #3d6b3a; stroke-width: 0.8; cursor: grab; }
+  .body-editor .arm-handle:hover, .body-editor .arm-handle.dragging { fill: #3d6b3a; }
   .body-editor .stretch-handle:hover, .body-editor .stretch-handle.dragging { fill: #5a3a8a; }
   .body-editor .movable:hover { filter: brightness(0.9); }
   .body-editor .outline { fill: var(--wood); fill-opacity: 0.85; stroke: #6b4a1f; stroke-width: 1; }
@@ -228,7 +234,7 @@
         box or the jack to turn it (round ones only move); drag one of the control cavity's square end
         handles to stretch or shrink it and its cover from that end, or a side handle to make them wider
         or narrower; the pickup routes
-        slide along the neck. With a pickguard on, its square handles shape it: click its edge to add one, Alt/Option-click or right-click one to remove it, drag its edge to move the whole guard or onto <em>Create NC file</em> for its own programs (<em>Auto pickguard</em> goes back to the automatic guard). Drag a feature right off the body to remove it (you are asked first), or onto <em>Create NC file</em> to cut it on its own. The neck, its pocket and the bridge follow the neck and scale and stay put.
+        slide along the neck. With a pickguard on, its square handles shape it: click its edge to add one, Alt/Option-click or right-click one to remove it, drag its edge to move the whole guard or onto <em>Create NC file</em> for its own programs (<em>Auto pickguard</em> goes back to the automatic guard). With an arm contour on (<code>body_arm_contour_depth</code>), the green line with round handles is where it starts: drag a handle, click the line to add one, Alt/Option-click or right-click one to remove it; the line's ends sit on the body's edge (<em>Auto arm contour</em> goes back to the automatic one). With <code>body_engraving</code> on, the decorative engraving is drawn in blue lines; <em>New pattern</em> lays it out from a new random seed (<code>body_engraving_seed</code>). Drag a feature right off the body to remove it (you are asked first), or onto <em>Create NC file</em> to cut it on its own. The neck, its pocket and the bridge follow the neck and scale and stay put.
         The grid is 50 mm.</p>
       <div id="body-editor-options" class="editor-options"></div>
       <div id="body-editor-nc" class="nc-drop" title="Drop a feature here">Create NC file — drag a feature
@@ -239,6 +245,8 @@
         <select id="body-editor-template"></select>
         <button id="body-editor-reset" class="secondary" type="button">Load</button>
         <button id="body-editor-auto-guard" class="secondary" type="button" title="Back to the automatic pickguard">Auto pickguard</button>
+        <button id="body-editor-auto-arm" class="secondary" type="button" title="Back to the automatic arm contour">Auto arm contour</button>
+        <button id="body-editor-new-pattern" class="secondary" type="button" title="Lay the engraving out from a new random seed">New pattern</button>
       </div>
       <p id="body-editor-status" class="note"></p>
       <svg id="body-editor-svg" xmlns="http://www.w3.org/2000/svg"></svg>
@@ -250,7 +258,7 @@
         for a notch); Alt/Option-click or right-click a handle to remove
         it. The tuner holes come from the headstock style and stay put; every hole must keep its
         distance from the edge. Until you move a handle the outline follows the fitted one (a changed
-        style redraws it); <em>Start over</em> goes back to it. The grid is 10 mm.</p>
+        style redraws it); <em>Start over</em> goes back to it. Lettering typed in <code>headstock_engraving_text</code> is drawn in blue: drag it to move it (it must keep 2 mm from the edge, the nut's seat and the tuner holes). The grid is 10 mm.</p>
       <div id="headstock-editor-options" class="editor-options"></div>
       <div class="actions">
         <button id="headstock-editor-reset" class="secondary" type="button">Start over</button>

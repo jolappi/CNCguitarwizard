@@ -341,6 +341,11 @@ A bridge that covers more of the top than its routes — the Kahler
 clear of by the guard as a whole: its footprint counts as part of the
 bridge.
 
+Every guard, automatic or drawn, is also stepped round a heel-adjusted
+truss rod's access notch past the neck pocket (`clear_of_truss_rod`,
+`TRUSS_ROD_CLEARANCE` 3.5 mm, which leaves at least 2 mm once the spline
+rounds its corners), so the spoke wheel can be turned with the guard on.
+
 A drawn guard is drawn for one bridge; whichever is fitted, it is
 stepped round it (`clear_of_bridge`): where it runs into the box round
 the bridge's routes and holes (`DRAWN_BRIDGE_CLEARANCE`, 3 mm, all round,
@@ -449,6 +454,19 @@ belly cut from 40 mm ahead of it to 120 mm behind — or the one nearest
 `_position` (X from the heel end). The defaults are 60 × 240 mm for the
 arm contour and 70 × 260 mm for the belly cut.
 
+Where the arm contour starts on the top can be drawn instead: the
+shape's `arm_contour_points` are an open line's control points (X from
+the heel end), its ends on the body's edge, drawn as an open Catmull-Rom
+curve (`open_catmull_rom`). `ContourCut.along_line` takes the line's ends
+onto the outline, runs the bevel along the stretch of edge between them
+and, at each edge sample, in along the inward normal to the line
+(`reaches`); its depth at the edge is `body_arm_contour_depth` where the
+line is furthest in, scaled with the reach elsewhere, so a line that
+meets the edge fades the bevel out there. In the body editor the line is
+drawn in green with round handles while the arm contour is on: drag one,
+click the line to add one, Alt-click or right-click to remove one (three
+at least); *Auto arm contour* empties the points again.
+
 `BodySolid` checks that each edge finish reaches less than half the
 thickness less 2 mm; that a roundover lowers the rim of a cavity near the
 edge (the neck pocket excepted) by no more than `EDGE_RIM_TOLERANCE`
@@ -460,6 +478,39 @@ half the thickness less 2 mm, and together with its face's roundover
 the depth each face can be machined to; and that a contour cuts into no
 cavity or hole on its own face and leaves 3 mm of wood over any cavity
 routed from the other face.
+
+## Decorative engraving
+
+`body_engraving` engraves a scroll pattern into the top
+(`presets.engraving`): Design by Jone's surface design
+(`pintakuviodesignbyjone.dxf`), one motif of five arcs (radii 61.87,
+29.12, 16.30, 31.85 and 81.47 mm: a broad swirl, a curl and a small tip
+rolling out of it, a hook and a long sweep) scattered over the top.
+Copies are placed at random from `body_engraving_seed` — the same seed
+always gives the same pattern; the body editor's *New pattern* draws a new
+seed — one per `body_engraving_spacing` (50 mm) squared of the top's
+bounds, no two swirl centres nearer than half that, each turned one of the
+drawing's two ways (`MOTIF_TURNS`, a quarter-turn apart, the drawing's
+long side along the neck). Every arc is cut back to where the top may be
+engraved (`EngravingArea`): `body_engraving_margin` (10 mm) in from the
+edge and `body_engraving_clearance` (4 mm) clear of the neck pocket, the
+truss rod's access, every pickup and bridge route, the bridge's plate,
+the top control cavities and covers, the pickguard, the contours and
+every hole — not the back's cavities, which leave the top whole, unless
+one leaves less than `ENGRAVING_WALL` (3 mm) of wood under the engraving; pieces shorter than `MIN_LINE` (3 mm) are
+dropped. A copy that would crowd more than `MAX_CLUSTER` (10) lines into
+one block of three by three `CLUSTER_CELL` (10 mm) squares is passed over
+for another, so no cluster gets too thick; and at the end lines that come
+within `LONE_GAP` (10 mm) of each other are grouped, and a group of one
+line, or of under `MIN_GROUP` (40 mm) of line all told, is dropped, so no
+line stands alone as a stray mark. The default spacing gives about as much line on a body as the
+drawing has over it.
+
+It is cut `body_engraving_depth` (2 mm, less than half the body) deep in
+its own program, `Body_top_engraving.nc`, with a V-bit
+(`MachiningParameters.engraving_tool_angle`, 60°: a 2.31 mm wide groove).
+In the FreeCAD model it is drawn as lines on the top face (object
+`Body_engraving`), not cut, so the solid stays quick to build.
 
 ## Bridges
 
@@ -473,6 +524,7 @@ all placed relative to the scale line:
 | `KahlerBridgeSpec` (default) | `kahler_7300` | Rectangular baseplate cutout (the DXF's 55.45 × 65.04 × 25 mm); no studs, no rear cavity |
 | `FloydRoseSpec` | `floyd_rose` | Floyd Rose Original recessed routing per the manufacturer's *Original Series Routing Diagrams*: two Ø 10 stud holes 73.91 mm apart, 11.9 mm ahead of the scale line (25.03 in on a 25.5 in scale); a 95.25 mm wide recess, 79.38 mm long, narrowing to 71.12 mm after 42.44 mm, cut 6.73 mm deep over its whole footprint (continuous walls) and deepened to 11.18 mm behind the front 15.88 mm stud shelf as a step inside it, with a 20.96 × 82.85 mm block route 29.59 mm deep through that floor that opens into the spring cavity only where the two overlap; a rear 123.19 × 56.64 × 16.13 mm spring cavity with a 28.19 mm deep block clearance pocket at its tail end and a 2 mm cover recess 8 mm wider all round (`cover_margin`), closed by a sheet cover with six screws on the ledge (`Floyd Rose spring cavity cover`, `Cover_floyd_rose_spring_cavity.nc`, made like the cavity covers by `controls.rear_cover`). The diagram is for a 1.75 in (44.45 mm) body, where the block route runs 1.27 mm into the spring cavity; in a thicker body the spring cavity and block pocket reach deeper by the difference (`FLOYD_ROSE_DRAWN_THICKNESS`), so the block route always opens into the back. The recess is 3.56 mm wider on the tremolo-arm (treble) side; `treble_side` picks that side (`"+y"` on the left-handed Prototype001 body) |
 | `TuneOMaticSpec` | `tune_o_matic` | Two Ø 11.2 post holes 3 mm behind the scale line and two Ø 11.2 stop-bar stud holes 45 mm behind it |
+| `HeadlessBridgeSpec` | `headless` | A headless bridge: saddles and tuners in one unit screwed flat to the top. Four Ø 3 × 12 mm pilot holes `screw_inset` (6 mm) in from the plate's corners; the plate, from `front_reach` (12 mm) ahead of the scale line, `length` (90 mm) long and `side_margin` (10 mm) past the outer strings (`string_count`, `string_spacing`), is the bridge's `footprint`, which must lie on the body and which the pickguard and the engraving keep clear of |
 | `HardtailSpec` | `hardtail` | `string_count` (6) Ø 3 string-through holes 14 mm behind the scale line and five pilot holes for the baseplate screws; the bass uses four strings 19 mm apart, 30 mm behind the scale line |
 
 `Prototype001Parameters.body_bridge` holds the spec; in the web form it is a

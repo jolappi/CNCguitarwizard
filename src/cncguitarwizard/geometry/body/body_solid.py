@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from ..exceptions import BodyGeometryError
 from ..primitives import Point2D, nudge_inward, point_in_polygon
 from .edges import ContourCut, EdgeProfile
+from .engraving import Engraving
 from .hardware import BridgeMounting, Cavity, DrilledHole, JackHole, RearCavity
 from .outline import BodyOutline, TracedOutline
 
@@ -94,6 +95,8 @@ class BodySolid:
         truss_rod_access: A notch out of the neck pocket's tail wall so a
             heel-adjusted truss rod's spoke wheel can be turned; it starts
             inside the pocket, so its overlap with it is allowed.
+        engraving: Decorative lines engraved into the top, or ``None``;
+            it must leave half the slab.
 
     Raises:
         BodyGeometryError: If any cavity is deeper than the slab, falls
@@ -126,11 +129,16 @@ class BodySolid:
     back_edge: EdgeProfile = field(default_factory=EdgeProfile)
     contours: tuple[ContourCut, ...] = ()
     truss_rod_access: Cavity | None = None
+    engraving: Engraving | None = None
 
     def __post_init__(self) -> None:
         """Cross-check every cavity against the slab and outline bounds."""
         if not math.isfinite(self.thickness) or self.thickness <= 0.0:
             raise BodyGeometryError("Body thickness must be finite and positive.")
+        if self.engraving is not None and self.engraving.depth >= self.thickness / 2.0:
+            raise BodyGeometryError(
+                "The engraving must be shallower than half the body's thickness."
+            )
         for hole in (
             *self.holes,
             *self.rear_holes,

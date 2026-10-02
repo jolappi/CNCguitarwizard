@@ -36,3 +36,18 @@ assert fretboard.nut_line.length == 42.0
 assert fretboard.bridge_line.length == 63.0
 assert len(fretboard.outline) == 4
 ```
+
+## Binding
+
+`Prototype001Parameters.fretboard_binding_width` (0 = none, at most
+`MAX_FRETBOARD_BINDING`, 3 mm) binds the fretboard's two long edges. The
+board itself — its `FretboardSurface` and `Fretboard`, so its outline,
+radius, slots and inlays — is built that much narrower each side, and
+strips that thick are glued on, so board and binding together keep
+`nut_width` and `final_fret_width`; the neck under them keeps those
+widths too. The fret slots run out through the narrowed board's edges as
+usual, and each fret's tang is nipped back over the binding before it is
+pressed in. `Fretboard_outline.nc` and `Fretboard_slots.nc` say so in
+their notes. In the FreeCAD model the strips are their own object,
+`FretboardBinding`: two solids from the nut to the board's end, as tall
+as the board's edge, outside it.

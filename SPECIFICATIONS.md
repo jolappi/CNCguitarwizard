@@ -16,6 +16,7 @@ toisin mainita.
 | Kokonaispaksuus 1. nauhalla | 17 mm, sisältää otelaudan |
 | Kokonaispaksuus 12. nauhalla | 19 mm, sisältää otelaudan |
 | Otelauta | Erillinen, 6 mm paksu, 430 mm säde |
+| Otelaudan reunanauha | Valinnainen (`fretboard_binding_width`, 0 = ei, enintään 3 mm): otelauta jyrsitään nauhan verran kapeammaksi kummaltakin pitkältä sivulta, ja nauha liimataan reunoihin, joten lauta ja nauha yhdessä ovat satulan ja viimeisen nauhan levyiset (kaula pysyy niissä). Nauhaurat jyrsitään laudan reunojen läpi, ja nauhojen kannat lyhennetään reunanauhan kohdalta. FreeCAD-mallissa nauhat ovat omana kappaleenaan (`FretboardBinding`) |
 | Otelaudan pää | 4 mm 24. nauhan jälkeen; samassa tasossa kannan lopun kanssa |
 | Satulahylly | Kiinteä 5 mm ennen otelautaa; ei saa muuttua |
 | Nauhaurat | 0,6 mm × 2,7 mm |
@@ -55,8 +56,19 @@ liittymistä U-sylinteriin.
 ## Soitin
 
 Lomakkeen ensimmäinen valinta on soitin: sähkökitara (oletus), 7-kielinen,
-8-kielinen, bassokitara tai 5-kielinen basso
-(`Prototype001Parameters.for_instrument`). 5-kielinen basso on 4-kielisen
+8-kielinen, bassokitara, 5-kielinen basso, headless-kitara tai
+headless-basso (`Prototype001Parameters.for_instrument`). Headless-soittimissa
+(`headless`) ei ole lapaa eikä virittimiä: kaula päättyy 35 mm satulan taakse
+(`headless_length`, 25–80 mm) tasaiseen, satulan levyiseen päähän
+liimapinnan tasossa, johon kielten kiinnitin ruuvataan, ja kielet viritetään
+headless-tallasta (`HeadlessBridgeSpec`, `kind` "headless"): tallan ja
+virittimien yhteinen levy ruuvataan kannen päälle neljällä ruuvilla
+levyn kulmiin (pilottireiät 3 × 12 mm), levy 12 mm satulalinjan edessä,
+90 mm pitkä ja 10 mm uloimpien kielten ulkopuolelle (kitara 6 × 10,5 mm,
+basso 4 × 19 mm kielijako). Levy on tallan ala, jonka pleksi ja kaiverrus
+väistävät, ja sen on mahduttava rungolle. Headless-kitarassa
+tallamikki on 38 mm tallalinjan edessä, jotta se jää 6 mm irti levystä. Muut
+arvot ovat kitaran ja basson. 5-kielinen basso on 4-kielisen
 oletukset 47 mm satulalla (kielijako 9,5 mm), 18 mm kielijaolla tallassa,
 77 mm kannalla, 4+1-lavalla (Jazz V -tyyli; myös 3+2, 2+3, 1+4 ja 5 rivissä)
 ja viisikielisellä tallalla; sen Jazz-mikin kolo on Warmothin 5-kielinen
@@ -182,7 +194,9 @@ ja reikien päälle (3 mm välys, mutta lovi alkaa aikaisintaan 3 mm
 viimeisen mikin takaa), se leikataan suorakaiteen muotoisella lovella
 tallan ympäri. Kahler 7300:n levy on joka suuntaan 5 mm jyrsintää
 isompi (`plate_overhang`, editorissa katkoviivalla); pleksi jättää
-tilaa koko levylle. *Auto pickguard* vaihtaa
+tilaa koko levylle. Kaikki pleksit kiertävät kannasta säädettävän
+kaularaudan säätökolon kaulataskun päässä (vähintään 2 mm välys), jotta
+säätöpyörää voi kääntää pleksi paikallaan. *Auto pickguard* vaihtaa
 kummankin automaattiseen. Piirretyn pleksin on peitettävä pleksiin asennettujen
 kontrollien kolo, muuten rakentaminen pysähtyy virheeseen. Runkoeditorissa sen kahvoja voi raahata, reunaa
 klikkaamalla lisätä pisteen ja Alt- tai oikealla klikkauksella poistaa
@@ -235,6 +249,7 @@ sitä voi raahata kaulan suunnassa.
 | Virittimet | 6 × 10 mm läpireikää; rivissä 25,4 mm jaolla 50 mm:stä alkaen; rivityyleissä tapit kielten suorilla linjoilla (kielet eivät taitu satulassa): kuutosrivi kulkee vinosti keskilinjan yli ja sen reuna seuraa tappeja 15 mm:n päässä, 4+2:n pari lavan juuressa rivin kahta ensimmäistä vastapäätä; bassopuoli −Y (`headstock_bass_side`) |
 | Reunapuuta viritinreiällä | Vähintään 8 mm |
 | Reikäviiste | 45°, 0,2 mm |
+| Nimikaiverrus | Valinnainen (`headstock_engraving_text`): teksti kaiverretaan lavan pintaan 1 mm syvään (`headstock_engraving_depth`) V-terällä omassa ohjelmassaan `Headstock_engraving.nc` heti lavan pinnan jyrsinnän jälkeen, pintaa ja sen kulmaa seuraten. Fontti (`headstock_engraving_font`) on yksiviivainen (terä kulkee kirjaimen keskiviivaa): `sans` (oletus, oma yksinkertainen groteski: isot ja pienet kirjaimet, numerot ja vähän välimerkkejä), `script` (Hershey Script, kaunokirjoitus) tai `gothic` (Hershey Gothic English, fraktuura); kahdessa jälkimmäisessä myös ä, ö, å, ü ja é. Isojen kirjainten korkeus `headstock_engraving_height` (6 mm), keskikohta `headstock_engraving_x` / `_y` (oletus 20 mm satulan istukan takana keskilinjalla), suunta `headstock_engraving_angle` (90° = poikittain, luettavissa lapa ylöspäin). Lavan editorissa teksti näkyy sinisenä ja sitä voi raahata. Tekstin on oltava 2 mm irti lavan reunasta, satulan istukasta, viritinrei'istä ja kaularaudan säätökolosta, muuten rakentaminen pysähtyy virheeseen. FreeCAD-mallissa teksti on viivoina lavan pinnalla |
 
 Lavan reunat piirretään (`headstock_outline = "drawn"`, oletus): web-sovelluksen
 lavaeditori on auki, siinä raahataan kummankin reunan kahvoja ja kärkeä ja
@@ -293,6 +308,14 @@ päätä ja tallan piirteet (tallalevyn kolo, tallamikki) mensuuria, joten
 mensuurin tai nauhamäärän muutos pitää kaulan taskussaan ja tallan
 mensuurilla.
 
+Sääntö: satulasta 12. nauhaan on aina yhtä pitkä matka kuin 12. nauhasta
+tallan satuloihin, millä tahansa tallalla, mensuurilla ja satulalla.
+Satula (lukkosatulan etupinta) on satulalinjalla X = 0, 12. nauha
+mensuurin puolivälissä ja tallan satulat (säätövaran keskellä)
+mensuurilinjalla: Floyd Rosen tapit 11,9 mm ennen sitä, Tune-o-maticin
+tolpat kompensaation verran sen takana. `tests/presets/test_scale_symmetry.py`
+varmistaa tämän.
+
 | Kohta | Speksi |
 | --- | --- |
 | Paksuus | 44 mm laatta; reunat ja viisteet valinnaisia (alla) |
@@ -313,10 +336,36 @@ reunanauhan ura (`body_*_binding_width` / `_depth`, syvyys oletuksena 6 mm),
 soittokäden viiste päälle bassopuolen takakaaren kohdalle
 (`body_arm_contour_*`, oletuksena 60 mm leveä ja 240 mm pitkä) ja mahaviiste
 taakse bassopuolen yläkaaren kohdalle (`body_belly_cut_*`, 70 × 260 mm).
-Viisteet kapenevat reunaa pitkin molempiin päihin. Viisteet ja pyöristykset
+Viisteet kapenevat reunaa pitkin molempiin päihin. Soittokäden viisteen
+alkuviivan voi piirtää runkoeditorissa (`arm_contour_points`): vihreä
+viiva pyöreine kahvoineen, päät rungon reunalla; viiste ulottuu reunasta
+viivaan asti ja on syvin siellä, missä viiva on kauimpana reunasta.
+*Auto arm contour* palauttaa automaattisen. Viisteet ja pyöristykset
 ajetaan ball nose -terällä omissa ohjelmissaan (`Body_top_edges.nc`,
 `Body_back_edges.nc`), reunanauhan ura pääterällä ääriviivan jälkeen.
 FreeCAD-mallissa ne ovat 1 mm porrastuksina.
+
+## Koristekaiverrus
+
+Valinnainen (`body_engraving`, oletuksena pois): kanteen kaiverretaan
+Design by Jonen pintakuvion (`pintakuviodesignbyjone.dxf`) tyylinen
+kiehkurakuvio. Kuvion aihio on viisi kaarta (laaja kiehkura, siitä
+kiertyvä kierre ja pieni kärki, koukku ja pitkä kaari); aihion kopiot
+arvotaan kannelle siemenluvusta (`body_engraving_seed`, sama siemen
+antaa aina saman kuvion; runkoeditorin *New pattern* arpoo uuden)
+noin `body_engraving_spacing` (50 mm) välein, kukin käännettynä
+piirustuksen jompaankumpaan suuntaan. Kaaret rajataan 10 mm rungon
+reunan sisäpuolelle ja 4 mm irti koloista, mikeistä, tallasta ja sen
+levystä, pleksistä, viisteistä ja rei'istä. Takapuolen koloja ei
+väistetä (niiden päälle jää 8 mm puuta), ellei kaiverruksen alle jäisi
+alle 3 mm. Arvonnassa ei
+tule liian tiheitä rykelmiä (enintään 10 viivaa 30 × 30 mm:n alueella)
+eikä yksittäisiä viivoja: yksinäinen viiva tai alle 40 mm:n irrallinen
+viivaryhmä jätetään pois. Kaiverrus on
+2 mm syvä (`body_engraving_depth`) ja ajetaan omana ohjelmanaan
+`Body_top_engraving.nc` V-terällä (`engraving_tool_angle` 60°, ura
+2,31 mm leveä, 1 mm kerroksin). FreeCAD-mallissa se näkyy viivoina
+kannen pinnalla (ei uria).
 
 ## Omat suunnitelmat
 

@@ -31,6 +31,8 @@ from .geometry.body import (
     BRIDGE_MAX_STRINGS,
     bridge_spec_from_dict,
 )
+from .geometry.exceptions import GeometryException
+from .geometry.lettering import text_lines
 from .geometry.neck import LOCKING_NUT_SPECS
 from .geometry.primitives import Point2D, point_in_polygon
 from .presets import Prototype001Parameters
@@ -41,6 +43,7 @@ from .presets.body_shapes import (
     YOUR_DESIGN_START_POINTS,
     YOUR_DESIGN_TEMPLATES,
     body_shape_from_dict,
+    widened_shape,
 )
 from .presets.controls import CONTROL_LABELS
 from .presets.pickups import PICKUP_CONFIGURATIONS
@@ -73,6 +76,11 @@ _CHOICE_LABELS: dict[str, dict[str, str]] = {
         "stratocaster": "Stratocaster (beside the neck, a tail past the bridge)",
         "superstrat": "Superstrat (close round the pickups)",
     },
+    "headstock_engraving_font": {
+        "sans": "Plain sans (single stroke)",
+        "script": "Script (Hershey Script)",
+        "gothic": "Gothic (Hershey Gothic English)",
+    },
     "body_switch": {
         "toggle": "3-way toggle (1/2 in hole, 12.7 mm)",
         "micro": "Micro (mini) toggle (1/4 in hole, 6.35 mm)",
@@ -90,6 +98,8 @@ INSTRUMENT_LABELS: dict[str, str] = {
     "eight_string_guitar": "8-string guitar",
     "bass_guitar": "Bass guitar",
     "five_string_bass": "5-string bass",
+    "headless_guitar": "Headless guitar",
+    "headless_bass": "Headless bass",
 }
 
 # The handful of parameters a builder normally touches; the form shows
@@ -107,6 +117,7 @@ _BASIC_FIELDS: frozenset[str] = frozenset(
         "nut_width",
         "fretboard_radius",
         "fretboard_thickness",
+        "fretboard_binding_width",
         "inlay_style",
         "final_fret_width",
         "first_fret_thickness",
@@ -129,6 +140,8 @@ _BASIC_FIELDS: frozenset[str] = frozenset(
         "body_jack",
         "body_pickguard",
         "body_pickguard_style",
+        "body_engraving",
+        "body_engraving_seed",
         "body_battery_box",
         "body_battery_count",
         "locking_nut",
@@ -326,7 +339,10 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         the editor's stretch handles — or ``None`` without a control
         layout; ``pickguard`` ``{"points", "automatic", "openings",
         "holes"}`` — the guard's control points (laid out automatically or
-        drawn), its pickup and switch openings and its holes — or ``None``.
+        drawn), its pickup and switch openings and its holes — or ``None``;
+        ``arm_contour`` ``{"points", "automatic"}`` — the line where the arm
+        contour starts (see ``_arm_contour_line``) — or ``None``;
+        ``engraving`` the decorative engraving's lines, or ``None``.
     """
     try:
         parameters = Prototype001Parameters(**_coerce(payload.get("prototype", {})))
@@ -514,7 +530,45 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
             if layout.pickguard is not None
             else None
         ),
+        "arm_contour": _arm_contour_line(parameters, layout.contours, local),
+        "engraving": (
+            [local(line) for line in layout.engraving.lines]
+            if layout.engraving is not None
+            else None
+        ),
     }
+
+
+ARM_CONTOUR_HANDLES = 7
+"""How many handles an automatic arm contour's line gets in the editor."""
+
+
+def _arm_contour_line(
+    parameters: Prototype001Parameters,
+    contours: Any,
+    local: Any,
+) -> dict[str, Any] | None:
+    """Return the arm contour's start line for the editor, or ``None``.
+
+    ``{"points", "automatic"}``: the shape's drawn ``arm_contour_points``
+    (as widened for the instrument), or ``ARM_CONTOUR_HANDLES`` points
+    along the automatic contour's inner edge, its ends on the body's edge.
+    """
+    arm = next((c for c in contours if c.name == "Arm contour"), None)
+    if arm is None:
+        return None
+    shape = widened_shape(parameters.body_shape, parameters.body_widening_amount())
+    if shape.arm_contour_points:
+        return {
+            "points": [[x, y] for x, y in shape.arm_contour_points],
+            "automatic": False,
+        }
+    inner = arm.inner_edge()
+    picks = [
+        round(k * (len(inner) - 1) / (ARM_CONTOUR_HANDLES - 1))
+        for k in range(ARM_CONTOUR_HANDLES)
+    ]
+    return {"points": local(inner[i] for i in picks), "automatic": True}
 
 
 def headstock_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
@@ -534,7 +588,8 @@ def headstock_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         ``{"error": message}``. ``start_edges`` are the fitted outline's
         edges, sampled halfway to the shoulder, at the shoulder, at seven
         points along the taper and at the tip (ten handles a side);
-        ``holes`` is a list of ``{"side", "x", "y", "r"}``.
+        ``holes`` is a list of ``{"side", "x", "y", "r"}``; ``lettering``
+        the headstock's lettering (see ``_headstock_lettering``), or ``None``.
     """
     try:
         parameters = Prototype001Parameters(**_coerce(payload.get("prototype", {})))
@@ -556,6 +611,7 @@ def headstock_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         for side in ("bass", "treble")
     }
     return {
+        "lettering": _headstock_lettering(parameters),
         "nut_half_width": parameters.nut_width / 2.0,
         "bass_sign": fitted.bass_sign,
         "min_edge_distance": parameters.tuner_edge_offset,
@@ -570,6 +626,43 @@ def headstock_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
             }
             for side, x, y in centres
         ],
+    }
+
+
+def _headstock_lettering(parameters: Prototype001Parameters) -> dict[str, Any] | None:
+    """Return the headstock's lettering for its editor, or ``None`` without any.
+
+    ``{"lines", "centre", "problem"}``: its strokes and centre (model
+    frame, as the editor draws it) and why it does not fit, or ``None``.
+    Drawn even where it does not fit, so it can be dragged clear.
+    """
+    text = parameters.headstock_engraving_text.strip()
+    if not text:
+        return None
+    plan, tuners = parameters.headstock_design()
+    headstock = parameters.headstock_solid(plan)
+    centre = parameters.headstock_engraving_centre(headstock)
+    try:
+        lines = text_lines(
+            text,
+            parameters.headstock_engraving_height,
+            centre,
+            parameters.headstock_engraving_angle,
+            parameters.headstock_engraving_font,
+        )
+    except GeometryException as error:
+        return {"lines": [], "centre": [centre.x, centre.y], "problem": str(error)}
+    problem = None
+    try:
+        parameters.headstock_lettering(
+            headstock, tuners, parameters.truss_rod(parameters.neck_outline())
+        )
+    except CNCGuitarWizardError as error:
+        problem = str(error)
+    return {
+        "lines": [[[round(p.x, 2), round(p.y, 2)] for p in line] for line in lines],
+        "centre": [round(centre.x, 2), round(centre.y, 2)],
+        "problem": problem,
     }
 
 
@@ -860,6 +953,8 @@ def _form_type(annotation: Any) -> str:
         return "int"
     if annotation is float:
         return "float"
+    if annotation is str:
+        return "str"
     return "json"
 
 

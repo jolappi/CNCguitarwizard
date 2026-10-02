@@ -63,6 +63,7 @@ def test_schema_lists_every_parameter_with_a_form_type() -> None:
         "floyd_rose",
         "tune_o_matic",
         "hardtail",
+        "headless",
     }
     assert bridge["variants"]["floyd_rose"]["label"].startswith("Floyd Rose")
     floyd_fields = {f["name"]: f for f in bridge["variants"]["floyd_rose"]["fields"]}
@@ -140,8 +141,11 @@ def test_schema_lists_every_parameter_with_a_form_type() -> None:
         "eight_string_guitar",
         "bass_guitar",
         "five_string_bass",
+        "headless_guitar",
+        "headless_bass",
     }
     assert schema["instruments"]["five_string_bass"]["label"] == "5-string bass"
+    assert schema["instruments"]["headless_bass"]["label"] == "Headless bass"
     eight = schema["instruments"]["eight_string_guitar"]
     assert eight["label"] == "8-string guitar"
     assert eight["overrides"]["body_bridge"] == {

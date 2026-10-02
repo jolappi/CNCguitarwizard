@@ -126,8 +126,8 @@ function renderForm() {
 // loaded and built (its row in the form is hidden). A change on either
 // side is passed to the other.
 const EDITOR_FIELDS = {
-  "body-editor-options": ["body_pickups", "body_controls", "body_switch", "body_jack", "body_pickguard", "body_pickguard_style", "body_battery_box", "body_battery_count"],
-  "headstock-editor-options": ["headstock_style"],
+  "body-editor-options": ["body_pickups", "body_bridge", "body_controls", "body_switch", "body_jack", "body_pickguard", "body_pickguard_style", "body_arm_contour_depth", "body_engraving", "body_engraving_seed", "body_battery_box", "body_battery_count"],
+  "headstock-editor-options": ["headstock_style", "headstock_engraving_text", "headstock_engraving_font", "headstock_engraving_height", "headstock_engraving_angle"],
 };
 const mirrors = new Map();
 
@@ -137,7 +137,10 @@ function mirrorEditorFields() {
     const holder = document.getElementById(id);
     holder.innerHTML = "";
     for (const name of names) {
-      const original = form.querySelector(`[data-set="prototype"][data-name="${name}"]`);
+      // A plain field, or a variant's kind (the bridge: its own sizes
+      // stay in the form).
+      const original = form.querySelector(`:is(input, select)[data-set="prototype"][data-name="${name}"]`)
+        || form.querySelector(`.variant[data-set="prototype"][data-name="${name}"] select.kind`);
       if (!original) continue;
       const row = original.closest(".field");
       row.classList.add("mirrored");
@@ -166,6 +169,13 @@ function syncMirrors() {
   for (const [original, copy] of mirrors) {
     if (copy.type === "checkbox") copy.checked = original.checked;
     else if (document.activeElement !== copy) copy.value = original.value;
+    if (copy.tagName === "SELECT") {
+      // Kinds hidden for the string count are hidden here too.
+      [...copy.options].forEach((option, index) => {
+        option.hidden = original.options[index].hidden;
+        option.disabled = original.options[index].disabled;
+      });
+    }
     copy.classList.toggle("changed", original.classList.contains("changed"));
   }
 }
@@ -203,6 +213,7 @@ function applyStringLimits() {
       markChanged(holes);
     }
   }
+  syncMirrors();
 }
 
 // Basic fields first; the rarely changed ones fold away behind
@@ -261,6 +272,9 @@ function renderField(set, field) {
   } else if (field.type === "float" || field.type === "int") {
     input.type = "number";
     input.step = field.type === "int" ? "1" : "any";
+    input.value = String(initial);
+  } else if (field.type === "str") {
+    input.type = "text";
     input.value = String(initial);
   } else {
     input.type = "text";
@@ -375,6 +389,7 @@ function readValue(input) {
   if (type === "optional_float") {
     return input.value.trim() === "" ? null : parseFloat(input.value);
   }
+  if (type === "str") return input.value;
   return JSON.parse(input.value);
 }
 
@@ -723,6 +738,7 @@ function setControlValue(control, value) {
   if (type === "bool") control.checked = Boolean(value);
   else if (type === "float" || type === "int") control.value = String(value);
   else if (type === "optional_float") control.value = value === null ? "" : String(value);
+  else if (type === "str") control.value = String(value);
   else control.value = JSON.stringify(value);
   control.dispatchEvent(new Event("input", { bubbles: true }));
   control.dispatchEvent(new Event("change", { bubbles: true }));
@@ -824,6 +840,27 @@ function closedCatmullRom(points, samples) {
       out.push([blend(p0[0], p1[0], p2[0], p3[0], t), blend(p0[1], p1[1], p2[1], p3[1], t)]);
     }
   }
+  return out;
+}
+
+// An open curve through the points, both ends included: each end stands
+// in for its own missing neighbour (as geometry.primitives.open_catmull_rom).
+function openCatmullRom(points, samples) {
+  const out = [];
+  const n = points.length;
+  const blend = (a, b, c, d, t) => 0.5 * (
+    2 * b + (c - a) * t + (2 * a - 5 * b + 4 * c - d) * t * t
+    + (3 * b - a - 3 * c + d) * t * t * t
+  );
+  for (let i = 0; i < n - 1; i++) {
+    const p0 = points[Math.max(i - 1, 0)], p1 = points[i];
+    const p2 = points[i + 1], p3 = points[Math.min(i + 2, n - 1)];
+    for (let s = 0; s < samples; s++) {
+      const t = s / samples;
+      out.push([blend(p0[0], p1[0], p2[0], p3[0], t), blend(p0[1], p1[1], p2[1], p3[1], t)]);
+    }
+  }
+  out.push(points[n - 1]);
   return out;
 }
 
@@ -1048,6 +1085,37 @@ const bodyEditor = {
       });
     }
 
+    // The decorative engraving, drawn as the bit's centre lines.
+    for (const line of layout.engraving || []) {
+      this.element("path", { class: "engraving", d: this.openPath(line) });
+    }
+
+    // The line where the arm contour starts, with round handles at its
+    // control points; dragging one draws it (arm_contour_points).
+    this.armPoints = layout.arm_contour ? layout.arm_contour.points.map((p) => [...p]) : null;
+    if (this.armPoints) {
+      this.armPath = this.element("path", {
+        class: "arm-line", d: this.openPath(openCatmullRom(this.armPoints, 8)),
+        "stroke-dasharray": layout.arm_contour.automatic ? "4,2" : "none",
+      });
+      this.armHit = this.element("path", { class: "outline-hit", d: this.openPath(openCatmullRom(this.armPoints, 8)) });
+      this.armHit.addEventListener("click", (event) => {
+        if (event.detail <= 1) this.addArmPoint(event);
+      });
+      this.element("title", {}, this.armHit).textContent = "Click the arm contour's line to add a point";
+      this.armHandles = this.armPoints.map((point, index) => {
+        const handle = this.element("circle", { class: "arm-handle", cx: point[0], cy: -point[1], r: 2.4 });
+        this.element("title", {}, handle).textContent =
+          "Where the arm contour starts — drag to move, Alt-click or right-click to remove; the ends sit on the body's edge";
+        handle.addEventListener("pointerdown", (event) => {
+          if (event.altKey) { this.removeArmPoint(index); return; }
+          this.startArmDrag(event, index, handle);
+        });
+        handle.addEventListener("contextmenu", (event) => { event.preventDefault(); this.removeArmPoint(index); });
+        return handle;
+      });
+    }
+
     // A wide, invisible stroke over the outline: one click on the line
     // adds a handle there (the body inside it is left alone).
     this.outlineHit = this.element("path", { class: "outline-hit", d: this.pathData(this.outline()) });
@@ -1063,6 +1131,9 @@ const bodyEditor = {
       handle.addEventListener("contextmenu", (event) => { event.preventDefault(); this.removePoint(index); });
       return handle;
     });
+    // The arm contour line's ends sit on the outline: its handles go on
+    // top of the outline's click strip and handles, so they drag.
+    for (const handle of this.armPoints ? this.armHandles : []) handle.parentNode.appendChild(handle);
     this.check();
     this.showTemplate();
   },
@@ -1252,6 +1323,74 @@ const bodyEditor = {
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", end);
     window.addEventListener("pointercancel", end);
+  },
+
+  // An open line as path data.
+  openPath(points) {
+    return points.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(2)},${(-y).toFixed(2)}`).join(" ");
+  },
+
+  // Drag one of the arm contour line's points; on drop its points are
+  // written (drawn from now on: Auto arm contour goes back).
+  startArmDrag(event, index, handle) {
+    event.preventDefault();
+    event.stopPropagation();
+    handle.classList.add("dragging");
+    const move = (moveEvent) => {
+      const [x, y] = this.toModel(moveEvent);
+      this.armPoints[index] = [x, y];
+      handle.setAttribute("cx", x);
+      handle.setAttribute("cy", -y);
+      const d = this.openPath(openCatmullRom(this.armPoints, 8));
+      this.armPath.setAttribute("d", d);
+      this.armHit.setAttribute("d", d);
+    };
+    const end = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", end);
+      window.removeEventListener("pointercancel", end);
+      handle.classList.remove("dragging");
+      this.commitArm();
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", end);
+    window.addEventListener("pointercancel", end);
+  },
+
+  // Write the line's points (stored before the body's widening) and lay
+  // the body out again.
+  commitArm() {
+    const points = this.armPoints.map((p) => this.unwiden(p).map((v) => Math.round(v * 10) / 10));
+    this.setField(this.field("prototype.body_shape", "arm_contour_points"), points);
+    this.refresh();
+  },
+
+  addArmPoint(event) {
+    const [x, y] = this.toModel(event);
+    // After the point whose span passes nearest the click (8 samples a span).
+    const line = openCatmullRom(this.armPoints, 8);
+    let best = 0, bestDistance = Infinity;
+    line.forEach(([lx, ly], i) => {
+      const distance = (lx - x) ** 2 + (ly - y) ** 2;
+      if (distance < bestDistance) { bestDistance = distance; best = i; }
+    });
+    const span = Math.min(Math.floor(best / 8), this.armPoints.length - 2);
+    this.armPoints.splice(span + 1, 0, [x, y]);
+    this.commitArm();
+  },
+
+  removeArmPoint(index) {
+    if (this.armPoints.length <= 3) {
+      this.setStatus("The arm contour's line needs at least three points.", "bad");
+      return;
+    }
+    this.armPoints.splice(index, 1);
+    this.commitArm();
+  },
+
+  autoArm() {
+    this.setField(this.field("prototype.body_shape", "arm_contour_points"), []);
+    this.refresh();
   },
 
   // The guard's outline as path data, its openings and holes as more
@@ -1734,6 +1873,12 @@ const bodyEditor = {
 
 document.getElementById("body-editor-reset").addEventListener("click", () => bodyEditor.reset());
 document.getElementById("body-editor-auto-guard").addEventListener("click", () => bodyEditor.autoGuard());
+document.getElementById("body-editor-auto-arm").addEventListener("click", () => bodyEditor.autoArm());
+// A new engraving pattern: another seed (turning the engraving on).
+document.getElementById("body-editor-new-pattern").addEventListener("click", () => {
+  setControlValue(bodyEditor.field("prototype", "body_engraving"), true);
+  setControlValue(bodyEditor.field("prototype", "body_engraving_seed"), Math.floor(Math.random() * 100000) + 1);
+});
 // ---------------------------------------------------------------------------
 // Headstock editor: drag the two edges of a "drawn" headstock over the
 // fixed tuner holes. Each edge is [distance from the nut, half-width]
@@ -1787,7 +1932,9 @@ const headstockEditor = {
 
   sync() {
     const { outline, bass, treble } = this.inputs();
-    const active = outline && outline.value === "drawn";
+    // A headless neck has no headstock to draw.
+    const headless = form.querySelector("[data-set='prototype'][data-name='headless']");
+    const active = outline && outline.value === "drawn" && !(headless && headless.checked);
     this.panel.classList.toggle("hidden", !active);
     if (!active) return;
     try {
@@ -2015,7 +2162,43 @@ const headstockEditor = {
       handle.addEventListener("pointerdown", (event) => this.startTipDrag(event, index, handle));
       handle.addEventListener("contextmenu", (event) => { event.preventDefault(); this.removeTipPoint(index); });
     });
+    // The lettering, in blue as the body's engraving; drag it to move it.
+    if (layout.lettering) {
+      const group = this.element("g", { class: "lettering" });
+      for (const line of layout.lettering.lines) {
+        this.element("path", { class: "lettering-line", d: this.pathData(line) }, group);
+        const hit = this.element("path", { class: "lettering-hit", d: this.pathData(line) }, group);
+        hit.addEventListener("pointerdown", (event) => this.startLetteringDrag(event, group));
+      }
+      this.element("title", {}, group).textContent = "The headstock lettering — drag it to move it";
+    }
     this.check();
+  },
+
+  // Drag the lettering; on drop its centre is written (headstock_engraving_x / _y).
+  startLetteringDrag(event, group) {
+    event.preventDefault();
+    event.stopPropagation();
+    const start = this.toModel(event);
+    let delta = [0, 0];
+    const move = (moveEvent) => {
+      const [x, y] = this.toModel(moveEvent);
+      delta = [x - start[0], y - start[1]];
+      group.setAttribute("transform", `translate(${delta[0]} ${-delta[1]})`);
+    };
+    const end = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", end);
+      window.removeEventListener("pointercancel", end);
+      if (!delta[0] && !delta[1]) return;
+      const [cx, cy] = this.layout.lettering.centre;
+      const round = (v) => Math.round(v * 10) / 10;
+      setControlValue(form.querySelector("[data-set='prototype'][data-name='headstock_engraving_x']"), round(cx + delta[0]));
+      setControlValue(form.querySelector("[data-set='prototype'][data-name='headstock_engraving_y']"), round(cy + delta[1]));
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", end);
+    window.addEventListener("pointercancel", end);
   },
 
   toModel(event) {
@@ -2198,6 +2381,8 @@ const headstockEditor = {
       this.setStatus("A tip handle lies outside the tip's corners: move it in or remove it.", "bad");
     } else if (close.length) {
       this.setStatus(`Too close to the edge (keep ${limit} mm): ${close.join(", ")}.`, "bad");
+    } else if (this.layout.lettering?.problem) {
+      this.setStatus(this.layout.lettering.problem, "bad");
     } else {
       this.setStatus(`Every tuner hole is at least ${limit} mm from the edge.`, "ok");
     }
@@ -2211,7 +2396,7 @@ const headstockEditor = {
 
 document.getElementById("headstock-editor-reset").addEventListener("click", () => headstockEditor.reset());
 form.addEventListener("change", (event) => {
-  if (event.target.dataset.name === "headstock_outline") headstockEditor.sync();
+  if (["headstock_outline", "headless"].includes(event.target.dataset.name)) headstockEditor.sync();
   else if (!/^headstock_(bass_edge|treble_edge|tip_points)$/.test(event.target.dataset.name || "")) headstockEditor.scheduleRefresh();
 });
 form.addEventListener("input", (event) => {

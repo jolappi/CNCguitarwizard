@@ -64,6 +64,7 @@ Three programs are written, in running order:
 | `Body_back.nc` | Flipped, on the dowels | Any tremolo spring cavity with its cover recess and deeper block clearance pocket, the neck-bolt ferrules, outline to half depth + overlap with tabs |
 | `Body_back_controls.nc` | Back up, on the dowels (rear control layouts or a battery box) | The control, switch and battery cover recesses and cavities (the battery lead's channel is drilled by hand) |
 | `Body_top_edges.nc` | Top up, on the dowels (only with an arm contour or top roundover) | The arm contour (roughed in step-down layers, then finished with 1 mm passes) and the top roundover, with a ball nose the main tool's size |
+| `Body_top_engraving.nc` | Top up, on the dowels (only with `body_engraving`) | The decorative engraving with a V-bit (`engraving_tool_angle`, 60°), each line in `engraving_step_down` (1 mm) passes back and forth to `body_engraving_depth` (2 mm), the nearest line next; run it before a top roundover, while the top is flat |
 | `Body_back_small_holes.nc` | Back up, on the dowels | The neck-bolt holes (narrower than the main tool) with the `small_hole_tool_diameter` drill, from each ferrule's floor into the neck pocket, and the cover-screw spots on the recess ledges |
 | `Body_back_edges.nc` | Back up, on the dowels (only with a belly cut or back roundover) | The belly cut and the back roundover, with the ball nose |
 | `Cover_<name>.nc` | A sheet on a spoilboard | One program per cover plate (below) |

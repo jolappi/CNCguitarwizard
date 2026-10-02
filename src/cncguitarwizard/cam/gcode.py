@@ -126,8 +126,7 @@ class GCodeWriter:
             note(f"{PROJECT_NAME} {__version__}"),
             note(f"Setup: {setup.description}"),
             note(
-                f"Tool: {parameters.tool_diameter:.3f} mm "
-                f"{'ball nose' if parameters.tool_tip == 'ball' else 'end mill'}, "
+                f"Tool: {_tool_name(parameters)}, "
                 f"S{parameters.spindle_speed:.0f}, F{parameters.feed_rate:.0f}, "
                 f"plunge F{parameters.plunge_rate:.0f}, "
                 f"step-down {parameters.step_down:.3f} mm"
@@ -296,3 +295,14 @@ class _WordState:
 def _comment(text: str) -> str:
     """Strip characters that would terminate a G-code comment early."""
     return text.replace("(", "[").replace(")", "]")
+
+
+def _tool_name(parameters: MachiningParameters) -> str:
+    """Return the tool as the header names it."""
+    if parameters.tool_tip == "vee":
+        return (
+            f"{parameters.engraving_tool_angle:g} degree V-bit "
+            f"({parameters.tool_diameter:.3f} mm wide at full depth)"
+        )
+    kind = "ball nose" if parameters.tool_tip == "ball" else "end mill"
+    return f"{parameters.tool_diameter:.3f} mm {kind}"

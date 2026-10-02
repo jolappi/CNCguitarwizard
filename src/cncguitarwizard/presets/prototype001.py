@@ -6,6 +6,7 @@ import math
 from dataclasses import dataclass, field, replace
 from typing import Any, Literal
 
+from ..cam.planar import offset_polygon
 from ..geometry.body import (
     BRIDGE_MAX_STRINGS,
     BodySolid,
@@ -16,8 +17,10 @@ from ..geometry.body import (
     CoverPlate,
     DrilledHole,
     EdgeProfile,
+    Engraving,
     FloydRoseSpec,
     HardtailSpec,
+    HeadlessBridgeSpec,
     JackHole,
     KahlerBridgeSpec,
     RearCavity,
@@ -27,7 +30,11 @@ from ..geometry.body import (
     outlines_overlap,
     turned_hardware,
 )
-from ..geometry.exceptions import BodyGeometryError, NeckGeometryError
+from ..geometry.exceptions import (
+    BodyGeometryError,
+    GeometryException,
+    NeckGeometryError,
+)
 from ..geometry.fretboard import (
     Fretboard,
     FretboardSurface,
@@ -36,6 +43,7 @@ from ..geometry.fretboard import (
     InlayLayout,
     InlayStyle,
 )
+from ..geometry.lettering import FontName, text_lines
 from ..geometry.neck import (
     LOCKING_NUT_SPECS,
     Centerline,
@@ -49,7 +57,12 @@ from ..geometry.neck import (
     TrussRodChannel,
     TunerLayout,
 )
-from ..geometry.primitives import Point2D, point_in_polygon, rounded_polygon_points
+from ..geometry.primitives import (
+    Point2D,
+    open_catmull_rom,
+    point_in_polygon,
+    rounded_polygon_points,
+)
 from .body_shapes import (
     BASS_BODY,
     BODY_WIDENING_PER_STRING,
@@ -67,6 +80,7 @@ from .controls import (
     control_features,
     rear_cover,
 )
+from .engraving import EngravingArea, engraving_lines
 from .pickguard import (
     PICKGUARD_STYLES,
     SADDLE_REACH,
@@ -74,6 +88,7 @@ from .pickguard import (
     PickguardStyleName,
     check_on_body,
     clear_of_bridge,
+    clear_of_truss_rod,
     pickguard,
 )
 from .pickguard import automatic_points as automatic_pickguard_points
@@ -87,12 +102,34 @@ from .pickups import (
     pickup_screws,
 )
 
+HEADSTOCK_ENGRAVING_SETBACK = 20.0
+"""How far behind the nut's seat the headstock lettering sits by default."""
+
+HEADSTOCK_ENGRAVING_CLEARANCE = 2.0
+"""Least gap between the headstock lettering and the face's edge, the
+nut's seat, a tuner hole or the truss rod adjuster's trough, in mm."""
+
+MIN_HEADLESS_LENGTH = 25.0
+"""The shortest headless headpiece: the neck's nut-end blend needs it."""
+
+MAX_FRETBOARD_BINDING = 3.0
+"""The thickest fretboard binding accepted, in mm."""
+
+ENGRAVING_WALL = 3.0
+"""Least wood the engraving leaves over a cavity routed from the back, in
+mm; a cavity reaching nearer the top is engraved round."""
+
+CONTOUR_LINE_SAMPLES = 8
+"""Samples per span of a drawn arm contour's line (``arm_contour_points``)."""
+
 Instrument = Literal[
     "electric_guitar",
     "seven_string_guitar",
     "eight_string_guitar",
     "bass_guitar",
     "five_string_bass",
+    "headless_guitar",
+    "headless_bass",
 ]
 """Which instrument's defaults a parameter set starts from."""
 
@@ -246,6 +283,10 @@ class Prototype001Geometry:
     """Cavity covers and control plates, each cut from sheet."""
     locking_nut: LockingNut | None = None
     """The top-mounted locking nut, or ``None`` for a plain nut."""
+    fretboard_binding_width: float = 0.0
+    """The binding strips' thickness along the board's long edges (0: none)."""
+    headstock_engraving: Engraving | None = None
+    """Lettering engraved into the headstock face, or ``None``."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -282,6 +323,8 @@ class BodyLayout:
             the ``controls``' covers).
         bridge_footprint: What the bridge itself covers on the top past
             its routes (a Kahler's plate), or empty.
+        engraving: The decorative pattern engraved into the top, or
+            ``None`` (see ``body_engraving``).
     """
 
     heel_end: float
@@ -306,6 +349,7 @@ class BodyLayout:
     truss_rod_access: TracedCavity | None = None
     pickguard: Pickguard | None = None
     bridge_footprint: tuple[Point2D, ...] = ()
+    engraving: Engraving | None = None
 
 
 TRUSS_ROD_STOCK_LENGTHS: tuple[float, ...] = tuple(
@@ -401,6 +445,13 @@ class Prototype001Parameters:
     heel_thickness: float = 20.0
     fretboard_radius: float = 430.0
     fretboard_thickness: float = 6.0
+    # Binding along the fretboard's long edges (0 = none): the board is
+    # cut fretboard_binding_width narrower each side and strips that thick
+    # are glued on, so board and binding together keep nut_width and
+    # final_fret_width (and the neck under them its own). The fret slots
+    # run out through the board's edges as usual; the frets' tangs are
+    # nipped back over the binding.
+    fretboard_binding_width: float = 0.0
     fret_slot_width: float = 0.6
     fret_slot_depth: float = 2.7
     # Position markers, cut as flat-bottomed pockets into the playing
@@ -554,6 +605,20 @@ class Prototype001Parameters:
     body_pickguard_thickness: float = 2.5
     body_pickguard_margin: float = 6.0
     body_pickguard_style: PickguardStyleName = "stratocaster"
+    # A decorative scroll pattern engraved into the top (see
+    # presets.engraving): body_engraving puts it on, laid out at random
+    # from body_engraving_seed (the same seed, the same pattern), copies
+    # of the motif about body_engraving_spacing apart (as in the drawing), cut
+    # body_engraving_depth deep with a V-bit, body_engraving_margin in
+    # from the edge and body_engraving_clearance clear of every top
+    # cavity, hole, the bridge, the pickguard and the contours (the back's
+    # cavities only when they leave less than ENGRAVING_WALL under it).
+    body_engraving: bool = False
+    body_engraving_seed: int = 1
+    body_engraving_depth: float = 2.0
+    body_engraving_spacing: float = 50.0
+    body_engraving_margin: float = 10.0
+    body_engraving_clearance: float = 4.0
     body_battery_box: bool = False
     body_battery_count: int = 1
     body_battery_cavity_length: float = 56.0
@@ -679,6 +744,13 @@ class Prototype001Parameters:
     headstock_bass_side: Literal["-y", "+y"] = "-y"
     headstock_length: float = 150.0
     headstock_root_length: float = 45.0
+    # A headless neck (headless): no headstock and no tuners, the neck
+    # ending headless_length behind the nut in a flat headpiece the
+    # string anchor screws onto, as wide as the nut; the strings are tuned
+    # at the bridge (a HeadlessBridgeSpec). headstock_style and the tuner
+    # values are then not used.
+    headless: bool = False
+    headless_length: float = 35.0
     headstock_shoulder_width: float | None = None
     headstock_tip_width: float | None = None
     headstock_shoulder_shift: float | None = None
@@ -710,6 +782,26 @@ class Prototype001Parameters:
     # at the seat and meeting the face at its slope); 0 for a sharp break.
     headstock_face_transition: float = 12.0
     tuner_hole_diameter: float = 10.0
+    # Lettering engraved into the headstock face (a name or a logo's
+    # words): headstock_engraving_text ("" for none) in
+    # headstock_engraving_font (geometry.lettering's single-stroke "sans",
+    # Hershey "script" or Hershey "gothic"), its capitals
+    # headstock_engraving_height tall,
+    # centred on headstock_engraving_x (from the nut, negative along the
+    # headstock; None: HEADSTOCK_ENGRAVING_SETBACK behind the nut's seat)
+    # and headstock_engraving_y, running along headstock_engraving_angle
+    # degrees from +X (90: across the headstock, read with it pointing up),
+    # cut headstock_engraving_depth deep with the engraving V-bit,
+    # following the face. It must keep HEADSTOCK_ENGRAVING_CLEARANCE from
+    # the face's edge, the nut's seat, the tuner holes and a truss rod
+    # adjuster's trough.
+    headstock_engraving_text: str = ""
+    headstock_engraving_font: FontName = "sans"
+    headstock_engraving_height: float = 6.0
+    headstock_engraving_x: float | None = None
+    headstock_engraving_y: float = 0.0
+    headstock_engraving_angle: float = 90.0
+    headstock_engraving_depth: float = 1.0
     tuner_station_distances: tuple[float, ...] = (55.0, 85.0, 110.0)
     tuner_side_offsets: tuple[float, ...] = (15.0, 12.0, 10.0)
     tuner_inline_first_distance: float = 50.0
@@ -1109,6 +1201,8 @@ class Prototype001Parameters:
             NeckGeometryError: If a hole comes too close to a drawn edge.
             HeadstockGeometryError: If the plan or holes are invalid.
         """
+        if self.headless:
+            return self._headless_design()
         layout = self._headstock_layout()
         drawn = (
             self.headstock_outline == "drawn"
@@ -1148,12 +1242,36 @@ class Prototype001Parameters:
                     )
         return plan, tuners
 
+    def _headless_design(self) -> tuple[HeadstockPlan, TunerLayout]:
+        """Return a headless neck's headpiece and its (empty) tuner layout.
+
+        The headpiece runs ``headless_length`` behind the nut, as wide as
+        the nut all along; it has no tuner holes.
+        """
+        plan = HeadstockPlan(
+            self.headless_length,
+            self.nut_width,
+            min(self.headstock_root_length, self.headless_length / 2.0),
+            self.nut_width,
+            self.nut_width,
+            bass_sign=-1.0 if self.headstock_bass_side == "-y" else 1.0,
+        )
+        tuners = TunerLayout(
+            plan,
+            hole_diameter=self.tuner_hole_diameter,
+            station_distances=(),
+            side_offsets=(),
+        )
+        return plan, tuners
+
     def tuner_centres(self) -> tuple[tuple[str, float, float], ...]:
         """Return ``(side, x, y)`` of every tuner hole, without validating.
 
         The web app's headstock editor draws these fixed holes under the
-        edges being drawn.
+        edges being drawn; a headless neck has none.
         """
+        if self.headless:
+            return ()
         layout = self._headstock_layout()
         centres: list[tuple[str, float, float]] = []
         for index, (distance, offset) in enumerate(
@@ -1422,9 +1540,16 @@ class Prototype001Parameters:
             if not heel:
                 # Up to 32 mm, shortened to keep 3 mm from the first tuner
                 # hole (a fanned neck's longer shelf pushes the trough back).
-                _, tuners = self.headstock_design()
+                plan, tuners = self.headstock_design()
+                # (A headless neck has no tuners: its headpiece's end.)
                 room = (
-                    min(-(hole.center.x + hole.diameter / 2.0) for hole in tuners.holes)
+                    min(
+                        (
+                            -(hole.center.x + hole.diameter / 2.0)
+                            for hole in tuners.holes
+                        ),
+                        default=plan.length,
+                    )
                     - shelf
                     - 3.0
                 )
@@ -1704,11 +1829,22 @@ class Prototype001Parameters:
             else None,
         )
         bridge_mounting = bridge.mounting
-        if isinstance(self.body_bridge, HardtailSpec):
+        if bridge.footprint and not all(
+            point_in_polygon(p, body_outline.points) for p in bridge.footprint
+        ):
+            raise BodyGeometryError(
+                "The bridge's plate lies outside the body outline: lengthen the "
+                "body behind the bridge or choose another bridge."
+            )
+        if isinstance(self.body_bridge, HardtailSpec | HeadlessBridgeSpec):
             if self.body_bridge.string_count != self.string_count:
+                what = (
+                    "hardtail has {} string holes"
+                    if isinstance(self.body_bridge, HardtailSpec)
+                    else "headless bridge has {} strings"
+                ).format(self.body_bridge.string_count)
                 raise BodyGeometryError(
-                    f"The hardtail has {self.body_bridge.string_count} string "
-                    f"holes, but the instrument has {self.string_count} strings."
+                    f"The {what}, but the instrument has {self.string_count} strings."
                 )
         elif self.string_count > BRIDGE_MAX_STRINGS.get(
             self.body_bridge.kind, self.string_count
@@ -1914,11 +2050,52 @@ class Prototype001Parameters:
             controls,
             neck_pocket.outline,
             pickup_holes,
+            truss_rod_access.outline if truss_rod_access else (),
         )
         if guard is not None:
             controls = controls.with_covers(
                 ControlFeatures(top_marks=guard.screw_spots, covers=(guard.plate,))
             )
+        contours = self._contours(shape, body_outline.points, heel_end, bass_sign)
+        engraving = self._engraving(
+            body_outline.points,
+            [
+                neck_pocket.outline,
+                *((truss_rod_access.outline,) if truss_rod_access else ()),
+                *(p.outline for p in (neck_pickup, middle_pickup, bridge_pickup) if p),
+                *(c.outline for c in (*bridge.top_cavities, *bridge.through_cavities)),
+                *((bridge.footprint,) if bridge.footprint else ()),
+                *((jack_cavity.outline,) if jack_cavity else ()),
+                *(c.outline for c in controls.top_cavities),
+                # The back's cavities need not be dodged: only a route left
+                # under too thin a top for the engraving.
+                *(
+                    route.outline
+                    for rear in (
+                        controls.control_cavity,
+                        controls.switch_cavity,
+                        controls.battery_cavity,
+                        *bridge.rear_cavities,
+                    )
+                    if rear is not None
+                    for route in (rear.cavity, *rear.steps)
+                    if self.body_thickness - route.depth
+                    < self.body_engraving_depth + ENGRAVING_WALL
+                ),
+                *(c.outline for c in controls.covers if c.face == "top"),
+                *(contour.region() for contour in contours),
+            ],
+            [
+                *(
+                    (hole.center, hole.diameter / 2.0)
+                    for hole in (*holes, *controls.holes, *controls.top_marks)
+                ),
+                *(
+                    (pivot, bridge_mounting.pivot_hole_diameter / 2.0)
+                    for pivot in bridge_mounting.pivot_holes
+                ),
+            ],
+        )
         return BodyLayout(
             heel_end,
             body_outline,
@@ -1946,10 +2123,125 @@ class Prototype001Parameters:
                 self.body_back_binding_width,
                 self.body_back_binding_depth if self.body_back_binding_width else 0.0,
             ),
-            self._contours(body_outline.points, heel_end, bass_sign),
+            contours,
             truss_rod_access,
             guard,
             bridge.footprint,
+            engraving,
+        )
+
+    def headstock_solid(self, plan: HeadstockPlan) -> HeadstockSolid:
+        """Return the headstock built on ``plan`` (see ``headstock_design``)."""
+        return HeadstockSolid(
+            plan,
+            HeadstockAngleReference(plan.length, self.headstock_angle),
+            self.headstock_thickness,
+            self.face_drop,
+            self.fret_skew.at(0.0),
+            self.nut_seat_length(),
+            self.headstock_face_transition,
+        )
+
+    def headstock_engraving_centre(self, headstock: HeadstockSolid) -> Point2D:
+        """Return where the headstock lettering is centred (model frame)."""
+        if self.headstock_engraving_x is not None:
+            return Point2D(self.headstock_engraving_x, self.headstock_engraving_y)
+        seat_end = headstock.nut_seat_length + headstock.nut_reach
+        return Point2D(
+            -(seat_end + HEADSTOCK_ENGRAVING_SETBACK), self.headstock_engraving_y
+        )
+
+    def headstock_lettering(
+        self,
+        headstock: HeadstockSolid,
+        tuner_layout: TunerLayout,
+        truss_rod_channel: TrussRodChannel,
+    ) -> Engraving | None:
+        """Return the headstock face's lettering, or ``None`` without any.
+
+        Raises:
+            NeckGeometryError: For lettering the font cannot set, too deep,
+                or running off the face, onto the nut's seat, into a
+                tuner hole or the truss rod adjuster's trough.
+        """
+        text = self.headstock_engraving_text.strip()
+        if not text:
+            return None
+        depth = self.headstock_engraving_depth
+        if not math.isfinite(depth) or not 0.0 < depth < headstock.thickness / 2.0:
+            raise NeckGeometryError(
+                "headstock_engraving_depth must be positive and under half the "
+                "headstock's thickness."
+            )
+        try:
+            lines = text_lines(
+                text,
+                self.headstock_engraving_height,
+                self.headstock_engraving_centre(headstock),
+                self.headstock_engraving_angle,
+                self.headstock_engraving_font,
+            )
+        except GeometryException as error:
+            raise NeckGeometryError(str(error)) from error
+        clearance = HEADSTOCK_ENGRAVING_CLEARANCE
+        face = offset_polygon(headstock.plan.boundary, clearance, inward=True)
+        seat_end = -(headstock.nut_seat_length + headstock.nut_reach + clearance)
+        trough = (
+            offset_polygon(truss_rod_channel.adjuster_boundary, clearance, inward=False)
+            if truss_rod_channel.adjuster_boundary
+            and max(p.x for p in truss_rod_channel.adjuster_boundary) <= 0.0
+            else ()
+        )
+        points = [p for line in lines for p in line]
+        problem = (
+            "runs off the face"
+            if not all(point_in_polygon(p, face) for p in points)
+            else "runs onto the nut's seat"
+            if any(p.x > seat_end for p in points)
+            else "runs into a tuner hole"
+            if any(
+                math.hypot(p.x - hole.center.x, p.y - hole.center.y)
+                < hole.diameter / 2.0 + clearance
+                for hole in tuner_layout.holes
+                for p in points
+            )
+            else "runs into the truss rod adjuster's trough"
+            if trough and any(point_in_polygon(p, trough) for p in points)
+            else None
+        )
+        if problem is not None:
+            raise NeckGeometryError(
+                f"The headstock lettering {problem}: move it "
+                "(headstock_engraving_x / _y), turn it or make it smaller."
+            )
+        return Engraving(lines, depth)
+
+    def _engraving(
+        self,
+        outline: tuple[Point2D, ...],
+        keep_out: list[tuple[Point2D, ...]],
+        holes: list[tuple[Point2D, float]],
+    ) -> Engraving | None:
+        """Return the top's decorative engraving, or ``None`` without one.
+
+        The pattern (``presets.engraving``) is laid out from
+        ``body_engraving_seed`` over the top ``body_engraving_margin`` in
+        from the edge, clear of ``keep_out`` and ``holes``.
+        """
+        if not self.body_engraving:
+            return None
+        area = EngravingArea(
+            outline,
+            self.body_engraving_margin,
+            tuple(tuple(polygon) for polygon in keep_out),
+            tuple(holes),
+            self.body_engraving_clearance,
+        )
+        return Engraving(
+            engraving_lines(
+                area, self.body_engraving_seed, self.body_engraving_spacing
+            ),
+            self.body_engraving_depth,
         )
 
     def _pickguard(
@@ -1962,6 +2254,7 @@ class Prototype001Parameters:
         controls: ControlFeatures,
         neck_pocket: tuple[Point2D, ...],
         openings: list[tuple[str, tuple[Point2D, ...]]],
+        truss_rod_access: tuple[Point2D, ...] = (),
     ) -> Pickguard | None:
         """Return the pickguard, or ``None`` without one (see ``body_pickguard``).
 
@@ -2011,6 +2304,8 @@ class Prototype001Parameters:
                 PICKGUARD_STYLES[self.body_pickguard_style],
             )
             automatic = True
+        # Either way the truss rod's spoke wheel stays uncovered.
+        points = clear_of_truss_rod(points, truss_rod_access)
         guard = pickguard(
             points,
             automatic=automatic,
@@ -2208,7 +2503,11 @@ class Prototype001Parameters:
         return controls
 
     def _contours(
-        self, outline: tuple[Point2D, ...], heel_end: float, bass_sign: float
+        self,
+        shape: BodyShapeSpec,
+        outline: tuple[Point2D, ...],
+        heel_end: float,
+        bass_sign: float,
     ) -> tuple[ContourCut, ...]:
         """Return the arm contour and belly cut that are switched on.
 
@@ -2216,9 +2515,21 @@ class Prototype001Parameters:
         (from 120 mm behind the heel end), the belly cut over the upper
         bout (40 mm ahead of it to 120 mm behind). Each is deepest at the
         outline point furthest out on that side, or the one nearest
-        ``body_*_position`` behind the heel end.
+        ``body_*_position`` behind the heel end. The shape's
+        ``arm_contour_points``, when drawn, are where the arm contour
+        starts instead (``ContourCut.along_line``).
         """
         contours: list[ContourCut] = []
+        if self.body_arm_contour_depth > 0.0 and shape.arm_contour_points:
+            line = open_catmull_rom(
+                [Point2D(heel_end + x, y) for x, y in shape.arm_contour_points],
+                CONTOUR_LINE_SAMPLES,
+            )
+            contours.append(
+                ContourCut.along_line(
+                    "Arm contour", "top", outline, line, self.body_arm_contour_depth
+                )
+            )
         for name, face, depth, width, length, position, span in (
             (
                 "Arm contour",
@@ -2239,7 +2550,7 @@ class Prototype001Parameters:
                 (-40.0, 120.0),
             ),
         ):
-            if depth <= 0.0:
+            if depth <= 0.0 or any(c.name == name for c in contours):
                 continue
             bass_side = [
                 index
@@ -2305,13 +2616,21 @@ class Prototype001Parameters:
             raise NeckGeometryError(
                 "Headstock volute length must be between 5 and 30 mm."
             )
+        if self.headless and (
+            not math.isfinite(self.headless_length)
+            or not MIN_HEADLESS_LENGTH <= self.headless_length <= 80.0
+        ):
+            raise NeckGeometryError(
+                f"headless_length must lie between {MIN_HEADLESS_LENGTH:g} and 80 mm."
+            )
+        head_length = self.headless_length if self.headless else self.headstock_length
         if (
             not math.isfinite(self.headstock_root_length)
-            or not 5.0 <= self.headstock_root_length < self.headstock_length
+            or not 5.0 <= self.headstock_root_length < head_length
         ):
             raise NeckGeometryError(
                 "Headstock root length must be at least 5 mm and shorter "
-                "than the headstock."
+                "than the headstock (or a headless neck's headpiece)."
             )
         if self.headstock_style not in HEADSTOCK_STYLES:
             raise NeckGeometryError(
@@ -2357,15 +2676,19 @@ class Prototype001Parameters:
             not math.isfinite(self.body_widening) or self.body_widening < 0.0
         ):
             raise NeckGeometryError("Body widening must be zero or more.")
-        if sum(HEADSTOCK_STYLES[self.headstock_style]) != self.string_count:
+        if not self.headless and (
+            sum(HEADSTOCK_STYLES[self.headstock_style]) != self.string_count
+        ):
             raise NeckGeometryError(
                 f"Headstock style {self.headstock_style} holds "
                 f"{sum(HEADSTOCK_STYLES[self.headstock_style])} tuners, but the "
                 f"instrument has {self.string_count} strings."
             )
         bass_count, treble_count = HEADSTOCK_STYLES[self.headstock_style]
-        if bass_count == treble_count and len(self.tuner_station_distances) != (
-            bass_count
+        if (
+            not self.headless
+            and bass_count == treble_count
+            and len(self.tuner_station_distances) != bass_count
         ):
             raise NeckGeometryError(
                 f"A {self.headstock_style} headstock needs {bass_count} "
@@ -2393,7 +2716,10 @@ class Prototype001Parameters:
             raise NeckGeometryError(
                 "Tuner post diameter and string spacings must be positive."
             )
-        if self.tuner_inline_first_distance < self.headstock_root_length:
+        if (
+            not self.headless
+            and self.tuner_inline_first_distance < self.headstock_root_length
+        ):
             raise NeckGeometryError(
                 "The first in-line tuner must sit beyond the headstock root, "
                 "on the straight tapered edge."
@@ -2455,11 +2781,20 @@ class Prototype001Parameters:
             profile_sample_count=self.profile_sample_count,
             segments_per_region=self.segments_per_region,
         )
+        # A bound board is cut narrower by its binding each side.
+        binding = self.fretboard_binding_width
+        if not math.isfinite(binding) or not 0.0 <= binding <= MAX_FRETBOARD_BINDING:
+            raise NeckGeometryError(
+                "fretboard_binding_width must lie between 0 and "
+                f"{MAX_FRETBOARD_BINDING:g} mm."
+            )
+        board_nut_width = self.nut_width - 2.0 * binding
+        board_final_width = self.final_fret_width - 2.0 * binding
         fretboard_surface = FretboardSurface(
             self.centre_scale,
             self.fret_count,
-            self.nut_width,
-            self.final_fret_width,
+            board_nut_width,
+            board_final_width,
             self.fretboard_radius,
             self.fretboard_thickness,
             end_extension=self.fretboard_end_extension,
@@ -2468,13 +2803,13 @@ class Prototype001Parameters:
         )
         final_fret_fraction = 1.0 - 2.0 ** (-self.fret_count / 12.0)
         width_at_scale_end = (
-            self.nut_width
-            + (self.final_fret_width - self.nut_width) / final_fret_fraction
+            board_nut_width
+            + (board_final_width - board_nut_width) / final_fret_fraction
         )
         locking_nut = self.locking_nut_placed()
         fretboard = Fretboard(
             self.centre_scale,
-            self.nut_width,
+            board_nut_width,
             width_at_scale_end,
             Centerline(self.centre_scale),
             # A fretboard running on under a locking nut has no nut-end
@@ -2509,18 +2844,7 @@ class Prototype001Parameters:
         )
         truss_rod_channel = self.truss_rod(outline)
         headstock_plan, tuner_layout = self.headstock_design()
-        headstock = HeadstockSolid(
-            headstock_plan,
-            HeadstockAngleReference(
-                headstock_plan.length,
-                self.headstock_angle,
-            ),
-            self.headstock_thickness,
-            self.face_drop,
-            self.fret_skew.at(0.0),
-            self.nut_seat_length(),
-            self.headstock_face_transition,
-        )
+        headstock = self.headstock_solid(headstock_plan)
         body_parts = self._body_layout(outline)
         if body_parts.pickguard is not None:
             check_on_body(body_parts.pickguard, body_parts.outline.points)
@@ -2554,6 +2878,7 @@ class Prototype001Parameters:
             back_edge=body_parts.back_edge,
             contours=body_parts.contours,
             truss_rod_access=body_parts.truss_rod_access,
+            engraving=body_parts.engraving,
         )
         return Prototype001Geometry(
             outline,
@@ -2584,6 +2909,8 @@ class Prototype001Parameters:
                 ),
             ),
             locking_nut,
+            self.fretboard_binding_width,
+            self.headstock_lettering(headstock, tuner_layout, truss_rod_channel),
         )
 
 
@@ -2632,6 +2959,16 @@ _BASS_OVERRIDES: dict[str, Any] = {
 }
 """The four-string bass's values (see ``INSTRUMENT_OVERRIDES``)."""
 
+_HEADLESS_OVERRIDES: dict[str, Any] = {
+    "headless": True,
+    # A flat headpiece level with the glue face, the string anchor on it.
+    "headstock_angle": 0.0,
+    "headstock_face_drop": 0.0,
+    "headstock_root_length": 15.0,
+    "headstock_outline": "fitted",
+}
+"""What a headless guitar or bass changes (see ``headless``)."""
+
 INSTRUMENT_OVERRIDES: dict[str, dict[str, Any]] = {
     "electric_guitar": {},
     "seven_string_guitar": {
@@ -2677,6 +3014,18 @@ INSTRUMENT_OVERRIDES: dict[str, dict[str, Any]] = {
             screw_spacing=18.0,
             screw_offset=-12.0,
         ),
+    },
+    "headless_guitar": {
+        **_HEADLESS_OVERRIDES,
+        "body_bridge": HeadlessBridgeSpec(),
+        # The headless unit's plate reaches 12 mm ahead of the saddles:
+        # the bridge humbucker moves up to leave 6 mm before it.
+        "body_bridge_pickup_offset": 38.0,
+    },
+    "headless_bass": {
+        **_BASS_OVERRIDES,
+        **_HEADLESS_OVERRIDES,
+        "body_bridge": HeadlessBridgeSpec(string_count=4, string_spacing=19.0),
     },
 }
 """Parameter values that differ from the defaults, per instrument.

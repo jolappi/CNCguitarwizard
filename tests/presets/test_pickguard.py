@@ -431,3 +431,43 @@ def test_on_a_v_the_guard_follows_the_shorter_wing_out(style: str) -> None:
     # ...but not along the longer one.
     bridge_end = max(p.x for p in bridge.outline)
     assert max(p.x for p in guard.outline if p.y < 0) < bridge_end
+
+
+@pytest.mark.parametrize(
+    "template", ["design_by_jone", "stratocaster", "jackson_rr", "les_paul"]
+)
+@pytest.mark.parametrize("drawn", [True, False])
+def test_the_truss_rods_spoke_wheel_is_left_uncovered(
+    template: str, drawn: bool
+) -> None:
+    from cncguitarwizard.geometry.primitives import Point2D
+
+    shape = YOUR_DESIGN_TEMPLATES[template][1]
+    parameters = replace(
+        Prototype001Parameters(),
+        body_shape=shape if drawn else replace(shape, pickguard_points=()),
+        body_pickguard=True,
+    )
+    guard = _guard(parameters.build())
+    layout = parameters.body_layout()
+    access = layout.truss_rod_access
+    assert access is not None
+
+    # Its notch past the pocket, and 2 mm round it, stay clear of the guard.
+    xs = [p.x for p in access.outline]
+    ys = [p.y for p in access.outline]
+    clear = [
+        Point2D(x, y)
+        for x in (layout.heel_end + 0.5, max(xs), max(xs) + 2.0)
+        for y in (min(ys) - 2.0, 0.0, max(ys) + 2.0)
+    ]
+    assert not any(point_in_polygon(p, guard.outline) for p in clear)
+
+
+def test_a_headstock_adjusted_truss_rod_leaves_the_guard_alone() -> None:
+    parameters = replace(
+        Prototype001Parameters(), body_pickguard=True, truss_rod_adjustment="headstock"
+    )
+    layout = parameters.body_layout()
+
+    assert layout.truss_rod_access is None and layout.pickguard is not None

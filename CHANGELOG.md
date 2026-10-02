@@ -4,6 +4,44 @@
 
 ### Added
 
+- Headless guitar and headless bass instruments (`headless`): no
+  headstock or tuners, the neck ending in a 35 mm flat headpiece for the
+  string anchor (`headless_length`), and a headless bridge with the tuners
+  (`HeadlessBridgeSpec`, `kind` "headless"): a plate screwed to the top at
+  its four corners, its footprint kept clear by the pickguard and
+  engraving and required to lie on the body.
+- Lettering engraved into the headstock face (`headstock_engraving_text`):
+  in a single-stroke font (`geometry.lettering`: a plain sans, or Hershey
+  Script or Hershey Gothic English converted from Inkscape's SVG fonts by
+  `tools/import_svg_font.py`, with ä ö å), placed, sized and turned
+  in the headstock editor (drag it there), kept clear of the edge, the
+  nut's seat and the tuner holes, cut 1 mm deep with a V-bit following the
+  angled face in `Headstock_engraving.nc`; drawn as lines in the FreeCAD
+  model. Text parameters are plain text fields in the web app's form.
+- Fretboard binding (`fretboard_binding_width`): the board is cut that much
+  narrower each side and strips glued along its long edges keep the
+  nominal widths; the outline and slot programs say so, and the FreeCAD
+  model shows the strips (`FretboardBinding`).
+- A decorative engraving on the top (`body_engraving`): Design by Jone's
+  scroll motif scattered at random from `body_engraving_seed` (*New
+  pattern* in the body editor draws a new one), never more than ten lines
+  crowded together nor a line standing alone, kept clear of every top
+  cavity, the bridge, the pickguard, the contours and the holes (the
+  back's cavities only when one would leave under 3 mm of wood), cut 2 mm
+  deep with a V-bit in `Body_top_engraving.nc` (`presets.engraving`,
+  `cam.engraving`, `engraving_tool_angle`); drawn blue in the body
+  editor and as lines in the FreeCAD model.
+- Every pickguard, automatic or drawn, steps round a heel-adjusted truss
+  rod's access notch (at least 2 mm clear), so the spoke wheel can be
+  turned with the guard on (`clear_of_truss_rod`).
+- The bridge is chosen in the body editor's own pane too, beside the
+  pickups (its sizes stay in the form).
+- The arm contour's starting line can be drawn in the body editor
+  (`arm_contour_points`): a green line with round handles, its ends on
+  the body's edge, shown while `body_arm_contour_depth` is on; the bevel
+  reaches in to it, deepest where it is furthest in
+  (`ContourCut.along_line`, `open_catmull_rom`). *Auto arm contour* goes
+  back to the automatic one.
 - A pickguard (`body_pickguard`): shaped to the body (the outline 6 mm in,
   reaching forward beside the neck with a notch for it as a
   Stratocaster's does, on to the bridge, past every pickup, round the

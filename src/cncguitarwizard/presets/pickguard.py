@@ -76,6 +76,10 @@ DRAWN_BRIDGE_STEP = 8.0
 """About how far apart the points stepping a drawn guard round the bridge
 are, in mm, so its spline keeps to the box's edges."""
 
+TRUSS_ROD_CLEARANCE = 3.5
+"""Gap the guard is stepped back round the truss rod's access notch, in mm
+(its spline rounds the corners in by a millimetre or two)."""
+
 DRAWN_BRIDGE_CLEARANCE = 3.0
 """Gap a drawn guard is stepped back to round the bridge, in mm: more than
 ``BRIDGE_CLEARANCE``, as its corners round in toward the bridge."""
@@ -711,9 +715,40 @@ def clear_of_bridge(
         max(p.x for p in points) + DRAWN_BRIDGE_CLEARANCE,
         max(abs(p.y) for p in points) + DRAWN_BRIDGE_CLEARANCE,
     )
+    return _clear_of_box(control_points, box, "the bridge")
+
+
+def clear_of_truss_rod(
+    control_points: Sequence[Point2D], access: Sequence[Point2D]
+) -> tuple[Point2D, ...]:
+    """Return a guard's points stepped round the truss rod's access notch.
+
+    A heel-adjusted truss rod's spoke wheel sits in a notch past the neck
+    pocket's end (``access``); the guard is cut back round it,
+    ``TRUSS_ROD_CLEARANCE`` clear, so the wheel can be turned with the
+    guard on.
+    """
+    if not access:
+        return tuple(control_points)
+    box = _Box(
+        min(p.x for p in access),
+        max(p.x for p in access) + TRUSS_ROD_CLEARANCE,
+        max(abs(p.y) for p in access) + TRUSS_ROD_CLEARANCE,
+    )
+    return _clear_of_box(control_points, box, "the truss rod's access")
+
+
+def _clear_of_box(
+    control_points: Sequence[Point2D], box: _Box, what: str
+) -> tuple[Point2D, ...]:
+    """Return the guard's points cut back round ``box`` (see ``clear_of_bridge``).
+
+    Raises:
+        BodyGeometryError: When the whole guard lies over the box.
+    """
     start = next((i for i, p in enumerate(control_points) if not box.holds(p)), None)
     if start is None:
-        raise BodyGeometryError("The pickguard lies wholly over the bridge.")
+        raise BodyGeometryError(f"The pickguard lies wholly over {what}.")
     loop = [*control_points[start:], *control_points[:start]]
     count = len(loop)
     # Round the box against the guard's own turn, so the box stays out.

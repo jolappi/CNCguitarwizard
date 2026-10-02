@@ -62,6 +62,7 @@ beyond the headstock tip and beyond the heel, on the centerline.
 | --- | --- | --- |
 | `Neck_index_pins.nc` | glue face up | Both dowel holes through the blank |
 | `Neck_top.nc` | glue face up, on dowels | Truss-rod channel; the 8° headstock face as Z-limited roughing plus a finishing raster with the flat tool; the truss rod's step and pocket at its adjusting end, each run 3 mm on over its neighbour so no round corner is left for the rod's square blocks (and a headstock-adjusted rod's access trough, unless `truss_rod_trough` is off in the headstock face; the heel adjuster's sleeve bore is drilled by hand, as the notes say); 0.5 mm centre marks for the six tuner holes |
+| `Headstock_engraving.nc` | same fixture and zero as `Neck_top` (with a laminated blank: right after `Headstock_top`), V-bit | The headstock lettering (`headstock_engraving_text`), each line in 1 mm passes to `headstock_engraving_depth` below the finished face, following its angle; only with lettering |
 | `Neck_back_rough.nc` | flipped about the centerline | Z-limited roughing of the neck back and headstock back, 3 mm layers, 60 % step-over |
 | `Neck_back_finish.nc` | same, ball nose | Finishing raster along the neck, 0.75 mm step-over (≈ 0.023 mm scallop) |
 | `Neck_back_outline.nc` | same, flat tool | Plan outline through the 2 mm skin, six tabs |

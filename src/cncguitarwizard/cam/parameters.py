@@ -35,7 +35,8 @@ class MachiningParameters:
     Args:
         tool_diameter: Cutting diameter of the end mill.
         tool_tip: ``"flat"`` for a square end mill, ``"ball"`` for a ball
-            nose of the same diameter (only surfacing cares).
+            nose of the same diameter (only surfacing cares), ``"vee"`` for
+            the engraving V-bit (its diameter the groove's width).
         spindle_speed: Spindle speed in rpm, emitted with ``M3``.
         feed_rate: Cutting feed for XY moves.
         plunge_rate: Feed for straight plunges and helical descents.
@@ -82,6 +83,10 @@ class MachiningParameters:
             plank as thick as the headstock needs, or ``"laminated"``, the
             neck cut from its own plank first and the headstock after a
             block is glued under it (``NeckMachiningParameters.blank``).
+        engraving_tool_angle: The engraving V-bit's included angle, in
+            degrees (its groove is ``2 * depth * tan(angle / 2)`` wide).
+        engraving_step_down: Depth cut per engraving pass.
+        engraving_feed_rate: Feed along the engraved lines.
 
     Raises:
         ToolpathError: If any value is non-finite or out of its range.
@@ -112,6 +117,9 @@ class MachiningParameters:
     post_processor: PostProcessor = "grbl"
     spindle_dwell: float = 0.0
     neck_blank: Literal["solid", "laminated"] = "solid"
+    engraving_tool_angle: float = 60.0
+    engraving_step_down: float = 1.0
+    engraving_feed_rate: float = 600.0
 
     def __post_init__(self) -> None:
         """Reject parameters the planner cannot cut safely with."""
@@ -130,6 +138,8 @@ class MachiningParameters:
             "stock_edge_margin": self.stock_edge_margin,
             "small_hole_tool_diameter": self.small_hole_tool_diameter,
             "raster_link_spacing": self.raster_link_spacing,
+            "engraving_step_down": self.engraving_step_down,
+            "engraving_feed_rate": self.engraving_feed_rate,
         }
         for name, value in positive.items():
             if not math.isfinite(value) or value <= 0.0:
@@ -151,8 +161,10 @@ class MachiningParameters:
             )
         if self.neck_blank not in ("solid", "laminated"):
             raise ToolpathError('neck_blank must be "solid" or "laminated".')
-        if self.tool_tip not in ("flat", "ball"):
-            raise ToolpathError('tool_tip must be "flat" or "ball".')
+        if self.tool_tip not in ("flat", "ball", "vee"):
+            raise ToolpathError('tool_tip must be "flat", "ball" or "vee".')
+        if not 0.0 < self.engraving_tool_angle < 180.0:
+            raise ToolpathError("engraving_tool_angle must lie in (0, 180).")
         if not 0.0 < self.step_over <= 1.0:
             raise ToolpathError("step_over must lie in (0, 1].")
         if self.tab_count < 0:

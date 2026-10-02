@@ -637,7 +637,8 @@ class TunerLayout:
     Args:
         headstock: Headstock plan that contains the holes.
         hole_diameter: Finished tuner-hole diameter in millimetres.
-        station_distances: Nut-to-hole distances in millimetres.
+        station_distances: Nut-to-hole distances in millimetres; none for a
+            headless neck's headpiece.
         side_offsets: Centerline offsets in millimetres, one per station.
         minimum_edge_clearance: Required material outside every hole.
         minimum_hole_clearance: Required gap between hole edges.
@@ -709,9 +710,8 @@ class TunerLayout:
             raise HeadstockGeometryError("Tuner-hole clearance must not be negative.")
         if any(distance <= 0.0 for distance in self.station_distances):
             raise HeadstockGeometryError("Tuner stations must lie beyond the nut.")
-        if len(self.station_distances) != len(self.side_offsets) or not (
-            self.station_distances
-        ):
+        # No stations at all is a headless neck's headpiece: no tuners.
+        if len(self.station_distances) != len(self.side_offsets):
             raise HeadstockGeometryError("Tuner stations need one side offset each.")
         if self.sides is not None:
             if len(self.sides) != len(self.station_distances):

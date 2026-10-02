@@ -9,6 +9,7 @@ from .bridges import (
     BridgeSpec,
     FloydRoseSpec,
     HardtailSpec,
+    HeadlessBridgeSpec,
     KahlerBridgeSpec,
     TuneOMaticSpec,
     bridge_spec_from_dict,
@@ -16,6 +17,7 @@ from .bridges import (
 )
 from .covers import CoverPlate, cover_screw_points
 from .edges import ContourCut, EdgeProfile
+from .engraving import Engraving
 from .hardware import (
     BridgeMounting,
     Cavity,
@@ -44,8 +46,10 @@ __all__ = [
     "CircularCavity",
     "DrilledHole",
     "EdgeProfile",
+    "Engraving",
     "FloydRoseSpec",
     "HardtailSpec",
+    "HeadlessBridgeSpec",
     "JackHole",
     "KahlerBridgeSpec",
     "RearCavity",

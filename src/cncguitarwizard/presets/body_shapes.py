@@ -104,6 +104,10 @@ class DesignByJoneShape:
         pickguard_points: A drawn pickguard's control points (X from the
             heel end, Y); empty for the automatic guard (used with
             ``Prototype001Parameters.body_pickguard``).
+        arm_contour_points: Where a drawn arm contour starts on the top:
+            an open line's control points (X from the heel end, Y), its
+            ends on the body's edge; empty for the automatic contour (used
+            with ``Prototype001Parameters.body_arm_contour_depth``).
     """
 
     kind: Literal["design_by_jone"] = "design_by_jone"
@@ -134,6 +138,7 @@ class DesignByJoneShape:
     control_stretch: float = 0.0
     control_stretch_across: float = 0.0
     pickguard_points: tuple[tuple[float, float], ...] = ()
+    arm_contour_points: tuple[tuple[float, float], ...] = ()
 
     def outline_points(
         self, heel_end: float, widening: float = 0.0
@@ -262,6 +267,10 @@ class YourDesignShape:
         pickguard_points: A drawn pickguard's control points (X from the
             heel end, Y); empty for the automatic guard (used with
             ``Prototype001Parameters.body_pickguard``).
+        arm_contour_points: Where a drawn arm contour starts on the top:
+            an open line's control points (X from the heel end, Y), its
+            ends on the body's edge; empty for the automatic contour (used
+            with ``Prototype001Parameters.body_arm_contour_depth``).
 
     Raises:
         BodyGeometryError: For fewer than four or non-finite control points.
@@ -290,6 +299,7 @@ class YourDesignShape:
     control_stretch: float = 0.0
     control_stretch_across: float = 0.0
     pickguard_points: tuple[tuple[float, float], ...] = ()
+    arm_contour_points: tuple[tuple[float, float], ...] = ()
 
     def __post_init__(self) -> None:
         """Reject a control polygon that cannot describe a body."""
@@ -366,6 +376,7 @@ def widened_shape(shape: BodyShapeSpec, widening: float) -> BodyShapeSpec:
         battery_y=widen_y(shape.battery_y, widening),
         control_shift=(shift_x, moved_almond - almond_y),
         pickguard_points=widen_points(shape.pickguard_points, widening),
+        arm_contour_points=widen_points(shape.arm_contour_points, widening),
     )
 
 

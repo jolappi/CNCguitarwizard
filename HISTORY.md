@@ -394,6 +394,17 @@ an option, each cut from sheet in its own program.
 The web app asks its yes/no questions in its own dialog, so they show
 in embedded browsers too.
 
+The arm contour's starting line can now be drawn in the body editor.
+
+The top can be engraved with Design by Jone's scroll pattern, laid out
+at random from a seed.
+
+The fretboard can be bound along its long edges.
+
+A name can be engraved into the headstock face.
+
+Headless guitars and basses joined the instruments, with a headless bridge.
+
 ## Documentation
 
 - Added public package reference with API tables, examples, and diagrams.

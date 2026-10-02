@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Literal
 
 from ..exceptions import BodyGeometryError
@@ -71,6 +71,9 @@ class ContourCut:
     the face, ``width`` in from the edge, down to ``depth`` at the edge;
     along the edge both width and depth fade to nothing toward the ends
     (a ``cos²`` taper), so it blends into the square edge either side.
+    Given ``reaches`` instead (a line drawn where the bevel starts, see
+    ``along_line``), it reaches that far in at each edge sample, and its
+    depth at the edge is ``depth`` scaled by the reach over ``width``.
 
     Args:
         name: E.g. ``"Arm contour"``.
@@ -83,6 +86,8 @@ class ContourCut:
         length: The stretch's full length.
         width: How far the bevel reaches in from the edge at its deepest.
         depth: How deep it is at the edge at its deepest.
+        reaches: How far it reaches in at each edge sample, or empty for
+            the ``cos²`` taper of ``width``.
 
     Raises:
         BodyGeometryError: For a non-positive size or mismatched samples.
@@ -96,6 +101,7 @@ class ContourCut:
     length: float
     width: float
     depth: float
+    reaches: tuple[float, ...] = ()
 
     def __post_init__(self) -> None:
         """Reject a contour that cannot be cut."""
@@ -105,6 +111,8 @@ class ContourCut:
                 raise BodyGeometryError(f"{self.name} {label} must be positive.")
         if not len(self.edge) == len(self.normals) == len(self.arc) >= 2:
             raise BodyGeometryError(f"{self.name} needs matching edge samples.")
+        if self.reaches and len(self.reaches) != len(self.edge):
+            raise BodyGeometryError(f"{self.name} needs a reach for every sample.")
 
     @classmethod
     def along_edge(
@@ -167,6 +175,87 @@ class ContourCut:
             normals.append(Point2D(-ty, tx) if area > 0.0 else Point2D(ty, -tx))
         return cls(name, face, edge, tuple(normals), arc, length, width, depth)
 
+    @classmethod
+    def along_line(
+        cls,
+        name: str,
+        face: Literal["top", "back"],
+        outline: Sequence[Point2D],
+        line: Sequence[Point2D],
+        depth: float,
+    ) -> ContourCut:
+        """Return a contour from the edge in to ``line``, where it starts.
+
+        The line's ends are taken onto the outline; the bevel runs along
+        the stretch of edge between them (the way round nearer the line's
+        middle) and, at each edge sample, in along the inward normal to
+        where it meets the line.
+
+        Raises:
+            BodyGeometryError: When the line does not run inside the body
+                beside that stretch.
+        """
+        if len(line) < 2:
+            raise BodyGeometryError(f"{name} line needs at least two points.")
+        points = list(outline)
+        count = len(points)
+
+        def nearest(p: Point2D) -> int:
+            return min(range(count), key=lambda i: math.dist(_xy(points[i]), _xy(p)))
+
+        first, last = nearest(line[0]), nearest(line[-1])
+        middle = line[len(line) // 2]
+        forward, backward = (last - first) % count, (first - last) % count
+        way_forward = points[(first + forward // 2) % count]
+        way_back = points[(last + backward // 2) % count]
+        if math.dist(_xy(way_forward), _xy(middle)) <= math.dist(
+            _xy(way_back), _xy(middle)
+        ):
+            start, steps = first, forward
+        else:
+            start, steps = last, backward
+        if steps < 2:
+            raise BodyGeometryError(f"{name} line's ends are too close together.")
+        stretch = [points[(start + k) % count] for k in range(steps + 1)]
+        lengths = [0.0]
+        for a, b in zip(stretch, stretch[1:], strict=False):
+            lengths.append(lengths[-1] + math.dist(_xy(a), _xy(b)))
+        length = lengths[-1]
+        apex = (
+            start + min(range(steps + 1), key=lambda k: abs(lengths[k] - length / 2.0))
+        ) % count
+        shape = cls.along_edge(name, face, outline, apex, length, 1.0, depth)
+        reaches = tuple(
+            _ray_to_line(p, n, line)
+            for p, n in zip(shape.edge, shape.normals, strict=True)
+        )
+        widest = max(reaches)
+        if widest <= 0.0:
+            raise BodyGeometryError(
+                f"{name} line must run inside the body, its ends on the edge."
+            )
+        return replace(shape, width=widest, reaches=reaches)
+
+    def reach(self, s: float) -> float:
+        """Return how far in from the edge the bevel reaches at arc ``s``."""
+        if not self.reaches:
+            return self.width * self.taper(s)
+        if s <= self.arc[0] or s >= self.arc[-1]:
+            return 0.0
+        for index in range(len(self.arc) - 1):
+            a, b = self.arc[index], self.arc[index + 1]
+            if a <= s <= b:
+                t = (s - a) / (b - a) if b > a else 0.0
+                return (
+                    self.reaches[index]
+                    + (self.reaches[index + 1] - self.reaches[index]) * t
+                )
+        return 0.0
+
+    def fade(self, s: float) -> float:
+        """Return the depth at the edge at arc ``s`` over the deepest (0 to 1)."""
+        return self.reach(s) / self.width
+
     def taper(self, s: float) -> float:
         """Return the fade (1 at the deepest point, 0 at the ends) at arc ``s``."""
         if abs(s) >= self.length / 2.0:
@@ -214,10 +303,10 @@ class ContourCut:
 
     def depth_from(self, s: float, inward: float) -> float:
         """Return the depth for an already located ``(arc, inward)`` pair."""
-        fade = self.taper(s)
-        if fade <= 0.0:
+        reach = self.reach(s)
+        if reach <= 0.0:
             return 0.0
-        reach = self.width * fade
+        fade = reach / self.width
         if inward >= reach:
             return 0.0
         ramp = self.depth * fade * (1.0 - inward / reach)
@@ -230,13 +319,33 @@ class ContourCut:
     def inner_edge(self) -> tuple[Point2D, ...]:
         """Return where the bevel meets the face, along the edge samples."""
         return tuple(
-            Point2D(
-                p.x + n.x * self.width * self.taper(s),
-                p.y + n.y * self.width * self.taper(s),
-            )
+            Point2D(p.x + n.x * self.reach(s), p.y + n.y * self.reach(s))
             for p, n, s in zip(self.edge, self.normals, self.arc, strict=True)
         )
 
     def region(self, outline: Sequence[Point2D] = ()) -> tuple[Point2D, ...]:
         """Return the bevelled area: the edge stretch and the bevel's inner edge."""
         return (*self.edge, *reversed(self.inner_edge()))
+
+
+def _xy(point: Point2D) -> tuple[float, float]:
+    return (point.x, point.y)
+
+
+def _ray_to_line(origin: Point2D, direction: Point2D, line: Sequence[Point2D]) -> float:
+    """Return how far along ``direction`` from ``origin`` it meets ``line``.
+
+    Zero when it does not meet it ahead.
+    """
+    best = math.inf
+    for a, b in zip(line, line[1:], strict=False):
+        ex, ey = b.x - a.x, b.y - a.y
+        denominator = direction.x * ey - direction.y * ex
+        if abs(denominator) < 1e-12:
+            continue
+        wx, wy = a.x - origin.x, a.y - origin.y
+        t = (wx * ey - wy * ex) / denominator
+        u = (wx * direction.y - wy * direction.x) / denominator
+        if t > 0.0 and 0.0 <= u <= 1.0:
+            best = min(best, t)
+    return best if math.isfinite(best) else 0.0

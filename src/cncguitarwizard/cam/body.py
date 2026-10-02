@@ -18,6 +18,7 @@ from typing import Literal
 from ..geometry.body import BodySolid, Cavity, DrilledHole, RearCavity
 from ..geometry.primitives import Point2D, point_in_polygon
 from .body_edges import ball_tool, binding_path, contour_paths, roundover_path
+from .engraving import engraving_path, engraving_tool
 from .fixturing import StockBounds, resolve_index_pins
 from .gcode import Setup
 from .operations import drill, pocket, profile
@@ -43,6 +44,8 @@ class BodyMachiningPlan:
             top roundover, or ``None``.
         back_edges: Back-face ball-nose program for a belly cut and a
             back roundover, or ``None``.
+        top_engraving: Top-face V-bit program for the decorative
+            engraving, or ``None``.
         back: Back-face setup after the flip: rear cavities, cover
             recesses, rear holes, and the lower half of the outline with
             tabs.
@@ -70,6 +73,7 @@ class BodyMachiningPlan:
     back_controls: Setup | None = None
     top_edges: Setup | None = None
     back_edges: Setup | None = None
+    top_engraving: Setup | None = None
 
     @property
     def setups(self) -> tuple[Setup, ...]:
@@ -84,6 +88,7 @@ class BodyMachiningPlan:
             self.top_controls,
             self.top_small_holes,
             self.top_edges,
+            self.top_engraving,
             self.back,
             self.back_controls,
             self.back_small_holes,
@@ -349,10 +354,12 @@ def plan_body_machining(
         half_depth - parameters.tab_height - 0.5,
     )
 
+    top_engraving = _engraving_setup(body, top_frame, parameters, reference_points)
+
     top_outline = top_frame.polygon(body.outline.points)
     back_outline = back_frame.polygon(body.outline.points)
     previews = [top_outline, top_outline]
-    for optional in (top_controls, top_small_holes, top_edges):
+    for optional in (top_controls, top_small_holes, top_edges, top_engraving):
         if optional is not None:
             previews.append(top_outline)
     previews.append(back_outline)
@@ -376,6 +383,34 @@ def plan_body_machining(
         back_controls=back_controls,
         top_edges=top_edges,
         back_edges=back_edges,
+        top_engraving=top_engraving,
+    )
+
+
+def _engraving_setup(
+    body: BodySolid,
+    frame: _Frame,
+    parameters: MachiningParameters,
+    reference_points: tuple[tuple[float, float], ...],
+) -> Setup | None:
+    """Return the V-bit program for the top's engraving, or ``None``."""
+    if body.engraving is None or not body.engraving.lines:
+        return None
+    depth = body.engraving.depth
+    tool = engraving_tool(parameters, depth)
+    return Setup(
+        "Body_top_engraving",
+        f"Body top face - decorative engraving {depth:g} mm deep with a V-bit",
+        (engraving_path(body.engraving, frame.point, tool),),
+        (
+            "Same fixture and X/Y zero as Body_top; change to a "
+            f"{parameters.engraving_tool_angle:g} degree V-bit and re-touch Z "
+            "on the stock top.",
+            f"The grooves come out {tool.tool_diameter:.2f} mm wide at the face.",
+            "Run it before any roundover, while the top is still flat.",
+        ),
+        reference_points,
+        tool,
     )
 
 
