@@ -284,6 +284,12 @@ by hand: the neck is cut from its own 20 mm plank first, a block of the
 same plank is glued under the headstock end, and the headstock gets
 programs of its own before the whole outline is cut through both layers.
 
+The fretboard's barbed-wire and block markers can be cut from sheet in a
+program of their own. Pocket and piece both follow the marker rounded to
+the inlay end mill, the piece a tenth of a millimetre smaller, so each
+drops into its pocket; round dots are left to bought ones. On the way,
+inward offsets stopped cutting straight across small round corners.
+
 ## FreeCAD Backend
 
 The assembly export now builds the body as a fourth `Part::Feature`. Top
@@ -394,7 +400,8 @@ an option, each cut from sheet in its own program.
 The web app asks its yes/no questions in its own dialog, so they show
 in embedded browsers too.
 
-The arm contour's starting line can now be drawn in the body editor.
+The arm contour's starting line can now be drawn in the body editor,
+and so can the belly cut's.
 
 The top can be engraved with Design by Jone's scroll pattern, laid out
 at random from a seed.
@@ -404,6 +411,23 @@ The fretboard can be bound along its long edges.
 A name can be engraved into the headstock face.
 
 Headless guitars and basses joined the instruments, with a headless bridge.
+
+A Telecaster neck can be loaded in the headstock editor: the nut in a
+slot at the fretboard's end, the board running on under it, a flat
+six-in-line Telecaster headstock, and the truss rod adjusted at the heel
+or, the modern way, just behind the nut.
+
+The truss rod's adjuster can have a spoke wheel or not: without one at
+the heel the rod's nut sits at the heel's very end, so nothing has to be
+drilled; at the headstock only a key's notch is routed.
+
+A headstock-adjusted truss rod used to break through the thin neck by
+the nut; the neck is now thickened there for it, or a low-profile rod
+fits as it is.
+
+The neck can be angled back for a tall bridge, two degrees with a
+Tune-o-matic: the pocket's floor is stepped down toward its mouth, and
+the bridge moves so the scale holds along the tilted strings.
 
 The bridge pickup now makes room for whichever bridge is chosen: it
 stays clear of a hardtail's mounting screws and a Tune-o-matic's posts,

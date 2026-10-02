@@ -221,3 +221,33 @@ def test_the_preset_takes_a_drawn_arm_contour_line() -> None:
     assert not editor["arm_contour"]["automatic"]
     # Without the arm contour on there is no line to draw.
     assert body_editor_layout({"prototype": {}})["arm_contour"] is None
+
+
+def test_the_preset_takes_a_drawn_belly_cut_line() -> None:
+    from cncguitarwizard.webapp import body_editor_layout
+
+    automatic = replace(Prototype001Parameters(), body_belly_cut_depth=10.0)
+    (auto,) = automatic.body_layout().contours
+    editor = body_editor_layout({"prototype": {"body_belly_cut_depth": 10.0}})
+    assert editor["belly_cut"]["automatic"]
+    assert editor["arm_contour"] is None
+    line = editor["belly_cut"]["points"]
+    points = tuple(
+        (x, y if index in (0, len(line) - 1) else y * 0.9)
+        for index, (x, y) in enumerate(line)
+    )
+    shape = replace(automatic.body_shape, belly_cut_points=points)
+    drawn = replace(automatic, body_shape=shape)
+    (cut,) = drawn.body_layout().contours
+
+    assert cut.name == "Belly cut" and cut.face == "back"
+    assert cut.reaches and not auto.reaches
+    assert cut.length == pytest.approx(auto.length, rel=0.05)
+    assert drawn.build().body.contours == (cut,)
+    editor = body_editor_layout(
+        {"prototype": {"body_belly_cut_depth": 10.0, "body_shape": shape}}
+    )
+    assert not editor["belly_cut"]["automatic"]
+    # A drawn line is ignored while the belly cut is off.
+    off = replace(drawn, body_belly_cut_depth=0.0)
+    assert off.body_layout().contours == ()

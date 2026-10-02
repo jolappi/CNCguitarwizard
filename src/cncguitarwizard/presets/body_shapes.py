@@ -108,6 +108,9 @@ class DesignByJoneShape:
             an open line's control points (X from the heel end, Y), its
             ends on the body's edge; empty for the automatic contour (used
             with ``Prototype001Parameters.body_arm_contour_depth``).
+        belly_cut_points: The same for a drawn belly cut on the back (seen
+            from the top, as the outline is), used with
+            ``Prototype001Parameters.body_belly_cut_depth``.
     """
 
     kind: Literal["design_by_jone"] = "design_by_jone"
@@ -139,6 +142,7 @@ class DesignByJoneShape:
     control_stretch_across: float = 0.0
     pickguard_points: tuple[tuple[float, float], ...] = ()
     arm_contour_points: tuple[tuple[float, float], ...] = ()
+    belly_cut_points: tuple[tuple[float, float], ...] = ()
 
     def outline_points(
         self, heel_end: float, widening: float = 0.0
@@ -271,6 +275,9 @@ class YourDesignShape:
             an open line's control points (X from the heel end, Y), its
             ends on the body's edge; empty for the automatic contour (used
             with ``Prototype001Parameters.body_arm_contour_depth``).
+        belly_cut_points: The same for a drawn belly cut on the back (seen
+            from the top, as the outline is), used with
+            ``Prototype001Parameters.body_belly_cut_depth``.
 
     Raises:
         BodyGeometryError: For fewer than four or non-finite control points.
@@ -300,6 +307,7 @@ class YourDesignShape:
     control_stretch_across: float = 0.0
     pickguard_points: tuple[tuple[float, float], ...] = ()
     arm_contour_points: tuple[tuple[float, float], ...] = ()
+    belly_cut_points: tuple[tuple[float, float], ...] = ()
 
     def __post_init__(self) -> None:
         """Reject a control polygon that cannot describe a body."""
@@ -377,6 +385,7 @@ def widened_shape(shape: BodyShapeSpec, widening: float) -> BodyShapeSpec:
         control_shift=(shift_x, moved_almond - almond_y),
         pickguard_points=widen_points(shape.pickguard_points, widening),
         arm_contour_points=widen_points(shape.arm_contour_points, widening),
+        belly_cut_points=widen_points(shape.belly_cut_points, widening),
     )
 
 

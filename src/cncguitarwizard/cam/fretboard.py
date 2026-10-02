@@ -22,6 +22,7 @@ from ..geometry.primitives import Point2D, rounded_polygon_points
 from .exceptions import ToolpathError
 from .fixturing import StockBounds, resolve_index_pins
 from .gcode import Setup
+from .inlays import inlay_fit_outline
 from .operations import drill, pocket, profile
 from .parameters import MachiningParameters
 from .surfacing import build_offset_grid, raster_finish
@@ -29,6 +30,10 @@ from .toolpath import PathBuilder, Toolpath
 
 if TYPE_CHECKING:
     from ..presets import Prototype001Geometry
+
+
+SLOPE_STEP = 0.5
+"""Height of each terrace cut down a slotted nut's board slope, in mm."""
 
 
 def _flat_tool() -> MachiningParameters:
@@ -195,6 +200,9 @@ def plan_fretboard_machining(
         drop = surface.radius - math.sqrt(max(0.0, surface.radius**2 - model_y**2))
         return skim + drop
 
+    nut = geometry.locking_nut
+    slotted = nut is not None and not nut.is_locking
+
     index_pins = Setup(
         "Fretboard_index_pins",
         "Fretboard index pins - drill both dowel holes through the blank",
@@ -256,20 +264,48 @@ def plan_fretboard_machining(
         inlay_paths.append(
             pocket(
                 f"Inlay fret {marker.fret_number} at y={centre_y:.0f}",
-                machine_polygon(marker.outline),
+                machine_polygon(
+                    inlay_fit_outline(marker.outline, parameters.inlay.tool_radius)
+                ),
                 skim + geometry.inlay_layout.depth,
                 parameters.inlay,
                 start_depth=skim,
             )
         )
+    nut_slot_notes: tuple[str, ...] = ()
+    if slotted and nut is not None:
+        # The nut's slot, closed behind by the board's lip: the small
+        # inlay end mill fits it.
+        inlay_paths.append(
+            pocket(
+                "Nut slot",
+                machine_polygon(
+                    nut.slot_outline(reach=parameters.inlay.tool_radius + 1.0)
+                ),
+                parameters.blank_thickness - nut.shelf_height,
+                parameters.inlay,
+                start_depth=skim,
+            )
+        )
+        nut_slot_notes = (
+            f"The nut's slot: {nut.spec.depth:g} mm wide behind the nut line, "
+            f"{nut.spec.height:g} mm below the crown; the board runs on "
+            f"{nut.spec.lip:g} mm at full height behind it, then slopes to the "
+            f"glue face over {nut.spec.taper:g} mm (stepped in the outline "
+            "program).",
+        )
     inlays = Setup(
         "Fretboard_inlays",
-        f"Fretboard inlay pockets - {geometry.inlay_layout.depth:g} mm below the crown",
+        f"Fretboard inlay pockets - {geometry.inlay_layout.depth:g} mm below the crown"
+        + (" - and the nut's slot" if slotted else ""),
         tuple(inlay_paths),
         (
             "Same fixture and X/Y zero; change to the inlay end mill and "
             "re-touch Z on the blank top.",
-            "Barbs narrower than the tool are left uncut.",
+            "Each pocket follows its marker rounded to the tool, as its "
+            "piece is cut (Fretboard_inlay_pieces); barbs narrower than the "
+            "tool are left out of both.",
+            *nut_slot_notes,
         ),
         reference_points,
         parameters.inlay,
@@ -337,8 +373,7 @@ def plan_fretboard_machining(
 
     shelf_paths: list[Toolpath] = []
     shelf_notes: tuple[str, ...] = ()
-    nut = geometry.locking_nut
-    if nut is not None and nut.on_fretboard:
+    if nut is not None and nut.is_locking and nut.on_fretboard:
         # Down to the shelf behind the nut line, the pocket reaching past
         # the board's sides and end so only the nut line's wall is left.
         reach = flat.tool_radius + 1.0
@@ -364,6 +399,39 @@ def plan_fretboard_machining(
             f"The board runs {nut.seat_length:g} mm on past the nut line under "
             f"the {nut.spec.name} locking nut, milled down to its "
             f"{nut.shelf_height:.2f} mm shelf first.",
+        )
+    if slotted and nut is not None and nut.spec.taper > 0.0:
+        # The board's slope behind the lip, down to the glue face in
+        # SLOPE_STEP terraces with the flat end mill; sand them smooth.
+        lip_end = nut.spec.depth + nut.spec.lip
+        # Past the board's sides, and a whole tool past its end (waste).
+        half = nut.neck_width / 2.0 + flat.tool_radius + 1.0
+        far = nut.seat_length + flat.tool_diameter + 1.0
+        top = skim
+        bottom = parameters.blank_thickness
+        count = max(1, math.ceil((bottom - top) / SLOPE_STEP - 1e-9))
+        previous = top
+        for index in range(1, count + 1):
+            depth = top + (bottom - top) * index / count
+            # Where the slope comes down to this depth.
+            back = lip_end + nut.spec.taper * (depth - top) / (bottom - top)
+            terrace = tuple(
+                Point2D(nut.lean * y - dx, y)
+                for dx, y in ((back, -half), (back, half), (far, half), (far, -half))
+            )
+            shelf_paths.append(
+                pocket(
+                    f"Board slope behind the nut, step {index}",
+                    machine_polygon(terrace),
+                    depth,
+                    flat,
+                    start_depth=previous,
+                )
+            )
+            previous = depth
+        shelf_notes = (
+            f"The board's slope behind the nut's lip is cut in {count} "
+            f"terraces down to the glue face; sand them into one slope.",
         )
     outline_setup = Setup(
         "Fretboard_outline",

@@ -88,7 +88,8 @@ nut-origin frame:
 - the neck pocket is *not* traced: it is the neck's own tapered outline over
   the last `body_neck_pocket_length` (79.5 mm) before the heel end, widened
   by `body_neck_pocket_clearance` (0.15 mm) per side, so it always matches
-  the neck it receives;
+  the neck it receives; with a `neck_angle` its floor tilts (see *Neck
+  angle* below);
 - the bridge baseplate cutout is the drawing's `LWPOLYLINE`;
 - the almond control cavity and the round switch cavity are the drawing's
   pairs of concentric loops — the inner loop is the cavity, the outer loop the
@@ -467,7 +468,10 @@ line is furthest in, scaled with the reach elsewhere, so a line that
 meets the edge fades the bevel out there. In the body editor the line is
 drawn in green with round handles while the arm contour is on: drag one,
 click the line to add one, Alt-click or right-click to remove one (three
-at least); *Auto arm contour* empties the points again.
+at least); *Auto arm contour* empties the points again. The belly cut's
+line is drawn the same way: `belly_cut_points` (seen from the top, as the
+outline is) with `body_belly_cut_depth`, in blue on the editor, *Auto
+belly cut* emptying them.
 
 `BodySolid` checks that each edge finish reaches less than half the
 thickness less 2 mm; that a roundover lowers the rim of a cavity near the
@@ -525,7 +529,7 @@ all placed relative to the scale line:
 | --- | --- | --- |
 | `KahlerBridgeSpec` (default) | `kahler_7300` | Rectangular baseplate cutout (the DXF's 55.45 × 65.04 × 25 mm); no studs, no rear cavity |
 | `FloydRoseSpec` | `floyd_rose` | Floyd Rose Original recessed routing per the manufacturer's *Original Series Routing Diagrams*: two Ø 10 stud holes 73.91 mm apart, 11.9 mm ahead of the scale line (25.03 in on a 25.5 in scale); a 95.25 mm wide recess, 79.38 mm long, narrowing to 71.12 mm after 42.44 mm, cut 6.73 mm deep over its whole footprint (continuous walls) and deepened to 11.18 mm behind the front 15.88 mm stud shelf as a step inside it, with a 20.96 × 82.85 mm block route 29.59 mm deep through that floor that opens into the spring cavity only where the two overlap; a rear 123.19 × 56.64 × 16.13 mm spring cavity with a 28.19 mm deep block clearance pocket at its tail end and a 2 mm cover recess 8 mm wider all round (`cover_margin`), closed by a sheet cover with six screws on the ledge (`Floyd Rose spring cavity cover`, `Cover_floyd_rose_spring_cavity.nc`, made like the cavity covers by `controls.rear_cover`). The diagram is for a 1.75 in (44.45 mm) body, where the block route runs 1.27 mm into the spring cavity; in a thicker body the spring cavity and block pocket reach deeper by the difference (`FLOYD_ROSE_DRAWN_THICKNESS`), so the block route always opens into the back. The recess is 3.56 mm wider on the tremolo-arm (treble) side; `treble_side` picks that side (`"+y"` on the left-handed Prototype001 body) |
-| `TuneOMaticSpec` | `tune_o_matic` | Two Ø 11.2 post holes 3 mm behind the scale line and two Ø 11.2 stop-bar stud holes 45 mm behind it |
+| `TuneOMaticSpec` | `tune_o_matic` | Two Ø 11.2 post holes, the treble one `compensation` (1.6 mm, 1/16 in) behind the scale line and the bass one `bass_setback` (3.2 mm, 1/8 in) further back, so the bridge leans with the strings' compensation and every saddle starts mid-travel (mirrored onto a +Y bass side, `mirrored_hardware`); two Ø 11.2 stop-bar stud holes 45 mm behind the scale line |
 | `HeadlessBridgeSpec` | `headless` | A headless bridge: saddles and tuners in one unit screwed flat to the top. Four Ø 3 × 12 mm pilot holes `screw_inset` (6 mm) in from the plate's corners; the plate, from `front_reach` (12 mm) ahead of the scale line, `length` (90 mm) long and `side_margin` (10 mm) past the outer strings (`string_count`, `string_spacing`), is the bridge's `footprint`, which must lie on the body and which the pickguard and the engraving keep clear of |
 | `HardtailSpec` | `hardtail` | `string_count` (6) Ø 3 string-through holes 14 mm behind the scale line and five pilot holes for the baseplate screws; the bass uses four strings 19 mm apart, 30 mm behind the scale line |
 
@@ -541,8 +545,8 @@ hole is measured against the stretch of route between its own Y ± radius
 plus clearance, so turned hardware on a multiscale is not over-counted): a
 Floyd Rose recess starts 19.5 mm ahead of the scale line, a hardtail's Ø 3
 baseplate screw pilots sit 10 mm ahead of it (the route ends 14.5 mm ahead),
-a Tune-o-matic's Ø 11.2 post holes 3 mm behind it (the route ends 5.6 mm
-ahead). The route also never reaches past the saddle line, measured at each
+a Tune-o-matic's Ø 11.2 treble post hole 1.6 mm behind it (the route ends
+7.0 mm ahead). The route also never reaches past the saddle line, measured at each
 point of the route against the line where the strings leave the saddles (it
 fans on a multiscale; a slant alone leaves the bridge and pickups square);
 the Kahler's route ends 1.2 mm ahead of it, as in the DXF. A larger offset
@@ -590,3 +594,33 @@ cavities overlap.
 
 Every value above is a `Prototype001Parameters` field (`body_*`), so any of
 them can be changed with `dataclasses.replace`.
+
+## Neck angle
+
+`Prototype001Parameters.neck_angle` tilts the neck back, its headstock
+toward the player, so the strings rise toward a tall bridge: empty, it
+is `NECK_ANGLE_TUNE_O_MATIC` (2°) with a Tune-o-matic, which stands too
+tall for a flat neck on the flat top (2–2.5° is usual there; a carved Les
+Paul top takes 3–5°), and 0° otherwise; at most `MAX_NECK_ANGLE` (6°).
+
+The neck pocket's floor (`TracedCavity.floor_slope`, `depth_at`,
+`deepest`) stays `heel_thickness` deep at the heel end and sinks toward
+the mouth, `body_neck_pocket_length × tan(angle)` deeper there (22.8 mm
+at 2°). The neck turns about that heel end of the floor
+(`neck_pivot`, `neck_to_body`), its nut end going down, so its heel lies
+on the tilted floor. The bridge moves with it (`bridge_scale_line`): the
+saddles go where a point a scale from the nut along the fret tops lands
+once the neck is tilted, so the scale — and the 12th fret halfway — holds
+along the strings' tilted line (2° on a 24 in scale: 1.04 mm toward the
+nut, the fret-top line 12.4 mm above the top at the saddles). The bridge
+pickup keeps its clearance from the moved bridge.
+
+`Body_top.nc` cuts the pocket at its heel-end depth, then steps the floor
+down toward the mouth in `FLOOR_TERRACE_STEP` (0.1 mm) terraces, each
+reaching as far as the floor is that deep: the steps stand at most 0.1 mm
+proud of the slope and the neck rests on their edges (a terrace shorter
+than the tool, at the very mouth, is left out). The FreeCAD script cuts
+the tilted floor exactly and turns every neck-side object (neck,
+fretboard, headstock, binding) about the pivot (`neck_tilt` in
+`Prototype001Geometry`).
+

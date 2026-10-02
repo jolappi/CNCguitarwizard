@@ -13,6 +13,7 @@ from .bridges import (
     KahlerBridgeSpec,
     TuneOMaticSpec,
     bridge_spec_from_dict,
+    mirrored_hardware,
     turned_hardware,
 )
 from .covers import CoverPlate, cover_screw_points
@@ -59,5 +60,6 @@ __all__ = [
     "TuneOMaticSpec",
     "bridge_spec_from_dict",
     "cover_screw_points",
+    "mirrored_hardware",
     "turned_hardware",
 ]

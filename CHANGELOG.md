@@ -4,6 +4,44 @@
 
 ### Added
 
+- A neck angle (`neck_angle`, degrees; empty: 2° with a Tune-o-matic,
+  0° otherwise): the neck pocket's floor sinks toward its mouth
+  (`TracedCavity.floor_slope`), cut in 0.1 mm terraces after the pocket in
+  `Body_top.nc`; the neck turns about the floor's heel end in the FreeCAD
+  model; and the bridge moves so the scale, and the 12th fret halfway,
+  hold along the tilted strings (`bridge_scale_line`, `neck_to_body`).
+- A low-profile truss rod (`truss_rod_profile` "low_profile"): one
+  straight 6.35 × 9.5 mm channel with no step or pocket, as StewMac's and
+  Hosco's Hot Rod Low-profile (1/4 × 3/8 in, 4 mm hex key), which fits
+  the thin neck by the nut without thickening it; no spoke wheel by
+  default.
+- A choice of spoke wheel for the truss rod (`truss_rod_spoke_wheel`:
+  auto, yes, no; auto fits one at the heel and none at the headstock).
+  Without one at the heel the route runs out through the heel's end, the
+  adjuster nut at its end face, so no bore or body notch is needed. At
+  the headstock a wheel sits in an open trough behind the nut; without
+  one, behind a slotted nut, the router cuts only the open start of the
+  key's hole, a notch `truss_rod_key_hole_diameter` (8 mm) wide.
+- A Telecaster neck: the nut can sit in a slot in the fretboard, Fender
+  style (`nut_style` "slot", `nut_thickness`, `nut_slot_depth`): the
+  board runs on past the nut line, the slot milled into it
+  (`Nut slot` in `Fretboard_inlays.nc`), then carries on at full height
+  behind the nut (`nut_slot_lip`, 3 mm) and slopes down to the glue face
+  (`nut_slot_taper`, 3 mm; stepped in `Fretboard_outline.nc`), the nut
+  glued in. A headstock-adjusted truss rod is then reached without a
+  cover (see the spoke wheel). The headstock
+  editor's *Start from* loads a whole Telecaster neck (`NECK_TEMPLATES`):
+  the slotted nut, a flat six-in-line headstock drawn as a Telecaster's
+  and a truss rod adjusted at the heel (or, chosen after, behind the nut).
+- The plan view draws the nut on its seat (bone white, or dark for a
+  locking nut), and a fretboard that runs on under it (a slotted nut's,
+  an R2's) reaches under it and on behind it, with a line where a slotted
+  nut's board starts sloping down.
+- The fretboard's marker inlays can be cut from sheet: barbed-wire and
+  block markers get `Fretboard_inlay_pieces.nc` (part `Inlays`,
+  `plan_inlay_machining`), every piece nested in fret order on a sheet as
+  thick as the pockets are deep and cut with the inlay end mill, 0.1 mm
+  smaller all round than its pocket. Round dots get no program.
 - Headless guitar and headless bass instruments (`headless`): no
   headstock or tuners, the neck ending in a 35 mm flat headpiece for the
   string anchor (`headless_length`), and a headless bridge with the tuners
@@ -42,6 +80,10 @@
   reaches in to it, deepest where it is furthest in
   (`ContourCut.along_line`, `open_catmull_rom`). *Auto arm contour* goes
   back to the automatic one.
+- The belly cut's starting line can be drawn the same way
+  (`belly_cut_points`): a blue line on the back, seen from the top as the
+  outline is, shown while `body_belly_cut_depth` (now beside the editor
+  too) is on; *Auto belly cut* goes back to the automatic one.
 - A pickguard (`body_pickguard`): shaped to the body (the outline 6 mm in,
   reaching forward beside the neck with a notch for it as a
   Stratocaster's does, on to the bridge, past every pickup, round the
@@ -164,6 +206,17 @@
 
 ### Changed
 
+- The Tune-o-matic's bass post sits `bass_setback` (3.2 mm, 1/8 in)
+  behind the treble one, which is now `compensation` 1.6 mm (1/16 in)
+  behind the scale line (was 3 mm, both square): the bridge leans with the
+  strings' compensation so every saddle starts mid-travel. A neck with
+  its bass side on +Y gets the bridge mirrored (`mirrored_hardware`).
+- The neck's notes no longer ask for a filler over the truss rod's route
+  under a nut the fretboard runs on under (a Floyd Rose R2's or a slotted
+  one): the board covers it there.
+- The fretboard's inlay pockets follow the marker outline rounded both
+  ways by the inlay end mill's radius (`inlay_fit_outline`), their inner
+  corners cut round, so a piece cut from sheet fits them.
 - The web app shows the settings that shape an editor's drawing in that
   editor's pane: the pickup layout, controls, pickup selector and
   battery box beside the body drawing, the tuner layout beside the
@@ -213,6 +266,21 @@
 
 ### Fixed
 
+- A truss rod adjusted at the headstock no longer breaks through the back
+  of the neck: its 11 mm pocket and 10.5 mm step lie in the neck by the
+  nut, which thins to the first fret's wood (11 mm on the default neck).
+  The neck is now made thick enough at the first fret to leave 1 mm under
+  them at their edges, where the D profile curves up
+  (`first_fret_thickness_needed`, 18.3 mm instead of 17; a thicker
+  `first_fret_thickness` is kept), the rod staying wholly on the neck's
+  side as before. Its 15.5 mm adjuster trough also broke through an
+  angled headstock's root by the nut: without a spoke wheel only the
+  key's 8 mm notch is routed now (11.5 mm deep, covered behind a shelf
+  nut), and a wheel there needs a flat or thicker headstock.
+- Inward tool offsets (`offset_polygon`) no longer cut straight across
+  a round corner sampled in edges shorter than the sample spacing: the
+  point where the shifted edges cross is kept, so small pocket corners
+  (inlay blocks, dots) are cut out to the tool's reach.
 - The web app's yes/no questions (*Start from* → *Load*, removing a
   dragged-off feature, switching instrument, loading a design, resetting
   the headstock) are asked in the page's own dialog: some embedded

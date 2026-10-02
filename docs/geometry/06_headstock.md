@@ -125,6 +125,34 @@ the neck) sit `screw_spacing` apart, half the nut's depth behind the nut
 line; they are drilled by hand through the nut. A shelf below the glue
 face, or a nut wider than the neck, is refused (`NeckGeometryError`).
 
+### Slotted nut (Fender / Telecaster)
+
+`nut_style = "slot"` seats a plain nut the Fender way
+(`LockingNut.slotted`, the same placement without screws): the fretboard
+runs on past the nut line, a slot `nut_thickness` (3.5 mm) wide milled
+`nut_slot_depth` (3 mm) below its crown there, and the nut is glued into
+it, front face on the nut line. Behind the slot the board carries on at
+full height for `nut_slot_lip` (3 mm), then slopes down to the glue face
+over `nut_slot_taper` (3 mm), where it ends: 9.5 mm behind the nut line.
+The neck's flat seat runs as far, then the headstock face's transition
+starts. The slot must
+leave at least `MIN_BOARD_SHELF` (1 mm) of board under the nut. A locking
+nut takes the nut's place whichever style is set.
+
+A headstock-adjusted truss rod is then reached Fender style too, with no
+cover: a spoke wheel in an open trough behind the board, or without one a
+notch for the key (see [Truss rod](08_truss_rod.md#spoke-wheel-or-not)).
+
+`NECK_TEMPLATES["telecaster"]` (`TELECASTER_NECK`, *Start from* in the
+web app's headstock editor) sets a whole Telecaster neck: the slotted
+nut, a flat (0°) six-in-line headstock drawn as a Telecaster's (the tuner
+edge straight along the posts and flaring out from the nut, the other
+edge sweeping out to a rounded treble point, the end wrapping round the
+last tuner; 204 mm long round the default row) and the truss rod
+adjusted at the heel, vintage style; `truss_rod_adjustment = "headstock"`
+gives the modern one. The plan view draws the nut in its slot, the board
+running on behind it with a line where it starts sloping down.
+
 Behind the seat the top eases onto the face over
 `headstock_face_transition` (12 mm), meeting it at its own slope, so there
 is no step (`HeadstockSolid.top_z`): an angled face is eased in with a

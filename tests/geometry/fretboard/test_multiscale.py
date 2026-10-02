@@ -103,7 +103,9 @@ def test_a_tune_o_matic_always_turns_with_the_fan() -> None:
     bass, treble = holes["Bridge post bass"], holes["Bridge post treble"]
     lean = parameters.fret_skew.at(parameters.centre_scale)
     run = (treble.center_x - bass.center_x) / (treble.center_y - bass.center_y)
-    assert run == pytest.approx(lean, rel=0.02)
+    # The fan's lean, and the bass post's setback across the posts.
+    spec = TuneOMaticSpec()
+    assert run == pytest.approx(lean - spec.bass_setback / spec.post_spacing, rel=0.03)
     # The bass post (-Y) sits further back, with the longer bass scale.
     assert bass.center_x > treble.center_x
     # The stop-bar studs stay square, and so do the pickups by default.

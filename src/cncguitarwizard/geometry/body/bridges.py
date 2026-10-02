@@ -114,6 +114,40 @@ def turned_hardware(
     )
 
 
+def mirrored_hardware(hardware: BridgeHardware) -> BridgeHardware:
+    """Return ``hardware`` mirrored across the centreline (Y to -Y).
+
+    For a bridge drawn with its bass side on -Y, on a neck whose bass side
+    is +Y.
+    """
+
+    def flip(point: Point2D) -> Point2D:
+        return Point2D(point.x, -point.y)
+
+    def flip_cavity(cavity: Cavity) -> TracedCavity:
+        return TracedCavity(
+            cavity.name,
+            tuple(flip(point) for point in reversed(cavity.outline)),
+            cavity.depth,
+        )
+
+    return replace(
+        hardware,
+        top_cavities=tuple(flip_cavity(c) for c in hardware.top_cavities),
+        through_cavities=tuple(flip_cavity(c) for c in hardware.through_cavities),
+        rear_cavities=tuple(
+            RearCavity(
+                flip_cavity(rear.cavity),
+                flip_cavity(rear.cover_recess),
+                tuple(flip_cavity(step) for step in rear.steps),
+            )
+            for rear in hardware.rear_cavities
+        ),
+        holes=tuple(replace(hole, center_y=-hole.center_y) for hole in hardware.holes),
+        footprint=tuple(flip(point) for point in reversed(hardware.footprint)),
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class KahlerBridgeSpec:
     """Kahler 7300-style fixed bridge, screwed flat to the body.
@@ -488,16 +522,25 @@ class FloydRoseSpec:
 class TuneOMaticSpec:
     """Tune-o-matic bridge on two posts with a stop-bar tailpiece.
 
-    Nothing is routed; four holes take the post and stud inserts. Note
-    that a Tune-o-matic on a flat-topped body normally wants a neck angle
-    or a recessed bridge — this model gives neither.
+    Nothing is routed; four holes take the post and stud inserts. A
+    Tune-o-matic on a flat-topped body wants a neck angle (or a recessed
+    bridge): ``Prototype001Parameters.neck_angle`` gives one, 2 degrees by
+    default with this bridge.
+
+    The bass-side post sits ``bass_setback`` further back than the
+    treble one, so the bridge leans as the strings' compensation does and
+    every saddle starts near the middle of its short travel (the usual
+    setting: treble post 1/16 in behind the scale, the bass post 1/16-1/8
+    in further). The bass side is -Y; a neck with its bass side on +Y gets
+    the bridge mirrored (``mirrored_hardware``).
 
     Args:
         post_spacing: Centre distance between the bridge posts.
         post_hole_diameter: Post insert hole diameter (Nashville-style
             inserts; ABR-1 wood-screw posts need about 4 mm).
         post_hole_depth: Post insert hole depth.
-        compensation: Post centres behind the scale line.
+        compensation: The treble post's centre behind the scale line.
+        bass_setback: How much further back the bass post sits.
         stud_spacing: Centre distance between the tailpiece studs.
         stud_hole_diameter: Tailpiece insert hole diameter.
         stud_hole_depth: Tailpiece insert hole depth.
@@ -508,7 +551,8 @@ class TuneOMaticSpec:
     post_spacing: float = 74.0
     post_hole_diameter: float = 11.2
     post_hole_depth: float = 20.0
-    compensation: float = 3.0
+    compensation: float = 1.6
+    bass_setback: float = 3.2
     stud_spacing: float = 82.0
     stud_hole_diameter: float = 11.2
     stud_hole_depth: float = 20.0
@@ -524,6 +568,10 @@ class TuneOMaticSpec:
             "stud_hole_diameter",
             "stud_hole_depth",
         )
+        if not math.isfinite(self.bass_setback) or self.bass_setback < 0.0:
+            raise BodyGeometryError(
+                "Tune-o-matic bass_setback must be finite and not negative."
+            )
         post_x = scale_length + self.compensation
         stud_x = scale_length + self.tailpiece_offset
         holes: list[DrilledHole] = []
@@ -531,7 +579,7 @@ class TuneOMaticSpec:
             holes.append(
                 DrilledHole(
                     f"Bridge post {side}",
-                    post_x,
+                    post_x + (self.bass_setback if side == "bass" else 0.0),
                     sign * self.post_spacing / 2.0,
                     self.post_hole_diameter,
                     self.post_hole_depth,
@@ -550,8 +598,8 @@ class TuneOMaticSpec:
             BridgeMounting(post_x, pivot_stud_spacing=None, has_sustain_block=False),
             holes=tuple(holes),
             notes=(
-                "Tune-o-matic: a flat body needs a neck angle or a recessed bridge "
-                "to reach playing height.",
+                "Tune-o-matic: it reaches playing height on the flat top with "
+                "the neck angled (neck_angle, 2 degrees by default).",
             ),
         )
 

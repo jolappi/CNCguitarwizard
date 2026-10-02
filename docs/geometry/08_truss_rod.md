@@ -86,12 +86,20 @@ outline.
   sleeve's bore is refused.
 - **Headstock** (`truss_rod_adjustment="headstock"`): the route starts under
   the nut, at the back of the nut shelf, with the pocket and step there,
-  and ends 12 mm before the heel end; the adjuster sits in a trough in the
-  headstock face behind the shelf, up to 32 mm long and at least 3 mm from
-  every tuner hole, as deep as at the heel. A Gibson-style truss-rod cover
-  (`truss_rod_cover`, on by default) 6 mm larger than the trough, stopping
-  0.5 mm short of the nut shelf, with three 3.2 mm screw holes, is cut
-  from sheet as `Cover_truss_rod.nc` like the cavity covers. The route
+  and ends 12 mm before the heel end; the adjuster is reached from the
+  headstock face behind the shelf (see *Spoke wheel or not*), every
+  trough at least 3 mm from every tuner hole in plan. Behind a shelf nut
+  a Gibson-style truss-rod cover (`truss_rod_cover`, on by default) 6 mm
+  larger than the trough, stopping 0.5 mm short of the nut shelf, with
+  three 3.2 mm screw holes, is cut from sheet as `Cover_truss_rod.nc`
+  like the cavity covers. The pocket and step then lie in the neck by the
+  nut, which thins to the first fret's wood (11 mm on the default 17 mm
+  neck): a standard rod's 11 mm pocket would break through its back, so
+  the neck is made thick enough at the first fret to leave
+  `TRUSS_ROD_MIN_FLOOR` (1 mm) under each part at its edges, where the D
+  profile has curved up — 18.3 mm instead of 17 on the default neck
+  (`first_fret_thickness_needed()`; a thicker `first_fret_thickness` is
+  kept). A low-profile rod (below) needs no thicker neck. The route
   under the nut is open at the top (a router cannot cut a tunnel, and a
   bore drilled along the axis from the headstock would groove its angled
   face), so the nut seat is solid only either side of the 9 mm pocket;
@@ -99,6 +107,48 @@ outline.
   with the seat, before the nut is glued (as Gibson fills its truss-rod
   channel). At the heel the route starts well past the nut and the seat is
   flat over the nut's whole width.
+
+### Spoke wheel or not
+
+`truss_rod_spoke_wheel` (`"auto"`, `"yes"`, `"no"`) says whether the
+adjuster is a spoke wheel; `"auto"` fits one at the heel and none at the
+headstock, on a standard rod only (`Prototype001Parameters.truss_rod_spoke_wheel_fitted`).
+
+- **Heel, wheel**: as above — the sleeve's bore and the wheel past the
+  heel end in the body's notch.
+- **Heel, no wheel**: no bore can be routed there, so none is needed: the
+  route runs right out through the heel's end, the rod's adjuster nut at
+  the heel's end face (the whole rod lies in the route, `outside` 0), and
+  the body gets no notch. It is turned with the neck off, as on a vintage
+  Telecaster.
+- **Headstock, wheel**: the wheel sits in an open trough behind the nut
+  (seat), the head's length + 4 mm long and its width + 2 mm wide, 15.5
+  mm deep, with no cover. The headstock's root by the nut must leave
+  `TRUSS_ROD_MIN_FLOOR` under it: an angled headstock is only its
+  thickness (16 mm) deep there, so a wheel needs a flat headstock (set
+  down, 20 mm) or a thicker one; otherwise the build stops and says so.
+- **Headstock, no wheel**: the key reaches the adjuster through a hole
+  along the rod's axis, and a router can cut only its open start: a notch
+  `truss_rod_key_hole_diameter` (8 mm) wide, the head's length + 2 mm
+  long, down to the axis plus the key's radius (11.5 mm; `access_diameter`,
+  `TrussRodChannel.adjuster_boundary`) — a trough for the head would
+  break through an angled headstock's root. It is covered behind a shelf
+  nut and open behind a slotted one; `Neck_top.nc`'s notes say to drill
+  any longer hole on by hand.
+
+### Low-profile rod
+
+`truss_rod_profile="low_profile"` routes for a low-profile two-way rod,
+as StewMac's and Hosco's Hot Rod Low-profile (a straight 1/4 × 3/8 in
+channel measured from the fretboard's glue face, adjusted with a 4 mm hex
+key; others, such as Next Gen's Low Pro at 6.25 × 9.25 mm, fit the same
+channel): one straight channel `truss_rod_low_profile_width` ×
+`truss_rod_low_profile_depth` (6.35 × 9.5 mm), with no step or pocket,
+its adjuster centred in it (axis 4.75 mm down). It leaves 1.5 mm of wood
+under it on the default 17 mm neck, so it needs no thicker neck at the
+headstock. `"auto"` fits it no spoke wheel: at the heel its adjuster sits
+at the heel's end face, at the headstock it is reached through the key's
+notch.
 
 Both adjuster openings are on by default and can be left out:
 `truss_rod_sleeve_bore=False` drops the heel sleeve's bore from the model

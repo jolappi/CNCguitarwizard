@@ -19,7 +19,11 @@ def render_plan_view_svg(geometry: Prototype001Geometry) -> str:
     the page and +Y to the right — the side view turned a quarter turn
     clockwise, not mirrored. Top-face cavities are filled,
     rear cavities are dashed, holes are circles, frets are lines, and
-    the inlays are drawn as their own outlines.
+    the inlays are drawn as their own outlines. The nut is drawn on its
+    seat: bone white, or dark for a locking nut; a fretboard that runs on
+    under the nut (a slotted nut's, an R2 locking nut's) reaches under it
+    and on behind it, a line marking where a slotted nut's board starts
+    sloping down to its end.
     """
     body = geometry.body
     points: list[Point2D] = list(body.outline.points)
@@ -75,6 +79,26 @@ def render_plan_view_svg(geometry: Prototype001Geometry) -> str:
         path(geometry.neck_outline.boundary, wood),
     ]
     parts.append(path(_fretboard_polygon(geometry), fretboard))
+    nut = geometry.locking_nut
+    nut_look = (
+        'fill="#3c3c3c" stroke="#111" stroke-width="0.5"'
+        if nut is not None and nut.is_locking
+        else 'fill="#efe8d6" stroke="#8a7a5a" stroke-width="0.5"'
+    )
+    parts.append(path(_nut_polygon(geometry), nut_look))
+    if nut is not None and not nut.is_locking and nut.spec.taper > 0.0:
+        # Where the board behind a slotted nut starts sloping down.
+        back = nut.spec.depth + nut.spec.lip
+        half = nut.neck_width / 2.0
+        parts.append(
+            line(
+                -nut.lean * half - back,
+                -half,
+                nut.lean * half - back,
+                half,
+                'stroke="#7a6040" stroke-width="0.4"',
+            )
+        )
     for slot in geometry.fret_layout.slots:
         parts.append(line(slot.start.x, slot.start.y, slot.end.x, slot.end.y, fret))
     for marker in geometry.inlay_layout.markers:
@@ -137,12 +161,36 @@ def _fretboard_polygon(geometry: Prototype001Geometry) -> Sequence[Point2D]:
     """Return the fretboard's plan outline from the nut to its end.
 
     Taken from the surface's end rows, so slanted frets slant both ends.
+    A board that runs on under the nut reaches the nut's seat further back.
     """
     rows = geometry.fretboard_surface.mesh.rows
     first, last = rows[0], rows[-1]
+    nut = geometry.locking_nut
+    back = nut.seat_length if nut is not None and nut.on_fretboard else 0.0
     return (
-        Point2D(first[0].x, first[0].y),
+        Point2D(first[0].x - back, first[0].y),
         Point2D(last[0].x, last[0].y),
         Point2D(last[-1].x, last[-1].y),
-        Point2D(first[-1].x, first[-1].y),
+        Point2D(first[-1].x - back, first[-1].y),
+    )
+
+
+def _nut_polygon(geometry: Prototype001Geometry) -> Sequence[Point2D]:
+    """Return the nut in plan, its front face on the (leaning) nut line.
+
+    A locking or slotted nut is as deep as it is; a plain nut fills its
+    shelf. A locking nut is its own width, any other the neck's.
+    """
+    headstock = geometry.headstock
+    nut = geometry.locking_nut
+    half = (
+        nut.spec.width
+        if nut is not None and nut.is_locking
+        else headstock.plan.nut_width
+    ) / 2.0
+    depth = nut.spec.depth if nut is not None else headstock.nut_seat_length
+    lean = headstock.nut_lean
+    return tuple(
+        Point2D(lean * y + dx, y)
+        for dx, y in ((0.0, -half), (0.0, half), (-depth, half), (-depth, -half))
     )

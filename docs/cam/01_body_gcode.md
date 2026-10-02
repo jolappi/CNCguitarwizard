@@ -58,7 +58,7 @@ Three programs are written, in running order:
 | File | Setup | Contents |
 | --- | --- | --- |
 | `Body_index_pins.nc` | Top up | The two dowel holes, through the blank (a body with no tail notch on the centerline, such as the drawn body's starting shape, gets a blank lengthened so the tail pin sits in waste; likewise a body whose neck pocket runs out past its face, such as the Jackson RR and Les Paul style templates, gets a blank long enough for pin 1 ahead of the pocket — a dowel plus the tool's and `index_pin_wall`'s clearance and `stock_edge_margin`) |
-| `Body_top.nc` | Top up, on the dowels | Neck pocket, pickup routes, baseplate cutout, screw recesses, pot and switch shaft holes, outline to half depth + overlap |
+| `Body_top.nc` | Top up, on the dowels | Neck pocket (with a `neck_angle`, its floor then stepped down toward the mouth in 0.1 mm terraces), pickup routes, baseplate cutout, screw recesses, pot and switch shaft holes, outline to half depth + overlap |
 | `Body_top_small_holes.nc` | Top up, on the dowels (only when needed) | Holes narrower than the main tool — a hardtail's string-through and pilot holes — with the `small_hole_tool_diameter` drill |
 | `Body_top_controls.nc` | Top up, on the dowels (Tele plate only) | The control plate recess, then the control cavity from its floor |
 | `Body_back.nc` | Flipped, on the dowels | Any tremolo spring cavity with its cover recess and deeper block clearance pocket, the neck-bolt ferrules, outline to half depth + overlap with tabs |

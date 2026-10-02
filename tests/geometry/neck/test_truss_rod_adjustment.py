@@ -88,7 +88,8 @@ def test_a_headstock_adjusted_rod_runs_under_the_nut_into_a_trough() -> None:
 
     assert truss.adjustment_side == "nut"
     assert truss.start_position == pytest.approx(-5.0)
-    assert (min(xs), max(xs)) == (pytest.approx(-37.0), pytest.approx(-5.0))
+    # Without a spoke wheel only the key's 8 mm notch is routed.
+    assert (min(xs), max(xs)) == (pytest.approx(-13.0), pytest.approx(-5.0))
     heel_end = (
         geometry.neck_outline.last_fret_position + geometry.neck_outline.heel_length
     )
@@ -107,8 +108,14 @@ def test_a_headstock_adjusted_rod_runs_under_the_nut_into_a_trough() -> None:
 
 
 def test_the_trough_keeps_clear_of_the_tuners() -> None:
+    # A spoke wheel's 17 mm trough run on between the first 3+3 tuners.
     with pytest.raises(NeckGeometryError, match="too close to tuner"):
-        replace(HEADSTOCK, truss_rod_access_length=48.0).build()
+        replace(
+            HEADSTOCK,
+            headstock_angle=0.0,
+            truss_rod_spoke_wheel="yes",
+            truss_rod_access_length=48.0,
+        ).build()
 
 
 def test_the_neck_program_cuts_the_steps_and_trough_and_notes_the_bore() -> None:
@@ -120,8 +127,9 @@ def test_the_neck_program_cuts_the_steps_and_trough_and_notes_the_bore() -> None
     assert any("sleeve bore by hand" in note for note in heel.top.notes)
     head = plan_neck_machining(HEADSTOCK.build(), NeckMachiningParameters())
     paths = {path.name: path for path in head.top.toolpaths}
+    # The key's notch: the rod's axis plus the key's radius.
     assert min(m.z for m in paths["Truss-rod access trough"].moves) == pytest.approx(
-        -15.5
+        -11.5
     )
     assert not any("sleeve bore" in note for note in head.top.notes)
 

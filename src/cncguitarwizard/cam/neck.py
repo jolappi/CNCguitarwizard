@@ -310,11 +310,38 @@ def _nut_filler_note(truss: TrussRodChannel, shelf: float) -> tuple[str, ...]:
     )
 
 
+def _adjuster_notes(geometry: Prototype001Geometry) -> tuple[str, ...]:
+    """Return how the truss rod's adjuster without a spoke wheel is reached."""
+    truss = geometry.truss_rod_channel
+    heel_end = truss.neck_outline.last_fret_position + truss.neck_outline.heel_length
+    if truss.adjustment_side == "heel" and math.isclose(truss.end_position, heel_end):
+        return (
+            "The route runs out through the heel's end: the rod's adjuster nut "
+            "sits at the heel's end face, turned with the neck off.",
+        )
+    if truss.adjustment_side == "nut" and truss.access_diameter > 0.0:
+        return (
+            f"The truss rod's key reaches the adjuster through a "
+            f"{truss.access_diameter:g} mm notch behind the nut, the open start "
+            "of its hole: a key that needs it longer is drilled on by hand "
+            "along the rod's axis.",
+        )
+    return ()
+
+
 def _locking_nut_notes(geometry: Prototype001Geometry) -> tuple[str, ...]:
-    """Return how to fit a top-mounted locking nut, if the neck has one."""
+    """Return how to fit a locking nut or a slotted nut, if the neck has one."""
     nut = geometry.locking_nut
     if nut is None:
         return ()
+    if not nut.is_locking:
+        return (
+            f"Fender style nut, {nut.spec.depth:g} mm thick: glue it into the "
+            f"slot near the fretboard's end ({nut.spec.height:g} mm deep at the "
+            "crown, cut in the fretboard's inlay program), front face on the "
+            f"nut line; behind it the board runs on {nut.spec.lip:g} mm, then "
+            f"slopes to the neck over {nut.spec.taper:g} mm.",
+        )
     seat = (
         f"it stands on the fretboard, which runs on under it {nut.shelf_height:.1f} "
         "mm thick (cut in the fretboard's outline program)"
@@ -623,7 +650,13 @@ def plan_neck_machining(
             if truss.bore is not None
             else ()
         ),
-        *_nut_filler_note(truss, shelf),
+        *_adjuster_notes(geometry),
+        # A board running on under the nut covers the route there itself.
+        *(
+            ()
+            if geometry.locking_nut is not None and geometry.locking_nut.on_fretboard
+            else _nut_filler_note(truss, shelf)
+        ),
         *_locking_nut_notes(geometry),
     )
     if laminated:

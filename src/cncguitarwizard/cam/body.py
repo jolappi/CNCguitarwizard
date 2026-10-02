@@ -15,7 +15,13 @@ from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from typing import Literal
 
-from ..geometry.body import BodySolid, Cavity, DrilledHole, RearCavity
+from ..geometry.body import (
+    BodySolid,
+    Cavity,
+    DrilledHole,
+    RearCavity,
+    TracedCavity,
+)
 from ..geometry.primitives import Point2D, point_in_polygon
 from .body_edges import ball_tool, binding_path, contour_paths, roundover_path
 from .engraving import engraving_path, engraving_tool
@@ -153,11 +159,13 @@ def plan_body_machining(
     def top_pocket(cavity: Cavity) -> Toolpath:
         return _top_pocket(cavity, body, top_frame, parameters)
 
-    top_paths: list[Toolpath] = [
-        top_pocket(cavity)
-        for cavity in _top_cavities(body)
-        if cavity not in body.control_top_cavities
-    ]
+    top_paths: list[Toolpath] = []
+    for cavity in _top_cavities(body):
+        if cavity in body.control_top_cavities:
+            continue
+        top_paths.append(top_pocket(cavity))
+        # A tilted floor (an angled neck pocket) steps down after it.
+        top_paths += _floor_terraces(cavity, top_frame, parameters)
     small_holes = [
         hole for hole in body.holes if hole.diameter < parameters.tool_diameter - 1e-6
     ] + [
@@ -515,6 +523,63 @@ def _top_pocket(
         parameters,
         start_depth=body.step_start_depth(cavity),
     )
+
+
+FLOOR_TERRACE_STEP = 0.1
+"""Height of each terrace a tilted pocket floor is cut in, in mm."""
+
+
+def _floor_terraces(
+    cavity: Cavity, frame: _Frame, parameters: MachiningParameters
+) -> list[Toolpath]:
+    """Step a tilted floor down toward its deep end in thin terraces.
+
+    Each terrace reaches as far as the floor is at least that deep, so
+    the steps stand at most ``FLOOR_TERRACE_STEP`` proud of the slope and
+    the neck rests on their edges. A terrace too short for the tool (at
+    the very mouth) is left out.
+    """
+    if not isinstance(cavity, TracedCavity) or cavity.floor_slope <= 0.0:
+        return []
+    slope = cavity.floor_slope
+    top, bottom = cavity.depth, cavity.deepest
+    count = math.floor((bottom - top) / FLOOR_TERRACE_STEP + 1e-9)
+    paths: list[Toolpath] = []
+    previous = top
+    for index in range(1, count + 1):
+        depth = top + index * FLOOR_TERRACE_STEP
+        reach = cavity.max_x - (depth - top) / slope
+        region = _clip_behind(cavity.outline, reach)
+        if not region or reach - cavity.min_x < parameters.tool_diameter:
+            break
+        paths.append(
+            pocket(
+                f"{cavity.name} floor, step {index}",
+                frame.polygon(region),
+                depth,
+                parameters,
+                start_depth=previous,
+            )
+        )
+        previous = depth
+    return paths
+
+
+def _clip_behind(polygon: tuple[Point2D, ...], limit: float) -> tuple[Point2D, ...]:
+    """Return the part of ``polygon`` with x at most ``limit``."""
+    clipped: list[Point2D] = []
+    count = len(polygon)
+    for index in range(count):
+        current, following = polygon[index], polygon[(index + 1) % count]
+        inside = current.x <= limit
+        if inside:
+            clipped.append(current)
+        if inside != (following.x <= limit):
+            fraction = (limit - current.x) / (following.x - current.x)
+            clipped.append(
+                Point2D(limit, current.y + (following.y - current.y) * fraction)
+            )
+    return tuple(clipped) if len(clipped) >= 3 else ()
 
 
 def _rear_pockets(

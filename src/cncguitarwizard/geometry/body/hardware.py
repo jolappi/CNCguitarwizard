@@ -29,16 +29,20 @@ class TracedCavity:
         name: Short label used in error messages and generated comments.
         outline: Ordered vertices of one closed polygon loop.
         depth: Pocket depth in millimetres, cut down from the top face.
+        floor_slope: A floor tilted along the neck: it sinks this much per
+            millimetre toward -X from its ``max_x`` end, where it is
+            ``depth`` deep (a neck pocket's angle; 0 for a flat floor).
 
     Raises:
         BodyGeometryError: If fewer than three points are given, any
             coordinate is non-finite, or the depth is non-finite or
-            non-positive.
+            non-positive, or the floor slope negative.
     """
 
     name: str
     outline: tuple[Point2D, ...]
     depth: float
+    floor_slope: float = 0.0
 
     def __post_init__(self) -> None:
         """Reject a traced cavity too small or malformed to be cut."""
@@ -50,6 +54,17 @@ class TracedCavity:
             raise BodyGeometryError(f"{self.name} points must all be finite.")
         if not math.isfinite(self.depth) or self.depth <= 0.0:
             raise BodyGeometryError(f"{self.name} depth must be finite and positive.")
+        if not math.isfinite(self.floor_slope) or self.floor_slope < 0.0:
+            raise BodyGeometryError(f"{self.name} floor slope must not be negative.")
+
+    def depth_at(self, x: float) -> float:
+        """Return the floor's depth at ``x`` along the neck."""
+        return self.depth + self.floor_slope * max(0.0, self.max_x - x)
+
+    @property
+    def deepest(self) -> float:
+        """Return the floor's greatest depth (at ``min_x`` when tilted)."""
+        return self.depth_at(self.min_x)
 
     @property
     def min_x(self) -> float:

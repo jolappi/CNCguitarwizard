@@ -84,7 +84,7 @@ straight 5 mm ledge (the model's U-shaped trim is not machined), the
 headstock-root volute follows the mesh/plane union rather than the
 FreeCAD fillets, and the spoke-wheel access pocket is not modelled.
 
-## Fretboard (`FretboardMachiningParameters`, five programs)
+## Fretboard (`FretboardMachiningParameters`, five programs and the inlay pieces)
 
 The board is a flat blank `blank_thickness` (7 mm) thick, glue face down,
 on two dowels beyond the nut and beyond the end. Everything is cut from
@@ -94,7 +94,7 @@ the top in one fixturing.
 | --- | --- | --- |
 | `Fretboard_index_pins.nc` | flat | Both dowel holes |
 | `Fretboard_radius.nc` | ball | 430 mm radius; the crown ends `blank − 6` mm below the blank top, the edges 0.9 mm lower |
-| `Fretboard_inlays.nc` | 1 mm | Twelve barbed-wire pockets 2 mm below the crown; barbs narrower than the tool are left uncut |
+| `Fretboard_inlays.nc` | 1 mm | Twelve barbed-wire pockets 2 mm below the crown, each the marker rounded to the tool (see below); barbs narrower than the tool are left out |
 | `Fretboard_slots.nc` | 0.6 mm | 24 slots that follow the radius across the board, 2.7 mm below the surface, three 0.9 mm passes, 1 mm past each edge |
 | `Fretboard_outline.nc` | flat | A locking nut's shelf first, when the board runs on under it; then the tapered outline with square nut corners (`fretboard_nut_corner_radius`, 0 by default) and tabs |
 
@@ -102,7 +102,36 @@ Under an R2 locking nut (see [Headstock](../geometry/06_headstock.md#locking-nut
 the outline runs 16 mm on past the nut line and a pocket mills that end
 down to the nut's shelf, reaching past the board's sides and end so only
 the wall at the nut line is left. `Neck_top.nc`'s notes say how to fit the
-nut and drill its screws.
+nut and drill its screws. A slotted Fender style nut (`nut_style` "slot")
+gets its slot in `Fretboard_inlays.nc` (`Nut slot`, `nut_thickness` 3.5 mm
+wide, `nut_slot_depth` 3 mm below the crown, closed behind by the board's
+full-height lip, so the 1 mm inlay end mill cuts it); the outline runs on
+`nut_thickness + nut_slot_lip + nut_slot_taper` (9.5 mm) past the nut
+line, and `Fretboard_outline.nc` first steps the slope behind the lip
+down to the glue face in 0.5 mm terraces (`SLOPE_STEP`) with the flat end
+mill, to be sanded into one slope. The nut is glued in.
+
+## Inlay pieces (`Fretboard_inlay_pieces.nc`)
+
+Barbed-wire and block markers get a sheet program of their own
+(`plan_inlay_machining`, part `Inlays`); round dots do not, as they are
+bought ready-made or cut from rod. Every marker becomes a piece, nested
+in fret order, left to right in rows of up to 150 mm
+(`INLAY_ROW_LENGTH`), each row behind the last, 3 mm apart beyond the
+tool. The sheet is as thick as the pockets are deep (`inlay_depth`, 2 mm),
+taped down on double-sided tape (the pieces have no tabs), show face up:
+the pieces lie as on the board seen from above. The work zero is the
+centre of the nested pieces, Z at the sheet top, and each piece is cut
+through with the same 1 mm inlay end mill as the pockets.
+
+Neither the pocket nor the piece can be sharper than that end mill: the
+pocket keeps a tool-radius round in every corner the tool turns inside,
+the piece in every corner cut into it. So both follow the marker outline
+rounded both ways by the tool radius (`inlay_fit_outline`: grown and
+shrunk back, then shrunk and grown back): the pocket's inner corners are
+cut round where the piece's would stay full, and the piece is
+`INLAY_FIT_CLEARANCE` (0.1 mm) smaller all round, so each piece drops
+into its pocket. Glue the pieces in and level them with the radius.
 
 With slanted or fanned frets (`fret_slant_angle`, `bass_scale_length`)
 each slot runs along its own line, still following the radius, and the

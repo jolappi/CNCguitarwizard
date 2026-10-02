@@ -136,6 +136,7 @@ class FreeCADScriptExporter:
             body=geometry.body,
             fretboard_binding_width=geometry.fretboard_binding_width,
             headstock_engraving=geometry.headstock_engraving,
+            neck_tilt=geometry.neck_tilt,
             fcstd_path=fcstd_path,
             step_path=step_path,
         )
@@ -200,6 +201,7 @@ class FreeCADScriptExporter:
         body_object_name: str = "Body",
         fretboard_binding_width: float = 0.0,
         headstock_engraving: Engraving | None = None,
+        neck_tilt: tuple[float, float, float] = (0.0, 0.0, 0.0),
         fcstd_path: Path | None = None,
         step_path: Path | None = None,
     ) -> str:
@@ -768,6 +770,7 @@ class FreeCADScriptExporter:
             f"{binding_source}"
             f"{headstock_source}"
             f"{locking_nut_screw_source}"
+            f"{self._render_neck_tilt(neck_tilt)}"
             f"{body_source}"
             "document.recompute()\n"
             f"{output_commands}"
@@ -862,9 +865,16 @@ class FreeCADScriptExporter:
 
     @staticmethod
     def _render_locking_nut_shelf(locking_nut: LockingNut | None) -> str:
-        """Return the fretboard's run on under a locking nut, at its shelf."""
+        """Return the fretboard's run on under a locking nut, at its shelf.
+
+        Behind a slotted nut the board runs on at its own section instead:
+        the nut-end section carried back the whole run, less the nut's
+        slot and the slope down to the glue face at its end.
+        """
         if locking_nut is None or not locking_nut.on_fretboard:
             return ""
+        if not locking_nut.is_locking:
+            return FreeCADScriptExporter._render_slotted_board(locking_nut)
         corners = ", ".join(
             f"App.Vector({point.x!r}, {point.y!r}, 0.0)"
             for point in locking_nut.seat_outline()
@@ -879,6 +889,91 @@ class FreeCADScriptExporter:
             "    fretboard_shape.fuse(locking_nut_shelf).removeSplitter(),\n"
             '    "locking nut shelf",\n'
             ")\n"
+        )
+
+    @staticmethod
+    def _render_neck_tilt(neck_tilt: tuple[float, float, float]) -> str:
+        """Return the neck's (and everything on it) tilt back onto the body.
+
+        Every object made so far belongs to the neck; it turns about the
+        neck pocket floor's heel end, its nut end going down.
+        """
+        angle, pivot_x, pivot_z = neck_tilt
+        if angle == 0.0:
+            return ""
+        return (
+            f"# The neck tilted back {angle:g} degrees about the pocket floor's "
+            "heel end.\n"
+            "neck_tilt = App.Placement(\n"
+            "    App.Vector(0.0, 0.0, 0.0),\n"
+            f"    App.Rotation(App.Vector(0.0, 1.0, 0.0), {-angle!r}),\n"
+            f"    App.Vector({pivot_x!r}, 0.0, {pivot_z!r}),\n"
+            ")\n"
+            "for neck_object in document.Objects:\n"
+            "    neck_object.Placement = neck_tilt.multiply(neck_object.Placement)\n"
+        )
+
+    @staticmethod
+    def _render_slotted_board(nut: LockingNut) -> str:
+        """Return the board's run on behind a slotted nut."""
+        slot = ", ".join(
+            f"App.Vector({point.x!r}, {point.y!r}, 0.0)"
+            for point in nut.slot_outline(reach=2.0)
+        )
+        run = nut.seat_length
+        top = nut.board_height
+        span = nut.neck_width / 2.0 + 2.0
+        lip_end = -(nut.spec.depth + nut.spec.lip)
+        # The slope's wedge, drawn in the XZ plane at the far side and
+        # swept across the neck along the (leaning) nut line.
+        wedge = ", ".join(
+            f"App.Vector({nut.lean * -span + x!r}, {-span!r}, {z!r})"
+            for x, z in (
+                (lip_end, top),
+                (-run, 0.0),
+                (-run - 1.0, 0.0),
+                (-run - 1.0, top + 2.0),
+                (lip_end, top + 2.0),
+            )
+        )
+        return (
+            (
+                "# The fretboard runs on behind the nut line: the nut's slot,\n"
+                "# a full-height lip and a slope down to the glue face.\n"
+                "board_end = FRETBOARD_SECTION_POINTS[0]\n"
+                "board_run_on = Part.Face(\n"
+                "    Part.makePolygon(\n"
+                "        [App.Vector(*point) for point in board_end]\n"
+                "        + [App.Vector(*board_end[0])]\n"
+                "    )\n"
+                f").extrude(App.Vector({-run!r}, 0.0, 0.0))\n"
+                f"nut_slot_corners = [{slot}]\n"
+                "nut_slot = Part.Face(\n"
+                "    Part.makePolygon(nut_slot_corners + nut_slot_corners[:1])\n"
+                f").extrude(App.Vector(0.0, 0.0, {top + 2.0!r}))\n"
+                f"nut_slot.translate(App.Vector(0.0, 0.0, {nut.shelf_height!r}))\n"
+                "board_run_on = board_run_on.cut(nut_slot)\n"
+            )
+            + (
+                (
+                    f"board_slope_corners = [{wedge}]\n"
+                    "board_slope = Part.Face(\n"
+                    "    Part.makePolygon(\n"
+                    "        board_slope_corners + board_slope_corners[:1]\n"
+                    "    )\n"
+                    f").extrude(App.Vector({nut.lean * 2.0 * span!r}, "
+                    f"{2.0 * span!r}, 0.0))\n"
+                    "board_run_on = board_run_on.cut(board_slope)\n"
+                )
+                if nut.spec.taper > 0.0
+                else ""
+            )
+            + (
+                "fretboard_shape = require_shape(\n"
+                "    fretboard_shape.fuse(board_run_on).removeSplitter(),\n"
+                '    "fretboard run on behind the nut",\n'
+                ")\n"
+            )
         )
 
     @staticmethod
@@ -2096,6 +2191,32 @@ class FreeCADScriptExporter:
             lines.append(
                 f"body_shape = cavity_cut(body_shape, {outline}, "
                 f"{cavity.depth}, {label!r})\n"
+            )
+        slope = getattr(body.neck_pocket, "floor_slope", 0.0)
+        if slope > 0.0:
+            # The pocket's floor sinks toward its mouth: the wedge under
+            # its heel-end depth, within its outline.
+            pocket = body.neck_pocket
+            front = pocket.min_x - 1.0
+            deep = pocket.depth + slope * (pocket.max_x - front)
+            low_y, high_y = pocket.min_y - 1.0, pocket.max_y + 1.0
+            outline = outline_literal(pocket.outline)
+            lines.append(
+                f"pocket_outline = {outline}\n"
+                "pocket_prism = Part.Face(Part.makePolygon(\n"
+                "    [App.Vector(x, y, 0.0) for x, y in pocket_outline]\n"
+                "    + [App.Vector(pocket_outline[0][0], pocket_outline[0][1], 0.0)]\n"
+                f")).extrude(App.Vector(0.0, 0.0, {-(deep + 1.0)!r}))\n"
+                "pocket_wedge = Part.Face(Part.makePolygon([\n"
+                f"    App.Vector({pocket.max_x!r}, {low_y!r}, {-pocket.depth!r}),\n"
+                f"    App.Vector({front!r}, {low_y!r}, {-pocket.depth!r}),\n"
+                f"    App.Vector({front!r}, {low_y!r}, {-deep!r}),\n"
+                f"    App.Vector({pocket.max_x!r}, {low_y!r}, {-pocket.depth!r}),\n"
+                f"])).extrude(App.Vector(0.0, {high_y - low_y!r}, 0.0))\n"
+                "body_shape = require_shape(\n"
+                "    body_shape.cut(pocket_prism.common(pocket_wedge)),\n"
+                '    "neck pocket angled floor cut",\n'
+                ")\n"
             )
         rear_cuts = [
             (body.control_cavity, "control cavity"),

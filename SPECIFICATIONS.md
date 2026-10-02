@@ -18,11 +18,13 @@ toisin mainita.
 | Otelauta | Erillinen, 6 mm paksu, 430 mm säde |
 | Otelaudan reunanauha | Valinnainen (`fretboard_binding_width`, 0 = ei, enintään 3 mm): otelauta jyrsitään nauhan verran kapeammaksi kummaltakin pitkältä sivulta, ja nauha liimataan reunoihin, joten lauta ja nauha yhdessä ovat satulan ja viimeisen nauhan levyiset (kaula pysyy niissä). Nauhaurat jyrsitään laudan reunojen läpi, ja nauhojen kannat lyhennetään reunanauhan kohdalta. FreeCAD-mallissa nauhat ovat omana kappaleenaan (`FretboardBinding`) |
 | Otelaudan pää | 4 mm 24. nauhan jälkeen; samassa tasossa kannan lopun kanssa |
-| Satulahylly | Kiinteä 5 mm ennen otelautaa; ei saa muuttua |
+| Satulahylly | Kiinteä 5 mm ennen otelautaa; ei saa muuttua (paitsi `nut_style` "slot": satula urassa otelaudan päässä, ks. alla) |
 | Nauhaurat | 0,6 mm × 2,7 mm |
 | Vinot nauhat | Valinnainen `fret_slant_angle` (oletus 0°, enintään 10°): nauhat, otelaudan satulapää ja loppupää kallistuvat keskilinjan ympäri, diskanttipää kohti tallaa positiivisella kulmalla. Nauhajako pysyy tarkkana keskilinjalla; talla ja mikit pysyvät ennallaan |
 | Multiscale | Valinnainen `bass_scale_length`: `scale_length` on silloin diskanttimensuuri ja `bass_scale_length` bassomensuuri (pidempi, enintään 1,15-kertainen); `perpendicular_fret` (oletus 7, 0 = satula) on kohtisuorassa. Jokainen nauha on suora ja osuu jokaisella kielellä tarkalleen oikeaan kohtaan; keskilinja saa mensuurien keskiarvon. Talla voi olla mikä tahansa: se pysyy suorana keskilinjan mensuurin kohdalla ja tallapalat säädetään kunkin kielen mensuuriin (säätövaran on riitettävä puoleen mensuurierosta kumpaankin suuntaan). Poikkeus on Tune-o-matic, jonka säätövara on liian pieni: sen tolpat (kohta, jolla kielet lepäävät) käännetään aina nauhojen mukaan, stop tail pysyy paikallaan. Hardtailin läpivientireiät voi kääntää samoin (`body_bridge_follows_fan`). Mikkien kääntö on valinta (`body_pickups_follow_fan`): auto kääntää ne paitsi Tune-o-maticin kanssa, yes aina, no ei koskaan |
 | Lukkosatula | `locking_nut`: auto (oletus) ottaa Floyd Rose Original R2 -lukkosatulan (41,3 mm), kun tallana on Floyd Rose, muuten tavallinen satula; none, r2 tai r3 (42,85 mm, vaatii yhtä leveän `nut_width`:n; web-lomake leventää satulan leveyden 43 mm:iin R3:a valittaessa) valitsevat suoraan. Satula ruuvataan päältä kahdella ruuvilla (13,59 mm välein, 7,5 mm satulalinjan takana, 2,5 mm × 8 mm esiporaus käsin satulan läpi). Sen etureuna on satulalinjalla ja hylly jatkuu 16 mm taaksepäin, joten lavan pinta, siirtymä ja lavan puolen truss rod -tasku alkavat sen verran taempaa. Satulan yläpinta on 0,38 mm nauhojen yläpintaa ylempänä (`fret_height` 1,2 mm): R2:n hylly on 1,73 mm liimapinnan yläpuolella, joten otelauta jatkuu satulan alle ja jyrsitään siinä hyllyn korkeuteen; R3:n hylly jäisi alle 1 mm:n, joten se istuu kaulan omalla hyllyllä 0,48 mm shimmin päällä |
+| Satula urassa (Fender/Telecaster) | `nut_style` "slot": otelauta jatkuu satulalinjan ohi, ja siihen jyrsitään `nut_thickness` (3,5 mm) levyinen ura `nut_slot_depth` (3 mm) harjan alapuolelle; satula liimataan uraan, etupinta satulalinjalla. Uran takana otelauta jatkuu täyskorkeana `nut_slot_lip` (3 mm) ja loivenee sitten liimapintaan `nut_slot_taper` (3 mm) matkalla, eli otelauta päättyy 9,5 mm satulalinjan taakse. Ura jyrsitään inlay-ohjelmassa 1 mm terällä, loivennus ääriviivaohjelmassa 0,5 mm portain tasaterällä (hiotaan tasaiseksi). Uran alle on jäätävä vähintään 1 mm otelautaa. Lukkosatula korvaa satulan tyylistä riippumatta. Lavan puolelta säädettävä kaularauta avataan silloin Fender-tyylisesti ilman kantta (ks. Spoke wheel) |
+| Telecaster-kaula | Lapaeditorin *Start from* → Telecaster neck (`NECK_TEMPLATES`): satula urassa, suora 0° lapa, 6 virittimen rivi (`6_inline`), Telecaster-lavan muoto piirrettynä (204 mm oletusrivin ympärillä, muokattavissa) ja kaularaudan säätö kantapäässä (vintage); `truss_rod_adjustment` headstock antaa modernin säädön satulan takaa |
 | Satulahylly vinolla satulalla | Pitenee satulapään vinouden verran, jotta satulalle jää 5 mm siltäkin puolelta, jolla satulapää on taaimpana; hylly on tasainen koko pituudeltaan |
 | Inlayt vinoilla nauhoilla | Seuraavat nauhoja: blockit kallistuvat nauhojen mukana, piikkilanka kääntyy nauhojen kulmaan, pisteet siirtyvät nauhojen väliselle linjalle |
 | Inlayt | 2 mm syvät välissä 3, 5, 7, 9, 15, 17, 19, 21 (12 ja 24 kaksois-); tyyli `inlay_style`: piikkilanka (oletus), pyöreä dotti (Ø 6) tai Gibson-tyylinen kapeneva blokki (yksi/väli, 60 % nauhavälistä, 5 mm reunasta) |
@@ -241,8 +243,8 @@ edellä, mutta siirtyy itse eteenpäin niin, että sen kolon ja tallan lähimmä
 kolon tai sen kohdalla olevan reiän reunan väliin jää
 `body_bridge_pickup_clearance` (3 mm) puuta: Floyd Rosen upotus, hardtailin
 Ø3 kiinnitysruuvien esiporaukset (10 mm mensuurin edellä; kolo päättyy 14,5
-mm mensuurin edelle) ja Tune-o-maticin Ø11,2 tolppareiät (3 mm mensuurin
-takana; kolo päättyy 5,6 mm sen edelle). Kolo ei myöskään koskaan ulotu
+mm mensuurin edelle) ja Tune-o-maticin Ø11,2 tolppareiät (diskanttitolppa 1,6 mm mensuurin
+takana; kolo päättyy 7,0 mm sen edelle). Kolo ei myöskään koskaan ulotu
 satulalinjan yli (viuhkanauhoilla linja kallistuu nauhojen mukana); Kahlerin
 kolo päättyy DXF:n mukaisesti 1,2 mm sen edelle. Käsin asetettu suurempi
 etäisyys voittaa. Jos siirretty kolo osuisi seuraavaan mikkikoloon (keski-
@@ -287,7 +289,10 @@ säilyy 5 mm:nä kaikissa lapaliitoksen muutoksissa.
 | --- | --- |
 | Kaularauta | Kaksitoiminen; kanava 6 mm leveä, 7,5 mm syvä, säätöpäässä porras 7,5 × 10,5 × 14 mm (leveys × syvyys × pituus) ja tasku 9 × 11 × 32 mm |
 | Pituus | Kaularaudat myydään kokonaispituuksina 20 mm:n välein (300–600 mm, `truss_rod_stock_lengths`), ja vain ohuin osa pitenee. Oletuksena valitaan pisin kaulaan mahtuva vakiopituus (24-nauhainen 25,5" kitara 440 mm, 7-kielinen 480 mm, basso 600 mm); oman raudan pituus annetaan `truss_rod_rod_length`, ja liian pitkä hylätään suosituksen kera. Säätöpää pysyy paikallaan, lyhyemmän raudan ankkuripää siirtyy. Rauta, ura, pisin mahtuva ja suositus näkyvät build-raportissa ja web-yhteenvedossa |
-| Säätö | Valittava (`truss_rod_adjustment`): kannan puolen spoke wheel (oletus) tai lavan puoli |
+| Säätö | Valittava (`truss_rod_adjustment`): kannan puoli (oletus) tai lavan puoli |
+| Spoke wheel | `truss_rod_spoke_wheel`: auto (oletus: kannassa on, lavassa ei), yes tai no. Kanta + wheel: hihnan porattava holkin reikä ja pyörä kannan päädyn takana rungon lovessa. Kanta ilman: kanava jyrsitään kannan päätyyn asti ja säätömutteri on valmiiksi kannan päädyssä, joten reikää eikä rungon lovea tarvita (säätö kaula irti). Lapa + wheel: pyörä avoimessa kolossa satulan takana (`truss_rod_nut_length` + 4 mm, 15,5 mm syvä, ilman kantta); lavan juuren on jätettävä 1 mm puuta alle, joten kulmalavassa (16 mm) pyörä ei käy, suorassa (20 mm) käy, muuten rakennus pysähtyy virheeseen. Lapa ilman: avaimen reikä, josta CNC jyrsii vain lavan päässä avoimen alun: 8 mm (`truss_rod_key_hole_diameter`) levyinen, `truss_rod_nut_length` + 2 mm pitkä lovi akselin syvyyteen (11,5 mm), hyllysatulan kanssa kannen alla, urassa olevan satulan kanssa avoin; jatko porataan tarvittaessa käsin |
+| Säätöpää lavassa | Kaularauta on kokonaan kaulan puolella (kanava alkaa satulan istukan takaa). Tavallisen raudan 11 mm tasku ja 10,5 mm porras ovat silloin kaulan ohuessa osassa satulan lähellä (oletuskaulassa 11 mm puuta 1. nauhalla), joten kaula tehdään 1. nauhalta niin paksuksi, että taskun ja portaan alle jää 1 mm (`TRUSS_ROD_MIN_FLOOR`) myös niiden reunoilla, missä D-profiili on jo kaartunut ylös: 17 mm → 18,3 mm (`first_fret_thickness_needed`; paksumpi `first_fret_thickness` säilyy) |
+| Matala kaularauta | `truss_rod_profile` low_profile: matala kaksitoiminen rauta (kuten StewMacin/Hoscon Hot Rod Low-profile: suora 1/4 × 3/8 in kanava liimapinnasta, 4 mm kuusiokoloavain; myös Next Genin Low Pro 6,25 × 9,25 mm sopii samaan). Yksi suora 6,35 × 9,5 mm kanava (`truss_rod_low_profile_width` / `_depth`) ilman porrasta ja taskua; alle jää oletuskaulassa 1,5 mm puuta, joten kaulaa ei tarvitse paksuntaa. Auto ei laita sille spoke wheeliä: kannassa mutteri on kannan päädyssä, lavassa avaimen lovi |
 | Säätöholkki | Säädettävät mitat: pyöreä pää Ø 15 × 6 mm rungon puolella, kaulan puolella 12 mm pitkä Ø 9 mm reikä raudan akselilla; akseli 7,5 mm liimapinnasta (mitattu, `truss_rod_axis_depth`) |
 | Kannan säätö | Holkin reikä porataan käsin (CNC ei aja vaakasuoraa porausta; mukana mallissa ja G-coden ohjeissa); rungon kaulataskun päähän lovi holkin päälle, 1 mm välys, 15,5 mm syvä |
 | Lavan säätö | Kanava jatkuu satulan alta; mutteri 32 mm urassa lavan pinnassa, uralle Gibson-tyylinen kansi (3 ruuvia) levystä omana NC-ohjelmanaan |
@@ -325,13 +330,18 @@ tallan satuloihin, millä tahansa tallalla, mensuurilla ja satulalla.
 Satula (lukkosatulan etupinta) on satulalinjalla X = 0, 12. nauha
 mensuurin puolivälissä ja tallan satulat (säätövaran keskellä)
 mensuurilinjalla: Floyd Rosen tapit 11,9 mm ennen sitä, Tune-o-maticin
-tolpat kompensaation verran sen takana. `tests/presets/test_scale_symmetry.py`
+diskanttitolppa kompensaation verran (`compensation`, 1,6 mm = 1/16 in) ja
+bassotolppa vielä `bass_setback` (3,2 mm = 1/8 in) sen takana, jolloin talla
+kallistuu kielten kompensaation suuntaan ja jokainen satula aloittaa
+lyhyen säätövaransa keskeltä. Bassotolppa on bassopuolella: jos
+`headstock_bass_side` on +y, talla peilataan. `tests/presets/test_scale_symmetry.py`
 varmistaa tämän.
 
 | Kohta | Speksi |
 | --- | --- |
 | Paksuus | 44 mm laatta; reunat ja viisteet valinnaisia (alla) |
 | Kaulatasku | Kaulan oma kapeneva ääriviiva + 0,15 mm välys/puoli, 79,5 mm pitkä, päättyy kannan päähän, 20 mm syvä; avautuu sarvien väliin |
+| Kaulan kulma | `neck_angle` (astetta): kaula kallistuu taaksepäin, lapa soittajaa kohti. Taskun pohja on vino: kannan päässä 20 mm syvä, suussa `body_neck_pocket_length` × tan(kulma) syvempi (2°: 22,8 mm), ja se jyrsitään 0,1 mm portaina (`FLOOR_TERRACE_STEP`) taskun jälkeen; portaat jäävät enintään 0,1 mm vinon pohjan yläpuolelle, ja kaula lepää niiden reunoilla. Kaula kääntyy taskun pohjan kannanpuoleisen pään ympäri, ja talla siirtyy niin, että mensuuri (ja 12. nauha puolivälissä) pitää kielen kallistettua linjaa pitkin nauhojen yläpinnan tasolla (2°, 24": talla 1,04 mm satulaa kohti). Tyhjä: 2° Tune-o-maticin kanssa (`NECK_ANGLE_TUNE_O_MATIC`; tasakantisella rungolla 2–2,5° on tavallinen, Les Paulin kaareva kansi 3–5°), muuten 0°. Enintään 6° |
 | Mikkikolot | DXF:n humbucker-kolo korvakkeineen, 41 × 85,9 mm, 22 mm syvä; keskipisteet x = 491,7 ja 587,9 |
 | Säätöruuvien syvennykset | Ø 6 mm, 8 mm kolon pohjan alle, ±39,95 mm keskilinjasta |
 | Talla | Vaihdettava (`body_bridge`): oletus Kahler 7300 (ruuvattava, levyn kolo 55 × 65 × 25 mm); vaihtoehdot Floyd Rose Original valmistajan jyrsintäpiirustuksen mukaan (tapit Ø10 k/k 73,91, 11,9 mm skaalaviivan edellä; 95,25 mm leveä upotus, joka kapenee 71,12 mm:iin 42,44 mm:n kohdalla (pituus 79,38), jyrsitään kokonaan 6,73 mm syväksi ja syvennetään 11,18 mm:iin etummaisen 15,88 mm tappihyllyn takaa porrastaskuna sen sisällä; pohjassa 20,96 × 82,85 × 29,59 block-kolo, joka avautuu jousikoloon; takana jousikolo 123,19 × 56,64 × 16,13 + 28,19 mm syvä block-tasku ja 2 mm kansiura 8 mm kolon ulkopuolelle, johon tulee kuuden ruuvin levystä leikattava kansi omana `Cover_floyd_rose_spring_cavity.nc`-ohjelmanaan (piirustus on 44,45 mm rungolle; paksummassa rungossa jousikolo ja block-tasku syvenevät erotuksen verran, jotta block-kolo avautuu aina läpi); upotus 3,56 mm leveämpi vipupuolella), Tune-o-matic + stop bar (4 × Ø11,2 reikää) ja hardtail (6 string-through + 5 esiporausta). Floyd Rose -mitat valmistajan piirustuksesta, muut lähtöarvoja — tarkista laitteesta |
@@ -352,7 +362,10 @@ Viisteet kapenevat reunaa pitkin molempiin päihin. Soittokäden viisteen
 alkuviivan voi piirtää runkoeditorissa (`arm_contour_points`): vihreä
 viiva pyöreine kahvoineen, päät rungon reunalla; viiste ulottuu reunasta
 viivaan asti ja on syvin siellä, missä viiva on kauimpana reunasta.
-*Auto arm contour* palauttaa automaattisen. Viisteet ja pyöristykset
+*Auto arm contour* palauttaa automaattisen. Mahaviisteen alkuviivan voi
+piirtää samalla tavalla (`belly_cut_points`, sininen viiva, katsottuna
+päältä kuten ääriviiva), kun `body_belly_cut_depth` on päällä; *Auto belly
+cut* palauttaa automaattisen. Viisteet ja pyöristykset
 ajetaan ball nose -terällä omissa ohjelmissaan (`Body_top_edges.nc`,
 `Body_back_edges.nc`), reunanauhan ura pääterällä ääriviivan jälkeen.
 FreeCAD-mallissa ne ovat 1 mm porrastuksina.
@@ -408,6 +421,7 @@ tallenneta palvelimelle.
 | Viritinreiät | vain 0,5 mm keskimerkit lavan pintaan — porataan pylväsporalla 8° kiilalla kohtisuoraan lapaan |
 | Otelaudan G-koodi | `Fretboard_index_pins` → `Fretboard_radius` (pallo) → `Fretboard_inlays` (1 mm) → `Fretboard_slots` (0,6 mm, 3 × 0,9 mm sädettä seuraten) → `Fretboard_outline` (tapit) |
 | Otelaudan aihio | 7 mm; harja 1 mm aihion pinnan alle |
+| Inlay-palat | `Fretboard_inlay_pieces` (1 mm): piikkilanka- ja blokki-merkit leikataan levystä (paksuus = inlay-syvyys, 2 mm), pyöreät pisteet eivät. Palat riveissä nauhajärjestyksessä, kaksipuolisella teipillä ilman pidikkeitä, näkyvä puoli ylös. Tasku ja pala seuraavat merkin ääriviivaa pyöristettynä terän säteellä molempiin suuntiin (`inlay_fit_outline`), pala 0,1 mm pienempi joka puolelta, joten se mahtuu taskuunsa |
 
 ## Mallinnuksen tämänhetkinen tila
 

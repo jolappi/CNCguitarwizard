@@ -152,7 +152,8 @@ def offset_polygon(
     """Return the polygon offset by ``distance`` toward the inside or outside.
 
     Each edge is shifted along its normal; at vertices where the shifted
-    edges pull apart a sampled arc about the vertex fills the gap. The
+    edges pull apart a sampled arc about the vertex fills the gap, and
+    where they overlap the point where they cross is added. The
     raw result self-intersects where the shifted edges cross, so every
     candidate point is then checked against the original polygon and
     dropped unless a disc of ``distance`` centred there fits on the
@@ -178,6 +179,15 @@ def offset_polygon(
         cross = ux * vy - uy * vx
         needs_arc = cross < 0.0 if inward else cross > 0.0
         if not needs_arc:
+            # The shifted edges overlap: where they cross is the offset's
+            # own corner. Without it a run of short edges (a sampled
+            # round corner) would lose every sample to the check below
+            # and the contour would cut straight across the corner.
+            if abs(cross) > 1e-12:
+                gap_x = second.x + mx * distance - end.x
+                gap_y = second.y + my * distance - end.y
+                along = (gap_x * vy - gap_y * vx) / cross
+                raw.append(Point2D(end.x + ux * along, end.y + uy * along))
             continue
         start_angle = math.atan2(ny, nx)
         sweep = _signed_sweep(start_angle, math.atan2(my, mx))

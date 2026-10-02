@@ -118,6 +118,7 @@ function renderForm() {
   applyAdvancedToggle();
   applyStringLimits();
   mirrorEditorFields();
+  headstockEditor.fillTemplates();
   setTimeout(() => headstockEditor.sync(), 0);
 }
 
@@ -126,7 +127,7 @@ function renderForm() {
 // loaded and built (its row in the form is hidden). A change on either
 // side is passed to the other.
 const EDITOR_FIELDS = {
-  "body-editor-options": ["body_pickups", "body_bridge", "body_controls", "body_switch", "body_jack", "body_pickguard", "body_pickguard_style", "body_arm_contour_depth", "body_engraving", "body_engraving_seed", "body_battery_box", "body_battery_count"],
+  "body-editor-options": ["body_pickups", "body_bridge", "body_controls", "body_switch", "body_jack", "body_pickguard", "body_pickguard_style", "body_arm_contour_depth", "body_belly_cut_depth", "body_engraving", "body_engraving_seed", "body_battery_box", "body_battery_count"],
   "headstock-editor-options": ["headstock_style", "headstock_engraving_text", "headstock_engraving_font", "headstock_engraving_height", "headstock_engraving_angle"],
 };
 const mirrors = new Map();
@@ -547,7 +548,7 @@ function showResult(result) {
   const stemOf = (name) => name.replace(/\.(nc|knc|svg)$/, "");
   const programOf = (name) => (/\.(nc|knc|svg)$/.test(name) ? gcode[stemOf(name)] : undefined);
   // build.json lists the programs alphabetically: order by part, then step.
-  const partOrder = ["Model and report", "Body", "Neck", "Fretboard", "Covers"];
+  const partOrder = ["Model and report", "Body", "Neck", "Fretboard", "Inlays", "Covers"];
   const groups = new Map(partOrder.map((part) => [part, []]));
   for (const info of Object.values(gcode)) if (!groups.has(info.part)) groups.set(info.part, []);
   for (const name of Object.keys(result.files)) {
@@ -562,6 +563,7 @@ function showResult(result) {
     Body: "Body — top face up first, then flipped onto the dowels",
     Neck: "Neck",
     Fretboard: "Fretboard",
+    Inlays: "Inlays — the marker pieces, cut from sheet to fit the pockets",
     Covers: "Covers — cut from sheet, in any order",
   };
   for (const [part, members] of groups) {
@@ -864,6 +866,13 @@ function openCatmullRom(points, samples) {
   return out;
 }
 
+// The contour lines drawn in the body editor: where the arm contour (on
+// the top) and the belly cut (on the back) start.
+const CONTOUR_LINES = [
+  { key: "arm", layout: "arm_contour", field: "arm_contour_points", label: "arm contour" },
+  { key: "belly", layout: "belly_cut", field: "belly_cut_points", label: "belly cut" },
+];
+
 function pointInPolygon(x, y, polygon) {
   let inside = false;
   for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
@@ -1090,28 +1099,34 @@ const bodyEditor = {
       this.element("path", { class: "engraving", d: this.openPath(line) });
     }
 
-    // The line where the arm contour starts, with round handles at its
-    // control points; dragging one draws it (arm_contour_points).
-    this.armPoints = layout.arm_contour ? layout.arm_contour.points.map((p) => [...p]) : null;
-    if (this.armPoints) {
-      this.armPath = this.element("path", {
-        class: "arm-line", d: this.openPath(openCatmullRom(this.armPoints, 8)),
-        "stroke-dasharray": layout.arm_contour.automatic ? "4,2" : "none",
+    // The lines where the arm contour and the belly cut start, with
+    // round handles at their control points; dragging one draws it
+    // (arm_contour_points / belly_cut_points).
+    this.contourLines = {};
+    for (const spec of CONTOUR_LINES) {
+      const data = layout[spec.layout];
+      if (!data) continue;
+      const line = { spec, points: data.points.map((p) => [...p]) };
+      this.contourLines[spec.key] = line;
+      const d = this.openPath(openCatmullRom(line.points, 8));
+      line.path = this.element("path", {
+        class: `contour-line ${spec.key}`, d,
+        "stroke-dasharray": data.automatic ? "4,2" : "none",
       });
-      this.armHit = this.element("path", { class: "outline-hit", d: this.openPath(openCatmullRom(this.armPoints, 8)) });
-      this.armHit.addEventListener("click", (event) => {
-        if (event.detail <= 1) this.addArmPoint(event);
+      line.hit = this.element("path", { class: "outline-hit", d });
+      line.hit.addEventListener("click", (event) => {
+        if (event.detail <= 1) this.addContourPoint(spec.key, event);
       });
-      this.element("title", {}, this.armHit).textContent = "Click the arm contour's line to add a point";
-      this.armHandles = this.armPoints.map((point, index) => {
-        const handle = this.element("circle", { class: "arm-handle", cx: point[0], cy: -point[1], r: 2.4 });
+      this.element("title", {}, line.hit).textContent = `Click the ${spec.label}'s line to add a point`;
+      line.handles = line.points.map((point, index) => {
+        const handle = this.element("circle", { class: `contour-handle ${spec.key}`, cx: point[0], cy: -point[1], r: 2.4 });
         this.element("title", {}, handle).textContent =
-          "Where the arm contour starts — drag to move, Alt-click or right-click to remove; the ends sit on the body's edge";
+          `Where the ${spec.label} starts — drag to move, Alt-click or right-click to remove; the ends sit on the body's edge`;
         handle.addEventListener("pointerdown", (event) => {
-          if (event.altKey) { this.removeArmPoint(index); return; }
-          this.startArmDrag(event, index, handle);
+          if (event.altKey) { this.removeContourPoint(spec.key, index); return; }
+          this.startContourDrag(event, spec.key, index, handle);
         });
-        handle.addEventListener("contextmenu", (event) => { event.preventDefault(); this.removeArmPoint(index); });
+        handle.addEventListener("contextmenu", (event) => { event.preventDefault(); this.removeContourPoint(spec.key, index); });
         return handle;
       });
     }
@@ -1131,9 +1146,11 @@ const bodyEditor = {
       handle.addEventListener("contextmenu", (event) => { event.preventDefault(); this.removePoint(index); });
       return handle;
     });
-    // The arm contour line's ends sit on the outline: its handles go on
+    // The contour lines' ends sit on the outline: their handles go on
     // top of the outline's click strip and handles, so they drag.
-    for (const handle of this.armPoints ? this.armHandles : []) handle.parentNode.appendChild(handle);
+    for (const line of Object.values(this.contourLines)) {
+      for (const handle of line.handles) handle.parentNode.appendChild(handle);
+    }
     this.check();
     this.showTemplate();
   },
@@ -1330,66 +1347,71 @@ const bodyEditor = {
     return points.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(2)},${(-y).toFixed(2)}`).join(" ");
   },
 
-  // Drag one of the arm contour line's points; on drop its points are
-  // written (drawn from now on: Auto arm contour goes back).
-  startArmDrag(event, index, handle) {
+  // Drag one of a contour line's points; on drop its points are written
+  // (drawn from now on: Auto arm contour / Auto belly cut goes back).
+  startContourDrag(event, key, index, handle) {
     event.preventDefault();
     event.stopPropagation();
+    const line = this.contourLines[key];
     handle.classList.add("dragging");
     const move = (moveEvent) => {
       const [x, y] = this.toModel(moveEvent);
-      this.armPoints[index] = [x, y];
+      line.points[index] = [x, y];
       handle.setAttribute("cx", x);
       handle.setAttribute("cy", -y);
-      const d = this.openPath(openCatmullRom(this.armPoints, 8));
-      this.armPath.setAttribute("d", d);
-      this.armHit.setAttribute("d", d);
+      const d = this.openPath(openCatmullRom(line.points, 8));
+      line.path.setAttribute("d", d);
+      line.hit.setAttribute("d", d);
     };
     const end = () => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", end);
       window.removeEventListener("pointercancel", end);
       handle.classList.remove("dragging");
-      this.commitArm();
+      this.commitContour(key);
     };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", end);
     window.addEventListener("pointercancel", end);
   },
 
-  // Write the line's points (stored before the body's widening) and lay
+  // Write a line's points (stored before the body's widening) and lay
   // the body out again.
-  commitArm() {
-    const points = this.armPoints.map((p) => this.unwiden(p).map((v) => Math.round(v * 10) / 10));
-    this.setField(this.field("prototype.body_shape", "arm_contour_points"), points);
+  commitContour(key) {
+    const line = this.contourLines[key];
+    const points = line.points.map((p) => this.unwiden(p).map((v) => Math.round(v * 10) / 10));
+    this.setField(this.field("prototype.body_shape", line.spec.field), points);
     this.refresh();
   },
 
-  addArmPoint(event) {
+  addContourPoint(key, event) {
+    const line = this.contourLines[key];
     const [x, y] = this.toModel(event);
     // After the point whose span passes nearest the click (8 samples a span).
-    const line = openCatmullRom(this.armPoints, 8);
+    const samples = openCatmullRom(line.points, 8);
     let best = 0, bestDistance = Infinity;
-    line.forEach(([lx, ly], i) => {
+    samples.forEach(([lx, ly], i) => {
       const distance = (lx - x) ** 2 + (ly - y) ** 2;
       if (distance < bestDistance) { bestDistance = distance; best = i; }
     });
-    const span = Math.min(Math.floor(best / 8), this.armPoints.length - 2);
-    this.armPoints.splice(span + 1, 0, [x, y]);
-    this.commitArm();
+    const span = Math.min(Math.floor(best / 8), line.points.length - 2);
+    line.points.splice(span + 1, 0, [x, y]);
+    this.commitContour(key);
   },
 
-  removeArmPoint(index) {
-    if (this.armPoints.length <= 3) {
-      this.setStatus("The arm contour's line needs at least three points.", "bad");
+  removeContourPoint(key, index) {
+    const line = this.contourLines[key];
+    if (line.points.length <= 3) {
+      this.setStatus(`The ${line.spec.label}'s line needs at least three points.`, "bad");
       return;
     }
-    this.armPoints.splice(index, 1);
-    this.commitArm();
+    line.points.splice(index, 1);
+    this.commitContour(key);
   },
 
-  autoArm() {
-    this.setField(this.field("prototype.body_shape", "arm_contour_points"), []);
+  autoContour(key) {
+    const spec = CONTOUR_LINES.find((s) => s.key === key);
+    this.setField(this.field("prototype.body_shape", spec.field), []);
     this.refresh();
   },
 
@@ -1873,7 +1895,8 @@ const bodyEditor = {
 
 document.getElementById("body-editor-reset").addEventListener("click", () => bodyEditor.reset());
 document.getElementById("body-editor-auto-guard").addEventListener("click", () => bodyEditor.autoGuard());
-document.getElementById("body-editor-auto-arm").addEventListener("click", () => bodyEditor.autoArm());
+document.getElementById("body-editor-auto-arm").addEventListener("click", () => bodyEditor.autoContour("arm"));
+document.getElementById("body-editor-auto-belly").addEventListener("click", () => bodyEditor.autoContour("belly"));
 // A new engraving pattern: another seed (turning the engraving on).
 document.getElementById("body-editor-new-pattern").addEventListener("click", () => {
   setControlValue(bodyEditor.field("prototype", "body_engraving"), true);
@@ -2334,6 +2357,33 @@ const headstockEditor = {
     this.draw();
   },
 
+  fillTemplates() {
+    const select = document.getElementById("headstock-editor-template");
+    if (select.options.length || !schema.neck_templates) return;
+    for (const [key, template] of Object.entries(schema.neck_templates)) {
+      const option = document.createElement("option");
+      option.value = key;
+      option.textContent = template.label;
+      select.appendChild(option);
+    }
+  },
+
+  // Load a neck template: its nut, headstock and truss rod values replace
+  // the form's, and the drawing becomes its outline (still editable).
+  async loadTemplate() {
+    const key = document.getElementById("headstock-editor-template").value;
+    const template = schema.neck_templates && schema.neck_templates[key];
+    if (!template) return;
+    if (!(await askConfirm(
+      `Load the ${template.label}? Its nut, headstock and truss rod settings replace yours.`
+    ))) return;
+    for (const [name, value] of Object.entries(template.values)) {
+      const input = bodyEditor.field("prototype", name);
+      if (input) setControlValue(input, value);
+    }
+    this.sync();
+  },
+
   // Back to the fitted outline: the edge fields are emptied, so the
   // drawing follows the fitted outline again until the next edit.
   async reset() {
@@ -2395,6 +2445,7 @@ const headstockEditor = {
 };
 
 document.getElementById("headstock-editor-reset").addEventListener("click", () => headstockEditor.reset());
+document.getElementById("headstock-editor-load").addEventListener("click", () => headstockEditor.loadTemplate());
 form.addEventListener("change", (event) => {
   if (["headstock_outline", "headless"].includes(event.target.dataset.name)) headstockEditor.sync();
   else if (!/^headstock_(bass_edge|treble_edge|tip_points)$/.test(event.target.dataset.name || "")) headstockEditor.scheduleRefresh();

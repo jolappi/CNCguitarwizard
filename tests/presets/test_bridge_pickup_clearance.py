@@ -89,8 +89,12 @@ def test_the_tune_o_matic_posts_keep_their_wood() -> None:
     route = parameters.body_layout().bridge_pickup
     assert route is not None
 
-    # Posts 3 mm behind the scale, Ø 11.2 inserts, 3 mm wood.
-    assert route.max_x == pytest.approx(609.6 + 3.0 - 5.6 - 3.0)
+    # The treble post 1.6 mm behind the saddle line (moved off the 609.6
+    # mm scale line by the Tune-o-matic's 2 degree neck angle; the bass
+    # post sits further back), Ø 11.2 inserts, 3 mm wood.
+    saddles = parameters.bridge_scale_line()
+    assert saddles == pytest.approx(608.56, abs=0.01)
+    assert route.max_x == pytest.approx(saddles + 1.6 - 5.6 - 3.0)
 
 
 def test_a_long_bridge_pickup_stops_at_the_saddle_line() -> None:

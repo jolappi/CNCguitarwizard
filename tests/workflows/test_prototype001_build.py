@@ -55,9 +55,10 @@ def test_build_writes_gcode_and_toolpath_previews_for_every_part(
     names = [path.name for path in result.gcode_paths]
     assert names[:3] == ["Body_index_pins.nc", "Body_top.nc", "Body_back.nc"]
     assert "Neck_back_finish.nc" in names and "Fretboard_slots.nc" in names
-    # Body 5 (with the electronics program), neck 5, fretboard 5, and
-    # the control and switch cavity covers.
-    assert len(names) == 17
+    # Body 5 (with the electronics program), neck 5, fretboard 5, the
+    # inlay pieces, and the control and switch cavity covers.
+    assert len(names) == 18
+    assert names[15] == "Fretboard_inlay_pieces.nc"
     assert "Body_back_small_holes.nc" in names
     assert names[-2:] == ["Cover_control_cavity.nc", "Cover_switch_cavity.nc"]
     assert [path.name for path in result.toolpath_preview_paths] == [
@@ -101,7 +102,11 @@ def test_build_writes_gcode_and_toolpath_previews_for_every_part(
     assert [step for step, _ in steps["Fretboard"]] == [1, 2, 3, 4, 5]
     assert report["gcode"]["Neck_back_finish"]["tool"] == "6 mm ball"
     assert report["gcode"]["Fretboard_slots"]["tool"] == "0.6 mm flat"
-    assert set(report["stock"]) == {"Body", "Neck", "Fretboard", "Covers"}
+    assert set(report["stock"]) == {"Body", "Neck", "Fretboard", "Inlays", "Covers"}
+    # The barbed-wire markers are cut from a 2 mm sheet in their own program.
+    pieces = report["gcode"]["Fretboard_inlay_pieces"]
+    assert (pieces["part"], pieces["step"]) == ("Inlays", 1)
+    assert report["stock"]["Inlays"]["thickness_mm"] == 2.0
     assert report["gcode"]["Cover_control_cavity"]["tool"] == "3 mm flat"
     assert report["stock"]["Body"]["thickness_mm"] == 44.0
     # The default 24-fret neck takes a 440 mm stock rod (455 mm at most).
@@ -143,7 +148,7 @@ def test_stepwise_build_runs_one_stage_per_advance(tmp_path: Path) -> None:
     assert build.advance() is False
     result = build.result
     assert result.report_path.is_file()
-    assert len(result.gcode_paths) == 17
+    assert len(result.gcode_paths) == 18
     assert Prototype001Build(tmp_path / "freecad").labels[-1] == "Running FreeCAD"
 
 

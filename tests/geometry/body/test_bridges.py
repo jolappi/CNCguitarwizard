@@ -135,7 +135,10 @@ def test_tune_o_matic_is_four_holes_behind_the_scale_line() -> None:
         "Tailpiece stud bass",
         "Tailpiece stud treble",
     }
-    assert names["Bridge post bass"].center_x == pytest.approx(612.6)
+    # The treble post 1.6 mm (1/16 in) behind the scale line, the bass post
+    # 3.2 mm (1/8 in) further back, for the strings' compensation.
+    assert names["Bridge post treble"].center_x == pytest.approx(611.2)
+    assert names["Bridge post bass"].center_x == pytest.approx(614.4)
     assert names["Bridge post bass"].center_y == pytest.approx(-37.0)
     assert names["Tailpiece stud treble"].center_x == pytest.approx(654.6)
     assert names["Tailpiece stud treble"].center_y == pytest.approx(41.0)
@@ -182,3 +185,20 @@ def test_unknown_kind_or_field_is_rejected() -> None:
 def test_non_positive_dimensions_are_rejected() -> None:
     with pytest.raises(BodyGeometryError, match="positive"):
         KahlerBridgeSpec(baseplate_depth=0.0).hardware(609.6, 44.0)
+
+
+def test_a_bass_side_on_plus_y_gets_the_set_back_post() -> None:
+    from dataclasses import replace
+
+    from cncguitarwizard.presets import Prototype001Parameters
+
+    for side, bass_y in (("-y", -37.0), ("+y", 37.0)):
+        parameters = replace(
+            Prototype001Parameters(),
+            body_bridge=TuneOMaticSpec(),
+            headstock_bass_side=side,
+        )
+        holes = {hole.name: hole for hole in parameters.body_layout().holes}
+        bass, treble = holes["Bridge post bass"], holes["Bridge post treble"]
+        assert bass.center_y == pytest.approx(bass_y)
+        assert bass.center_x - treble.center_x == pytest.approx(3.2)

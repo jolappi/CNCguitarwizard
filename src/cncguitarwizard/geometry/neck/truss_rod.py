@@ -61,10 +61,12 @@ class TrussRodChannel:
       head, ``nut_diameter`` × ``nut_length``, sits past the heel end on
       the body side, in the body's ``access_boundary`` notch
       (``access_length`` long, 1 mm clear of the head all round).
-    * ``"nut"`` — the route starts under the nut, ``shelf_length`` behind
-      it, with the pockets there; the adjuster sits in a trough
+    * ``"nut"`` — the route starts at least ``shelf_length`` behind the
+      nut, with the pockets there; the adjuster sits in a trough
       (``adjuster_boundary``) ``access_length`` long in the headstock face
-      behind the nut shelf, under a truss-rod cover.
+      behind the route's start, under a truss-rod cover; with
+      ``access_diameter`` the trough is only that wide, a notch for the
+      adjusting key rather than room for the head.
 
     With all the step, pocket, sleeve and nut sizes at 0 the route is a
     plain rectangular channel.
@@ -90,6 +92,8 @@ class TrussRodChannel:
         access_length: At the heel, how far the body's notch runs past the
             heel end; at the nut, the headstock trough's length (``0`` for
             no trough).
+        access_diameter: At the nut, a key notch's width instead of room
+            for the head (``0``: room for the head).
         shelf_length: The nut shelf in front of the headstock face.
         rod_axis_depth: The rod's (and adjuster's) axis below the neck's
             top; 0 puts it half the pocket's width above the pocket floor.
@@ -116,6 +120,7 @@ class TrussRodChannel:
     nut_diameter: float = 0.0
     nut_length: float = 0.0
     access_length: float = 0.0
+    access_diameter: float = 0.0
     shelf_length: float = 0.0
     rod_axis_depth: float = 0.0
     end_position: float = field(init=False)
@@ -218,7 +223,12 @@ class TrussRodChannel:
                 if self.access_length > 0.0:
                     access = _rectangle(heel_end, heel_end + self.access_length, half)
             elif self.access_length > 0.0:
-                behind = -self.shelf_length
+                if self.access_diameter > 0.0:
+                    # Only a notch for the key, down to the rod's axis
+                    # and the key's half below it.
+                    half = self.access_diameter / 2.0
+                    adjuster_depth = axis_depth + half
+                behind = self.start_position
                 adjuster = _rectangle(behind - self.access_length, behind, half)
 
         object.__setattr__(self, "end_position", end_position)
@@ -279,7 +289,9 @@ class TrussRodChannel:
         )
         if not all(math.isfinite(value) for value in dimensions):
             raise TrussRodGeometryError("Truss-rod dimensions must be finite.")
-        if self.start_position < -self.shelf_length - 1e-9:
+        if self.adjustment_side == "heel" and (
+            self.start_position < -self.shelf_length - 1e-9
+        ):
             raise TrussRodGeometryError(
                 "Truss-rod start position must not precede the nut shelf."
             )
@@ -295,6 +307,7 @@ class TrussRodChannel:
             self.nut_diameter,
             self.nut_length,
             self.access_length,
+            self.access_diameter,
             self.rod_axis_depth,
         )
         if not all(math.isfinite(v) and v >= 0.0 for v in extras):

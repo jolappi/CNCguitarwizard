@@ -15,12 +15,19 @@ Either way the flat seat on the neck runs ``seat_length`` behind the nut
 line before the headstock face starts, and two screws hold the nut down
 from the top, ``screw_spacing`` apart across the neck, half the nut's
 depth behind the nut line.
+
+A Fender (Telecaster) style nut is placed the same way without screws
+(``LockingNut.slotted``): the fretboard runs on past the nut line and a
+slot as wide as the nut is milled into it there, the nut glued in. Behind
+the slot the board carries on at its full height for ``lip``, then slopes
+down to the glue face over ``taper``, where it ends.
 """
 
 from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from typing import Literal
 
 from ..exceptions import NeckGeometryError
 from ..primitives import Point2D
@@ -47,6 +54,11 @@ class LockingNutSpec:
         height: From its base to its top, in mm.
         depth: Along the neck, front face to back face, in mm.
         screw_spacing: Between its two mounting screws, across the neck.
+        kind: ``"locking"`` for a screwed-down locking nut, ``"slot"`` for
+            a glued nut in a slot at the fretboard's end (no screws).
+        seat_margin: Flat seat left behind the nut's back face, in mm.
+        lip: A slotted nut's full-height board behind the slot, in mm.
+        taper: The board's slope down to the glue face behind the lip.
     """
 
     name: str
@@ -54,6 +66,10 @@ class LockingNutSpec:
     height: float
     depth: float
     screw_spacing: float
+    kind: Literal["locking", "slot"] = "locking"
+    seat_margin: float = SEAT_MARGIN
+    lip: float = 0.0
+    taper: float = 0.0
 
 
 LOCKING_NUT_SPECS: dict[str, LockingNutSpec] = {
@@ -90,6 +106,23 @@ class LockingNut:
     screw_depth: float
 
     def __post_init__(self) -> None:
+        if self.spec.kind == "slot":
+            if not math.isfinite(self.spec.depth) or self.spec.depth <= 0.0:
+                raise NeckGeometryError("nut_thickness must be finite and positive.")
+            for name, value in (
+                ("nut_slot_lip", self.spec.lip),
+                ("nut_slot_taper", self.spec.taper),
+            ):
+                if not math.isfinite(value) or value < 0.0:
+                    raise NeckGeometryError(f"{name} must be finite and non-negative.")
+            if not math.isfinite(self.shelf_height) or (
+                self.shelf_height < MIN_BOARD_SHELF - 1e-9
+            ):
+                raise NeckGeometryError(
+                    f"The nut's slot must leave at least {MIN_BOARD_SHELF:g} mm of "
+                    "fretboard under the nut; make nut_slot_depth shallower."
+                )
+            return
         if self.spec.width > self.neck_width + 1e-9:
             raise NeckGeometryError(
                 f"The {self.spec.name} locking nut is {self.spec.width:g} mm "
@@ -126,10 +159,46 @@ class LockingNut:
         shelf = fretboard_thickness + fret_height - (spec.height - NUT_ABOVE_FRETS)
         return cls(spec, lean, neck_width, shelf, screw_diameter, screw_depth)
 
+    @classmethod
+    def slotted(
+        cls,
+        *,
+        thickness: float,
+        slot_depth: float,
+        lean: float,
+        neck_width: float,
+        fretboard_thickness: float,
+        lip: float = 0.0,
+        taper: float = 0.0,
+    ) -> LockingNut:
+        """Return a Fender style nut glued in a slot near the board's end.
+
+        The slot is ``thickness`` wide behind the nut line, ``slot_depth``
+        below the board's crown; behind it the board runs on ``lip`` at
+        full height, then slopes to the glue face over ``taper``.
+        """
+        spec = LockingNutSpec(
+            "Slotted",
+            neck_width,
+            slot_depth,
+            thickness,
+            0.0,
+            kind="slot",
+            seat_margin=lip + taper,
+            lip=lip,
+            taper=taper,
+        )
+        return cls(spec, lean, neck_width, fretboard_thickness - slot_depth, 0.0, 0.0)
+
+    @property
+    def is_locking(self) -> bool:
+        """Whether this is a screwed-down locking nut (not a slotted one)."""
+        return self.spec.kind == "locking"
+
     @property
     def on_fretboard(self) -> bool:
         """Whether the fretboard runs on under the nut as its shelf."""
-        return self.shelf_height >= MIN_BOARD_SHELF
+        return self.shelf_height >= MIN_BOARD_SHELF - 1e-9
 
     @property
     def shim(self) -> float:
@@ -138,8 +207,34 @@ class LockingNut:
 
     @property
     def seat_length(self) -> float:
-        """How far the flat seat runs behind the nut line, in mm."""
-        return self.spec.depth + SEAT_MARGIN
+        """How far the flat seat runs behind the nut line, in mm.
+
+        A board that runs on under the nut reaches as far.
+        """
+        return self.spec.depth + self.spec.seat_margin
+
+    @property
+    def board_height(self) -> float:
+        """A slotted nut's board crown above the glue face, in mm."""
+        return self.shelf_height + self.spec.height
+
+    def slot_outline(self, reach: float = 0.0) -> tuple[Point2D, ...]:
+        """Return the slot (or a locking nut's shelf) in plan.
+
+        From the nut line back the nut's depth (a locking nut: the whole
+        seat), reaching ``reach`` past the neck's sides.
+        """
+        half = self.neck_width / 2.0 + reach
+        length = self.spec.depth if not self.is_locking else self.seat_length
+        return tuple(
+            Point2D(self.lean * y + dx, y)
+            for dx, y in (
+                (0.0, -half),
+                (0.0, half),
+                (-length, half),
+                (-length, -half),
+            )
+        )
 
     def seat_outline(self) -> tuple[Point2D, ...]:
         """Return the seat in plan: the neck's width, along the nut line."""
@@ -154,8 +249,10 @@ class LockingNut:
             )
         )
 
-    def screw_centres(self) -> tuple[Point2D, Point2D]:
-        """Return the two mounting screws' centres."""
+    def screw_centres(self) -> tuple[Point2D, ...]:
+        """Return the two mounting screws' centres (none for a slotted nut)."""
+        if not self.is_locking:
+            return ()
         half = self.spec.screw_spacing / 2.0
         back = self.spec.depth / 2.0
         return (

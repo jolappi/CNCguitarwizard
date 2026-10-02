@@ -19,12 +19,14 @@ from ..cam import (
     FretboardMachiningParameters,
     FretboardMachiningPlan,
     GCodeWriter,
+    InlayMachiningPlan,
     MachiningParameters,
     NeckMachiningParameters,
     NeckMachiningPlan,
     plan_body_machining,
     plan_cover_machining,
     plan_fretboard_machining,
+    plan_inlay_machining,
     plan_neck_machining,
     render_setup_svg,
 )
@@ -93,6 +95,7 @@ class Prototype001Build:
                 BodyMachiningPlan
                 | NeckMachiningPlan
                 | FretboardMachiningPlan
+                | InlayMachiningPlan
                 | CoverMachiningPlan,
             ]
         ] = []
@@ -196,6 +199,12 @@ class Prototype001Build:
                 plan_fretboard_machining(self.geometry, self.fretboard_machining),
             )
         )
+        # The marker pieces, cut from sheet to fit the pockets (none for dots).
+        inlays = plan_inlay_machining(
+            self.geometry.inlay_layout, self.fretboard_machining
+        )
+        if inlays is not None:
+            self._plans.append(("Inlays", inlays))
 
     def _plan_covers(self) -> None:
         assert self.geometry is not None

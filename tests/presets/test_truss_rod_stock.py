@@ -57,9 +57,10 @@ def test_a_shorter_rod_adjusted_at_the_headstock_ends_sooner() -> None:
     short = replace(parameters, truss_rod_rod_length=420.0)
     long_rod = parameters.truss_rod(parameters.neck_outline())
     rod = short.truss_rod(short.neck_outline())
+    stock = parameters.truss_rod_fit(parameters.neck_outline()).rod_length
 
     assert rod.start_position == long_rod.start_position
-    assert rod.end_position == pytest.approx(long_rod.end_position - 40.0)
+    assert rod.end_position == pytest.approx(long_rod.end_position - (stock - 420.0))
 
 
 def test_a_rod_too_long_for_the_neck_is_rejected_with_advice() -> None:

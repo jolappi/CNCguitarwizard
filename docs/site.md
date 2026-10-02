@@ -68,7 +68,8 @@ Python.
    editor), the line where the arm contour starts is drawn in green with
    round handles: dragging one writes `arm_contour_points`, a click on the
    line adds one, Alt- or right-click removes one, and *Auto arm contour*
-   empties them again. With `body_engraving` on (beside the editor too, with
+   empties them again. The belly cut's line works the same, in blue, with
+   `body_belly_cut_depth`, `belly_cut_points` and *Auto belly cut*. With `body_engraving` on (beside the editor too, with
    `body_engraving_seed`) the decorative engraving is drawn in blue lines,
    and *New pattern* sets a new random seed. Dragging the guard by its edge moves all its points together (a click
    without a drag still adds one), or onto *Create NC file* makes its
@@ -108,7 +109,10 @@ Python.
    the drawing follows the fitted outline (a changed style or length
    redraws it); the first edit writes them, and *Start over* empties them
    again (`webapp.headstock_editor_layout()` supplies the holes and the
-   fitted start edges).
+   fitted start edges). *Start from* → *Load* sets a whole neck from
+   `neck_templates` in the schema (`NECK_TEMPLATES`): the Telecaster neck's
+   slotted nut, flat six-in-line headstock, drawn Telecaster outline and
+   heel-adjusted truss rod.
 3. **Save design** downloads every setting as one JSON file on the user's
    own computer — the instrument, all `prototype` and `machining` values,
    the drawn body's `control_points` and the drawn headstock edges
@@ -130,11 +134,13 @@ Python.
    thread. Everything lands in Pyodide's in-memory file system and comes
    back as text.
 5. Shows the whole-instrument plan view (standing upright, headstock at
-   the top, sized to fit the window), the three toolpath plots, download
+   the top, sized to fit the window; the nut drawn on its seat, bone white
+   or dark for a locking nut, a board that runs on under it reaching on
+   behind it), the three toolpath plots, download
    links for the FreeCAD script (`.py` and `.FCMacro`), every `.nc`
    program (body, electronics, neck, fretboard and one per cover plate), the SVG plots and `build.json`, and a summary with stock size
    and time estimates. The downloads come in one list per part — the
-   model and report first, then body, neck, fretboard and covers — each
+   model and report first, then body, neck, fretboard, the inlay pieces and covers — each
    program numbered in the order it is run (`build.json` gives it as the
    program's `step`) with its toolpath plot beneath it. Each `.nc` row also has a *Simulate* button: it
    copies that program to the clipboard and opens

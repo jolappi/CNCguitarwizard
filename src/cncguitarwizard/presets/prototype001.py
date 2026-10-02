@@ -28,6 +28,7 @@ from ..geometry.body import (
     TracedCavity,
     TracedOutline,
     TuneOMaticSpec,
+    mirrored_hardware,
     outlines_overlap,
     turned_hardware,
 )
@@ -56,6 +57,7 @@ from ..geometry.neck import (
     NeckOutline,
     Side,
     TrussRodChannel,
+    TunerHole,
     TunerLayout,
 )
 from ..geometry.primitives import (
@@ -169,6 +171,17 @@ JACK_CUP_DIAMETER, JACK_CUP_DEPTH = 22.2, 25.0
 JACK_STRAT_DIAMETER, JACK_STRAT_DEPTH, JACK_STRAT_WALL = 25.4, 32.0, 4.0
 """A Stratocaster style jack's cavity under its top plate: a 1 in round
 pocket this deep, this much wood from the body's edge, in mm."""
+
+NECK_ANGLE_TUNE_O_MATIC = 2.0
+"""A Tune-o-matic's neck angle on the flat top, in degrees (2-2.5 is usual;
+a carved Les Paul top takes 3-5)."""
+
+MAX_NECK_ANGLE = 6.0
+"""The steepest neck angle accepted, in degrees."""
+
+TRUSS_ROD_MIN_FLOOR = 1.0
+"""Wood left under a headstock-adjusted standard rod's deepest pocket, in
+mm: the neck is made this much thicker than the pocket's depth."""
 
 MAX_MULTISCALE_RATIO = 1.15
 """The longest bass scale accepted, as a multiple of the treble scale."""
@@ -288,6 +301,8 @@ class Prototype001Geometry:
     """The binding strips' thickness along the board's long edges (0: none)."""
     headstock_engraving: Engraving | None = None
     """Lettering engraved into the headstock face, or ``None``."""
+    neck_tilt: tuple[float, float, float] = (0.0, 0.0, 0.0)
+    """The neck's back-tilt in degrees and the ``(x, z)`` it turns about."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -481,6 +496,16 @@ class Prototype001Parameters:
     # width by construction.
     body_neck_pocket_length: float = 79.48
     body_neck_pocket_clearance: float = 0.15
+    # neck_angle tilts the neck back (its headstock toward the player) by
+    # this many degrees: the neck pocket's floor sinks toward its mouth,
+    # body_neck_pocket_length x tan(angle) deeper there than at the heel
+    # end, where it stays heel_thickness deep, and is cut in thin
+    # terraces. The neck turns about the heel end of the pocket floor, so
+    # the bridge moves to keep the strings' scale (and the 12th fret
+    # halfway) along their tilted line. Empty: NECK_ANGLE_TUNE_O_MATIC
+    # with a Tune-o-matic (it stands too tall for a flat neck on a flat
+    # top), 0 otherwise.
+    neck_angle: float | None = None
     # Longitudinal placements are offsets, not absolute positions. The
     # traced body — outline, neck pickup, control and switch cavities,
     # pots, jack — rides with the neck's heel end; the bridge features
@@ -721,6 +746,31 @@ class Prototype001Parameters:
     truss_rod_nut_length: float = 6.0
     truss_rod_access_length: float | None = None
     truss_rod_cover: bool = True
+    # truss_rod_spoke_wheel: an adjuster with a spoke wheel ("auto": at the
+    # heel yes, at the headstock no). At the heel the wheel turns past the
+    # heel end (above); without it the route runs right to the heel end,
+    # the adjuster nut at its end face (no bore, no notch in the body:
+    # adjust with the neck off). At the headstock the wheel sits in an
+    # open trough behind the nut (truss_rod_nut_length + 4 mm, no cover);
+    # without it, behind a slotted (Fender) nut the key reaches the
+    # adjuster through a notch truss_rod_key_hole_diameter wide
+    # (truss_rod_nut_length + 2 mm long: the open start of its hole, all a
+    # router can cut), and behind a shelf nut the covered trough is cut.
+    truss_rod_spoke_wheel: Literal["auto", "yes", "no"] = "auto"
+    truss_rod_key_hole_diameter: float = 8.0
+    # truss_rod_profile: "standard" is the rod above, its adjusting end
+    # stepping down to an 11 mm pocket; adjusted at the headstock that end
+    # lies in the thin neck by the nut, so the neck is made thick enough at
+    # the first fret to leave TRUSS_ROD_MIN_FLOOR under it (1 mm more than
+    # the default 17 mm). "low_profile" is a low-profile two-way rod (as
+    # StewMac's / Hosco's Hot Rod Low-profile: a straight 1/4 x 3/8 in
+    # channel, 4 mm hex key): one straight channel
+    # truss_rod_low_profile_width x truss_rod_low_profile_depth, no step
+    # or pocket, which fits the thin neck as it is. "auto" spoke wheels
+    # are for the standard rod only.
+    truss_rod_profile: Literal["standard", "low_profile"] = "standard"
+    truss_rod_low_profile_width: float = 6.35
+    truss_rod_low_profile_depth: float = 9.5
     # truss_rod_sleeve_bore: model the adjuster sleeve's hand-drilled bore
     # at the heel (and note it in the neck's G-code); truss_rod_trough: rout
     # the adjuster's trough in the headstock face (and cut its cover). Turn
@@ -821,6 +871,21 @@ class Prototype001Parameters:
     heel_nose_radius: float = 0.0
     heel_block_overlap: float = 0.0
     nut_shelf_length: float = 5.0
+    # nut_style "shelf" stands the nut on the neck's flat seat
+    # (nut_shelf_length) in front of the fretboard's end; "slot" is the
+    # Fender (Telecaster) way: the fretboard runs on past the nut line, a
+    # slot nut_thickness wide milled nut_slot_depth below its crown there,
+    # and the nut is glued into that slot. Behind it the board carries on
+    # at full height for nut_slot_lip, then slopes down to the glue face
+    # over nut_slot_taper, where it ends. With "slot" a headstock-adjusted
+    # truss rod is reached Fender style too, uncovered (see
+    # truss_rod_spoke_wheel). A locking nut takes the nut's place
+    # whichever style is set.
+    nut_style: Literal["shelf", "slot"] = "shelf"
+    nut_thickness: float = 3.5
+    nut_slot_depth: float = 3.0
+    nut_slot_lip: float = 3.0
+    nut_slot_taper: float = 3.0
     # A Floyd Rose locking nut screwed down from the top (see
     # geometry.neck.locking_nut): "auto" takes the Floyd Rose Original R2
     # with a Floyd Rose bridge and a plain nut otherwise; "none" is always
@@ -1485,6 +1550,58 @@ class Prototype001Parameters:
         return FLAT_HEADSTOCK_FACE_DROP if self.headstock_angle == 0.0 else 0.0
 
     @property
+    def neck_angle_degrees(self) -> float:
+        """Return the neck's back-tilt: ``neck_angle``, or the bridge's own.
+
+        Raises:
+            NeckGeometryError: For an angle outside 0..``MAX_NECK_ANGLE``.
+        """
+        angle = self.neck_angle
+        if angle is None:
+            return (
+                NECK_ANGLE_TUNE_O_MATIC
+                if isinstance(self.body_bridge, TuneOMaticSpec)
+                else 0.0
+            )
+        if not math.isfinite(angle) or not 0.0 <= angle <= MAX_NECK_ANGLE:
+            raise NeckGeometryError(
+                f"neck_angle must lie between 0 and {MAX_NECK_ANGLE:g} degrees."
+            )
+        return angle
+
+    def neck_pivot(self) -> tuple[float, float]:
+        """Return where the tilted neck turns: the pocket floor's heel end.
+
+        ``(x, z)``: the heel end along the neck, ``heel_thickness`` below
+        the top (the neck's glue face, z = 0).
+        """
+        outline = self.neck_outline()
+        return outline.last_fret_position + outline.heel_length, -self.heel_thickness
+
+    def neck_to_body(self, x: float, z: float) -> tuple[float, float]:
+        """Return a point of the neck (x along it, z up from its glue face)
+        where it lies on the body, the neck tilted by ``neck_angle``."""
+        angle = math.radians(self.neck_angle_degrees)
+        pivot_x, pivot_z = self.neck_pivot()
+        dx, dz = x - pivot_x, z - pivot_z
+        return (
+            pivot_x + dx * math.cos(angle) - dz * math.sin(angle),
+            pivot_z + dx * math.sin(angle) + dz * math.cos(angle),
+        )
+
+    def bridge_scale_line(self) -> float:
+        """Return the X on the body where the saddles go.
+
+        The scale line, moved for a tilted neck so the strings' scale (and
+        the 12th fret halfway) is kept along their tilted line: the point
+        a scale from the nut along the fret tops, carried with the neck.
+        """
+        scale = self.centre_scale
+        if self.neck_angle_degrees == 0.0:
+            return scale
+        return self.neck_to_body(scale, self.fretboard_thickness + self.fret_height)[0]
+
+    @property
     def centre_scale(self) -> float:
         """Return the scale on the centerline: the mean of a multiscale's two."""
         if self.bass_scale_length is None:
@@ -1533,71 +1650,173 @@ class Prototype001Parameters:
             return not isinstance(self.body_bridge, TuneOMaticSpec)
         return self.body_pickups_follow_fan == "yes"
 
+    @property
+    def truss_rod_spoke_wheel_fitted(self) -> bool:
+        """Return whether the truss rod's adjuster has a spoke wheel.
+
+        ``truss_rod_spoke_wheel``; ``"auto"`` fits one at the heel only,
+        on a standard rod.
+        """
+        if self.truss_rod_spoke_wheel == "auto":
+            return (
+                self.truss_rod_adjustment == "heel"
+                and self.truss_rod_profile == "standard"
+            )
+        return self.truss_rod_spoke_wheel == "yes"
+
+    def _truss_rod_key_notch(self) -> bool:
+        """Whether a headstock adjuster is reached through a key notch.
+
+        Without a spoke wheel: only the open start of the key's hole is
+        routed (a full trough for the adjuster's head would break through
+        the headstock's root by the nut); behind a shelf nut it is covered.
+        """
+        return (
+            self.truss_rod_adjustment == "headstock"
+            and not self.truss_rod_spoke_wheel_fitted
+        )
+
     def truss_rod(self, outline: NeckOutline) -> TrussRodChannel:
         """Return the truss-rod channel with its adjusting nut's pocket."""
         heel = self.truss_rod_adjustment == "heel"
+        wheel = self.truss_rod_spoke_wheel_fitted
+        key_notch = self._truss_rod_key_notch()
         shelf = self.nut_seat_length() + self.nut_shelf_reach()
         access = self.truss_rod_access_length
         if access is None:
             access = self.truss_rod_nut_length + 2.0
-            if not heel:
-                # Up to 32 mm, shortened to keep 3 mm from the first tuner
-                # hole (a fanned neck's longer shelf pushes the trough back).
-                plan, tuners = self.headstock_design()
-                # (A headless neck has no tuners: its headpiece's end.)
-                room = (
-                    min(
-                        (
-                            -(hole.center.x + hole.diameter / 2.0)
-                            for hole in tuners.holes
-                        ),
-                        default=plan.length,
-                    )
-                    - shelf
-                    - 3.0
-                )
-                access = max(self.truss_rod_nut_length, min(32.0, room))
+            if not heel and wheel:
+                # The wheel in an open trough behind the nut, room to
+                # turn it.
+                access = self.truss_rod_nut_length + 4.0
+            elif key_notch:
+                # Only the open start of the key's hole.
+                access = self.truss_rod_nut_length + 2.0
+        if heel and not wheel:
+            # The adjuster nut at the heel's end face: no notch past it.
+            access = 0.0
         fit = self.truss_rod_fit(outline)
-        start = self.truss_rod_start if heel else -shelf
+        start = self._truss_rod_start(heel, shelf)
         length = fit.route_length
         if heel and self.truss_rod_length is None:
             # The adjuster stays at the heel: a shorter rod starts later.
             start += fit.longest - fit.outside - length
+        low = self.truss_rod_profile == "low_profile"
         channel = TrussRodChannel(
             outline,
             start,
             length,
-            self.truss_rod_width,
-            self.truss_rod_depth,
+            self.truss_rod_low_profile_width if low else self.truss_rod_width,
+            self.truss_rod_low_profile_depth if low else self.truss_rod_depth,
             adjustment_side="heel" if heel else "nut",
-            step_length=self.truss_rod_step_length,
+            step_length=0.0 if low else self.truss_rod_step_length,
             step_width=self.truss_rod_step_width,
             step_depth=self.truss_rod_step_depth,
-            pocket_length=self.truss_rod_pocket_length,
+            pocket_length=0.0 if low else self.truss_rod_pocket_length,
             pocket_width=self.truss_rod_pocket_width,
             pocket_depth=self.truss_rod_pocket_depth,
-            sleeve_length=self.truss_rod_sleeve_length if heel else 0.0,
+            sleeve_length=self.truss_rod_sleeve_length if heel and wheel else 0.0,
             sleeve_diameter=(
-                self.truss_rod_sleeve_diameter if self.truss_rod_sleeve_bore else 0.0
+                self.truss_rod_sleeve_diameter
+                if self.truss_rod_sleeve_bore and wheel
+                else 0.0
             ),
             nut_diameter=self.truss_rod_nut_diameter,
             nut_length=self.truss_rod_nut_length,
             access_length=access if heel or self.truss_rod_trough else 0.0,
+            access_diameter=self.truss_rod_key_hole_diameter if key_notch else 0.0,
             shelf_length=shelf,
-            rod_axis_depth=self.truss_rod_axis_depth,
+            # A low-profile rod's adjuster is centred in its channel.
+            rod_axis_depth=(
+                self.truss_rod_low_profile_depth / 2.0
+                if low
+                else self.truss_rod_axis_depth
+            ),
         )
+        if not heel and wheel and channel.adjuster_boundary:
+            # The wheel's trough by the nut: an angled headstock's root is
+            # only its thickness deep there, a flat one's set down too.
+            wood = self.headstock_thickness + (
+                self.face_drop if self.headstock_angle == 0.0 else 0.0
+            )
+            if channel.adjuster_depth + TRUSS_ROD_MIN_FLOOR > wood + 1e-9:
+                raise NeckGeometryError(
+                    f"A spoke wheel at the headstock needs a trough "
+                    f"{channel.adjuster_depth:g} mm deep, which would break "
+                    f"through the {wood:g} mm headstock root by the nut; use a "
+                    "flat headstock, a thicker headstock_thickness, or no "
+                    "spoke wheel (a key's notch)."
+                )
         if not heel and channel.adjuster_boundary:
-            trough_end = min(p.x for p in channel.adjuster_boundary)
+            trough = channel.adjuster_boundary
+            trough_end = min(p.x for p in trough)
+            front = max(p.x for p in trough)
+            half = max(p.y for p in trough)
             _, tuners = self.headstock_design()
             for hole in tuners.holes:
-                gap = trough_end - (hole.center.x + hole.diameter / 2.0)
-                if gap < 3.0:
+                if _rectangle_gap(trough_end, front, half, hole) < 3.0:
                     raise NeckGeometryError(
                         f"The truss-rod trough reaches {-trough_end:.0f} mm into the "
                         f"headstock, too close to tuner {hole.side} {hole.index}; "
-                        "shorten truss_rod_access_length."
+                        "shorten truss_rod_access_length or move the tuners"
+                        + (
+                            " (or leave the spoke wheel out: a key's notch is "
+                            "narrower)."
+                            if self.truss_rod_spoke_wheel_fitted
+                            else "."
+                        )
                     )
         return channel
+
+    def _truss_rod_start(self, heel: bool, shelf: float) -> float:
+        """Return where the truss rod's route starts, from the nut.
+
+        At the heel ``truss_rod_start``; at the headstock the back of the
+        nut's seat, the adjusting end's pocket under it.
+        """
+        return self.truss_rod_start if heel else -shelf
+
+    def first_fret_thickness_needed(self) -> float:
+        """Return the neck's thickness at the first fret, board included.
+
+        ``first_fret_thickness``, made thick enough for a standard truss
+        rod adjusted at the headstock: its deepest pocket or step, which
+        lies in the neck by the nut, keeps ``TRUSS_ROD_MIN_FLOOR`` of wood
+        under it.
+        """
+        if (
+            self.truss_rod_adjustment != "headstock"
+            or self.truss_rod_profile != "standard"
+        ):
+            return self.first_fret_thickness
+        # The neck's back curves up toward its sides (the D profile), so
+        # each part needs its floor at its edges, where the neck is
+        # thinnest under it; the narrow neck by the nut is the worst.
+        half_neck = self.nut_width / 2.0
+        exponent = self.neck_profile_exponent
+        needed = 0.0
+        for length, width, depth in (
+            (
+                self.truss_rod_pocket_length,
+                self.truss_rod_pocket_width,
+                self.truss_rod_pocket_depth,
+            ),
+            (
+                self.truss_rod_step_length,
+                self.truss_rod_step_width,
+                self.truss_rod_step_depth,
+            ),
+            (1.0, self.truss_rod_width, self.truss_rod_depth),
+        ):
+            if length <= 0.0:
+                continue
+            edge = min(width / 2.0 / half_neck, 0.99)
+            share = (1.0 - edge**exponent) ** (1.0 / exponent)
+            needed = max(needed, (depth + TRUSS_ROD_MIN_FLOOR) / share)
+        return max(
+            self.first_fret_thickness,
+            math.ceil((self.fretboard_thickness + needed) * 10.0) / 10.0,
+        )
 
     def truss_rod_fit(self, outline: NeckOutline) -> TrussRodFit:
         """Return the longest rod the neck takes and the one it is routed for.
@@ -1607,13 +1826,19 @@ class Prototype001Parameters:
                 the neck takes, or no stock length fits.
         """
         heel = self.truss_rod_adjustment == "heel"
+        wheel = self.truss_rod_spoke_wheel_fitted
         shelf = self.nut_seat_length() + self.nut_shelf_reach()
-        start = self.truss_rod_start if heel else -shelf
         heel_end = outline.last_fret_position + outline.heel_length
-        end = heel_end - (self.truss_rod_sleeve_length if heel else 12.0)
-        outside = self.truss_rod_nut_length + (
-            self.truss_rod_sleeve_length if heel else 0.0
-        )
+        start = self._truss_rod_start(heel, shelf)
+        if heel and not wheel:
+            # The adjuster nut ends at the heel's end face: the whole rod
+            # lies in the route.
+            end, outside = heel_end, 0.0
+        else:
+            end = heel_end - (self.truss_rod_sleeve_length if heel else 12.0)
+            outside = self.truss_rod_nut_length + (
+                self.truss_rod_sleeve_length if heel else 0.0
+            )
         longest = end - start + outside
         fitting = [
             length
@@ -1650,10 +1875,14 @@ class Prototype001Parameters:
 
         It overlaps the trough by 6 mm all round except at the nut, where
         it stops 0.5 mm short of the nut shelf; two screws near the nut
-        and one at the far end hold it.
+        and one at the far end hold it. A spoke wheel's trough, or a
+        slotted (Fender style) nut's key notch, is left open.
         """
+        nut = self.locking_nut_placed()
         if (
             not self.truss_rod_cover
+            or (nut is not None and not nut.is_locking)
+            or self.truss_rod_spoke_wheel_fitted
             or channel.adjustment_side != "nut"
             or not channel.adjuster_boundary
         ):
@@ -1694,7 +1923,11 @@ class Prototype001Parameters:
         )
 
     def locking_nut_placed(self) -> LockingNut | None:
-        """Return the locking nut on this neck, or ``None`` for a plain nut.
+        """Return the nut placed on the fretboard, or ``None`` for a plain nut.
+
+        A locking nut, or with ``nut_style == "slot"`` a slotted Fender
+        style nut (``LockingNut.slotted``); ``None`` for a nut on the
+        neck's shelf.
 
         Raises:
             NeckGeometryError: When the nut does not fit the neck (see
@@ -1704,6 +1937,20 @@ class Prototype001Parameters:
         if kind == "auto":
             kind = "r2" if isinstance(self.body_bridge, FloydRoseSpec) else "none"
         if kind == "none":
+            if self.nut_style == "slot":
+                if not math.isfinite(self.nut_slot_depth) or self.nut_slot_depth <= 0:
+                    raise NeckGeometryError(
+                        "nut_slot_depth must be finite and positive."
+                    )
+                return LockingNut.slotted(
+                    thickness=self.nut_thickness,
+                    slot_depth=self.nut_slot_depth,
+                    lean=self.fret_skew.at(0.0),
+                    neck_width=self.nut_width,
+                    fretboard_thickness=self.fretboard_thickness,
+                    lip=self.nut_slot_lip,
+                    taper=self.nut_slot_taper,
+                )
             return None
         if not math.isfinite(self.fret_height) or self.fret_height < 0.0:
             raise NeckGeometryError("fret_height must be finite and non-negative.")
@@ -1790,6 +2037,7 @@ class Prototype001Parameters:
             "Neck pocket",
             self._neck_pocket_outline(outline, heel_end),
             self.heel_thickness,
+            floor_slope=math.tan(math.radians(self.neck_angle_degrees)),
         )
         neck_bolts = self._neck_bolt_holes(outline, heel_end, neck_pocket)
         truss_rod = self.truss_rod(outline)
@@ -1821,9 +2069,15 @@ class Prototype001Parameters:
                 return 0.0
             return math.degrees(math.atan(-bass_sign * fan.at(x)))
 
+        # The saddles' line, moved with a tilted neck.
+        saddles = self.bridge_scale_line()
+        hardware = self.body_bridge.hardware(saddles, self.body_thickness)
+        if isinstance(self.body_bridge, TuneOMaticSpec) and bass_sign > 0.0:
+            # Its bass post, set back, goes to the bass side.
+            hardware = mirrored_hardware(hardware)
         bridge = turned_hardware(
-            self.body_bridge.hardware(scale, self.body_thickness),
-            Point2D(scale, 0.0),
+            hardware,
+            Point2D(saddles, 0.0),
             fan.at(scale) if self.bridge_follows_fan else 0.0,
             # A Tune-o-matic turns only where the strings rest; its
             # stop-bar studs stay square.
@@ -2381,6 +2635,8 @@ class Prototype001Parameters:
         )
         if route is None:
             return -math.inf
+        # Measured from the scale line, as the pickup is placed; a tilted
+        # neck's bridge, moved off it, is measured where it stands.
         scale = self.centre_scale
         clearance = self.body_bridge_pickup_clearance
         # A route keeps its wood from the bridge's nearest route edge
@@ -2593,19 +2849,26 @@ class Prototype001Parameters:
         bout (40 mm ahead of it to 120 mm behind). Each is deepest at the
         outline point furthest out on that side, or the one nearest
         ``body_*_position`` behind the heel end. The shape's
-        ``arm_contour_points``, when drawn, are where the arm contour
-        starts instead (``ContourCut.along_line``).
+        ``arm_contour_points`` / ``belly_cut_points``, when drawn, are where
+        the arm contour / belly cut starts instead (``ContourCut.along_line``).
         """
         contours: list[ContourCut] = []
-        if self.body_arm_contour_depth > 0.0 and shape.arm_contour_points:
+        for name, face, depth, points in (
+            (
+                "Arm contour",
+                "top",
+                self.body_arm_contour_depth,
+                shape.arm_contour_points,
+            ),
+            ("Belly cut", "back", self.body_belly_cut_depth, shape.belly_cut_points),
+        ):
+            if depth <= 0.0 or not points:
+                continue
             line = open_catmull_rom(
-                [Point2D(heel_end + x, y) for x, y in shape.arm_contour_points],
-                CONTOUR_LINE_SAMPLES,
+                [Point2D(heel_end + x, y) for x, y in points], CONTOUR_LINE_SAMPLES
             )
             contours.append(
-                ContourCut.along_line(
-                    "Arm contour", "top", outline, line, self.body_arm_contour_depth
-                )
+                ContourCut.along_line(name, face, outline, line, depth)  # type: ignore[arg-type]
             )
         for name, face, depth, width, length, position, span in (
             (
@@ -2828,7 +3091,9 @@ class Prototype001Parameters:
         if not math.isfinite(self.heel_root_length) or self.heel_root_length <= 0.0:
             raise NeckGeometryError("Heel root length must be finite and positive.")
         outline = self.neck_outline()
-        first_fret_wood_thickness = self.first_fret_thickness - self.fretboard_thickness
+        first_fret_wood_thickness = (
+            self.first_fret_thickness_needed() - self.fretboard_thickness
+        )
         twelfth_fret_wood_thickness = (
             self.twelfth_fret_thickness - self.fretboard_thickness
         )
@@ -2988,6 +3253,7 @@ class Prototype001Parameters:
             locking_nut,
             self.fretboard_binding_width,
             self.headstock_lettering(headstock, tuner_layout, truss_rod_channel),
+            (self.neck_angle_degrees, *self.neck_pivot()),
         )
 
 
@@ -3045,6 +3311,48 @@ _HEADLESS_OVERRIDES: dict[str, Any] = {
     "headstock_outline": "fitted",
 }
 """What a headless guitar or bass changes (see ``headless``)."""
+
+TELECASTER_NECK: dict[str, Any] = {
+    "nut_style": "slot",
+    "locking_nut": "none",
+    "headstock_angle": 0.0,
+    "headstock_style": "6_inline",
+    "headstock_outline": "drawn",
+    # A Telecaster outline round the default six-in-line row: the tuner
+    # edge straight along the posts, flaring out from the nut; the other
+    # edge nearly straight, sweeping out to the rounded treble point; the
+    # end wrapping round the last tuner.
+    "headstock_bass_edge": (
+        (12.0, 26.0),
+        (26.0, 35.0),
+        (40.0, 39.5),
+        (80.0, 29.4),
+        (120.0, 19.4),
+        (160.0, 9.3),
+        (183.0, 2.8),
+        (196.0, -5.0),
+        (204.0, -20.0),
+    ),
+    "headstock_treble_edge": (
+        (15.0, 23.0),
+        (70.0, 24.5),
+        (120.0, 26.5),
+        (160.0, 30.0),
+        (186.0, 36.0),
+        (204.0, 39.0),
+    ),
+    "headstock_tip_points": ((3.5, 27.0), (4.5, 33.0)),
+    "truss_rod_adjustment": "heel",
+}
+"""A Telecaster neck (see ``NECK_TEMPLATES``): a slotted nut, a flat
+six-in-line headstock drawn as a Telecaster's, adjusted at the heel."""
+
+NECK_TEMPLATES: dict[str, tuple[str, dict[str, Any]]] = {
+    "telecaster": ("Telecaster neck", TELECASTER_NECK),
+}
+"""Neck and headstock starting points the headstock editor can load: each
+a label and the values it sets (for a six-string guitar; the truss rod can
+still be moved to the headstock afterwards)."""
 
 INSTRUMENT_OVERRIDES: dict[str, dict[str, Any]] = {
     "electric_guitar": {},
@@ -3129,6 +3437,18 @@ bridge, a string-through four-string hardtail, and neck bolts 56 mm
 apart along the neck, the outer pair near the body's edge and the
 rear pair's ferrules wholly over the neck pocket.
 """
+
+
+def _rectangle_gap(front: float, back: float, half: float, hole: TunerHole) -> float:
+    """Return the wood between a plan rectangle and a tuner hole's edge.
+
+    The rectangle runs from ``front`` to ``back`` along the neck (either
+    order) and ``half`` either side of the centerline.
+    """
+    low, high = min(front, back), max(front, back)
+    dx = max(low - hole.center.x, 0.0, hole.center.x - high)
+    dy = max(abs(hole.center.y) - half, 0.0)
+    return math.hypot(dx, dy) - hole.diameter / 2.0
 
 
 def _reach_between(outline: tuple[Point2D, ...], low: float, high: float) -> float:

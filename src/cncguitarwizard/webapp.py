@@ -47,7 +47,7 @@ from .presets.body_shapes import (
 )
 from .presets.controls import CONTROL_LABELS
 from .presets.pickups import PICKUP_CONFIGURATIONS
-from .presets.prototype001 import INSTRUMENT_OVERRIDES
+from .presets.prototype001 import INSTRUMENT_OVERRIDES, NECK_TEMPLATES
 from .render.svg import render_plan_view_svg
 from .workflows import Prototype001Build
 
@@ -60,6 +60,19 @@ _CHOICE_LABELS: dict[str, dict[str, str]] = {
     "neck_blank": {
         "solid": "One plank as thick as the headstock needs",
         "laminated": "Neck plank first, headstock block glued on after",
+    },
+    "truss_rod_profile": {
+        "standard": "Standard two-way rod (11 mm pocket at its adjusting end)",
+        "low_profile": "Low-profile two-way rod (straight 6.35 x 9.5 mm channel)",
+    },
+    "truss_rod_spoke_wheel": {
+        "auto": "Auto (a spoke wheel at the heel, none at the headstock)",
+        "yes": "Spoke wheel",
+        "no": "No spoke wheel: a nut at the heel's end, a key notch at the head",
+    },
+    "nut_style": {
+        "shelf": "On the neck's shelf, in front of the fretboard",
+        "slot": "Fender / Telecaster: in a slot at the fretboard's end",
     },
     "locking_nut": {
         "auto": "Auto (Floyd Rose Original R2 with a Floyd Rose bridge)",
@@ -111,6 +124,8 @@ _BASIC_FIELDS: frozenset[str] = frozenset(
         "fret_count",
         "fret_slant_angle",
         "truss_rod_adjustment",
+        "truss_rod_spoke_wheel",
+        "truss_rod_profile",
         "truss_rod_rod_length",
         "bass_scale_length",
         "perpendicular_fret",
@@ -124,6 +139,7 @@ _BASIC_FIELDS: frozenset[str] = frozenset(
         "twelfth_fret_thickness",
         "neck_profile_exponent",
         "heel_width",
+        "neck_angle",
         "heel_thickness",
         "headstock_style",
         "headstock_outline",
@@ -145,6 +161,7 @@ _BASIC_FIELDS: frozenset[str] = frozenset(
         "body_battery_box",
         "body_battery_count",
         "locking_nut",
+        "nut_style",
         "body_pickups_follow_fan",
         "body_bridge_follows_fan",
         "body_top_edge_radius",
@@ -183,7 +200,13 @@ _BASIC_VARIANT_FIELDS: dict[str, frozenset[str]] = {
     "your_design": frozenset(),
     "floyd_rose": frozenset({"treble_side", "pivot_offset", "pivot_stud_spacing"}),
     "tune_o_matic": frozenset(
-        {"post_spacing", "compensation", "stud_spacing", "tailpiece_offset"}
+        {
+            "post_spacing",
+            "compensation",
+            "bass_setback",
+            "stud_spacing",
+            "tailpiece_offset",
+        }
     ),
     "hardtail": frozenset({"string_spacing", "string_hole_offset", "screw_count"}),
 }
@@ -226,7 +249,7 @@ def parameter_schema() -> dict[str, Any]:
     Returns:
         ``{"instruments", "prototype": [...groups...], "machining":
         [...groups...]}``; ``instruments`` maps each instrument to
-        ``{"label", "overrides"}``, the defaults that differ for it
+        ``{"label", "overrides"}``, the defaults that differ for it,
         where every group is ``{"title", "fields"}`` and every field is
         ``{"name", "type", "default", "advanced"}`` with ``type`` one of
         ``float``, ``int``, ``bool``, ``optional_float``, ``json``
@@ -237,6 +260,8 @@ def parameter_schema() -> dict[str, Any]:
         true for the rarely changed fields the form folds away.
         ``locking_nut_widths`` maps each locking nut to its width, the
         least ``nut_width`` it fits (the form widens the neck to it);
+        ``neck_templates`` each neck template (``NECK_TEMPLATES``) to
+        ``{"label", "values"}``, the values the headstock editor loads;
         ``pickup_configurations`` each named pickup layout to its
         ``[neck, middle, bridge]`` types (the body editor turns a layout
         into "custom" to remove one pickup).
@@ -250,6 +275,10 @@ def parameter_schema() -> dict[str, Any]:
             for instrument, overrides in INSTRUMENT_OVERRIDES.items()
         },
         "prototype": _group_fields(Prototype001Parameters),
+        "neck_templates": {
+            key: {"label": label, "values": _jsonable(values)}
+            for key, (label, values) in NECK_TEMPLATES.items()
+        },
         "pickup_configurations": {
             name: list(types) for name, types in PICKUP_CONFIGURATIONS.items()
         },
@@ -340,8 +369,8 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         layout; ``pickguard`` ``{"points", "automatic", "openings",
         "holes"}`` — the guard's control points (laid out automatically or
         drawn), its pickup and switch openings and its holes — or ``None``;
-        ``arm_contour`` ``{"points", "automatic"}`` — the line where the arm
-        contour starts (see ``_arm_contour_line``) — or ``None``;
+        ``arm_contour`` and ``belly_cut`` ``{"points", "automatic"}`` — the
+        lines where they start (see ``_contour_line``) — or ``None``;
         ``engraving`` the decorative engraving's lines, or ``None``.
     """
     try:
@@ -530,7 +559,12 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
             if layout.pickguard is not None
             else None
         ),
-        "arm_contour": _arm_contour_line(parameters, layout.contours, local),
+        "arm_contour": _contour_line(
+            parameters, layout.contours, local, "Arm contour", "arm_contour_points"
+        ),
+        "belly_cut": _contour_line(
+            parameters, layout.contours, local, "Belly cut", "belly_cut_points"
+        ),
         "engraving": (
             [local(line) for line in layout.engraving.lines]
             if layout.engraving is not None
@@ -539,34 +573,34 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-ARM_CONTOUR_HANDLES = 7
-"""How many handles an automatic arm contour's line gets in the editor."""
+CONTOUR_HANDLES = 7
+"""How many handles an automatic contour's line gets in the editor."""
 
 
-def _arm_contour_line(
+def _contour_line(
     parameters: Prototype001Parameters,
     contours: Any,
     local: Any,
+    name: str,
+    field: str,
 ) -> dict[str, Any] | None:
-    """Return the arm contour's start line for the editor, or ``None``.
+    """Return where a contour (``name``) starts, for the editor, or ``None``.
 
-    ``{"points", "automatic"}``: the shape's drawn ``arm_contour_points``
-    (as widened for the instrument), or ``ARM_CONTOUR_HANDLES`` points
-    along the automatic contour's inner edge, its ends on the body's edge.
+    ``{"points", "automatic"}``: the shape's drawn points (``field``, as
+    widened for the instrument), or ``CONTOUR_HANDLES`` points along the
+    automatic contour's inner edge, its ends on the body's edge.
     """
-    arm = next((c for c in contours if c.name == "Arm contour"), None)
-    if arm is None:
+    contour = next((c for c in contours if c.name == name), None)
+    if contour is None:
         return None
     shape = widened_shape(parameters.body_shape, parameters.body_widening_amount())
-    if shape.arm_contour_points:
-        return {
-            "points": [[x, y] for x, y in shape.arm_contour_points],
-            "automatic": False,
-        }
-    inner = arm.inner_edge()
+    drawn = getattr(shape, field)
+    if drawn:
+        return {"points": [[x, y] for x, y in drawn], "automatic": False}
+    inner = contour.inner_edge()
     picks = [
-        round(k * (len(inner) - 1) / (ARM_CONTOUR_HANDLES - 1))
-        for k in range(ARM_CONTOUR_HANDLES)
+        round(k * (len(inner) - 1) / (CONTOUR_HANDLES - 1))
+        for k in range(CONTOUR_HANDLES)
     ]
     return {"points": local(inner[i] for i in picks), "automatic": True}
 
