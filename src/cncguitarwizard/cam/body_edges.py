@@ -138,10 +138,17 @@ def binding_path(
     outline: Sequence[Point2D],
     edge: EdgeProfile,
     parameters: MachiningParameters,
+    face_drop: float = 0.0,
 ) -> Toolpath:
-    """Return the profile that cuts a binding channel into the edge."""
+    """Return the profile that cuts a binding channel into the edge.
+
+    ``face_drop``: how far the face at the edge lies below the stock top
+    (a carved top's rim); the channel starts there.
+    """
     inner = offset_polygon(outline, edge.binding_width, inward=True, sample_spacing=2.0)
-    return profile(name, inner, edge.binding_depth, parameters)
+    return profile(
+        name, inner, face_drop + edge.binding_depth, parameters, start_depth=face_drop
+    )
 
 
 class _Offsetter:

@@ -253,6 +253,7 @@ def raster_rough(
     step_over: float,
     sample_spacing: float = 1.0,
     tolerance: float = 0.01,
+    link_distance: float = 0.0,
 ) -> Toolpath:
     """Remove the stock above the offset surface in Z-limited layers.
 
@@ -261,6 +262,12 @@ def raster_rough(
     where it is shallower than the layer, so no pass exceeds the tool's
     step-down. The final layer leaves the surface as the flat tool can
     reach it.
+
+    With a ``link_distance``, each layer's runs are taken nearest first
+    (either way round), and a hop to the next run no longer than that is
+    fed straight across at the layer (or the surface, where higher)
+    instead of up at the safe height: the wood there stands no higher
+    than the previous layer, so the link cuts no deeper than a pass.
     """
     floor = grid.floor()
     if floor >= 0.0:
@@ -271,6 +278,7 @@ def raster_rough(
     builder = _builder(name, tool)
     previous_level = 0.0
     for level in levels:
+        runs: list[list[tuple[float, float, float]]] = []
         forward = True
         for y in ys:
             xs = xs_forward if forward else list(reversed(xs_forward))
@@ -279,15 +287,64 @@ def raster_rough(
                 points = _simplify(
                     [(x, max(tip, level)) for x, tip in segment], tolerance
                 )
-                start_x, start_z = points[0]
-                builder.rapid_to(start_x, y)
-                builder.rapid_down_to(previous_level)
-                builder.plunge_to(start_z)
-                for x, z in points[1:]:
-                    builder.cut_to(x, y, z)
+                runs.append([(x, y, z) for x, z in points])
             forward = not forward
+        if link_distance > 0.0:
+            runs = _nearest_first(runs)
+        for run in runs:
+            start_x, start_y, start_z = run[0]
+            if link_distance > 0.0 and builder.positioned:
+                hop = math.hypot(start_x - builder.x, start_y - builder.y)
+                if hop <= link_distance:
+                    _feed_link(builder, grid, start_x, start_y, level, sample_spacing)
+            if not (
+                builder.positioned and (builder.x, builder.y) == (start_x, start_y)
+            ):
+                builder.rapid_to(start_x, start_y)
+                builder.rapid_down_to(previous_level)
+            builder.plunge_to(start_z)
+            for x, y, z in run[1:]:
+                builder.cut_to(x, y, z)
         previous_level = level
     return builder.build()
+
+
+def _nearest_first(
+    runs: list[list[tuple[float, float, float]]],
+) -> list[list[tuple[float, float, float]]]:
+    """Return ``runs`` reordered greedily, each next the nearest to the last end."""
+    if not runs:
+        return runs
+    left = runs[1:]
+    ordered = [runs[0]]
+    while left:
+        end_x, end_y, _ = ordered[-1][-1]
+        best, flip, best_distance = 0, False, math.inf
+        for index, run in enumerate(left):
+            for reverse, (x, y, _) in ((False, run[0]), (True, run[-1])):
+                distance = (x - end_x) ** 2 + (y - end_y) ** 2
+                if distance < best_distance:
+                    best, flip, best_distance = index, reverse, distance
+        run = left.pop(best)
+        ordered.append(run[::-1] if flip else run)
+    return ordered
+
+
+def _feed_link(
+    builder: PathBuilder,
+    grid: OffsetGrid,
+    x: float,
+    y: float,
+    level: float,
+    sample_spacing: float,
+) -> None:
+    """Feed straight to ``(x, y)`` at ``level``, riding over higher surface."""
+    start_x, start_y = builder.x, builder.y
+    count = max(1, math.ceil(math.hypot(x - start_x, y - start_y) / sample_spacing))
+    for index in range(1, count + 1):
+        t = index / count
+        px, py = start_x + (x - start_x) * t, start_y + (y - start_y) * t
+        builder.cut_to(px, py, max(level, grid.tip_at(px, py)))
 
 
 def _segments(

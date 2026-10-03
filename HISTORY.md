@@ -435,6 +435,13 @@ diamonds and split blocks beside the barbed wire, dots and blocks.
 The top's engraving can be EVH stripes, flame, ripples or crackle as well
 as Design by Jone's scrolls.
 
+Any body can have a Les Paul style carved top, the pickups and the
+bridge always on its flat plateau. Its FreeCAD model stays light: a
+compact grid of heights, cut last, and checked, since a curved cut can
+otherwise fail without a word. Its program roughs the arch to sand
+by hand, as a carve routed in steps is, in about an hour and a half
+with the 6 mm tool (under an hour with a 10 mm one) rather than five.
+
 The bridge pickup now makes room for whichever bridge is chosen: it
 stays clear of a hardtail's mounting screws and a Tune-o-matic's posts,
 not only of a Floyd Rose's recess, and never reaches under the saddles.

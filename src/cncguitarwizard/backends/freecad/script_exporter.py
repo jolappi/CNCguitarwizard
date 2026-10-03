@@ -9,7 +9,8 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from pathlib import Path
 
-from ...geometry.body import BodySolid, ContourCut, Engraving
+from ...geometry.body import BodySolid, CarvedTop, ContourCut, Engraving
+from ...geometry.body.carve import CELL
 from ...geometry.fretboard import FretboardSurface, FretLayout, InlayLayout
 from ...geometry.neck import (
     HeadstockSolid,
@@ -18,7 +19,7 @@ from ...geometry.neck import (
     TrussRodChannel,
     TunerLayout,
 )
-from ...geometry.primitives import Point2D, Point3D
+from ...geometry.primitives import Point2D, Point3D, point_in_polygon
 from ...presets import Prototype001Geometry
 from .exceptions import FreeCADBackendError
 
@@ -2169,6 +2170,90 @@ class FreeCADScriptExporter:
             ),
             'body_shape = require_shape(body_shape, "body outline extrude")\n',
         ]
+        carve = body.carved_top
+        # The arched top is cut last, in one boolean: the cavities and
+        # edges cut far quicker into the plain slab than into a curved top.
+        carve_lines: list[str] = []
+        if carve is not None:
+            # The arched top: everything above a surface through the
+            # carve's heights is cut away (a hair above them). Over the
+            # plateau the surface stands CARVE_PLATEAU_LIFT clear, so it
+            # crosses the flat top at a slope the boolean holds to, not
+            # nearly tangent as the smoothstep's start is.
+            poles = _carve_held_up(
+                _carve_poles(carve.surface_rows(CARVE_SURFACE_SPACING)), carve
+            )
+            # Only the heights go into the script, on a regular grid.
+            (x0, y0, _), (x1, _, _) = poles[0][0], poles[0][1]
+            y1 = poles[1][0][1]
+            heights = (
+                "["
+                + ",".join(
+                    "["
+                    + ",".join(
+                        f"{z + (0.02 if z < 0.0 else CARVE_PLATEAU_LIFT):.2f}".rstrip(
+                            "0"
+                        ).rstrip(".")
+                        for _, _, z in row
+                    )
+                    + "]"
+                    for row in poles
+                )
+                + "]"
+            )
+            carve_lines.append(
+                f"CARVE_HEIGHTS = {heights}\n"
+                f"CARVE_X0, CARVE_DX = {x0!r}, {x1 - x0!r}\n"
+                f"CARVE_Y0, CARVE_DY = {y0!r}, {y1 - y0!r}\n"
+                "CARVE_ROWS = [\n"
+                "    [\n"
+                "        (CARVE_X0 + i * CARVE_DX, CARVE_Y0 + j * CARVE_DY, z)\n"
+                "        for i, z in enumerate(row)\n"
+                "    ]\n"
+                "    for j, row in enumerate(CARVE_HEIGHTS)\n"
+                "]\n"
+                # A cubic B-spline with the heights as its control points:
+                # smooth, and never outside its points' range nearby, so it
+                # cannot ripple into the flat plateau (as a cubic fitted
+                # through them does at a steep fall) and stays light.
+                "carve_rows = len(CARVE_ROWS)\n"
+                "carve_columns = len(CARVE_ROWS[0])\n"
+                "carve_surface = Part.BSplineSurface()\n"
+                "carve_surface.buildFromPolesMultsKnots(\n"
+                "    [[App.Vector(*point) for point in row] for row in CARVE_ROWS],\n"
+                "    [4] + [1] * (carve_rows - 4) + [4],\n"
+                "    [4] + [1] * (carve_columns - 4) + [4],\n"
+                "    [float(k) for k in range(carve_rows - 2)],\n"
+                "    [float(k) for k in range(carve_columns - 2)],\n"
+                "    False,\n"
+                "    False,\n"
+                "    3,\n"
+                "    3,\n"
+                ")\n"
+                "carve_cutter = carve_surface.toShape().extrude(\n"
+                "    App.Vector(0.0, 0.0, 60.0)\n"
+                ")\n"
+                # Should the cut still fail quietly (the body back uncut,
+                # or even grown, or invalid), a little fuzz is tried, and
+                # a cut is kept only when it took off about the carve's
+                # wood.
+                f"CARVE_REMOVED = {_carve_removed(carve):.0f}\n"
+                "carved_body = None\n"
+                "for carve_fuzz in (0.0, 0.001, 0.01):\n"
+                "    attempt = body_shape.cut(carve_cutter, carve_fuzz)\n"
+                "    if attempt.isNull() or not attempt.isValid():\n"
+                "        continue\n"
+                "    carved_away = body_shape.Volume - attempt.Volume\n"
+                "    if 0.7 * CARVE_REMOVED < carved_away < 1.3 * CARVE_REMOVED:\n"
+                "        carved_body = attempt\n"
+                "        break\n"
+                "if carved_body is None:\n"
+                "    raise RuntimeError(\n"
+                '        "carved top cut failed: no cut took off about "\n'
+                '        f"{CARVE_REMOVED} mm3"\n'
+                "    )\n"
+                "body_shape = carved_body\n"
+            )
         cavity_cuts = [(body.neck_pocket, "neck pocket cut")]
         if body.truss_rod_access is not None:
             cavity_cuts.append((body.truss_rod_access, "truss-rod access cut"))
@@ -2313,7 +2398,37 @@ class FreeCADScriptExporter:
             )
         # The edge finishes come last: the cavities cut quicker into the
         # plain slab.
+        if carve is not None and carve.edge_rim > 0.0:
+            # The surface is held up where the top falls too sharply to
+            # follow, which would leave wood over a binding's channel by
+            # the neck pocket: the strip the carve keeps at rim level all
+            # round is cut to it first, in a quick cut of its own.
+            lines.append(
+                f"CARVE_DEPTH, CARVE_EDGE_RIM = {carve.height!r}, "
+                f"{carve.edge_rim!r}\n"
+                "carve_outline = Part.Face(Part.makePolygon(\n"
+                "    [App.Vector(x, y, 0.0) for x, y in BODY_OUTLINE_POINTS]\n"
+                "    + [App.Vector(*BODY_OUTLINE_POINTS[0], 0.0)]\n"
+                "))\n"
+                "carve_box = carve_outline.BoundBox\n"
+                "carve_inner = carve_outline.makeOffset2D(\n"
+                "    -CARVE_EDGE_RIM, join=0\n"
+                ")\n"
+                "carve_inner.translate(App.Vector(0.0, 0.0, -CARVE_DEPTH - 0.01))\n"
+                "carve_rim = Part.makeBox(\n"
+                "    carve_box.XLength + 40.0,\n"
+                "    carve_box.YLength + 40.0,\n"
+                "    CARVE_DEPTH + 1.0,\n"
+                "    App.Vector(\n"
+                "        carve_box.XMin - 20.0, carve_box.YMin - 20.0, -CARVE_DEPTH\n"
+                "    ),\n"
+                ").cut(carve_inner.extrude(App.Vector(0.0, 0.0, CARVE_DEPTH + 1.02)))\n"
+                "body_shape = require_shape(\n"
+                '    body_shape.cut(carve_rim), "carved top rim strip"\n'
+                ")\n"
+            )
         lines += _body_edge_lines(body, outline_literal)
+        lines += carve_lines
         lines.append(
             "body_feature = document.addObject(\n"
             f'    "Part::Feature", "{object_name}"\n'
@@ -2324,7 +2439,14 @@ class FreeCADScriptExporter:
             # The engraving is drawn as lines on the top face, not cut:
             # a hundred-odd grooves would make the solid slow to build.
             engraved = [
-                [(round(p.x, 3), round(p.y, 3)) for p in line]
+                [
+                    (
+                        round(p.x, 3),
+                        round(p.y, 3),
+                        round(-carve.drop_at(p.x, p.y), 3) if carve else 0.0,
+                    )
+                    for p in line
+                ]
                 for line in body.engraving.lines
             ]
             label = f"Engraving ({body.engraving.depth:g} mm deep, drawn only)"
@@ -2334,7 +2456,7 @@ class FreeCADScriptExporter:
                 f'    "Part::Feature", "{object_name}_engraving"\n'
                 ")\n"
                 "engraving_feature.Shape = Part.Compound([\n"
-                "    Part.makePolygon([App.Vector(x, y, 0.0) for x, y in line])\n"
+                "    Part.makePolygon([App.Vector(x, y, z) for x, y, z in line])\n"
                 "    for line in engraving_lines\n"
                 "])\n"
                 f"engraving_feature.Label = {label!r}\n"
@@ -2525,9 +2647,23 @@ class FreeCADScriptExporter:
 
     @staticmethod
     def _serialize_rows(rows: tuple[tuple[Point3D, ...], ...]) -> str:
-        """Return compact deterministic JSON for section coordinates."""
+        """Return compact deterministic JSON for section coordinates.
+
+        Rounded to ``SERIAL_DECIMALS`` (a tenth of a micron), which keeps
+        the script far shorter than full floats would.
+        """
         return json.dumps(
-            [[[point.x, point.y, point.z] for point in row] for row in rows],
+            [
+                [
+                    [
+                        round(point.x, SERIAL_DECIMALS),
+                        round(point.y, SERIAL_DECIMALS),
+                        round(point.z, SERIAL_DECIMALS),
+                    ]
+                    for point in row
+                ]
+                for row in rows
+            ],
             separators=(",", ":"),
         )
 
@@ -2535,7 +2671,14 @@ class FreeCADScriptExporter:
     def _serialize_points(points: tuple[Point3D, ...]) -> str:
         """Return compact deterministic JSON for three-dimensional points."""
         return json.dumps(
-            [[point.x, point.y, point.z] for point in points],
+            [
+                [
+                    round(point.x, SERIAL_DECIMALS),
+                    round(point.y, SERIAL_DECIMALS),
+                    round(point.z, SERIAL_DECIMALS),
+                ]
+                for point in points
+            ],
             separators=(",", ":"),
         )
 
@@ -2687,6 +2830,144 @@ class FreeCADScriptExporter:
 EDGE_LAYER = 1.0
 """Height of the layers a roundover or contour is modelled in, in mm."""
 
+SERIAL_DECIMALS = 4
+"""Decimals the script's coordinate data are written to (0.1 micron)."""
+
+CARVE_SURFACE_SPACING = 4.0
+"""Spacing of the heights the FreeCAD model's carved top is built from, in
+mm: coarser is lighter, finer follows a steep fall more closely."""
+
+CARVE_PLATEAU_LIFT = 0.3
+"""How far above the flat plateau the FreeCAD model's carve surface
+stands, in mm: the first 0.3 mm of the fall's start is left (the G-code
+cuts it), and the cut crosses the top cleanly instead of nearly tangent,
+where it failed quietly."""
+
+
+def _carve_removed(carve: CarvedTop) -> float:
+    """Return about how much wood (mm³) ``carve`` takes off the body."""
+    removed = 0.0
+    for j, row in enumerate(carve.drops):
+        for i, drop in enumerate(row):
+            point = Point2D(carve.x0 + i * CELL, carve.y0 + j * CELL)
+            if drop > 0.0 and point_in_polygon(point, carve.outline):
+                removed += drop * CELL * CELL
+    return removed
+
+
+def _carve_poles(
+    rows: list[list[tuple[float, float, float]]],
+) -> list[list[tuple[float, float, float]]]:
+    """Return a carved top's heights as a cubic B-spline's control points.
+
+    A uniform cubic B-spline sits at about a (1, 4, 1) / 6 average of its
+    control points each way, which rounds a steep fall off a little; the
+    heights are sharpened by that difference once, each control point then
+    held between the lowest and highest height round it, so the surface
+    follows the heights closely and still cannot ripple past them.
+    """
+    heights = [[z for _, _, z in row] for row in rows]
+    count_y, count_x = len(heights), len(heights[0])
+
+    def at(j: int, i: int) -> float:
+        return heights[min(max(j, 0), count_y - 1)][min(max(i, 0), count_x - 1)]
+
+    poles: list[list[tuple[float, float, float]]] = []
+    for j, row in enumerate(rows):
+        pole_row = []
+        for i, (x, y, z) in enumerate(row):
+            near = [at(j + dj, i + di) for dj in (-1, 0, 1) for di in (-1, 0, 1)]
+            smoothed = (
+                sum(
+                    at(j + dj, i + di)
+                    * (4.0 if dj == 0 else 1.0)
+                    * (4.0 if di == 0 else 1.0)
+                    for dj in (-1, 0, 1)
+                    for di in (-1, 0, 1)
+                )
+                / 36.0
+            )
+            sharp = min(max(2.0 * z - smoothed, min(near)), max(near))
+            pole_row.append((x, y, sharp))
+        poles.append(pole_row)
+    return poles
+
+
+CARVE_HOLD_PASSES = 30
+"""Most passes raising the carve surface's control points (``_carve_held_up``)."""
+
+CARVE_HOLD_STEPS = (0.0, 0.25, 0.5, 0.75)
+"""Where between neighbouring control points the carve surface is held up."""
+
+
+def _cubic_weights(t: float) -> tuple[tuple[int, float], ...]:
+    """Return a uniform cubic's control point offsets and weights at ``t``."""
+    return (
+        (-1, (1.0 - t) ** 3 / 6.0),
+        (0, (3.0 * t**3 - 6.0 * t * t + 4.0) / 6.0),
+        (1, (-3.0 * t**3 + 3.0 * t * t + 3.0 * t + 1.0) / 6.0),
+        (2, t**3 / 6.0),
+    )
+
+
+def _carve_held_up(
+    poles: list[list[tuple[float, float, float]]], carve: CarvedTop
+) -> list[list[tuple[float, float, float]]]:
+    """Return ``poles`` raised so their surface never dips under ``carve``.
+
+    A cubic cannot turn as sharply as the top falls where the plateau
+    comes near the edge (a pickup by a cutaway falls the whole depth in
+    a few mm), and smoothing that corner it dipped into the flat, under a
+    pickup ring's corner. So at every control point and at the
+    ``CARVE_HOLD_STEPS`` between them the surface (a uniform cubic's
+    blend there) is held at or above the carve: each pass,
+    every point still below it asks its control points for the least
+    rise that lifts it there, each takes the most asked, until none is
+    below. The model is then never cut deeper than the top (only a little
+    shallower where the fall is too sharp to follow), and away from the
+    clamped borders, which lie past the body.
+    """
+    heights = [[z for _, _, z in row] for row in poles]
+    count_y, count_x = len(heights), len(heights[0])
+    if count_y < 6 or count_x < 6:
+        return poles
+    x0, y0 = poles[0][0][0], poles[0][0][1]
+    dx, dy = poles[0][1][0] - x0, poles[1][0][1] - y0
+    checks = []
+    for j in range(1, count_y - 3):
+        for step_y in CARVE_HOLD_STEPS:
+            weights_y = _cubic_weights(step_y)
+            for i in range(1, count_x - 3):
+                for step_x in CARVE_HOLD_STEPS:
+                    weights_x = _cubic_weights(step_x)
+                    x = x0 + (i + step_x) * dx
+                    y = y0 + (j + step_y) * dy
+                    blend = [
+                        (j + oy, i + ox, wy * wx)
+                        for oy, wy in weights_y
+                        for ox, wx in weights_x
+                        if wy * wx > 0.0
+                    ]
+                    norm = sum(w * w for _, _, w in blend)
+                    checks.append((-carve.drop_at(x, y), blend, norm))
+    for _ in range(CARVE_HOLD_PASSES):
+        rises: dict[tuple[int, int], float] = {}
+        for target, blend, norm in checks:
+            short = target - sum(w * heights[a][b] for a, b, w in blend)
+            if short > 0.005:
+                for a, b, w in blend:
+                    rise = short * w / norm
+                    if rise > rises.get((a, b), 0.0):
+                        rises[(a, b)] = rise
+        if not rises:
+            break
+        for (a, b), rise in rises.items():
+            heights[a][b] += rise
+    return [
+        [(x, y, heights[j][i]) for i, (x, y, _) in enumerate(row)]
+        for j, row in enumerate(poles)
+    ]
+
 
 def _body_edge_lines(
     body: BodySolid, outline_literal: Callable[[Iterable[Point2D]], str]
@@ -2739,8 +3020,11 @@ def _body_edge_lines(
     ]
     for face, edge in (("top", top), ("back", back)):
         # Depth d below this face maps to model Z.
-        def z_of(depth: float, face: str = face) -> float:
-            return -depth if face == "top" else -body.thickness + depth
+        # A carved top's edge work sits on its rim, the carve's height down.
+        rim = body.carved_top.height if body.carved_top is not None else 0.0
+
+        def z_of(depth: float, face: str = face, rim: float = rim) -> float:
+            return -(depth + rim) if face == "top" else -body.thickness + depth
 
         if edge.radius > 0.0:
             layers = max(4, math.ceil(edge.radius / EDGE_LAYER))

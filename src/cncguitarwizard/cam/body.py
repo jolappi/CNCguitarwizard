@@ -29,6 +29,13 @@ from .fixturing import StockBounds, resolve_index_pins
 from .gcode import Setup
 from .operations import drill, pocket, profile
 from .parameters import MachiningParameters
+from .planar import offset_polygon
+from .surfacing import (
+    offset_sampled_surface,
+    raster_finish,
+    raster_rough,
+    sample_surface,
+)
 from .toolpath import Toolpath
 
 
@@ -52,6 +59,9 @@ class BodyMachiningPlan:
             back roundover, or ``None``.
         top_engraving: Top-face V-bit program for the decorative
             engraving, or ``None``.
+        top_carve: Top-face program arching a carved top (roughed with
+            the main tool, finished with a ball nose), run first, or
+            ``None``.
         back: Back-face setup after the flip: rear cavities, cover
             recesses, rear holes, and the lower half of the outline with
             tabs.
@@ -80,6 +90,7 @@ class BodyMachiningPlan:
     top_edges: Setup | None = None
     back_edges: Setup | None = None
     top_engraving: Setup | None = None
+    top_carve: Setup | None = None
 
     @property
     def setups(self) -> tuple[Setup, ...]:
@@ -90,6 +101,7 @@ class BodyMachiningPlan:
         """
         candidates = (
             self.index_pins,
+            self.top_carve,
             self.top,
             self.top_controls,
             self.top_small_holes,
@@ -117,7 +129,14 @@ def plan_body_machining(
     stock = StockBounds.around(body.outline.points, parameters.stock_margin)
     pins, stock = resolve_index_pins(
         body.outline.points,
-        [cavity.outline for cavity in _top_cavities(body)],
+        [cavity.outline for cavity in _top_cavities(body)]
+        + (
+            # A carved top's rim is cut on past the edge: the dowels keep
+            # clear of that band too.
+            [offset_polygon(body.outline.points, body.carved_top.band, inward=False)]
+            if body.carved_top is not None
+            else []
+        ),
         parameters,
         stock,
     )
@@ -215,6 +234,10 @@ def plan_body_machining(
                 top_frame.polygon(body.outline.points),
                 body.top_edge,
                 parameters,
+                # On a carved top's rim, the carve's height down.
+                face_drop=(
+                    body.carved_top.height if body.carved_top is not None else 0.0
+                ),
             )
         )
     top = Setup(
@@ -363,10 +386,13 @@ def plan_body_machining(
     )
 
     top_engraving = _engraving_setup(body, top_frame, parameters, reference_points)
+    top_carve = _carve_setup(body, top_frame, parameters, reference_points)
 
     top_outline = top_frame.polygon(body.outline.points)
     back_outline = back_frame.polygon(body.outline.points)
     previews = [top_outline, top_outline]
+    if top_carve is not None:
+        previews.append(top_outline)
     for optional in (top_controls, top_small_holes, top_edges, top_engraving):
         if optional is not None:
             previews.append(top_outline)
@@ -392,6 +418,128 @@ def plan_body_machining(
         top_edges=top_edges,
         back_edges=back_edges,
         top_engraving=top_engraving,
+        top_carve=top_carve,
+    )
+
+
+CARVE_FINISH_STEP = 1.0
+"""Step-over of the ball nose's finishing passes over a carved top, in mm."""
+
+CARVE_EDGE_REACH = 3.0
+"""How far past its tool's radius a carve's rim level is cut beyond the
+body's edge (room for the cutter to finish the rim right to the edge;
+the waste further out is left), in mm."""
+
+
+def _carve_setup(
+    body: BodySolid,
+    frame: _Frame,
+    parameters: MachiningParameters,
+    reference_points: tuple[tuple[float, float], ...],
+) -> Setup | None:
+    """Return the program that arches a carved top, or ``None``.
+
+    A flat end mill (``carve_tool_diameter``, else the main tool) roughs
+    the arch in step-down layers, its runs taken nearest first and linked
+    in the cut, the last layer following the arch: the steps it leaves
+    are sanded smooth by hand. With ``carve_finish`` a ball nose as wide
+    finishes it in passes ``CARVE_FINISH_STEP`` apart. The rim's level is
+    cut on past the edge only as far as the tool needs to finish it.
+    """
+    carve = body.carved_top
+    if carve is None:
+        return None
+    tool = (
+        replace(parameters, tool_diameter=parameters.carve_tool_diameter)
+        if parameters.carve_tool_diameter > 0.0
+        else parameters
+    )
+    reach = min(carve.band, tool.tool_radius + CARVE_EDGE_REACH)
+    points = body.outline.points
+    low = frame.point(
+        Point2D(min(p.x for p in points) - reach, min(p.y for p in points) - reach)
+    )
+    high = frame.point(
+        Point2D(max(p.x for p in points) + reach, max(p.y for p in points) + reach)
+    )
+    x_range = (min(low.x, high.x), max(low.x, high.x))
+    y_range = (min(low.y, high.y), max(low.y, high.y))
+
+    def surface(x: float, y: float) -> float:
+        model = frame.model(Point2D(x, y))
+        if carve.outside_at(model.x, model.y) > reach:
+            return 0.0
+        return -carve.drop_at(model.x, model.y)
+
+    sampled = sample_surface(
+        surface,
+        x_range,
+        y_range,
+        spacing_x=2.0,
+        spacing_y=1.0,
+        edge_samples_x=1,
+        edge_samples_y=1,
+    )
+    rough = raster_rough(
+        "Carved top roughing",
+        offset_sampled_surface(sampled, tool),
+        tool,
+        x_range=x_range,
+        y_range=y_range,
+        step_over=tool.raster_spacing,
+        sample_spacing=2.0,
+        link_distance=4.0 * tool.raster_spacing,
+    )
+    notes = [
+        "Same fixture and X/Y zero as Body_index_pins, dowels in; run it "
+        "before Body_top.",
+        f"Rough with a {tool.tool_diameter:g} mm flat end mill"
+        + (
+            ""
+            if tool is parameters
+            else " (not the main tool: touch Z on the stock top after the change)"
+        )
+        + ".",
+        "The rim's level is cut a little past the body's edge, into the "
+        "waste the outline takes later.",
+    ]
+    if not parameters.carve_finish:
+        notes.append(
+            "The last layer follows the arch in rows "
+            f"{tool.raster_spacing:g} mm apart: sand their steps smooth by hand."
+        )
+        return Setup(
+            "Body_top_carve",
+            f"Body top face - carved top, {carve.height:g} mm arch to a "
+            f"{carve.rim:g} mm rim, roughed to sand",
+            (rough,),
+            tuple(notes),
+            reference_points,
+            tool,
+        )
+    ball = ball_tool(tool)
+    finish = raster_finish(
+        "Carved top finishing",
+        offset_sampled_surface(sampled, ball),
+        ball,
+        x_range=x_range,
+        y_range=y_range,
+        step_over=CARVE_FINISH_STEP,
+        sample_spacing=1.0,
+    )
+    notes.append(
+        f"Change to a {ball.tool_diameter:g} mm ball nose for the finishing "
+        "passes and re-touch Z on the stock top (the plateau); sand the "
+        "passes' scallops smooth."
+    )
+    return Setup(
+        "Body_top_carve",
+        f"Body top face - carved top, {carve.height:g} mm arch to a "
+        f"{carve.rim:g} mm rim",
+        (rough, finish),
+        tuple(notes),
+        reference_points,
+        ball,
     )
 
 
@@ -406,10 +554,21 @@ def _engraving_setup(
         return None
     depth = body.engraving.depth
     tool = engraving_tool(parameters, depth)
+    carve = body.carved_top
     return Setup(
         "Body_top_engraving",
         f"Body top face - decorative engraving {depth:g} mm deep with a V-bit",
-        (engraving_path(body.engraving, frame.point, tool),),
+        (
+            engraving_path(
+                body.engraving,
+                frame.point,
+                tool,
+                # Following a carved top's arch.
+                (lambda point: -carve.drop_at(point.x, point.y))
+                if carve is not None
+                else (lambda point: 0.0),
+            ),
+        ),
         (
             "Same fixture and X/Y zero as Body_top; change to a "
             f"{parameters.engraving_tool_angle:g} degree V-bit and re-touch Z "
@@ -449,9 +608,19 @@ def _edge_setup(
                 frame.polygon(body.outline.points),
                 edge.radius,
                 ball,
-                lambda point: max(
-                    (contour.depth_at(frame.model(point)) for contour in contours),
-                    default=0.0,
+                lambda point: (
+                    max(
+                        (contour.depth_at(frame.model(point)) for contour in contours),
+                        default=0.0,
+                    )
+                    # A carved top's edge is its rim, the carve's height down.
+                    + (
+                        body.carved_top.drop_at(
+                            frame.model(point).x, frame.model(point).y
+                        )
+                        if face == "top" and body.carved_top is not None
+                        else 0.0
+                    )
                 ),
                 floor,
             )

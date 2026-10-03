@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 from typing import Any, Literal
 
@@ -13,6 +14,7 @@ from ..geometry.body import (
     BridgeHardware,
     BridgeMounting,
     BridgeSpec,
+    CarvedTop,
     Cavity,
     ContourCut,
     CoverPlate,
@@ -30,6 +32,7 @@ from ..geometry.body import (
     TuneOMaticSpec,
     mirrored_hardware,
     outlines_overlap,
+    plateau_round,
     turned_hardware,
 )
 from ..geometry.exceptions import (
@@ -171,6 +174,28 @@ JACK_CUP_DIAMETER, JACK_CUP_DEPTH = 22.2, 25.0
 JACK_STRAT_DIAMETER, JACK_STRAT_DEPTH, JACK_STRAT_WALL = 25.4, 32.0, 4.0
 """A Stratocaster style jack's cavity under its top plate: a 1 in round
 pocket this deep, this much wood from the body's edge, in mm."""
+
+PICKUP_RING_REACH = 12.0
+"""How far a pickup's mounting ring reaches past its route, in mm (a
+humbucker's ring is about 92 x 45 mm over its 70 x 40 mm route, the ears
+included): a carved top's plateau reaches that far round every pickup."""
+
+PICKUP_RING_KEEP = 7.0
+"""How far past its route a pickup's ring is held flat however near the
+edge it comes, in mm: the ring itself, about 2.5 mm past a humbucker's
+route at the sides and 3 to 5 at the ends, and a grid cell (2 mm) so it
+reads flat right to its edge. (``PICKUP_RING_REACH``
+is the plateau's generous margin; held that wide by a cutaway it left the
+top a few mm to fall its whole height, a wall by the binding.)"""
+
+CARVE_KEEP_MARGIN = 3.0
+"""How far a carved top's plateau reaches round the neck pocket and the
+truss-rod access, in mm."""
+
+CARVE_MIN_FALL = 25.0
+"""The shortest fall a carved top aims for from its plateau to its rim, in
+mm: where the plateau comes nearer the edge, the rim narrows (down to its
+``edge_rim``) to leave the fall that room."""
 
 NECK_ANGLE_TUNE_O_MATIC = 2.0
 """A Tune-o-matic's neck angle on the flat top, in degrees (2-2.5 is usual;
@@ -341,6 +366,7 @@ class BodyLayout:
             its routes (a Kahler's plate), or empty.
         engraving: The decorative pattern engraved into the top, or
             ``None`` (see ``body_engraving``).
+        carved_top: The arched top, or ``None`` (see ``body_carved_top``).
     """
 
     heel_end: float
@@ -366,6 +392,7 @@ class BodyLayout:
     pickguard: Pickguard | None = None
     bridge_footprint: tuple[Point2D, ...] = ()
     engraving: Engraving | None = None
+    carved_top: CarvedTop | None = None
 
 
 TRUSS_ROD_STOCK_LENGTHS: tuple[float, ...] = tuple(
@@ -646,6 +673,19 @@ class Prototype001Parameters:
     # from the edge and body_engraving_clearance clear of every top
     # cavity, hole, the bridge, the pickguard and the contours (the back's
     # cavities only when they leave less than ENGRAVING_WALL under it).
+    # body_carved_top arches the top Les Paul style (geometry.body.carve)
+    # on any body: it keeps its full body_thickness over a flat plateau
+    # body_carve_margin round the pickups, the bridge and the neck pocket
+    # (they always sit on the flat; its corners rounded, its ends round),
+    # falls body_carve_depth toward the edge and lands on a flat rim
+    # body_carve_rim wide. A Les Paul's 5/8
+    # in maple cap over 1/4 in binding leaves a 3/8 in (9.5 mm) arch, its
+    # body 2 1/4 in in the middle and 2 in at the edge. An arm contour
+    # does not go with it.
+    body_carved_top: bool = False
+    body_carve_depth: float = 9.5
+    body_carve_rim: float = 8.0
+    body_carve_margin: float = 15.0
     body_engraving: bool = False
     body_engraving_pattern: EngravingPattern = "scroll"
     body_engraving_seed: int = 1
@@ -2325,6 +2365,61 @@ class Prototype001Parameters:
                 ControlFeatures(top_marks=guard.screw_spots, covers=(guard.plate,))
             )
         contours = self._contours(shape, body_outline.points, heel_end, bass_sign)
+        carve_pickups = [
+            p.outline for p in (neck_pickup, middle_pickup, bridge_pickup) if p
+        ]
+        carve_bridge = [
+            *(c.outline for c in (*bridge.top_cavities, *bridge.through_cavities)),
+            *((bridge.footprint,) if bridge.footprint else ()),
+            *(
+                tuple(
+                    Point2D(
+                        hole.center_x + dx * hole.diameter / 2.0,
+                        hole.center_y + dy * hole.diameter / 2.0,
+                    )
+                    for dx, dy in ((-1, -1), (1, -1), (1, 1), (-1, 1))
+                )
+                for hole in bridge.holes
+            ),
+        ]
+        carved_top = self._carved_top(
+            body_outline.points,
+            [
+                neck_pocket.outline,
+                *((truss_rod_access.outline,) if truss_rod_access else ()),
+                *carve_pickups,
+                *carve_bridge,
+            ],
+            carve_pickups,
+            carve_bridge,
+            contours,
+        )
+
+        def carve_drop(route: Cavity) -> float:
+            if carved_top is None:
+                return 0.0
+            return max(carved_top.drop_at(p.x, p.y) for p in route.outline)
+
+        if carved_top is not None:
+            # The back's cavities keep their top wall under the arched top.
+            controls = replace(
+                controls,
+                control_cavity=self._under_carve(controls.control_cavity, carve_drop),
+                switch_cavity=self._under_carve(controls.switch_cavity, carve_drop),
+                battery_cavity=self._under_carve(controls.battery_cavity, carve_drop),
+            )
+            bridge = replace(
+                bridge,
+                rear_cavities=tuple(
+                    rear
+                    for rear in (
+                        self._under_carve(rear, carve_drop)
+                        for rear in bridge.rear_cavities
+                    )
+                    if rear is not None
+                ),
+            )
+
         engraving = self._engraving(
             body_outline.points,
             [
@@ -2347,7 +2442,7 @@ class Prototype001Parameters:
                     )
                     if rear is not None
                     for route in (rear.cavity, *rear.steps)
-                    if self.body_thickness - route.depth
+                    if self.body_thickness - carve_drop(route) - route.depth
                     < self.body_engraving_depth + ENGRAVING_WALL
                 ),
                 *(c.outline for c in controls.covers if c.face == "top"),
@@ -2396,6 +2491,7 @@ class Prototype001Parameters:
             guard,
             bridge.footprint,
             engraving,
+            carved_top,
         )
 
     def headstock_solid(self, plan: HeadstockPlan) -> HeadstockSolid:
@@ -2483,6 +2579,89 @@ class Prototype001Parameters:
                 "(headstock_engraving_x / _y), turn it or make it smaller."
             )
         return Engraving(lines, depth)
+
+    def _under_carve(
+        self, rear: RearCavity | None, drop: Callable[[Cavity], float]
+    ) -> RearCavity | None:
+        """Return ``rear`` made shallower to keep its top wall under a carve.
+
+        It keeps ``body_rear_cavity_top_wall`` below the arched top
+        wherever it lies (``drop`` gives how far the top falls over a
+        route); its steps rise with it.
+        """
+        if rear is None:
+            return None
+        lowest = max(drop(part) for part in (rear.cavity, *rear.steps))
+        limit = self.body_thickness - lowest - self.body_rear_cavity_top_wall
+        shift = rear.cavity.depth - limit
+        if shift <= 0.0:
+            return rear
+        return replace(
+            rear,
+            cavity=replace(rear.cavity, depth=rear.cavity.depth - shift),
+            steps=tuple(replace(step, depth=step.depth - shift) for step in rear.steps),
+        )
+
+    def _carved_top(
+        self,
+        outline: tuple[Point2D, ...],
+        flat: list[tuple[Point2D, ...]],
+        pickups: list[tuple[Point2D, ...]],
+        bridge: list[tuple[Point2D, ...]],
+        contours: tuple[ContourCut, ...],
+    ) -> CarvedTop | None:
+        """Return the arched top, or ``None`` for a flat one.
+
+        The plateau holds everything in ``flat`` (the neck pocket and the
+        truss-rod access ``CARVE_KEEP_MARGIN`` round, the ``pickups``
+        ``PICKUP_RING_REACH`` round, where their mounting rings rest, the
+        ``bridge`` ``body_carve_margin`` round).
+
+        Raises:
+            BodyGeometryError: With an arm contour, which a carved top
+                does not take.
+        """
+        if not self.body_carved_top:
+            return None
+        if any(contour.face == "top" for contour in contours):
+            raise BodyGeometryError(
+                "A carved top takes no arm contour: set body_arm_contour_depth to 0."
+            )
+        if not math.isfinite(self.body_carve_margin) or self.body_carve_margin < 0.0:
+            raise BodyGeometryError("body_carve_margin must not be negative.")
+        # The plateau, in straight lines and arcs: the neck pocket a little
+        # round, each pickup its mounting ring round, the bridge the margin.
+        margins = [
+            (
+                feature,
+                PICKUP_RING_REACH
+                if feature in pickups
+                else self.body_carve_margin
+                if feature in bridge
+                else CARVE_KEEP_MARGIN,
+            )
+            for feature in flat
+            if feature
+        ]
+        # The plateau keeps clear of the edge so the top has room to fall
+        # (beside the neck pocket, along a cutaway); a pickup's ring and the
+        # bridge stay flat however near it comes.
+        keep = tuple(
+            tuple(offset_polygon(pickup, PICKUP_RING_KEEP, inward=False))
+            for pickup in pickups
+            if pickup
+        ) + tuple(tuple(feature) for feature in bridge if len(feature) >= 3)
+        return CarvedTop(
+            outline,
+            plateau_round(margins),
+            self.body_carve_depth,
+            self.body_carve_rim,
+            keep=keep,
+            fall=CARVE_MIN_FALL,
+            # Some rim is kept all round, a top binding's or roundover's
+            # width and 1 mm more.
+            edge_rim=max(self.body_top_binding_width, self.body_top_edge_radius) + 1.0,
+        )
 
     def _engraving(
         self,
@@ -3231,6 +3410,7 @@ class Prototype001Parameters:
             contours=body_parts.contours,
             truss_rod_access=body_parts.truss_rod_access,
             engraving=body_parts.engraving,
+            carved_top=body_parts.carved_top,
         )
         return Prototype001Geometry(
             outline,

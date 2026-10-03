@@ -485,6 +485,108 @@ the depth each face can be machined to; and that a contour cuts into no
 cavity or hole on its own face and leaves 3 mm of wood over any cavity
 routed from the other face.
 
+## Carved top
+
+`body_carved_top` (beside the body editor too, with its depth
+`body_carve_depth`) arches the top Les Paul style, on any body
+(`geometry.body.carve.CarvedTop`): the top keeps its full
+`body_thickness` over a flat plateau, falls `body_carve_depth` (9.5 mm)
+toward the edge and lands on a flat rim `body_carve_rim` (8 mm) wide.
+The plateau, where the fall starts, is drawn in straight lines and arcs
+(`plateau_round`): the convex hull of circles round every feature point
+— the neck pocket and the truss-rod access `CARVE_KEEP_MARGIN` (3 mm)
+round, each pickup `PICKUP_RING_REACH` (12 mm) round, so its mounting
+ring (a humbucker's is about 92 × 45 mm over its route) rests wholly on
+the flat, the bridge (its routes, plate and post or stud holes)
+`body_carve_margin` (15 mm) round — so straight sides tapering toward the
+neck with arcs at the corners, and its tail end a half circle as wide as
+the plateau. Where it comes nearer the edge than the rim and
+`CARVE_MIN_FALL` (25 mm), the rim narrows (down to `edge_rim`) so the
+fall keeps the room there is. How far down the fall a point lies starts
+as its distance from the plateau against its distance from the rim's
+inner edge (exact Euclidean distance transforms on a 2 mm grid), then is
+relaxed toward a harmonic field (`RELAX_PASSES` over-relaxed passes, the
+plateau and the rim held), which smooths away the creases the ratio
+leaves where the nearest edge changes; a smoothstep of it is the drop,
+so the fall leaves the plateau and meets the rim level with them, and
+out from the plateau it only ever falls. It is read back by bilinear
+interpolation (`drop_at`). The defaults follow a Les Paul's: a 5/8 in
+maple cap over 1/4 in binding leaves a 3/8 in arch, the body 2 1/4 in in
+the middle and 2 in at the edge (`body_thickness` 50.8 for one).
+
+Some rim is kept all round however near the plateau comes: a top
+binding's or roundover's width + 1 mm, 1 mm without one (`edge_rim`, a
+grid cell wider so it reads level all across), round the neck pocket's
+mouth too; nothing is held flat within `EDGE_FALL` (3 mm) of it, so a
+binding's channel always lies on the rim's level. The plateau itself
+keeps `PLATEAU_EDGE_FALL` (12 mm) clear of that strip, so where it runs
+along the edge (a Les Paul's cutaway, beside the neck pocket, where it
+left the top only a few mm to drop its whole height, a wall) the top has
+room to fall; by the pocket's mouth the top falls round the pocket's
+walls (its floor is unchanged; the neck stands above the arch at the
+edge, as on a Les Paul). Only the `keep` areas, each pickup's ring
+(`PICKUP_RING_KEEP`, 7 mm round its route: a humbucker's ring reaches
+about 5 past it, where the plateau's 12 mm margin is generous) and the
+bridge's parts, stay flat nearer than that; held 12 mm wide by a Les
+Paul's cutaway, the neck pickup's left the top 5 mm to fall its whole
+height, a wall by the binding. Past the edge the
+rim's level carries on everywhere (the plateau's reach past it, round the
+pocket's mouth, is waste).
+
+The back's cavities keep `body_rear_cavity_top_wall` under the arch:
+each is made shallower by as far as the top falls over it, and
+`BodySolid` refuses a carve leaving less than `CARVE_WALL` (3 mm). An arm
+contour does not go with a carved top. A top roundover or binding is cut
+on the rim, the carve's height down; the engraving follows the arch.
+
+`Body_top_carve.nc` runs right after the index pins. A flat end mill
+(`carve_tool_diameter`, else the main tool) roughs the arch in
+step-down layers, its last layer following the arch, and leaves it to
+sand smooth by hand, as a carve routed by hand in steps is: each layer's
+runs are taken nearest first (`raster_rough`'s `link_distance`, four
+rows) and a short hop between them is fed across in the cut rather than
+up at the safe height, so the passes no longer jump the plateau at every
+row. The rim's level is cut past the body's edge only as far as the
+tool needs, its radius and `CARVE_EDGE_REACH` (3 mm), within the `band`
+(12 mm, which the index pins keep clear of). For a Les Paul with the
+6 mm main tool that is about 92 minutes (315 with the old ball finish
+everywhere), with a 10 mm roughing tool about 55 and 12 mm about 47.
+`carve_finish` still finishes it with a ball nose as wide as the
+roughing tool, in passes `CARVE_FINISH_STEP` (1 mm) apart. The FreeCAD
+model cuts the top under a cubic B-spline surface whose control points
+are the carve's heights every `CARVE_SURFACE_SPACING` (4 mm: held up
+where the top falls sharply, by a Les Paul's cutaway, 6 mm left it up to
+2 mm high there, 4 mm 0.7 and 3 mm 0.34, the carve's cut taking 6, 9 and
+14 s; only the
+heights are written to the script, on their regular grid), sharpened
+once and held between the lowest and highest height round each
+(`_carve_poles`): smooth and light, it follows the heights closely and,
+unlike a cubic fitted through them, cannot ripple into the plateau at a
+steep fall. Where the plateau comes near the edge (a Les Paul's neck
+pickup by the cutaway) the top falls its whole depth in a few mm, sharper
+than the cubic can turn, and smoothing it the model dipped under a corner
+of the pickup's ring; so the control points are then raised
+(`_carve_held_up`) until the surface lies on or above the carve at every
+control point and quarter-way between them: the model is never cut
+deeper than the top, only a little shallower at such a sharp fall (a few
+mm over under 1 % of it). The strip the carve keeps at rim level all
+round (`edge_rim`, a binding's or roundover's width and 1 mm) is cut to
+rim level first, in a quick planar cut of its own, so the held-up
+surface never leaves wood over a binding's channel by the neck pocket.
+Over the plateau the surface stands `CARVE_PLATEAU_LIFT`
+(0.3 mm) clear rather than a hair: a smoothstep starts level, so a
+surface just above the top crossed it nearly tangent there, and that cut
+failed quietly — the body back uncut, or even grown. The lift leaves the
+fall's first 0.3 mm in the model (the G-code cuts it). It is cut last,
+after the cavities and edges (which cut far quicker into the plain slab),
+and checked: should a cut still fail, the script tries 0.001 and 0.01 mm
+of fuzz, keeping the first valid result that took off about the wood the
+carve should (`CARVE_REMOVED`, within 30 %), and stops with an error if
+none did. Cutting the top as stepped terraces, as templates of falling
+size rout it by hand, was tried and is far slower here: each step's wall
+is hundreds of faces. The plan view and the body editor dash the
+plateau's edge.
+
 ## Decorative engraving
 
 `body_engraving` engraves a scroll pattern into the top

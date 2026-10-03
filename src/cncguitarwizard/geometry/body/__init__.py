@@ -16,6 +16,7 @@ from .bridges import (
     mirrored_hardware,
     turned_hardware,
 )
+from .carve import CarvedTop, plateau_round
 from .covers import CoverPlate, cover_screw_points
 from .edges import ContourCut, EdgeProfile
 from .engraving import Engraving
@@ -32,6 +33,8 @@ from .hardware import (
 from .outline import BodyOutline, TracedOutline
 
 __all__ = [
+    "CarvedTop",
+    "plateau_round",
     "BRIDGE_KINDS",
     "BRIDGE_LABELS",
     "BRIDGE_MAX_STRINGS",

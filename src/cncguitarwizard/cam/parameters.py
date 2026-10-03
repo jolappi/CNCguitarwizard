@@ -87,6 +87,13 @@ class MachiningParameters:
             degrees (its groove is ``2 * depth * tan(angle / 2)`` wide).
         engraving_step_down: Depth cut per engraving pass.
         engraving_feed_rate: Feed along the engraved lines.
+        carve_tool_diameter: The flat end mill roughing a carved top;
+            ``0`` uses the main tool. A bigger one roughs the arch far
+            quicker (the time goes with the wood over its width).
+        carve_finish: Finish a carved top with a ball nose as wide as its
+            roughing tool, in fine passes; off (the default) leaves the
+            roughing's rows, the flat tool following the arch, to sand
+            smooth by hand, as a carve routed in steps is.
 
     Raises:
         ToolpathError: If any value is non-finite or out of its range.
@@ -120,6 +127,8 @@ class MachiningParameters:
     engraving_tool_angle: float = 60.0
     engraving_step_down: float = 1.0
     engraving_feed_rate: float = 600.0
+    carve_tool_diameter: float = 0.0
+    carve_finish: bool = False
 
     def __post_init__(self) -> None:
         """Reject parameters the planner cannot cut safely with."""
@@ -150,6 +159,7 @@ class MachiningParameters:
             "profile_overlap": self.profile_overlap,
             "index_pin_wall": self.index_pin_wall,
             "spindle_dwell": self.spindle_dwell,
+            "carve_tool_diameter": self.carve_tool_diameter,
         }
         for name, value in non_negative.items():
             if not math.isfinite(value) or value < 0.0:

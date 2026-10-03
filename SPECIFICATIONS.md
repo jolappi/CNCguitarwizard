@@ -370,6 +370,88 @@ ajetaan ball nose -terällä omissa ohjelmissaan (`Body_top_edges.nc`,
 `Body_back_edges.nc`), reunanauhan ura pääterällä ääriviivan jälkeen.
 FreeCAD-mallissa ne ovat 1 mm porrastuksina.
 
+## Kaareva kansi
+
+Valinnainen (`body_carved_top`, mikä tahansa runkomalli; valinta ja syvyys `body_carve_depth` myös runkoeditorin vieressä): kansi kaarretaan
+Les Paul -tyylisesti. Kansi pysyy täydessä paksuudessa tasaisella
+keskialueella, jonka raja (mistä lasku lähtee) piirretään suorilla ja
+kaarilla: osien ympärysympyröiden kupera verho — kaulatasku ja
+kaularaudan säätölovi 3 mm, jokainen mikki 12 mm (`PICKUP_RING_REACH`,
+jotta mikin kehys, humbuckerin noin 92 × 45 mm, lepää kokonaan
+tasaisella), talla (kolot, levy, tolppa- ja nastareiät) 15 mm
+(`body_carve_margin`). Sivut ovat suoria ja kapenevat kaulaa kohti, kulmat
+kaaria ja takapää puoliympyrä. Pinta laskee pehmeästi (smoothstep)
+`body_carve_depth` (9,5 mm) alemmas ja tasaantuu reunalla
+`body_carve_rim` (8 mm) levyiseksi suoraksi kaistaksi; missä tasainen on
+lähempänä reunaa kuin reunakaista + 25 mm (`CARVE_MIN_FALL`), reunakaista
+kapenee, jotta laskulle jää tilaa. Reunalle jää aina vähintään 1 mm
+reunakaistaa (reunanauhan tai -pyöristyksen kanssa sen leveys + 1 mm),
+myös kaulataskun suulla, joten reunanauhan ura on aina reunakaistan
+tasolla. Tasainen alue pysyy vähintään 12 mm (`PLATEAU_EDGE_FALL`) irti
+tuosta kaistasta, joten missä se kulkee reunaa pitkin (Les Paulin
+leikkaus kaulataskun vieressä, jossa kannelle jäi muutama mm pudota koko
+korkeutensa eli seinämä), laskulle jää tilaa; kaulataskun suulla kansi
+laskee taskun seinien vierestä (pohja ei muutu, ja kaula jää reunalla
+kaaren yläpuolelle kuten Les Paulissa). Vain mikkien kehykset
+(`PICKUP_RING_KEEP`, 7 mm reiän ympäri: humbuckerin kehys ulottuu noin
+5 mm reiän yli, tasaisen alueen 12 mm marginaali on väljä) ja tallan osat
+(`keep`) pysyvät tasaisella lähempänäkin; 12 mm leveänä Les Paulin
+leikkauksen kohdalla kaulamikin kehysalue jätti kannelle 5 mm pudota koko
+korkeutensa, seinämän reunanauhan viereen. Lasku lasketaan tarkoilla etäisyysmuunnoksilla ja tasoitetaan
+(harmoninen relaksointi): pinta vain laskee tasaiselta reunalle päin,
+ilman taitteita tai kupruja. Oletukset Les Paulin mukaan: 5/8"
+vaahterakansi ja 1/4" reunanauha jättävät 3/8" kuvun, runko 2 1/4"
+keskeltä ja 2" reunalta (`body_thickness` 50,8 sellaiselle).
+
+Takakolot pysyvät 8 mm (`body_rear_cavity_top_wall`) kaarevan pinnan
+alla: ne madaltuvat sen verran kuin pinta laskee niiden kohdalla, ja alle
+3 mm seinämä hylätään. Kyynärviiste ei käy kaarevan kannen kanssa.
+Reunan pyöristys ja reunanauhan ura jyrsitään reunakaistan tasolta, ja
+kaiverrus seuraa kaarta. `Body_top_carve.nc` ajetaan heti tappien jälkeen:
+tasapäinen terä (`carve_tool_diameter`, 0 = pääterä) rouhii kaaren
+kerroksittain, viimeinen kerros pintaa seuraten, ja rivien portaat
+hiotaan käsin, kuten käsin portaittain jyrsitty kansi. Kunkin kerroksen
+pätkät ajetaan lähin ensin, ja lyhyt siirtymä (enintään neljä riviä)
+syötetään leikkauksessa eikä turvakorkeudella, joten terä ei enää hyppää
+tasaisen alueen yli joka rivillä. Reunakaistan taso jatkuu rungon reunan
+yli vain terän säteen + 3 mm (`CARVE_EDGE_REACH`) 12 mm kaistan sisällä
+(tapit pysyvät kaistan ulkopuolella). Les Paul 6 mm pääterällä noin
+92 min (aiemmin kuulapääviimeistelyineen 315 min), 10 mm rouhintaterällä
+noin 55 min ja 12 mm noin 47 min. `carve_finish` viimeistelee lisäksi
+rouhintaterän levyisellä pallojyrsimellä 1 mm välein (sileä mutta hidas). FreeCAD-mallissa kansi
+leikataan kuutiollisen B-spline-pinnan alle, jonka ohjauspisteinä ovat
+korkeudet 4 mm välein (jyrkässä laskussa Les Paulin leikkauksen kohdalla
+nostettu pinta jäi 6 mm välillä jopa 2 mm liian korkealle, 4 mm välillä
+0,7 mm ja 3 mm välillä 0,34 mm; kannen leikkaus kestää 6, 9 ja 14 s;
+terävöitynä ja naapuripisteiden rajoissa; makroon
+kirjoitetaan vain korkeudet ruudukkona): sileä ja
+kevyt, eikä se aaltoile jyrkissä kohdissa tasaisen alle. Missä tasainen
+on lähellä reunaa (Les Paulin kaulamikki leikkauksen kohdalla), kansi
+putoaa koko syvyytensä muutamassa millissä, jyrkemmin kuin kuutiollinen
+pinta taipuu, ja malli notkahti mikin kehyksen kulman alle; siksi
+ohjauspisteitä nostetaan (`_carve_held_up`), kunnes pinta on jokaisessa
+ohjauspisteessä ja niiden neljännesväleissä kaarteen tasolla tai sen
+yläpuolella: malli ei koskaan leikkaa kantta syvemmältä, vain jyrkässä
+laskussa hieman matalammalta (muutama mm alle 1 %:lla laskusta).
+Reunakaista, joka pidetään reunan tasolla koko rungon ympäri
+(`edge_rim`, reunanauhan tai -pyöristyksen leveys + 1 mm), leikataan
+ensin omalla nopealla tasoleikkauksellaan reunan tasoon, joten nostettu
+pinta ei jätä puuta reunanauhan päälle kaulataskun vieressä. Tasaisen alueen
+kohdalla pinta on 0,3 mm (`CARVE_PLATEAU_LIFT`) kannen yläpuolella:
+smoothstep-lasku alkaa vaakasuorana, joten aivan kannen yläpuolella oleva
+pinta kohtasi kannen lähes tangentiaalisesti, ja silloin leikkaus
+epäonnistui äänettömästi (runko jäi leikkaamatta tai jopa kasvoi).
+Nosto jättää mallissa laskun ensimmäiset 0,3 mm (G-code jyrsii ne). Kansi
+leikataan viimeisenä, kolojen ja reunojen jälkeen (ne leikkautuvat
+tasaiseen aihioon paljon nopeammin), ja tulos tarkistetaan: jos leikkaus
+silti epäonnistuu, makro kokeilee 0,001 ja 0,01 mm toleranssia ja
+hyväksyy ensimmäisen kelvollisen tuloksen, joka poisti noin kaarteen
+verran puuta (`CARVE_REMOVED`, ±30 %); muuten se pysähtyy virheeseen.
+Kannen mallintamista portaina (kuin käsin eri kokoisilla sabluunoilla)
+kokeiltiin: se on FreeCADissa moninkertaisesti hitaampi, koska jokaisen
+portaan seinä on satoja tahkoja. Plan-kuva ja runkoeditori näyttävät tasaisen alueen rajan
+katkoviivana.
+
 ## Koristekaiverrus
 
 Valinnainen (`body_engraving`, oletuksena pois): kanteen kaiverretaan

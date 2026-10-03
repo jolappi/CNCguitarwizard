@@ -97,6 +97,37 @@ def test_raster_rough_layers_never_exceed_the_step_down_or_the_surface() -> None
     assert all(abs(move.z) <= grid.floor() * -1 + 1e-6 for move in plunges)
 
 
+def test_linked_roughing_stays_down_between_runs() -> None:
+    # A dome with a flat top: every pass splits round it.
+    def dome(x: float, y: float) -> float:
+        return -min(8.0, max(0.0, math.hypot(x, y) - 15.0) * 0.4)
+
+    flat = MachiningParameters(step_down=3.0)
+    span = (-40.0, 40.0)
+    grid = build_offset_grid(dome, span, span, flat)
+    plain = raster_rough("Rough", grid, flat, x_range=span, y_range=span, step_over=2.4)
+    linked = raster_rough(
+        "Rough",
+        grid,
+        flat,
+        x_range=span,
+        y_range=span,
+        step_over=2.4,
+        link_distance=9.6,
+    )
+
+    def retracts(path) -> int:  # type: ignore[no-untyped-def]
+        moves = path.moves
+        return sum(1 for a, b in zip(moves, moves[1:]) if b.rapid and b.z > a.z)
+
+    assert retracts(linked) < retracts(plain) / 10
+    assert linked.rapid_length() < plain.rapid_length() / 5
+    # Never into the surface, links included, and as deep as before.
+    for move in cuts(linked.moves):
+        assert move.z >= grid.tip_at(move.x, move.y) - 1e-6
+    assert linked.deepest_z() == pytest.approx(plain.deepest_z())
+
+
 def test_interpolate_rows_blends_between_stations_and_across_a_row() -> None:
     stations = [0.0, 10.0]
     rows = [([-1.0, 0.0, 1.0], [0.0, -2.0, 0.0]), ([-1.0, 0.0, 1.0], [0.0, -4.0, 0.0])]

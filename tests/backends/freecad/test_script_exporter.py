@@ -1228,8 +1228,13 @@ def test_the_loft_top_edge_follows_the_headstock_outline_to_the_nut(
     assert rows
     for row in rows:
         distance = -row[0][0]
-        assert row[0][1] == pytest.approx(headstock.plan.edge_y(distance, -1.0))
-        assert row[-1][1] == pytest.approx(headstock.plan.edge_y(distance, 1.0))
+        # (The script writes coordinates to 0.1 micron.)
+        assert row[0][1] == pytest.approx(
+            headstock.plan.edge_y(distance, -1.0), abs=1e-3
+        )
+        assert row[-1][1] == pytest.approx(
+            headstock.plan.edge_y(distance, 1.0), abs=1e-3
+        )
 
 
 def test_a_shaped_tip_is_lofted_past_it_and_cut_back() -> None:

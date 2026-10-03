@@ -127,7 +127,7 @@ function renderForm() {
 // loaded and built (its row in the form is hidden). A change on either
 // side is passed to the other.
 const EDITOR_FIELDS = {
-  "body-editor-options": ["body_pickups", "body_bridge", "body_controls", "body_switch", "body_jack", "body_pickguard", "body_pickguard_style", "body_arm_contour_depth", "body_belly_cut_depth", "body_engraving", "body_engraving_pattern", "body_engraving_seed", "body_battery_box", "body_battery_count"],
+  "body-editor-options": ["body_pickups", "body_bridge", "body_controls", "body_switch", "body_jack", "body_pickguard", "body_pickguard_style", "body_arm_contour_depth", "body_belly_cut_depth", "body_carved_top", "body_carve_depth", "body_engraving", "body_engraving_pattern", "body_engraving_seed", "body_battery_box", "body_battery_count"],
   "headstock-editor-options": ["headstock_style", "headstock_engraving_text", "headstock_engraving_font", "headstock_engraving_height", "headstock_engraving_angle"],
 };
 const mirrors = new Map();
@@ -1007,6 +1007,7 @@ const bodyEditor = {
       bridge: { fill: "#f2c4b3", stroke: "#7a3a1a", "stroke-width": 0.5 },
       bridge_plate: { fill: "#d8d0c2", "fill-opacity": 0.5, stroke: "#6b625a", "stroke-width": 0.5, "stroke-dasharray": "2,2" },
       top_control: { fill: "#c9b7e6", "fill-opacity": 0.55, stroke: "#5a3a8a", "stroke-width": 0.6 },
+      plateau: { fill: "none", stroke: "#8a6a3a", "stroke-width": 0.8, "stroke-dasharray": "6,3" },
       contour_top: { fill: "#9cc79a", "fill-opacity": 0.45, stroke: "#3d6b3a", "stroke-width": 0.5 },
       contour_back: { fill: "#9aa9d6", "fill-opacity": 0.35, stroke: "#34457a", "stroke-width": 0.5, "stroke-dasharray": "3,2" },
       cover: { fill: "#c9b7e6", "fill-opacity": 0.35, stroke: "#5a3a8a", "stroke-width": 0.5, "stroke-dasharray": "3,2" },
@@ -1865,7 +1866,7 @@ const bodyEditor = {
     const outside = new Set();
     for (const polygon of this.layout.polygons) {
       // Contours follow the outline itself, so they are laid out from it.
-      if (polygon.role === "neck" || polygon.role.startsWith("contour")) continue;
+      if (polygon.role === "neck" || polygon.role === "plateau" || polygon.role.startsWith("contour")) continue;
       // The pocket opens onto the horn gap: only its tail wall must be in wood.
       const points = polygon.role === "pocket" ? polygon.points.filter((p) => p[0] > -1) : polygon.points;
       if (points.some(([x, y]) => !pointInPolygon(x, y, outline))) outside.add(polygon.name);

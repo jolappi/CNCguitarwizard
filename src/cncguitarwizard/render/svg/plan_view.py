@@ -110,6 +110,15 @@ def render_plan_view_svg(geometry: Prototype001Geometry) -> str:
     if truss.adjustment_side == "nut" and truss.adjuster_boundary:
         parts.append(path(truss.adjuster_boundary, pocket))
 
+    # A carved top's plateau, dashed: the top falls outside it.
+    if body.carved_top is not None:
+        parts.append(
+            path(
+                body.carved_top.plateau,
+                'fill="none" stroke="#8a6a3a" stroke-width="0.6" '
+                'stroke-dasharray="5,3"',
+            )
+        )
     # Arm contour (top) and belly cut (back), under the cavities.
     for contour in body.contours:
         look = (

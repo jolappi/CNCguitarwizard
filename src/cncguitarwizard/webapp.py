@@ -187,6 +187,8 @@ _BASIC_FIELDS: frozenset[str] = frozenset(
         "body_top_binding_width",
         "body_arm_contour_depth",
         "body_belly_cut_depth",
+        "body_carved_top",
+        "body_carve_depth",
         "body_neck_pickup_offset",
         "body_bridge_pickup_offset",
         "tool_diameter",
@@ -200,6 +202,8 @@ _BASIC_FIELDS: frozenset[str] = frozenset(
         "step_down",
         "step_over",
         "tab_count",
+        "carve_tool_diameter",
+        "carve_finish",
     }
 )
 
@@ -374,7 +378,8 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         ``pickup``, ``bridge``, ``bridge_plate`` (what a bridge such as a
         Kahler covers on the top past its routes), ``top_control``,
         ``rear``, ``cover``,
-        ``contour_top`` (an arm contour) or ``contour_back`` (a belly cut);
+        ``contour_top`` (an arm contour), ``contour_back`` (a belly cut) or
+        ``plateau`` (a carved top's flat plateau, the top falling outside it);
         ``circles`` a list of ``{"name", "group", "x", "y", "r"}``;
         ``jack`` ``{"group", "x", "y", "x2", "y2", "r", "cup",
         "reaches_controls"}`` (``cup`` a cup jack's counterbore ``{"x2",
@@ -431,7 +436,12 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         polygons.append(polygon(cavity.name, "bridge", cavity.outline))
     for cavity in layout.controls.top_cavities:
         polygons.append(polygon(cavity.name, "top_control", cavity.outline))
-    # Contours go under everything else on the body (after the neck).
+    # A carved top's plateau, and the contours, go under everything else on
+    # the body (after the neck).
+    if layout.carved_top is not None:
+        polygons.insert(
+            1, polygon("Carved top plateau", "plateau", layout.carved_top.plateau)
+        )
     for offset, contour in enumerate(layout.contours, start=1):
         polygons.insert(
             offset,

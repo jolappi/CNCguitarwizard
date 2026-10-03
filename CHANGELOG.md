@@ -4,6 +4,35 @@
 
 ### Added
 
+- A carved top, Les Paul style, for any body (`body_carved_top` and its
+  depth `body_carve_depth`, 9.5 mm, both beside the body editor too,
+  `body_carve_rim` 8 mm, `body_carve_margin`
+  15 mm; `CarvedTop`): flat over a plateau drawn in straight lines and
+  arcs round the neck pocket, the pickups (12 mm, for their mounting
+  rings) and the bridge, its tail end a half circle, falling smoothly
+  (exact distance transforms, relaxed: no creases or bumps) to a flat rim
+  at the edge, the plateau keeping 12 mm clear of the edge so the top has
+  room to fall beside the neck pocket and along a cutaway (only the
+  pickups' rings, 7 mm round their routes, and the bridge stay flat
+  nearer), the rim narrowing
+  where the plateau comes near but always
+  keeping a top binding's channel on its level. The back's cavities keep
+  their top wall under it; `Body_top_carve.nc` roughs it first, to sand
+  smooth by hand (its runs linked in the cut; `carve_tool_diameter` for a
+  bigger roughing tool, `carve_finish` for a ball-nose finish; about 92
+  minutes on a Les Paul with the 6 mm tool, 55 with a 10 mm one); a top
+  roundover or binding is cut on the rim and the engraving
+  follows the arch. The FreeCAD model cuts it last, under a cubic
+  surface with the heights every 4 mm as its control points, light and
+  unable to ripple into the plateau, its control points raised where the
+  top falls too sharply to follow (by a Les Paul's neck pickup at the
+  cutaway it dipped under a corner of the pickup's ring; the rim's strip
+  is cut to its level on its own, so no wood is left over the binding by
+  the neck pocket), standing 0.3 mm
+  clear over the
+  plateau so it crosses the top cleanly (a surface a hair above it met it
+  nearly tangent, and the cut could leave the body quietly uncut), and
+  checks the cut took off the carve's wood.
 - More body engraving patterns (`body_engraving_pattern`, beside the
   body editor too): Eddie Van Halen style taped `evh_stripes`, `flame`,
   `ripples` and `crackle`, all laid out from the seed like the scrolls
@@ -215,6 +244,8 @@
 
 ### Changed
 
+- The FreeCAD script writes its coordinate data to 0.1 micron
+  (`SERIAL_DECIMALS`) instead of full floats: a far shorter macro.
 - The Tune-o-matic's bass post sits `bass_setback` (3.2 mm, 1/8 in)
   behind the treble one, which is now `compensation` 1.6 mm (1/16 in)
   behind the scale line (was 3 mm, both square): the bridge leans with the

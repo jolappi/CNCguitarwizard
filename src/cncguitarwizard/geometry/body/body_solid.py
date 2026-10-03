@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 
 from ..exceptions import BodyGeometryError
 from ..primitives import Point2D, nudge_inward, point_in_polygon
+from .carve import CarvedTop
 from .edges import ContourCut, EdgeProfile
 from .engraving import Engraving
 from .hardware import BridgeMounting, Cavity, DrilledHole, JackHole, RearCavity
@@ -38,6 +39,10 @@ def max_radius_for(inset: float) -> float:
     """
     t = EDGE_RIM_TOLERANCE
     return t + inset + math.sqrt(2.0 * t * max(inset, 0.0))
+
+
+CARVE_WALL = 3.0
+"""Least wood a carved top leaves over a cavity routed from the back, in mm."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -95,6 +100,9 @@ class BodySolid:
         truss_rod_access: A notch out of the neck pocket's tail wall so a
             heel-adjusted truss rod's spoke wheel can be turned; it starts
             inside the pocket, so its overlap with it is allowed.
+        carved_top: The top arched from a flat plateau down to a flat rim
+            (``CarvedTop``), or ``None`` for a flat top. Every rear cavity
+            must leave ``CARVE_WALL`` of wood under it.
         engraving: Decorative lines engraved into the top, or ``None``;
             it must leave half the slab.
 
@@ -130,11 +138,14 @@ class BodySolid:
     contours: tuple[ContourCut, ...] = ()
     truss_rod_access: Cavity | None = None
     engraving: Engraving | None = None
+    carved_top: CarvedTop | None = None
 
     def __post_init__(self) -> None:
         """Cross-check every cavity against the slab and outline bounds."""
         if not math.isfinite(self.thickness) or self.thickness <= 0.0:
             raise BodyGeometryError("Body thickness must be finite and positive.")
+        if self.carved_top is not None:
+            self._check_carve()
         if self.engraving is not None and self.engraving.depth >= self.thickness / 2.0:
             raise BodyGeometryError(
                 "The engraving must be shallower than half the body's thickness."
@@ -300,6 +311,36 @@ class BodySolid:
                     "Bridge pivot hole falls outside the body outline."
                 )
         self._validate_edges()
+
+    def _check_carve(self) -> None:
+        """Refuse a carve that would leave a rear cavity too thin a top."""
+        carve = self.carved_top
+        assert carve is not None
+        if carve.height >= self.thickness / 2.0:
+            raise BodyGeometryError(
+                "The carved top's depth (body_carve_depth) must be under half the "
+                "body's thickness."
+            )
+        rears = [
+            (rear.cavity.name, part)
+            for rear in (
+                self.control_cavity,
+                self.switch_cavity,
+                self.battery_cavity,
+                *self.extra_rear_cavities,
+            )
+            if rear is not None
+            for part in (rear.cavity, *rear.steps)
+        ]
+        for name, part in rears:
+            for point in part.outline:
+                wood = self.thickness - carve.drop_at(point.x, point.y) - part.depth
+                if wood < CARVE_WALL - 1e-6:
+                    raise BodyGeometryError(
+                        f"The carved top leaves {max(wood, 0.0):.1f} mm over the "
+                        f"{name.lower()}; lower body_carve_depth or use a thicker "
+                        "body."
+                    )
 
     def _validate_edges(self) -> None:
         """Check the edge finishes and bevels against the cavities."""
