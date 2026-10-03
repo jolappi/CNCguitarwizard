@@ -33,13 +33,13 @@ def test_every_fret_and_both_board_ends_share_the_slant(slanted) -> None:  # typ
     rows = geometry.fretboard_surface.mesh.rows
     for row in (rows[0], rows[-1]):
         assert (row[-1].x - row[0].x) / (row[-1].y - row[0].y) == pytest.approx(slope)
-    # The treble side (+Y on the left-handed default) moves toward the bridge.
+    # The treble side (+Y on the right-handed default) moves toward the bridge.
     first = geometry.fret_layout.slots[0]
     treble, bass = sorted((first.start, first.end), key=lambda p: -p.y)
     assert treble.x > bass.x
     assert parameters.fret_slant == pytest.approx(slope)
-    righty = replace(parameters, headstock_bass_side="+y")
-    assert righty.fret_slant == pytest.approx(-slope)
+    lefty = replace(parameters, headstock_bass_side="+y")
+    assert lefty.fret_slant == pytest.approx(-slope)
 
 
 def test_fret_spacing_stays_exact_on_the_centreline(slanted) -> None:  # type: ignore[no-untyped-def]

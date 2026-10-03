@@ -438,7 +438,12 @@ as Design by Jone's scrolls.
 Any body can have a Les Paul style carved top, the pickups and the
 bridge always on its flat plateau. Its FreeCAD model stays light: a
 compact grid of heights, cut last, and checked, since a curved cut can
-otherwise fail without a word. Its program roughs the arch to sand
+otherwise fail without a word.
+
+Every design can now be built left-handed, as the mirror image of the
+drawn, right-handed one: the body and its electronics, the bass side of
+the neck and bridge, and the headstock, with its lettering set again so
+it still reads. The default had long been called left-handed by mistake. Its program roughs the arch to sand
 by hand, as a carve routed in steps is, in about an hour and a half
 with the 6 mm tool (under an hour with a 10 mm one) rather than five.
 

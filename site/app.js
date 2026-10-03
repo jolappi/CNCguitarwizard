@@ -952,8 +952,20 @@ const bodyEditor = {
   element(name, attributes, parent) {
     const node = document.createElementNS(SVG_NS, name);
     for (const [key, value] of Object.entries(attributes)) node.setAttribute(key, value);
-    (parent || this.svg).appendChild(node);
+    (parent || this.root || this.svg).appendChild(node);
     return node;
+  },
+
+  // Start a drawing: everything goes into one group, turned over (Y
+  // mirrored) for a left-handed build, so the design, kept as drawn
+  // (right-handed), shows as it is built; toModel reads points back
+  // through the same group. The view box frames the model's Y range.
+  begin(mirrored, minX, minY, maxX, maxY) {
+    this.svg.innerHTML = "";
+    this.root = null;
+    this.root = this.element("g", mirrored ? { transform: "scale(1,-1)" } : {});
+    const top = mirrored ? minY : -maxY;
+    this.svg.setAttribute("viewBox", `${minX} ${top} ${maxX - minX} ${maxY - minY}`);
   },
 
   pathData(points) {
@@ -979,7 +991,6 @@ const bodyEditor = {
 
   draw() {
     const layout = this.layout;
-    this.svg.innerHTML = "";
     // Frame everything: the outline plus the features on the body.
     const bodyFeatures = layout.polygons.filter((p) => p.role !== "neck");
     const all = [...this.outline(), ...bodyFeatures.flatMap((p) => p.points)];
@@ -987,7 +998,7 @@ const bodyEditor = {
     const margin = 40;
     const minX = Math.min(...xs) - margin, maxX = Math.max(...xs) + margin;
     const minY = Math.min(...ys) - margin, maxY = Math.max(...ys) + margin;
-    this.svg.setAttribute("viewBox", `${minX} ${-maxY} ${maxX - minX} ${maxY - minY}`);
+    this.begin(layout.mirrored, minX, minY, maxX, maxY);
 
     const grid = this.element("g", { stroke: "#eee6d8", "stroke-width": 0.5 });
     for (let x = Math.ceil(minX / 50) * 50; x <= maxX; x += 50) {
@@ -1160,7 +1171,7 @@ const bodyEditor = {
     const point = this.svg.createSVGPoint();
     point.x = event.clientX;
     point.y = event.clientY;
-    const local = point.matrixTransform(this.svg.getScreenCTM().inverse());
+    const local = point.matrixTransform((this.root || this.svg).getScreenCTM().inverse());
     return [Math.round(local.x * 10) / 10, Math.round(-local.y * 10) / 10];
   },
 
@@ -2018,7 +2029,11 @@ const headstockEditor = {
   },
 
   element(name, attributes, parent) {
-    return bodyEditor.element.call({ svg: this.svg }, name, attributes, parent);
+    return bodyEditor.element.call(this, name, attributes, parent);
+  },
+
+  begin(mirrored, minX, minY, maxX, maxY) {
+    return bodyEditor.begin.call(this, mirrored, minX, minY, maxX, maxY);
   },
 
   // Y of a side's edge from its half-width, in the model frame.
@@ -2125,7 +2140,6 @@ const headstockEditor = {
 
   draw() {
     const layout = this.layout;
-    this.svg.innerHTML = "";
     const bass = this.samples("bass"), treble = this.samples("treble");
     const tip = this.tipSamples();
     const all = [...bass, ...treble, ...tip, ...layout.holes.map((h) => [h.x, h.y])];
@@ -2133,7 +2147,7 @@ const headstockEditor = {
     const margin = 25;
     const minX = Math.min(...xs) - margin, maxX = 70;
     const minY = Math.min(...ys) - margin, maxY = Math.max(...ys) + margin;
-    this.svg.setAttribute("viewBox", `${minX} ${-maxY} ${maxX - minX} ${maxY - minY}`);
+    this.begin(layout.mirrored, minX, minY, maxX, maxY);
     const grid = this.element("g", { stroke: "#eee6d8", "stroke-width": 0.3 });
     for (let x = Math.ceil(minX / 10) * 10; x <= maxX; x += 10) this.element("line", { x1: x, y1: -maxY, x2: x, y2: -minY }, grid);
     for (let y = Math.ceil(minY / 10) * 10; y <= maxY; y += 10) this.element("line", { x1: minX, y1: -y, x2: maxX, y2: -y }, grid);
@@ -2226,7 +2240,7 @@ const headstockEditor = {
   },
 
   toModel(event) {
-    return bodyEditor.toModel.call({ svg: this.svg }, event);
+    return bodyEditor.toModel.call(this, event);
   },
 
   // Move one handle; a tip handle sets the length of both edges.

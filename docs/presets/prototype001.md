@@ -125,7 +125,8 @@ Building the preset creates and cross-validates:
   (`inlay_style="dot"`, `inlay_dot_diameter`) or Gibson-style tapered blocks
   (`inlay_style="block"`, one per fret, `inlay_block_length_fraction`,
   `inlay_block_edge_margin`);
-- a 44 mm flat-slab left-handed body (`BodySolid`) whose silhouette is
+- a 44 mm flat-slab right-handed body (`BodySolid`; `handedness = "left"`
+  builds its mirror image) whose silhouette is
   chosen by `body_shape` — a drawn body (spline control points), by
   default the Design by Jone template: the user's own outline digitised
   from `assets/reference/omarunko.dxf` and resampled (the traced outline

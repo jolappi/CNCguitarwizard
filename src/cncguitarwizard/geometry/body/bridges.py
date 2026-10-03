@@ -233,7 +233,7 @@ class FloydRoseSpec:
 
     Args:
         treble_side: Which side of the centreline carries the treble
-            strings and the tremolo arm: ``"+y"`` for the left-handed
+            strings and the tremolo arm: ``"+y"`` for the right-handed
             Prototype001 body (controls at +Y), ``"-y"`` otherwise.
         pivot_offset: Stud centres relative to the scale line (negative =
             ahead of it, toward the nut).

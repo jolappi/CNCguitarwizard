@@ -70,7 +70,7 @@ def test_your_design_starts_as_a_left_handed_double_cutaway() -> None:
     heel_end = body.neck_pocket.max_x
     horns = [point for point in body.outline.points if point.x < heel_end - 100.0]
 
-    # The long upper horn lies on the bass side (-Y) of this left-handed body.
+    # The long upper horn lies on the bass side (-Y) of this right-handed body.
     assert horns and all(point.y < 0 for point in horns)
     assert max(point.y for point in body.outline.points) > 150.0
     assert min(point.y for point in body.outline.points) < -150.0

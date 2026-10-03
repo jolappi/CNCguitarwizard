@@ -91,7 +91,7 @@ def test_the_preset_places_both_contours_on_the_bass_side() -> None:
         "Belly cut",
         "back",
     )
-    # The left-handed default has its bass side at -Y.
+    # The right-handed default has its bass side at -Y.
     assert all(point.y < 0.0 for point in (*arm.edge, *belly.edge))
     heel_end = body.neck_pocket.max_x
     assert arm.edge[len(arm.edge) // 2].x - heel_end > 120.0

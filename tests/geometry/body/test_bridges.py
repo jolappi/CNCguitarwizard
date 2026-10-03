@@ -84,13 +84,13 @@ def test_floyd_rose_follows_the_official_routing_diagram() -> None:
 
 
 def test_floyd_rose_mirrors_for_the_other_handedness() -> None:
-    lefty = FloydRoseSpec().hardware(609.6, 44.0)
-    righty = FloydRoseSpec(treble_side="-y").hardware(609.6, 44.0)
+    righty = FloydRoseSpec().hardware(609.6, 44.0)
+    lefty = FloydRoseSpec(treble_side="-y").hardware(609.6, 44.0)
 
-    assert righty.top_cavities[0].min_y == pytest.approx(-49.4)
-    assert righty.top_cavities[0].max_y == pytest.approx(45.85)
-    assert righty.through_cavities[0].min_y == pytest.approx(
-        -lefty.through_cavities[0].max_y
+    assert lefty.top_cavities[0].min_y == pytest.approx(-49.4)
+    assert lefty.top_cavities[0].max_y == pytest.approx(45.85)
+    assert lefty.through_cavities[0].min_y == pytest.approx(
+        -righty.through_cavities[0].max_y
     )
 
 

@@ -86,18 +86,18 @@ def test_a_pickup_position_can_be_left_empty() -> None:
 
 
 def test_pickup_routes_and_screws_follow_the_bass_side() -> None:
-    lefty = pickup_route("precision_bass", "P", 100.0, 20.0, -1.0)
-    righty = pickup_route("precision_bass", "P", 100.0, 20.0, 1.0)
-    assert lefty is not None and righty is not None
+    righty = pickup_route("precision_bass", "P", 100.0, 20.0, -1.0)
+    lefty = pickup_route("precision_bass", "P", 100.0, 20.0, 1.0)
+    assert righty is not None and lefty is not None
     # The bass coil (nut-ward half) lies on the bass side.
-    nut_ward_y = [p.y for p in lefty.outline if p.x < 100.0 - 1.0]
+    nut_ward_y = [p.y for p in righty.outline if p.x < 100.0 - 1.0]
     # Its inner end's ear reaches 17.3 mm past the centreline.
     assert max(nut_ward_y) < 20.0 and min(nut_ward_y) < -40.0
-    assert [p.y for p in righty.outline] == pytest.approx([-p.y for p in lefty.outline])
+    assert [p.y for p in lefty.outline] == pytest.approx([-p.y for p in righty.outline])
     for _, x, y in pickup_screws("precision_bass", 100.0, -1.0, 79.9):
         from cncguitarwizard.geometry.primitives import Point2D
 
-        assert point_in_polygon(Point2D(x, y), lefty.outline)
+        assert point_in_polygon(Point2D(x, y), righty.outline)
     assert pickup_route("none", "N", 0.0, 20.0, -1.0) is None
     assert pickup_screws("none", 0.0, -1.0, 79.9) == ()
     assert pickup_half_length("jazz_bass") == pytest.approx(15.0)

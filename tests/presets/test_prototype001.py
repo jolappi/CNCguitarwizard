@@ -153,7 +153,7 @@ def test_default_preset_builds_every_locked_component() -> None:
     control = geometry.body.control_cavity
     assert control is not None
     assert control.cavity.min_x > geometry.body.bridge_pickup.max_x
-    # Left-handed: controls on the +Y lower bout, switch on the -Y horn.
+    # Right-handed: controls on the +Y lower bout, switch on the -Y horn.
     assert control.cavity.min_y > 0.0
     assert control.depth == pytest.approx(36.0)
     assert control.cover_recess.depth == 2.0

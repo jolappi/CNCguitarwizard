@@ -60,9 +60,9 @@ side (an offset may then be negative for a post past the centreline);
 without it every station is mirrored onto both sides.
 
 `headstock_bass_side` says which side of the centreline carries the low E:
-`-y` on the left-handed Prototype001 body (the long-horn side), `+y` for a
-right-handed one; `HeadstockPlan.bass_sign` and every `TunerHole.side`
-follow it, so "bass" always means the physical bass side.
+`-y` on the right-handed Prototype001 body as drawn (the long-horn side);
+`handedness = "left"` puts it at `+y`. `HeadstockPlan.bass_sign` and every
+`TunerHole.side` follow it, so "bass" always means the physical bass side.
 
 ## 3+3 layout
 

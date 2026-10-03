@@ -104,6 +104,35 @@ sallivat (bassopuolella 50 mm, diskanttipuolella 44 mm kannan päästä). Mikkit
 valittavissa kummallekin paikalle (humbucker, Jazz Bass, Precision Bass,
 bassohumbucker tai ei mikkiä). Bassoarvot ovat lähtöarvoja.
 
+## Vasenkätinen
+
+Kaikki runkopohjat ja oletuskaula on piirretty oikeakätisiksi: edestä
+katsottuna lapa vasemmalla bassopuoli, pitkä sarvi ja kytkin ovat −Y:ssä,
+säätimet ja jakki +Y:ssä. `handedness = "left"` (lomakkeen Instrument-
+ryhmässä) rakentaa soittimen peilikuvan keskilinjan yli, ja suunnitelma
+tallennetaan edelleen piirrettynä, joten sama suunnitelma ja pohja käyvät
+kummallekin kädelle:
+
+- rungon muoto (`mirrored_shape`): kytkin, potentiometrit, jakki ja sen
+  suunta, säädinkolon siirto ja kulma, kaulapultit, paristokotelo ja sen
+  kulma, piirretty suojalevy, kyynärviiste ja mahaviiste peilataan, ja
+  piirretyt vakiomuodot (Design by Jone -ääriviiva, mantelikolo ja sen
+  kansi) `mirrored`-lipulla;
+- bassopuoli (`bass_sign`): mikit ja niiden vino, talla (Tune-o-maticin
+  taaempi bassotolppa), viuhkanauhojen pitkä puoli, nauhat, otelaudan
+  merkit, lavan virittimet, automaattinen suojalevy ja viisteet;
+- Floyd Rosen vipupuoli (`treble_side`);
+- piirretty lavan kärki ja lavan tekstin paikka. Teksti ladotaan
+  uudestaan, sitä ei peilata: se kulkee kulmassa 180° −
+  `headstock_engraving_angle`, joten se on oikeakätisen tekstin peilikuvan
+  paikalla, kirjainten yläreuna samalla puolella, ja luettavissa.
+
+Runko- ja lapaeditori piirtävät suunnitelman piirrettynä ja näyttävät sen
+peilattuna vasenkätiselle (yksi käännetty SVG-ryhmä, jonka läpi myös
+raahaus luetaan); editorin tekstin esikatselu on rakennettu teksti
+peilattuna takaisin, joten se näkyy luettavana. Aiemmin koodi ja
+dokumentit kutsuivat oletusta virheellisesti vasenkätiseksi.
+
 ## Kaulan kiinnitys
 
 Neljä kaulapulttia rungon takaa: holkkiupotus Ø 14 mm, 5 mm syvä, ja sen

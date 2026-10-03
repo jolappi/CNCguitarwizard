@@ -74,6 +74,7 @@ from .body_shapes import (
     BODY_WIDENING_PER_STRING,
     GUITAR_BODY,
     BodyShapeSpec,
+    mirrored_shape,
     widened_shape,
 )
 from .controls import (
@@ -453,6 +454,15 @@ class Prototype001Parameters:
     # Prototype001Parameters.for_instrument); string_count is what the
     # tuner layout, bridge and pickups actually follow.
     instrument: Instrument = "electric_guitar"
+    # handedness: "right" builds the instrument as drawn (every body
+    # template and the default neck are right-handed: seen from the front
+    # with the headstock to the left, the bass side, the long horn and the
+    # switch at -Y, the controls and jack at +Y); "left" builds its mirror
+    # image: the body shape, its electronics and contours, the bass side
+    # (pickups, bridge, frets, inlays, tuners), a Floyd Rose's arm side and
+    # a drawn headstock tip all flip to the other side of the centerline.
+    # Designs stay stored as drawn; text is set again, never mirrored.
+    handedness: Literal["right", "left"] = "right"
     string_count: int = 6
     scale_length: float = 609.6
     fret_count: int = 24
@@ -511,7 +521,7 @@ class Prototype001Parameters:
     inlay_dot_diameter: float = 6.0
     inlay_block_length_fraction: float = 0.6
     inlay_block_edge_margin: float = 5.0
-    # Solid body (left-handed): outline, pickup routes, bridge baseplate
+    # Solid body (right-handed, as drawn): outline, pickup routes, bridge baseplate
     # cutout, and the rear control and switch cavities (each with its
     # cover recess) are all digitised directly from the user's own
     # assets/reference/omarunko.dxf (see _omarunko_outline.py) — the actual
@@ -835,8 +845,9 @@ class Prototype001Parameters:
     # the style's wood reserve (HEADSTOCK_RESERVES): a six-in-line blank
     # keeps room for a Strat outline, a 4+2 blank for a Music Man one.
     # The headstock grows past headstock_length when the last tuner
-    # needs it. headstock_bass_side says where the low E is: -Y on the
-    # left-handed Prototype001 body (the long-horn side). The shoulder
+    # needs it. headstock_bass_side says where the low E is as drawn: -Y on
+    # the right-handed Prototype001 body (the long-horn side; handedness
+    # "left" mirrors it). The shoulder
     # and tip widths and shifts, when set, override the resolved ends
     # (shifts toward the bass side positive).
     headstock_style: HeadstockStyle = "3+3"
@@ -1004,6 +1015,25 @@ class Prototype001Parameters:
         return cls(instrument=instrument, **INSTRUMENT_OVERRIDES[instrument])
 
     @property
+    def left_handed(self) -> bool:
+        """Return whether the instrument is built as its left-handed mirror."""
+        return self.handedness == "left"
+
+    @property
+    def bass_sign(self) -> float:
+        """Return +1.0 when the bass side is +Y, -1.0 when it is -Y.
+
+        ``headstock_bass_side`` as drawn, the other side when left-handed.
+        """
+        drawn = -1.0 if self.headstock_bass_side == "-y" else 1.0
+        return -drawn if self.left_handed else drawn
+
+    @property
+    def built_body_shape(self) -> BodyShapeSpec:
+        """Return the body shape as built: ``body_shape``, mirrored when left-handed."""
+        return mirrored_shape(self.body_shape) if self.left_handed else self.body_shape
+
+    @property
     def heel_flat_start_offset(self) -> float:
         """Return the derived distance from fret 24 to the flat heel start.
 
@@ -1104,7 +1134,7 @@ class Prototype001Parameters:
         resolved ends. The headstock grows past ``headstock_length`` when
         the last tuner needs it.
         """
-        bass_sign = -1.0 if self.headstock_bass_side == "-y" else 1.0
+        bass_sign = self.bass_sign
         bass_count, treble_count = HEADSTOCK_STYLES[self.headstock_style]
         hole_edge = self.tuner_hole_diameter / 2.0 + self.tuner_edge_clearance
 
@@ -1334,7 +1364,7 @@ class Prototype001Parameters:
             bass_sign=layout.bass_sign,
             bass_edge=self.headstock_bass_edge if drawn else None,
             treble_edge=self.headstock_treble_edge if drawn else None,
-            tip_points=self.headstock_tip_points if drawn else (),
+            tip_points=self.built_tip_points() if drawn else (),
         )
         tuners = TunerLayout(
             plan,
@@ -1368,7 +1398,7 @@ class Prototype001Parameters:
             min(self.headstock_root_length, self.headless_length / 2.0),
             self.nut_width,
             self.nut_width,
-            bass_sign=-1.0 if self.headstock_bass_side == "-y" else 1.0,
+            bass_sign=self.bass_sign,
         )
         tuners = TunerLayout(
             plan,
@@ -1435,8 +1465,8 @@ class Prototype001Parameters:
             raise BodyGeometryError(
                 "The neck-bolt hole must be narrower than its ferrule."
             )
-        if self.body_shape.neck_bolts:
-            centres = [(heel_end + x, y) for x, y in self.body_shape.neck_bolts]
+        if self.built_body_shape.neck_bolts:
+            centres = [(heel_end + x, y) for x, y in self.built_body_shape.neck_bolts]
         else:
             offset = (
                 self.body_neck_bolt_hole_diameter / 2.0
@@ -1476,7 +1506,7 @@ class Prototype001Parameters:
             ]
             return min(gaps, default=math.inf)
 
-        body_outline = self.body_shape.outline_points(
+        body_outline = self.built_body_shape.outline_points(
             heel_end, self.body_widening_amount()
         )
 
@@ -1657,7 +1687,7 @@ class Prototype001Parameters:
     @property
     def fret_skew(self) -> FretSkew:
         """Return how the frets lean: slant and multiscale fan together."""
-        bass_sign = -1.0 if self.headstock_bass_side == "-y" else 1.0
+        bass_sign = self.bass_sign
         outer = (self.string_count - 1) / 2.0
         fan = (
             0.0
@@ -2030,7 +2060,7 @@ class Prototype001Parameters:
         Positive ``fret_slant_angle`` moves each fret's treble end, on the
         side away from ``headstock_bass_side``, toward the bridge.
         """
-        bass_sign = -1.0 if self.headstock_bass_side == "-y" else 1.0
+        bass_sign = self.bass_sign
         return -bass_sign * math.tan(math.radians(self.fret_slant_angle))
 
     def body_widening_amount(self) -> float:
@@ -2077,7 +2107,7 @@ class Prototype001Parameters:
         # Body features ride with the heel end, bridge features with the
         # scale length (see the body_* parameter comments).
         widening = self.body_widening_amount()
-        shape = widened_shape(self.body_shape, widening)
+        shape = widened_shape(self.built_body_shape, widening)
         body_outline = TracedOutline(shape.outline_points(heel_end, widening))
         neck_pocket = TracedCavity(
             "Neck pocket",
@@ -2101,7 +2131,7 @@ class Prototype001Parameters:
             else None
         )
 
-        bass_sign = -1.0 if self.headstock_bass_side == "-y" else 1.0
+        bass_sign = self.bass_sign
 
         scale = self.centre_scale
         # A multiscale's pickups turn with the fanned frets (a slant alone
@@ -2117,7 +2147,15 @@ class Prototype001Parameters:
 
         # The saddles' line, moved with a tilted neck.
         saddles = self.bridge_scale_line()
-        hardware = self.body_bridge.hardware(saddles, self.body_thickness)
+        bridge_spec = self.body_bridge
+        if isinstance(bridge_spec, FloydRoseSpec) and self.left_handed:
+            # The tremolo arm (and the recess's wider side) go with the
+            # treble strings.
+            bridge_spec = replace(
+                bridge_spec,
+                treble_side="-y" if bridge_spec.treble_side == "+y" else "+y",
+            )
+        hardware = bridge_spec.hardware(saddles, self.body_thickness)
         if isinstance(self.body_bridge, TuneOMaticSpec) and bass_sign > 0.0:
             # Its bass post, set back, goes to the bass side.
             hardware = mirrored_hardware(hardware)
@@ -2508,12 +2546,37 @@ class Prototype001Parameters:
 
     def headstock_engraving_centre(self, headstock: HeadstockSolid) -> Point2D:
         """Return where the headstock lettering is centred (model frame)."""
-        if self.headstock_engraving_x is not None:
-            return Point2D(self.headstock_engraving_x, self.headstock_engraving_y)
-        seat_end = headstock.nut_seat_length + headstock.nut_reach
-        return Point2D(
-            -(seat_end + HEADSTOCK_ENGRAVING_SETBACK), self.headstock_engraving_y
+        # Left-handed, it sits on the mirrored side.
+        y = (
+            -self.headstock_engraving_y
+            if self.left_handed
+            else self.headstock_engraving_y
         )
+        if self.headstock_engraving_x is not None:
+            return Point2D(self.headstock_engraving_x, y)
+        seat_end = headstock.nut_seat_length + headstock.nut_reach
+        return Point2D(-(seat_end + HEADSTOCK_ENGRAVING_SETBACK), y)
+
+    def headstock_engraving_direction(self) -> float:
+        """Return the direction the headstock lettering runs, in degrees.
+
+        Left-handed, the mirror of ``headstock_engraving_angle`` read the
+        other way (180 degrees less it): the text lies where the mirror
+        image of the right-handed text would, its tops on the same side,
+        but reads the right way round (set again, not mirrored).
+        """
+        if self.left_handed:
+            return 180.0 - self.headstock_engraving_angle
+        return self.headstock_engraving_angle
+
+    def built_tip_points(self) -> tuple[tuple[float, float], ...]:
+        """Return ``headstock_tip_points`` as built, mirrored when left-handed.
+
+        Still ordered from -Y to +Y, as ``HeadstockPlan`` wants them.
+        """
+        if not self.left_handed:
+            return self.headstock_tip_points
+        return tuple((past, -y) for past, y in reversed(self.headstock_tip_points))
 
     def headstock_lettering(
         self,
@@ -2542,7 +2605,7 @@ class Prototype001Parameters:
                 text,
                 self.headstock_engraving_height,
                 self.headstock_engraving_centre(headstock),
-                self.headstock_engraving_angle,
+                self.headstock_engraving_direction(),
                 self.headstock_engraving_font,
             )
         except GeometryException as error:
@@ -2750,7 +2813,7 @@ class Prototype001Parameters:
                 region,
                 [route.outline for route in pickups],
                 neck_pocket,
-                -1.0 if self.headstock_bass_side == "-y" else 1.0,
+                self.bass_sign,
                 PICKGUARD_STYLES[self.body_pickguard_style],
             )
             automatic = True
@@ -3235,6 +3298,8 @@ class Prototype001Parameters:
             raise NeckGeometryError("Tuner tip margin must not be negative.")
         if self.headstock_bass_side not in ("-y", "+y"):
             raise NeckGeometryError('headstock_bass_side must be "-y" or "+y".')
+        if self.handedness not in ("right", "left"):
+            raise NeckGeometryError('handedness must be "right" or "left".')
         string_values = (
             self.tuner_post_diameter,
             self.nut_string_spacing,
@@ -3371,7 +3436,7 @@ class Prototype001Parameters:
             dot_diameter=self.inlay_dot_diameter,
             block_length_fraction=self.inlay_block_length_fraction,
             block_edge_margin=self.inlay_block_edge_margin,
-            bass_sign=-1.0 if self.headstock_bass_side == "-y" else 1.0,
+            bass_sign=self.bass_sign,
         )
         truss_rod_channel = self.truss_rod(outline)
         headstock_plan, tuner_layout = self.headstock_design()

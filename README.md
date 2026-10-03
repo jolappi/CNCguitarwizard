@@ -27,7 +27,8 @@ source .venv/bin/activate        # Windows: .venv\Scripts\activate
 python -m pip install -e .
 ```
 
-Build Prototype001 — the complete left-handed guitar: neck, fretboard,
+Build Prototype001 — the complete right-handed guitar (or, with
+`handedness = "left"`, its left-handed mirror image): neck, fretboard,
 headstock and body — with one command:
 
 ```bash

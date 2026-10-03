@@ -113,7 +113,7 @@ def test_a_bridge_single_coil_slants_its_treble_end_toward_the_bridge(
     body = replace(Prototype001Parameters(), body_pickups=layout).build().body
     bridge = routes(body)["Bridge pickup route"]
     points = bridge.outline  # type: ignore[attr-defined]
-    # The left-handed body has the treble side at +Y.
+    # The right-handed body has the treble side at +Y.
     treble_end = max(points, key=lambda point: point.y)
     bass_end = min(points, key=lambda point: point.y)
 

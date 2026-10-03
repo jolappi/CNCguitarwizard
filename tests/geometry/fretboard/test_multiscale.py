@@ -64,7 +64,7 @@ def test_the_perpendicular_fret_is_square_and_the_bass_side_is_longer(fanned) ->
     seventh = fanned.fret_layout.slots[6]
     assert seventh.start.x == pytest.approx(seventh.end.x)
     first, last = fanned.fret_layout.slots[0], fanned.fret_layout.slots[-1]
-    # The bass side (-Y on the left-handed default): nut-ward before the
+    # The bass side (-Y on the right-handed default): nut-ward before the
     # perpendicular fret, bridge-ward after it.
     bass_first = min((first.start, first.end), key=lambda p: p.y)
     treble_first = max((first.start, first.end), key=lambda p: p.y)

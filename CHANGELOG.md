@@ -4,6 +4,15 @@
 
 ### Added
 
+- A left-handed option (`handedness`, "right" or "left", first in the
+  form): the instrument built as its mirror image across the centreline
+  while the design stays stored as drawn. The body shape and its
+  electronics, pickguard and contours (`mirrored_shape`, a `mirrored`
+  flag for the traced outline and almond cavity), the bass side
+  (`bass_sign`: pickups, bridge, fan, frets, inlays, tuners), a Floyd
+  Rose's arm side and a drawn headstock tip flip; the headstock lettering
+  is set again so it still reads (its angle 180 degrees less). The body
+  and headstock editors show the design mirrored.
 - A carved top, Les Paul style, for any body (`body_carved_top` and its
   depth `body_carve_depth`, 9.5 mm, both beside the body editor too,
   `body_carve_rim` 8 mm, `body_carve_margin`
@@ -306,6 +315,9 @@
 
 ### Fixed
 
+- The default instrument and every body template were called left-handed
+  in the code and docs; they are right-handed (seen from the front with
+  the headstock to the left, the bass side and long horn at -Y).
 - A truss rod adjusted at the headstock no longer breaks through the back
   of the neck: its 11 mm pocket and 10.5 mm step lie in the neck by the
   nut, which thins to the first fret's wood (11 mm on the default neck).

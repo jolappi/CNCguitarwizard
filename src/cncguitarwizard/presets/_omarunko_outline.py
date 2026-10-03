@@ -13,11 +13,12 @@ pickup block, the only features the drawing positions explicitly):
   rather than sitting fully inside body wood.
 * Y: the pickups' own centre line is the neck's centerline (Y = 0),
   and the drawing's Y axis maps straight onto the model's. This is a
-  LEFT-handed guitar: seen from the front with the headstock to the
-  left (+Z toward the viewer, +Y up) the long upper horn and the round
-  switch cavity at its root are at -Y, and the almond control cavity
-  behind the bridge is on the lower bout at +Y. (Mirroring every Y
-  below gives the right-handed twin.)
+  right-handed guitar: seen from the front with the headstock to the
+  left (+Z toward the viewer, +Y up) the bass side, the long upper horn
+  and the round switch cavity at its root are at -Y, and the almond
+  control cavity behind the bridge is on the lower bout at +Y.
+  (Mirroring every Y below gives the left-handed twin, which
+  ``handedness = "left"`` builds.)
 
 The same offset then places every other traced feature — both rear
 cavities with their cover recesses — at its real position and shape

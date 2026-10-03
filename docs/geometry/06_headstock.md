@@ -29,7 +29,8 @@ Prototype001's 3+3 stations produce, not fixed inputs.
 `HeadstockPlan` takes optional `shoulder_shift` and `tip_shift` values
 (positive toward the bass side) that move the outline's centre at the
 shoulder and at the tip while the nut stays centred on the neck, and a
-`bass_sign` (+1 right-handed, -1 left-handed) saying which way the bass
+`bass_sign` (-1 with the bass side at -Y, the right-handed default; +1
+left-handed) saying which way the bass
 side lies. `half_width_at(distance, side)` gives each side's own signed
 edge distance — negative should that edge cross the centreline —
 `edge_y(distance, y_sign)` the

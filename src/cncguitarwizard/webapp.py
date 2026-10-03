@@ -55,6 +55,10 @@ _VARIANT_LABELS: dict[str, str] = {**BRIDGE_LABELS, **BODY_SHAPE_LABELS}
 
 # Readable names for choice fields whose options are short codes.
 _CHOICE_LABELS: dict[str, dict[str, str]] = {
+    "handedness": {
+        "right": "Right-handed (as drawn)",
+        "left": "Left-handed (the mirror image)",
+    },
     "body_controls": CONTROL_LABELS,
     "post_processor": POST_PROCESSOR_LABELS,
     "neck_blank": {
@@ -202,6 +206,7 @@ _BASIC_FIELDS: frozenset[str] = frozenset(
         "step_down",
         "step_over",
         "tab_count",
+        "handedness",
         "carve_tool_diameter",
         "carve_finish",
     }
@@ -234,6 +239,7 @@ _BASIC_VARIANT_FIELDS: dict[str, frozenset[str]] = {
 }
 
 _GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("Instrument", ("handedness",)),
     (
         "Scale and fretboard",
         (
@@ -397,7 +403,10 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         ``engraving`` the decorative engraving's lines, or ``None``.
     """
     try:
-        parameters = Prototype001Parameters(**_coerce(payload.get("prototype", {})))
+        built = Prototype001Parameters(**_coerce(payload.get("prototype", {})))
+        # The editor works on the design as drawn (right-handed) and shows
+        # it mirrored for a left-handed build.
+        parameters = dataclasses.replace(built, handedness="right")
         layout = parameters.body_layout()
         neck = parameters.neck_outline()
     except (CNCGuitarWizardError, TypeError, ValueError) as error:
@@ -535,6 +544,7 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
     ]
     return {
         "heel_end": round(heel_end, 2),
+        "mirrored": built.left_handed,
         "scale_line": round(parameters.centre_scale, 3),
         "samples_per_segment": OUTLINE_SAMPLES_PER_SEGMENT,
         "widening": parameters.body_widening_amount(),
@@ -654,7 +664,9 @@ def headstock_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         the headstock's lettering (see ``_headstock_lettering``), or ``None``.
     """
     try:
-        parameters = Prototype001Parameters(**_coerce(payload.get("prototype", {})))
+        built = Prototype001Parameters(**_coerce(payload.get("prototype", {})))
+        # As drawn (right-handed), shown mirrored for a left-handed build.
+        parameters = dataclasses.replace(built, handedness="right")
         fitted, _ = dataclasses.replace(
             parameters, headstock_outline="fitted"
         ).headstock_design()
@@ -673,7 +685,8 @@ def headstock_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         for side in ("bass", "treble")
     }
     return {
-        "lettering": _headstock_lettering(parameters),
+        "lettering": _headstock_lettering(built),
+        "mirrored": built.left_handed,
         "nut_half_width": parameters.nut_width / 2.0,
         "bass_sign": fitted.bass_sign,
         "min_edge_distance": parameters.tuner_edge_offset,
@@ -696,7 +709,10 @@ def _headstock_lettering(parameters: Prototype001Parameters) -> dict[str, Any] |
 
     ``{"lines", "centre", "problem"}``: its strokes and centre (model
     frame, as the editor draws it) and why it does not fit, or ``None``.
-    Drawn even where it does not fit, so it can be dragged clear.
+    Drawn even where it does not fit, so it can be dragged clear. For a
+    left-handed build, the lettering as built mirrored back into the
+    drawn frame: the editor shows that frame mirrored, so the text reads
+    the right way round there, and its centre is the one the form keeps.
     """
     text = parameters.headstock_engraving_text.strip()
     if not text:
@@ -704,16 +720,21 @@ def _headstock_lettering(parameters: Prototype001Parameters) -> dict[str, Any] |
     plan, tuners = parameters.headstock_design()
     headstock = parameters.headstock_solid(plan)
     centre = parameters.headstock_engraving_centre(headstock)
+    flip = -1.0 if parameters.left_handed else 1.0
     try:
         lines = text_lines(
             text,
             parameters.headstock_engraving_height,
             centre,
-            parameters.headstock_engraving_angle,
+            parameters.headstock_engraving_direction(),
             parameters.headstock_engraving_font,
         )
     except GeometryException as error:
-        return {"lines": [], "centre": [centre.x, centre.y], "problem": str(error)}
+        return {
+            "lines": [],
+            "centre": [centre.x, flip * centre.y],
+            "problem": str(error),
+        }
     problem = None
     try:
         parameters.headstock_lettering(
@@ -722,8 +743,10 @@ def _headstock_lettering(parameters: Prototype001Parameters) -> dict[str, Any] |
     except CNCGuitarWizardError as error:
         problem = str(error)
     return {
-        "lines": [[[round(p.x, 2), round(p.y, 2)] for p in line] for line in lines],
-        "centre": [round(centre.x, 2), round(centre.y, 2)],
+        "lines": [
+            [[round(p.x, 2), round(flip * p.y, 2)] for p in line] for line in lines
+        ],
+        "centre": [round(centre.x, 2), round(flip * centre.y, 2)],
         "problem": problem,
     }
 

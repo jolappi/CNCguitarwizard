@@ -8,9 +8,10 @@ plane as the neck-back surface. The body is extruded downward, so a cavity
 the back" removes material upward from `Z = -thickness`.
 
 Seen from the front with the headstock to the left, +Y is up. Prototype001
-is a **left-handed** instrument: its long upper horn and switch cavity lie at
--Y, its control cavity and jack at +Y. Mirroring every Y coordinate gives the
-right-handed twin.
+is a **right-handed** instrument as drawn: its bass side, long upper horn and
+switch cavity lie at -Y, its control cavity and jack at +Y. Mirroring every Y
+coordinate gives the left-handed twin, which `handedness = "left"` builds
+(see *Left-handed* below).
 
 ## Building blocks
 
@@ -116,7 +117,7 @@ round switch cavity (centre, cover), the pot shaft holes and the jack bore —
 all measured from the heel end, so the body rides with whatever neck it
 receives. The almond control cavity and its cover ledge keep the DXF's
 shapes on every body; `control_shift` moves them. Both shapes are
-left-handed like the DXF: the long upper horn at -Y, controls at +Y. The
+right-handed like the DXF: the long upper horn at -Y, controls at +Y. The
 drawn body's starting loop closes across the horn gap about 52 mm ahead of
 the pocket end so the neck pocket opens onto the gap as the DXF body's does.
 
@@ -140,6 +141,36 @@ the body, in about a millisecond; the web app's editor uses it (through
 `webapp.body_editor_layout`) to draw the fixed features under the outline
 being drawn. The full `build()` then rejects an outline that leaves a
 feature outside the wood.
+
+## Left-handed
+
+Every body template and the default neck are drawn right-handed.
+`handedness = "left"` builds the instrument's mirror image across the
+centreline while the design stays stored as drawn, so a saved design or
+template serves both hands:
+
+- the body shape (`mirrored_shape`): every placement's Y and every angle
+  in the plan change sign — switch, pots, jack and its direction, almond
+  shift, neck bolts, battery and its angle, the control layout's angle,
+  a drawn pickguard (run the other way round), arm contour and belly cut
+  — and its `mirrored` flag mirrors the traced constants (the Design by
+  Jone outline, the almond cavity and cover);
+- the bass side (`Prototype001Parameters.bass_sign`): pickups and their
+  slant, the bridge (a Tune-o-matic's set-back bass post), a fan's long
+  side, frets, inlays, the headstock's tuners, the automatic pickguard
+  and contours all follow it;
+- a Floyd Rose's `treble_side` (the arm and the recess's wider side);
+- a drawn headstock tip (`built_tip_points`) and the lettering's place
+  (`headstock_engraving_y`). The lettering is set again, never mirrored:
+  it runs at 180 degrees less `headstock_engraving_angle`, so it lies
+  where the right-handed text's mirror image would, its tops on the
+  same side, and reads the right way round.
+
+The body and headstock editors draw the design as drawn and show it
+mirrored for a left-handed build (one SVG group turned over; dragging
+reads points back through it); the lettering they show is the built one
+mirrored back, so it reads right there too. A carved top's fall matches
+its mirror within its grid's sampling (about 0.03 mm).
 
 ## Pickups
 
@@ -646,7 +677,7 @@ all placed relative to the scale line:
 | Spec | `kind` | Adds |
 | --- | --- | --- |
 | `KahlerBridgeSpec` (default) | `kahler_7300` | Rectangular baseplate cutout (the DXF's 55.45 × 65.04 × 25 mm); no studs, no rear cavity |
-| `FloydRoseSpec` | `floyd_rose` | Floyd Rose Original recessed routing per the manufacturer's *Original Series Routing Diagrams*: two Ø 10 stud holes 73.91 mm apart, 11.9 mm ahead of the scale line (25.03 in on a 25.5 in scale); a 95.25 mm wide recess, 79.38 mm long, narrowing to 71.12 mm after 42.44 mm, cut 6.73 mm deep over its whole footprint (continuous walls) and deepened to 11.18 mm behind the front 15.88 mm stud shelf as a step inside it, with a 20.96 × 82.85 mm block route 29.59 mm deep through that floor that opens into the spring cavity only where the two overlap; a rear 123.19 × 56.64 × 16.13 mm spring cavity with a 28.19 mm deep block clearance pocket at its tail end and a 2 mm cover recess 8 mm wider all round (`cover_margin`), closed by a sheet cover with six screws on the ledge (`Floyd Rose spring cavity cover`, `Cover_floyd_rose_spring_cavity.nc`, made like the cavity covers by `controls.rear_cover`). The diagram is for a 1.75 in (44.45 mm) body, where the block route runs 1.27 mm into the spring cavity; in a thicker body the spring cavity and block pocket reach deeper by the difference (`FLOYD_ROSE_DRAWN_THICKNESS`), so the block route always opens into the back. The recess is 3.56 mm wider on the tremolo-arm (treble) side; `treble_side` picks that side (`"+y"` on the left-handed Prototype001 body) |
+| `FloydRoseSpec` | `floyd_rose` | Floyd Rose Original recessed routing per the manufacturer's *Original Series Routing Diagrams*: two Ø 10 stud holes 73.91 mm apart, 11.9 mm ahead of the scale line (25.03 in on a 25.5 in scale); a 95.25 mm wide recess, 79.38 mm long, narrowing to 71.12 mm after 42.44 mm, cut 6.73 mm deep over its whole footprint (continuous walls) and deepened to 11.18 mm behind the front 15.88 mm stud shelf as a step inside it, with a 20.96 × 82.85 mm block route 29.59 mm deep through that floor that opens into the spring cavity only where the two overlap; a rear 123.19 × 56.64 × 16.13 mm spring cavity with a 28.19 mm deep block clearance pocket at its tail end and a 2 mm cover recess 8 mm wider all round (`cover_margin`), closed by a sheet cover with six screws on the ledge (`Floyd Rose spring cavity cover`, `Cover_floyd_rose_spring_cavity.nc`, made like the cavity covers by `controls.rear_cover`). The diagram is for a 1.75 in (44.45 mm) body, where the block route runs 1.27 mm into the spring cavity; in a thicker body the spring cavity and block pocket reach deeper by the difference (`FLOYD_ROSE_DRAWN_THICKNESS`), so the block route always opens into the back. The recess is 3.56 mm wider on the tremolo-arm (treble) side; `treble_side` picks that side (`"+y"` on the right-handed Prototype001 body; a left-handed build flips it) |
 | `TuneOMaticSpec` | `tune_o_matic` | Two Ø 11.2 post holes, the treble one `compensation` (1.6 mm, 1/16 in) behind the scale line and the bass one `bass_setback` (3.2 mm, 1/8 in) further back, so the bridge leans with the strings' compensation and every saddle starts mid-travel (mirrored onto a +Y bass side, `mirrored_hardware`); two Ø 11.2 stop-bar stud holes 45 mm behind the scale line |
 | `HeadlessBridgeSpec` | `headless` | A headless bridge: saddles and tuners in one unit screwed flat to the top. Four Ø 3 × 12 mm pilot holes `screw_inset` (6 mm) in from the plate's corners; the plate, from `front_reach` (12 mm) ahead of the scale line, `length` (90 mm) long and `side_margin` (10 mm) past the outer strings (`string_count`, `string_spacing`), is the bridge's `footprint`, which must lie on the body and which the pickguard and the engraving keep clear of |
 | `HardtailSpec` | `hardtail` | `string_count` (6) Ø 3 string-through holes 14 mm behind the scale line and five pilot holes for the baseplate screws; the bass uses four strings 19 mm apart, 30 mm behind the scale line |

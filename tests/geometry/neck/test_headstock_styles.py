@@ -130,8 +130,8 @@ def test_the_left_handed_default_puts_the_bass_side_at_minus_y() -> None:
 
     assert geometry.headstock.plan.bass_sign == -1.0
     assert all(hole.center.y < 0 for hole in geometry.tuner_layout.holes_on("bass"))
-    righty = replace(Prototype001Parameters(), headstock_bass_side="+y").build()
-    assert all(hole.center.y > 0 for hole in righty.tuner_layout.holes_on("bass"))
+    lefty = replace(Prototype001Parameters(), headstock_bass_side="+y").build()
+    assert all(hole.center.y > 0 for hole in lefty.tuner_layout.holes_on("bass"))
 
 
 def edge_distance(plan, hole) -> float:  # type: ignore[no-untyped-def]

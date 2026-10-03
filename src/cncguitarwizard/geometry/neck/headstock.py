@@ -13,8 +13,8 @@ from ..primitives import Line2D, Point2D, Point3D, SmoothCurve
 Side = Literal["bass", "treble"]
 """Which physical side of the centerline a feature is on.
 
-The bass side is +Y on a right-handed neck (``bass_sign = 1.0``) and -Y
-on a left-handed one (``bass_sign = -1.0``).
+The bass side is -Y on a right-handed neck (``bass_sign = -1.0``, the
+default) and +Y on a left-handed one (``bass_sign = 1.0``).
 """
 
 
@@ -32,7 +32,7 @@ class HeadstockPlan:
     on the neck. A shift may carry one edge past the centerline, so each
     side's "half-width" is a signed edge distance and only the total
     width has to stay positive. ``bass_sign`` says which way the bass side lies:
-    +Y on a right-handed neck, -Y on a left-handed one.
+    -Y on a right-handed neck, +Y on a left-handed one.
 
     Args:
         length: Nut-to-tip plan length in millimetres.
@@ -45,8 +45,8 @@ class HeadstockPlan:
             shoulder, toward the bass side.
         tip_shift: Lateral offset of the outline's centre at the tip,
             toward the bass side.
-        bass_sign: +1.0 when the bass side is +Y (right-handed), -1.0
-            when it is -Y (left-handed).
+        bass_sign: +1.0 when the bass side is +Y (left-handed), -1.0
+            when it is -Y (right-handed).
         bass_edge: A drawn bass-side edge: ``(distance from the nut,
             half-width)`` points ending at the tip (``distance ==
             length``), or ``None`` for the tapered shape above. The edge

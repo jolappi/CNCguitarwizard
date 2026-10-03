@@ -143,6 +143,10 @@ class DesignByJoneShape:
     pickguard_points: tuple[tuple[float, float], ...] = ()
     arm_contour_points: tuple[tuple[float, float], ...] = ()
     belly_cut_points: tuple[tuple[float, float], ...] = ()
+    # Whether the traced outline and almond cavity (constants drawn
+    # right-handed) are mirrored: set by mirrored_shape, with every other
+    # field mirrored there.
+    mirrored: bool = False
 
     def outline_points(
         self, heel_end: float, widening: float = 0.0
@@ -153,7 +157,7 @@ class DesignByJoneShape:
         ``widen_points``).
         """
         return _translated(
-            widen_points(OMARUNKO_OUTLINE_POINTS, widening),
+            widen_points(_side(OMARUNKO_OUTLINE_POINTS, self.mirrored), widening),
             heel_end - OMARUNKO_HEEL_END_X,
             0.0,
         )
@@ -161,13 +165,17 @@ class DesignByJoneShape:
     def control_cavity_points(self, heel_end: float) -> tuple[Point2D, ...]:
         """Return the almond control cavity outline on this body."""
         return _control_points(
-            OMARUNKO_CONTROL_CAVITY_POINTS, heel_end, self.control_shift
+            _side(OMARUNKO_CONTROL_CAVITY_POINTS, self.mirrored),
+            heel_end,
+            self.control_shift,
         )
 
     def control_cover_points(self, heel_end: float) -> tuple[Point2D, ...]:
         """Return the control cavity's cover ledge outline on this body."""
         return _control_points(
-            OMARUNKO_CONTROL_COVER_POINTS, heel_end, self.control_shift
+            _side(OMARUNKO_CONTROL_COVER_POINTS, self.mirrored),
+            heel_end,
+            self.control_shift,
         )
 
 
@@ -218,7 +226,7 @@ YOUR_DESIGN_START_POINTS: tuple[tuple[float, float], ...] = (
 """A Stratocaster-inspired offset double cutaway to start drawing from.
 
 Control points relative to the heel end, in the model frame of this
-left-handed body: the long upper horn at -Y, the controls at +Y. The loop
+right-handed body: the long upper horn at -Y, the controls at +Y. The loop
 closes across the horn gap about 52 mm ahead of the pocket end, so the
 neck pocket opens onto the gap as the Design by Jone body's does.
 """
@@ -308,6 +316,10 @@ class YourDesignShape:
     pickguard_points: tuple[tuple[float, float], ...] = ()
     arm_contour_points: tuple[tuple[float, float], ...] = ()
     belly_cut_points: tuple[tuple[float, float], ...] = ()
+    # Whether the traced outline and almond cavity (constants drawn
+    # right-handed) are mirrored: set by mirrored_shape, with every other
+    # field mirrored there.
+    mirrored: bool = False
 
     def __post_init__(self) -> None:
         """Reject a control polygon that cannot describe a body."""
@@ -339,13 +351,17 @@ class YourDesignShape:
     def control_cavity_points(self, heel_end: float) -> tuple[Point2D, ...]:
         """Return the almond control cavity outline on this body."""
         return _control_points(
-            OMARUNKO_CONTROL_CAVITY_POINTS, heel_end, self.control_shift
+            _side(OMARUNKO_CONTROL_CAVITY_POINTS, self.mirrored),
+            heel_end,
+            self.control_shift,
         )
 
     def control_cover_points(self, heel_end: float) -> tuple[Point2D, ...]:
         """Return the control cavity's cover ledge outline on this body."""
         return _control_points(
-            OMARUNKO_CONTROL_COVER_POINTS, heel_end, self.control_shift
+            _side(OMARUNKO_CONTROL_COVER_POINTS, self.mirrored),
+            heel_end,
+            self.control_shift,
         )
 
 
@@ -358,7 +374,55 @@ def _control_points(
     return _translated(points, heel_end - OMARUNKO_HEEL_END_X + dx, dy)
 
 
+def _side(
+    points: tuple[tuple[float, float], ...], mirrored: bool
+) -> tuple[tuple[float, float], ...]:
+    """Return ``points``, mirrored across the centreline (order reversed) if asked."""
+    if not mirrored:
+        return points
+    return tuple((x, -y) for x, y in reversed(points))
+
+
 BodyShapeSpec = DesignByJoneShape | YourDesignShape
+
+
+def mirrored_shape(shape: BodyShapeSpec) -> BodyShapeSpec:
+    """Return ``shape``'s mirror image across the centreline (left-handed).
+
+    Every placement's Y and every angle in the plan change sign; drawn
+    outlines run the other way round (so they keep their winding), open
+    lines keep their order; the traced constants are mirrored by the
+    ``mirrored`` flag. Mirroring twice gives ``shape`` back.
+    """
+
+    def flipped(
+        points: tuple[tuple[float, float], ...],
+    ) -> tuple[tuple[float, float], ...]:
+        return tuple((x, -y) for x, y in points)
+
+    shift_x, shift_y = shape.control_shift
+    mirrored = replace(
+        shape,
+        switch_cavity_y=-shape.switch_cavity_y,
+        switch_cover_y=-shape.switch_cover_y,
+        pot_offsets=flipped(shape.pot_offsets),
+        jack_y=-shape.jack_y,
+        jack_direction_degrees=-shape.jack_direction_degrees,
+        control_shift=(shift_x, -shift_y),
+        neck_bolts=flipped(shape.neck_bolts),
+        battery_y=-shape.battery_y,
+        battery_angle_degrees=-shape.battery_angle_degrees,
+        control_angle_degrees=-shape.control_angle_degrees,
+        pickguard_points=_side(shape.pickguard_points, True),
+        arm_contour_points=flipped(shape.arm_contour_points),
+        belly_cut_points=flipped(shape.belly_cut_points),
+        mirrored=not shape.mirrored,
+    )
+    if isinstance(mirrored, YourDesignShape):
+        mirrored = replace(
+            mirrored, control_points=_side(mirrored.control_points, True)
+        )
+    return mirrored
 
 
 def widened_shape(shape: BodyShapeSpec, widening: float) -> BodyShapeSpec:
@@ -370,9 +434,8 @@ def widened_shape(shape: BodyShapeSpec, widening: float) -> BodyShapeSpec:
     """
     if widening == 0.0:
         return shape
-    almond_y = sum(y for _, y in OMARUNKO_CONTROL_CAVITY_POINTS) / len(
-        OMARUNKO_CONTROL_CAVITY_POINTS
-    )
+    almond = _side(OMARUNKO_CONTROL_CAVITY_POINTS, shape.mirrored)
+    almond_y = sum(y for _, y in almond) / len(almond)
     shift_x, shift_y = shape.control_shift
     moved_almond = widen_y(almond_y + shift_y, widening)
     return replace(
@@ -610,7 +673,7 @@ _STRATOCASTER_POINTS: tuple[tuple[float, float], ...] = (
 
 Traced from a reference DXF drawing (the body's outermost edge, aligned on
 the drawing's neck pocket: its end wall is the heel end, its middle the
-centreline; already left-handed, the long bass horn at -Y) and then
+centreline; already right-handed, the long bass horn at -Y) and then
 reshaped by hand in the body editor at both horns and the neck joint. 76
 control points. A genre starting point, free to use and change, not a
 reproduction of any maker's body."""
