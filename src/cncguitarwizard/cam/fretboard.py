@@ -287,8 +287,13 @@ def plan_fretboard_machining(
                 start_depth=skim,
             )
         )
+        where = (
+            f"{nut.spec.set_back:g} mm behind the zero fret on the nut line"
+            if nut.zero_fret
+            else "behind the nut line"
+        )
         nut_slot_notes = (
-            f"The nut's slot: {nut.spec.depth:g} mm wide behind the nut line, "
+            f"The nut's slot: {nut.spec.depth:g} mm wide {where}, "
             f"{nut.spec.height:g} mm below the crown; the board runs on "
             f"{nut.spec.lip:g} mm at full height behind it, then slopes to the "
             f"glue face over {nut.spec.taper:g} mm (stepped in the outline "
@@ -314,10 +319,18 @@ def plan_fretboard_machining(
     slot_paths: list[Toolpath] = []
     slot_tool = parameters.slot
     passes = max(1, math.ceil(geometry.fret_slot_depth / slot_tool.step_down - 1e-9))
-    for number, slot in enumerate(geometry.fret_layout.slots, start=1):
+    zero = geometry.fret_layout.zero_fret_slot
+    named_slots = [
+        *((("Zero fret slot", zero),) if zero is not None else ()),
+        *(
+            (f"Fret {number} slot", slot)
+            for number, slot in enumerate(geometry.fret_layout.slots, start=1)
+        ),
+    ]
+    for slot_name, slot in named_slots:
         half = max(abs(slot.start.y), abs(slot.end.y)) + parameters.slot_overshoot
         builder = PathBuilder(
-            f"Fret {number} slot",
+            slot_name,
             safe_height=slot_tool.safe_height,
             feed_rate=slot_tool.feed_rate,
             plunge_rate=slot_tool.plunge_rate,
@@ -362,6 +375,15 @@ def plan_fretboard_machining(
             "Same fixture and X/Y zero; change to the fret-slot cutter and "
             "re-touch Z on the blank top.",
             f"Each slot follows the radius across the board in {passes} passes.",
+            *(
+                (
+                    "The first slot is the zero fret's, on the nut line: the "
+                    "scale starts at it, and the nut behind it only guides the "
+                    "strings (file its slots a little below the fret's top).",
+                )
+                if zero is not None
+                else ()
+            ),
             *binding_notes(
                 "The slots run out through the board's edges; nip each fret's "
                 "tang back over the binding before pressing it in."

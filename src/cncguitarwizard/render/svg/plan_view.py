@@ -100,7 +100,7 @@ def render_plan_view_svg(geometry: Prototype001Geometry) -> str:
     parts.append(path(_nut_polygon(geometry), nut_look))
     if nut is not None and not nut.is_locking and nut.spec.taper > 0.0:
         # Where the board behind a slotted nut starts sloping down.
-        back = nut.spec.depth + nut.spec.lip
+        back = nut.spec.set_back + nut.spec.depth + nut.spec.lip
         half = nut.neck_width / 2.0
         parts.append(
             line(
@@ -111,7 +111,8 @@ def render_plan_view_svg(geometry: Prototype001Geometry) -> str:
                 'stroke="#7a6040" stroke-width="0.4"',
             )
         )
-    for slot in geometry.fret_layout.slots:
+    zero = geometry.fret_layout.zero_fret_slot
+    for slot in (*((zero,) if zero is not None else ()), *geometry.fret_layout.slots):
         parts.append(line(slot.start.x, slot.start.y, slot.end.x, slot.end.y, fret))
     for marker in geometry.inlay_layout.markers:
         parts.append(path(marker.outline, inlay))
@@ -210,8 +211,15 @@ def _nut_polygon(geometry: Prototype001Geometry) -> Sequence[Point2D]:
         else headstock.plan.nut_width
     ) / 2.0
     depth = nut.spec.depth if nut is not None else headstock.nut_seat_length
+    # Behind a zero fret the nut stands back from the nut line.
+    front = nut.front if nut is not None else 0.0
     lean = headstock.nut_lean
     return tuple(
         Point2D(lean * y + dx, y)
-        for dx, y in ((0.0, -half), (0.0, half), (-depth, half), (-depth, -half))
+        for dx, y in (
+            (front, -half),
+            (front, half),
+            (front - depth, half),
+            (front - depth, -half),
+        )
     )

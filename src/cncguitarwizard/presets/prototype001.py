@@ -968,9 +968,13 @@ class Prototype001Parameters:
     # at full height for nut_slot_lip, then slopes down to the glue face
     # over nut_slot_taper, where it ends. With "slot" a headstock-adjusted
     # truss rod is reached Fender style too, uncovered (see
-    # truss_rod_spoke_wheel). A locking nut takes the nut's place
+    # truss_rod_spoke_wheel). "zero_fret" puts a fret on the nut line (the
+    # scale starts there) and the nut, only a string guide now, a
+    # zero_fret_gap behind it in a slot like "slot"'s: the board runs on
+    # past the nut line to hold both. A locking nut takes the nut's place
     # whichever style is set.
-    nut_style: Literal["shelf", "slot"] = "shelf"
+    nut_style: Literal["shelf", "slot", "zero_fret"] = "shelf"
+    zero_fret_gap: float = 3.0
     nut_thickness: float = 3.5
     nut_slot_depth: float = 3.0
     nut_slot_lip: float = 3.0
@@ -2041,9 +2045,9 @@ class Prototype001Parameters:
     def locking_nut_placed(self) -> LockingNut | None:
         """Return the nut placed on the fretboard, or ``None`` for a plain nut.
 
-        A locking nut, or with ``nut_style == "slot"`` a slotted Fender
-        style nut (``LockingNut.slotted``); ``None`` for a nut on the
-        neck's shelf.
+        A locking nut, or with ``nut_style`` "slot" a slotted Fender style
+        nut (``LockingNut.slotted``), "zero_fret" one set back behind a zero
+        fret; ``None`` for a nut on the neck's shelf.
 
         Raises:
             NeckGeometryError: When the nut does not fit the neck (see
@@ -2053,7 +2057,11 @@ class Prototype001Parameters:
         if kind == "auto":
             kind = "r2" if isinstance(self.body_bridge, FloydRoseSpec) else "none"
         if kind == "none":
-            if self.nut_style == "slot":
+            if self.nut_style not in ("shelf", "slot", "zero_fret"):
+                raise NeckGeometryError(
+                    'nut_style must be "shelf", "slot" or "zero_fret".'
+                )
+            if self.nut_style in ("slot", "zero_fret"):
                 if not math.isfinite(self.nut_slot_depth) or self.nut_slot_depth <= 0:
                     raise NeckGeometryError(
                         "nut_slot_depth must be finite and positive."
@@ -2066,6 +2074,9 @@ class Prototype001Parameters:
                     fretboard_thickness=self.fretboard_thickness,
                     lip=self.nut_slot_lip,
                     taper=self.nut_slot_taper,
+                    set_back=(
+                        self.zero_fret_gap if self.nut_style == "zero_fret" else 0.0
+                    ),
                 )
             return None
         if not math.isfinite(self.fret_height) or self.fret_height < 0.0:
@@ -3559,7 +3570,12 @@ class Prototype001Parameters:
             ),
             skew=self.fret_skew,
         )
-        fret_layout = FretLayout(fretboard, self.fret_count, self.fret_skew)
+        fret_layout = FretLayout(
+            fretboard,
+            self.fret_count,
+            self.fret_skew,
+            zero_fret=locking_nut is not None and locking_nut.zero_fret,
+        )
         # Markers listed beyond the last fret (the 24th-fret pair on a
         # 22-fret neck, say) are simply not cut.
         inlay_layout = InlayLayout(

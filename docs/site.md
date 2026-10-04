@@ -30,14 +30,18 @@ Python.
    (`EDITOR_FIELDS` in `app.js`): the pickup layout, bridge (its kind;
    its own sizes stay in the form), controls, pickup selector, jack,
    pickguard, arm contour and battery box in the body editor, the tuner layout
-   (`headstock_style`) in the headstock editor. Each is a copy of the
+   (`headstock_style`) and the nut's style (`nut_style`: on the shelf, in
+   a slot, behind a zero fret) in the headstock editor, which draws the
+   nut too. Each is a copy of the
    form's field, whose row in the form is hidden; the field itself is
    what is saved, loaded and built. Choosing a locking nut wider
    than the neck (`locking_nut` "r3") widens `nut_width` to it, to the
    next half millimetre (`locking_nut_widths` in the schema). A field whose type is a union of
    kinded dataclasses — the bridge — becomes a dropdown of kinds with the
    chosen kind's own fields beneath it (`variant` in the schema). The body
-   shape offers only its drawn kind (`_FORM_KINDS`), so it has no dropdown:
+   shape offers only its drawn kind (`_FORM_KINDS`), so it has no dropdown
+   (its row stays hidden) and its own fields fold away under
+   *body_shape — Advanced*:
    the body is always drawn, starting from the Design by Jone template on
    a guitar and the Jazz Bass style one on a bass (a saved design that
    names the traced `design_by_jone` body loads as that template). A

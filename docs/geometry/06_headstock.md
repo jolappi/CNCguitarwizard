@@ -140,6 +140,24 @@ starts. The slot must
 leave at least `MIN_BOARD_SHELF` (1 mm) of board under the nut. A locking
 nut takes the nut's place whichever style is set.
 
+### Zero fret
+
+`nut_style = "zero_fret"` stands a fret on the nut line itself (the scale
+starts there; `FretLayout(zero_fret=True).zero_fret_slot`, apart from the
+`slots` of fret 1 on) and sets the nut, now only a string guide filed a
+little below the fret's top, `zero_fret_gap` (3 mm) behind it: the
+slotted nut's placement with its slot set back (`LockingNutSpec.set_back`,
+`LockingNut.zero_fret`, `front`), so the board runs on past the nut line
+to hold both — the gap, the slot, the lip and the taper, 12.5 mm. The
+zero fret's slot is cut first in `Fretboard_slots.nc` (`Zero fret slot`)
+and in the FreeCAD model (on the board's nut-end row); the plan view and
+the headstock editor draw it.
+
+The headstock editor's own pane offers the nut's style (`nut_style`)
+beside the tuner layout, and draws the nut: a plain one on its shelf, a
+slotted or zero-fret nut with the board running on behind the nut line,
+a zero fret's line, a locking nut dark (`webapp._nut_drawing`).
+
 A headstock-adjusted truss rod is then reached Fender style too, with no
 cover: a spoke wheel in an open trough behind the board, or without one a
 notch for the key (see [Truss rod](08_truss_rod.md#spoke-wheel-or-not)).

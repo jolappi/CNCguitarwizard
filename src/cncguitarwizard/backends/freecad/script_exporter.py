@@ -436,8 +436,10 @@ class FreeCADScriptExporter:
         fretboard_rows = tuple(
             self._close_fretboard_row(row) for row in fretboard_surface.mesh.rows
         )
+        # A zero fret's slot is cut on the nut-end row too.
+        zero_fret = fret_layout is not None and fret_layout.zero_fret_slot is not None
         fret_surface_rows = fretboard_surface.mesh.rows[
-            1 : fretboard_surface.fret_count + 1
+            (0 if zero_fret else 1) : fretboard_surface.fret_count + 1
         ]
         export_feature_names = ["neck_feature", "fretboard_feature"]
         if headstock is not None and not join_headstock_to_neck and not hide_headstock:
@@ -938,7 +940,7 @@ class FreeCADScriptExporter:
         run = nut.seat_length
         top = nut.board_height
         span = nut.neck_width / 2.0 + 2.0
-        lip_end = -(nut.spec.depth + nut.spec.lip)
+        lip_end = nut.front - nut.spec.depth - nut.spec.lip
         # The slope's wedge, drawn in the XZ plane at the far side and
         # swept across the neck along the (leaning) nut line.
         wedge = ", ".join(

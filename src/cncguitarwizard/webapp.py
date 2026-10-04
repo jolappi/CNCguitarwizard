@@ -87,6 +87,7 @@ _CHOICE_LABELS: dict[str, dict[str, str]] = {
     "nut_style": {
         "shelf": "On the neck's shelf, in front of the fretboard",
         "slot": "Fender / Telecaster: in a slot at the fretboard's end",
+        "zero_fret": "Zero fret on the nut line, the nut a string guide behind it",
     },
     "locking_nut": {
         "auto": "Auto (Floyd Rose Original R2 with a Floyd Rose bridge)",
@@ -713,6 +714,7 @@ def headstock_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
     }
     return {
         "lettering": _headstock_lettering(built),
+        "nut": _nut_drawing(parameters),
         "mirrored": built.left_handed,
         "nut_half_width": parameters.nut_width / 2.0,
         "bass_sign": fitted.bass_sign,
@@ -728,6 +730,47 @@ def headstock_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
             }
             for side, x, y in centres
         ],
+    }
+
+
+def _nut_drawing(parameters: Prototype001Parameters) -> dict[str, Any]:
+    """Return the nut for the headstock editor (model frame).
+
+    ``{"nut", "board", "zero_fret", "locking"}``: the nut's outline; the
+    fretboard running on past the nut line (a slotted or zero-fret nut's,
+    a locking nut's shelf), or ``None``; a zero fret's line on the nut
+    line, or ``None``; whether it is a locking nut.
+    """
+    nut = parameters.locking_nut_placed()
+    lean = parameters.fret_skew.at(0.0)
+    half = parameters.nut_width / 2.0
+
+    def quad(front: float, back: float, reach: float) -> list[list[float]]:
+        return [
+            [round(lean * y + x, 2), round(y, 2)]
+            for x, y in ((front, -reach), (front, reach), (back, reach), (back, -reach))
+        ]
+
+    if nut is None:
+        return {
+            "nut": quad(0.0, -parameters.nut_seat_length(), half),
+            "board": None,
+            "zero_fret": None,
+            "locking": False,
+        }
+    return {
+        "nut": quad(
+            nut.front,
+            nut.front - nut.spec.depth,
+            nut.spec.width / 2.0 if nut.is_locking else half,
+        ),
+        "board": quad(0.0, -nut.seat_length, half) if nut.on_fretboard else None,
+        "zero_fret": (
+            [[round(-lean * half, 2), -half], [round(lean * half, 2), half]]
+            if nut.zero_fret
+            else None
+        ),
+        "locking": nut.is_locking,
     }
 
 

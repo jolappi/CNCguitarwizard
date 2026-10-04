@@ -343,6 +343,16 @@ def _locking_nut_notes(geometry: Prototype001Geometry) -> tuple[str, ...]:
     nut = geometry.locking_nut
     if nut is None:
         return ()
+    if nut.zero_fret:
+        return (
+            f"Zero fret on the nut line, the nut ({nut.spec.depth:g} mm thick) "
+            f"only a string guide {nut.spec.set_back:g} mm behind it: glue it "
+            f"into its slot ({nut.spec.height:g} mm deep at the crown, cut in "
+            "the fretboard's inlay program) and file its string slots a little "
+            "below the zero fret's top; behind it the board runs on "
+            f"{nut.spec.lip:g} mm, then slopes to the neck over "
+            f"{nut.spec.taper:g} mm.",
+        )
     if not nut.is_locking:
         return (
             f"Fender style nut, {nut.spec.depth:g} mm thick: glue it into the "

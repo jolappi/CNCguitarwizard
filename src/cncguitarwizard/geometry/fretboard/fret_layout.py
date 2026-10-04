@@ -6,7 +6,7 @@ import math
 from dataclasses import dataclass, field
 
 from ..exceptions import FretboardGeometryError
-from ..fret import FretCalculator, FretLine
+from ..fret import FretCalculator, FretLine, FretPosition
 from ..primitives import Line2D, Point2D
 from .fretboard import Fretboard
 from .skew import FretSkew
@@ -25,6 +25,9 @@ class FretLayout:
         fretboard: Fretboard whose outline bounds every slot.
         fret_count: Number of fret slots to generate.
         skew: How each fret leans (see ``FretSkew``).
+        zero_fret: Also a slot on the nut line, for a zero fret
+            (``zero_fret_slot``; the board must run on past the nut line
+            to hold it). It is not one of ``slots``, which stay fret 1 on.
 
     Raises:
         FretboardGeometryError: If the fret count or fretboard dimensions
@@ -34,7 +37,9 @@ class FretLayout:
     fretboard: Fretboard
     fret_count: int
     skew: FretSkew = field(default_factory=FretSkew)
+    zero_fret: bool = False
     slots: tuple[Line2D, ...] = field(init=False)
+    zero_fret_slot: Line2D | None = field(init=False)
 
     def __post_init__(self) -> None:
         """Validate inputs and construct all bounded fret-slot segments."""
@@ -49,6 +54,17 @@ class FretLayout:
             for position in positions
         )
         object.__setattr__(self, "slots", slots)
+        zero = (
+            self._create_slot(
+                FretLine(
+                    self.fretboard.centerline,
+                    FretPosition(0, 0.0, self.fretboard.scale_length),
+                )
+            )
+            if self.zero_fret
+            else None
+        )
+        object.__setattr__(self, "zero_fret_slot", zero)
 
     def _validate(self) -> None:
         """Reject dimensions that cannot form a useful fret layout."""

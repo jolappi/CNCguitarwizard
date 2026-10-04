@@ -130,7 +130,7 @@ function renderForm() {
 // side is passed to the other.
 const EDITOR_FIELDS = {
   "body-editor-options": ["body_pickups", "body_bridge", "body_controls", "body_switch", "body_jack", "body_pickguard", "body_pickguard_style", "body_arm_contour_depth", "body_belly_cut_depth", "body_carved_top", "body_carve_depth", "body_engraving", "body_engraving_pattern", "body_engraving_seed", "body_battery_box", "body_battery_count"],
-  "headstock-editor-options": ["headstock_style", "headstock_engraving_text", "headstock_engraving_font", "headstock_engraving_height", "headstock_engraving_angle"],
+  "headstock-editor-options": ["headstock_style", "nut_style", "headstock_engraving_text", "headstock_engraving_font", "headstock_engraving_height", "headstock_engraving_angle"],
 };
 const mirrors = new Map();
 
@@ -221,7 +221,9 @@ function applyStringLimits() {
 
 // Basic fields first; the rarely changed ones fold away behind
 // "Advanced", whose summary lights up when one of them has been edited.
-function renderFieldList(set, fields, holder) {
+// ``title`` names the fold when nothing above it does (the body shape,
+// whose single kind has no dropdown).
+function renderFieldList(set, fields, holder, title) {
   const advanced = [];
   for (const field of fields) {
     if (field.advanced) advanced.push(field);
@@ -232,7 +234,9 @@ function renderFieldList(set, fields, holder) {
   details.className = "advanced";
   details.open = showAdvanced.checked;
   const summary = document.createElement("summary");
-  summary.textContent = `Advanced (${advanced.length})`;
+  summary.textContent = title
+    ? `${title} — Advanced (${advanced.length})`
+    : `Advanced (${advanced.length})`;
   details.appendChild(summary);
   const inner = document.createElement("div");
   inner.className = "fields";
@@ -370,7 +374,7 @@ function renderVariantField(set, field) {
         ? { ...subfield, default: subfield.default, value: values[subfield.name] }
         : subfield
     ));
-    renderFieldList(set + "." + field.name, subfields, sub);
+    renderFieldList(set + "." + field.name, subfields, sub, row.hidden ? field.name : undefined);
     select.classList.toggle("changed", kind !== field.default.kind);
     if (field.name === "body_shape") bodyEditor.sync(kind, sub);
   };
@@ -2221,6 +2225,22 @@ const headstockEditor = {
       d: this.pathData([...bass, ...tip.slice(1, -1), ...[...treble].reverse()]) + " Z",
       fill: "#f1e4c8", stroke: "none",
     });
+    // The nut: the board running on past the nut line (a slotted or
+    // zero-fret nut's, a locking nut's shelf), the nut on it, a zero fret.
+    const nut = layout.nut;
+    if (nut) {
+      if (nut.board) this.element("path", { d: this.pathData(nut.board) + " Z", fill: "#3b2a1a", "fill-opacity": 0.85 });
+      const look = nut.locking
+        ? { fill: "#3c3c3c", stroke: "#111" }
+        : { fill: "#efe8d6", stroke: "#8a7a5a" };
+      const shape = this.element("path", { d: this.pathData(nut.nut) + " Z", "stroke-width": 0.4, ...look });
+      this.element("title", {}, shape).textContent = "The nut (nut_style)";
+      if (nut.zero_fret) {
+        const [[x1, y1], [x2, y2]] = nut.zero_fret;
+        const fret = this.element("line", { x1, y1: -y1, x2, y2: -y2, stroke: "#d9c9a8", "stroke-width": 1.2 });
+        this.element("title", {}, fret).textContent = "The zero fret, on the nut line";
+      }
+    }
     for (const side of ["bass", "treble"]) {
       const points = side === "bass" ? bass : treble;
       this.paths[side] = this.element("path", {

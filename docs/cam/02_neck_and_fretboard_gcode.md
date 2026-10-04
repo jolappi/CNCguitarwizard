@@ -128,7 +128,10 @@ full-height lip, so the 1 mm inlay end mill cuts it); the outline runs on
 `nut_thickness + nut_slot_lip + nut_slot_taper` (9.5 mm) past the nut
 line, and `Fretboard_outline.nc` first steps the slope behind the lip
 down to the glue face in 0.5 mm terraces (`SLOPE_STEP`) with the flat end
-mill, to be sanded into one slope. The nut is glued in.
+mill, to be sanded into one slope. The nut is glued in. With a zero fret
+(`nut_style` "zero_fret") the slot sits `zero_fret_gap` (3 mm) behind
+the nut line, the outline runs on 12.5 mm, and `Fretboard_slots.nc` cuts
+the zero fret's slot on the nut line first (`Zero fret slot`).
 
 ## Inlay pieces (`Fretboard_inlay_pieces.nc`)
 

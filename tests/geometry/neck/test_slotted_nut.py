@@ -139,7 +139,7 @@ def test_the_web_form_offers_the_nut_style_and_the_telecaster_neck() -> None:
 
     style = fields["nut_style"]
     assert style["type"] == "choice" and not style["advanced"]
-    assert style["options"] == ["shelf", "slot"]
+    assert style["options"] == ["shelf", "slot", "zero_fret"]
     assert style["default"] == "shelf"
     template = schema["neck_templates"]["telecaster"]
     assert template["label"] == NECK_TEMPLATES["telecaster"][0]

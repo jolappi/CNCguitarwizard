@@ -164,7 +164,11 @@ class SVGRenderer:
         if isinstance(geometry, FretLayout):
             return tuple(
                 point
-                for line in (*geometry.fretboard.outline, *geometry.slots)
+                for line in (
+                    *geometry.fretboard.outline,
+                    *geometry.slots,
+                    *((geometry.zero_fret_slot,) if geometry.zero_fret_slot else ()),
+                )
                 for point in (line.start, line.end)
             )
         if isinstance(geometry, (FretboardSideProfile, FretboardCrossSection)):
@@ -296,7 +300,10 @@ class SVGRenderer:
                 '<line class="fret-slot" ',
                 1,
             )
-            for slot in layout.slots
+            for slot in (
+                *((layout.zero_fret_slot,) if layout.zero_fret_slot else ()),
+                *layout.slots,
+            )
         )
         return f'<g class="fret-layout">\n{outline}\n{slots}\n</g>'
 

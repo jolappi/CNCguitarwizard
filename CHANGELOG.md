@@ -4,6 +4,14 @@
 
 ### Added
 
+- A zero fret (`nut_style` "zero_fret", `zero_fret_gap` 3 mm): a fret on
+  the nut line, the nut a string guide in a slot behind it on the board's
+  run-on (`FretLayout.zero_fret_slot`, `LockingNutSpec.set_back`); its
+  slot is cut first in `Fretboard_slots.nc` and in the FreeCAD model, and
+  drawn in the plan view.
+- The headstock editor offers the nut's style in its own pane (shelf,
+  Fender slot, zero fret) and draws the nut, the board running on past
+  the nut line and a zero fret.
 - The web app names the guitar (*Guitar name*, saved with the design and
   naming its file) and downloads every NC program in one ZIP named for it
   (*Download all NC files (.zip)*, `webapp.nc_archive`): a folder a part,
@@ -332,6 +340,9 @@
 
 ### Fixed
 
+- The web form's body shape showed a dropdown of its one kind ("Your
+  design"), its hidden row shown by the field style; it is gone, and the
+  shape's fields fold away under *body_shape — Advanced*.
 - The default instrument and every body template were called left-handed
   in the code and docs; they are right-handed (seen from the front with
   the headstock to the left, the bass side and long horn at -Y).

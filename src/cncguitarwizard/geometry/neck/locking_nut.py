@@ -21,6 +21,10 @@ A Fender (Telecaster) style nut is placed the same way without screws
 slot as wide as the nut is milled into it there, the nut glued in. Behind
 the slot the board carries on at its full height for ``lip``, then slopes
 down to the glue face over ``taper``, where it ends.
+
+With a zero fret the slot sits ``set_back`` behind the nut line: a fret
+stands on the nut line itself (the scale starts there), and the nut
+behind it only guides the strings, a little lower than the fret.
 """
 
 from __future__ import annotations
@@ -59,6 +63,8 @@ class LockingNutSpec:
         seat_margin: Flat seat left behind the nut's back face, in mm.
         lip: A slotted nut's full-height board behind the slot, in mm.
         taper: The board's slope down to the glue face behind the lip.
+        set_back: How far behind the nut line a slotted nut's slot starts,
+            in mm: 0, or the gap behind a zero fret on the nut line.
     """
 
     name: str
@@ -70,6 +76,7 @@ class LockingNutSpec:
     seat_margin: float = SEAT_MARGIN
     lip: float = 0.0
     taper: float = 0.0
+    set_back: float = 0.0
 
 
 LOCKING_NUT_SPECS: dict[str, LockingNutSpec] = {
@@ -112,6 +119,7 @@ class LockingNut:
             for name, value in (
                 ("nut_slot_lip", self.spec.lip),
                 ("nut_slot_taper", self.spec.taper),
+                ("zero_fret_gap", self.spec.set_back),
             ):
                 if not math.isfinite(value) or value < 0.0:
                     raise NeckGeometryError(f"{name} must be finite and non-negative.")
@@ -170,12 +178,14 @@ class LockingNut:
         fretboard_thickness: float,
         lip: float = 0.0,
         taper: float = 0.0,
+        set_back: float = 0.0,
     ) -> LockingNut:
         """Return a Fender style nut glued in a slot near the board's end.
 
-        The slot is ``thickness`` wide behind the nut line, ``slot_depth``
-        below the board's crown; behind it the board runs on ``lip`` at
-        full height, then slopes to the glue face over ``taper``.
+        The slot is ``thickness`` wide, ``set_back`` behind the nut line
+        (behind a zero fret; else right on it), ``slot_depth`` below the
+        board's crown; behind it the board runs on ``lip`` at full height,
+        then slopes to the glue face over ``taper``.
         """
         spec = LockingNutSpec(
             "Slotted",
@@ -187,6 +197,7 @@ class LockingNut:
             seat_margin=lip + taper,
             lip=lip,
             taper=taper,
+            set_back=set_back,
         )
         return cls(spec, lean, neck_width, fretboard_thickness - slot_depth, 0.0, 0.0)
 
@@ -194,6 +205,16 @@ class LockingNut:
     def is_locking(self) -> bool:
         """Whether this is a screwed-down locking nut (not a slotted one)."""
         return self.spec.kind == "locking"
+
+    @property
+    def zero_fret(self) -> bool:
+        """Whether a zero fret stands on the nut line, the nut behind it."""
+        return self.spec.kind == "slot" and self.spec.set_back > 0.0
+
+    @property
+    def front(self) -> float:
+        """Return the nut's front face along X: the nut line, or behind a zero fret."""
+        return -self.spec.set_back
 
     @property
     def on_fretboard(self) -> bool:
@@ -211,7 +232,7 @@ class LockingNut:
 
         A board that runs on under the nut reaches as far.
         """
-        return self.spec.depth + self.spec.seat_margin
+        return self.spec.set_back + self.spec.depth + self.spec.seat_margin
 
     @property
     def board_height(self) -> float:
@@ -226,13 +247,14 @@ class LockingNut:
         """
         half = self.neck_width / 2.0 + reach
         length = self.spec.depth if not self.is_locking else self.seat_length
+        front = self.front
         return tuple(
             Point2D(self.lean * y + dx, y)
             for dx, y in (
-                (0.0, -half),
-                (0.0, half),
-                (-length, half),
-                (-length, -half),
+                (front, -half),
+                (front, half),
+                (front - length, half),
+                (front - length, -half),
             )
         )
 
