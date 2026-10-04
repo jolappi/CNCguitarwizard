@@ -168,3 +168,31 @@ model shows the route as designed.
 The FreeCAD script cuts the step, pocket and trough as rows of boxes no
 longer than 5 mm, which keeps FreeCAD's `check(True)` clean where their
 walls cross the lofted neck top.
+
+## Carbon fibre reinforcement
+
+`neck_carbon_rods` sets two carbon fibre bars into the neck's top, one
+each side of the truss rod, glued flush under the fretboard: they
+stiffen the neck against bending and twist (`geometry.neck.CarbonRods`).
+`neck_carbon_rod_size` picks the bars' section (`CARBON_ROD_SIZES`): 3.2 ×
+6.35 mm (1/8 × 1/4 in, the default), 4 × 4 mm or StewMac's 3.2 × 9.5 mm
+(1/8 × 3/8 in); "custom" takes `neck_carbon_rod_width` ×
+`neck_carbon_rod_depth`. Each channel is `CLEARANCE` (0.1 mm) wider for
+the epoxy.
+They run from `neck_carbon_rod_start` (20 mm) past the nut for
+`neck_carbon_rod_length` — empty, to where the heel flattens, clear of a
+bolt-on neck's screws (387 mm on the default guitar, 537 mm on the bass)
+— `neck_carbon_rod_offset` from the centerline: empty, beside the truss
+rod's widest part along them with `CARBON_ROD_GAP` (3 mm) of wood between
+(8.4 mm; 9.15 mm with a headstock-adjusted rod's pocket). Each channel
+must leave `CARBON_ROD_FLOOR` (2 mm) of wood under it out to its edge,
+along its whole length, and `CARBON_ROD_WALL` (2 mm) to the truss rod's
+route and the neck's sides: StewMac's 1/8 × 3/8 in bars are refused in
+the default 17 mm neck (0.2 mm left under them at the start).
+
+`Neck_carbon_rods.nc` cuts the channels after `Neck_top` on the same
+fixture with a 3 mm end mill (`CARBON_ROD_TOOL`; the main tool is wider
+than they are), no finishing allowance, in 1.5 mm passes; its notes give
+the bars' length to cut. The FreeCAD model cuts the channels from the
+neck and shows the bars as an object of their own (`CarbonRods`); the
+plan view dashes them under the fretboard.

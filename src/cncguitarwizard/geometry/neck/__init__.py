@@ -12,6 +12,7 @@ from .headstock import (
 )
 from .locking_nut import LOCKING_NUT_SPECS, LockingNut, LockingNutSpec
 from .outline import NeckOutline
+from .reinforcement import CarbonRods
 from .side_profile import (
     NeckBackCrossSection,
     NeckProfileStation,
@@ -21,6 +22,7 @@ from .side_profile import (
 from .truss_rod import TrussRodChannel
 
 __all__ = [
+    "CarbonRods",
     "Centerline",
     "HeadstockAngleReference",
     "HeadstockPlan",

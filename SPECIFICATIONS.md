@@ -371,6 +371,29 @@ säilyy 5 mm:nä kaikissa lapaliitoksen muutoksissa.
 | Jyrsintä | Porras ja tasku ajetaan terän säteen (3 mm) verran naapurikolon päälle ja tasku säätöpään suuntaan, jotta pyöreä terä ei jätä kulmiin ulkonemia raudan kanttisille paloille; kanavan ankkuripää jyrsitään sellaisenaan |
 | Kohdistus | 2 × 6 mm kohdistustappi kaksipuoliseen koneistukseen |
 
+
+### Hiilikuituvahvistus
+
+`neck_carbon_rods` upottaa kaulan yläpintaan kaksi hiilikuitutankoa,
+yhden kaularaudan kummallekin puolelle, liimattuna otelaudan alle
+pinnan tasoon: ne jäykistävät kaulaa taivutusta ja vääntöä vastaan.
+Tangon poikkileikkaus valitaan (`neck_carbon_rod_size`): 3,2 × 6,35 mm
+(1/8 × 1/4 in, oletus), 4 × 4 mm tai StewMacin 3,2 × 9,5 mm (1/8 × 3/8 in);
+"custom" ottaa `neck_carbon_rod_width` × `neck_carbon_rod_depth`. Ura on
+0,1 mm tankoa leveämpi epoksille. Tangot alkavat
+`neck_carbon_rod_start` (20 mm) satulasta ja jatkuvat
+`neck_carbon_rod_length` (tyhjä: kantapään tasaisen osan alkuun, pois
+kaulan ruuvien tieltä; oletuskitarassa 387 mm, bassossa 537 mm)
+`neck_carbon_rod_offset` keskilinjasta (tyhjä: kaularaudan leveimmän
+kohdan vieressä 3 mm puuta välissä, 8,4 mm; lavasta säädettävällä
+raudalla 9,15 mm). Uran alle on jäätävä vähintään 2 mm puuta koko
+matkalta uran ulkoreunaan asti, ja kaularaudan reittiin ja kaulan
+kylkeen 2 mm; StewMacin 1/8 × 3/8 in tangot hylätään oletuskaulassa (alle
+jäisi 0,2 mm). `Neck_carbon_rods.nc` jyrsii urat `Neck_top`-ohjelman
+jälkeen samalla kiinnityksellä 3 mm terällä (pääterä on uraa leveämpi),
+ja sen muistiinpanot kertovat tankojen pituuden. FreeCAD-mallissa urat
+leikataan kaulaan ja tangot ovat oma objektinsa (`CarbonRods`);
+plan-kuva näyttää ne katkoviivalla otelaudan alla.
 ## Runko
 
 Runko on aina piirretty (`body_shape`, "Your design"): sen ääriviiva

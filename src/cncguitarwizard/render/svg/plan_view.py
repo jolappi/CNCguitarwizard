@@ -116,6 +116,16 @@ def render_plan_view_svg(geometry: Prototype001Geometry) -> str:
         parts.append(line(slot.start.x, slot.start.y, slot.end.x, slot.end.y, fret))
     for marker in geometry.inlay_layout.markers:
         parts.append(path(marker.outline, inlay))
+    # Carbon fibre bars under the fretboard, dashed.
+    if geometry.carbon_rods is not None:
+        for channel in geometry.carbon_rods.channels():
+            parts.append(
+                path(
+                    channel,
+                    'fill="none" stroke="#9a9a9a" stroke-width="0.5" '
+                    'stroke-dasharray="3,2"',
+                )
+            )
     for tuner in geometry.tuner_layout.holes:
         parts.append(circle(tuner.center.x, tuner.center.y, tuner.diameter / 2.0, hole))
     # A headstock-adjusted truss rod's trough shows in the headstock face.

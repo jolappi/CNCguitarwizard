@@ -27,6 +27,7 @@
 - Left-handed instruments: any design built as its mirror image
 - Neck-through construction: the neck blank as the body's centre block,
   two wings cut on their own and glued to its sides
+- Carbon fibre neck reinforcement beside the truss rod; a zero fret
 - Neck angle (a tilted pocket floor for a Tune-o-matic), a Telecaster
   neck (slotted nut, Tele headstock), low-profile truss rods and a spoke
   wheel choice

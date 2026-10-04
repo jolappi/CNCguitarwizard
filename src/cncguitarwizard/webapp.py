@@ -68,6 +68,12 @@ _CHOICE_LABELS: dict[str, dict[str, str]] = {
         "right": "Right-handed (as drawn)",
         "left": "Left-handed (the mirror image)",
     },
+    "neck_carbon_rod_size": {
+        "3.2x6.35": "3.2 x 6.35 mm (1/8 x 1/4 in)",
+        "4x4": "4 x 4 mm",
+        "3.2x9.5": "3.2 x 9.5 mm (1/8 x 3/8 in, StewMac; needs a thick neck)",
+        "custom": "Custom: neck_carbon_rod_width x neck_carbon_rod_depth",
+    },
     "neck_joint": {
         "bolt_on": "Bolt-on (the heel screwed into a pocket)",
         "neck_through": (
@@ -224,6 +230,8 @@ _BASIC_FIELDS: frozenset[str] = frozenset(
         "tab_count",
         "handedness",
         "neck_joint",
+        "neck_carbon_rods",
+        "neck_carbon_rod_size",
         "carve_tool_diameter",
         "carve_finish",
     }

@@ -84,6 +84,14 @@ straight 5 mm ledge (the model's U-shaped trim is not machined), the
 headstock-root volute follows the mesh/plane union rather than the
 FreeCAD fillets, and the spoke-wheel access pocket is not modelled.
 
+### Carbon fibre reinforcement
+
+With `neck_carbon_rods` (see [Truss rod](../geometry/08_truss_rod.md#carbon-fibre-reinforcement))
+`Neck_carbon_rods.nc` follows `Neck_top`: the two bars' channels, 3.3 mm
+wide and as deep as the bars, cut with a 3 mm end mill (no finishing
+allowance, 1.5 mm passes) on the same fixture and work zero. Glue the
+bars in with epoxy, flush with the glue face, before the fretboard.
+
 ### Neck-through
 
 A neck-through blank (`geometry.neck_through`) runs from the headstock tip

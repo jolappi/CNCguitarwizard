@@ -183,6 +183,7 @@ class NeckMachiningPlan:
     top_engraving: Setup | None = None
     block_top_setups: tuple[Setup, ...] = ()
     block_back_setups: tuple[Setup, ...] = ()
+    carbon_rods: Setup | None = None
 
     @property
     def setups(self) -> tuple[Setup, ...]:
@@ -197,6 +198,7 @@ class NeckMachiningPlan:
         return (
             self.index_pins,
             self.top,
+            *((self.carbon_rods,) if self.carbon_rods is not None else ()),
             *self.block_top_setups,
             *((self.top_engraving,) if self.top_engraving is not None else ()),
             self.back_rough,
@@ -246,6 +248,11 @@ def _lettering_setup(
         reference_points,
         tool,
     )
+
+
+CARBON_ROD_TOOL = 3.0
+"""The end mill that cuts the carbon fibre bars' channels, in mm (narrower
+channels take a smaller one)."""
 
 
 def _round_up(depth: float) -> float:
@@ -728,6 +735,48 @@ def plan_neck_machining(
             flat,
         )
 
+    # ---- top face: carbon fibre reinforcement ------------------------------
+    carbon_rods: Setup | None = None
+    rods = geometry.carbon_rods
+    if rods is not None:
+        # The channels are narrower than the main tool: a small end mill
+        # with no finishing allowance takes them to width.
+        small = replace(
+            flat,
+            tool_diameter=min(CARBON_ROD_TOOL, rods.channel_width - 0.1),
+            finishing_allowance=0.0,
+            step_down=min(flat.step_down, 1.5),
+            feed_rate=min(flat.feed_rate, 600.0),
+            plunge_rate=min(flat.plunge_rate, 150.0),
+        )
+        carbon_rods = Setup(
+            "Neck_carbon_rods",
+            "Neck glue face - channels for the carbon fibre reinforcement",
+            tuple(
+                pocket(
+                    f"Carbon rod channel {side}",
+                    top_frame.polygon(channel),
+                    rods.depth,
+                    small,
+                )
+                for side, channel in zip(("+Y", "-Y"), rods.channels(), strict=True)
+            ),
+            (
+                "Same fixture and X/Y zero as Neck_top; change to a "
+                f"{small.tool_diameter:g} mm end mill and re-touch Z on the glue "
+                "face.",
+                f"Two channels {rods.channel_width:g} mm wide, {rods.depth:g} mm "
+                f"deep, {rods.offset:g} mm either side of the centerline, from "
+                f"{rods.start:g} to {rods.end:g} mm past the nut.",
+                f"Cut two {rods.width:g} x {rods.depth:g} mm carbon fibre bars "
+                f"{rods.length:.0f} mm long and glue them in with epoxy, flush "
+                "with the glue face (sand them level), before the fretboard goes "
+                "on.",
+            ),
+            reference_points,
+            small,
+        )
+
     # ---- back: roughing, ball finishing, outline ---------------------------
     def back_setups(
         prefix: str,
@@ -1006,9 +1055,11 @@ def plan_neck_machining(
         top_engraving=top_engraving,
         block_top_setups=block_top,
         block_back_setups=block_back,
+        carbon_rods=carbon_rods,
         preview_outlines=(
             top_outline,
             top_outline,
+            *((top_outline,) if carbon_rods is not None else ()),
             *block_top_previews,
             *((top_outline,) if top_engraving is not None else ()),
             back_outline_polygon,

@@ -65,8 +65,11 @@ from ..geometry.neck import (
     TunerHole,
     TunerLayout,
 )
+from ..geometry.neck.reinforcement import CLEARANCE as CARBON_ROD_CLEARANCE
+from ..geometry.neck.reinforcement import CarbonRods
 from ..geometry.primitives import (
     Point2D,
+    Point3D,
     open_catmull_rom,
     point_in_polygon,
     rounded_polygon_points,
@@ -199,6 +202,24 @@ CARVE_MIN_FALL = 25.0
 """The shortest fall a carved top aims for from its plateau to its rim, in
 mm: where the plateau comes nearer the edge, the rim narrows (down to its
 ``edge_rim``) to leave the fall that room."""
+
+CARBON_ROD_SIZES: dict[str, tuple[float, float]] = {
+    "3.2x6.35": (3.2, 6.35),
+    "4x4": (4.0, 4.0),
+    "3.2x9.5": (3.2, 9.5),
+}
+"""Carbon fibre bar sections by name: (width, height), in mm."""
+
+CARBON_ROD_GAP = 3.0
+"""Wood between a carbon rod's channel and the truss rod's route when the
+rods' offset is automatic, in mm."""
+
+CARBON_ROD_WALL = 2.0
+"""The least wood between a carbon rod's channel and the truss rod's route
+or the neck's side, in mm."""
+
+CARBON_ROD_FLOOR = 2.0
+"""The least wood under a carbon rod's channel, to the neck's back, in mm."""
 
 NECK_THROUGH_MARGIN = 3.0
 """Wood a neck-through block keeps beside the pickup and bridge routes and
@@ -351,6 +372,8 @@ class Prototype001Geometry:
     """The neck's back-tilt in degrees and the ``(x, z)`` it turns about."""
     neck_through: NeckThrough | None = None
     """A neck-through body's block and wings, or ``None`` for a bolt-on neck."""
+    carbon_rods: CarbonRods | None = None
+    """The carbon fibre bars beside the truss rod, or ``None``."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -865,6 +888,28 @@ class Prototype001Parameters:
     # either off to leave that part to be made by hand, or not at all.
     truss_rod_sleeve_bore: bool = True
     truss_rod_trough: bool = True
+    # Carbon fibre reinforcement (neck_carbon_rods): two bars glued into
+    # channels in the neck's top, one each side of the truss rod, flush
+    # under the fretboard, stiffening the neck against bending and twist.
+    # neck_carbon_rod_size picks the bars' section from CARBON_ROD_SIZES
+    # (width x height): 3.2 x 6.35 mm (1/8 x 1/4 in, the default), 4 x 4 mm,
+    # or StewMac's 3.2 x 9.5 mm (1/8 x 3/8 in, which needs a thicker neck);
+    # "custom" takes neck_carbon_rod_width wide and neck_carbon_rod_depth
+    # tall. Each channel is CLEARANCE (0.1 mm) wider for the epoxy. They run
+    # from neck_carbon_rod_start past the nut for neck_carbon_rod_length
+    # (empty: to where the heel flattens, clear of the neck screws),
+    # neck_carbon_rod_offset from the centerline (empty: beside the truss
+    # rod's widest part along them, CARBON_ROD_GAP of wood between). Each
+    # channel must leave CARBON_ROD_FLOOR of wood under it, out to its
+    # edge, and CARBON_ROD_WALL to the truss rod's route and the neck's
+    # sides.
+    neck_carbon_rods: bool = False
+    neck_carbon_rod_size: Literal["3.2x6.35", "4x4", "3.2x9.5", "custom"] = "3.2x6.35"
+    neck_carbon_rod_width: float = 3.2
+    neck_carbon_rod_depth: float = 6.35
+    neck_carbon_rod_start: float = 20.0
+    neck_carbon_rod_length: float | None = None
+    neck_carbon_rod_offset: float | None = None
     # Headstock style: "3+3" mirrors tuner_station_distances /
     # tuner_side_offsets onto both sides. The row styles (six in line on
     # the bass or, for "reverse", the treble edge; 4+2 with the pair at
@@ -2589,6 +2634,90 @@ class Prototype001Parameters:
             carved_top,
         )
 
+    def carbon_rods(
+        self,
+        outline: NeckOutline,
+        surface: NeckBackSurface,
+        channel: TrussRodChannel,
+    ) -> CarbonRods | None:
+        """Return the carbon fibre bars beside the truss rod, or ``None``.
+
+        Raises:
+            NeckGeometryError: For bars that would leave less than
+                ``CARBON_ROD_FLOOR`` of wood under them, or come within
+                ``CARBON_ROD_WALL`` of the truss rod's route or the neck's
+                sides.
+        """
+        if not self.neck_carbon_rods:
+            return None
+        start = self.neck_carbon_rod_start
+        if not math.isfinite(start) or start < 0.0:
+            raise NeckGeometryError("neck_carbon_rod_start must not be negative.")
+        # Empty: to where the heel flattens, clear of the neck screws.
+        end = (
+            start + self.neck_carbon_rod_length
+            if self.neck_carbon_rod_length is not None
+            else outline.last_fret_position - surface.heel_flat_start_offset
+        )
+        if self.neck_carbon_rod_size == "custom":
+            bar = (self.neck_carbon_rod_width, self.neck_carbon_rod_depth)
+        elif self.neck_carbon_rod_size in CARBON_ROD_SIZES:
+            bar = CARBON_ROD_SIZES[self.neck_carbon_rod_size]
+        else:
+            raise NeckGeometryError(
+                "neck_carbon_rod_size must be one of "
+                f"{', '.join([*CARBON_ROD_SIZES, 'custom'])}."
+            )
+        width = bar[0] + CARBON_ROD_CLEARANCE
+        beside = [
+            half
+            for front, back, half in channel.keep_clear()
+            if front < end and back > start
+        ]
+        offset = self.neck_carbon_rod_offset
+        if offset is None:
+            offset = max(beside, default=0.0) + CARBON_ROD_GAP + width / 2.0
+        rods = CarbonRods(start, end, offset, *bar)
+        inner = offset - width / 2.0
+        if beside and inner - max(beside) < CARBON_ROD_WALL - 1e-9:
+            raise NeckGeometryError(
+                f"The carbon rods' channels come within {inner - max(beside):.1f} "
+                f"mm of the truss rod's route; keep {CARBON_ROD_WALL:g} mm "
+                "between (a larger neck_carbon_rod_offset)."
+            )
+        outer = offset + width / 2.0
+        rows = surface.mesh.rows
+        steps = max(2, math.ceil((end - start) / 5.0))
+        for index in range(steps + 1):
+            x = start + (end - start) * index / steps
+            half = self._neck_half_width_at(outline, x)
+            if outer + CARBON_ROD_WALL > half + 1e-9:
+                raise NeckGeometryError(
+                    f"The carbon rods' channels come within "
+                    f"{half - outer:.1f} mm of the neck's side {x:.0f} mm from "
+                    f"the nut; keep {CARBON_ROD_WALL:g} mm (a smaller "
+                    "neck_carbon_rod_offset or a later neck_carbon_rod_start)."
+                )
+            floor = -_back_z(rows, x, outer) - rods.depth
+            if floor < CARBON_ROD_FLOOR - 1e-9:
+                raise NeckGeometryError(
+                    f"The carbon rods' channels leave {floor:.1f} mm of wood "
+                    f"under them {x:.0f} mm from the nut; keep "
+                    f"{CARBON_ROD_FLOOR:g} mm (shallower rods, a later "
+                    "neck_carbon_rod_start or a thicker neck)."
+                )
+        return rods
+
+    @staticmethod
+    def _neck_half_width_at(outline: NeckOutline, x: float) -> float:
+        """Return the neck's half width ``x`` from the nut."""
+        if x >= outline.last_fret_position:
+            return outline.heel_width / 2.0
+        fraction = max(0.0, x) / outline.last_fret_position
+        return (
+            outline.nut_width + (outline.last_fret_width - outline.nut_width) * fraction
+        ) / 2.0
+
     def neck_through_block_width(self, layout: BodyLayout) -> float:
         """Return a neck-through block's width.
 
@@ -3598,6 +3727,7 @@ class Prototype001Parameters:
             bass_sign=self.bass_sign,
         )
         truss_rod_channel = self.truss_rod(outline)
+        carbon_rods = self.carbon_rods(outline, neck_surface, truss_rod_channel)
         headstock = self.headstock_solid(headstock_plan)
         if body_parts.pickguard is not None:
             check_on_body(body_parts.pickguard, body_parts.outline.points)
@@ -3668,6 +3798,7 @@ class Prototype001Parameters:
             self.headstock_lettering(headstock, tuner_layout, truss_rod_channel),
             (self.neck_angle_degrees, *self.neck_pivot()),
             through_parts,
+            carbon_rods,
         )
 
 
@@ -3919,3 +4050,31 @@ def distance_to_headstock_edge(plan: HeadstockPlan, point: Point2D) -> float:
         point.y - plan.edge_y(distance, -1.0),
         plan.tip_clearance(point),
     )
+
+
+def _back_z(rows: tuple[tuple[Point3D, ...], ...], x: float, y: float) -> float:
+    """Return the neck back's height at ``(x, y)`` from its mesh rows.
+
+    Linear between the two rows either side of ``x`` and across each row;
+    0 (the glue face) beyond a row's sides.
+    """
+
+    def across(row: tuple[Point3D, ...]) -> float:
+        for a, b in zip(row, row[1:], strict=False):
+            if a.y <= y <= b.y:
+                t = 0.0 if b.y == a.y else (y - a.y) / (b.y - a.y)
+                return a.z + (b.z - a.z) * t
+        return 0.0
+
+    stations = [row[0].x for row in rows]
+    if x <= stations[0]:
+        return across(rows[0])
+    for index in range(1, len(rows)):
+        if x <= stations[index]:
+            x0, x1 = stations[index - 1], stations[index]
+            t = 0.0 if x1 == x0 else (x - x0) / (x1 - x0)
+            return (
+                across(rows[index - 1])
+                + (across(rows[index]) - across(rows[index - 1])) * t
+            )
+    return across(rows[-1])

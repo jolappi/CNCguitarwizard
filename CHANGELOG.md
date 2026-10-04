@@ -4,6 +4,13 @@
 
 ### Added
 
+- Carbon fibre neck reinforcement (`neck_carbon_rods`; the bars'
+  `neck_carbon_rod_size` 3.2 x 6.35 mm, 4 x 4 mm, 3.2 x 9.5 mm or custom;
+  their start, length and offset): two bars in channels beside
+  the truss rod, under the fretboard, checked to leave 2 mm of wood under
+  them and beside the rod and the neck's sides; `Neck_carbon_rods.nc`
+  cuts the channels with a 3 mm end mill, the FreeCAD model cuts them and
+  shows the bars, the plan view dashes them.
 - Every field in the web form explains itself on hover (its name
   underlined dotted): taken from the code's own documentation
   (`webapp._field_help`: docstrings and the comments above the

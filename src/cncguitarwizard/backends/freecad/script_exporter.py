@@ -20,6 +20,7 @@ from ...geometry.body import (
 from ...geometry.body.carve import CELL
 from ...geometry.fretboard import FretboardSurface, FretLayout, InlayLayout
 from ...geometry.neck import (
+    CarbonRods,
     HeadstockSolid,
     LockingNut,
     NeckBackSurface,
@@ -143,6 +144,7 @@ class FreeCADScriptExporter:
             locking_nut=geometry.locking_nut,
             body=geometry.body,
             neck_through=geometry.neck_through,
+            carbon_rods=geometry.carbon_rods,
             fretboard_binding_width=geometry.fretboard_binding_width,
             headstock_engraving=geometry.headstock_engraving,
             neck_tilt=geometry.neck_tilt,
@@ -209,6 +211,7 @@ class FreeCADScriptExporter:
         body: BodySolid | None = None,
         body_object_name: str = "Body",
         neck_through: NeckThrough | None = None,
+        carbon_rods: CarbonRods | None = None,
         fretboard_binding_width: float = 0.0,
         headstock_engraving: Engraving | None = None,
         neck_tilt: tuple[float, float, float] = (0.0, 0.0, 0.0),
@@ -442,6 +445,8 @@ class FreeCADScriptExporter:
             (0 if zero_fret else 1) : fretboard_surface.fret_count + 1
         ]
         export_feature_names = ["neck_feature", "fretboard_feature"]
+        if carbon_rods is not None:
+            export_feature_names.append("carbon_rods_feature")
         if headstock is not None and not join_headstock_to_neck and not hide_headstock:
             export_feature_names.append("headstock_feature")
         if fretboard_binding_width > 0.0:
@@ -459,7 +464,9 @@ class FreeCADScriptExporter:
             step_path,
             export_features,
         )
-        truss_rod_source = self._render_truss_rod_cut(truss_rod_channel)
+        truss_rod_source = self._render_truss_rod_cut(
+            truss_rod_channel
+        ) + self._render_carbon_rod_cut(carbon_rods)
         # The U trim reshapes the boundary at headstock_root_start_position
         # under the assumption that it is a genuine edge of neck_shape's own
         # material — true when there is no headstock-root transition, but
@@ -762,6 +769,7 @@ class FreeCADScriptExporter:
             "neck_feature = document.addObject("
             f'"Part::Feature", "{neck_object_name}")\n'
             "neck_feature.Shape = neck_shape\n"
+            f"{self._render_carbon_rods(carbon_rods)}"
             "fretboard_feature = document.addObject("
             f'"Part::Feature", "{fretboard_object_name}")\n'
             "fretboard_shape = make_loft(FRETBOARD_SECTION_POINTS)\n"
@@ -2611,6 +2619,56 @@ class FreeCADScriptExporter:
                 ")\n"
             )
         return source
+
+    @staticmethod
+    def _render_carbon_rod_cut(rods: CarbonRods | None) -> str:
+        """Return the carbon fibre bars' channels cut into the neck's top.
+
+        Each as a row of short boxes reaching 5 mm above the top, as the
+        truss rod's route is (see ``_render_truss_rod_cut``).
+        """
+        if rods is None:
+            return ""
+        count = max(1, math.ceil(rods.length / TRUSS_ROD_POCKET_PIECE_LENGTH))
+        piece = rods.length / count
+        sides = [min(point.y for point in channel) for channel in rods.channels()]
+        return (
+            "# The carbon fibre bars' channels beside the truss rod.\n"
+            f"carbon_rod_channel_ys = {sides!r}\n"
+            "carbon_rod_channels = [\n"
+            "    Part.makeBox(\n"
+            f"        {piece!r}, {rods.channel_width!r}, {rods.depth + 5.0!r},\n"
+            f"        App.Vector({rods.start!r} + index * {piece!r}, y, "
+            f"{-rods.depth!r}),\n"
+            "    )\n"
+            "    for y in carbon_rod_channel_ys\n"
+            f"    for index in range({count})\n"
+            "]\n"
+            "neck_shape = require_shape(\n"
+            "    neck_shape.cut(carbon_rod_channels).removeSplitter(),\n"
+            '    "carbon rod channels",\n'
+            ")\n"
+        )
+
+    @staticmethod
+    def _render_carbon_rods(rods: CarbonRods | None) -> str:
+        """Return the carbon fibre bars themselves, an object of their own."""
+        if rods is None:
+            return ""
+        return (
+            "carbon_rods_feature = document.addObject(\n"
+            '    "Part::Feature", "CarbonRods"\n'
+            ")\n"
+            "carbon_rods_feature.Shape = Part.makeCompound([\n"
+            "    Part.makeBox(\n"
+            f"        {rods.length!r}, {rods.width!r}, {rods.depth!r},\n"
+            f"        App.Vector({rods.start!r}, y - {rods.width / 2.0!r}, "
+            f"{-rods.depth!r}),\n"
+            "    )\n"
+            f"    for y in ({rods.offset!r}, {-rods.offset!r})\n"
+            "])\n"
+            "carbon_rods_feature.Label = 'Carbon fibre reinforcement'\n"
+        )
 
     def write_script(self, path: Path, source: str) -> None:
         """Write generated FreeCAD source using UTF-8 encoding.
