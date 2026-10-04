@@ -405,6 +405,14 @@
 
 ### Fixed
 
+- Fanned (multiscale) and slanted frets build in FreeCAD again: since the
+  script's coordinates were rounded to 4 decimals, every leaning
+  fretboard section came out a hair off its plane, so the fretboard loft
+  was invalid ("loft produced an invalid shape") and the fret slots' faces
+  failed. The script now puts each section, slot profile and the board's
+  run-on behind a slotted nut back onto its plane first. This affected
+  fanned basses and guitars alike.
+
 - Choosing the Stratocaster controls in the pickguard (`body_controls`
   "pickguard") no longer fails with "The pickguard does not cover its
   controls" (or "need a pickguard"):

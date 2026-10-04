@@ -31,7 +31,13 @@ suffixes before generating the script.
 
 Run the generated file inside FreeCAD. It:
 
-1. creates closed polygon wires from every 3D profile row;
+1. creates closed polygon wires from every 3D profile row, each first put
+   back onto its own plane (`flattened`: Newell's normal through the
+   row's centroid) — the script's coordinates are rounded to
+   `SERIAL_DECIMALS` (4), which leaves a leaning row (slanted or fanned
+   frets) a hair off its plane and its loft invalid; the fret slots'
+   profiles and the board's run-on behind a slotted nut are flattened
+   the same way;
 2. lofts the wires as a solid with `Part.makeLoft`;
 3. places the result in a `Part::Feature`;
 4. recomputes the document.
