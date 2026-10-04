@@ -4,6 +4,35 @@
 
 ### Added
 
+- An ESP LTD Alexi Hexed style body template (mockup, not the original):
+  - The Jackson RR style outline (ESP's Alexi body is an offset V after
+    Alexi Laiho's Jackson RRs).
+  - Loading it in the body editor also sets the Hexed's look
+    (`BODY_TEMPLATE_VALUES`): one bridge humbucker under one volume pot,
+    a Floyd Rose, and its graphic as a stepped top.
+- A stepped top (`body_stepped_top`, `body_top_step_height` 1.5 mm): the
+  top lowered in bands along the edge, the middle at full height and each
+  band nearer the edge a step lower.
+  - Each step's line is drawn (the shape's `step_points`, straight lines
+    between points, edited with diamond handles in the body editor), or
+    taken in from the edge by `body_top_step_insets` (12 and 40 mm;
+    *Auto steps*).
+  - The Alexi Hexed template draws its steps where the original's
+    pinstripes run: two nested arrows from the edge beside the neck pocket
+    into the wings, each tail a sharp V at the notch.
+  - Drawn lines may meet off the body, in the neck pocket or by the edge;
+    the editor keeps the steps' handles on top.
+  - `Body_top_steps.nc` cuts the bands in passes along the edge, each
+    step's wall true.
+  - The FreeCAD model cuts the steps as rings.
+  - The back's cavities keep their top wall under the bands.
+  - The plan view and the body editor draw the step walls.
+- A `pinstripe` engraving pattern: one stripe round the body just inside
+  the engraving's margin, following the edge as a painted pinstripe does,
+  broken where something is in its way.
+- Body templates can set other values besides their shape; the editor's
+  confirmation names them.
+
 - More control layouts (`body_controls`):
   - `superstrat`: an Ibanez RG / Jackson style rear cavity with the 5-way
     blade switch in it beside the volume and tone pots. The switch sits in a

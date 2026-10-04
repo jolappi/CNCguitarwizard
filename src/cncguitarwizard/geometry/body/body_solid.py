@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from ..exceptions import BodyGeometryError
@@ -12,6 +13,7 @@ from .edges import ContourCut, EdgeProfile
 from .engraving import Engraving
 from .hardware import BridgeMounting, Cavity, DrilledHole, JackHole, RearCavity
 from .outline import BodyOutline, TracedOutline
+from .steps import SteppedTop
 
 Outline = BodyOutline | TracedOutline
 
@@ -105,6 +107,9 @@ class BodySolid:
         carved_top: The top arched from a flat plateau down to a flat rim
             (``CarvedTop``), or ``None`` for a flat top. Every rear cavity
             must leave ``CARVE_WALL`` of wood under it.
+        stepped_top: The top lowered in bands along the edge
+            (``SteppedTop``), or ``None``; not with a carved top. Every rear
+            cavity must leave ``CARVE_WALL`` under it too.
         engraving: Decorative lines engraved into the top, or ``None``;
             it must leave half the slab.
         edge_outline: The outline the edge finishes (roundover, binding)
@@ -148,6 +153,7 @@ class BodySolid:
     truss_rod_access: Cavity | None = None
     engraving: Engraving | None = None
     carved_top: CarvedTop | None = None
+    stepped_top: SteppedTop | None = None
     edge_outline: tuple[Point2D, ...] = ()
     checked: bool = True
 
@@ -157,8 +163,15 @@ class BodySolid:
             raise BodyGeometryError("Body thickness must be finite and positive.")
         if not self.checked:
             return
+        if self.carved_top is not None and self.stepped_top is not None:
+            raise BodyGeometryError(
+                "A top is either carved or stepped: turn off body_carved_top or "
+                "body_stepped_top."
+            )
         if self.carved_top is not None:
             self._check_carve()
+        if self.stepped_top is not None:
+            self._check_steps()
         if self.engraving is not None and self.engraving.depth >= self.thickness / 2.0:
             raise BodyGeometryError(
                 "The engraving must be shallower than half the body's thickness."
@@ -337,6 +350,23 @@ class BodySolid:
                 "The carved top's depth (body_carve_depth) must be under half the "
                 "body's thickness."
             )
+        self._check_walls(carve.drop_at, "carved top", "body_carve_depth")
+
+    def _check_steps(self) -> None:
+        """Refuse steps that would leave a rear cavity too thin a top."""
+        steps = self.stepped_top
+        assert steps is not None
+        if steps.depth >= self.thickness / 4.0:
+            raise BodyGeometryError(
+                "The stepped top's steps (body_top_step_height times their "
+                "number) must come to under a quarter of the body's thickness."
+            )
+        self._check_walls(steps.drop_at, "stepped top", "body_top_step_height")
+
+    def _check_walls(
+        self, drop_at: Callable[[float, float], float], what: str, setting: str
+    ) -> None:
+        """Refuse a lowered top leaving under ``CARVE_WALL`` over a rear cavity."""
         rears = [
             (rear.cavity.name, part)
             for rear in (
@@ -350,13 +380,33 @@ class BodySolid:
         ]
         for name, part in rears:
             for point in part.outline:
-                wood = self.thickness - carve.drop_at(point.x, point.y) - part.depth
+                wood = self.thickness - drop_at(point.x, point.y) - part.depth
                 if wood < CARVE_WALL - 1e-6:
                     raise BodyGeometryError(
-                        f"The carved top leaves {max(wood, 0.0):.1f} mm over the "
-                        f"{name.lower()}; lower body_carve_depth or use a thicker "
-                        "body."
+                        f"The {what} leaves {max(wood, 0.0):.1f} mm over the "
+                        f"{name.lower()}; lower {setting} or use a thicker body."
                     )
+
+    def top_drop_at(self, x: float, y: float) -> float:
+        """Return how far a carved or stepped top lies below its full height."""
+        if self.carved_top is not None:
+            return self.carved_top.drop_at(x, y)
+        if self.stepped_top is not None:
+            return self.stepped_top.drop_at(x, y)
+        return 0.0
+
+    @property
+    def top_edge_drop(self) -> float:
+        """Return how far the top's edge lies below its full height.
+
+        A carved top's rim, the carve's height down; a stepped top's
+        outermost band, all its steps down. The edge finishes start there.
+        """
+        if self.carved_top is not None:
+            return self.carved_top.height
+        if self.stepped_top is not None:
+            return self.stepped_top.depth
+        return 0.0
 
     def _validate_edges(self) -> None:
         """Check the edge finishes and bevels against the cavities."""

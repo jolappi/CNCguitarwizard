@@ -12,7 +12,10 @@ the top may be engraved (``EngravingArea``):
 * ``flame``, wavy lines across the body as in flamed maple;
 * ``ripples``, groups of concentric rings, each group covering the ones
   laid before it;
-* ``crackle``, the cells of a random Voronoi pattern, as crazed lacquer.
+* ``crackle``, the cells of a random Voronoi pattern, as crazed lacquer;
+* ``pinstripe``, a stripe round the body ``PINSTRIPE_INSET`` inside the
+  engraving's margin, following the edge as a painted pinstripe does
+  (Jackson RR, ESP LTD Alexi Hexed), broken where something is in its way.
 
 The scroll pattern is Design by Jone's surface design (``pintakuviodesignbyjone``):
 one motif of five arcs — a broad swirl, a curl and a small tip rolling
@@ -35,7 +38,9 @@ from typing import Literal
 from ..cam.planar import offset_polygon
 from ..geometry.primitives import Point2D
 
-EngravingPattern = Literal["scroll", "evh_stripes", "flame", "ripples", "crackle"]
+EngravingPattern = Literal[
+    "scroll", "evh_stripes", "flame", "ripples", "crackle", "pinstripe"
+]
 
 ENGRAVING_PATTERNS: tuple[str, ...] = (
     "scroll",
@@ -43,6 +48,7 @@ ENGRAVING_PATTERNS: tuple[str, ...] = (
     "flame",
     "ripples",
     "crackle",
+    "pinstripe",
 )
 """Every pattern, in the order the form offers them."""
 
@@ -71,6 +77,10 @@ RIPPLE_GAP = 8.0
 
 RIPPLE_RINGS = (2, 6)
 """Fewest and most rings in a ripple group."""
+
+PINSTRIPE_INSET = 0.5
+"""How far inside the engraving's margin the pinstripe runs, in mm: just
+inside, so the whole stripe is in the area."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -434,7 +444,8 @@ def pattern_lines(
     ``spacing`` sets each pattern's scale: the scroll copies' spacing,
     one stripe per twice its square of the area's bounds, a fifth of
     it between flame lines, a ripple group per its square, a crackle cell
-    about its size. Pieces shorter than ``MIN_PATTERN_LINE`` are left out.
+    about its size (the pinstripe takes neither it nor the seed). Pieces
+    shorter than ``MIN_PATTERN_LINE`` are left out.
 
     Raises:
         ValueError: For an unknown pattern.
@@ -457,6 +468,8 @@ def pattern_lines(
         lines = _flame(bounds, rng, spacing)
     elif pattern == "ripples":
         lines = _ripples(bounds, rng, spacing)
+    elif pattern == "pinstripe":
+        lines = _pinstripe(area)
     else:
         lines = _crackle(bounds, rng, spacing)
     return tuple(
@@ -607,6 +620,16 @@ def _ripples(bounds: Bounds, rng: random.Random, spacing: float) -> list[list[Po
             )
             radius += RIPPLE_GAP
     return lines
+
+
+def _pinstripe(area: EngravingArea) -> list[list[Point2D]]:
+    """Return the stripe round the body, just inside the margin, closed."""
+    stripe = offset_polygon(
+        area.outline, area.margin + PINSTRIPE_INSET, inward=True, sample_spacing=1.0
+    )
+    if len(stripe) < 3:
+        return []
+    return [[*stripe, stripe[0]]]
 
 
 def _crackle(bounds: Bounds, rng: random.Random, spacing: float) -> list[list[Point2D]]:

@@ -142,6 +142,12 @@ def render_plan_view_svg(geometry: Prototype001Geometry) -> str:
                 'stroke-dasharray="5,3"',
             )
         )
+    # A stepped top's step walls, solid: each band outside one a step lower.
+    if body.stepped_top is not None:
+        for boundary in body.stepped_top.boundaries:
+            parts.append(
+                path(boundary, 'fill="none" stroke="#6a4a8a" stroke-width="0.6"')
+            )
     # Arm contour (top) and belly cut (back), under the cavities.
     for contour in body.contours:
         look = (

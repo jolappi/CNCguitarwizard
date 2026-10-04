@@ -11,7 +11,7 @@ pins where they were.
 from __future__ import annotations
 
 import math
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, replace
 from typing import Any, Literal
 
@@ -25,18 +25,19 @@ from ..geometry.body import (
 from ..geometry.primitives import Point2D, point_in_polygon
 from .body_edges import ball_tool, binding_path, contour_paths, roundover_path
 from .engraving import engraving_path, engraving_tool
+from .exceptions import ToolpathError
 from .fixturing import StockBounds, resolve_index_pins
 from .gcode import Setup
-from .operations import drill, pocket, profile
+from .operations import depth_levels, drill, pocket, profile
 from .parameters import MachiningParameters
-from .planar import offset_polygon
+from .planar import PolygonIndex, offset_polygon, simplified
 from .surfacing import (
     offset_sampled_surface,
     raster_finish,
     raster_rough,
     sample_surface,
 )
-from .toolpath import Toolpath
+from .toolpath import PathBuilder, Toolpath
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,6 +63,8 @@ class BodyMachiningPlan:
         top_carve: Top-face program arching a carved top (roughed with
             the main tool, finished with a ball nose), run first, or
             ``None``.
+        top_steps: Top-face program lowering a stepped top's bands, run
+            first, or ``None``.
         back: Back-face setup after the flip: rear cavities, cover
             recesses, rear holes, and the lower half of the outline with
             tabs.
@@ -91,6 +94,7 @@ class BodyMachiningPlan:
     back_edges: Setup | None = None
     top_engraving: Setup | None = None
     top_carve: Setup | None = None
+    top_steps: Setup | None = None
 
     @property
     def setups(self) -> tuple[Setup, ...]:
@@ -102,6 +106,7 @@ class BodyMachiningPlan:
         candidates = (
             self.index_pins,
             self.top_carve,
+            self.top_steps,
             self.top,
             self.top_controls,
             self.top_small_holes,
@@ -260,9 +265,7 @@ def plan_body_machining(
                 body.top_edge,
                 parameters,
                 # On a carved top's rim, the carve's height down.
-                face_drop=(
-                    body.carved_top.height if body.carved_top is not None else 0.0
-                ),
+                face_drop=body.top_edge_drop,
             )
         )
     top = Setup(
@@ -413,12 +416,14 @@ def plan_body_machining(
 
     top_engraving = _engraving_setup(body, top_frame, parameters, reference_points)
     top_carve = _carve_setup(body, top_frame, parameters, reference_points)
+    top_steps = _steps_setup(body, top_frame, parameters, reference_points)
 
     top_outline = top_frame.polygon(body.outline.points)
     back_outline = back_frame.polygon(body.outline.points)
     previews = [top_outline, top_outline]
-    if top_carve is not None:
-        previews.append(top_outline)
+    for optional in (top_carve, top_steps):
+        if optional is not None:
+            previews.append(top_outline)
     for optional in (top_controls, top_small_holes, top_edges, top_engraving):
         if optional is not None:
             previews.append(top_outline)
@@ -445,6 +450,7 @@ def plan_body_machining(
         back_edges=back_edges,
         top_engraving=top_engraving,
         top_carve=top_carve,
+        top_steps=top_steps,
     )
     return plan if prefix == "Body" else _renamed(plan, prefix)
 
@@ -491,6 +497,7 @@ def _renamed(plan: BodyMachiningPlan, prefix: str) -> BodyMachiningPlan:
             "back_edges",
             "top_engraving",
             "top_carve",
+            "top_steps",
         )
     }
     return replace(plan, **changes)
@@ -498,6 +505,176 @@ def _renamed(plan: BodyMachiningPlan, prefix: str) -> BodyMachiningPlan:
 
 CARVE_FINISH_STEP = 1.0
 """Step-over of the ball nose's finishing passes over a carved top, in mm."""
+
+STEP_WALL_TOLERANCE = 0.02
+"""How far a stepped top's wall pass may stray from the step's boundary
+(simplified that much first, which makes it far quicker), in mm."""
+
+STEP_REACH = 300.0
+"""How far in from the edge a stepped top's clearing passes may go, in mm."""
+
+STEP_CLEARING_TOLERANCE = 0.25
+"""How far a stepped top's clearing passes (all but each wall's) may stray
+from the outline's own offset, in mm: they leave the wall to the last."""
+
+STEP_LINK = 1.5
+"""How many step-overs a stepped top's pass may feed across to the next
+pass at depth; further, the tool lifts and comes down again."""
+
+
+def _steps_setup(
+    body: BodySolid,
+    frame: _Frame,
+    parameters: MachiningParameters,
+    reference_points: tuple[tuple[float, float], ...],
+) -> Setup | None:
+    """Return the program lowering a stepped top's bands, or ``None``.
+
+    The innermost step's band (everything outside its boundary) goes one
+    step down first, then each next band a step deeper, in step-down
+    layers. A band is cleared in passes along the body's edge — the
+    outline taken in by the tool's radius, then a step-over further in
+    each pass, each kept only where the tool stays outside the step's
+    boundary — until a pass lies wholly inside it; then the boundary taken
+    out by the radius runs round as the step's wall, cut true. Each pass
+    starts nearest where the last ended and is fed across when that is
+    near.
+
+    Raises:
+        ToolpathError: For a band too narrow for the tool anywhere.
+    """
+    steps = body.stepped_top
+    if steps is None:
+        return None
+    radius = parameters.tool_radius
+    spacing = parameters.raster_spacing
+    # The clearing passes come from a coarser outline, sampled coarser;
+    # the walls from the boundaries themselves.
+    rough = simplified(body.outline.points, STEP_CLEARING_TOLERANCE)
+    inside_body = PolygonIndex.of(
+        offset_polygon(rough, radius, inward=True, sample_spacing=3.0, arc_spacing=2.0)
+    )
+    paths: list[Toolpath] = []
+    start = 0.0
+    for index, (boundary, depth) in reversed(list(enumerate(steps.bands()))):
+        wall = offset_polygon(
+            simplified(boundary, STEP_WALL_TOLERANCE), radius, inward=False
+        )
+        keep_out = PolygonIndex.of(wall)
+        runs: list[list[Point2D]] = []
+        distance = radius
+        while distance < STEP_REACH:
+            loop = offset_polygon(
+                rough, distance, inward=True, sample_spacing=3.0, arc_spacing=2.0
+            )
+            outside = _runs_where(loop, lambda point: not keep_out.holds(point))
+            if not outside:
+                break
+            runs += outside
+            distance += spacing
+        # The wall, where it lies in the body.
+        runs += _runs_where(wall, inside_body.holds)
+        if not runs:
+            raise ToolpathError(
+                f"The stepped top's step {index + 1} leaves no band the "
+                f"{parameters.tool_diameter:g} mm tool can cut."
+            )
+        builder = _steps_builder(f"Stepped top, {depth:g} mm band", parameters)
+        for z in depth_levels(start, depth, parameters.step_down):
+            for run in runs:
+                _cut_step_pass(builder, frame.polygon(run), z, spacing * STEP_LINK)
+        paths.append(builder.build())
+        start = depth
+    return Setup(
+        "Body_top_steps",
+        f"Body top face - stepped top, {len(steps.boundaries)} steps of "
+        f"{steps.step:g} mm",
+        tuple(paths),
+        (
+            "Same fixture, tool and X/Y zero as Body_index_pins, dowels in; run "
+            "it before Body_top.",
+            "Each band is cut along the edge, its last pass following the "
+            "step's wall; the next step's band goes deeper after it.",
+        ),
+        reference_points,
+    )
+
+
+def _runs_where(
+    loop: Sequence[Point2D], keep: Callable[[Point2D], bool]
+) -> list[list[Point2D]]:
+    """Return the runs of a closed ``loop`` that ``keep`` accepts.
+
+    A loop kept all round comes back closed; a run that wraps past the
+    loop's first point is joined up.
+    """
+    if not loop:
+        return []
+    kept = [keep(point) for point in loop]
+    if all(kept):
+        return [[*loop, loop[0]]]
+    # Start just after a point left out, so no run wraps.
+    first = kept.index(False)
+    order = [*range(first + 1, len(loop)), *range(first + 1)]
+    runs: list[list[Point2D]] = []
+    run: list[Point2D] = []
+    for index in order:
+        if kept[index]:
+            run.append(loop[index])
+            continue
+        if len(run) >= 2:
+            runs.append(run)
+        run = []
+    if len(run) >= 2:
+        runs.append(run)
+    return runs
+
+
+def _steps_builder(name: str, parameters: MachiningParameters) -> PathBuilder:
+    return PathBuilder(
+        name,
+        safe_height=parameters.safe_height,
+        feed_rate=parameters.feed_rate,
+        plunge_rate=parameters.plunge_rate,
+    )
+
+
+def _cut_step_pass(
+    builder: PathBuilder, run: Sequence[Point2D], z: float, link: float
+) -> None:
+    """Run one pass at ``z``, from its end nearest the tool.
+
+    A closed pass (its ends together) starts from its point nearest the
+    tool. A pass no further than ``link`` from where the last one ended is
+    fed straight across at depth; otherwise the tool lifts and plunges.
+    """
+    points = list(run)
+    if builder.positioned:
+
+        def away(point: Point2D) -> float:
+            return math.hypot(point.x - builder.x, point.y - builder.y)
+
+        if math.hypot(points[0].x - points[-1].x, points[0].y - points[-1].y) < 1e-6:
+            first = min(range(len(points) - 1), key=lambda i: away(points[i]))
+            ring = points[:-1]
+            points = [*ring[first:], *ring[:first], ring[first]]
+        elif away(points[-1]) < away(points[0]):
+            points.reverse()
+    near = (
+        builder.positioned
+        and builder.z <= z + 1e-9
+        and math.hypot(points[0].x - builder.x, points[0].y - builder.y) <= link
+    )
+    if near:
+        builder.cut_to(points[0].x, points[0].y)
+    else:
+        builder.rapid_to(points[0].x, points[0].y)
+        builder.rapid_down_to(0.0)
+    if builder.z > z:
+        builder.plunge_to(z)
+    for point in points[1:]:
+        builder.cut_to(point.x, point.y)
+
 
 CARVE_EDGE_REACH = 3.0
 """How far past its tool's radius a carve's rim level is cut beyond the
@@ -628,7 +805,7 @@ def _engraving_setup(
         return None
     depth = body.engraving.depth
     tool = engraving_tool(parameters, depth)
-    carve = body.carved_top
+    lowered = body.carved_top is not None or body.stepped_top is not None
     return Setup(
         "Body_top_engraving",
         f"Body top face - decorative engraving {depth:g} mm deep with a V-bit",
@@ -637,9 +814,9 @@ def _engraving_setup(
                 body.engraving,
                 frame.point,
                 tool,
-                # Following a carved top's arch.
-                (lambda point: -carve.drop_at(point.x, point.y))
-                if carve is not None
+                # Following a carved top's arch or a stepped top's levels.
+                (lambda point: -body.top_drop_at(point.x, point.y))
+                if lowered
                 else (lambda point: 0.0),
             ),
         ),
@@ -687,12 +864,11 @@ def _edge_setup(
                         (contour.depth_at(frame.model(point)) for contour in contours),
                         default=0.0,
                     )
-                    # A carved top's edge is its rim, the carve's height down.
+                    # A carved top's edge is its rim, the carve's height
+                    # down; a stepped top's its outermost band.
                     + (
-                        body.carved_top.drop_at(
-                            frame.model(point).x, frame.model(point).y
-                        )
-                        if face == "top" and body.carved_top is not None
+                        body.top_drop_at(frame.model(point).x, frame.model(point).y)
+                        if face == "top"
                         else 0.0
                     )
                 ),

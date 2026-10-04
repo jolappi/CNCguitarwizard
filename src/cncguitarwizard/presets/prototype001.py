@@ -7,7 +7,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field, replace
 from typing import Any, Literal
 
-from ..cam.planar import distance_to_boundary, offset_polygon
+from ..cam.planar import distance_to_boundary, offset_polygon, simplified
 from ..geometry.body import (
     BRIDGE_MAX_STRINGS,
     BRIDGE_MIN_STRINGS,
@@ -29,6 +29,7 @@ from ..geometry.body import (
     KahlerBridgeSpec,
     RearCavity,
     SingleStringBridgeSpec,
+    SteppedTop,
     TracedCavity,
     TracedOutline,
     TuneOMaticSpec,
@@ -254,6 +255,15 @@ TRUSS_ROD_MIN_FLOOR = 1.0
 """Wood left under a headstock-adjusted standard rod's deepest pocket, in
 mm: the neck is made this much thicker than the pocket's depth."""
 
+STEP_EDGE_SLACK = 3.0
+"""How near the body's edge drawn step lines may cross, in mm: where they
+converge on the edge (the sliver between them is cut with the outer
+band)."""
+
+STEP_OUTLINE_TOLERANCE = 0.05
+"""How far a stepped top's boundaries may stray from the outline's own
+offset, in mm (the outline is simplified that much first)."""
+
 PICKGUARD_CONTROL_LAP = 6.0
 """How far a pickguard reaches past the control cavity under it, at least,
 in mm (pickguard-mounted controls are moved to leave it room)."""
@@ -438,6 +448,8 @@ class BodyLayout:
         engraving: The decorative pattern engraved into the top, or
             ``None`` (see ``body_engraving``).
         carved_top: The arched top, or ``None`` (see ``body_carved_top``).
+        stepped_top: The top in levels along the edge, or ``None`` (see
+            ``body_stepped_top``).
     """
 
     heel_end: float
@@ -464,6 +476,7 @@ class BodyLayout:
     bridge_footprint: tuple[Point2D, ...] = ()
     engraving: Engraving | None = None
     carved_top: CarvedTop | None = None
+    stepped_top: SteppedTop | None = None
 
 
 TRUSS_ROD_STOCK_LENGTHS: tuple[float, ...] = tuple(
@@ -794,6 +807,17 @@ class Prototype001Parameters:
     body_carve_depth: float = 9.5
     body_carve_rim: float = 8.0
     body_carve_margin: float = 15.0
+    # body_stepped_top lowers the top in bands that follow the edge, the
+    # ESP LTD Alexi Hexed's graphic made into levels (geometry.body.steps):
+    # inside the innermost of body_top_step_insets the top keeps its full
+    # height, and each band nearer the edge lies body_top_step_height lower
+    # than the one inside it — 12 and 40 mm in with 1.5 mm steps, the
+    # middle band 1.5 mm down and the edge band 3 mm. The pickups and the
+    # bridge stay on the top level; the back's cavities keep their top wall
+    # under the bands. Not with a carved top, an arm contour or a pickguard.
+    body_stepped_top: bool = False
+    body_top_step_insets: tuple[float, ...] = (12.0, 40.0)
+    body_top_step_height: float = 1.5
     body_engraving: bool = False
     body_engraving_pattern: EngravingPattern = "scroll"
     body_engraving_seed: int = 1
@@ -1472,7 +1496,8 @@ class Prototype001Parameters:
         full ``build`` does that when it makes the ``BodySolid``.
         """
         self._check_bridge_strings()
-        return self._body_layout(self.neck_outline())
+        # The steps are drawn wherever they fall; the build checks them.
+        return self._body_layout(self.neck_outline(), check_steps=False)
 
     def headstock_design(self) -> tuple[HeadstockPlan, TunerLayout]:
         """Return the headstock plan and its tuner holes, validated.
@@ -2262,7 +2287,9 @@ class Prototype001Parameters:
             self.heel_length,
         )
 
-    def _body_layout(self, outline: NeckOutline) -> BodyLayout:
+    def _body_layout(
+        self, outline: NeckOutline, *, check_steps: bool = True
+    ) -> BodyLayout:
         heel_end = outline.last_fret_position + self.heel_length
         # Body features ride with the heel end, bridge features with the
         # scale length (see the body_* parameter comments).
@@ -2588,13 +2615,25 @@ class Prototype001Parameters:
             contours,
         )
 
-        def carve_drop(route: Cavity) -> float:
-            if carved_top is None:
-                return 0.0
-            return max(carved_top.drop_at(p.x, p.y) for p in route.outline)
+        stepped_top = self._stepped_top(
+            shape,
+            heel_end,
+            body_outline.points,
+            neck_pocket.outline,
+            [*carve_pickups, *carve_bridge] if check_steps else [],
+            contours,
+            guard,
+        )
+        lowered = carved_top or stepped_top
 
-        if carved_top is not None:
-            # The back's cavities keep their top wall under the arched top.
+        def carve_drop(route: Cavity) -> float:
+            if lowered is None:
+                return 0.0
+            return max(lowered.drop_at(p.x, p.y) for p in route.outline)
+
+        if lowered is not None:
+            # The back's cavities keep their top wall under the arched or
+            # stepped top.
             controls = replace(
                 controls,
                 control_cavity=self._under_carve(controls.control_cavity, carve_drop),
@@ -2688,6 +2727,7 @@ class Prototype001Parameters:
             bridge.footprint,
             engraving,
             carved_top,
+            stepped_top,
         )
 
     def carbon_rods(
@@ -2976,6 +3016,103 @@ class Prototype001Parameters:
             cavity=replace(rear.cavity, depth=rear.cavity.depth - shift),
             steps=tuple(replace(step, depth=step.depth - shift) for step in rear.steps),
         )
+
+    def _stepped_top(
+        self,
+        shape: BodyShapeSpec,
+        heel_end: float,
+        outline: tuple[Point2D, ...],
+        pocket: tuple[Point2D, ...],
+        level: list[tuple[Point2D, ...]],
+        contours: tuple[ContourCut, ...],
+        guard: Pickguard | None,
+    ) -> SteppedTop | None:
+        """Return the top in levels, or ``None`` (see ``body_stepped_top``).
+
+        The steps are the shape's drawn ``step_points``, or the outline
+        taken in by ``body_top_step_insets``. ``level`` is what must sit on
+        the top level: the pickups and the bridge's routes, plate and holes.
+
+        Raises:
+            BodyGeometryError: With a carved top, an arm contour or a
+                pickguard, or steps that reach the pickups or the bridge.
+        """
+        if not self.body_stepped_top:
+            return None
+        if self.body_carved_top:
+            raise BodyGeometryError(
+                "A top is either carved or stepped: turn off body_carved_top or "
+                "body_stepped_top."
+            )
+        if any(contour.face == "top" for contour in contours):
+            raise BodyGeometryError(
+                "A stepped top takes no arm contour: set body_arm_contour_depth to 0."
+            )
+        if guard is not None:
+            raise BodyGeometryError(
+                "A pickguard does not lie flat on a stepped top: turn off "
+                "body_pickguard or body_stepped_top."
+            )
+        if shape.step_points:
+            for index, polygon in enumerate(shape.step_points, start=1):
+                if not all(
+                    isinstance(point, (tuple, list))
+                    and len(point) == 2
+                    and all(
+                        isinstance(v, (int, float)) and math.isfinite(v) for v in point
+                    )
+                    for point in polygon
+                ):
+                    raise BodyGeometryError(
+                        f"The stepped top's step {index} has a point that is not "
+                        "two numbers: redraw it, or use Auto steps."
+                    )
+            # Drawn: straight lines between the shape's points.
+            boundaries = tuple(
+                tuple(Point2D(heel_end + x, y) for x, y in polygon)
+                for polygon in shape.step_points
+            )
+            where = "drawn"
+        else:
+            insets = tuple(float(inset) for inset in self.body_top_step_insets)
+            if not all(math.isfinite(d) and d > 0.0 for d in insets) or any(
+                inner <= outer for outer, inner in zip(insets, insets[1:], strict=False)
+            ):
+                raise BodyGeometryError(
+                    "body_top_step_insets must be positive, the outermost first "
+                    "and each further in than the last."
+                )
+            # The outline with the points it can do without left out
+            # (within STEP_OUTLINE_TOLERANCE): the boundaries come out as
+            # true and far quicker.
+            edge = simplified(outline, STEP_OUTLINE_TOLERANCE)
+            boundaries = tuple(
+                tuple(offset_polygon(edge, inset, inward=True)) for inset in insets
+            )
+            where = f"{insets[-1]:g} mm in from the edge" if insets else ""
+        steps = SteppedTop(boundaries, self.body_top_step_height)
+        if shape.step_points:
+            # Drawn lines may meet off the body, in the neck pocket or
+            # within STEP_EDGE_SLACK of the edge (converging on it).
+            steps.check_nested(
+                lambda point: (
+                    not point_in_polygon(point, outline)
+                    or point_in_polygon(point, pocket)
+                    or distance_to_boundary(point, outline) <= STEP_EDGE_SLACK
+                )
+            )
+        innermost = steps.boundaries[-1]
+        if any(
+            not point_in_polygon(point, innermost)
+            for feature in level
+            for point in feature
+        ):
+            raise BodyGeometryError(
+                f"The stepped top's innermost step ({where}) reaches the pickups "
+                "or the bridge: make the last of body_top_step_insets smaller, "
+                "or draw that step round them."
+            )
+        return steps
 
     def _carved_top(
         self,
@@ -3938,6 +4075,7 @@ class Prototype001Parameters:
             truss_rod_access=body_parts.truss_rod_access,
             engraving=body_parts.engraving,
             carved_top=body_parts.carved_top,
+            stepped_top=body_parts.stepped_top,
         )
         return Prototype001Geometry(
             outline,
@@ -4102,6 +4240,28 @@ NECK_TEMPLATES: dict[str, tuple[str, dict[str, Any]]] = {
 """Neck and headstock starting points the headstock editor can load: each
 a label and the values it sets (for a six-string guitar; the truss rod can
 still be moved to the headstock afterwards)."""
+
+BODY_TEMPLATE_VALUES: dict[str, dict[str, Any]] = {
+    "alexi_hexed": {
+        "body_pickups": "H",
+        "body_controls": "volume_1",
+        "body_bridge": FloydRoseSpec(),
+        "body_stepped_top": True,
+        "body_top_step_insets": (12.0, 40.0),
+        "body_top_step_height": 1.5,
+    },
+}
+"""Parameter values a body template (``YOUR_DESIGN_TEMPLATES``) sets
+besides its shape when the body editor loads it: the ESP LTD Alexi Hexed
+style one its look — a single bridge humbucker (an EMG HZ on the
+original) under one volume pot (no selector), a Floyd Rose, and its
+graphic as a stepped top (``body_stepped_top``, its two steps drawn in the
+template's ``step_points``): the arrow round the pickup and the bridge at
+full height, the band round it 1.5 mm lower, the rest out to the edge and
+the wing tips 3 mm lower, where the original's pinstripes run. Its purple
+fade and pinstripes (on the back and sides too) are the painter's; it is
+neck-through (``neck_joint``) with sawtooth inlays (``inlay_style``
+"sharktooth"), which the template leaves to choose."""
 
 INSTRUMENT_OVERRIDES: dict[str, dict[str, Any]] = {
     "electric_guitar": {},

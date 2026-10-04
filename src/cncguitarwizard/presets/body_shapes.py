@@ -111,6 +111,12 @@ class DesignByJoneShape:
         belly_cut_points: The same for a drawn belly cut on the back (seen
             from the top, as the outline is), used with
             ``Prototype001Parameters.body_belly_cut_depth``.
+        step_points: A drawn stepped top's step lines (used with
+            ``Prototype001Parameters.body_stepped_top``): one closed
+            polygon of points (X from the heel end, Y) per step, joined by
+            straight lines, the outermost first, each inside the one
+            before; empty for steps the ``body_top_step_insets`` in from
+            the edge.
     """
 
     kind: Literal["design_by_jone"] = "design_by_jone"
@@ -143,6 +149,7 @@ class DesignByJoneShape:
     pickguard_points: tuple[tuple[float, float], ...] = ()
     arm_contour_points: tuple[tuple[float, float], ...] = ()
     belly_cut_points: tuple[tuple[float, float], ...] = ()
+    step_points: tuple[tuple[tuple[float, float], ...], ...] = ()
     # Whether the traced outline and almond cavity (constants drawn
     # right-handed) are mirrored: set by mirrored_shape, with every other
     # field mirrored there.
@@ -286,6 +293,12 @@ class YourDesignShape:
         belly_cut_points: The same for a drawn belly cut on the back (seen
             from the top, as the outline is), used with
             ``Prototype001Parameters.body_belly_cut_depth``.
+        step_points: A drawn stepped top's step lines (used with
+            ``Prototype001Parameters.body_stepped_top``): one closed
+            polygon of points (X from the heel end, Y) per step, joined by
+            straight lines, the outermost first, each inside the one
+            before; empty for steps the ``body_top_step_insets`` in from
+            the edge.
 
     Raises:
         BodyGeometryError: For fewer than four or non-finite control points.
@@ -316,6 +329,7 @@ class YourDesignShape:
     pickguard_points: tuple[tuple[float, float], ...] = ()
     arm_contour_points: tuple[tuple[float, float], ...] = ()
     belly_cut_points: tuple[tuple[float, float], ...] = ()
+    step_points: tuple[tuple[tuple[float, float], ...], ...] = ()
     # Whether the traced outline and almond cavity (constants drawn
     # right-handed) are mirrored: set by mirrored_shape, with every other
     # field mirrored there.
@@ -416,6 +430,7 @@ def mirrored_shape(shape: BodyShapeSpec) -> BodyShapeSpec:
         pickguard_points=_side(shape.pickguard_points, True),
         arm_contour_points=flipped(shape.arm_contour_points),
         belly_cut_points=flipped(shape.belly_cut_points),
+        step_points=tuple(_side(polygon, True) for polygon in shape.step_points),
         mirrored=not shape.mirrored,
     )
     if isinstance(mirrored, YourDesignShape):
@@ -449,6 +464,9 @@ def widened_shape(shape: BodyShapeSpec, widening: float) -> BodyShapeSpec:
         pickguard_points=widen_points(shape.pickguard_points, widening),
         arm_contour_points=widen_points(shape.arm_contour_points, widening),
         belly_cut_points=widen_points(shape.belly_cut_points, widening),
+        step_points=tuple(
+            widen_points(polygon, widening) for polygon in shape.step_points
+        ),
     )
 
 
@@ -1215,6 +1233,34 @@ round the cutaway's horn on the treble side and down past the pickups,
 widening toward the bridge on the bass side, stepped round the bridge —
 X from the heel end."""
 
+_ALEXI_HEXED_STEP_POINTS: tuple[tuple[tuple[float, float], ...], ...] = (
+    (
+        (-51.9, -16.3),
+        (-49.6, -41.3),
+        (350.5, -168.5),
+        (219.2, 14.8),
+        (311.1, 163.4),
+        (-49.6, 41.3),
+        (-51.9, 16.3),
+    ),
+    (
+        (-43.5, 0.2),
+        (-49.4, -42.3),
+        (249.4, -109.9),
+        (215.4, 13.1),
+        (234.8, 111.3),
+        (-49.4, 42.3),
+    ),
+)
+"""The Alexi Hexed style template's two step lines, drawn in the body editor
+after the original's pinstripes: two nested arrows from the edge beside
+the neck pocket out into the wings, each tail a sharp V at the notch, the
+inner one's point 4 mm inside the outer's (a narrow band between them, as
+the pinstripes run there). Beside the neck they converge on the edge, the
+bass horn's as drawn and the treble horn's its mirror image — X from the
+heel end, straight lines between the points; their points in the neck
+pocket fall in its route and do not matter."""
+
 _DESIGN_BY_JONE = DesignByJoneShape()
 
 YOUR_DESIGN_TEMPLATES: dict[str, tuple[str, YourDesignShape]] = {
@@ -1296,6 +1342,30 @@ YOUR_DESIGN_TEMPLATES: dict[str, tuple[str, YourDesignShape]] = {
             battery_angle_degrees=60.0,
         ),
     ),
+    "alexi_hexed": (
+        "ESP LTD Alexi Hexed style (mockup, not the original)",
+        YourDesignShape(
+            # ESP's Alexi body is an offset V after Alexi Laiho's Jackson
+            # RRs: the RR style outline and placements, with no guard of
+            # its own (the Hexed has none) and its one volume pot where
+            # the RR's pots are.
+            control_points=_JACKSON_RR_POINTS,
+            switch_cavity_offset=230.0,
+            switch_cavity_y=-85.0,
+            switch_cover_offset=230.0,
+            switch_cover_y=-85.0,
+            pot_offsets=((170.8, 86.0), (210.8, 87.0)),
+            control_shift=(-10.0, 0.0),
+            jack_offset=175.2,
+            jack_y=126.5,
+            jack_direction_degrees=291.8,
+            neck_bolts=((-50.0, -20.0), (-7.5, -20.0), (-44.0, 20.0), (-7.5, 20.0)),
+            battery_offset=271.0,
+            battery_y=120.0,
+            battery_angle_degrees=60.0,
+            step_points=_ALEXI_HEXED_STEP_POINTS,
+        ),
+    ),
     "jazz_bass": ("Jazz Bass style (mockup, not the original)", BASS_BODY),
 }
 """Starting points for a drawn body: a label and a complete shape each.
@@ -1307,7 +1377,13 @@ reference render or drawing and then reshaped by hand, not the original
 outlines — the Les Paul's selector switch on the bass-side upper bout. The
 Jackson RR style one is a mockup the same way, with its switch
 on the bass wing and its pots, control cavity and jack moved to fit the
-treble wing; the Jazz Bass style one, a mockup the same way, is the bass
+treble wing; the ESP LTD Alexi Hexed style one is that outline too (ESP's
+Alexi body is an offset V after Alexi Laiho's Jackson RRs), with no guard
+of its own — loading it in the web app also sets the Hexed's look
+(``prototype001.BODY_TEMPLATE_VALUES``: one bridge humbucker, one volume
+pot, a Floyd Rose and its graphic as a top stepped down in two bands
+along the edge); the Jazz Bass style
+one, a mockup the same way, is the bass
 guitar's default body (``BASS_BODY``), its pots and control cavity moved
 onto the lower bout behind the bridge pickup. The other templates share
 the drawn body's default pot and jack placements.

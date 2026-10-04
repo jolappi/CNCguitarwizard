@@ -10,8 +10,10 @@ conservatively, for whole contours (``offset_polygon``).
 
 from __future__ import annotations
 
+import bisect
 import math
 from collections.abc import Sequence
+from dataclasses import dataclass
 
 from ..geometry.primitives import Point2D, point_in_polygon
 
@@ -139,6 +141,91 @@ def clear_intervals(
         for index in range(0, len(crossings) - 1, 2)
     ]
     return _subtract_intervals(inside, _merge_intervals(blocked))
+
+
+@dataclass(frozen=True, slots=True)
+class PolygonIndex:
+    """A polygon as its edge crossings on rows ``step`` apart, for quick
+    inside tests however many points it has.
+
+    A point is tested on the row nearest it (to within half a row), by
+    counting the crossings left of it.
+    """
+
+    bottom: float
+    step: float
+    left: float
+    right: float
+    crossings: tuple[tuple[float, ...], ...]
+
+    @classmethod
+    def of(cls, polygon: Sequence[Point2D], step: float = 0.25) -> PolygonIndex:
+        ys = [p.y for p in polygon]
+        bottom = min(ys)
+        rows = math.ceil((max(ys) - bottom) / step) + 1
+        crossings: list[list[float]] = [[] for _ in range(rows)]
+        for a, b in zip(polygon, (*polygon[1:], polygon[0]), strict=True):
+            low, high = (a, b) if a.y <= b.y else (b, a)
+            first = math.ceil((low.y - bottom) / step)
+            last = math.floor((high.y - bottom) / step)
+            for row in range(max(first, 0), min(last, rows - 1) + 1):
+                y = bottom + row * step
+                if low.y <= y < high.y:
+                    t = (y - low.y) / (high.y - low.y)
+                    crossings[row].append(low.x + (high.x - low.x) * t)
+        xs = [p.x for p in polygon]
+        return cls(
+            bottom,
+            step,
+            min(xs),
+            max(xs),
+            tuple(tuple(sorted(row)) for row in crossings),
+        )
+
+    def holds(self, point: Point2D) -> bool:
+        """Return whether ``point`` lies inside the polygon."""
+        if not self.left <= point.x <= self.right:
+            return False
+        row = round((point.y - self.bottom) / self.step)
+        if not 0 <= row < len(self.crossings):
+            return False
+        return bisect.bisect(self.crossings[row], point.x) % 2 == 1
+
+
+def simplified(polygon: Sequence[Point2D], tolerance: float) -> tuple[Point2D, ...]:
+    """Return a closed polygon with the points it can do without left out.
+
+    Douglas-Peucker on the loop, split at its two furthest-apart points:
+    no point left out lies further than ``tolerance`` from the result.
+    """
+    points = list(polygon)
+    if len(points) < 4:
+        return tuple(points)
+    far = max(
+        range(1, len(points)),
+        key=lambda index: (
+            (points[index].x - points[0].x) ** 2 + (points[index].y - points[0].y) ** 2
+        ),
+    )
+
+    def keep(run: list[Point2D]) -> list[Point2D]:
+        # The run's own ends stay; a point further than the tolerance
+        # from the chord between them splits it.
+        if len(run) < 3:
+            return run
+        first, last = run[0], run[-1]
+        index, distance = max(
+            (
+                (index, segment_distance(point, first, last))
+                for index, point in enumerate(run[1:-1], start=1)
+            ),
+            key=lambda item: item[1],
+        )
+        if distance <= tolerance:
+            return [first, last]
+        return keep(run[: index + 1])[:-1] + keep(run[index:])
+
+    return tuple(keep(points[: far + 1])[:-1] + keep([*points[far:], points[0]])[:-1])
 
 
 def offset_polygon(

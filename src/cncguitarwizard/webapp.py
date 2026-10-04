@@ -32,6 +32,7 @@ from .cam import (
     MachiningParameters,
     plan_feature_machining,
 )
+from .cam.planar import simplified
 from .exceptions import CNCGuitarWizardError
 from .field_help import FIELD_HELP
 from .geometry.body import (
@@ -58,7 +59,11 @@ from .presets.body_shapes import (
 )
 from .presets.controls import CONTROL_LABELS
 from .presets.pickups import PICKUP_CONFIGURATIONS
-from .presets.prototype001 import INSTRUMENT_OVERRIDES, NECK_TEMPLATES
+from .presets.prototype001 import (
+    BODY_TEMPLATE_VALUES,
+    INSTRUMENT_OVERRIDES,
+    NECK_TEMPLATES,
+)
 from .render.svg import render_plan_view_svg
 from .workflows import Prototype001Build
 
@@ -118,6 +123,7 @@ _CHOICE_LABELS: dict[str, dict[str, str]] = {
         "flame": "Flame (wavy lines across the body)",
         "ripples": "Ripples (rings over rings)",
         "crackle": "Crackle (random cells)",
+        "pinstripe": "Pinstripe (round the edge, Jackson RR / Alexi Hexed)",
     },
     "inlay_style": {
         "barbed_wire": "Barbed wire (two at the 12th and 24th)",
@@ -222,6 +228,7 @@ _BASIC_FIELDS: frozenset[str] = frozenset(
         "body_belly_cut_depth",
         "body_carved_top",
         "body_carve_depth",
+        "body_stepped_top",
         "body_neck_pickup_offset",
         "body_bridge_pickup_offset",
         "tool_diameter",
@@ -429,15 +436,19 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         body's opening along the centreline (see
         ``body_shapes.widen_points``), which the editor applies to the
         drawn control points as Python does.
-        ``templates`` maps a key to ``{"label", "shape"}``, the shape as
-        the form's JSON. ``polygons`` is a list of ``{"name", "role",
-        "group", "points"}`` with ``role`` one of ``neck``, ``pocket``,
+        ``templates`` maps a key to ``{"label", "shape", "values"}``, the
+        shape as the form's JSON and ``values`` the other parameters the
+        template sets (``BODY_TEMPLATE_VALUES``: the Alexi Hexed's look).
+        ``polygons`` is a list of ``{"name", "role", "group", "points"}``
+        with ``role`` one of ``neck``, ``pocket``,
         ``pickup``, ``bridge``, ``bridge_plate`` (what a bridge such as a
         Kahler covers on the top past its routes), ``top_control``,
         ``rear``, ``cover``,
         ``contour_top`` (an arm contour), ``contour_back`` (a belly cut) or
         ``plateau`` (a carved top's flat plateau, the top falling outside it);
-        ``circles`` a list of ``{"name", "group", "x", "y", "r"}``;
+        ``steps`` a stepped top's lines ``{"points", "automatic"}`` or
+        ``None`` (see ``_steps_view``); ``circles`` a list of
+        ``{"name", "group", "x", "y", "r"}``;
         ``jack`` ``{"group", "x", "y", "x2", "y2", "r", "cup",
         "reaches_controls"}`` (``cup`` a cup jack's counterbore ``{"x2",
         "y2", "r"}`` or ``None``; ``reaches_controls`` whether the bore
@@ -510,6 +521,7 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         polygons.insert(
             1, polygon("Carved top plateau", "plateau", layout.carved_top.plateau)
         )
+
     for offset, contour in enumerate(layout.contours, start=1):
         polygons.insert(
             offset,
@@ -608,13 +620,18 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         "widening": parameters.body_widening_amount(),
         "start_points": [list(point) for point in YOUR_DESIGN_START_POINTS],
         "templates": {
-            key: {"label": label, "shape": _jsonable(shape)}
+            key: {
+                "label": label,
+                "shape": _jsonable(shape),
+                "values": _jsonable(BODY_TEMPLATE_VALUES.get(key, {})),
+            }
             for key, (label, shape) in YOUR_DESIGN_TEMPLATES.items()
         },
         "polygons": polygons,
         "circles": circles,
         "jack": _jack_view(layout.jack_hole, heel_end, control_outlines),
         "control": control,
+        "steps": _steps_view(parameters, layout, local),
         "pickguard": (
             {
                 "points": local(layout.pickguard.control_points),
@@ -685,6 +702,34 @@ def _jack_view(
         "reaches_controls": any(
             point_in_polygon(jack_end, outline) for outline in control_outlines
         ),
+    }
+
+
+STEP_HANDLE_TOLERANCE = 1.5
+"""How far an automatic step's line may stray from its handles' straight
+lines, in mm: the fewer handles the editor shows it with."""
+
+
+def _steps_view(
+    parameters: Prototype001Parameters, layout: Any, local: Any
+) -> dict[str, Any] | None:
+    """Return a stepped top's lines for the editor, or ``None``.
+
+    ``{"points", "automatic"}``: each step's points (straight lines
+    between them, the outermost first) — the shape's drawn
+    ``step_points`` as widened, or the automatic steps simplified to
+    handles within ``STEP_HANDLE_TOLERANCE``.
+    """
+    steps = layout.stepped_top
+    if steps is None:
+        return None
+    drawn = bool(parameters.built_body_shape.step_points)
+    return {
+        "points": [
+            local(boundary if drawn else simplified(boundary, STEP_HANDLE_TOLERANCE))
+            for boundary in steps.boundaries
+        ],
+        "automatic": not drawn,
     }
 
 

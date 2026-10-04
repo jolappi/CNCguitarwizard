@@ -325,6 +325,11 @@ FIELD_HELP: dict[str, str] = {
         "barrel jack), a cup jack in a round counterbore, a Stratocaster "
         "style plate on the top, or on the Jazz Bass control plate."
     ),
+    "body_stepped_top": (
+        "Steps the top down in bands along the edge, as on an ESP LTD Alexi "
+        "Hexed: the middle at full height, each band nearer the edge a step "
+        "lower (body_top_step_insets, body_top_step_height)."
+    ),
     "body_pickguard": (
         "A pickguard cut from sheet and shaped to the body, its screws "
         "spotted in the body; controls mounted in the guard bring it anyway."
@@ -355,7 +360,8 @@ FIELD_HELP: dict[str, str] = {
     "body_engraving": "Engraves a decorative pattern into the top with a V-bit.",
     "body_engraving_pattern": (
         "The engraved pattern: Design by Jone's scrolls, EVH style stripes, "
-        "flame, ripples or crackle."
+        "flame, ripples, crackle, or a pinstripe round the body just inside "
+        "the margin (as on a Jackson RR or an ESP LTD Alexi Hexed)."
     ),
     "body_engraving_seed": (
         "Lays the pattern out anew: each number gives a different layout."

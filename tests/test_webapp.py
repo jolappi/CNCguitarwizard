@@ -306,6 +306,7 @@ def test_body_editor_layout_lists_the_fixed_features_relative_to_the_heel() -> N
         "les_paul",
         "stratocaster",
         "jackson_rr",
+        "alexi_hexed",
         "jazz_bass",
     ]
     assert templates["les_paul"]["label"] == "Les Paul style (mockup, not the original)"

@@ -41,6 +41,7 @@ from .neck_through import (
     split_by_line,
 )
 from .outline import BodyOutline, TracedOutline
+from .steps import SteppedTop
 
 __all__ = [
     "CarvedTop",
@@ -70,6 +71,7 @@ __all__ = [
     "KahlerBridgeSpec",
     "RearCavity",
     "RectangularCavity",
+    "SteppedTop",
     "SingleStringBridgeSpec",
     "TracedCavity",
     "TracedOutline",

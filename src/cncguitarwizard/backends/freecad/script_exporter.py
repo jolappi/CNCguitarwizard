@@ -2482,6 +2482,34 @@ class FreeCADScriptExporter:
                 '    body_shape.cut(carve_rim), "carved top rim strip"\n'
                 ")\n"
             )
+        if body.stepped_top is not None:
+            # Each step: everything outside its boundary cut down to its
+            # depth, the outermost the deepest (geometry.body.steps).
+            for index, (boundary, depth) in enumerate(body.stepped_top.bands()):
+                lines.append(
+                    f"step_boundary = {outline_literal(boundary)}\n"
+                    "step_face = Part.Face(Part.makePolygon(\n"
+                    "    [App.Vector(x, y, 0.0) for x, y in step_boundary]\n"
+                    "    + [App.Vector(*step_boundary[0], 0.0)]\n"
+                    "))\n"
+                    f"step_depth = {depth!r}\n"
+                    "step_inner = step_face.extrude(\n"
+                    "    App.Vector(0.0, 0.0, step_depth + 2.0)\n"
+                    ")\n"
+                    "step_inner.translate(App.Vector(0.0, 0.0, -step_depth - 1.0))\n"
+                    "body_box = body_shape.BoundBox\n"
+                    "step_ring = Part.makeBox(\n"
+                    "    body_box.XLength + 40.0,\n"
+                    "    body_box.YLength + 40.0,\n"
+                    "    step_depth + 1.0,\n"
+                    "    App.Vector(\n"
+                    "        body_box.XMin - 20.0, body_box.YMin - 20.0, -step_depth\n"
+                    "    ),\n"
+                    ").cut(step_inner)\n"
+                    "body_shape = require_shape(\n"
+                    f'    body_shape.cut(step_ring), "stepped top step {index + 1}"\n'
+                    ")\n"
+                )
         lines += _body_edge_lines(body, outline_literal)
         lines += carve_lines
         if neck_through is None:
@@ -3198,8 +3226,9 @@ def _body_edge_lines(
     ]
     for face, edge in (("top", top), ("back", back)):
         # Depth d below this face maps to model Z.
-        # A carved top's edge work sits on its rim, the carve's height down.
-        rim = body.carved_top.height if body.carved_top is not None else 0.0
+        # A carved top's edge work sits on its rim, the carve's height down;
+        # a stepped top's on its outermost band.
+        rim = body.top_edge_drop
 
         def z_of(depth: float, face: str = face, rim: float = rim) -> float:
             return -(depth + rim) if face == "top" else -body.thickness + depth

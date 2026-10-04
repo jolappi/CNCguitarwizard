@@ -129,7 +129,7 @@ function renderForm() {
 // loaded and built (its row in the form is hidden). A change on either
 // side is passed to the other.
 const EDITOR_FIELDS = {
-  "body-editor-options": ["body_pickups", "body_bridge", "body_controls", "body_switch", "body_jack", "body_pickguard", "body_pickguard_style", "body_arm_contour_depth", "body_belly_cut_depth", "body_carved_top", "body_carve_depth", "body_engraving", "body_engraving_pattern", "body_engraving_seed", "body_battery_box", "body_battery_count"],
+  "body-editor-options": ["body_pickups", "body_bridge", "body_controls", "body_switch", "body_jack", "body_pickguard", "body_pickguard_style", "body_arm_contour_depth", "body_belly_cut_depth", "body_carved_top", "body_carve_depth", "body_stepped_top", "body_engraving", "body_engraving_pattern", "body_engraving_seed", "body_battery_box", "body_battery_count"],
   "headstock-editor-options": ["headstock_style", "nut_style", "headstock_engraving_text", "headstock_engraving_font", "headstock_engraving_height", "headstock_engraving_angle"],
 };
 const mirrors = new Map();
@@ -1205,6 +1205,34 @@ const bodyEditor = {
       });
     }
 
+    // A stepped top's lines, straight between their points, with diamond
+    // handles; dragging one draws the steps (step_points).
+    this.stepPoints = layout.steps ? layout.steps.points.map((line) => line.map((p) => [...p])) : null;
+    this.stepPaths = [];
+    this.stepHandles = [];
+    (this.stepPoints || []).forEach((line, lineIndex) => {
+      this.stepPaths.push(this.element("path", {
+        class: "step-line", d: this.pathData(line),
+        "stroke-dasharray": layout.steps.automatic ? "4,2" : "none",
+      }));
+      const hit = this.element("path", { class: "outline-hit", d: this.pathData(line) });
+      hit.addEventListener("click", (event) => this.addStepPoint(event, lineIndex));
+      this.element("title", {}, hit).textContent = `Click step ${lineIndex + 1}'s line to add a point`;
+      line.forEach((point, index) => {
+        const handle = this.element("rect", {
+          class: "step-handle", x: point[0] - 2, y: -point[1] - 2, width: 4, height: 4,
+          transform: `rotate(45 ${point[0]} ${-point[1]})`,
+        });
+        this.element("title", {}, handle).textContent = `Step ${lineIndex + 1} point — drag to shape the step, Alt-click or right-click to remove it`;
+        handle.addEventListener("pointerdown", (event) => {
+          if (event.altKey) { this.removeStepPoint(lineIndex, index); return; }
+          this.startStepDrag(event, lineIndex, index, handle);
+        });
+        handle.addEventListener("contextmenu", (event) => { event.preventDefault(); this.removeStepPoint(lineIndex, index); });
+        this.stepHandles.push(handle);
+      });
+    });
+
     // The decorative engraving, drawn as the bit's centre lines.
     for (const line of layout.engraving || []) {
       this.element("path", { class: "engraving", d: this.openPath(line) });
@@ -1262,6 +1290,9 @@ const bodyEditor = {
     for (const line of Object.values(this.contourLines)) {
       for (const handle of line.handles) handle.parentNode.appendChild(handle);
     }
+    // The steps' handles go on top of everything: beside the neck pocket
+    // they sit over its bolts and over each other's lines.
+    for (const handle of this.stepHandles) handle.parentNode.appendChild(handle);
     this.check();
     this.showTemplate();
   },
@@ -1570,6 +1601,75 @@ const bodyEditor = {
 
   autoGuard() {
     this.setField(this.field("prototype.body_shape", "pickguard_points"), []);
+    this.refresh();
+  },
+
+  // Drag one point of a step's line; on drop every step's points are
+  // written (drawn from now on: Auto steps goes back to the insets).
+  startStepDrag(event, lineIndex, index, handle) {
+    event.preventDefault();
+    event.stopPropagation();
+    // A handle left from before the last redraw no longer has its point.
+    if (!this.stepPoints || index >= this.stepPoints[lineIndex].length) return;
+    handle.classList.add("dragging");
+    const move = (moveEvent) => {
+      const [x, y] = this.toModel(moveEvent);
+      this.stepPoints[lineIndex][index] = [x, y];
+      handle.setAttribute("x", x - 2);
+      handle.setAttribute("y", -y - 2);
+      handle.setAttribute("transform", `rotate(45 ${x} ${-y})`);
+      this.stepPaths[lineIndex].setAttribute("d", this.pathData(this.stepPoints[lineIndex]));
+    };
+    const end = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", end);
+      window.removeEventListener("pointercancel", end);
+      handle.classList.remove("dragging");
+      this.commitSteps();
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", end);
+    window.addEventListener("pointercancel", end);
+  },
+
+  // Write every step's points (stored like the body's, before its
+  // widening) and lay the body out again.
+  commitSteps() {
+    const lines = this.stepPoints.map((line) => line
+      .filter((p) => Array.isArray(p))
+      .map((p) => this.unwiden(p).map((v) => Math.round(v * 10) / 10)));
+    this.setField(this.field("prototype.body_shape", "step_points"), lines);
+    this.refresh();
+  },
+
+  // A click on a step's line adds a point on its nearest straight span.
+  addStepPoint(event, lineIndex) {
+    const [x, y] = this.toModel(event);
+    const line = this.stepPoints[lineIndex];
+    let best = 0, bestDistance = Infinity;
+    line.forEach(([ax, ay], i) => {
+      const [bx, by] = line[(i + 1) % line.length];
+      const dx = bx - ax, dy = by - ay;
+      const t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy || 1)));
+      const distance = (ax + t * dx - x) ** 2 + (ay + t * dy - y) ** 2;
+      if (distance < bestDistance) { bestDistance = distance; best = i; }
+    });
+    line.splice(best + 1, 0, [x, y]);
+    this.commitSteps();
+  },
+
+  removeStepPoint(lineIndex, index) {
+    if (index >= this.stepPoints[lineIndex].length) return;
+    if (this.stepPoints[lineIndex].length <= 3) {
+      this.setStatus("A step's line needs at least three points.", "bad");
+      return;
+    }
+    this.stepPoints[lineIndex].splice(index, 1);
+    this.commitSteps();
+  },
+
+  autoSteps() {
+    this.setField(this.field("prototype.body_shape", "step_points"), []);
     this.refresh();
   },
 
@@ -1938,6 +2038,10 @@ const bodyEditor = {
     const select = document.getElementById("body-editor-template");
     if (!this.layout || !select.options.length) return;
     const drawn = JSON.stringify(this.points);
+    // Templates may share an outline (the Alexi Hexed's is the RR's):
+    // the one chosen stays shown while the drawing is still it.
+    const chosen = this.layout.templates[select.value];
+    if (chosen && JSON.stringify(chosen.shape.control_points) === drawn) return;
     const match = Object.entries(this.layout.templates).find(
       ([, template]) => JSON.stringify(template.shape.control_points) === drawn
     );
@@ -1945,17 +2049,27 @@ const bodyEditor = {
   },
 
   // Replace the drawing with a template: its outline and its switch, pot
-  // and jack placements, which all stay editable afterwards.
+  // and jack placements, which all stay editable afterwards — and any
+  // other values it sets (the Alexi Hexed's pickup, controls, bridge and
+  // pinstripe).
   async reset() {
     if (!this.layout) return;
     const key = document.getElementById("body-editor-template").value;
     const template = this.layout.templates[key];
     if (!template) return;
-    if (!(await askConfirm(`Replace your drawing with ${template.label}?`))) return;
+    const values = template.values || {};
+    const also = Object.keys(values).length
+      ? ` It also sets ${Object.keys(values).join(", ")}.`
+      : "";
+    if (!(await askConfirm(`Replace your drawing with ${template.label}?${also}`))) return;
     const set = "prototype.body_shape";
     for (const [name, value] of Object.entries(template.shape)) {
       if (name === "kind" || name === "control_points") continue;
       this.setField(this.field(set, name), value);
+    }
+    if (Object.keys(values).length) {
+      applyValues("prototype", values);
+      applyStringLimits();
     }
     this.points = template.shape.control_points.map((p) => [...p]);
     this.commit();
@@ -2017,6 +2131,7 @@ const bodyEditor = {
 
 document.getElementById("body-editor-reset").addEventListener("click", () => bodyEditor.reset());
 document.getElementById("body-editor-auto-guard").addEventListener("click", () => bodyEditor.autoGuard());
+document.getElementById("body-editor-auto-steps").addEventListener("click", () => bodyEditor.autoSteps());
 document.getElementById("body-editor-auto-arm").addEventListener("click", () => bodyEditor.autoContour("arm"));
 document.getElementById("body-editor-auto-belly").addEventListener("click", () => bodyEditor.autoContour("belly"));
 // A new engraving pattern: another seed (turning the engraving on).

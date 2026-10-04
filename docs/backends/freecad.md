@@ -205,8 +205,12 @@ sits in the neck-pocket cavity. The script then cuts, in order:
 3. pivot-stud holes (when the bridge has any) and every `DrilledHole` as
    vertical cylinders from the top face — a hole as deep as the slab is
    overcut at both ends so it breaks out cleanly;
-4. the jack bore as a horizontal cylinder at half the slab thickness;
-5. the edge finishes and contours, when any are set. FreeCAD's own fillet
+4. the jack bore as a horizontal cylinder at half the slab thickness (none
+   with the jack on a control plate);
+5. a stepped top's steps, each a ring cut down to its depth: a slab over
+   the whole body less the step boundary's prism;
+6. the edge finishes and contours, when any are set (a stepped top's on
+   its outermost band, all the steps down). FreeCAD's own fillet
    fails on outlines with pointed horns and tight cutaways, so a roundover
    is modelled as 1 mm rings, each trimmed back to the fillet's inset at
    that depth with FreeCAD's 2D offset; a binding channel is one ring; an

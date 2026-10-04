@@ -130,10 +130,13 @@ a complete `YourDesignShape` (outline and electronics placements):
 | `les_paul` | Les Paul style (mockup, not the original) | Single cutaway traced from a reference render and reshaped by hand — a genre mockup, not the original outline; its selector switch sits on the bass-side upper bout |
 | `stratocaster` | Stratocaster style (mockup, not the original) | Offset double cutaway traced from a reference DXF drawing (aligned on its neck pocket) and reshaped by hand at both horns and the neck joint — a genre mockup, not the original outline; its neck bolts spread like the bass's, the front pair 63.5 mm ahead of the heel end near the body's edge and the rear pair at 7.5 mm, its ferrules wholly over the pocket |
 | `jackson_rr` | Jackson RR style (mockup, not the original) | Offset V traced from a reference render and reshaped by hand at the neck joint, both wing tips and the V notch — a genre mockup, not the original outline; the switch on the bass wing, the pots, control cavity and jack on the treble wing; the neck bolts' front pair as far out as the narrow wings allow (50 mm ahead of the heel end on the bass side, 44 mm on the treble side), the rear pair at 7.5 mm |
+| `alexi_hexed` | ESP LTD Alexi Hexed style (mockup, not the original) | The Jackson RR style outline and placements (ESP's Alexi body is an offset V after Alexi Laiho's Jackson RRs), with no drawn guard; loading it in the body editor also sets the Hexed's look (`prototype001.BODY_TEMPLATE_VALUES`): one bridge humbucker (`body_pickups` "H") under one volume pot (`volume_1`, no selector), a Floyd Rose, and its graphic as a stepped top (*Stepped top*, below), its two steps drawn (`step_points`) where the original's pinstripes run: two nested arrows from the edge beside the neck pocket (where they converge) out into the wings, each tail a sharp V at the notch — the inner arrow, round the pickup and the bridge, at full height, the band between them 1.5 mm lower (only 4 mm wide at the notch), the rest out to the edge and the wing tips 3 mm lower. Its purple fade and pinstripes (on the back and sides too) are the painter's; it is neck-through with sawtooth inlays, left to choose (`neck_joint`, `inlay_style` "sharktooth") |
 | `jazz_bass` | Jazz Bass style (mockup, not the original) | Offset waist traced from a reference render (straightened on its centre stripe, scaled from its bridge pickup) and reshaped by hand at both horns and the treble cutaway — a genre mockup, not the original outline; its pots and control cavity on the lower bout behind the bridge pickup; the bass guitar's default body (`BASS_BODY`) |
 
-The Les Paul, Stratocaster, Jackson RR and Jazz Bass ones are mockups:
-traced and then reshaped by hand, so they are not the original outlines.
+The Les Paul, Stratocaster, Jackson RR, Alexi Hexed and Jazz Bass ones are
+mockups: traced and then reshaped by hand, so they are not the original
+outlines. A template that sets more than its shape (the Alexi Hexed) says
+which values in the editor's confirmation.
 
 `Prototype001Parameters.body_layout()` returns the outline and every
 feature (`BodyLayout`) without building the neck surfaces or validating
@@ -701,6 +704,75 @@ size rout it by hand, was tried and is far slower here: each step's wall
 is hundreds of faces. The plan view and the body editor dash the
 plateau's edge.
 
+## Stepped top
+
+`body_stepped_top` (beside the body editor too) lowers the top in bands
+that follow the edge (`geometry.body.steps.SteppedTop`) — the ESP LTD
+Alexi Hexed's graphic, its pinstripes nested along the edge, made into
+levels. Each step has a boundary, a closed line on the top: inside the
+innermost the top keeps its full height, and each band nearer the edge
+lies `body_top_step_height` (1.5 mm) lower than the band inside it.
+
+The boundaries are drawn (the shape's `step_points`: one closed line of
+points per step, X from the heel end, the outermost first, straight lines
+between the points, so a step can run straight across where the edge
+curves), or, left empty, the outline taken in by each of
+`body_top_step_insets` (12 and 40 mm): the band from 40 to 12 mm in 1.5 mm
+down, the outermost 12 mm 3 mm down. Taken in from the edge, a boundary
+follows the wings and horns as far as they are wide; where a horn is
+narrower than twice an inset it leaves the horn out, and the horn lies
+wholly in the lower band (the outline is first simplified,
+`STEP_OUTLINE_TOLERANCE` 0.05 mm, which makes them about ten times
+quicker to find). Drawn steps must each lie inside the one before without
+crossing it (`SteppedTop.check_nested`) — except off the body, in the neck
+pocket or within `STEP_EDGE_SLACK` (3 mm) of the edge, where lines may
+converge (the sliver between them there is cut with the outer band; a
+point outside several boundaries lies as deep as the deepest band whose
+boundary it is outside). The Alexi Hexed template draws its two after the
+original's pinstripes (drawn in the body editor): two nested arrows from
+the edge beside the neck pocket out into the wings, each tail a sharp V at
+the notch, the inner one's point 4 mm inside the outer's, so a narrow band
+runs between them there as the pinstripes do; beside the neck they
+converge on the edge, the bass horn's as drawn and the treble horn's its
+mirror image, and their points in the neck pocket do not matter. The
+editor puts the steps' handles on top of everything else (beside the
+neck pocket they sit over its bolts and each other's lines).
+The body editor draws each step's line in purple with diamond handles
+(dashed while it is automatic, shown with handles simplified to within
+`STEP_HANDLE_TOLERANCE`, 1.5 mm): dragging one, clicking a line to add a
+point or Alt-clicking one to remove it writes every step's points;
+*Auto steps* goes back to the insets.
+
+The pickups and the bridge (its routes, plate and holes) must lie inside
+the innermost boundary, on the top level, or the build is refused (the
+body editor draws the steps wherever they fall; a smaller last inset
+brings them in: on Design by Jone the pickups and the Kahler come within
+9 mm of the edge, the Les Paul style 19, the Stratocaster 22, the
+Jackson RR's two humbuckers 25). The back's cavities keep
+`body_rear_cavity_top_wall` under the lowered bands, and `BodySolid`
+refuses steps leaving less than `CARVE_WALL` (3 mm) over one, or coming
+to a quarter of the body's thickness. A stepped top is not carved, and
+takes no arm contour or pickguard (which would not lie flat). A top
+roundover or binding is cut on the outermost band, all the steps down;
+the engraving follows the levels. The plan view and the body editor draw
+each step's wall.
+
+`Body_top_steps.nc` runs right after the index pins, with the main tool.
+The innermost step's band (everything outside its boundary) goes one step
+down first, then each next band a step deeper. A band is cleared in passes
+along the body's edge — the outline taken in by the tool's radius, then a
+step-over (`raster_spacing`) further in each pass, each kept only where
+the tool stays outside the step's boundary taken out by its radius —
+until a pass lies wholly inside it; then that grown boundary runs round as
+the step's wall, cut true. The clearing passes come from a coarser outline
+(`STEP_CLEARING_TOLERANCE`, 0.25 mm), the walls from the boundary
+simplified to within `STEP_WALL_TOLERANCE` (0.02 mm); each pass starts at
+its end (or point) nearest where the last ended and is fed across when
+that is within 1.5 step-overs (`STEP_LINK`), else the tool lifts. A band
+the tool cannot cut anywhere is refused. The FreeCAD model cuts each step as a
+ring: a slab of the step's depth over the whole body less the boundary's
+prism.
+
 ## Decorative engraving
 
 `body_engraving` engraves a scroll pattern into the top
@@ -749,6 +821,7 @@ are the scroll's own):
 | `flame` | Wavy lines across the body as in flamed maple, about a fifth of the spacing (at least 6 mm) apart, each drifting a little from the last so they never cross (`FLAME_WAVELENGTH`, `FLAME_AMPLITUDE`) |
 | `ripples` | Groups of `RIPPLE_RINGS` (2–6) rings `RIPPLE_GAP` (8 mm) apart, one group per twice the spacing squared, each covering the groups laid before it |
 | `crackle` | The cells of a random Voronoi pattern, as crazed lacquer, about the spacing across, each shared edge engraved once |
+| `pinstripe` | One stripe round the body `PINSTRIPE_INSET` (0.5 mm) inside the margin, following the edge as a painted pinstripe does (Jackson RR, ESP LTD Alexi Hexed), broken where a cavity, the bridge, the pickguard or a contour is in its way and where a horn narrows past twice the margin; neither the seed nor the spacing changes it — set its distance from the edge with `body_engraving_margin` and its width with `body_engraving_depth` (the V-bit's groove is about 1.15 × the depth wide) |
 
 ## Bridges
 

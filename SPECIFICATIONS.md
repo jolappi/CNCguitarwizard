@@ -478,7 +478,18 @@ Jazz Bass -henkinen pohja. Pythonissa jäljitetty runko
 (`DesignByJoneShape`) on yhä käytettävissä, ja sitä käyttävä tallennettu
 design latautuu Design by Jone -pohjana; pohjaksi
 voi ladata Design by Jone -rungon, Les Paul-, Stratocaster- tai Jackson
-RR -henkisen muodon (Les Paul, Stratocaster, Jackson RR ja Jazz Bass ovat
+RR -henkisen muodon, ESP LTD Alexi Hexed -henkisen muodon (RR:n ääriviiva;
+lataus asettaa myös Hexedin ilmeen: yksi tallahumbucker, yksi
+volume-potikka ilman valitsinta, Floyd Rose ja grafiikka porrastettuna
+kantena, jonka portaat on piirretty alkuperäisen raitojen kohdalle
+kahtena sisäkkäisenä nuolena kaulataskun vierestä siipiin (kaulan
+vieressä nuolet kohtaavat rungon reunalla, diskanttisakaran puoli
+bassosakaran peilikuvana), kummankin perä terävänä V:nä loven kohdalla: sisempi nuoli mikin ja tallan ympärillä
+täydessä korkeudessa, nuolten välinen kaista 1,5 mm alempana (loven
+kohdalla vain 4 mm leveä) ja loput reunaan ja siipien kärkiin asti 3 mm
+alempana; kaulataskun kohdalla pisteillä ei ole väliä; editori kertoo
+vahvistuksessa, mitä se asettaa)
+(Les Paul, Stratocaster, Jackson RR, Alexi Hexed ja Jazz Bass ovat
 mockuppeja, eivät alkuperäisiä ääriviivoja) tai Jazz Bass -henkisen
 muodon (basson oletus, myös mockup) (oletus Stratocaster); editorissa voi myös raahata kontrollikoloa
 (potit mukana), yksittäisiä potteja, kytkinkoloa ja jakkia sekä liu'uttaa
@@ -652,6 +663,33 @@ jätetään pois):
 | `flame` | Liekkivaahteran tapaiset aaltoviivat rungon poikki, noin spacing/5 (vähintään 6 mm) välein, vierekkäiset lähes samassa vaiheessa, joten ne eivät leikkaa |
 | `ripples` | Ryhmiä sisäkkäisiä renkaita (2–6 kpl, 8 mm välein), myöhempi ryhmä peittää aiemmat |
 | `crackle` | Satunnainen solukuvio (Voronoi) kuin säröillyt lakka, solu noin spacingin kokoinen |
+| `pinstripe` | Yksi raita rungon ympäri 0,5 mm marginaalin sisäpuolella, reunaa myötäillen kuin maalattu pinstripe (Jackson RR, ESP LTD Alexi Hexed); katkeaa kolojen, tallan, pleksin ja muotoilujen kohdalla sekä siellä, missä sakara kapenee alle kaksinkertaisen marginaalin. Siemen ja spacing eivät vaikuta; etäisyys reunasta on `body_engraving_margin` ja leveys syntyy syvyydestä (`body_engraving_depth`, V-terän ura noin 1,15 × syvyys) |
+
+Porrastettu kansi (`body_stepped_top`, myös runkoeditorin vieressä)
+laskee kantta kaistoittain reunan suuntaisesti, kuten ESP LTD Alexi
+Hexedin grafiikassa. Jokaisella portaalla on raja; sisimmän rajan sisällä
+kansi on täydessä korkeudessa ja jokainen reunempana oleva kaista
+`body_top_step_height` (1,5 mm) alempana kuin sen sisäpuolinen. Rajat
+piirretään (muodon `step_points`: kullekin portaalle suljettu pisteviiva,
+suorat viivat pisteiden välillä, uloin ensin, kukin edellisen sisällä
+leikkaamatta sitä, paitsi rungon ulkopuolella, kaulataskussa tai alle
+3 mm:n päässä reunasta, jossa viivat saavat kohdata) tai ne ovat
+ääriviiva sisennettynä kunkin
+`body_top_step_insets`-arvon verran (oletus 12 ja 40 mm). Runkoeditori
+piirtää rajat violetteina vinoneliökahvoin: kahvaa raahaamalla, viivaa
+klikkaamalla (uusi piste) tai Alt-klikkaamalla (pisteen poisto) rajat
+tallentuvat piirretyiksi, ja *Auto steps* palauttaa sisennykset.
+Rajat kulkevat siipiä ja sakaroita pitkin niin pitkälle kuin ne ovat
+leveitä; kapeammat sakarat jäävät kokonaan alempaan kaistaan. Mikkien ja
+tallan on oltava sisimmän rajan sisällä (muuten build hylätään; editori
+piirtää portaat silti), takakolojen kansiseinämä säilyy laskettujen
+kaistojen alla, eikä porrastettu kansi käy yhteen kaarevan kannen,
+käsinojan viisteen tai pleksin kanssa. Reunapyöristys ja reunalista
+jyrsitään uloimmalle kaistalle ja kaiverrus seuraa tasoja.
+`Body_top_steps.nc` ajetaan heti ohjaustappien jälkeen: ensin sisimmän
+portaan kaista yhden portaan syvyyteen, sitten seuraava syvemmälle,
+kierroksina reunan suuntaisesti; kunkin kaistan viimeinen kierros jyrsii
+portaan seinämän tarkasti. FreeCAD-malli leikkaa portaat renkaina.
 
 ## Omat suunnitelmat
 
