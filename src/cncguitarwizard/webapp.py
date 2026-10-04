@@ -10,12 +10,16 @@ dataclasses.
 
 from __future__ import annotations
 
+import ast
 import base64
 import dataclasses
+import functools
+import inspect
 import io
 import json
 import math
 import re
+import textwrap
 import types
 import typing
 import zipfile
@@ -29,6 +33,7 @@ from .cam import (
     plan_feature_machining,
 )
 from .exceptions import CNCGuitarWizardError
+from .field_help import FIELD_HELP
 from .geometry.body import (
     BRIDGE_KINDS,
     BRIDGE_LABELS,
@@ -1118,6 +1123,8 @@ def _describe_fields(
             "default": _jsonable(default),
             "advanced": basic is not None and field.name not in basic,
         }
+        if text := _field_help(cls).get(field.name):
+            entry["help"] = text
         if entry["type"] == "choice":
             entry["options"] = [
                 str(option) for option in typing.get_args(hints[field.name])
@@ -1149,6 +1156,174 @@ def _describe_fields(
             }
         described.append(entry)
     return described
+
+
+HELP_LIMIT = 900
+"""The longest help text a field's tooltip shows, in characters."""
+
+
+@functools.cache
+def _field_help(cls: type) -> dict[str, str]:
+    """Return what each of a dataclass's fields means, for its tooltip.
+
+    Taken from the code's own documentation, so it never drifts from it:
+    the class docstring's ``Args:`` entries, a string right after a field
+    (an attribute docstring), and the comment block above a field — which
+    also explains the fields right after it that it names (the
+    multiscale block above ``bass_scale_length`` covers
+    ``perpendicular_fret``), and the first block elsewhere that names it.
+    ``field_help.FIELD_HELP`` comes first: plain words for the settings
+    shown up front, and those the code leaves unexplained.
+    """
+    names = {field.name for field in dataclasses.fields(cls) if field.init}
+    found: dict[str, str] = {}
+    try:
+        source = textwrap.dedent(inspect.getsource(cls))
+        tree = ast.parse(source)
+    except (OSError, TypeError, SyntaxError):
+        tree = None
+    if tree is not None and isinstance(tree.body[0], ast.ClassDef):
+        lines = source.splitlines()
+        block: str | None = None
+        body = tree.body[0].body
+        for index, statement in enumerate(body):
+            if not (
+                isinstance(statement, ast.AnnAssign)
+                and isinstance(statement.target, ast.Name)
+            ):
+                continue
+            name = statement.target.id
+            comment: list[str] = []
+            line = statement.lineno - 2
+            while line >= 0 and lines[line].strip().startswith("#"):
+                comment.insert(0, lines[line].strip().lstrip("#").strip())
+                line -= 1
+            if comment:
+                block = " ".join(comment)
+                found.setdefault(name, _focus(block, name, own=True))
+            elif block is not None and _mentions(block, name):
+                found.setdefault(name, _focus(block, name))
+            else:
+                block = None
+            following = body[index + 1] if index + 1 < len(body) else None
+            if (
+                isinstance(following, ast.Expr)
+                and isinstance(following.value, ast.Constant)
+                and isinstance(following.value.value, str)
+            ):
+                found[name] = " ".join(following.value.value.split())
+        # A field no block right above explains: the first block in the
+        # class that names it.
+        blocks: list[str] = []
+        comment = []
+        for text in lines:
+            if text.strip().startswith("#"):
+                comment.append(text.strip().lstrip("#").strip())
+            elif comment:
+                blocks.append(" ".join(comment))
+                comment = []
+        for name in names - found.keys():
+            for block_text in blocks:
+                if _mentions(block_text, name):
+                    found[name] = _focus(block_text, name)
+                    break
+    found.update(_args_help(inspect.getdoc(cls) or ""))
+    found.update(FIELD_HELP)
+    return {
+        name: _shorten(text) for name, text in found.items() if name in names and text
+    }
+
+
+def _mentions(text: str, name: str) -> bool:
+    """Whether ``text`` names the field ``name``.
+
+    A wildcard names a group: ``truss_rod_step_*`` or
+    ``body_*_binding_width`` (``body_*`` alone is too wide to).
+    """
+    if re.search(rf"\b{re.escape(name)}\b", text):
+        return True
+    for pattern in re.findall(r"\b[\w]*\*[\w*]*", text):
+        if pattern.count("_") < 2:
+            continue
+        regex = "".join(r"\w+" if c == "*" else re.escape(c) for c in pattern)
+        if re.fullmatch(regex, name):
+            return True
+    return False
+
+
+def _focus(text: str, name: str, own: bool = False) -> str:
+    """Return a comment block cut to what it says about ``name``.
+
+    The field's ``own`` block (right above it): whole when short, else its
+    first sentence and every sentence naming the field. Another field's
+    block: only the sentences naming it (all of it if none do alone).
+    """
+    if own and len(text) <= HELP_LIMIT // 2:
+        return text
+    sentences = _sentences(text)
+    naming = [sentence for sentence in sentences if _mentions(sentence, name)]
+    if not own:
+        return " ".join(naming) or text
+    return " ".join([sentences[0], *(s for s in naming if s != sentences[0])])
+
+
+def _sentences(text: str) -> list[str]:
+    """Return ``text``'s sentences and clauses: split after ". " or "; ".
+
+    Never inside brackets, nor after "e.g." or "i.e."; a sentence may
+    start with a field's name, in lower case.
+    """
+    parts: list[str] = []
+    depth = 0
+    start = 0
+    for index, character in enumerate(text):
+        if character in "([":
+            depth += 1
+        elif character in ")]":
+            depth = max(0, depth - 1)
+        elif (
+            character in ".;"
+            and depth == 0
+            and text[index + 1 : index + 2] == " "
+            and not text[max(0, index - 3) : index + 1].endswith(("e.g.", "i.e."))
+        ):
+            parts.append(text[start : index + 1].strip())
+            start = index + 2
+    if text[start:].strip():
+        parts.append(text[start:].strip())
+    return parts
+
+
+def _args_help(doc: str) -> dict[str, str]:
+    """Return a Google style docstring's ``Args:`` entries, one line each."""
+    entries: dict[str, str] = {}
+    inside = False
+    current: str | None = None
+    for line in doc.splitlines():
+        if line.strip() == "Args:":
+            inside = True
+            continue
+        if not inside:
+            continue
+        if line and not line.startswith(" "):
+            break  # the next section (Raises:, Returns:)
+        match = re.match(r"^    (\w+)(?: \([^)]*\))?: (.*)$", line)
+        if match:
+            current = match.group(1)
+            entries[current] = match.group(2).strip()
+        elif current is not None and line.strip():
+            entries[current] += " " + line.strip()
+    return entries
+
+
+def _shorten(text: str) -> str:
+    """Return ``text`` cut to ``HELP_LIMIT`` characters at a sentence or word."""
+    text = " ".join(text.split())
+    if len(text) <= HELP_LIMIT:
+        return text
+    cut = text[:HELP_LIMIT]
+    end = max(cut.rfind(". "), cut.rfind("; "))
+    return (cut[: end + 1] if end > HELP_LIMIT // 2 else cut.rsplit(" ", 1)[0]) + " …"
 
 
 def _variant_classes(annotation: Any) -> dict[str, type[Any]]:

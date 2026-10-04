@@ -24,7 +24,10 @@ def test_schema_lists_every_parameter_with_a_form_type() -> None:
         for group in schema["prototype"]
         for field in group["fields"]
     }
-    assert prototype_fields["scale_length"] == {
+    scale = dict(prototype_fields["scale_length"])
+    # Every field explains itself (see test_every_form_field_explains_itself).
+    assert scale.pop("help").startswith("The scale:")
+    assert scale == {
         "name": "scale_length",
         "type": "float",
         "default": 609.6,
@@ -41,12 +44,14 @@ def test_schema_lists_every_parameter_with_a_form_type() -> None:
     strat_fields = {f["name"]: f for f in shape["variants"]["your_design"]["fields"]}
     assert strat_fields["control_points"]["type"] == "json"
     assert len(strat_fields["control_points"]["default"]) == 42
+    assert strat_fields["pot_offsets"].pop("help")
     assert strat_fields["pot_offsets"] == {
         "name": "pot_offsets",
         "type": "json",
         "default": [[180.8, 86.0], [220.8, 87.0]],
         "advanced": True,
     }
+    assert prototype_fields["inlay_style"].pop("help")
     assert prototype_fields["inlay_style"] == {
         "name": "inlay_style",
         "type": "choice",
@@ -81,6 +86,7 @@ def test_schema_lists_every_parameter_with_a_form_type() -> None:
     assert bridge["variants"]["floyd_rose"]["label"].startswith("Floyd Rose")
     floyd_fields = {f["name"]: f for f in bridge["variants"]["floyd_rose"]["fields"]}
     assert "kind" not in floyd_fields
+    assert floyd_fields["pivot_stud_spacing"].pop("help")
     assert floyd_fields["pivot_stud_spacing"] == {
         "name": "pivot_stud_spacing",
         "type": "float",
@@ -592,3 +598,34 @@ def test_the_nc_programs_download_as_one_zip_named_for_the_guitar(
         )
         readme = zipped.read("Jonen Strat/README.txt").decode()
         assert readme.index("Body:") < readme.index("Neck:")
+
+
+def test_every_form_field_explains_itself() -> None:
+    from cncguitarwizard.webapp import _focus, _mentions
+
+    schema = parameter_schema()
+    seen: dict[str, str] = {}
+
+    def walk(fields: list[dict[str, object]], prefix: str = "") -> None:
+        for field in fields:
+            seen[prefix + str(field["name"])] = str(field.get("help", ""))
+            for kind, variant in dict(field.get("variants", {})).items():  # type: ignore[call-overload]
+                walk(variant["fields"], f"{prefix}{field['name']}.{kind}.")
+
+    for key in ("prototype", "machining"):
+        for group in schema[key]:
+            walk(group["fields"])
+    assert all(seen.values()), [name for name, text in seen.items() if not text]
+    # Plain words up front; the code's own documentation for the rest.
+    assert "from the nut to the bridge saddles" in seen["scale_length"]
+    assert seen["tool_diameter"] == "Cutting diameter of the end mill."
+    assert "pocket" in seen["truss_rod_pocket_depth"]
+    assert "Jack bore start Y" in seen["body_shape.your_design.jack_y"]
+    assert all(len(text) <= 900 for text in seen.values())
+    # A wildcard names its group, but body_* alone is too wide to.
+    assert _mentions("a step (truss_rod_step_*)", "truss_rod_step_depth")
+    assert _mentions("body_*_binding_width wide", "body_back_binding_width")
+    assert not _mentions("see the body_* comments", "body_thickness")
+    # Another field's block gives only the sentences naming the field.
+    block = "Edge finishes are optional. The rim is flat. body_x is round."
+    assert _focus(block, "body_x") == "body_x is round."

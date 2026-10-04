@@ -559,6 +559,12 @@ jätetään pois):
 
 ## Omat suunnitelmat
 
+Lomakkeen jokainen kenttä kertoo merkityksensä, kun hiiren vie sen nimen
+päälle (nimi on alleviivattu katkoviivalla): selitys otetaan koodin omasta
+dokumentaatiosta (luokkien `Args:`-kuvaukset ja parametrien yläpuolen
+kommentit), ja heti näkyville perusasetuksille on kirjoitettu selkokieliset
+selitykset (`field_help.FIELD_HELP`).
+
 Web-sovelluksen **Save design** tallentaa kaikki asetukset, myös soittimen,
 kitaran nimen, piirretyn rungon ja lavan reunat, JSON-tiedostoksi omalle
 koneelle; kun kitaralla on nimi (*Guitar name*, soittimen valinnan alla),

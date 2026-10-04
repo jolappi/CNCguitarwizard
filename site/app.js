@@ -154,6 +154,11 @@ function mirrorEditorFields() {
       const label = document.createElement("label");
       label.textContent = name;
       label.htmlFor = copy.id;
+      // The form row's explanation goes with it.
+      if (row.title) {
+        label.title = copy.title = row.title;
+        label.classList.add("explained");
+      }
       const pass = () => {
         const value = copy.type === "checkbox" ? copy.checked : copy.tagName === "SELECT" ? copy.value : readValue(copy);
         if (typeof value === "number" && Number.isNaN(value)) return;  // still being typed
@@ -292,7 +297,16 @@ function renderField(set, field) {
   input.addEventListener("input", () => markChanged(input));
   row.appendChild(label);
   row.appendChild(input);
+  explain(row, field);
   return row;
+}
+
+// What the field means, from Python (webapp._field_help), shown on hover
+// over its row; its name is marked as explained.
+function explain(row, field) {
+  if (!field.help) return;
+  row.title = field.help;
+  row.querySelector("label")?.classList.add("explained");
 }
 
 function renderChoiceField(set, field) {
@@ -321,6 +335,7 @@ function renderChoiceField(set, field) {
   });
   row.appendChild(label);
   row.appendChild(select);
+  explain(row, field);
   return row;
 }
 
@@ -360,6 +375,7 @@ function renderVariantField(set, field) {
   }
   row.appendChild(label);
   row.appendChild(select);
+  explain(row, field);
   // With a single kind (the body, always drawn) there is nothing to choose.
   row.hidden = Object.keys(field.variants).length < 2;
   holder.appendChild(row);

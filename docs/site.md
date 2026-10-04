@@ -25,7 +25,15 @@ Python.
    bridge, body thickness, tool and feeds…) are shown up front; the rest of
    each group sits behind an *Advanced* fold, marked `advanced` in the
    schema (`_BASIC_FIELDS`, `_BASIC_VARIANT_FIELDS` in `webapp.py`), with a
-   page-wide checkbox to open them all. The settings that shape an
+   page-wide checkbox to open them all. Hovering a field's row shows what
+   it means (its name is underlined dotted): `webapp._field_help` takes it
+   from the code's own documentation — a dataclass's `Args:` entries, an
+   attribute docstring, the comment block above the field (and the fields
+   after it that the block names, `truss_rod_step_*` style wildcards
+   included), else the first block in the class that names it, cut to the
+   sentences that do — with `field_help.FIELD_HELP` first: plain words for
+   the settings shown up front and those the code leaves unexplained.
+   Every field has one. The settings that shape an
    editor's drawing sit in that editor's own pane instead
    (`EDITOR_FIELDS` in `app.js`): the pickup layout, bridge (its kind;
    its own sizes stay in the form), controls, pickup selector, jack,

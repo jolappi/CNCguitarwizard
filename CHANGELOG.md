@@ -4,6 +4,11 @@
 
 ### Added
 
+- Every field in the web form explains itself on hover (its name
+  underlined dotted): taken from the code's own documentation
+  (`webapp._field_help`: docstrings and the comments above the
+  parameters), with plain words for the settings shown up front
+  (`field_help.FIELD_HELP`).
 - A zero fret (`nut_style` "zero_fret", `zero_fret_gap` 3 mm): a fret on
   the nut line, the nut a string guide in a slot behind it on the board's
   run-on (`FretLayout.zero_fret_slot`, `LockingNutSpec.set_back`); its
