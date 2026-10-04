@@ -4,6 +4,20 @@
 
 ### Added
 
+- More control layouts (`body_controls`):
+  - `superstrat`: an Ibanez RG / Jackson style rear cavity with the 5-way
+    blade switch in it beside the volume and tone pots. The switch sits in a
+    deeper pocket under a 4 mm top; its lever's slot is routed from the top
+    into that pocket, and its two screws go through the top 1-5/8 in apart.
+  - `volume_1`: one volume pot; the round switch cavity only with two or
+    more pickups.
+  - `active_4`: an active bass's four pots in a row in a cavity with room
+    for the preamp.
+  - `jazz_bass`: a Jazz Bass style plate in the top (three pots, two screws
+    4.9 in apart).
+- `body_jack` "plate": the jack on the Jazz Bass plate, nothing bored from
+  the edge (`BodySolid.jack_hole` may be `None`).
+
 - The Floyd Rose and the Kahler for seven and eight strings
   (`string_count` on `FloydRoseSpec` and `KahlerBridgeSpec`). The Floyd
   Rose's widths follow its stud spacing by the margins on Floyd Rose's
@@ -390,6 +404,20 @@
   opens into the back (bodies over 45.7 mm were refused).
 
 ### Fixed
+
+- Choosing the Stratocaster controls in the pickguard (`body_controls`
+  "pickguard") no longer fails with "The pickguard does not cover its
+  controls" (or "need a pickguard"):
+  - The layout brings its guard with it, and the web form ticks
+    `body_pickguard`.
+  - A drawn guard that does not cover the controls (every template's is
+    drawn for its own rear cavities) gives way to the automatic guard.
+  - The automatic guard reaches out over the controls, and the body
+    editor says so.
+  - Where the cavity sits too near the edge or another route to be
+    covered, the controls move (and turn, along a Jackson RR's wing) to
+    the nearest place that fits.
+  - They now fit on every template.
 
 - The Les Paul style template's outline had a bump on the bass side by
   the neck pocket (two control points too close together); one point

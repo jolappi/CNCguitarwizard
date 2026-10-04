@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import math
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field, replace
 from typing import Any, Literal
 
-from ..cam.planar import offset_polygon
+from ..cam.planar import distance_to_boundary, offset_polygon
 from ..geometry.body import (
     BRIDGE_MAX_STRINGS,
     BRIDGE_MIN_STRINGS,
@@ -85,6 +85,7 @@ from .body_shapes import (
     widened_shape,
 )
 from .controls import (
+    GENERATED_REAR_LAYOUTS,
     SCREW_CLEARANCE,
     SCREW_SPOT_DEPTH,
     SCREW_SPOT_DIAMETER,
@@ -103,6 +104,7 @@ from .pickguard import (
     check_on_body,
     clear_of_bridge,
     clear_of_truss_rod,
+    guard_outline,
     pickguard,
 )
 from .pickguard import automatic_points as automatic_pickguard_points
@@ -252,6 +254,20 @@ TRUSS_ROD_MIN_FLOOR = 1.0
 """Wood left under a headstock-adjusted standard rod's deepest pocket, in
 mm: the neck is made this much thicker than the pocket's depth."""
 
+PICKGUARD_CONTROL_LAP = 6.0
+"""How far a pickguard reaches past the control cavity under it, at least,
+in mm (pickguard-mounted controls are moved to leave it room)."""
+
+PICKGUARD_CONTROL_GAP = 3.0
+"""Wood kept between a pickguard control cavity and the other top routes."""
+
+PICKGUARD_CONTROL_SHIFT = 40.0
+"""How far pickguard-mounted controls may move to fit under a guard, in mm."""
+
+PICKGUARD_CONTROL_TURNS = (0.0, 10.0, -10.0, 20.0, -20.0, 30.0, -30.0)
+"""The turns (degrees) tried, in order, for controls that do not fit
+under a guard square."""
+
 MAX_MULTISCALE_RATIO = 1.15
 """The longest bass scale accepted, as a multiple of the treble scale."""
 
@@ -396,7 +412,8 @@ class BodyLayout:
         bridge_pickup: The bridge pickup route, or ``None``.
         neck_pickup: The neck pickup route, or ``None``.
         bridge_mounting: Bridge reference line and pivot studs.
-        jack_hole: The output jack bore.
+        jack_hole: The output jack bore, or ``None`` with the jack on a
+            control plate.
         control_cavity: The rear control cavity with its cover recess.
         switch_cavity: The rear switch cavity with its cover recess.
         extra_cavities: The bridge's top routes, and a Stratocaster style
@@ -429,7 +446,7 @@ class BodyLayout:
     bridge_pickup: TracedCavity | None
     neck_pickup: TracedCavity | None
     bridge_mounting: BridgeMounting
-    jack_hole: JackHole
+    jack_hole: JackHole | None
     control_cavity: RearCavity | None
     switch_cavity: RearCavity | None
     extra_cavities: tuple[Cavity, ...]
@@ -719,8 +736,12 @@ class Prototype001Parameters:
     # around each cavity).
     # body_controls picks the electronics layout (see controls.py): the
     # Design by Jone almond with 2 pots, a Gibson-style cavity with 4, a
-    # rear cavity with 3 in a row, a Telecaster-style plate in the top, or
-    # none. Each cover plate is cut from sheet in its own program.
+    # rear cavity with 3 in a row, a superstrat rear cavity with 2 pots
+    # and the 5-way blade switch in it, a single volume pot, an active
+    # bass's 4 pots in a row, a Telecaster-style plate in the top, a Jazz
+    # Bass style plate (3 pots, and the jack with body_jack "plate"), the
+    # Stratocaster's controls in the pickguard, or none. Each cover plate
+    # is cut from sheet in its own program.
     body_controls: ControlLayout = "almond_2"
     body_rear_cavity_top_wall: float = 8.0
     body_cover_recess_depth: float = 2.0
@@ -740,7 +761,9 @@ class Prototype001Parameters:
     # the bridge (or the shape's pickguard_points), with openings over the
     # pickups and holes for the pots and selector under it, screwed round
     # its edge. body_controls "pickguard" mounts the controls in it,
-    # Stratocaster style, over a cavity routed from the top.
+    # Stratocaster style, over a cavity routed from the top: that layout
+    # brings the guard with it, the automatic one if a drawn guard (a
+    # template's) does not cover the controls.
     # body_pickguard_style draws the automatic guard as a Stratocaster's
     # ("stratocaster") or close round the pickups ("superstrat"); see
     # presets.pickguard.PICKGUARD_STYLES.
@@ -804,8 +827,10 @@ class Prototype001Parameters:
     # jack_direction_degrees) meets the outline, whatever the body, and
     # runs on into the control cavity, JACK_CAVITY_OVERRUN past its wall;
     # body_jack_depth fixes its length instead (JACK_DEFAULT_DEPTH when it
-    # aims at no control cavity).
-    body_jack: Literal["side", "cup", "strat"] = "side"
+    # aims at no control cavity). "plate" puts the jack on the Jazz Bass
+    # style control plate (body_controls "jazz_bass"), behind its pots:
+    # no bore from the edge.
+    body_jack: Literal["side", "cup", "strat", "plate"] = "side"
     body_jack_diameter: float = 12.5
     body_jack_depth: float | None = None
     # Bolt-on neck: the body shape's own neck_bolts, or else four bolts
@@ -2576,6 +2601,8 @@ class Prototype001Parameters:
                 switch_cavity=self._under_carve(controls.switch_cavity, carve_drop),
                 battery_cavity=self._under_carve(controls.battery_cavity, carve_drop),
             )
+            # A blade switch's slot still reaches its risen pocket.
+            controls = _opened_into_controls(controls, self.body_thickness)
             bridge = replace(
                 bridge,
                 rear_cavities=tuple(
@@ -2598,6 +2625,7 @@ class Prototype001Parameters:
                 *((bridge.footprint,) if bridge.footprint else ()),
                 *((jack_cavity.outline,) if jack_cavity else ()),
                 *(c.outline for c in controls.top_cavities),
+                *(c.outline for c in controls.through_cavities),
                 # The back's cavities need not be dodged: only a route left
                 # under too thin a top for the engraving.
                 *(
@@ -2639,7 +2667,7 @@ class Prototype001Parameters:
             controls.switch_cavity,
             (*bridge.top_cavities, *((jack_cavity,) if jack_cavity else ())),
             tuple(holes),
-            bridge.through_cavities,
+            (*bridge.through_cavities, *controls.through_cavities),
             bridge.rear_cavities,
             middle_pickup,
             neck_bolts,
@@ -3055,81 +3083,72 @@ class Prototype001Parameters:
     ) -> Pickguard | None:
         """Return the pickguard, or ``None`` without one (see ``body_pickguard``).
 
+        Controls mounted in the guard (``body_controls`` "pickguard") bring
+        it with them, ``body_pickguard`` or not, and must be under it: a
+        drawn guard that does not cover them — a template's, drawn for its
+        own rear cavities — gives way to the automatic guard, which is made
+        round them.
+
         Raises:
-            BodyGeometryError: For pickguard-mounted controls without a
-                guard or not under it, or a guard that does not fit the
-                body.
+            BodyGeometryError: For a guard that does not fit the body.
         """
         in_guard = self.body_controls == "pickguard"
-        if not self.body_pickguard:
-            if in_guard:
-                raise BodyGeometryError(
-                    "Pickguard-mounted controls need a pickguard: turn on "
-                    "body_pickguard."
-                )
+        # Controls mounted in the guard bring it with them.
+        if not self.body_pickguard and not in_guard:
             return None
+        cavities = [c for c in controls.top_cavities if c.name == "Control cavity"]
+
+        def guard_from(points: Sequence[Point2D], automatic: bool) -> Pickguard:
+            return pickguard(
+                points,
+                automatic=automatic,
+                thickness=self.body_pickguard_thickness,
+                pickup_openings=openings,
+                holes=[*controls.holes, *controls.guard_holes],
+                # A rear-mounted blade switch's slot, should the guard cover it.
+                slots=(*controls.guard_slots, *controls.through_cavities),
+                screw_clearance=SCREW_CLEARANCE,
+                screw_spot_diameter=SCREW_SPOT_DIAMETER,
+                screw_spot_depth=self.body_pickguard_thickness + SCREW_SPOT_DEPTH,
+            )
+
+        # Either way the truss rod's spoke wheel stays uncovered.
         if shape.pickguard_points:
             # Drawn for one bridge; stepped round whichever is fitted.
-            points = clear_of_bridge(
-                [Point2D(heel_end + x, y) for x, y in shape.pickguard_points],
-                bridge_areas,
-                [route.outline for route in pickups],
+            drawn = clear_of_truss_rod(
+                clear_of_bridge(
+                    [Point2D(heel_end + x, y) for x, y in shape.pickguard_points],
+                    bridge_areas,
+                    [route.outline for route in pickups],
+                ),
+                truss_rod_access,
             )
-            automatic = False
-        else:
-            region = (
-                next(
-                    (
-                        c.outline
-                        for c in controls.top_cavities
-                        if c.name == "Control cavity"
-                    ),
-                    None,
-                )
-                if in_guard
-                else None
-            )
-            points = automatic_pickguard_points(
-                outline,
-                heel_end,
-                self.body_pickguard_margin,
-                bridge_areas,
-                region,
-                [route.outline for route in pickups],
-                neck_pocket,
-                self.bass_sign,
-                PICKGUARD_STYLES[self.body_pickguard_style],
-            )
-            automatic = True
-        # Either way the truss rod's spoke wheel stays uncovered.
-        points = clear_of_truss_rod(points, truss_rod_access)
-        guard = pickguard(
-            points,
-            automatic=automatic,
-            thickness=self.body_pickguard_thickness,
-            pickup_openings=openings,
-            holes=[*controls.holes, *controls.guard_holes],
-            slots=controls.guard_slots,
-            screw_clearance=SCREW_CLEARANCE,
-            screw_spot_diameter=SCREW_SPOT_DIAMETER,
-            screw_spot_depth=self.body_pickguard_thickness + SCREW_SPOT_DEPTH,
-        )
-        # Controls mounted in a drawn guard must be under it.
-        cavities = [c for c in controls.top_cavities if c.name == "Control cavity"]
-        if (
-            in_guard
-            and not automatic
-            and not all(
-                point_in_polygon(p, guard.plate.outline)
+            # Controls mounted in it must be under it; a guard drawn for
+            # other controls (a template's) gives way to the automatic one,
+            # made round them.
+            if not in_guard:
+                return guard_from(drawn, automatic=False)
+            covering = guard_outline(drawn)
+            if all(
+                point_in_polygon(p, covering)
                 for cavity in cavities
                 for p in cavity.outline
-            )
-        ):
-            raise BodyGeometryError(
-                "The pickguard does not cover its controls: move its points "
-                "out over the control cavity, or use Auto pickguard."
-            )
-        return guard
+            ):
+                return guard_from(drawn, automatic=False)
+        automatic = automatic_pickguard_points(
+            outline,
+            heel_end,
+            self.body_pickguard_margin,
+            bridge_areas,
+            cavities[0].outline if in_guard and cavities else None,
+            [route.outline for route in pickups],
+            neck_pocket,
+            self.bass_sign,
+            PICKGUARD_STYLES[self.body_pickguard_style],
+        )
+        return guard_from(
+            clear_of_truss_rod(automatic, truss_rod_access), automatic=True
+        )
 
     def _check_bridge_strings(self) -> None:
         """Reject a bridge made for another number of strings.
@@ -3245,8 +3264,10 @@ class Prototype001Parameters:
         aim: Point2D,
         direction_degrees: float,
         controls: ControlFeatures,
-    ) -> tuple[JackHole, TracedCavity | None]:
+    ) -> tuple[JackHole | None, TracedCavity | None]:
         """Return the output jack's bore and a Strat style jack's cavity.
+
+        Neither with the jack on the control plate (``body_jack`` "plate").
 
         The bore's line runs through ``aim`` along the shape's direction; it
         starts where that line enters the body (the crossing of the outline
@@ -3256,10 +3277,12 @@ class Prototype001Parameters:
         Raises:
             BodyGeometryError: For an unknown ``body_jack``.
         """
-        if self.body_jack not in ("side", "cup", "strat"):
+        if self.body_jack not in ("side", "cup", "strat", "plate"):
             raise BodyGeometryError(
-                f"Unknown jack {self.body_jack!r}: choose side, cup or strat."
+                f"Unknown jack {self.body_jack!r}: choose side, cup, strat or plate."
             )
+        if self.body_jack == "plate":
+            return None, None
         radians = math.radians(direction_degrees)
         ux, uy = math.cos(radians), math.sin(radians)
 
@@ -3337,7 +3360,7 @@ class Prototype001Parameters:
     ) -> ControlFeatures:
         """Return the electronics layout, moved clear of the top routes.
 
-        A generated rear cavity (``gibson_4``, ``rear_3``) sits where the
+        A generated rear cavity (``GENERATED_REAR_LAYOUTS``) sits where the
         shape's pots put it. Where it would rout into a deep top route over
         it (a Floyd Rose's fine-tuner recess, a pickup), leaving no wood
         between the two floors, the whole layout — cavity, cover and pots —
@@ -3352,12 +3375,13 @@ class Prototype001Parameters:
         pots = shape.pot_offsets
         side = 1.0 if sum(y for _, y in pots) >= 0.0 else -1.0
 
-        def build(dx: float, dy: float) -> ControlFeatures:
+        def build(dx: float, dy: float, turn: float = 0.0) -> ControlFeatures:
             moved = shape
-            if dx or dy:
+            if dx or dy or turn:
                 moved = replace(
                     shape,
                     pot_offsets=tuple((x + dx, y + side * dy) for x, y in pots),
+                    control_angle_degrees=shape.control_angle_degrees + turn,
                 )
             return control_features(
                 self.body_controls,
@@ -3368,6 +3392,9 @@ class Prototype001Parameters:
                 cover_depth=self.body_cover_recess_depth,
                 pot_hole_diameter=self.body_pot_shaft_hole_diameter,
                 switch_hole_diameter=self.switch_shaft_hole_diameter,
+                # One pickup needs no selector beside a single volume pot.
+                switch=sum(kind != "none" for kind in self.pickup_types()) > 1,
+                plate_jack=self.body_jack == "plate",
             )
 
         def clear(controls: ControlFeatures) -> bool:
@@ -3384,7 +3411,9 @@ class Prototype001Parameters:
             )
 
         controls = build(0.0, 0.0)
-        if self.body_controls not in ("gibson_4", "rear_3") or clear(controls):
+        if self.body_controls == "pickguard":
+            return self._guard_controls_placed(build, outline, top_cavities)
+        if self.body_controls not in GENERATED_REAR_LAYOUTS or clear(controls):
             return controls
         reach = int(CONTROL_CLEARANCE_SHIFT)
         shifts = sorted(
@@ -3405,6 +3434,77 @@ class Prototype001Parameters:
                 and all(point_in_polygon(p, outline) for p in rear.cover_recess.outline)
             ):
                 return moved
+        return controls
+
+    def _guard_controls_placed(
+        self,
+        build: Callable[[float, float, float], ControlFeatures],
+        outline: tuple[Point2D, ...],
+        top_cavities: tuple[Cavity, ...],
+    ) -> ControlFeatures:
+        """Return pickguard-mounted controls moved where a guard covers them.
+
+        Their cavity, routed from the top, must lie
+        ``body_pickguard_margin`` + ``PICKGUARD_CONTROL_LAP`` in from the
+        edge, so the guard (that far in) covers it with a lap, and
+        ``PICKGUARD_CONTROL_GAP`` clear of the neck pocket, the pickups and
+        the bridge's routes. Where the shape's pots put it does not do, the
+        controls move to the nearest place that does, along the neck and
+        across it by up to ``PICKGUARD_CONTROL_SHIFT`` in 4 mm steps —
+        turned by ``PICKGUARD_CONTROL_TURNS`` too where they do not fit
+        square (along a Jackson RR's wing); if nothing does, they stay put
+        and the body's own check reports it.
+        """
+        room = self.body_pickguard_margin + PICKGUARD_CONTROL_LAP
+        gap = PICKGUARD_CONTROL_GAP
+        # Each route's box, the gap wider all round (quick, and on the
+        # safe side).
+        routes = []
+        for top in top_cavities:
+            xs = [p.x for p in top.outline]
+            ys = [p.y for p in top.outline]
+            routes.append(
+                (
+                    Point2D(min(xs) - gap, min(ys) - gap),
+                    Point2D(max(xs) + gap, min(ys) - gap),
+                    Point2D(max(xs) + gap, max(ys) + gap),
+                    Point2D(min(xs) - gap, max(ys) + gap),
+                )
+            )
+
+        def fits(controls: ControlFeatures) -> bool:
+            cavity = next(
+                c for c in controls.top_cavities if c.name == "Control cavity"
+            )
+            points = cavity.outline
+            cx = sum(p.x for p in points) / len(points)
+            cy = sum(p.y for p in points) / len(points)
+            # The ends first: they are the likeliest to stick out.
+            ordered = sorted(points, key=lambda p: -math.hypot(p.x - cx, p.y - cy))
+            return not any(outlines_overlap(points, r) for r in routes) and all(
+                point_in_polygon(p, outline)
+                and distance_to_boundary(p, outline) >= room
+                for p in ordered
+            )
+
+        controls = build(0.0, 0.0, 0.0)
+        if fits(controls):
+            return controls
+        reach = int(PICKGUARD_CONTROL_SHIFT)
+        shifts = sorted(
+            (
+                (float(dx), float(dy))
+                for dx in range(-reach, reach + 1, 4)
+                for dy in range(-reach, reach + 1, 4)
+                if math.hypot(dx, dy) <= reach
+            ),
+            key=lambda shift: math.hypot(*shift),
+        )
+        for turn in PICKGUARD_CONTROL_TURNS:
+            for dx, dy in shifts:
+                moved = build(dx, dy, turn)
+                if fits(moved):
+                    return moved
         return controls
 
     def _contours(
@@ -3875,6 +3975,35 @@ class Prototype001Parameters:
             carbon_rods,
             self.neck_joint == "set",
         )
+
+
+def _opened_into_controls(
+    controls: ControlFeatures, thickness: float
+) -> ControlFeatures:
+    """Return ``controls``, each through route reaching into its cavity.
+
+    A route (a blade switch's slot) reaches 1 mm into the deepest pocket
+    of the control cavity under it — after the cavity rose under a carved
+    top, too.
+    """
+    rear = controls.control_cavity
+    if rear is None or not controls.through_cavities:
+        return controls
+
+    def opened(route: Cavity) -> Cavity:
+        under = [
+            pocket.depth
+            for pocket in rear.pockets
+            if outlines_overlap(pocket.outline, route.outline)
+        ]
+        if not under:
+            return route
+        return replace(route, depth=thickness - max(under) + 1.0)
+
+    return replace(
+        controls,
+        through_cavities=tuple(opened(route) for route in controls.through_cavities),
+    )
 
 
 _BASS_OVERRIDES: dict[str, Any] = {

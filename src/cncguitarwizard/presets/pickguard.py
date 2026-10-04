@@ -198,7 +198,8 @@ def automatic_points(
       ``BRIDGE_WRAP`` on past its front either side of it, the shorter
       horn's side the style's ``tail``. With
       ``controls_region`` (a pickguard control cavity) the controls' side
-      runs on to ``CONTROLS_MARGIN`` past it.
+      runs on to ``CONTROLS_MARGIN`` past it, and along it reaches out
+      that far past it too (as far as the body lets it).
 
     Raises:
         BodyGeometryError: When nothing of the body is left for a guard.
@@ -246,12 +247,18 @@ def automatic_points(
     elif long_side and wide_bridge:
         side_end[-long_side] = bridge_front + max(BRIDGE_WRAP, style.tail)
     keep_side = 0.0
+    keep_from = keep_to = keep_out = 0.0
     if controls_region:
         ys = [p.y for p in controls_region]
         keep_side = 1.0 if sum(ys) / len(ys) >= 0.0 else -1.0
         side_end[keep_side] = max(
             side_end[keep_side], max(p.x for p in controls_region) + CONTROLS_MARGIN
         )
+        # Along the controls the guard reaches out past them, as far as
+        # the body lets it.
+        keep_from = min(p.x for p in controls_region) - CONTROLS_MARGIN
+        keep_to = max(p.x for p in controls_region) + CONTROLS_MARGIN
+        keep_out = max(keep_side * y for y in ys) + CONTROLS_MARGIN
     notch = {
         side: max((side * p.y for p in neck_pocket), default=0.0) + NECK_CLEARANCE
         for side in sides
@@ -307,12 +314,15 @@ def automatic_points(
     def bound(side: float, x: float, edge: float) -> float:
         # How far out (side * y) the guard reaches at x on one side, where
         # the inset body reaches ``edge``.
+        out = edge
         if side == long_side and not (side == keep_side and x > bridge_front):
-            return min(edge, reach[side] + shape(x))
-        if side == hug_side:
+            out = min(edge, reach[side] + shape(x))
+        elif side == hug_side:
             ease = _eased(x, hug_start, max(hug_from, hug_start + HUG_BLEND / 2))
-            return min(edge, edge + (reach[side] - edge) * ease)
-        return edge
+            out = min(edge, edge + (reach[side] - edge) * ease)
+        if side == keep_side and keep_from <= x <= keep_to:
+            out = max(out, min(edge, keep_out))
+        return out
 
     lows: list[Point2D] = []
     highs: list[Point2D] = []
@@ -632,6 +642,11 @@ def _eased(x: float, start: float, stop: float) -> float:
     return t * t * (3.0 - 2.0 * t)
 
 
+def guard_outline(control_points: Sequence[Point2D]) -> tuple[Point2D, ...]:
+    """Return the guard's outline through its control points (a closed spline)."""
+    return tuple(closed_catmull_rom(control_points, SAMPLES_PER_SEGMENT))
+
+
 def pickguard(
     control_points: Sequence[Point2D],
     *,
@@ -653,7 +668,7 @@ def pickguard(
     It is not checked against the body here (the body editor draws a
     guard still being moved): see ``check_on_body``.
     """
-    outline = closed_catmull_rom(control_points, SAMPLES_PER_SEGMENT)
+    outline = guard_outline(control_points)
     openings: list[Cavity] = [
         TracedCavity(name, opening, thickness)
         for name, opening in pickup_openings

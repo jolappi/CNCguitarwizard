@@ -69,7 +69,8 @@ Python.
    cavities that `webapp.body_editor_layout()` lays out from the other
    settings. The control cavity (carrying its pots), each pot, the switch
    cavity, the battery box (when `body_battery_box` is on), each neck bolt
-   (dashed: drilled from the back) and the jack can be dragged too, and the pickup routes slide
+   (dashed: drilled from the back) and the jack (none with the jack on a
+   Jazz Bass plate) can be dragged too, and the pickup routes slide
    along the neck. Shift-dragging the control cavity (with its cover and
    pots, or the Tele plate), the battery box or the jack turns it about
    its centre (the jack about its socket) instead; round cavities only
@@ -82,7 +83,9 @@ Python.
    over the features with square handles at its control points; dragging
    one writes `pickguard_points`, and *Auto pickguard* empties them again
    (the automatic guard's style, `body_pickguard_style`, is chosen beside
-   it). With `body_arm_contour_depth` set (also beside the
+   it). Choosing the controls in the pickguard (`body_controls`
+   "pickguard") ticks `body_pickguard`; a drawn guard that does not cover
+   them gives way to the automatic one, and the status line says so. With `body_arm_contour_depth` set (also beside the
    editor), the line where the arm contour starts is drawn in green with
    round handles: dragging one writes `arm_contour_points`, a click on the
    line adds one, Alt- or right-click removes one, and *Auto arm contour*

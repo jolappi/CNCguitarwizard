@@ -250,9 +250,19 @@ pultteja voi raahata kaulan suunnassa.
 
 Kontrollikolot valitaan (`body_controls`): Design by Jone -manteli kahdella
 potikalla (oletus), Gibson-tyylinen kolo neljällä potikalla, takakolo kolmella
-potikalla rivissä, Telecaster-tyylinen kontrollilevy rungon päälle upotettuna
-(2 potikkaa ja teräkytkimen aukko) tai ei kontrolleja. Takakoloissa on
-myös pyöreä kytkinkolo. Ohjainkolon voi kääntää (`control_angle_degrees`) kolon keskipisteen ympäri kansineen ja potikoineen (Tele-levy ruuveineen ja teräkytkimen aukkoineen); akun kotelolla ja jakilla on omat kulmansa, pyöreitä koloja ei käännetä. Runkoeditorissa kääntö tehdään Shift-raahauksella, ja uusi piirtopiste lisätään klikkaamalla ääriviivaa. Ohjainkoloa ja sen kantta voi venyttää tai lyhentää pituusakselinsa suunnassa (`control_stretch`, mm keskeltä molempiin päihin puoliksi); päät säilyttävät pyöristyksensä, leveys ei muutu, ja Gibson- ja rivikolon reunimmaiset potikat sekä Tele-levyn ruuvit, kytkinaukko ja takimmainen potikka siirtyvät päiden mukana. Liian lyhyeksi kutistettu kolo hylätään. Samoin kolon ja kannen voi leventää tai kaventaa poikittain (`control_stretch_across`); Gibson-kolon potikkarivit siirtyvät kauemmas toisistaan, ja rivikolon sekä Tele-levyn päät pysyvät puoliympyröinä. Kolon on oltava vähintään 16 mm leveä (minipotikan runko). Editorissa kannen päissä ja sivuilla on neliökahvat: kahvaa raahatessa vastakkainen pää tai sivu pysyy paikallaan. Mikkivalitsimeksi valitaan (`body_switch`)
+potikalla rivissä, superstrat-takakolo (Ibanez RG / Jackson: 112 × 40 mm kolo,
+jossa 5-asentoinen teräkytkin ja volume- ja tone-potikat; kytkin on 54 × 16 mm
+syvemmässä taskussa, jonka päälle jää 4 mm kantta, sen vipu nousee kannesta
+27 × 6,5 mm raon läpi, joka jyrsitään ylhäältä 1 mm taskuun asti, ja sen kaksi
+#6-32-ruuvia menevät kannen läpi Ø 3,6 rei'istä 41,28 mm välein), yksi
+volume-potikka (56 × 34 mm kolo; pyöreä kytkinkolo vain, jos mikkejä on
+useampi), aktiivibasson takakolo neljällä potikalla 28 mm välein (130 × 44 mm,
+tilaa esivahvistimelle; akku akkukoteloon), Telecaster-tyylinen kontrollilevy
+rungon päälle upotettuna (2 potikkaa ja teräkytkimen aukko), Jazz Bass
+-tyylinen levy (150 × 36 mm upotus, 112 × 26 mm kolo, 3 potikkaa 32 mm välein,
+kaksi ruuvia 124,5 mm välein; `body_jack` "plate" tuo jakin levyyn potikoiden
+taakse, eikä reunasta porata mitään) tai ei kontrolleja. Gibson-, manteli-,
+rivi- ja yhden potikan koloissa on myös pyöreä kytkinkolo. Ohjainkolon voi kääntää (`control_angle_degrees`) kolon keskipisteen ympäri kansineen ja potikoineen (Tele-levy ruuveineen ja teräkytkimen aukkoineen); akun kotelolla ja jakilla on omat kulmansa, pyöreitä koloja ei käännetä. Runkoeditorissa kääntö tehdään Shift-raahauksella, ja uusi piirtopiste lisätään klikkaamalla ääriviivaa. Ohjainkoloa ja sen kantta voi venyttää tai lyhentää pituusakselinsa suunnassa (`control_stretch`, mm keskeltä molempiin päihin puoliksi); päät säilyttävät pyöristyksensä, leveys ei muutu, ja Gibson- ja rivikolon reunimmaiset potikat sekä Tele-levyn ruuvit, kytkinaukko ja takimmainen potikka siirtyvät päiden mukana. Liian lyhyeksi kutistettu kolo hylätään. Samoin kolon ja kannen voi leventää tai kaventaa poikittain (`control_stretch_across`); Gibson-kolon potikkarivit siirtyvät kauemmas toisistaan, ja rivikolon sekä Tele-levyn päät pysyvät puoliympyröinä. Kolon on oltava vähintään 16 mm leveä (minipotikan runko). Editorissa kannen päissä ja sivuilla on neliökahvat: kahvaa raahatessa vastakkainen pää tai sivu pysyy paikallaan. Mikkivalitsimeksi valitaan (`body_switch`)
 3-asentoinen vipukytkin (oletus, 1/2" eli 12,7 mm reikä) tai mikro- eli
 minivipukytkin (1/4" eli 6,35 mm reikä); `body_switch_shaft_hole_diameter`
 antaa reiän käsin. Kolot ajetaan omissa ohjelmissaan
@@ -332,7 +342,17 @@ kelalle), reiät sen alle jääville potikoille ja kytkimelle sekä ruuvit
 reunaa kiertäen (runkoon 1 mm merkit). Kontrolliasettelu `pickguard`
 kiinnittää kolme potikkaa ja 5-asentoisen teräkytkimen pleksiin
 Strat-tyyliin; niiden alle jyrsitään kolo rungon päältä, eikä takakoloa
-tule, ja pleksi jatkuu tallan ohi kontrollien puolella.
+tule, ja pleksi jatkuu tallan ohi kontrollien puolella ja ulottuu
+kontrollien kohdalla 12 mm niiden ohi. Asettelu tuo pleksin mukanaan
+(`body_pickguard` päällä tai ei; web-lomake laittaa sen päälle). Jos
+piirretty pleksi ei peitä koloa (pohjien pleksit on piirretty niiden omille
+takakoloille), tilalle tulee automaattinen pleksi, ja runkoeditori kertoo
+siitä. Jos muodon potikoiden paikka vie kolon liian lähelle reunaa (pleksin
+on ulotuttava 6 mm kolon yli 6 mm:n reunavaran sisällä) tai alle 3 mm:n
+päähän kaulataskusta, mikeistä tai tallasta, kontrollit siirtyvät
+lähimpään sopivaan paikkaan (enintään 40 mm) ja tarvittaessa kääntyvät
+(enintään 30°, esim. Jackson RR:n siipeä pitkin). Ne mahtuvat pleksin alle
+kaikilla pohjilla.
 
 Valinnainen 9 V:n paristokotelo (`body_battery_box`, oletuksena pois)
 jyrsitään takaa samaan `Body_back_controls.nc`-ohjelmaan: 56 × 30 mm kolo
@@ -494,7 +514,7 @@ varmistaa tämän.
 | Potikkakolo | DXF:n manteli tallan takana, takaa 36 mm (8 mm puuta kanteen), kansiura 2 mm |
 | Kytkinkolo | DXF:n ympyrä Ø 44 yläsakaran juuressa, takaa 36 mm, kansiura Ø 59,5 × 2 mm |
 | Akselireiät | Kytkin Ø 12,7; potikat 2 × Ø 10 kohdissa (642, 86) ja (682, 87) |
-| Jakki | Ø 12,5 poraus alkaa siitä, missä muodon jakkilinja (oletus 742, 107,5 suuntaan 202,5°) kohtaa rungon ääriviivan, millä tahansa rungolla, ja jatkuu 3 mm ohjainkolon seinän yli (muuten 55 mm; `body_jack_depth` kiinnittää pituuden). `body_jack`: side (kylkilevy tai putkijakki), cup (Tele-kuppi tai Electrosocket: 7/8" eli 22,2 mm upotus 25 mm syvä reunassa) tai strat (Strat-tyylinen kansilevy päällä: Ø 25,4 × 32 mm kolo ylhäältä 4 mm reunasta, poraus jatkuu siitä ohjainkoloon). Runkoeditori varoittaa, jos poraus ei osu ohjainkoloon |
+| Jakki | Ø 12,5 poraus alkaa siitä, missä muodon jakkilinja (oletus 742, 107,5 suuntaan 202,5°) kohtaa rungon ääriviivan, millä tahansa rungolla, ja jatkuu 3 mm ohjainkolon seinän yli (muuten 55 mm; `body_jack_depth` kiinnittää pituuden). `body_jack`: side (kylkilevy tai putkijakki), cup (Tele-kuppi tai Electrosocket: 7/8" eli 22,2 mm upotus 25 mm syvä reunassa), strat (Strat-tyylinen kansilevy päällä: Ø 25,4 × 32 mm kolo ylhäältä 4 mm reunasta, poraus jatkuu siitä ohjainkoloon) tai plate (Jazz Bass -levyssä, vain `jazz_bass`-asettelun kanssa: ei porausta). Runkoeditori varoittaa, jos poraus ei osu ohjainkoloon |
 
 ## Reunat ja viisteet
 

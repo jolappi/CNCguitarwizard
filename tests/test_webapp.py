@@ -433,7 +433,11 @@ def test_the_control_layout_is_a_basic_choice_and_shows_in_the_editor() -> None:
         "almond_2",
         "gibson_4",
         "rear_3",
+        "superstrat",
+        "volume_1",
+        "active_4",
         "tele",
+        "jazz_bass",
         "pickguard",
         "none",
     ]

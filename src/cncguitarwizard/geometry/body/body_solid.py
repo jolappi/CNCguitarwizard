@@ -67,7 +67,8 @@ class BodySolid:
         bridge_mounting: Kahler-style bridge cavity and pivot holes.
         control_cavity: Optional rear-routed cavity for the
             potentiometers, with its cover recess.
-        jack_hole: Bore for the edge-mounted output jack.
+        jack_hole: Bore for the edge-mounted output jack, or ``None``
+            with the jack on a control plate.
         switch_cavity: Optional rear-routed cavity for the pickup
             selector, with its cover recess.
         battery_cavity: Optional rear-routed pocket for a 9 V battery,
@@ -129,7 +130,7 @@ class BodySolid:
     bridge_pickup: Cavity | None
     neck_pickup: Cavity | None
     bridge_mounting: BridgeMounting
-    jack_hole: JackHole
+    jack_hole: JackHole | None
     control_cavity: RearCavity | None = None
     switch_cavity: RearCavity | None = None
     battery_cavity: RearCavity | None = None
@@ -277,7 +278,10 @@ class BodySolid:
             raise BodyGeometryError(
                 "Bridge pivot holes must leave material beneath their floor."
             )
-        if self.jack_hole.depth >= self._outline_half_span():
+        if (
+            self.jack_hole is not None
+            and self.jack_hole.depth >= self._outline_half_span()
+        ):
             raise BodyGeometryError("Jack bore must not reach clean through the body.")
 
         # Testing every one of a cavity's own outline points (not just its

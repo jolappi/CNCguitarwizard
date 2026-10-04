@@ -31,6 +31,9 @@
 - More bridges: the Floyd Rose and the Kahler for seven and eight strings
   (with Floyd Rose's seven- and eight-string locking nuts), single-string
   bridges that follow a fan, and a top-loaded hardtail for the bass
+- More control layouts: a superstrat rear cavity with the 5-way blade
+  switch, a single volume pot, an active bass's four pots, and a Jazz Bass
+  plate carrying the jack
 - Carbon fibre neck reinforcement beside the truss rod; a zero fret
 - Neck angle (a tilted pocket floor for a Tune-o-matic), a Telecaster
   neck (slotted nut, Tele headstock), low-profile truss rods and a spoke
@@ -67,7 +70,6 @@
 ## v2
 
 Electronics
-- More control cavity layouts.
 - Wire channels between the cavities — pickups, controls, the battery box
   and the jack — cut or at least modelled, instead of drilled by hand.
 - The battery box and the controls placed together, so neither blocks the
@@ -88,7 +90,7 @@ Tools and templates
 ```mermaid
 flowchart TD
     Done["Done: guitar, bass, 7/8-string, CAD and CAM, slanted and fanned frets"] --> Beta["v1.0.0-beta1"]
-    Beta --> More["Since: headless, carved tops, binding, engraving, left-handed, neck-through"]
+    Beta --> More["Since: headless, carved tops, binding, engraving, left-handed, neck-through, 7/8-string tremolos, more controls"]
     More --> V1["v1.0.0: machine-verified toolpaths"]
-    V1 --> V2["v2: 7/8-string tremolos, wire channels, DXF export"]
+    V1 --> V2["v2: wire channels, battery and controls together, DXF export"]
 ```

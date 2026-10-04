@@ -2400,35 +2400,37 @@ class FreeCADScriptExporter:
                 ")\n"
             )
         jack = body.jack_hole
-        jack_radians = math.radians(jack.direction_degrees)
-        jack_direction = (
-            math.cos(jack_radians),
-            math.sin(jack_radians),
-            0.0,
-        )
-        # Started 1 mm outside the edge, so the bore breaks cleanly out of it;
-        # a cup jack's counterbore likewise.
-        jack_start = (
-            jack.start_x - jack_direction[0],
-            jack.start_y - jack_direction[1],
-            -body.thickness / 2.0,
-        )
-        bores = [("jack bore", jack.diameter, jack.depth + 1.0)]
-        if jack.cup_diameter:
-            bores.append(("jack cup", jack.cup_diameter, jack.cup_depth + 1.0))
-        for label, diameter, length in bores:
-            lines.append(
-                "jack_bore = Part.makeCylinder(\n"
-                f"    {diameter / 2.0},\n"
-                f"    {length},\n"
-                f"    App.Vector{jack_start},\n"
-                f"    App.Vector{jack_direction},\n"
-                ")\n"
-                "body_shape = require_shape(\n"
-                "    body_shape.cut(jack_bore),\n"
-                f'    "{label} cut",\n'
-                ")\n"
+        # None with the jack on a control plate.
+        if jack is not None:
+            jack_radians = math.radians(jack.direction_degrees)
+            jack_direction = (
+                math.cos(jack_radians),
+                math.sin(jack_radians),
+                0.0,
             )
+            # Started 1 mm outside the edge, so the bore breaks cleanly out of it;
+            # a cup jack's counterbore likewise.
+            jack_start = (
+                jack.start_x - jack_direction[0],
+                jack.start_y - jack_direction[1],
+                -body.thickness / 2.0,
+            )
+            bores = [("jack bore", jack.diameter, jack.depth + 1.0)]
+            if jack.cup_diameter:
+                bores.append(("jack cup", jack.cup_diameter, jack.cup_depth + 1.0))
+            for label, diameter, length in bores:
+                lines.append(
+                    "jack_bore = Part.makeCylinder(\n"
+                    f"    {diameter / 2.0},\n"
+                    f"    {length},\n"
+                    f"    App.Vector{jack_start},\n"
+                    f"    App.Vector{jack_direction},\n"
+                    ")\n"
+                    "body_shape = require_shape(\n"
+                    "    body_shape.cut(jack_bore),\n"
+                    f'    "{label} cut",\n'
+                    ")\n"
+                )
         # The edge finishes come last: the cavities cut quicker into the
         # plain slab.
         if carve is not None and carve.edge_rim > 0.0:

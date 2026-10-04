@@ -313,19 +313,21 @@ FIELD_HELP: dict[str, str] = {
     "body_controls": (
         "The controls: the cavity and its pots (volume and tone knobs) and "
         "the pickup selector's place, routed from the back, on a top plate "
-        "or in the pickguard."
+        "or in the pickguard — among them a superstrat's rear cavity with "
+        "the 5-way blade switch in it, a single volume pot, an active bass's "
+        "four pots and a Jazz Bass plate."
     ),
     "body_switch": (
         "The pickup selector: a 3-way toggle or a mini toggle, by its hole's size."
     ),
     "body_jack": (
         "The output jack: in from the body's side (a Les Paul plate or a "
-        "barrel jack), a cup jack in a round counterbore, or a Stratocaster "
-        "style plate on the top."
+        "barrel jack), a cup jack in a round counterbore, a Stratocaster "
+        "style plate on the top, or on the Jazz Bass control plate."
     ),
     "body_pickguard": (
         "A pickguard cut from sheet and shaped to the body, its screws "
-        "spotted in the body."
+        "spotted in the body; controls mounted in the guard bring it anyway."
     ),
     "body_pickguard_style": (
         "The automatic pickguard's shape: Stratocaster (beside the neck, a "

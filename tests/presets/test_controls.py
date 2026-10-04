@@ -29,15 +29,18 @@ def test_every_layout_has_a_label() -> None:
         "almond_2",
         "gibson_4",
         "rear_3",
+        "superstrat",
+        "volume_1",
+        "active_4",
         "tele",
+        "jazz_bass",
         "pickguard",
         "none",
     }
 
 
-# The pickguard layout needs a pickguard and is tested with one
-# (tests/presets/test_pickguard.py).
-@pytest.mark.parametrize("layout", [name for name in LAYOUTS if name != "pickguard"])
+# The pickguard layout brings its own guard (see test_pickguard.py).
+@pytest.mark.parametrize("layout", LAYOUTS)
 def test_every_layout_builds_on_every_drawn_template(layout: str) -> None:
     for name, (_, shape) in YOUR_DESIGN_TEMPLATES.items():
         instrument = "bass_guitar" if "bass" in name else "electric_guitar"

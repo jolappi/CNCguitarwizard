@@ -39,6 +39,7 @@ from .geometry.body import (
     BRIDGE_LABELS,
     BRIDGE_MAX_STRINGS,
     BRIDGE_MIN_STRINGS,
+    JackHole,
     bridge_spec_from_dict,
 )
 from .geometry.exceptions import GeometryException
@@ -132,6 +133,7 @@ _CHOICE_LABELS: dict[str, dict[str, str]] = {
         "side": "Side jack (Les Paul style plate or barrel jack)",
         "cup": "Cup jack or Electrosocket (7/8 in counterbore)",
         "strat": "Stratocaster style top plate (cavity from the top)",
+        "plate": "On the Jazz Bass control plate (no bore from the edge)",
     },
     "body_pickguard_style": {
         "stratocaster": "Stratocaster (beside the neck, a tail past the bridge)",
@@ -589,12 +591,6 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
             "ends": handles(axis),
             "sides": handles(across),
         }
-    jack = layout.jack_hole
-    radians = math.radians(jack.direction_degrees)
-    jack_end = Point2D(
-        jack.start_x + jack.depth * math.cos(radians),
-        jack.start_y + jack.depth * math.sin(radians),
-    )
     control_outlines = [
         *((controls.control_cavity.cavity.outline,) if controls.control_cavity else ()),
         *(top.outline for top in controls.top_cavities if top.name == "Control cavity"),
@@ -617,28 +613,7 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         },
         "polygons": polygons,
         "circles": circles,
-        "jack": {
-            "group": "jack",
-            "x": round(jack.start_x - heel_end, 2),
-            "y": round(jack.start_y, 2),
-            "x2": round(jack.start_x - heel_end + jack.depth * math.cos(radians), 2),
-            "y2": round(jack.start_y + jack.depth * math.sin(radians), 2),
-            "r": jack.diameter / 2.0,
-            "cup": (
-                {
-                    "x2": round(
-                        jack.start_x - heel_end + jack.cup_depth * math.cos(radians), 2
-                    ),
-                    "y2": round(jack.start_y + jack.cup_depth * math.sin(radians), 2),
-                    "r": jack.cup_diameter / 2.0,
-                }
-                if jack.cup_diameter
-                else None
-            ),
-            "reaches_controls": any(
-                point_in_polygon(jack_end, outline) for outline in control_outlines
-            ),
-        },
+        "jack": _jack_view(layout.jack_hole, heel_end, control_outlines),
         "control": control,
         "pickguard": (
             {
@@ -669,6 +644,46 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
             [local(line) for line in layout.engraving.lines]
             if layout.engraving is not None
             else None
+        ),
+    }
+
+
+def _jack_view(
+    jack: JackHole | None,
+    heel_end: float,
+    control_outlines: list[tuple[Point2D, ...]],
+) -> dict[str, Any] | None:
+    """Return the jack bore for the body editor, ``None`` on a control plate.
+
+    ``reaches_controls`` says whether the bore ends in a control cavity.
+    """
+    if jack is None:
+        return None
+    radians = math.radians(jack.direction_degrees)
+    jack_end = Point2D(
+        jack.start_x + jack.depth * math.cos(radians),
+        jack.start_y + jack.depth * math.sin(radians),
+    )
+    return {
+        "group": "jack",
+        "x": round(jack.start_x - heel_end, 2),
+        "y": round(jack.start_y, 2),
+        "x2": round(jack.start_x - heel_end + jack.depth * math.cos(radians), 2),
+        "y2": round(jack.start_y + jack.depth * math.sin(radians), 2),
+        "r": jack.diameter / 2.0,
+        "cup": (
+            {
+                "x2": round(
+                    jack.start_x - heel_end + jack.cup_depth * math.cos(radians), 2
+                ),
+                "y2": round(jack.start_y + jack.cup_depth * math.sin(radians), 2),
+                "r": jack.cup_diameter / 2.0,
+            }
+            if jack.cup_diameter
+            else None
+        ),
+        "reaches_controls": any(
+            point_in_polygon(jack_end, outline) for outline in control_outlines
         ),
     }
 

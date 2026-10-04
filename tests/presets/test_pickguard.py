@@ -104,9 +104,12 @@ def test_strat_controls_sit_in_the_guard_past_the_bridge() -> None:
     assert "Cover_pickguard" in [setup.name for setup in plan.setups]
 
 
-def test_strat_controls_need_a_guard() -> None:
-    with pytest.raises(BodyGeometryError, match="need a pickguard"):
-        replace(Prototype001Parameters(), body_controls="pickguard").build()
+def test_strat_controls_bring_their_guard() -> None:
+    # body_pickguard off: the controls in the guard bring it anyway.
+    geometry = replace(Prototype001Parameters(), body_controls="pickguard").build()
+    guard = _guard(geometry)
+    pots = [hole for hole in guard.holes if hole.name.startswith("Control pot")]
+    assert len(pots) == 3
 
 
 def test_a_drawn_guard_is_kept_and_checked_against_the_body() -> None:
@@ -254,16 +257,24 @@ def test_the_stratocaster_template_has_a_traced_strat_guard() -> None:
     assert not any(point_in_polygon(p, bridge.outline) for p in guard.outline)
 
 
-def test_controls_must_lie_under_a_drawn_guard() -> None:
-    # The traced HH guard has no room for a Stratocaster's controls here.
-    with pytest.raises(BodyGeometryError, match="does not cover its controls"):
-        replace(
-            Prototype001Parameters(),
-            body_shape=STRAT,
-            body_pickguard=True,
-            body_pickups="SSS",
-            body_controls="pickguard",
-        ).build()
+def test_a_drawn_guard_not_over_the_controls_gives_way() -> None:
+    # The traced HH guard has no room for a Stratocaster's controls: the
+    # automatic guard, made round them, takes its place.
+    parameters = replace(
+        Prototype001Parameters(),
+        body_shape=STRAT,
+        body_pickguard=True,
+        body_pickups="SSS",
+        body_controls="pickguard",
+    )
+    layout = parameters.body_layout()
+    assert layout.pickguard is not None and layout.pickguard.automatic
+    geometry = parameters.build()
+    guard = _guard(geometry)
+    (cavity,) = [
+        c for c in geometry.body.control_top_cavities if c.name == "Control cavity"
+    ]
+    assert all(point_in_polygon(p, guard.outline) for p in cavity.outline)
 
 
 def test_on_the_shorter_horns_side_the_guard_follows_the_horn() -> None:

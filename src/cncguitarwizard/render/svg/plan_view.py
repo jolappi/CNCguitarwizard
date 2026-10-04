@@ -175,7 +175,8 @@ def render_plan_view_svg(geometry: Prototype001Geometry) -> str:
             )
         )
     jack = body.jack_hole
-    parts.append(circle(jack.start_x, jack.start_y, jack.diameter / 2.0, hole))
+    if jack is not None:
+        parts.append(circle(jack.start_x, jack.start_y, jack.diameter / 2.0, hole))
     parts.append(
         line(
             min_x + 5.0,

@@ -1145,15 +1145,18 @@ const bodyEditor = {
       const node = this.element("circle", { cx: circle.x, cy: -circle.y, r: circle.r, ...look }, features);
       place(node, circle.group, circle.name);
     }
+    // No bore with the jack on a control plate (its hole is the plate's).
     const jack = layout.jack;
-    const bore = this.element("line", { x1: jack.x, y1: -jack.y, x2: jack.x2, y2: -jack.y2, stroke: "#222", "stroke-width": jack.r * 2, "stroke-opacity": 0.25 }, features);
-    place(bore, jack.group, "Output jack");
-    if (jack.cup) {
-      const cup = this.element("line", { x1: jack.x, y1: -jack.y, x2: jack.cup.x2, y2: -jack.cup.y2, stroke: "#222", "stroke-width": jack.cup.r * 2, "stroke-opacity": 0.2 }, features);
-      place(cup, jack.group, "Output jack (cup)");
+    if (jack) {
+      const bore = this.element("line", { x1: jack.x, y1: -jack.y, x2: jack.x2, y2: -jack.y2, stroke: "#222", "stroke-width": jack.r * 2, "stroke-opacity": 0.25 }, features);
+      place(bore, jack.group, "Output jack");
+      if (jack.cup) {
+        const cup = this.element("line", { x1: jack.x, y1: -jack.y, x2: jack.cup.x2, y2: -jack.cup.y2, stroke: "#222", "stroke-width": jack.cup.r * 2, "stroke-opacity": 0.2 }, features);
+        place(cup, jack.group, "Output jack (cup)");
+      }
+      const socket = this.element("circle", { cx: jack.x, cy: -jack.y, r: jack.r, fill: "#fff", "fill-opacity": 0.6, stroke: "#222", "stroke-width": 0.8 }, features);
+      place(socket, jack.group, "Output jack");
     }
-    const socket = this.element("circle", { cx: jack.x, cy: -jack.y, r: jack.r, fill: "#fff", "fill-opacity": 0.6, stroke: "#222", "stroke-width": 0.8 }, features);
-    place(socket, jack.group, "Output jack");
 
     // Square handles at the control cavity's ends and sides: dragging one
     // stretches (or shrinks) the cavity and its cover from that end, or
@@ -1624,7 +1627,7 @@ const bodyEditor = {
         points.push([circle.x + cx * circle.r, circle.y + cy * circle.r]);
       }
     }
-    if (group === this.layout.jack.group) points.push([this.layout.jack.x, this.layout.jack.y]);
+    if (this.layout.jack && group === this.layout.jack.group) points.push([this.layout.jack.x, this.layout.jack.y]);
     return points.length > 0 && points.every(([x, y]) => !pointInPolygon(x + dx, y + dy, outline));
   },
 
@@ -1712,7 +1715,7 @@ const bodyEditor = {
   // The point a group turns about, in the editor's frame (from the heel
   // end): the cavity's centre, or the jack's socket.
   turnCentre(group) {
-    if (group === "jack") return [this.layout.jack.x, this.layout.jack.y];
+    if (group === "jack" && this.layout.jack) return [this.layout.jack.x, this.layout.jack.y];
     if (group === "control" && this.layout.control) return this.layout.control.centre;
     const names = group === "battery"
       ? ["Battery cavity"]
@@ -1983,7 +1986,7 @@ const bodyEditor = {
       if (!pointInPolygon(circle.x, circle.y, outline)) outside.add(circle.name);
     }
     const controls = this.field("prototype", "body_controls");
-    const jackMisses = !this.layout.jack.reaches_controls && controls && controls.value !== "none";
+    const jackMisses = this.layout.jack && !this.layout.jack.reaches_controls && controls && controls.value !== "none";
     const jackNote = jackMisses
       ? " The jack's bore misses the control cavity: Shift-drag the jack to turn it toward it."
       : "";
@@ -1991,9 +1994,19 @@ const bodyEditor = {
       this.setStatus(`Outside the outline: ${[...outside].join(", ")}.${jackNote}`, "bad");
     } else if (jackMisses) {
       this.setStatus(jackNote.trim(), "bad");
+    } else if (this.guardGaveWay()) {
+      this.setStatus("Every feature fits inside the outline. The drawn pickguard does not cover the controls mounted in it, so the automatic one is used.", "ok");
     } else {
       this.setStatus("Every feature fits inside the outline.", "ok");
     }
+  },
+
+  // Whether a drawn pickguard gave way to the automatic one, which the
+  // controls in the guard (body_controls "pickguard") need over them.
+  guardGaveWay() {
+    const guard = this.layout.pickguard;
+    const drawn = this.field("prototype.body_shape", "pickguard_points");
+    return Boolean(guard && guard.automatic && drawn && readValue(drawn).length);
   },
 
   setStatus(text, kind) {
@@ -2602,6 +2615,15 @@ form.addEventListener("input", (event) => {
 });
 form.addEventListener("change", (event) => {
   if (event.target.dataset.name === "string_count") applyStringLimits();
+  // Controls mounted in the pickguard bring it with them.
+  if (event.target.dataset.name === "body_controls" && event.target.value === "pickguard") {
+    const guard = form.querySelector('[data-set="prototype"][data-name="body_pickguard"]');
+    if (guard && !guard.checked) {
+      guard.checked = true;
+      markChanged(guard);
+      syncMirrors();
+    }
+  }
   if (event.target.dataset.name !== "control_points") bodyEditor.scheduleRefresh();
 });
 

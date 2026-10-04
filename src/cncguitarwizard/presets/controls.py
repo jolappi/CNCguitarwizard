@@ -33,17 +33,68 @@ from ..geometry.exceptions import BodyGeometryError
 from ..geometry.primitives import Point2D
 from .body_shapes import BodyShapeSpec
 
-ControlLayout = Literal["almond_2", "gibson_4", "rear_3", "tele", "pickguard", "none"]
+ControlLayout = Literal[
+    "almond_2",
+    "gibson_4",
+    "rear_3",
+    "superstrat",
+    "volume_1",
+    "active_4",
+    "tele",
+    "jazz_bass",
+    "pickguard",
+    "none",
+]
 """An electronics layout (see ``CONTROL_LABELS``)."""
 
 CONTROL_LABELS: dict[str, str] = {
     "almond_2": "Design by Jone almond, 2 pots + round switch cavity",
     "gibson_4": "Gibson style, 4 pots + round switch cavity",
     "rear_3": "Rear cavity, 3 pots in a row + round switch cavity",
+    "superstrat": "Superstrat rear cavity, 2 pots + 5-way blade switch in it",
+    "volume_1": "One volume pot (+ round switch cavity with two or more pickups)",
+    "active_4": "Active bass rear cavity, 4 pots in a row",
     "tele": "Telecaster style control plate on the top (2 pots + blade switch)",
+    "jazz_bass": "Jazz Bass style control plate on the top (3 pots, jack on it)",
     "pickguard": "Stratocaster style, in the pickguard (3 pots + 5-way blade switch)",
     "none": "No control cavities",
 }
+
+GENERATED_REAR_LAYOUTS = frozenset(
+    {"gibson_4", "rear_3", "superstrat", "volume_1", "active_4"}
+)
+"""The layouts whose rear cavity is generated (not drawn): they may move
+clear of the top routes."""
+
+SWITCHLESS_LAYOUTS = frozenset(
+    {"superstrat", "active_4", "tele", "jazz_bass", "pickguard"}
+)
+"""The layouts with no round switch cavity of their own: their selector is
+in the cavity or on the plate, or (a bass) there is none."""
+
+BLADE_SWITCH_SCREW_SPACING = 41.28
+"""A 5-way blade switch's mounting screws apart, in mm (1-5/8 in: Oak
+Grigsby / CRL)."""
+
+BLADE_SWITCH_SCREW_HOLE = 3.6
+"""The clearance hole for its #6-32 screws, in mm."""
+
+BLADE_SWITCH_SLOT = (27.0, 6.5)
+"""The lever's slot through the top (length, width), in mm: its travel
+(1-1/16 in), wide enough for the main end mill."""
+
+BLADE_SWITCH_TOP_WALL = 4.0
+"""The top left over a rear-mounted blade switch, in mm, so its lever
+stands far enough out."""
+
+BLADE_SWITCH_POCKET = (54.0, 16.0)
+"""The deeper pocket the switch sits in (length, width), in mm."""
+
+JAZZ_PLATE_SCREW_SPACING = 124.5
+"""A Jazz Bass control plate's two mounting screws apart, in mm (4.9 in)."""
+
+JACK_PLATE_HOLE = 9.6
+"""The output jack's hole in a control plate, in mm (a 3/8 in bushing)."""
 
 SCREW_SPOT_DIAMETER = 3.0
 SCREW_SPOT_DEPTH = 1.0
@@ -64,6 +115,11 @@ class ControlFeatures:
         top_marks: Cover-screw spots drilled from the top.
         covers: The plates to cut from sheet.
         battery_cavity: The rear 9 V battery box, or ``None``.
+        through_cavities: Routes from the top through into the rear
+            control cavity (a rear-mounted blade switch's slot); cut in
+            ``Body_top``.
+        plate_jack: Whether the output jack is on the control plate
+            (``body_jack`` "plate"), so no bore runs in from the edge.
         control_centre: The control cavity's (or Tele plate's) centre: it
             turns about this point and stretches from it.
         control_axis: Its long axis, a unit vector (turned with it); the
@@ -81,6 +137,8 @@ class ControlFeatures:
     top_marks: tuple[DrilledHole, ...] = ()
     covers: tuple[CoverPlate, ...] = ()
     battery_cavity: RearCavity | None = None
+    through_cavities: tuple[Cavity, ...] = ()
+    plate_jack: bool = False
     control_centre: Point2D | None = None
     control_axis: Point2D | None = None
     guard_holes: tuple[DrilledHole, ...] = ()
@@ -313,15 +371,27 @@ def control_features(
     cover_depth: float,
     pot_hole_diameter: float,
     switch_hole_diameter: float,
+    switch: bool = True,
+    plate_jack: bool = False,
 ) -> ControlFeatures:
     """Return the cavities, holes and plates of one electronics layout.
 
+    ``switch`` off leaves out the round switch cavity of a ``volume_1``
+    layout (a single pickup needs no selector); ``plate_jack`` puts the
+    output jack on a ``jazz_bass`` plate.
+
     Raises:
         BodyGeometryError: When ``shape.control_stretch`` shortens the
-            control cavity or its cover past its rounded ends, or
+            control cavity or its cover past its rounded ends,
             ``shape.control_stretch_across`` leaves the cavity narrower
-            than ``MIN_CONTROL_CAVITY_WIDTH``.
+            than ``MIN_CONTROL_CAVITY_WIDTH``, or the jack is asked onto a
+            layout with no plate for it.
     """
+    if plate_jack and layout != "jazz_bass":
+        raise BodyGeometryError(
+            'Only the Jazz Bass plate (body_controls "jazz_bass") carries the '
+            "jack: choose side, cup or strat for body_jack."
+        )
     if layout == "none":
         return ControlFeatures()
     depth = thickness - top_wall
@@ -369,6 +439,23 @@ def control_features(
             widen,
         )
 
+    if layout == "jazz_bass":
+        # Along the pots' line, like the bass's own drawn cavity.
+        return _jazz_bass(
+            Point2D(anchor_x, anchor_y),
+            depth,
+            cover_depth,
+            pot_hole_diameter,
+            plate_jack,
+            turn,
+            stretch,
+            widen,
+        )
+
+    through: tuple[Cavity, ...] = ()
+    steps: tuple[Cavity, ...] = ()
+    extra_holes: list[DrilledHole] = []
+    screws = 4
     if layout == "almond_2":
         # The drawn almond turns about its own centre; its pots are the
         # shape's own pot_offsets, placed (and turned) by the editor.
@@ -424,27 +511,108 @@ def control_features(
             22.0,
             turn,
         )
-    else:  # rear_3
+    elif layout == "superstrat":
+        # A 5-way blade switch ahead of the volume and tone pots, all in
+        # one rear cavity: the switch in a deeper pocket leaving
+        # BLADE_SWITCH_TOP_WALL, its lever through a slot in the top, its
+        # two screws through the top into its tabs.
+        centre = Point2D(anchor_x, anchor_y)
+        width = 40.0 + widen
+        _check_width(width)
+
+        def on_axis(dx: float) -> Point2D:
+            (point,) = _turned(
+                (Point2D(centre.x + spread(dx), centre.y),), centre, turn
+            )
+            return point
+
+        pots = [(p.x, p.y) for p in (on_axis(16.0), on_axis(42.0))]
+        axis = Point2D(1.0, 0.0)
+        cavity = _box(
+            "Control cavity", centre, 112.0 + stretch, width, depth, 12.0, turn
+        )
+        cover = _box(
+            "Control cavity cover recess",
+            centre,
+            124.0 + stretch,
+            width + 12.0,
+            cover_depth,
+            18.0,
+            turn,
+        )
+        switch_at = on_axis(-28.0)
+        pocket_length, pocket_width = BLADE_SWITCH_POCKET
+        pocket_depth = thickness - BLADE_SWITCH_TOP_WALL
+        steps = (
+            _box(
+                "Control switch pocket",
+                switch_at,
+                pocket_length,
+                pocket_width,
+                pocket_depth,
+                3.0,
+                turn,
+            ),
+        )
+        slot_length, slot_width = BLADE_SWITCH_SLOT
+        through = (
+            _box(
+                "Control switch slot",
+                switch_at,
+                slot_length,
+                slot_width,
+                thickness - pocket_depth + 1.0,
+                slot_width / 2.0 - 0.01,
+                turn,
+            ),
+        )
+        half = BLADE_SWITCH_SCREW_SPACING / 2.0
+        extra_holes = [
+            DrilledHole(
+                f"Control switch screw {index}",
+                point.x,
+                point.y,
+                BLADE_SWITCH_SCREW_HOLE,
+                thickness,
+            )
+            for index, point in enumerate(
+                _turned(
+                    (
+                        Point2D(switch_at.x - half, switch_at.y),
+                        Point2D(switch_at.x + half, switch_at.y),
+                    ),
+                    switch_at,
+                    turn,
+                ),
+                start=1,
+            )
+        ]
+    elif layout in ("volume_1", "active_4", "rear_3"):
+        # Round-ended cavities with their pots in a row along them: one
+        # volume pot; four for an active bass (volume, blend, bass,
+        # treble), in a wider cavity with room for the preamp; three.
+        offsets, length, base_width, screws = {
+            "volume_1": ((0.0,), 56.0, 34.0, 3),
+            "active_4": ((-42.0, -14.0, 14.0, 42.0), 130.0, 44.0, 6),
+            "rear_3": ((-30.0, 0.0, 30.0), 94.0, 34.0, 4),
+        }[layout]
         centre = Point2D(anchor_x, anchor_y)
         pots = [
             (p.x, p.y)
             for p in _turned(
-                tuple(
-                    Point2D(anchor_x + spread(dx), anchor_y)
-                    for dx in (-30.0, 0.0, 30.0)
-                ),
+                tuple(Point2D(anchor_x + spread(dx), anchor_y) for dx in offsets),
                 centre,
                 turn,
             )
         ]
         axis = Point2D(1.0, 0.0)
         # Round-ended: the ends stay half circles at any width.
-        width = 34.0 + widen
+        width = base_width + widen
         _check_width(width)
         cavity = _box(
             "Control cavity",
             centre,
-            94.0 + stretch,
+            length + stretch,
             width,
             depth,
             width / 2.0 - 0.1,
@@ -453,40 +621,44 @@ def control_features(
         cover = _box(
             "Control cavity cover recess",
             centre,
-            106.0 + stretch,
+            length + 12.0 + stretch,
             width + 12.0,
             cover_depth,
             width / 2.0 + 5.9,
             turn,
         )
-
-    control = RearCavity(cavity, cover)
-    switch_x = heel_end + shape.switch_cavity_offset
-    switch = RearCavity(
-        CircularCavity(
-            "Switch cavity",
-            switch_x,
-            shape.switch_cavity_y,
-            shape.switch_cavity_diameter,
-            depth,
-        ),
-        CircularCavity(
-            "Switch cavity cover recess",
-            heel_end + shape.switch_cover_offset,
-            shape.switch_cover_y,
-            shape.switch_cover_diameter,
-            cover_depth,
-        ),
-    )
-    holes = [
-        DrilledHole(
-            "Switch shaft hole",
-            switch_x,
-            shape.switch_cavity_y,
-            switch_hole_diameter,
-            thickness,
+    else:
+        raise BodyGeometryError(f"Unknown control layout {layout!r}.")
+    control = RearCavity(cavity, cover, steps)
+    switch_cavity: RearCavity | None = None
+    holes: list[DrilledHole] = []
+    if layout not in SWITCHLESS_LAYOUTS and (switch or layout != "volume_1"):
+        switch_x = heel_end + shape.switch_cavity_offset
+        switch_cavity = RearCavity(
+            CircularCavity(
+                "Switch cavity",
+                switch_x,
+                shape.switch_cavity_y,
+                shape.switch_cavity_diameter,
+                depth,
+            ),
+            CircularCavity(
+                "Switch cavity cover recess",
+                heel_end + shape.switch_cover_offset,
+                shape.switch_cover_y,
+                shape.switch_cover_diameter,
+                cover_depth,
+            ),
         )
-    ]
+        holes.append(
+            DrilledHole(
+                "Switch shaft hole",
+                switch_x,
+                shape.switch_cavity_y,
+                switch_hole_diameter,
+                thickness,
+            )
+        )
     # Generated layouts drag as one piece in the body editor, so their
     # pots are named after the cavity; the almond keeps its own pots.
     prefix = "Pot" if layout == "almond_2" else "Control pot"
@@ -494,18 +666,22 @@ def control_features(
         DrilledHole(f"{prefix} {index} shaft hole", x, y, pot_hole_diameter, thickness)
         for index, (x, y) in enumerate(pots, start=1)
     ]
+    holes += extra_holes
     marks: list[DrilledHole] = []
     covers: list[CoverPlate] = []
-    for rear, count in ((control, 4), (switch, 3)):
+    for rear, count in ((control, screws), (switch_cavity, 3)):
+        if rear is None:
+            continue
         plate = rear_cover(rear, count)
         marks += plate.back_marks
         covers += plate.covers
     return ControlFeatures(
         control_cavity=control,
-        switch_cavity=switch,
+        switch_cavity=switch_cavity,
         holes=tuple(holes),
         back_marks=tuple(marks),
         covers=tuple(covers),
+        through_cavities=through,
         control_centre=centre,
         control_axis=_turned((axis,), Point2D(0.0, 0.0), turn)[0],
     )
@@ -682,6 +858,102 @@ def _tele(
         top_cavities=(recess, cavity),
         top_marks=marks,
         covers=(plate,),
+        control_centre=centre,
+        control_axis=_turned((Point2D(1.0, 0.0),), Point2D(0.0, 0.0), turn)[0],
+    )
+
+
+def _jazz_bass(
+    centre: Point2D,
+    depth: float,
+    cover_depth: float,
+    pot_hole_diameter: float,
+    jack: bool,
+    turn: float = 0.0,
+    stretch: float = 0.0,
+    widen: float = 0.0,
+) -> ControlFeatures:
+    """A Jazz Bass style control plate, flush in the top along the pots.
+
+    The 150 × 36 mm round-ended plate (a real one is as long, gently
+    curved) carries three pots 32 mm apart — volume, volume, tone — and,
+    with ``jack``, the output jack behind them; two screws
+    ``JAZZ_PLATE_SCREW_SPACING`` apart hold it. The cavity under it is
+    112 × 26 mm. ``stretch`` makes the plate and cavity that much longer,
+    moving the screws and the outer holes out with the ends, and
+    ``widen`` that much wider. All of it turns ``turn`` degrees about the
+    plate's centre.
+    """
+
+    def at(dx: float) -> Point2D:
+        if dx:
+            dx += math.copysign(stretch / 2.0, dx)
+        (point,) = _turned((Point2D(centre.x + dx, centre.y),), centre, turn)
+        return point
+
+    width = 26.0 + widen
+    _check_width(width)
+    recess = _box(
+        "Control plate recess",
+        centre,
+        150.0 + stretch,
+        width + 10.0,
+        cover_depth,
+        width / 2.0 + 4.99,
+        turn,
+    )
+    cavity = _box(
+        "Control cavity",
+        centre,
+        112.0 + stretch,
+        width,
+        depth,
+        width / 2.0 - 0.01,
+        turn,
+    )
+    half = JAZZ_PLATE_SCREW_SPACING / 2.0
+    screws = [at(-half), at(half)]
+    pots = [at(-42.0), at(-10.0), at(22.0)]
+    jack_at = at(48.0)
+    jack_holes = (
+        (DrilledHole("Jack hole", jack_at.x, jack_at.y, JACK_PLATE_HOLE, cover_depth),)
+        if jack
+        else ()
+    )
+    plate = CoverPlate(
+        "Control plate",
+        "top",
+        recess.outline,
+        cover_depth,
+        holes=(
+            *(
+                DrilledHole(
+                    f"Pot {index} shaft hole", p.x, p.y, pot_hole_diameter, cover_depth
+                )
+                for index, p in enumerate(pots, start=1)
+            ),
+            *jack_holes,
+            *(
+                DrilledHole(f"Screw {index}", p.x, p.y, SCREW_CLEARANCE, cover_depth)
+                for index, p in enumerate(screws, start=1)
+            ),
+        ),
+    )
+    marks = tuple(
+        DrilledHole(
+            f"Control plate screw {index}",
+            p.x,
+            p.y,
+            SCREW_SPOT_DIAMETER,
+            cover_depth + SCREW_SPOT_DEPTH,
+        )
+        for index, p in enumerate(screws, start=1)
+    )
+    return ControlFeatures(
+        top_cavities=(recess, cavity),
+        top_marks=marks,
+        covers=(plate,),
+        plate_jack=jack,
         control_centre=centre,
         control_axis=_turned((Point2D(1.0, 0.0),), Point2D(0.0, 0.0), turn)[0],
     )

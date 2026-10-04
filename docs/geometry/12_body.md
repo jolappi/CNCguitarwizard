@@ -322,7 +322,11 @@ follows the shape and moves with the control group in the body editor.
 | `almond_2` | Design by Jone almond | The DXF almond cavity and cover (default), 2 pots at the shape's `pot_offsets`, round switch cavity |
 | `gibson_4` | Gibson style | 78 × 70 mm rear cavity (r 16) in a 90 × 82 mm cover recess, 4 pots at ±21 / ±17 mm, round switch cavity |
 | `rear_3` | Rear cavity, 3 pots | 94 × 34 mm rear cavity in a 106 × 46 mm recess, 3 pots 30 mm apart in a row, round switch cavity |
+| `superstrat` | Superstrat rear cavity | Ibanez RG / Jackson style: a 112 × 40 mm rear cavity (r 12) in a 124 × 52 mm recess holding a 5-way blade switch ahead of the volume and tone pots (26 mm apart), no round switch cavity. The switch sits in a 54 × 16 mm pocket deeper into the cavity, leaving `BLADE_SWITCH_TOP_WALL` (4 mm) of top so its lever stands out; its lever comes through a 27 × 6.5 mm slot routed from the top 1 mm into that pocket (a through route, cut in `Body_top` — wide enough for the 6 mm end mill), and its two #6-32 screws go through Ø 3.6 holes in the top into its tabs, 41.28 mm (1-5/8 in, Oak Grigsby / CRL) apart |
+| `volume_1` | One volume pot | A 56 × 34 mm round-ended rear cavity with one pot and a three-screw cover; the round switch cavity only with two or more pickups (an EVH style single humbucker needs none) |
+| `active_4` | Active bass, 4 pots | A 130 × 44 mm round-ended rear cavity (room for a preamp) in a 142 × 56 mm recess, 4 pots 28 mm apart in a row (volume, blend, bass, treble), a six-screw cover, no switch cavity; the 9 V battery goes in the battery box (`body_battery_box`) |
 | `tele` | Telecaster-style plate | A 160 × 32 mm plate recess (cover depth) routed into the **top**, with a 140 × 22 mm control cavity from its floor; the plate carries 2 pot holes, a 20 × 7 mm blade switch slot and 2 screws |
+| `jazz_bass` | Jazz Bass style plate | A 150 × 36 mm round-ended plate recess in the top (a real Jazz Bass plate is as long, gently curved) over a 112 × 26 mm cavity; 3 pots 32 mm apart (volume, volume, tone), two screws 124.5 mm (4.9 in) apart, and with `body_jack` "plate" the output jack's Ø 9.6 hole behind the pots (no bore from the edge), no switch cavity |
 | `none` | No controls | No control or switch cavity, pots or covers |
 
 The body shape's `control_angle_degrees` turns the whole layout about its
@@ -365,6 +369,7 @@ editor then says so). The housings:
 | `side` (default) | A Ø `body_jack_diameter` (12.5 mm) bore from the edge: a Les Paul style side plate or a barrel jack |
 | `cup` | The bore with a 7/8 in (22.2 mm) counterbore 25 mm deep at the edge: a Telecaster cup jack or an Electrosocket (`JackHole.cup_diameter`, `cup_depth`) |
 | `strat` | A Stratocaster style plate on the top: a Ø 25.4 × 32 mm cavity routed from the top 4 mm in from the edge (`Jack cavity`, cut with the top's pockets), the bore running on from its centre into the controls |
+| `plate` | On the Jazz Bass control plate (`body_controls` "jazz_bass" only): a hole in the plate behind its pots, nothing bored from the edge (`BodySolid.jack_hole` is `None`) |
 
 The jack's line can be dragged and turned (Shift-drag) in the body editor;
 the bore follows the drawn outline and the cavity.
@@ -452,9 +457,10 @@ the bridge pickup and the bridge), it is
 cut back along the box's edges — the way round that keeps the box out,
 on to wherever the guard next comes out of it, so a guard that spans
 the box's whole front is cut there too — points `DRAWN_BRIDGE_STEP` (8 mm) apart
-so the spline keeps to them. A drawn guard
-must cover a `pickguard` control layout's cavity, or the build is
-refused (the traced HH guard has no room for one).
+so the spline keeps to them. A drawn guard that does not cover a
+`pickguard` control layout's cavity — every template's is drawn for its
+own rear cavities; the traced HH guard has no room for one — gives way to
+the automatic guard, made round the controls (the body editor says so).
 
 The shape's `pickguard_points` (dragged in the body editor,
 where a click on its edge adds a point and Alt-click or right-click
@@ -469,7 +475,18 @@ is refused when the body is built.
 style: three pots 30 mm apart and a 5-way blade switch's 5 × 22 mm slot
 through the guard, over a 127 × 50 mm cavity routed from the top (no rear
 control cavity); the automatic guard then runs on past the bridge on the
-controls' side, leaving a notch for the bridge. It needs `body_pickguard`.
+controls' side, leaving a notch for the bridge, and reaches out past the
+controls along them (`CONTROLS_MARGIN`, 12 mm, as far as the body lets
+it). The layout brings its guard with it, `body_pickguard` or not (the
+web form ticks it). Where the shape's pots put the cavity too near the
+edge for the guard to cover it — `body_pickguard_margin` +
+`PICKGUARD_CONTROL_LAP` (6 + 6 mm) in — or within `PICKGUARD_CONTROL_GAP`
+(3 mm) of the neck pocket, a pickup or the bridge, the controls move to the
+nearest place that fits, up to `PICKGUARD_CONTROL_SHIFT` (40 mm) along and
+across the neck, turned by up to 30° (`PICKGUARD_CONTROL_TURNS`) where
+they do not fit square — along a Jackson RR's wing
+(`Prototype001Parameters._guard_controls_placed`). They fit under the
+guard on every template.
 
 The rear layouts' pickup selector is chosen with `body_switch`: a 3-way
 toggle (`toggle`, the default) through a 1/2 in (12.7 mm) hole, or a micro
@@ -485,7 +502,8 @@ spots (Ø 3 mm, 1 mm into the ledge floor) are in
 `BodySolid.control_back_marks`; a Tele plate's in `control_top_marks`, and
 its recess and cavity in `control_top_cavities`.
 
-A generated rear cavity (`gibson_4`, `rear_3`) that would rout into a
+A generated rear cavity (`GENERATED_REAR_LAYOUTS`: `gibson_4`, `rear_3`,
+`superstrat`, `volume_1`, `active_4`) that would rout into a
 deep top route over it — a Floyd Rose's fine-tuner recess or a pickup,
 leaving no wood between the floors — moves with its pots and cover to the
 nearest place, out from the centreline and along the neck by up to
