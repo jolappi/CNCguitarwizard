@@ -82,20 +82,23 @@ def test_schema_lists_every_parameter_with_a_form_type() -> None:
         "tune_o_matic",
         "hardtail",
         "headless",
+        "single_string",
     }
     assert bridge["variants"]["floyd_rose"]["label"].startswith("Floyd Rose")
     floyd_fields = {f["name"]: f for f in bridge["variants"]["floyd_rose"]["fields"]}
     assert "kind" not in floyd_fields
     assert floyd_fields["pivot_stud_spacing"].pop("help")
+    # Empty: the string count's (73.91 mm for six).
     assert floyd_fields["pivot_stud_spacing"] == {
         "name": "pivot_stud_spacing",
-        "type": "float",
-        "default": 73.91,
+        "type": "optional_float",
+        "default": None,
         "advanced": False,
     }
+    assert floyd_fields["string_count"]["advanced"] is True
     assert floyd_fields["cover_depth"]["advanced"] is True
     kahler_fields = bridge["variants"]["kahler_7300"]["fields"]
-    assert all(f["advanced"] is False for f in kahler_fields)
+    assert [f["name"] for f in kahler_fields if f["advanced"]] == ["string_count"]
     assert prototype_fields["scale_length"]["advanced"] is False
     assert prototype_fields["fretboard_nut_corner_radius"]["advanced"] is True
     assert bridge["advanced"] is False
@@ -123,8 +126,11 @@ def test_schema_lists_every_parameter_with_a_form_type() -> None:
         "8_inline",
         "8_inline_reverse",
     ]
-    assert bridge["variants"]["kahler_7300"]["max_strings"] == 6
+    assert bridge["variants"]["kahler_7300"]["max_strings"] == 8
+    assert bridge["variants"]["kahler_7300"]["min_strings"] == 6
+    assert bridge["variants"]["tune_o_matic"]["max_strings"] == 6
     assert bridge["variants"]["hardtail"]["max_strings"] is None
+    assert bridge["variants"]["single_string"]["min_strings"] is None
     assert prototype_fields["body_pickups"]["options"] == [
         "HH",
         "HSH",

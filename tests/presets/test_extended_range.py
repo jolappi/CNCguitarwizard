@@ -4,7 +4,12 @@ from dataclasses import replace
 
 import pytest
 
-from cncguitarwizard.geometry.body import FloydRoseSpec, HardtailSpec, KahlerBridgeSpec
+from cncguitarwizard.geometry.body import (
+    FloydRoseSpec,
+    HardtailSpec,
+    KahlerBridgeSpec,
+    TuneOMaticSpec,
+)
 from cncguitarwizard.geometry.exceptions import BodyGeometryError, NeckGeometryError
 from cncguitarwizard.geometry.primitives import point_in_polygon
 from cncguitarwizard.presets import Prototype001Parameters
@@ -91,8 +96,11 @@ def test_guitar_pickups_stretch_across_the_strings() -> None:
 
 def test_six_string_bridges_are_refused_for_more_strings() -> None:
     base = Prototype001Parameters.for_instrument("seven_string_guitar")
+    with pytest.raises(BodyGeometryError, match="made for 6 strings"):
+        replace(base, body_bridge=TuneOMaticSpec()).body_layout()
+    # The Kahler and the Floyd Rose come for seven strings, set so.
     for bridge in (KahlerBridgeSpec(), FloydRoseSpec()):
-        with pytest.raises(BodyGeometryError, match="drawn for 6 strings"):
+        with pytest.raises(BodyGeometryError, match="set for 6 strings"):
             replace(base, body_bridge=bridge).body_layout()
     with pytest.raises(BodyGeometryError, match="6 string holes"):
         replace(base, body_bridge=HardtailSpec()).body_layout()

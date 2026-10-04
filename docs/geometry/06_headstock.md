@@ -102,13 +102,25 @@ of even length along a slanted or fanned nut (`HeadstockSolid.nut_lean`,
 A Floyd Rose locking nut is screwed down from the top instead
 (`geometry.neck.locking_nut`, `Prototype001Parameters.locking_nut`):
 `"auto"` (the default) takes the Floyd Rose Original R2 with a Floyd Rose
-bridge and a plain nut otherwise; `"none"`, `"r2"` and `"r3"` choose
-outright.
+bridge — the seven- or eight-string nut with a seven- or eight-string
+Floyd Rose (`FLOYD_ROSE_NUTS`) — and a plain nut otherwise; `"none"`,
+`"r2"`, `"r3"`, `"r7"` and `"r8"` choose outright. Each needs `nut_width`
+at least its own width.
 
-| Nut | Width | Height | Depth | Screws apart |
+| Nut | Width | Height | Depth | Screws |
 | --- | --- | --- | --- | --- |
-| R2 (`LOCKING_NUT_SPECS["r2"]`) | 41.3 mm | 5.85 mm | 15 mm | 13.59 mm |
-| R3 | 42.85 mm (needs `nut_width` at least that) | 7.10 mm | 15 mm | 13.59 mm |
+| R2 (`LOCKING_NUT_SPECS["r2"]`) | 41.3 mm | 5.85 mm | 15 mm | two, 13.59 mm apart |
+| R3 | 42.85 mm | 7.10 mm | 15 mm | two, 13.59 mm apart |
+| 7-string (`"r7"`) | 47.6 mm | 6.30 mm | 15.5 mm | two, 18.6 mm apart |
+| 8-string (`"r8"`) | 53.8 mm | 6.30 mm | 15.7 mm | three, 13.3 mm apart |
+
+The R2, R3 and seven-string heights are Floyd Rose's nut chart's (at the D
+string); the seven-string nut's depth is Schaller's (which makes it), the
+eight-string's size and its three screws the FRT8's dimension sheet's.
+Floyd Rose lists no height for the eight-string nut (it takes the
+seven-string's) and draws no screws for the seven-string one, whose two
+are taken between its clamping pads; the screws are drilled through the
+nut's own holes anyway.
 
 Its front face stands on the nut line and the seat runs its depth + 1 mm
 (16 mm) behind it, so the headstock face, its transition and a
@@ -120,10 +132,11 @@ fret_height − height + 0.38` above the glue face: 1.73 mm for the R2 on a
 high is the fretboard itself, which runs on under the nut and is milled
 down to it; a lower one (the R3's 0.48 mm) leaves the board ending at the
 nut line, the nut standing on the neck's seat on a shim of that
-thickness. The two mounting screws' pilot holes
+thickness. The mounting screws' pilot holes
 (`locking_nut_screw_diameter` 2.5 mm, `locking_nut_screw_depth` 8 mm into
-the neck) sit `screw_spacing` apart, half the nut's depth behind the nut
-line; they are drilled by hand through the nut. A shelf below the glue
+the neck) are spread evenly over `screw_spacing` (`screw_count`, two or
+three), half the nut's depth behind the nut line; they are drilled by hand
+through the nut. A shelf below the glue
 face, or a nut wider than the neck, is refused (`NeckGeometryError`).
 
 ### Slotted nut (Fender / Telecaster)

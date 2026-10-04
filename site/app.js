@@ -191,19 +191,34 @@ function syncMirrors() {
 form.addEventListener("change", syncMirrors);
 form.addEventListener("input", syncMirrors);
 
-// Hide the kinds drawn for fewer strings than the instrument has (the
-// Kahler, Floyd Rose and Tune-o-matic on a seven- or eight-string); if one
-// of them is chosen, switch to the first kind that fits.
-function applyStringLimits() {
+// Hide the kinds not made for the instrument's string count (the
+// Tune-o-matic past six strings, the Kahler and Floyd Rose outside six to
+// eight); if one of them is chosen, switch to the first kind that fits.
+function instrumentStrings() {
   const countInput = form.querySelector('[data-set="prototype"][data-name="string_count"]');
-  const count = countInput ? readValue(countInput) : 6;
+  return countInput ? readValue(countInput) : 6;
+}
+
+// A bridge with a string count of its own (a hardtail's holes, a Floyd
+// Rose's or Kahler's size) keeps it with the instrument's.
+function syncStringCount(holder) {
+  const count = instrumentStrings();
+  const own = holder.querySelector(`[data-set="prototype.${holder.dataset.name}"][data-name="string_count"]`);
+  if (own && readValue(own) !== count) {
+    own.value = String(count);
+    markChanged(own);
+  }
+}
+
+function applyStringLimits() {
+  const count = instrumentStrings();
   for (const holder of form.querySelectorAll(".variant")) {
     const field = variantFields[holder.dataset.name];
     if (!field) continue;
     const select = holder.querySelector("select.kind");
     for (const option of select.options) {
-      const limit = field.variants[option.value].max_strings;
-      const unfit = limit != null && count > limit;
+      const { max_strings: most, min_strings: least } = field.variants[option.value];
+      const unfit = (most != null && count > most) || (least != null && count < least);
       option.hidden = unfit;
       option.disabled = unfit;
     }
@@ -214,12 +229,7 @@ function applyStringLimits() {
         select.dispatchEvent(new Event("change"));
       }
     }
-    // A hardtail has a hole per string: keep its count with the instrument's.
-    const holes = holder.querySelector(`[data-set="prototype.${holder.dataset.name}"][data-name="string_count"]`);
-    if (holes && readValue(holes) !== count) {
-      holes.value = String(count);
-      markChanged(holes);
-    }
+    syncStringCount(holder);
   }
   syncMirrors();
 }
@@ -293,6 +303,8 @@ function renderField(set, field) {
     input.value = field.type === "optional_float" && initial === null
       ? ""
       : JSON.stringify(initial);
+    // Left empty, the value is worked out (the field's help says how).
+    if (field.type === "optional_float") input.placeholder = "auto";
   }
   input.addEventListener("input", () => markChanged(input));
   row.appendChild(label);
@@ -395,7 +407,10 @@ function renderVariantField(set, field) {
     if (field.name === "body_shape") bodyEditor.sync(kind, sub);
   };
   renderSubfields(field.default.kind, field.default);
-  select.addEventListener("change", () => renderSubfields(select.value, null));
+  select.addEventListener("change", () => {
+    renderSubfields(select.value, null);
+    syncStringCount(holder);
+  });
   return holder;
 }
 

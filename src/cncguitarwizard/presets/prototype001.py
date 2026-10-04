@@ -10,6 +10,7 @@ from typing import Any, Literal
 from ..cam.planar import offset_polygon
 from ..geometry.body import (
     BRIDGE_MAX_STRINGS,
+    BRIDGE_MIN_STRINGS,
     BodySolid,
     BridgeHardware,
     BridgeMounting,
@@ -27,6 +28,7 @@ from ..geometry.body import (
     JackHole,
     KahlerBridgeSpec,
     RearCavity,
+    SingleStringBridgeSpec,
     TracedCavity,
     TracedOutline,
     TuneOMaticSpec,
@@ -252,6 +254,10 @@ mm: the neck is made this much thicker than the pocket's depth."""
 
 MAX_MULTISCALE_RATIO = 1.15
 """The longest bass scale accepted, as a multiple of the treble scale."""
+
+FLOYD_ROSE_NUTS: dict[int, Literal["r2", "r7", "r8"]] = {6: "r2", 7: "r7", 8: "r8"}
+"""The locking nut ``locking_nut`` "auto" fits a Floyd Rose with, per
+string count."""
 
 HeadstockStyle = Literal[
     "3+3",
@@ -527,7 +533,8 @@ class Prototype001Parameters:
     # scale, each saddle set to its string's scale — except a
     # Tune-o-matic's posts, as its saddles have too little travel, which
     # always turn to the fanned bridge line (its stop-bar studs stay),
-    # and a hardtail's holes when body_bridge_follows_fan is on.
+    # a hardtail's holes when body_bridge_follows_fan is on, and
+    # single-string bridges, each standing at its own string's scale.
     # body_pickups_follow_fan turns the pickups to the frets: "auto" turns
     # them except with a Tune-o-matic, "yes" and "no" always and never.
     bass_scale_length: float | None = None
@@ -655,10 +662,14 @@ class Prototype001Parameters:
     body_pickup_screw_recess_diameter: float = 6.0
     body_pickup_screw_recess_extra_depth: float = 8.0
     # The bridge is an interchangeable spec (see geometry.body.bridges):
-    # KahlerBridgeSpec (default, the DXF's flat-mount 7300 cutout),
-    # FloydRoseSpec, TuneOMaticSpec or HardtailSpec. Each places its own
-    # routes, rear cavities and holes relative to the scale line. In the
-    # web form it is edited as JSON with a "kind" entry.
+    # KahlerBridgeSpec (default, the DXF's flat-mount 7300 cutout; six to
+    # eight strings), FloydRoseSpec (six to eight strings), TuneOMaticSpec,
+    # HardtailSpec (string-through or top-loaded), HeadlessBridgeSpec or
+    # SingleStringBridgeSpec (a unit per string, each at its own scale on
+    # a multiscale). Each places its own routes, rear cavities and holes
+    # relative to the scale line; one with a string_count must match the
+    # instrument's. In the web form it is edited as JSON with a "kind"
+    # entry.
     body_bridge: BridgeSpec = field(default_factory=KahlerBridgeSpec)
     # The body shape is a spec (see body_shapes): a drawn body
     # (YourDesignShape) — by default the Design by Jone template, the
@@ -1035,16 +1046,18 @@ class Prototype001Parameters:
     nut_slot_taper: float = 3.0
     # A Floyd Rose locking nut screwed down from the top (see
     # geometry.neck.locking_nut): "auto" takes the Floyd Rose Original R2
-    # with a Floyd Rose bridge and a plain nut otherwise; "none" is always
-    # a plain nut; "r2" (41.3 mm) or "r3" (42.85 mm, needs nut_width at
-    # least that) always a locking nut. Its seat on the neck runs the
+    # with a Floyd Rose bridge (the 7- or 8-string nut on a seven- or
+    # eight-string) and a plain nut otherwise; "none" is always a plain
+    # nut; "r2" (41.3 mm), "r3" (42.85 mm), "r7" (47.6 mm, seven strings)
+    # or "r8" (53.8 mm, eight strings; each needs nut_width at least that)
+    # always a locking nut. Its seat on the neck runs the
     # nut's depth + 1 mm behind the nut line before the headstock face
     # starts. Its shelf sits from the frets' tops (fret_height above the
     # fretboard): the R2's on the fretboard, which runs on under the nut,
     # the R3's on the neck's seat on a shim. The two mounting screws get
     # locking_nut_screw_diameter pilot holes locking_nut_screw_depth below
     # the glue face, drilled by hand through the nut.
-    locking_nut: Literal["auto", "none", "r2", "r3"] = "auto"
+    locking_nut: Literal["auto", "none", "r2", "r3", "r7", "r8"] = "auto"
     fret_height: float = 1.2
     locking_nut_screw_diameter: float = 2.5
     locking_nut_screw_depth: float = 8.0
@@ -1433,6 +1446,7 @@ class Prototype001Parameters:
         user is still drawing, so nothing here checks that they fit; the
         full ``build`` does that when it makes the ``BodySolid``.
         """
+        self._check_bridge_strings()
         return self._body_layout(self.neck_outline())
 
     def headstock_design(self) -> tuple[HeadstockPlan, TunerLayout]:
@@ -2121,7 +2135,11 @@ class Prototype001Parameters:
         """
         kind = self.locking_nut
         if kind == "auto":
-            kind = "r2" if isinstance(self.body_bridge, FloydRoseSpec) else "none"
+            kind = (
+                FLOYD_ROSE_NUTS.get(self.string_count, "r2")
+                if isinstance(self.body_bridge, FloydRoseSpec)
+                else "none"
+            )
         if kind == "none":
             if self.nut_style not in ("shelf", "slot", "zero_fret"):
                 raise NeckGeometryError(
@@ -2279,20 +2297,26 @@ class Prototype001Parameters:
                 bridge_spec,
                 treble_side="-y" if bridge_spec.treble_side == "+y" else "+y",
             )
-        hardware = bridge_spec.hardware(saddles, self.body_thickness)
-        if isinstance(self.body_bridge, TuneOMaticSpec) and bass_sign > 0.0:
-            # Its bass post, set back, goes to the bass side.
-            hardware = mirrored_hardware(hardware)
-        bridge = turned_hardware(
-            hardware,
-            Point2D(saddles, 0.0),
-            fan.at(scale) if self.bridge_follows_fan else 0.0,
-            # A Tune-o-matic turns only where the strings rest; its
-            # stop-bar studs stay square.
-            (lambda name: name.startswith("Bridge post"))
-            if isinstance(self.body_bridge, TuneOMaticSpec)
-            else None,
-        )
+        if isinstance(bridge_spec, SingleStringBridgeSpec):
+            # Each unit stands at its own string's scale, square to it.
+            bridge = bridge_spec.hardware(
+                saddles, self.body_thickness, lean=fan.at(scale)
+            )
+        else:
+            hardware = bridge_spec.hardware(saddles, self.body_thickness)
+            if isinstance(self.body_bridge, TuneOMaticSpec) and bass_sign > 0.0:
+                # Its bass post, set back, goes to the bass side.
+                hardware = mirrored_hardware(hardware)
+            bridge = turned_hardware(
+                hardware,
+                Point2D(saddles, 0.0),
+                fan.at(scale) if self.bridge_follows_fan else 0.0,
+                # A Tune-o-matic turns only where the strings rest; its
+                # stop-bar studs stay square.
+                (lambda name: name.startswith("Bridge post"))
+                if isinstance(self.body_bridge, TuneOMaticSpec)
+                else None,
+            )
         bridge_mounting = bridge.mounting
         if bridge.footprint and not all(
             point_in_polygon(p, body_outline.points) for p in bridge.footprint
@@ -2300,24 +2324,6 @@ class Prototype001Parameters:
             raise BodyGeometryError(
                 "The bridge's plate lies outside the body outline: lengthen the "
                 "body behind the bridge or choose another bridge."
-            )
-        if isinstance(self.body_bridge, HardtailSpec | HeadlessBridgeSpec):
-            if self.body_bridge.string_count != self.string_count:
-                what = (
-                    "hardtail has {} string holes"
-                    if isinstance(self.body_bridge, HardtailSpec)
-                    else "headless bridge has {} strings"
-                ).format(self.body_bridge.string_count)
-                raise BodyGeometryError(
-                    f"The {what}, but the instrument has {self.string_count} strings."
-                )
-        elif self.string_count > BRIDGE_MAX_STRINGS.get(
-            self.body_bridge.kind, self.string_count
-        ):
-            raise BodyGeometryError(
-                f"The {self.body_bridge.kind} bridge is drawn for "
-                f"{BRIDGE_MAX_STRINGS[self.body_bridge.kind]} strings; use the "
-                f"hardtail for {self.string_count}."
             )
         strings = self.string_count
         neck_type, middle_type, bridge_type = self.pickup_types()
@@ -3125,6 +3131,43 @@ class Prototype001Parameters:
             )
         return guard
 
+    def _check_bridge_strings(self) -> None:
+        """Reject a bridge made for another number of strings.
+
+        A bridge kind takes only the string counts it is made for
+        (``BRIDGE_MIN_STRINGS`` / ``BRIDGE_MAX_STRINGS``), and a bridge
+        with a string count of its own must carry the instrument's.
+
+        Raises:
+            BodyGeometryError: When the bridge does not fit the strings.
+        """
+        bridge = self.body_bridge
+        kind, strings = bridge.kind, self.string_count
+        most = BRIDGE_MAX_STRINGS.get(kind)
+        least = BRIDGE_MIN_STRINGS.get(kind)
+        if (most is not None and strings > most) or (
+            least is not None and strings < least
+        ):
+            made = (
+                f"{least} to {most}"
+                if least is not None and most is not None and least != most
+                else f"{most if most is not None else least}"
+            )
+            raise BodyGeometryError(
+                f"The {kind} bridge is made for {made} strings; use the "
+                f"hardtail or single-string bridges for {strings}."
+            )
+        own = getattr(bridge, "string_count", strings)
+        if own != strings:
+            what = {
+                "hardtail": f"hardtail has {own} string holes",
+                "headless": f"headless bridge has {own} strings",
+                "single_string": f"single-string bridges are {own} units",
+            }.get(kind, f"{kind} bridge is set for {own} strings")
+            raise BodyGeometryError(
+                f"The {what}, but the instrument has {strings} strings."
+            )
+
     def _bridge_pickup_clearance_offset(
         self,
         bridge: BridgeHardware,
@@ -3461,6 +3504,7 @@ class Prototype001Parameters:
             Complete backend-independent Prototype001 geometry.
         """
         heel_flat_start_offset = self.heel_flat_start_offset
+        self._check_bridge_strings()
         if self.neck_joint not in ("bolt_on", "set", "neck_through", "one_piece"):
             raise NeckGeometryError(
                 'neck_joint must be "bolt_on", "set", "neck_through" or "one_piece".'

@@ -46,7 +46,13 @@ Python.
    than the neck (`locking_nut` "r3") widens `nut_width` to it, to the
    next half millimetre (`locking_nut_widths` in the schema). A field whose type is a union of
    kinded dataclasses — the bridge — becomes a dropdown of kinds with the
-   chosen kind's own fields beneath it (`variant` in the schema). The body
+   chosen kind's own fields beneath it (`variant` in the schema). Kinds
+   not made for the instrument's string count (`min_strings` /
+   `max_strings`) are hidden, and a kind's own `string_count` (a
+   hardtail's holes, a Floyd Rose's or Kahler's size, single-string
+   bridges) follows the instrument's, also when the kind is changed. An
+   optional number left empty shows *auto*: the value is worked out (a
+   Floyd Rose's widths from its string count). The body
    shape offers only its drawn kind (`_FORM_KINDS`), so it has no dropdown
    (its row stays hidden) and its own fields fold away under
    *body_shape — Advanced*:

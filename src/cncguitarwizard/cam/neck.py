@@ -374,12 +374,16 @@ def _locking_nut_notes(geometry: Prototype001Geometry) -> tuple[str, ...]:
         if nut.on_fretboard
         else f"it stands on the neck's seat on a {nut.shim:.2f} mm shim"
     )
+    spacing = f"{nut.spec.screw_spacing:g} mm apart"
+    screws = "two"
+    if len(nut.screw_centres()) > 2:
+        spacing = f"spread over {nut.spec.screw_spacing:g} mm"
+        screws = str(len(nut.screw_centres()))
     return (
         f"{nut.spec.name} locking nut, front face on the nut line: {seat}. "
-        f"Drill its two screws' {nut.screw_diameter:g} mm pilot holes by hand "
-        f"through the nut, {nut.screw_depth:g} mm into the neck, "
-        f"{nut.spec.screw_spacing:g} mm apart and {nut.spec.depth / 2.0:g} mm "
-        "behind the nut line.",
+        f"Drill its {screws} screws' {nut.screw_diameter:g} mm pilot holes by "
+        f"hand through the nut, {nut.screw_depth:g} mm into the neck, "
+        f"{spacing} and {nut.spec.depth / 2.0:g} mm behind the nut line.",
     )
 
 

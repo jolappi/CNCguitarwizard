@@ -47,9 +47,10 @@ def test_floyd_rose_follows_the_official_routing_diagram() -> None:
     assert recess.name == "Floyd Rose recess" and recess.depth == 6.73
     assert recess.min_x == pytest.approx(front)
     assert recess.max_x == pytest.approx(front + 79.38)
-    # 95.25 wide, 3.56 mm more on the treble (+Y, arm) side.
-    assert recess.min_y == pytest.approx(-45.85)
-    assert recess.max_y == pytest.approx(49.4)
+    # 95.25 wide: 8.89 + 73.91 + 12.45, 3.56 mm more on the treble (+Y,
+    # arm) side.
+    assert recess.min_y == pytest.approx(-45.845)
+    assert recess.max_y == pytest.approx(49.405)
     assert fine_tuners.depth == 11.18
     assert fine_tuners.min_x == pytest.approx(front + 15.88)
     assert fine_tuners.max_x == pytest.approx(recess.max_x)
@@ -61,7 +62,7 @@ def test_floyd_rose_follows_the_official_routing_diagram() -> None:
         pytest.approx(35.56)
     )
     assert max(p.y for p in fine_tuners.outline if p.x < front + 40) == (
-        pytest.approx(49.4)
+        pytest.approx(49.405)
     )
     block = hardware.through_cavities[0]
     assert block.name == "Floyd Rose block route" and block.depth == 29.59
@@ -87,8 +88,8 @@ def test_floyd_rose_mirrors_for_the_other_handedness() -> None:
     righty = FloydRoseSpec().hardware(609.6, 44.0)
     lefty = FloydRoseSpec(treble_side="-y").hardware(609.6, 44.0)
 
-    assert lefty.top_cavities[0].min_y == pytest.approx(-49.4)
-    assert lefty.top_cavities[0].max_y == pytest.approx(45.85)
+    assert lefty.top_cavities[0].min_y == pytest.approx(-49.405)
+    assert lefty.top_cavities[0].max_y == pytest.approx(45.845)
     assert lefty.through_cavities[0].min_y == pytest.approx(
         -righty.through_cavities[0].max_y
     )

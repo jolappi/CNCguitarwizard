@@ -91,7 +91,8 @@ FIELD_HELP: dict[str, str] = {
     "locking_nut": (
         "A Floyd Rose locking nut screwed down from the top, which clamps the "
         "strings so a tremolo stays in tune: auto fits the R2 with a Floyd "
-        "Rose bridge and a plain nut otherwise."
+        "Rose bridge (the 7- or 8-string nut on a seven- or eight-string) and "
+        "a plain nut otherwise."
     ),
     "truss_rod_adjustment": (
         "Where the truss rod (the steel rod that sets the neck's bow) is "
@@ -282,8 +283,10 @@ FIELD_HELP: dict[str, str] = {
         "on a Les Paul with a carved top)."
     ),
     "body_bridge": (
-        "The bridge: a Kahler 7300, a Floyd Rose, a Tune-o-matic, a hardtail "
-        "or a headless bridge, with the routes and holes each needs."
+        "The bridge: a Kahler 7300 or a Floyd Rose (six to eight strings), a "
+        "Tune-o-matic, a hardtail (strung through the body or top-loaded), a "
+        "headless bridge or single-string bridges (one per string, each at "
+        "its own scale on fanned frets), with the routes and holes each needs."
     ),
     "body_pickups": (
         "The pickups from neck to bridge: H = humbucker, S = single coil; on "
@@ -304,7 +307,8 @@ FIELD_HELP: dict[str, str] = {
     ),
     "body_bridge_follows_fan": (
         "With fanned frets, whether a hardtail bridge turns with them (a "
-        "Tune-o-matic always does)."
+        "Tune-o-matic always does; single-string bridges each stand at their "
+        "own string's scale anyway)."
     ),
     "body_controls": (
         "The controls: the cavity and its pots (volume and tone knobs) and "

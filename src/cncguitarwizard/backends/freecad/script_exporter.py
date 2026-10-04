@@ -1003,7 +1003,7 @@ class FreeCADScriptExporter:
 
     @staticmethod
     def _render_locking_nut_screws(locking_nut: LockingNut | None) -> str:
-        """Return the locking nut's two screw pilot holes.
+        """Return the locking nut's screw pilot holes.
 
         They run from above the shelf through the fretboard (when it runs
         on under the nut) and ``screw_depth`` into the neck.

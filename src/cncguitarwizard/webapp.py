@@ -38,6 +38,7 @@ from .geometry.body import (
     BRIDGE_KINDS,
     BRIDGE_LABELS,
     BRIDGE_MAX_STRINGS,
+    BRIDGE_MIN_STRINGS,
     bridge_spec_from_dict,
 )
 from .geometry.exceptions import GeometryException
@@ -103,10 +104,12 @@ _CHOICE_LABELS: dict[str, dict[str, str]] = {
         "zero_fret": "Zero fret on the nut line, the nut a string guide behind it",
     },
     "locking_nut": {
-        "auto": "Auto (Floyd Rose Original R2 with a Floyd Rose bridge)",
+        "auto": "Auto (Floyd Rose Original nut with a Floyd Rose bridge)",
         "none": "Plain nut",
         "r2": "Floyd Rose R2 locking nut (41.3 mm)",
         "r3": "Floyd Rose R3 locking nut (42.85 mm)",
+        "r7": "Floyd Rose 7-string locking nut (47.6 mm)",
+        "r8": "Floyd Rose 8-string locking nut (53.8 mm)",
     },
     "body_engraving_pattern": {
         "scroll": "Scrolls (Design by Jone)",
@@ -252,6 +255,15 @@ _FORM_KINDS: dict[str, frozenset[str]] = {
 _BASIC_VARIANT_FIELDS: dict[str, frozenset[str]] = {
     "design_by_jone": frozenset(),
     "your_design": frozenset(),
+    "kahler_7300": frozenset(
+        {
+            "baseplate_length",
+            "baseplate_width",
+            "baseplate_offset",
+            "baseplate_depth",
+            "plate_overhang",
+        }
+    ),
     "floyd_rose": frozenset({"treble_side", "pivot_offset", "pivot_stud_spacing"}),
     "tune_o_matic": frozenset(
         {
@@ -262,7 +274,12 @@ _BASIC_VARIANT_FIELDS: dict[str, frozenset[str]] = {
             "tailpiece_offset",
         }
     ),
-    "hardtail": frozenset({"string_spacing", "string_hole_offset", "screw_count"}),
+    "hardtail": frozenset(
+        {"string_through", "string_spacing", "string_hole_offset", "screw_count"}
+    ),
+    "single_string": frozenset(
+        {"string_spacing", "unit_length", "unit_width", "front_reach", "string_through"}
+    ),
 }
 
 _GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
@@ -311,7 +328,9 @@ def parameter_schema() -> dict[str, Any]:
         (tuples), ``choice`` (a ``Literal`` of strings, listed in
         ``options``) or ``variant`` — a choice between dataclasses that
         each carry a ``kind`` field (the bridge), described by
-        ``variants``: ``{kind: {"label", "fields"}}``. ``advanced`` is
+        ``variants``: ``{kind: {"label", "max_strings", "min_strings",
+        "fields"}}`` (the string counts a bridge kind is made for, ``None``
+        for any). ``advanced`` is
         true for the rarely changed fields the form folds away.
         ``locking_nut_widths`` maps each locking nut to its width, the
         least ``nut_width`` it fits (the form widens the neck to it);
@@ -1154,6 +1173,7 @@ def _describe_fields(
                 kind: {
                     "label": _VARIANT_LABELS.get(kind, kind),
                     "max_strings": BRIDGE_MAX_STRINGS.get(kind),
+                    "min_strings": BRIDGE_MIN_STRINGS.get(kind),
                     "fields": [
                         described_field
                         for described_field in _describe_fields(

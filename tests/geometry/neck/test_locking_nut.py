@@ -169,5 +169,5 @@ def test_the_web_form_offers_the_nut() -> None:
 
     nut = fields["locking_nut"]
     assert nut["type"] == "choice" and not nut["advanced"]
-    assert nut["options"] == ["auto", "none", "r2", "r3"]
+    assert nut["options"] == ["auto", "none", "r2", "r3", "r7", "r8"]
     assert nut["default"] == "auto"

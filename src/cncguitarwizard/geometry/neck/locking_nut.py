@@ -12,9 +12,10 @@ so the board ends at the nut line as usual and the nut stands on the
 neck's own seat on a shim (Floyd Rose packs shims with its nuts).
 
 Either way the flat seat on the neck runs ``seat_length`` behind the nut
-line before the headstock face starts, and two screws hold the nut down
-from the top, ``screw_spacing`` apart across the neck, half the nut's
-depth behind the nut line.
+line before the headstock face starts, and two screws (three on the
+eight-string nut) hold the nut down from the top, spread over
+``screw_spacing`` across the neck, half the nut's depth behind the nut
+line.
 
 A Fender (Telecaster) style nut is placed the same way without screws
 (``LockingNut.slotted``): the fretboard runs on past the nut line and a
@@ -57,7 +58,7 @@ class LockingNutSpec:
         width: Across the neck, in mm.
         height: From its base to its top, in mm.
         depth: Along the neck, front face to back face, in mm.
-        screw_spacing: Between its two mounting screws, across the neck.
+        screw_spacing: Between its outer mounting screws, across the neck.
         kind: ``"locking"`` for a screwed-down locking nut, ``"slot"`` for
             a glued nut in a slot at the fretboard's end (no screws).
         seat_margin: Flat seat left behind the nut's back face, in mm.
@@ -65,6 +66,8 @@ class LockingNutSpec:
         taper: The board's slope down to the glue face behind the lip.
         set_back: How far behind the nut line a slotted nut's slot starts,
             in mm: 0, or the gap behind a zero fret on the nut line.
+        screw_count: Its mounting screws, spread evenly over
+            ``screw_spacing`` (two, or three on the eight-string nut).
     """
 
     name: str
@@ -77,14 +80,23 @@ class LockingNutSpec:
     lip: float = 0.0
     taper: float = 0.0
     set_back: float = 0.0
+    screw_count: int = 2
 
 
 LOCKING_NUT_SPECS: dict[str, LockingNutSpec] = {
     "r2": LockingNutSpec("Floyd Rose R2", 41.3, 5.85, 15.0, 13.59),
     "r3": LockingNutSpec("Floyd Rose R3", 42.85, 7.10, 15.0, 13.59),
+    "r7": LockingNutSpec("Floyd Rose 7-string", 47.6, 6.30, 15.5, 18.6),
+    "r8": LockingNutSpec("Floyd Rose 8-string", 53.8, 6.30, 15.7, 26.6, screw_count=3),
 }
-"""The Floyd Rose Original nuts: R2 (1-5/8 in, the default) and R3
-(1-11/16 in)."""
+"""The Floyd Rose Original nuts: R2 (1-5/8 in, the six-string default) and
+R3 (1-11/16 in); the seven-string nut (1.875 in, 6.30 mm high at the D
+string on Floyd Rose's nut chart, 15.5 mm deep) and the eight-string
+FRT8's (53.8 x 15.7 mm on its dimension sheet, held by three screws
+13.3 mm apart). Floyd Rose lists no height for the eight-string nut (it
+takes the seven-string's) and draws no screws for the seven-string one,
+whose two are taken between its clamping pads — they are drilled
+through the nut's own holes either way."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -272,12 +284,11 @@ class LockingNut:
         )
 
     def screw_centres(self) -> tuple[Point2D, ...]:
-        """Return the two mounting screws' centres (none for a slotted nut)."""
+        """Return the mounting screws' centres (none for a slotted nut)."""
         if not self.is_locking:
             return ()
         half = self.spec.screw_spacing / 2.0
         back = self.spec.depth / 2.0
-        return (
-            Point2D(-self.lean * half - back, -half),
-            Point2D(self.lean * half - back, half),
-        )
+        count = max(2, self.spec.screw_count)
+        ys = [-half + index * 2.0 * half / (count - 1) for index in range(count)]
+        return tuple(Point2D(self.lean * y - back, y) for y in ys)

@@ -28,6 +28,9 @@
 - Neck-through construction: the neck blank as the body's centre block,
   two wings cut on their own and glued to its sides; or the neck and the
   whole body from one blank; and set (glued) necks
+- More bridges: the Floyd Rose and the Kahler for seven and eight strings
+  (with Floyd Rose's seven- and eight-string locking nuts), single-string
+  bridges that follow a fan, and a top-loaded hardtail for the bass
 - Carbon fibre neck reinforcement beside the truss rod; a zero fret
 - Neck angle (a tilted pocket floor for a Tune-o-matic), a Telecaster
   neck (slotted nut, Tele headstock), low-profile truss rods and a spoke
@@ -62,10 +65,6 @@
   body, neck, fretboard and covers.
 
 ## v2
-
-Instruments and construction
-- More bridges: Floyd Rose and Kahler for seven and eight strings, and
-  more bass bridges.
 
 Electronics
 - More control cavity layouts.

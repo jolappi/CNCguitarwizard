@@ -6,9 +6,12 @@ body thickness yields every body feature that bridge requires — pivot or
 post holes, top routes, routes that pass clean through into a rear cavity,
 rear cavities with their cover recesses — ready for ``BodySolid``.
 
-The Floyd Rose routing follows the manufacturer's own routing diagrams;
-the other bridges' dimensions are labelled, adjustable starting values
-rather than verified templates — measure the real hardware before cutting.
+The Floyd Rose routing follows the manufacturer's own routing diagrams
+(six and seven strings; the eight-string's is derived from them) and the
+Kahler's seven- and eight-string cutout widens as Kahler's installation
+sheets do; the other bridges' dimensions are labelled, adjustable
+starting values rather than verified templates — measure the real
+hardware before cutting.
 All longitudinal offsets are measured from the scale-length line (the
 nominal saddle/intonation line) toward the tail, so a bridge stays on the
 scale whatever the neck does.
@@ -19,7 +22,7 @@ from __future__ import annotations
 import math
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, fields, replace
-from typing import Any, Literal
+from typing import Any, Literal, NamedTuple
 
 from ..exceptions import BodyGeometryError
 from ..primitives import Point2D, rounded_polygon_points
@@ -148,17 +151,31 @@ def mirrored_hardware(hardware: BridgeHardware) -> BridgeHardware:
     )
 
 
+KAHLER_BASEPLATE_WIDTHS: dict[int, float] = {6: 65.04, 7: 85.36, 8: 85.36}
+"""The cutout's width per string count: the six-string's as drawn in the
+Prototype001 DXF; the seven- and eight-string units share a route
+0.800 in (20.32 mm) wider — 3.400 in against 2.600 in on Kahler's
+2300/7300 installation sheets (6205RIMA against 6200RIMA), whose length,
+depths and position are the six-string's."""
+
+KAHLER_MODELS: dict[int, str] = {6: "7300", 7: "7327", 8: "7328"}
+"""The Kahler 7300-series model per string count."""
+
+
 @dataclass(frozen=True, slots=True)
 class KahlerBridgeSpec:
     """Kahler 7300-style fixed bridge, screwed flat to the body.
 
     Only a rectangular baseplate-clearance cutout is routed; there are no
     studs, no springs and no rear cavity. The defaults are the cutout as
-    drawn in the Prototype001 DXF.
+    drawn in the Prototype001 DXF; the seven- and eight-string units
+    (7327, 7328) take a wider one (``KAHLER_BASEPLATE_WIDTHS``).
 
     Args:
+        string_count: Strings the unit carries: 6, 7 or 8.
         baseplate_length: Cutout length along the neck.
-        baseplate_width: Cutout width across the body.
+        baseplate_width: Cutout width across the body; empty for the
+            string count's (65.04 mm, 85.36 mm for seven or eight).
         baseplate_offset: Cutout centre behind the scale line.
         baseplate_depth: Cutout depth.
         plate_overhang: How far the bridge's plate, sitting on the top,
@@ -166,17 +183,38 @@ class KahlerBridgeSpec:
     """
 
     kind: Literal["kahler_7300"] = "kahler_7300"
+    string_count: int = 6
     baseplate_length: float = 55.45
-    baseplate_width: float = 65.04
+    baseplate_width: float | None = None
     baseplate_offset: float = 44.245
     baseplate_depth: float = 25.0
     plate_overhang: float = 5.0
 
+    @property
+    def cutout_width(self) -> float:
+        """Return the cutout's width: as set, else the string count's.
+
+        Raises:
+            BodyGeometryError: For a string count Kahler makes no unit for.
+        """
+        if self.string_count not in KAHLER_BASEPLATE_WIDTHS:
+            raise BodyGeometryError(
+                f"The Kahler 7300 comes for 6, 7 or 8 strings, not {self.string_count}."
+            )
+        if self.baseplate_width is None:
+            return KAHLER_BASEPLATE_WIDTHS[self.string_count]
+        return self.baseplate_width
+
     def hardware(self, scale_length: float, body_thickness: float) -> BridgeHardware:
-        _positive(self, "baseplate_length", "baseplate_width", "baseplate_depth")
+        width = self.cutout_width
+        _positive(self, "baseplate_length", "baseplate_depth")
+        if not math.isfinite(width) or width <= 0.0:
+            raise BodyGeometryError(
+                "Bridge baseplate_width must be finite and positive."
+            )
         centre_x = scale_length + self.baseplate_offset
         half_length = self.baseplate_length / 2.0 + self.plate_overhang
-        half_width = self.baseplate_width / 2.0 + self.plate_overhang
+        half_width = width / 2.0 + self.plate_overhang
         return BridgeHardware(
             BridgeMounting(
                 scale_length, pivot_stud_spacing=None, has_sustain_block=False
@@ -187,12 +225,21 @@ class KahlerBridgeSpec:
                     scale_length + self.baseplate_offset,
                     0.0,
                     self.baseplate_length,
-                    self.baseplate_width,
+                    width,
                     self.baseplate_depth,
                     corner_radius=0.0,
                 ),
             ),
-            notes=("Kahler 7300: screw-mounted; verify the cutout against the unit.",),
+            notes=(
+                (
+                    "Kahler 7300: screw-mounted; verify the cutout against the unit."
+                    if self.string_count == 6
+                    else f"Kahler {KAHLER_MODELS[self.string_count]} "
+                    f"({self.string_count} strings): screw-mounted; its cutout is "
+                    "the six-string's widened as Kahler's installation sheets "
+                    "do — verify it against the unit."
+                ),
+            ),
             footprint=(
                 Point2D(centre_x - half_length, -half_width),
                 Point2D(centre_x + half_length, -half_width),
@@ -205,12 +252,67 @@ class KahlerBridgeSpec:
 FLOYD_ROSE_DRAWN_THICKNESS = 44.45
 """The body thickness Floyd Rose's routing diagrams are drawn for (1.75 in)."""
 
+FLOYD_ROSE_STUD_SPACINGS: dict[int, float] = {6: 73.91, 7: 84.58, 8: 95.5}
+"""The pivot studs' centre distance per string count: the Original's
+six- and seven-string routing sheets, and the eight-string FRT8's post
+spacing (3.76 in; Floyd Rose publishes no eight-string routing)."""
+
+FLOYD_ROSE_BASS_MARGIN = 8.89
+"""From the bass-side stud's centre out to the recess wall, in mm."""
+
+FLOYD_ROSE_TREBLE_MARGIN = 12.45
+"""From the treble-side stud's centre out to the recess wall, in mm."""
+
+FLOYD_ROSE_BLOCK_ROUTE_EXTRA = 8.94
+"""How much wider the block route is than the studs are apart, in mm."""
+
+FLOYD_ROSE_FINE_TUNER_INSET = 2.79
+"""How much narrower the fine-tuner recess is than the studs are apart."""
+
+FLOYD_ROSE_SIX_STRING_POCKET = 28.19
+"""The six-string sheet's block clearance pocket depth from the back; the
+seven-string sheet routes none deeper than the spring cavity."""
+
+
+class FloydRoseWidths(NamedTuple):
+    """A Floyd Rose's string-count dependent sizes, resolved (in mm).
+
+    Args:
+        stud_spacing: The pivot studs' centre distance.
+        bass_half_width: Centreline to the recess's bass-side wall.
+        treble_half_width: Centreline to its treble-side wall.
+        fine_tuner_width: The narrower rear part's width.
+        block_route_width: The block slot's width.
+        block_pocket_depth: The block clearance pocket's depth from the
+            back, as drawn (before a thicker body deepens it); the spring
+            cavity's own depth when none is routed deeper.
+    """
+
+    stud_spacing: float
+    bass_half_width: float
+    treble_half_width: float
+    fine_tuner_width: float
+    block_route_width: float
+    block_pocket_depth: float
+
 
 @dataclass(frozen=True, slots=True)
 class FloydRoseSpec:
     """Recessed Floyd Rose Original double-locking tremolo.
 
-    The routing follows the manufacturer's *Original Series Routing
+    For six, seven or eight strings (``string_count``). Every width across
+    the body follows the studs' spacing by the same margins on Floyd
+    Rose's six- and seven-string sheets — the recess's walls 8.89 mm
+    (bass) and 12.45 mm (treble) outside the studs, the block slot
+    8.94 mm wider than the studs are apart and the fine-tuner part
+    2.79 mm narrower — so the widths left empty come from the string
+    count's stud spacing (``FLOYD_ROSE_STUD_SPACINGS``); everything along
+    the neck and every depth is the same on both sheets. The seven-string
+    sheet routes no block pocket deeper than the spring cavity. Floyd Rose
+    publishes no eight-string routing: the eight-string takes the FRT8's
+    95.5 mm stud spacing with the seven-string sheet's margins and depths.
+
+    The six-string routing follows the manufacturer's *Original Series Routing
     Diagrams* (floydrose.com, metric sheet): from the top a 95.25 mm wide
     recess, full width for 42.44 mm from the front wall and then
     71.12 mm wide, 79.38 mm long, cut 6.73 mm deep over its whole
@@ -235,27 +337,34 @@ class FloydRoseSpec:
         treble_side: Which side of the centreline carries the treble
             strings and the tremolo arm: ``"+y"`` for the right-handed
             Prototype001 body (controls at +Y), ``"-y"`` otherwise.
+        string_count: Strings the tremolo carries: 6, 7 or 8.
         pivot_offset: Stud centres relative to the scale line (negative =
             ahead of it, toward the nut).
-        pivot_stud_spacing: Centre distance between the two stud inserts.
+        pivot_stud_spacing: Centre distance between the two stud inserts;
+            empty for the string count's (73.91, 84.58 or 95.5 mm). The
+            widths below left empty follow it.
         pivot_hole_diameter: Insert hole diameter.
         pivot_hole_depth: Insert hole depth from the top face (the
             6.73 mm shelf plus a 20.3 mm insert).
         stud_to_front_wall: Stud centres behind the recess front wall.
         stud_shelf_depth: Depth of the shelf the baseplate rests over.
         stud_shelf_length: Front wall to the block slot's front edge.
-        recess_bass_half_width: Centreline to the bass-side wall.
-        recess_treble_half_width: Centreline to the treble-side wall.
+        recess_bass_half_width: Centreline to the bass-side wall; empty
+            for the studs' half spacing + 8.89.
+        recess_treble_half_width: Centreline to the treble-side wall;
+            empty for the studs' half spacing + 12.45.
         recess_full_width_length: Length of the full-width part, from
             the front wall.
         recess_length: Total recess length from the front wall.
-        fine_tuner_width: Width of the narrower rear part.
+        fine_tuner_width: Width of the narrower rear part; empty for the
+            stud spacing - 2.79.
         fine_tuner_depth: Depth of the clearance behind the stud shelf,
             around and behind the block slot.
         recess_corner_radius: Radius of the convex recess corners.
         recess_step_radius: Radius where the full width steps in.
         block_route_length: Block slot length along the neck.
-        block_route_width: Block slot width across the body.
+        block_route_width: Block slot width across the body; empty for
+            the stud spacing + 8.94.
         block_route_depth: Block slot depth from the top face; together
             with the spring cavity it must exceed the body thickness so
             the slot opens into the cavity.
@@ -267,7 +376,10 @@ class FloydRoseSpec:
             recess front wall.
         block_pocket_length: Length of the deeper block clearance pocket
             at the spring cavity's tail end.
-        block_pocket_depth: Its depth from the back face.
+        block_pocket_depth: Its depth from the back face; empty for the
+            six-string sheet's 28.19 mm, or none deeper than the spring
+            cavity with seven or eight strings, as the seven-string sheet
+            draws it (the spring cavity's depth: no pocket).
         cover_margin: Cover recess overhang around the spring cavity: room
             for the cover's six screws on the ledge (a Strat-style cover's
             overlap; the routing diagram leaves the cover to the builder).
@@ -276,23 +388,24 @@ class FloydRoseSpec:
 
     kind: Literal["floyd_rose"] = "floyd_rose"
     treble_side: Literal["+y", "-y"] = "+y"
+    string_count: int = 6
     pivot_offset: float = -11.9
-    pivot_stud_spacing: float = 73.91
+    pivot_stud_spacing: float | None = None
     pivot_hole_diameter: float = 10.0
     pivot_hole_depth: float = 27.0
     stud_to_front_wall: float = 7.62
     stud_shelf_depth: float = 6.73
     stud_shelf_length: float = 15.88
-    recess_bass_half_width: float = 45.85
-    recess_treble_half_width: float = 49.4
+    recess_bass_half_width: float | None = None
+    recess_treble_half_width: float | None = None
     recess_full_width_length: float = 42.44
     recess_length: float = 79.38
-    fine_tuner_width: float = 71.12
+    fine_tuner_width: float | None = None
     fine_tuner_depth: float = 11.18
     recess_corner_radius: float = 3.18
     recess_step_radius: float = 4.76
     block_route_length: float = 20.96
-    block_route_width: float = 82.85
+    block_route_width: float | None = None
     block_route_depth: float = 29.59
     block_route_treble_shift: float = 5.44
     spring_cavity_length: float = 123.19
@@ -300,36 +413,78 @@ class FloydRoseSpec:
     spring_cavity_depth: float = 16.13
     spring_cavity_tail_offset: float = 48.27
     block_pocket_length: float = 11.43
-    block_pocket_depth: float = 28.19
+    block_pocket_depth: float | None = None
     cover_margin: float = 8.0
     cover_depth: float = 2.0
+
+    def widths(self) -> FloydRoseWidths:
+        """Return the string-count dependent sizes, the empty ones filled.
+
+        Raises:
+            BodyGeometryError: For a string count Floyd Rose makes no
+                Original for, or a size that is not finite and positive.
+        """
+        if self.string_count not in FLOYD_ROSE_STUD_SPACINGS:
+            raise BodyGeometryError(
+                "The Floyd Rose Original comes for 6, 7 or 8 strings, not "
+                f"{self.string_count}."
+            )
+
+        def given(value: float | None, default: float) -> float:
+            return default if value is None else value
+
+        studs = given(
+            self.pivot_stud_spacing, FLOYD_ROSE_STUD_SPACINGS[self.string_count]
+        )
+        widths = FloydRoseWidths(
+            studs,
+            given(self.recess_bass_half_width, studs / 2.0 + FLOYD_ROSE_BASS_MARGIN),
+            given(
+                self.recess_treble_half_width, studs / 2.0 + FLOYD_ROSE_TREBLE_MARGIN
+            ),
+            given(self.fine_tuner_width, studs - FLOYD_ROSE_FINE_TUNER_INSET),
+            given(self.block_route_width, studs + FLOYD_ROSE_BLOCK_ROUTE_EXTRA),
+            given(
+                self.block_pocket_depth,
+                FLOYD_ROSE_SIX_STRING_POCKET
+                if self.string_count == 6
+                else self.spring_cavity_depth,
+            ),
+        )
+        names = (
+            "pivot_stud_spacing",
+            "recess_bass_half_width",
+            "recess_treble_half_width",
+            "fine_tuner_width",
+            "block_route_width",
+            "block_pocket_depth",
+        )
+        for name, value in zip(names, widths, strict=True):
+            if not math.isfinite(value) or value <= 0.0:
+                raise BodyGeometryError(f"Bridge {name} must be finite and positive.")
+        return widths
 
     def hardware(self, scale_length: float, body_thickness: float) -> BridgeHardware:
         _positive(
             self,
-            "pivot_stud_spacing",
             "pivot_hole_diameter",
             "pivot_hole_depth",
             "stud_shelf_depth",
             "stud_shelf_length",
-            "recess_bass_half_width",
-            "recess_treble_half_width",
             "recess_full_width_length",
             "recess_length",
-            "fine_tuner_width",
             "fine_tuner_depth",
             "block_route_length",
-            "block_route_width",
             "block_route_depth",
             "spring_cavity_length",
             "spring_cavity_width",
             "spring_cavity_depth",
             "block_pocket_length",
-            "block_pocket_depth",
             "cover_margin",
             "cover_depth",
         )
-        self._check_layout(body_thickness)
+        widths = self.widths()
+        self._check_layout(body_thickness, widths)
         sign = 1.0 if self.treble_side == "+y" else -1.0
         pivot_x = scale_length + self.pivot_offset
         front = pivot_x - self.stud_to_front_wall
@@ -337,15 +492,15 @@ class FloydRoseSpec:
         slot_back = slot_front + self.block_route_length
         step_x = front + self.recess_full_width_length
         back = front + self.recess_length
-        bass = -sign * self.recess_bass_half_width
-        treble = sign * self.recess_treble_half_width
-        narrow = self.fine_tuner_width / 2.0
+        bass = -sign * widths.bass_half_width
+        treble = sign * widths.treble_half_width
+        narrow = widths.fine_tuner_width / 2.0
         corner = self.recess_corner_radius
         step = self.recess_step_radius
 
         mounting = BridgeMounting(
             pivot_x,
-            pivot_stud_spacing=self.pivot_stud_spacing,
+            pivot_stud_spacing=widths.stud_spacing,
             pivot_hole_diameter=self.pivot_hole_diameter,
             pivot_hole_depth=self.pivot_hole_depth,
             has_sustain_block=False,
@@ -394,7 +549,7 @@ class FloydRoseSpec:
             (slot_front + slot_back) / 2.0,
             sign * self.block_route_treble_shift,
             self.block_route_length,
-            self.block_route_width,
+            widths.block_route_width,
             min(self.block_route_depth, body_thickness),
             corner_radius=self.block_route_length / 2.0,
         )
@@ -423,33 +578,63 @@ class FloydRoseSpec:
                 self.cover_depth,
                 corner_radius=rear_radius + self.cover_margin,
             ),
+            # As drawn for seven strings, no pocket deeper than the cavity.
             steps=(
-                RectangularCavity(
-                    "Floyd Rose block clearance pocket",
-                    tail - self.block_pocket_length / 2.0,
-                    0.0,
-                    self.block_pocket_length,
-                    self.spring_cavity_width,
-                    self.block_pocket_depth + extra,
-                    corner_radius=rear_radius,
-                ),
+                (
+                    RectangularCavity(
+                        "Floyd Rose block clearance pocket",
+                        tail - self.block_pocket_length / 2.0,
+                        0.0,
+                        self.block_pocket_length,
+                        self.spring_cavity_width,
+                        widths.block_pocket_depth + extra,
+                        corner_radius=rear_radius,
+                    ),
+                )
+                if widths.block_pocket_depth > self.spring_cavity_depth
+                else ()
             ),
         )
+        notes: tuple[str, ...] = {
+            6: (
+                "Floyd Rose Original: routing per the manufacturer's Original "
+                "Series Routing Diagrams; studs 11.9 mm ahead of the scale line "
+                "(25.03 in on a 25.5 in scale).",
+            ),
+            7: (
+                "Floyd Rose Original 7-string: routing per the manufacturer's "
+                "7-String Routing sheet; studs 11.9 mm ahead of the scale line.",
+            ),
+            8: (
+                "Floyd Rose 8-string: Floyd Rose publishes no 8-string routing; "
+                "this is the 7-string sheet widened to the FRT8's 95.5 mm stud "
+                "spacing (every width keeps the 6- and 7-string sheets' margins "
+                "from the studs). Check it against the unit before cutting.",
+            ),
+        }[self.string_count]
+        if self.string_count != 6 and widths.block_pocket_depth <= (
+            self.spring_cavity_depth
+        ):
+            notes += (
+                "As the 7-string sheet draws it, the block has no pocket deeper "
+                "than the spring cavity behind it; should it touch the wood on "
+                "a deep dive, deepen the cavity's tail end by hand as the "
+                f"6-string sheet does ({FLOYD_ROSE_SIX_STRING_POCKET:g} mm from "
+                "the back).",
+            )
         return BridgeHardware(
             mounting,
             top_cavities=(recess, fine_tuners),
             through_cavities=(block_route,),
             rear_cavities=(spring_cavity,),
             notes=(
-                "Floyd Rose Original: routing per the manufacturer's Original "
-                "Series Routing Diagrams; studs 11.9 mm ahead of the scale line "
-                "(25.03 in on a 25.5 in scale).",
+                *notes,
                 "Drill the two trem-claw screw holes into the spring cavity's "
                 "nut-ward wall by hand.",
             ),
         )
 
-    def _check_layout(self, body_thickness: float) -> None:
+    def _check_layout(self, body_thickness: float, widths: FloydRoseWidths) -> None:
         """Reject a recess whose parts cannot be laid out as drawn."""
         if self.stud_to_front_wall <= 0.0 or self.stud_to_front_wall >= (
             self.stud_shelf_length
@@ -468,16 +653,16 @@ class FloydRoseSpec:
             raise BodyGeometryError(
                 "Floyd Rose recess must be longer than its full-width part."
             )
-        if self.fine_tuner_width / 2.0 > min(
-            self.recess_bass_half_width, self.recess_treble_half_width
+        if widths.fine_tuner_width / 2.0 > min(
+            widths.bass_half_width, widths.treble_half_width
         ):
             raise BodyGeometryError(
                 "Floyd Rose fine-tuner recess must be narrower than the full width."
             )
-        slot_half = self.block_route_width / 2.0
+        slot_half = widths.block_route_width / 2.0
         if (
-            self.block_route_treble_shift + slot_half > self.recess_treble_half_width
-            or slot_half - self.block_route_treble_shift > self.recess_bass_half_width
+            self.block_route_treble_shift + slot_half > widths.treble_half_width
+            or slot_half - self.block_route_treble_shift > widths.bass_half_width
         ):
             raise BodyGeometryError(
                 "Floyd Rose block route must lie inside the recess width."
@@ -486,10 +671,10 @@ class FloydRoseSpec:
             raise BodyGeometryError(
                 "Floyd Rose block clearance pocket must fit in the spring cavity."
             )
-        if self.block_pocket_depth <= self.spring_cavity_depth:
+        if widths.block_pocket_depth < self.spring_cavity_depth:
             raise BodyGeometryError(
-                "Floyd Rose block clearance pocket must be deeper than the "
-                "spring cavity."
+                "Floyd Rose block clearance pocket must be at least as deep as "
+                "the spring cavity (as deep: none)."
             )
         if self.spring_cavity_depth <= self.cover_depth:
             raise BodyGeometryError(
@@ -498,7 +683,7 @@ class FloydRoseSpec:
         # The rear depths as routed in this body (see ``hardware``).
         extra = max(0.0, body_thickness - FLOYD_ROSE_DRAWN_THICKNESS)
         spring_depth = self.spring_cavity_depth + extra
-        pocket_depth = self.block_pocket_depth + extra
+        pocket_depth = widths.block_pocket_depth + extra
         if (
             pocket_depth + self.fine_tuner_depth >= body_thickness
             or spring_depth + self.fine_tuner_depth >= body_thickness
@@ -606,13 +791,18 @@ class TuneOMaticSpec:
 
 @dataclass(frozen=True, slots=True)
 class HardtailSpec:
-    """Flat string-through hardtail bridge.
+    """Flat hardtail bridge, strung through the body or top-loaded.
 
-    Six string holes pass through the body behind the saddles; the
-    baseplate screws are pilot-drilled along its front edge.
+    A string hole per string passes through the body behind the saddles;
+    a top-loading bridge (``string_through`` off — most bass bridges can
+    be strung either way) takes the strings through its own tail and
+    needs none. The baseplate screws are pilot-drilled along its front
+    edge.
 
     Args:
         string_count: Number of strings (and string-through holes).
+        string_through: Whether the strings pass through the body; off,
+            they load through the bridge's tail and no holes are drilled.
         string_spacing: Centre distance between neighbouring strings.
         string_hole_diameter: String-through hole diameter.
         string_hole_offset: String holes behind the scale line.
@@ -626,6 +816,7 @@ class HardtailSpec:
 
     kind: Literal["hardtail"] = "hardtail"
     string_count: int = 6
+    string_through: bool = True
     string_spacing: float = 10.5
     string_hole_diameter: float = 3.0
     string_hole_offset: float = 14.0
@@ -650,7 +841,7 @@ class HardtailSpec:
             raise BodyGeometryError("Hardtail needs at least one string.")
         holes: list[DrilledHole] = []
         string_x = scale_length + self.string_hole_offset
-        for index in range(self.string_count):
+        for index in range(self.string_count if self.string_through else 0):
             y = (index - (self.string_count - 1) / 2.0) * self.string_spacing
             holes.append(
                 DrilledHole(
@@ -678,7 +869,14 @@ class HardtailSpec:
                 scale_length, pivot_stud_spacing=None, has_sustain_block=False
             ),
             holes=tuple(holes),
-            notes=("Hardtail: counterbore the string ferrules on the back by hand.",),
+            notes=(
+                (
+                    "Hardtail: counterbore the string ferrules on the back by hand."
+                    if self.string_through
+                    else "Hardtail, top-loaded: the strings load through the "
+                    "bridge's tail; nothing passes through the body."
+                ),
+            ),
         )
 
 
@@ -766,12 +964,145 @@ class HeadlessBridgeSpec:
         )
 
 
+@dataclass(frozen=True, slots=True)
+class SingleStringBridgeSpec:
+    """Single-string bridges: a small bridge of its own for every string.
+
+    Each unit sits on its own string, ``front_reach`` of it ahead of the
+    string's scale point (its saddle there, mid-travel), and is screwed
+    down through two holes on its centre line, ``screw_inset`` in from
+    its ends; with ``string_through`` its string passes through the body
+    ``string_hole_offset`` behind the scale point. On a multiscale every
+    unit stands at its own string's scale on the fanned bridge line, still
+    square to its string — the units follow the fan without turning,
+    which is why fanned basses use them. The defaults are labelled
+    starting values for a bass single (ABM 3710-style, 60 x 15 mm, 19 mm
+    string spacing); check the screw and string holes against the units.
+
+    Args:
+        string_count: Number of strings, one unit each.
+        string_spacing: Centre distance between neighbouring strings.
+        unit_length: A unit's length along its string.
+        unit_width: A unit's width; at most the string spacing.
+        front_reach: How far a unit reaches ahead of its scale point.
+        screw_inset: Its two screws in from its front and rear ends.
+        screw_hole_diameter: Pilot hole diameter.
+        screw_hole_depth: Pilot hole depth.
+        string_through: Whether the strings pass through the body; off,
+            they load through the units.
+        string_hole_offset: String holes behind the scale point.
+        string_hole_diameter: String-through hole diameter.
+    """
+
+    kind: Literal["single_string"] = "single_string"
+    string_count: int = 4
+    string_spacing: float = 19.0
+    unit_length: float = 60.0
+    unit_width: float = 15.0
+    front_reach: float = 15.0
+    screw_inset: float = 6.0
+    screw_hole_diameter: float = 3.0
+    screw_hole_depth: float = 12.0
+    string_through: bool = True
+    string_hole_offset: float = 30.0
+    string_hole_diameter: float = 4.0
+
+    def hardware(
+        self, scale_length: float, body_thickness: float, lean: float = 0.0
+    ) -> BridgeHardware:
+        """Return the units' holes and footprint.
+
+        ``lean`` is a multiscale's bridge line's ``dx/dy``: the unit on a
+        string ``y`` from the centreline stands ``lean * y`` further back.
+        """
+        _positive(
+            self,
+            "string_spacing",
+            "unit_length",
+            "unit_width",
+            "screw_inset",
+            "screw_hole_diameter",
+            "screw_hole_depth",
+            "string_hole_diameter",
+        )
+        if self.string_count < 1:
+            raise BodyGeometryError("Single-string bridges need at least one string.")
+        if self.unit_width > self.string_spacing:
+            raise BodyGeometryError(
+                "The single-string bridges would overlap: unit_width must not "
+                "exceed string_spacing."
+            )
+        front = -self.front_reach
+        back = front + self.unit_length
+        screws = (front + self.screw_inset, back - self.screw_inset)
+        if not front < 0.0 < back or screws[0] >= screws[1]:
+            raise BodyGeometryError(
+                "A single-string bridge must reach over its scale point with "
+                "room for its two screws."
+            )
+        if self.string_through and not screws[0] < self.string_hole_offset < screws[1]:
+            raise BodyGeometryError(
+                "A single-string bridge's string hole must lie between its screws."
+            )
+        holes: list[DrilledHole] = []
+        centres: list[Point2D] = []
+        for index in range(self.string_count):
+            y = (index - (self.string_count - 1) / 2.0) * self.string_spacing
+            x = scale_length + lean * y
+            centres.append(Point2D(x, y))
+            unit = f"String {index + 1} bridge"
+            holes.extend(
+                DrilledHole(
+                    f"{unit} screw {end} pilot",
+                    x + dx,
+                    y,
+                    self.screw_hole_diameter,
+                    self.screw_hole_depth,
+                )
+                for end, dx in zip(("front", "rear"), screws, strict=True)
+            )
+            if self.string_through:
+                holes.append(
+                    DrilledHole(
+                        f"{unit} string through hole",
+                        x + self.string_hole_offset,
+                        y,
+                        self.string_hole_diameter,
+                        body_thickness,
+                    )
+                )
+        half = self.unit_width / 2.0
+        first, last = centres[0], centres[-1]
+        return BridgeHardware(
+            BridgeMounting(
+                scale_length, pivot_stud_spacing=None, has_sustain_block=False
+            ),
+            holes=tuple(holes),
+            notes=(
+                "Single-string bridges: a unit per string, its saddle on the "
+                "string's scale"
+                + (", each on the fanned bridge line" if lean else "")
+                + "; check the screw"
+                + (" and string" if self.string_through else "")
+                + " holes against the units before drilling.",
+            ),
+            # Round all the units: one plate's worth of top kept clear.
+            footprint=(
+                Point2D(first.x + front, first.y - half),
+                Point2D(first.x + back, first.y - half),
+                Point2D(last.x + back, last.y + half),
+                Point2D(last.x + front, last.y + half),
+            ),
+        )
+
+
 BridgeSpec = (
     KahlerBridgeSpec
     | FloydRoseSpec
     | TuneOMaticSpec
     | HardtailSpec
     | HeadlessBridgeSpec
+    | SingleStringBridgeSpec
 )
 
 BRIDGE_KINDS: dict[str, type[Any]] = {
@@ -780,26 +1111,35 @@ BRIDGE_KINDS: dict[str, type[Any]] = {
     "tune_o_matic": TuneOMaticSpec,
     "hardtail": HardtailSpec,
     "headless": HeadlessBridgeSpec,
+    "single_string": SingleStringBridgeSpec,
 }
 
 BRIDGE_LABELS: dict[str, str] = {
     "kahler_7300": "Kahler 7300 (fixed, flat mount)",
     "floyd_rose": "Floyd Rose (recessed tremolo)",
     "tune_o_matic": "Tune-o-matic + stop bar",
-    "hardtail": "Hardtail (string-through)",
+    "hardtail": "Hardtail (string-through or top-load)",
     "headless": "Headless (tuners at the bridge)",
+    "single_string": "Single-string bridges (one per string)",
 }
 
 BRIDGE_MAX_STRINGS: dict[str, int] = {
-    "kahler_7300": 6,
-    "floyd_rose": 6,
+    "kahler_7300": 8,
+    "floyd_rose": 8,
     "tune_o_matic": 6,
 }
 """The most strings a bridge kind is drawn for; unlisted kinds take any count.
 
-The Kahler 7300, Floyd Rose and Tune-o-matic specs carry six-string
-dimensions; the hardtail makes a string-through hole per string.
+The Kahler 7300 and the Floyd Rose come for six to eight strings, the
+Tune-o-matic spec carries six-string dimensions; the hardtail and the
+single-string bridges make a hole or a unit per string.
 """
+
+BRIDGE_MIN_STRINGS: dict[str, int] = {
+    "kahler_7300": 6,
+    "floyd_rose": 6,
+}
+"""The fewest strings a bridge kind is made for; unlisted kinds take any."""
 
 
 def bridge_spec_from_dict(data: Mapping[str, Any]) -> BridgeSpec:

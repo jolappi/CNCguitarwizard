@@ -4,6 +4,26 @@
 
 ### Added
 
+- The Floyd Rose and the Kahler for seven and eight strings
+  (`string_count` on `FloydRoseSpec` and `KahlerBridgeSpec`). The Floyd
+  Rose's widths follow its stud spacing by the margins on Floyd Rose's
+  six- and seven-string routing sheets (`FloydRoseSpec.widths()`): the
+  seven-string's 84.58 mm studs, 105.92 mm recess and 93.52 mm block
+  route, no block pocket deeper than the spring cavity, as drawn; the
+  eight-string (no published routing) widened to the FRT8's 95.5 mm
+  studs. The Kahler 7327/7328 cutout is 20.32 mm wider, as Kahler's
+  installation sheets have it. Widths left empty come from the string
+  count.
+- Floyd Rose's seven- and eight-string locking nuts (`locking_nut`
+  "r7" 47.6 mm, "r8" 53.8 mm with three screws, `LockingNutSpec.screw_count`);
+  "auto" fits them with a seven- or eight-string Floyd Rose.
+- Single-string bridges (`SingleStringBridgeSpec`, `kind`
+  "single_string"): a unit per string, two screws and an optional string
+  hole each; on a multiscale each unit stands at its own string's scale,
+  square to its string — for fanned basses above all.
+- A top-loaded hardtail (`HardtailSpec.string_through` off): no string
+  holes through the body, as most bass bridges allow.
+
 - A set neck (`neck_joint` "set", `set_neck_glue_gap` 0.05 mm): the heel
   glued into a tight pocket, Gibson style — no bolts or ferrules, a neck
   angle as for a bolt-on neck, a heel-adjusted truss rod only with its
@@ -301,6 +321,14 @@
 
 - The web app's build button reads *Build 3D and CNC files* (it was
   *Build Prototype001*).
+- A bridge kind takes only the string counts it is made for
+  (`BRIDGE_MIN_STRINGS` / `BRIDGE_MAX_STRINGS`), refused before anything
+  else is built; a bridge with a string count of its own must carry the
+  instrument's, and the web form keeps it in step when the kind changes.
+- The six-string Floyd Rose recess is 45.845 / 49.405 mm from the
+  centreline (8.89 + 73.91 / 2 and 12.45 + 73.91 / 2, as drawn; it was
+  rounded to 45.85 / 49.4).
+- Empty optional number fields in the web form say *auto*.
 - The FreeCAD script writes its coordinate data to 0.1 micron
   (`SERIAL_DECIMALS`) instead of full floats: a far shorter macro.
 - The Tune-o-matic's bass post sits `bass_setback` (3.2 mm, 1/8 in)

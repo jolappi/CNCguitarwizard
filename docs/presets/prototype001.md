@@ -50,9 +50,17 @@ default; `"seven_string_guitar"`, `"eight_string_guitar"` and
 | Bridge | Kahler 7300 | seven-string hardtail | eight-string hardtail (6 screws) | four-string string-through hardtail | five-string string-through hardtail |
 | Body | Design by Jone | opened 12 mm | opened 24 mm | Jazz Bass style body (a drawn mockup) | the same |
 
-The Kahler 7300, Floyd Rose and Tune-o-matic specs are drawn for six
-strings (`BRIDGE_MAX_STRINGS`): the build refuses them for more, and the
-web form hides them. A hardtail must have a hole per string.
+The Kahler 7300 and the Floyd Rose come for six to eight strings
+(`string_count` 6, 7 or 8 on the spec, sizing its routes: the Floyd Rose
+Original seven-string sheet's, the eight-string derived from it, the
+Kahler 7327/7328's wider cutout) with a Floyd Rose seven- or eight-string
+locking nut to match; the Tune-o-matic spec is drawn for six strings
+(`BRIDGE_MIN_STRINGS` / `BRIDGE_MAX_STRINGS`): the build refuses a bridge
+for another string count, and the web form hides it. A hardtail must have
+a hole per string, single-string bridges a unit per string; either is
+the bass's choice too — the hardtail top-loaded with `string_through`
+off, the single-string bridges each at its own string's scale on a
+fanned bass.
 
 A guitar humbucker or single coil for more than six strings is the
 six-string route stretched across the strings by 12 mm per extra string
@@ -133,7 +141,7 @@ Building the preset creates and cross-validates:
   itself is `DesignByJoneShape`) — with the drawing's own cavities: a neck pocket
   derived from the neck's own taper, humbucker routes with mounting ears, an
   interchangeable bridge (`body_bridge`: Kahler 7300 by default, Floyd Rose,
-  Tune-o-matic or hardtail), rear control and switch cavities with 2 mm cover recesses,
+  Tune-o-matic, hardtail, headless or single-string bridges), rear control and switch cavities with 2 mm cover recesses,
   an optional rear 9 V battery box with its own cover (`body_battery_box`,
   one battery or two side by side with `body_battery_count`),
   pot and switch shaft holes, pickup-screw recesses, and the jack bore — see

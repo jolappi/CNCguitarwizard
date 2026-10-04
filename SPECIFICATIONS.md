@@ -21,8 +21,8 @@ toisin mainita.
 | Satulahylly | Kiinteä 5 mm ennen otelautaa; ei saa muuttua (paitsi `nut_style` "slot": satula urassa otelaudan päässä, ks. alla) |
 | Nauhaurat | 0,6 mm × 2,7 mm |
 | Vinot nauhat | Valinnainen `fret_slant_angle` (oletus 0°, enintään 10°): nauhat, otelaudan satulapää ja loppupää kallistuvat keskilinjan ympäri, diskanttipää kohti tallaa positiivisella kulmalla. Nauhajako pysyy tarkkana keskilinjalla; talla ja mikit pysyvät ennallaan |
-| Multiscale | Valinnainen `bass_scale_length`: `scale_length` on silloin diskanttimensuuri ja `bass_scale_length` bassomensuuri (pidempi, enintään 1,15-kertainen); `perpendicular_fret` (oletus 7, 0 = satula) on kohtisuorassa. Jokainen nauha on suora ja osuu jokaisella kielellä tarkalleen oikeaan kohtaan; keskilinja saa mensuurien keskiarvon. Talla voi olla mikä tahansa: se pysyy suorana keskilinjan mensuurin kohdalla ja tallapalat säädetään kunkin kielen mensuuriin (säätövaran on riitettävä puoleen mensuurierosta kumpaankin suuntaan). Poikkeus on Tune-o-matic, jonka säätövara on liian pieni: sen tolpat (kohta, jolla kielet lepäävät) käännetään aina nauhojen mukaan, stop tail pysyy paikallaan. Hardtailin läpivientireiät voi kääntää samoin (`body_bridge_follows_fan`). Mikkien kääntö on valinta (`body_pickups_follow_fan`): auto kääntää ne paitsi Tune-o-maticin kanssa, yes aina, no ei koskaan |
-| Lukkosatula | `locking_nut`: auto (oletus) ottaa Floyd Rose Original R2 -lukkosatulan (41,3 mm), kun tallana on Floyd Rose, muuten tavallinen satula; none, r2 tai r3 (42,85 mm, vaatii yhtä leveän `nut_width`:n; web-lomake leventää satulan leveyden 43 mm:iin R3:a valittaessa) valitsevat suoraan. Satula ruuvataan päältä kahdella ruuvilla (13,59 mm välein, 7,5 mm satulalinjan takana, 2,5 mm × 8 mm esiporaus käsin satulan läpi). Sen etureuna on satulalinjalla ja hylly jatkuu 16 mm taaksepäin, joten lavan pinta, siirtymä ja lavan puolen truss rod -tasku alkavat sen verran taempaa. Satulan yläpinta on 0,38 mm nauhojen yläpintaa ylempänä (`fret_height` 1,2 mm): R2:n hylly on 1,73 mm liimapinnan yläpuolella, joten otelauta jatkuu satulan alle ja jyrsitään siinä hyllyn korkeuteen; R3:n hylly jäisi alle 1 mm:n, joten se istuu kaulan omalla hyllyllä 0,48 mm shimmin päällä |
+| Multiscale | Valinnainen `bass_scale_length`: `scale_length` on silloin diskanttimensuuri ja `bass_scale_length` bassomensuuri (pidempi, enintään 1,15-kertainen); `perpendicular_fret` (oletus 7, 0 = satula) on kohtisuorassa. Jokainen nauha on suora ja osuu jokaisella kielellä tarkalleen oikeaan kohtaan; keskilinja saa mensuurien keskiarvon. Talla voi olla mikä tahansa: se pysyy suorana keskilinjan mensuurin kohdalla ja tallapalat säädetään kunkin kielen mensuuriin (säätövaran on riitettävä puoleen mensuurierosta kumpaankin suuntaan). Poikkeus on Tune-o-matic, jonka säätövara on liian pieni: sen tolpat (kohta, jolla kielet lepäävät) käännetään aina nauhojen mukaan, stop tail pysyy paikallaan. Hardtailin läpivientireiät voi kääntää samoin (`body_bridge_follows_fan`). Yksikieliset tallat ovat kukin oman kielensä mensuurin kohdalla viuhkan tallalinjalla. Mikkien kääntö on valinta (`body_pickups_follow_fan`): auto kääntää ne paitsi Tune-o-maticin kanssa, yes aina, no ei koskaan |
+| Lukkosatula | `locking_nut`: auto (oletus) ottaa Floyd Rose Original R2 -lukkosatulan (41,3 mm), kun tallana on Floyd Rose (7- ja 8-kielisellä Floydilla Floyd Rosen 7- tai 8-kielisen satulan), muuten tavallinen satula; none, r2, r3 (42,85 mm), r7 (47,6 mm, 6,30 mm korkea, 15,5 mm syvä, kaksi ruuvia 18,6 mm välein) tai r8 (53,8 × 15,7 mm, kolme ruuvia 13,3 mm välein) valitsevat suoraan; kukin vaatii vähintään yhtä leveän `nut_width`:n (web-lomake leventää satulan leveyden valittaessa). Satula ruuvataan päältä kahdella ruuvilla (R2/R3: 13,59 mm välein, 7,5 mm satulalinjan takana, 2,5 mm × 8 mm esiporaus käsin satulan läpi). Sen etureuna on satulalinjalla ja hylly jatkuu 16 mm taaksepäin, joten lavan pinta, siirtymä ja lavan puolen truss rod -tasku alkavat sen verran taempaa. Satulan yläpinta on 0,38 mm nauhojen yläpintaa ylempänä (`fret_height` 1,2 mm): R2:n hylly on 1,73 mm liimapinnan yläpuolella, joten otelauta jatkuu satulan alle ja jyrsitään siinä hyllyn korkeuteen; R3:n hylly jäisi alle 1 mm:n, joten se istuu kaulan omalla hyllyllä 0,48 mm shimmin päällä |
 | Nollanauha | `nut_style` "zero_fret": satulalinjalle tulee nauha (mensuuri alkaa siitä), ja satula on vain kielten ohjain `zero_fret_gap` (3 mm) sen takana, urassa kuten "slot"-tyylissä ja viilattu hieman nollanauhan yläpinnan alle. Otelauta jatkuu satulalinjan ohi: väli, ura, reunus ja loivennus, yhteensä 12,5 mm. Nollanauhan ura jyrsitään `Fretboard_slots.nc`-ohjelmassa ensimmäisenä (`Zero fret slot`) ja leikataan FreeCAD-mallissa; plan-kuva ja lapaeditori piirtävät sen. Lapaeditorin omassa ruudussa on satulan tyyli (`nut_style`), ja editori piirtää satulan (hyllyllä, urassa otelaudan jatkeessa, nollanauhan takana tai lukkosatulana tummana) |
 | Satula urassa (Fender/Telecaster) | `nut_style` "slot": otelauta jatkuu satulalinjan ohi, ja siihen jyrsitään `nut_thickness` (3,5 mm) levyinen ura `nut_slot_depth` (3 mm) harjan alapuolelle; satula liimataan uraan, etupinta satulalinjalla. Uran takana otelauta jatkuu täyskorkeana `nut_slot_lip` (3 mm) ja loivenee sitten liimapintaan `nut_slot_taper` (3 mm) matkalla, eli otelauta päättyy 9,5 mm satulalinjan taakse. Ura jyrsitään inlay-ohjelmassa 1 mm terällä, loivennus ääriviivaohjelmassa 0,5 mm portain tasaterällä (hiotaan tasaiseksi). Uran alle on jäätävä vähintään 1 mm otelautaa. Lukkosatula korvaa satulan tyylistä riippumatta. Lavan puolelta säädettävä kaularauta avataan silloin Fender-tyylisesti ilman kantta (ks. Spoke wheel) |
 | Telecaster-kaula | Lapaeditorin *Start from* → Telecaster neck (`NECK_TEMPLATES`): satula urassa, suora 0° lapa, 6 virittimen rivi (`6_inline`), Telecaster-lavan muoto piirrettynä (204 mm oletusrivin ympärillä, muokattavissa) ja kaularaudan säätö kantapäässä (vintage); `truss_rod_adjustment` headstock antaa modernin säädön satulan takaa |
@@ -84,8 +84,36 @@ kanta 76 mm, 8 viritintä rivissä (tai 4+4) ja kahdeksan kielen hardtail.
 Kitaran humbuckerit ja singlet pitenevät 12 mm jokaista kuudennen yli
 menevää kieltä kohden, ja runko levenee keskilinjasta saman verran
 (`body_widening`, tyhjänä 12 mm / lisäkieli), jotta leveämpi kanta ja mikit
-mahtuvat. Kahler 7300, Floyd Rose ja Tune-o-matic on mitoitettu kuudelle
-kielelle, joten ne eivät ole valittavissa 7- ja 8-kielisille.
+mahtuvat. Kahler 7300 ja Floyd Rose saa 6-, 7- ja 8-kielisinä
+(`string_count` tallan omissa tiedoissa, pidetään soittimen kielimäärässä;
+web-lomake pitää sen samana). Floydin leveydet seuraavat tappien väliä
+samoin marginaalein kuin Floyd Rosen 6- ja 7-kielisissä
+jyrsintäpiirustuksissa (seinät 8,89 / 12,45 mm tappien ulkopuolella,
+lohkon kolo 8,94 mm tappiväliä leveämpi, hienosäätimien osa 2,79 mm
+kapeampi): 7-kielinen tappiväli 84,58 mm, upotus 105,92 mm, lohkon kolo
+93,52 mm ja hienosäätimet 81,79 mm; piirustuksen mukaan ei syvempää
+lohkotaskua jousikolon pohjan alle (ohjeet kertovat, miten jousikolon
+takapäätä syvennetään käsin, jos lohko koskee syvässä sukelluksessa).
+8-kielisestä Floyd Rose ei julkaise jyrsintäpiirustusta: se on 7-kielinen
+levennettynä FRT8:n 95,5 mm tappiväliin. Pituudet ja syvyydet ovat samat
+kuin 6-kielisessä. Tyhjäksi jätetyt leveydet tulevat kielimäärästä
+(`FloydRoseSpec.widths()`). Kahler 7327/7328:n (7 ja 8 kieltä) kolo on
+20,32 mm leveämpi, 85,36 mm, kuten Kahlerin asennusohjeissa (3,400" vs.
+2,600"). Tune-o-matic on mitoitettu kuudelle kielelle, eikä sitä voi
+valita 7- ja 8-kielisille.
+
+Yksikieliset tallat (`SingleStringBridgeSpec`, `kind` "single_string"):
+jokaisella kielellä on oma pieni talla (oletuksena ABM 3710 -tyylinen
+bassotalla 60 × 15 mm, 19 mm kielijako). Kukin ulottuu 15 mm kielensä
+mensuuripisteen eteen, ja siinä on kaksi 3 × 12 mm ruuvin esiporausta
+keskilinjalla 6 mm päistä sekä halutessa 4 mm kielen läpivienti 30 mm
+mensuuripisteen takana. Multiscalessa jokainen talla on oman kielensä
+mensuurin kohdalla viuhkan tallalinjalla, silti suorassa kieleensä nähden,
+joten talla seuraa viuhkaa kääntymättä. Tallojen yhteinen ala on
+tallan levy, jota pleksi väistää. Talla ei saa olla kielijakoa leveämpi.
+Hardtailin voi asentaa myös top-load-tyyliin (`string_through` pois): kielet
+kulkevat tallan takaosan läpi eikä runkoon porata läpivientejä
+(useimmat bassotallat käyvät kumminkin päin).
  Basson oletukset:
 4 kieltä, 34" (863,6 mm) skaala, 21 nauhaa, satula 38 mm ja kanta 62 mm,
 paksuudet 21 / 23 mm ja kanta 22 mm, otelaudan säde 305 mm, kielijako 10 mm
