@@ -2240,6 +2240,8 @@ class Prototype001Parameters:
             return None
         if not math.isfinite(self.fret_height) or self.fret_height < 0.0:
             raise NeckGeometryError("fret_height must be finite and non-negative.")
+        # With nut_style "zero_fret" the locking nut goes behind the zero
+        # fret, zero_fret_gap back.
         return LockingNut.placed(
             LOCKING_NUT_SPECS[kind],
             lean=self.fret_skew.at(0.0),
@@ -2248,6 +2250,7 @@ class Prototype001Parameters:
             fret_height=self.fret_height,
             screw_diameter=self.locking_nut_screw_diameter,
             screw_depth=self.locking_nut_screw_depth,
+            set_back=self.zero_fret_gap if self.nut_style == "zero_fret" else 0.0,
         )
 
     def nut_seat_length(self) -> float:

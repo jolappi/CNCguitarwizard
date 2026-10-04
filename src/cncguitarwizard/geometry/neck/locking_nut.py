@@ -25,13 +25,18 @@ down to the glue face over ``taper``, where it ends.
 
 With a zero fret the slot sits ``set_back`` behind the nut line: a fret
 stands on the nut line itself (the scale starts there), and the nut
-behind it only guides the strings, a little lower than the fret.
+behind it only guides the strings, a little lower than the fret. A
+locking nut goes behind a zero fret the same way: its front face
+``set_back`` behind the nut line, its top ``ZERO_FRET_NUT_DROP`` below
+the frets' tops so the strings break over the zero fret and the nut only
+clamps them; the board runs on at full height under the zero fret, then
+down to the nut's shelf.
 """
 
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Literal
 
 from ..exceptions import NeckGeometryError
@@ -47,6 +52,10 @@ the nut on the neck's seat with a shim instead."""
 
 SEAT_MARGIN = 1.0
 """Flat seat left behind the nut's back face, in mm."""
+
+ZERO_FRET_NUT_DROP = 0.25
+"""How far a locking nut behind a zero fret stands below the frets' tops,
+in mm: the strings break over the zero fret."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -64,8 +73,9 @@ class LockingNutSpec:
         seat_margin: Flat seat left behind the nut's back face, in mm.
         lip: A slotted nut's full-height board behind the slot, in mm.
         taper: The board's slope down to the glue face behind the lip.
-        set_back: How far behind the nut line a slotted nut's slot starts,
-            in mm: 0, or the gap behind a zero fret on the nut line.
+        set_back: How far behind the nut line the nut's front face (a
+            slotted nut's slot) starts, in mm: 0, or the gap behind a zero
+            fret on the nut line.
         screw_count: Its mounting screws, spread evenly over
             ``screw_spacing`` (two, or three on the eight-string nut).
     """
@@ -174,10 +184,42 @@ class LockingNut:
         fret_height: float,
         screw_diameter: float,
         screw_depth: float,
+        set_back: float = 0.0,
     ) -> LockingNut:
-        """Return the nut with its shelf set from the board and the frets."""
-        shelf = fretboard_thickness + fret_height - (spec.height - NUT_ABOVE_FRETS)
-        return cls(spec, lean, neck_width, shelf, screw_diameter, screw_depth)
+        """Return the nut with its shelf set from the board and the frets.
+
+        ``set_back`` puts it behind a zero fret on the nut line, that far
+        back and ``ZERO_FRET_NUT_DROP`` below the frets' tops.
+
+        Raises:
+            NeckGeometryError: For a negative ``set_back``, or one whose nut
+                would not stand on the fretboard (the board must run on
+                under the zero fret).
+        """
+        if not math.isfinite(set_back) or set_back < 0.0:
+            raise NeckGeometryError("zero_fret_gap must be finite and non-negative.")
+        top = (
+            spec.height + ZERO_FRET_NUT_DROP
+            if set_back > 0.0
+            else spec.height - NUT_ABOVE_FRETS
+        )
+        shelf = fretboard_thickness + fret_height - top
+        nut = cls(
+            replace(spec, set_back=set_back) if set_back > 0.0 else spec,
+            lean,
+            neck_width,
+            shelf,
+            screw_diameter,
+            screw_depth,
+        )
+        if set_back > 0.0 and not nut.on_fretboard:
+            raise NeckGeometryError(
+                f"Behind a zero fret the {spec.name} locking nut's shelf would "
+                f"leave {max(shelf, 0.0):.2f} mm of fretboard, under "
+                f"{MIN_BOARD_SHELF:g} mm: use a thicker fretboard or taller "
+                "frets, or no locking nut (locking_nut none)."
+            )
+        return nut
 
     @classmethod
     def slotted(
@@ -221,7 +263,7 @@ class LockingNut:
     @property
     def zero_fret(self) -> bool:
         """Whether a zero fret stands on the nut line, the nut behind it."""
-        return self.spec.kind == "slot" and self.spec.set_back > 0.0
+        return self.spec.set_back > 0.0
 
     @property
     def front(self) -> float:
@@ -258,7 +300,11 @@ class LockingNut:
         seat), reaching ``reach`` past the neck's sides.
         """
         half = self.neck_width / 2.0 + reach
-        length = self.spec.depth if not self.is_locking else self.seat_length
+        length = (
+            self.spec.depth
+            if not self.is_locking
+            else self.spec.depth + self.spec.seat_margin
+        )
         front = self.front
         return tuple(
             Point2D(self.lean * y + dx, y)
@@ -288,7 +334,7 @@ class LockingNut:
         if not self.is_locking:
             return ()
         half = self.spec.screw_spacing / 2.0
-        back = self.spec.depth / 2.0
+        back = self.spec.set_back + self.spec.depth / 2.0
         count = max(2, self.spec.screw_count)
         ys = [-half + index * 2.0 * half / (count - 1) for index in range(count)]
         return tuple(Point2D(self.lean * y - back, y) for y in ys)

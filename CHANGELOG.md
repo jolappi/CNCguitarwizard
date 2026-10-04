@@ -498,6 +498,13 @@
 
 ### Fixed
 
+- A zero fret (`nut_style` "zero_fret") is no longer dropped without a
+  word under a locking nut (a Floyd Rose's, `locking_nut` "auto"): the
+  zero fret's slot is cut and the locking nut stands `zero_fret_gap`
+  behind it, its top a little below the frets' tops, the board running on
+  at full height under the zero fret before the nut's shelf. A nut too
+  tall to stand on the board behind a zero fret is refused with the
+  remedy.
 - Fanned (multiscale) and slanted frets build in FreeCAD again: since the
   script's coordinates were rounded to 4 decimals, every leaning
   fretboard section came out a hair off its plane, so the fretboard loft

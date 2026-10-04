@@ -924,7 +924,26 @@ class FreeCADScriptExporter:
             f"App.Vector({point.x!r}, {point.y!r}, 0.0)"
             for point in locking_nut.seat_outline()
         )
-        return (
+        # Behind a zero fret the board runs on at its full section first,
+        # under the zero fret, to the nut's front.
+        zero_fret = (
+            (
+                "# The board runs on at full height under the zero fret.\n"
+                "board_end = flattened(\n"
+                "    [App.Vector(*point) for point in FRETBOARD_SECTION_POINTS[0]]\n"
+                ")\n"
+                "zero_fret_board = Part.Face(\n"
+                "    Part.makePolygon(board_end + board_end[:1])\n"
+                f").extrude(App.Vector({-locking_nut.spec.set_back!r}, 0.0, 0.0))\n"
+                "fretboard_shape = require_shape(\n"
+                "    fretboard_shape.fuse(zero_fret_board).removeSplitter(),\n"
+                '    "board under the zero fret",\n'
+                ")\n"
+            )
+            if locking_nut.zero_fret
+            else ""
+        )
+        return zero_fret + (
             "# The fretboard runs on under the locking nut, down at its shelf.\n"
             f"locking_nut_corners = [{corners}]\n"
             "locking_nut_shelf = Part.Face(\n"

@@ -350,7 +350,7 @@ def _locking_nut_notes(geometry: Prototype001Geometry) -> tuple[str, ...]:
     nut = geometry.locking_nut
     if nut is None:
         return ()
-    if nut.zero_fret:
+    if nut.zero_fret and not nut.is_locking:
         return (
             f"Zero fret on the nut line, the nut ({nut.spec.depth:g} mm thick) "
             f"only a string guide {nut.spec.set_back:g} mm behind it: glue it "
@@ -379,11 +379,19 @@ def _locking_nut_notes(geometry: Prototype001Geometry) -> tuple[str, ...]:
     if len(nut.screw_centres()) > 2:
         spacing = f"spread over {nut.spec.screw_spacing:g} mm"
         screws = str(len(nut.screw_centres()))
+    front = (
+        f"behind the zero fret, its front face {nut.spec.set_back:g} mm behind "
+        "the nut line and its top a little below the frets' (the strings break "
+        "over the zero fret)"
+        if nut.zero_fret
+        else "front face on the nut line"
+    )
     return (
-        f"{nut.spec.name} locking nut, front face on the nut line: {seat}. "
+        f"{nut.spec.name} locking nut, {front}: {seat}. "
         f"Drill its {screws} screws' {nut.screw_diameter:g} mm pilot holes by "
         f"hand through the nut, {nut.screw_depth:g} mm into the neck, "
-        f"{spacing} and {nut.spec.depth / 2.0:g} mm behind the nut line.",
+        f"{spacing} and {nut.spec.set_back + nut.spec.depth / 2.0:g} mm "
+        "behind the nut line.",
     )
 
 

@@ -181,6 +181,20 @@ zero fret's slot is cut first in `Fretboard_slots.nc` (`Zero fret slot`)
 and in the FreeCAD model (on the board's nut-end row); the plan view and
 the headstock editor draw it.
 
+With a locking nut (a Floyd Rose's, `locking_nut` "auto" with a Floyd
+Rose bridge, or one chosen) the zero fret stays, the locking nut behind
+it: `LockingNut.placed(set_back=zero_fret_gap)` sets its front face that
+far behind the nut line and its top `ZERO_FRET_NUT_DROP` (0.25 mm) below
+the frets' tops rather than `NUT_ABOVE_FRETS` above them, so the strings
+break over the zero fret and the nut only clamps them. The board runs on
+at full height under the zero fret to the nut's front (cut in the
+FreeCAD model as the board's nut-end section carried back), and the
+nut's shelf is milled from there back (`Fretboard_outline.nc`); its
+screws sit half its depth behind its front. The nut must still stand on
+the fretboard (a shelf of `MIN_BOARD_SHELF`, 1 mm, at least): a taller
+nut (the seven- and eight-string ones on a 6 mm board) is refused with
+the remedy — a thicker board, taller frets, or no locking nut.
+
 The headstock editor's own pane offers the nut's style (`nut_style`)
 beside the tuner layout, and draws the nut: a plain one on its shelf, a
 slotted or zero-fret nut with the board running on behind the nut line,

@@ -423,15 +423,17 @@ def plan_fretboard_machining(
     shelf_paths: list[Toolpath] = []
     shelf_notes: tuple[str, ...] = ()
     if nut is not None and nut.is_locking and nut.on_fretboard:
-        # Down to the shelf behind the nut line, the pocket reaching past
-        # the board's sides and end so only the nut line's wall is left.
+        # Down to the shelf behind the nut line (behind a zero fret, from
+        # the nut's front: the board stands full height under the zero
+        # fret), the pocket reaching past the board's sides and end so
+        # only that wall is left.
         reach = flat.tool_radius + 1.0
         half = nut.neck_width / 2.0 + reach
         pocket_outline = tuple(
             Point2D(nut.lean * y + dx, y)
             for dx, y in (
-                (0.0, -half),
-                (0.0, half),
+                (nut.front, -half),
+                (nut.front, half),
                 (-nut.seat_length - reach, half),
                 (-nut.seat_length - reach, -half),
             )
@@ -447,7 +449,13 @@ def plan_fretboard_machining(
         shelf_notes = (
             f"The board runs {nut.seat_length:g} mm on past the nut line under "
             f"the {nut.spec.name} locking nut, milled down to its "
-            f"{nut.shelf_height:.2f} mm shelf first.",
+            f"{nut.shelf_height:.2f} mm shelf first"
+            + (
+                f" from {nut.spec.set_back:g} mm behind it, the zero fret's "
+                "slot in the full-height board before that."
+                if nut.zero_fret
+                else "."
+            ),
         )
     if slotted and nut is not None and nut.spec.taper > 0.0:
         # The board's slope behind the lip, down to the glue face in
