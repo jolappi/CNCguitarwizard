@@ -137,8 +137,16 @@ FIELD_HELP: dict[str, str] = {
     "inlay_style": (
         "The position markers' shape, cut as pockets into the fretboard: "
         "barbed wire, dots, blocks, Les Paul trapezoids, Jackson sharktooth, "
-        "parallelograms, diamonds or split blocks. All but dots are also cut "
-        "from sheet to fit (Fretboard_inlay_pieces)."
+        "parallelograms, diamonds, split blocks, or your own drawn shape "
+        "(custom, drawn in the Inlay design window). All but dots are also "
+        "cut from sheet to fit (Fretboard_inlay_pieces)."
+    ),
+    "inlay_points": (
+        "The custom marker's corners, drawn in the Inlay design window: "
+        "[along, across] pairs, along 0 at the fret toward the nut and 1 at "
+        "the marker's fret, across -1 to 1 the share of the board's "
+        "half-width toward the bass edge. Every marker is this shape fitted "
+        "to its own fret space; empty is a block."
     ),
     "inlay_single_marker_frets": "The frets that get one position marker.",
     "inlay_double_marker_frets": (

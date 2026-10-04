@@ -122,6 +122,7 @@ function renderForm() {
   mirrorEditorFields();
   headstockEditor.fillTemplates();
   setTimeout(() => headstockEditor.sync(), 0);
+  setTimeout(() => inlayEditor.refresh(), 0);
 }
 
 // The settings that shape an editor's drawing are shown in its own pane:
@@ -131,6 +132,7 @@ function renderForm() {
 const EDITOR_FIELDS = {
   "body-editor-options": ["body_pickups", "body_bridge", "body_controls", "body_switch", "body_jack", "body_pickguard", "body_pickguard_style", "body_arm_contour_depth", "body_belly_cut_depth", "body_carved_top", "body_carve_depth", "body_stepped_top", "body_engraving", "body_engraving_pattern", "body_engraving_seed", "body_battery_box", "body_battery_count"],
   "headstock-editor-options": ["headstock_style", "nut_style", "headstock_engraving_text", "headstock_engraving_font", "headstock_engraving_height", "headstock_engraving_angle"],
+  "inlay-editor-options": ["inlay_style", "inlay_depth", "inlay_block_edge_margin"],
 };
 const mirrors = new Map();
 
@@ -881,6 +883,7 @@ function applyDesign(design) {
   ];
   applyStringLimits();
   headstockEditor.sync();
+  inlayEditor.scheduleRefresh();
   // The body editor draws the loaded outline, not the start shape it was
   // shown while the form was being filled in.
   bodyEditor.reloadPoints();
@@ -2699,6 +2702,247 @@ const headstockEditor = {
     this.status.className = `note ${kind}`;
   },
 };
+
+// The fret markers: the first marker's fret space, its shape edited as
+// [along, across] points (inlay_points: along 0 at the fret toward the
+// nut and 1 at the marker's fret, across the share of the board's
+// half-width toward the bass edge), every other marker the same shape
+// fitted to its own fret space (shown below it on the whole board).
+const inlayEditor = {
+  panel: document.getElementById("inlay-editor"),
+  svg: document.getElementById("inlay-editor-svg"),
+  boardSvg: document.getElementById("inlay-editor-board"),
+  status: document.getElementById("inlay-editor-status"),
+  size: document.getElementById("inlay-editor-size"),
+  layout: null,
+  points: [],
+  refreshTimer: null,
+
+  async refresh() {
+    if (!pyodide) return;
+    let payload;
+    try {
+      payload = collectValues();
+    } catch (error) {
+      this.setStatus(`Cannot lay the markers out: ${error.message}`, "bad");
+      return;
+    }
+    pyodide.globals.set("payload_json", JSON.stringify(payload));
+    const layout = await runPython(
+      "import json\nfrom cncguitarwizard.webapp import inlay_editor_layout\n" +
+      "json.dumps(inlay_editor_layout(json.loads(payload_json)))"
+    );
+    if (layout.error) {
+      this.setStatus(layout.error, "bad");
+      return;
+    }
+    this.layout = layout;
+    this.points = layout.points.map((p) => [...p]);
+    this.draw();
+  },
+
+  scheduleRefresh() {
+    clearTimeout(this.refreshTimer);
+    this.refreshTimer = setTimeout(() => this.refresh(), 400);
+  },
+
+  setStatus(text, kind) {
+    this.status.textContent = text;
+    this.status.className = `note ${kind}`;
+  },
+
+  element(name, attributes, parent) {
+    return bodyEditor.element.call(this, name, attributes, parent);
+  },
+
+  begin(mirrored, minX, minY, maxX, maxY) {
+    return bodyEditor.begin.call(this, mirrored, minX, minY, maxX, maxY);
+  },
+
+  pathData(points) {
+    return bodyEditor.pathData(points);
+  },
+
+  toModel(event) {
+    return bodyEditor.toModel.call(this, event);
+  },
+
+  // The board's half-width at a distance from the nut (its straight taper).
+  half(x) {
+    const layout = this.layout;
+    return layout.nut_half + (layout.final_half - layout.nut_half) * x / layout.final_position;
+  },
+
+  // An [along, across] point in mm on the board (as built right-handed:
+  // the bass edge at -Y), and back.
+  toBoard([along, across]) {
+    const { front, back, bass_sign: bass } = this.layout;
+    const x = front + along * (back - front);
+    return [x, bass * across * this.half(x)];
+  },
+
+  fromBoard([x, y]) {
+    const { front, back, bass_sign: bass } = this.layout;
+    return [(x - front) / (back - front), bass * y / this.half(x)];
+  },
+
+  draw() {
+    const layout = this.layout;
+    const { front, back } = layout;
+    const pad = 6;
+    const top = this.half(back) + 3;
+    this.begin(layout.mirrored, front - pad, -top, back + pad, top);
+    const grid = this.element("g", { stroke: "#eee6d8", "stroke-width": 0.15 });
+    for (let x = Math.ceil((front - pad) / 5) * 5; x <= back + pad; x += 5) {
+      this.element("line", { x1: x, y1: -top, x2: x, y2: top }, grid);
+    }
+    for (let y = -Math.floor(top / 5) * 5; y <= top; y += 5) {
+      this.element("line", { x1: front - pad, y1: -y, x2: back + pad, y2: -y }, grid);
+    }
+    // The board between its edges, the two frets and the centreline.
+    const x0 = front - pad, x1 = back + pad;
+    this.element("path", {
+      d: this.pathData([[x0, -this.half(x0)], [x1, -this.half(x1)], [x1, this.half(x1)], [x0, this.half(x0)]]),
+      fill: "#5b3a24", "fill-opacity": 0.85, stroke: "none",
+    });
+    for (const x of [front, back]) {
+      this.element("line", { x1: x, y1: -this.half(x), x2: x, y2: this.half(x), stroke: "#c9c9c9", "stroke-width": 0.6 });
+    }
+    this.element("line", { x1: x0, y1: 0, x2: x1, y2: 0, stroke: "#8a7a6a", "stroke-width": 0.15, "stroke-dasharray": "1,1" });
+    // Inside the dashed line a corner keeps 1 mm from the frets and edges
+    // in every marker's space (the shortest and the narrowest).
+    const { along: [lo, hi], across } = layout.limits;
+    this.element("path", {
+      d: this.pathData([[lo, -across], [hi, -across], [hi, across], [lo, across]].map((p) => this.toBoard(p))),
+      fill: "none", stroke: "#e8c27a", "stroke-width": 0.2, "stroke-dasharray": "0.8,0.6",
+    });
+    const shape = this.points.map((p) => this.toBoard(p));
+    this.shapePath = this.element("path", {
+      d: this.pathData(shape), fill: "#f4efe2", stroke: "#1f6fb2", "stroke-width": 0.3, "stroke-linejoin": "round",
+    });
+    const hit = this.element("path", { class: "inlay-hit", d: this.pathData(shape) });
+    hit.addEventListener("click", (event) => this.addPoint(event));
+    this.element("title", {}, hit).textContent = "Click a side to add a corner";
+    this.handles = shape.map(([x, y], index) => {
+      const handle = this.element("circle", { class: "inlay-handle", cx: x, cy: -y, r: shape.length > 12 ? 0.55 : 0.9 });
+      this.element("title", {}, handle).textContent = "Marker corner — drag to shape it, Alt-click or right-click to remove it";
+      handle.addEventListener("pointerdown", (event) => {
+        if (event.altKey) { this.removePoint(index); return; }
+        this.startDrag(event, index, handle);
+      });
+      handle.addEventListener("contextmenu", (event) => { event.preventDefault(); this.removePoint(index); });
+      return handle;
+    });
+    this.drawBoard();
+    this.size.textContent = `— fret ${layout.fret}, ${(back - front).toFixed(1)} mm between frets`;
+    if (layout.problem) this.setStatus(layout.problem, "bad");
+    else this.setStatus(layout.custom ? "Every marker is this shape, fitted to its fret." : "This style's marker: drag a corner to draw your own.", "ok");
+  },
+
+  // The whole board, nut to last fret, with every marker as it is cut.
+  drawBoard() {
+    const layout = this.layout;
+    const svg = this.boardSvg;
+    svg.innerHTML = "";
+    const end = layout.final_position, top = layout.final_half + 2;
+    const flip = layout.mirrored ? " scale(1,-1)" : "";
+    svg.setAttribute("viewBox", `-4 ${-top} ${end + 8} ${2 * top}`);
+    const root = document.createElementNS(SVG_NS, "g");
+    root.setAttribute("transform", flip.trim());
+    svg.appendChild(root);
+    const add = (name, attributes) => {
+      const node = document.createElementNS(SVG_NS, name);
+      for (const [key, value] of Object.entries(attributes)) node.setAttribute(key, value);
+      root.appendChild(node);
+    };
+    add("path", { d: this.pathData([[0, -layout.nut_half], [end, -layout.final_half], [end, layout.final_half], [0, layout.nut_half]]), fill: "#5b3a24", stroke: "none" });
+    for (const [[ax, ay], [bx, by]] of layout.frets) {
+      add("line", { x1: ax, y1: -ay, x2: bx, y2: -by, stroke: "#c9c9c9", "stroke-width": 0.5 });
+    }
+    for (const marker of layout.markers) {
+      add("path", { d: this.pathData(marker), fill: "#f4efe2", stroke: "none" });
+    }
+  },
+
+  startDrag(event, index, handle) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (index >= this.points.length) return;
+    handle.classList.add("dragging");
+    const move = (moveEvent) => {
+      this.points[index] = this.kept(this.fromBoard(this.toModel(moveEvent)));
+      const [x, y] = this.toBoard(this.points[index]);
+      handle.setAttribute("cx", x);
+      handle.setAttribute("cy", -y);
+      this.shapePath.setAttribute("d", this.pathData(this.points.map((p) => this.toBoard(p))));
+    };
+    const end = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", end);
+      window.removeEventListener("pointercancel", end);
+      handle.classList.remove("dragging");
+      this.commit();
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", end);
+    window.addEventListener("pointercancel", end);
+  },
+
+  // A corner held inside the limits, where it fits every marker.
+  kept([along, across]) {
+    const { along: [lo, hi], across: limit } = this.layout.limits;
+    return [Math.min(hi, Math.max(lo, along)), Math.min(limit, Math.max(-limit, across))];
+  },
+
+  // A click on a side adds a corner on the nearest side.
+  addPoint(event) {
+    const [x, y] = this.kept(this.fromBoard(this.toModel(event)));
+    const points = this.points;
+    let best = 0, bestDistance = Infinity;
+    points.forEach(([ax, ay], i) => {
+      const [bx, by] = points[(i + 1) % points.length];
+      const dx = bx - ax, dy = by - ay;
+      const t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy || 1)));
+      const distance = (ax + t * dx - x) ** 2 + (ay + t * dy - y) ** 2;
+      if (distance < bestDistance) { bestDistance = distance; best = i; }
+    });
+    points.splice(best + 1, 0, [x, y]);
+    this.commit();
+  },
+
+  removePoint(index) {
+    if (index >= this.points.length) return;
+    if (this.points.length <= 3) {
+      this.setStatus("A marker needs at least three corners.", "bad");
+      return;
+    }
+    this.points.splice(index, 1);
+    this.commit();
+  },
+
+  // Write the drawn shape (a drawn style from now on) and lay it out again.
+  commit() {
+    const points = this.points.map(([along, across]) => [
+      Math.round(along * 10000) / 10000, Math.round(across * 10000) / 10000,
+    ]);
+    setControlValue(form.querySelector('[data-set="prototype"][data-name="inlay_points"]'), points);
+    const style = form.querySelector('[data-set="prototype"][data-name="inlay_style"]');
+    if (style && style.value !== "custom") setControlValue(style, "custom");
+    syncMirrors();
+    this.refresh();
+  },
+
+  // Back to the block a drawn marker starts as.
+  reset() {
+    setControlValue(form.querySelector('[data-set="prototype"][data-name="inlay_points"]'), []);
+    this.refresh();
+  },
+};
+
+document.getElementById("inlay-editor-reset").addEventListener("click", () => inlayEditor.reset());
+form.addEventListener("change", (event) => {
+  if (event.target.dataset.name !== "inlay_points") inlayEditor.scheduleRefresh();
+});
 
 document.getElementById("headstock-editor-reset").addEventListener("click", () => headstockEditor.reset());
 document.getElementById("headstock-editor-load").addEventListener("click", () => headstockEditor.loadTemplate());

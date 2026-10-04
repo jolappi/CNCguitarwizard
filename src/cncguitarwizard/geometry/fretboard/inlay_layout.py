@@ -7,12 +7,15 @@ its taper (``BOARD_STYLES``): Gibson-style ``block``, Les Paul style
 ``trapezoid`` (long at the bass edge, short at the treble edge), Jackson
 style ``sharktooth`` (a triangle, its point at the treble edge), a
 leaning ``parallelogram``, a ``diamond``, and Gibson's ``split_block``
-(a block split along its diagonal into two pieces).
+(a block split along its diagonal into two pieces) — or ``custom``, a
+shape of the builder's own drawn once (``custom_points``) and fitted to
+every marker's fret space and the board's taper there.
 """
 
 from __future__ import annotations
 
 import math
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import Literal
 
@@ -31,6 +34,7 @@ InlayStyle = Literal[
     "parallelogram",
     "diamond",
     "split_block",
+    "custom",
 ]
 
 INLAY_STYLES: tuple[str, ...] = (
@@ -42,6 +46,7 @@ INLAY_STYLES: tuple[str, ...] = (
     "parallelogram",
     "diamond",
     "split_block",
+    "custom",
 )
 """Every inlay style, in the order the form offers them."""
 
@@ -58,6 +63,18 @@ of its length."""
 
 SPLIT_BLOCK_GAP = 1.5
 """The gap along a split block's diagonal, in mm."""
+
+DEFAULT_CUSTOM_POINTS: tuple[tuple[float, float], ...] = (
+    (0.2, -0.7),
+    (0.8, -0.7),
+    (0.8, 0.7),
+    (0.2, 0.7),
+)
+"""A drawn marker before any is drawn: a block (see ``custom_points``)."""
+
+CUSTOM_CLEARANCE = 1.0
+"""Wood a drawn marker keeps from the fret slots either side of it and from
+the board's edges, in mm."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -83,8 +100,9 @@ class InlayLayout:
     Each single-marker fret receives one marker centred on the fretboard.
     Each double-marker fret receives two shorter markers offset either
     side of the centerline, matching the traditional double-dot layout
-    at the octave and double-octave — except in the ``block`` style,
-    where every listed fret gets one block, as on a Gibson.
+    at the octave and double-octave — except in the styles that span the
+    board (blocks and the like, and a drawn ``custom`` shape), where every
+    listed fret gets one, as on a Gibson.
 
     Args:
         fretboard_surface: Surface the markers are cut into. Its own
@@ -103,6 +121,15 @@ class InlayLayout:
         block_corner_radius: Corner rounding of the board-spanning shapes.
         bass_sign: Which side the bass strings are on (-1: -Y, +1: +Y),
             for the shapes that differ side to side.
+        custom_points: The ``custom`` marker's corners, straight lines
+            between them (rounded by ``block_corner_radius``), as
+            ``(along, across)``: ``along`` 0 at the fret toward the nut and
+            1 at the marker's own fret, ``across`` the share of the board's
+            half-width there, toward the bass edge (-1 the treble edge, +1
+            the bass edge). Each marker's fret space and the board's width
+            along it scale the shape, so it is drawn once (on the first
+            marker, in the web app's inlay editor) and fits every fret;
+            empty for ``DEFAULT_CUSTOM_POINTS``.
 
     Raises:
         FretboardGeometryError: If the depth cannot fit the fretboard
@@ -120,6 +147,7 @@ class InlayLayout:
     block_edge_margin: float = 5.0
     block_corner_radius: float = 1.0
     bass_sign: float = -1.0
+    custom_points: tuple[tuple[float, float], ...] = ()
     markers: tuple[InlayMarker, ...] = field(init=False)
 
     def __post_init__(self) -> None:
@@ -149,7 +177,24 @@ class InlayLayout:
             return width / 2.0
 
         markers: list[InlayMarker] = []
-        if self.style in BOARD_STYLES:
+        if self.style == "custom":
+            for fret_number in sorted(
+                (*self.single_marker_frets, *self.double_marker_frets)
+            ):
+                previous = 0.0 if fret_number == 1 else fret_positions[fret_number - 1]
+                markers.append(
+                    InlayMarker(
+                        fret_number,
+                        midpoint(fret_number),
+                        self._custom_marker(
+                            fret_number,
+                            previous,
+                            fret_positions[fret_number],
+                            half_width_at,
+                        ),
+                    )
+                )
+        elif self.style in BOARD_STYLES:
             for fret_number in sorted(
                 (*self.single_marker_frets, *self.double_marker_frets)
             ):
@@ -220,6 +265,112 @@ class InlayLayout:
             tuple(sorted(markers, key=lambda marker: marker.position)),
         )
 
+    def _custom_marker(
+        self,
+        fret_number: int,
+        front: float,
+        back: float,
+        half_width_at: Callable[[float], float],
+    ) -> tuple[Point2D, ...]:
+        """Return the drawn marker fitted to one fret space.
+
+        Raises:
+            FretboardGeometryError: If it reaches within
+                ``CUSTOM_CLEARANCE`` of a fret slot or the board's edge.
+        """
+        points = self.custom_points or DEFAULT_CUSTOM_POINTS
+        corners = [
+            Point2D(
+                front + along * (back - front),
+                self.bass_sign * across * half_width_at(front + along * (back - front)),
+            )
+            for along, across in points
+        ]
+        if any(
+            p.x - front < CUSTOM_CLEARANCE
+            or back - p.x < CUSTOM_CLEARANCE
+            or abs(p.y) > half_width_at(p.x) - CUSTOM_CLEARANCE
+            for p in corners
+        ):
+            raise FretboardGeometryError(
+                f"The drawn inlay at fret {fret_number} comes within "
+                f"{CUSTOM_CLEARANCE:g} mm of a fret slot or the board's edge: "
+                "draw it smaller in the inlay editor."
+            )
+        if _signed_area(corners) < 0.0:
+            corners.reverse()
+        return rounded_polygon_points(
+            corners, [self.block_corner_radius] * len(corners), samples_per_corner=6
+        )
+
+    def editable_points(self) -> tuple[tuple[float, float], ...]:
+        """Return the first marker's shape as ``custom_points`` would hold it.
+
+        The drawn shape itself, or what this style makes at the first
+        marker fret, its corners before rounding — barbed wire's, a dot as
+        twelve points, the first of a split block's pieces — held inside
+        ``custom_limits``, so an inlay editor can start from any style.
+        """
+        if self.style == "custom":
+            return self.custom_points or DEFAULT_CUSTOM_POINTS
+        frets = sorted((*self.single_marker_frets, *self.double_marker_frets))
+        if not frets:
+            return DEFAULT_CUSTOM_POINTS
+        fret_number = frets[0]
+        positions = {
+            fret.number: fret.distance_from_nut
+            for fret in FretCalculator.calculate(
+                self.fretboard_surface.scale_length,
+                self.fretboard_surface.fret_count,
+            )
+        }
+        final = positions[self.fretboard_surface.fret_count]
+        surface = self.fretboard_surface
+
+        def half_width_at(position: float) -> float:
+            fraction = position / final
+            width = (
+                surface.nut_width
+                + (surface.last_fret_width - surface.nut_width) * fraction
+            )
+            return width / 2.0
+
+        front = 0.0 if fret_number == 1 else positions[fret_number - 1]
+        back = positions[fret_number]
+        middle = (front + back) / 2.0
+        (low, high), across = custom_limits(surface, frets)
+        if self.style in BOARD_STYLES:
+            half_length = (back - front) * self.block_length_fraction / 2.0
+            start, end = middle - half_length, middle + half_length
+            corners = _board_shape(
+                self.style,
+                start,
+                end,
+                half_width_at(start) - self.block_edge_margin,
+                half_width_at(end) - self.block_edge_margin,
+                self.bass_sign,
+            )[0]
+        elif self.style == "dot":
+            corners = list(
+                _dot_outline(middle, 0.0, self.dot_diameter / 2.0, samples=12)
+            )
+        else:
+            corners = list(
+                _barbed_wire_outline(middle, 0.0, half_width_at(middle) * 0.6)
+            )
+        # Held where a drawn shape fits every marker (a parallelogram leans
+        # out over its frets).
+        return tuple(
+            (
+                min(high, max(low, round((p.x - front) / (back - front), 4))),
+                min(
+                    across,
+                    max(-across, round(self.bass_sign * p.y / half_width_at(p.x), 4)),
+                ),
+            )
+            for p in corners
+        )
+
     def _marker(
         self, position: float, lateral_offset: float, half_span: float
     ) -> tuple[Point2D, ...]:
@@ -256,6 +407,8 @@ class InlayLayout:
         corner = self.block_corner_radius
         if not math.isfinite(corner) or corner < 0.0:
             raise FretboardGeometryError("Inlay block corner radius must be >= 0.")
+        if self.style == "custom":
+            _check_custom(self.custom_points or DEFAULT_CUSTOM_POINTS)
         if not math.isfinite(self.depth) or self.depth <= 0.0:
             raise FretboardGeometryError(
                 "Inlay depth must be a finite, positive number."
@@ -508,3 +661,78 @@ def _signed_area(points: list[Point2D]) -> float:
     return 0.5 * sum(
         a.x * b.y - b.x * a.y for a, b in zip(points, points[1:] + points[:1])
     )
+
+
+def custom_limits(
+    surface: FretboardSurface, marker_frets: Sequence[int]
+) -> tuple[tuple[float, float], float]:
+    """Return where a drawn marker's corners fit every marker.
+
+    ``((low, high), across)``: ``along`` from ``low`` to ``high`` keeps
+    ``CUSTOM_CLEARANCE`` from the frets in the shortest of the markers'
+    fret spaces, ``across`` within ``±across`` keeps it from the edges
+    where the board is narrowest (the first marker's fret toward the nut);
+    rounded inward to the four decimals an inlay editor writes.
+
+    Raises:
+        FretboardGeometryError: For no marker fret, or one off the board.
+    """
+    if not marker_frets:
+        raise FretboardGeometryError("No fret has a marker.")
+    positions = {
+        fret.number: fret.distance_from_nut
+        for fret in FretCalculator.calculate(surface.scale_length, surface.fret_count)
+    }
+    if not all(1 <= fret <= surface.fret_count for fret in marker_frets):
+        raise FretboardGeometryError("A marker fret lies off the fretboard.")
+    shortest = min(
+        positions[fret] - (0.0 if fret == 1 else positions[fret - 1])
+        for fret in marker_frets
+    )
+    first = min(marker_frets)
+    front = 0.0 if first == 1 else positions[first - 1]
+    half = (
+        surface.nut_width
+        + (surface.last_fret_width - surface.nut_width)
+        * front
+        / positions[surface.fret_count]
+    ) / 2.0
+    margin = CUSTOM_CLEARANCE / shortest
+    return (
+        (math.ceil(margin * 1e4) / 1e4, math.floor((1.0 - margin) * 1e4) / 1e4),
+        math.floor((1.0 - CUSTOM_CLEARANCE / half) * 1e4) / 1e4,
+    )
+
+
+def _check_custom(points: tuple[tuple[float, float], ...]) -> None:
+    """Refuse a drawn marker that cannot be cut: too few points, numbers
+    outside its fret space or the board, or sides that cross."""
+    if len(points) < 3:
+        raise FretboardGeometryError("A drawn inlay needs at least three points.")
+    if not all(
+        len(point) == 2
+        and all(isinstance(v, (int, float)) and math.isfinite(v) for v in point)
+        and 0.0 < point[0] < 1.0
+        and -1.0 < point[1] < 1.0
+        for point in points
+    ):
+        raise FretboardGeometryError(
+            "A drawn inlay's points must lie between its frets (along 0 to 1) "
+            "and inside the board (across -1 to 1)."
+        )
+    corners = [Point2D(along, across) for along, across in points]
+    count = len(corners)
+
+    def turn(a: Point2D, b: Point2D, c: Point2D) -> float:
+        return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)
+
+    for i in range(count):
+        a, b = corners[i], corners[(i + 1) % count]
+        for j in range(i + 2, count):
+            if i == 0 and j == count - 1:
+                continue  # the side that closes the loop meets the first
+            c, d = corners[j], corners[(j + 1) % count]
+            if (turn(a, b, c) > 0.0) != (turn(a, b, d) > 0.0) and (
+                turn(c, d, a) > 0.0
+            ) != (turn(c, d, b) > 0.0):
+                raise FretboardGeometryError("A drawn inlay's sides must not cross.")

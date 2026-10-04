@@ -66,6 +66,7 @@ def test_schema_lists_every_parameter_with_a_form_type() -> None:
             "parallelogram",
             "diamond",
             "split_block",
+            "custom",
         ],
         "labels": prototype_fields["inlay_style"]["labels"],
     }

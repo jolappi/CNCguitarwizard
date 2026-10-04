@@ -44,6 +44,8 @@ from .geometry.body import (
     bridge_spec_from_dict,
 )
 from .geometry.exceptions import GeometryException
+from .geometry.fret import FretCalculator
+from .geometry.fretboard.inlay_layout import DEFAULT_CUSTOM_POINTS, custom_limits
 from .geometry.lettering import text_lines
 from .geometry.neck import LOCKING_NUT_SPECS
 from .geometry.primitives import Point2D, point_in_polygon
@@ -134,6 +136,7 @@ _CHOICE_LABELS: dict[str, dict[str, str]] = {
         "parallelogram": "Parallelograms",
         "diamond": "Diamonds",
         "split_block": "Split blocks (Gibson)",
+        "custom": "Custom (drawn in the Inlay design window)",
     },
     "body_jack": {
         "side": "Side jack (Les Paul style plate or barrel jack)",
@@ -763,6 +766,106 @@ def _contour_line(
         for k in range(CONTOUR_HANDLES)
     ]
     return {"points": local(inner[i] for i in picks), "automatic": True}
+
+
+def inlay_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
+    """Describe the fret markers for the web app's inlay editor.
+
+    Drawn as built right-handed (the bass edge at -Y), shown mirrored for a
+    left-handed build. The editor shows the first marker's fret space and
+    edits its shape as ``inlay_points`` (see ``InlayLayout.custom_points``).
+
+    Args:
+        payload: ``{"prototype": {...}}`` as for ``start_build``.
+
+    Returns:
+        ``{"fret", "front", "back", "nut_half", "final_half",
+        "final_position", "bass_sign", "mirrored", "custom", "points",
+        "limits", "markers", "frets", "problem"}`` or ``{"error": message}``: the
+        first marker's fret, its fret space from ``front`` to ``back`` (mm
+        from the nut), the board's half-width at the nut and at the last
+        fret (``final_position`` from the nut), the marker's shape as
+        ``[along, across]`` points (the drawn one, or the style's own at
+        that fret), ``limits`` (``along`` from and to, ``across`` either
+        side: ``custom_limits``) inside which a drawn corner fits every
+        marker, every marker's outline and every fret's line for the
+        board's preview, and ``problem``, why the markers cannot be cut as
+        drawn (``None`` when they can).
+    """
+    try:
+        built = Prototype001Parameters(**_coerce(payload.get("prototype", {})))
+        parameters = dataclasses.replace(built, handedness="right")
+        surface = parameters.fretboard_surface()
+    except (CNCGuitarWizardError, TypeError, ValueError) as error:
+        return {"error": f"{type(error).__name__}: {error}"}
+    positions = {
+        fret.number: fret.distance_from_nut
+        for fret in FretCalculator.calculate(surface.scale_length, surface.fret_count)
+    }
+    frets = sorted(
+        fret
+        for fret in (
+            *parameters.inlay_single_marker_frets,
+            *parameters.inlay_double_marker_frets,
+        )
+        if 1 <= fret <= surface.fret_count
+    )
+    if not frets:
+        return {"error": "No fret has a marker (inlay_single_marker_frets)."}
+    first = frets[0]
+    final = positions[surface.fret_count]
+    problem: str | None = None
+    markers: list[list[list[float]]] = []
+    points: list[list[float]] = [
+        [float(value) for value in point]
+        for point in parameters.inlay_points
+        if len(point) == 2
+    ]
+    try:
+        layout = parameters.inlay_design(surface)
+        markers = [
+            [[round(p.x, 2), round(p.y, 2)] for p in marker.outline]
+            for marker in layout.markers
+        ]
+        points = [[along, across] for along, across in layout.editable_points()]
+    except (CNCGuitarWizardError, TypeError, ValueError) as error:
+        problem = str(error)
+    if not points:
+        points = [[along, across] for along, across in DEFAULT_CUSTOM_POINTS]
+    skew = surface.skew
+
+    def half_at(position: float) -> float:
+        return (
+            surface.nut_width
+            + (surface.last_fret_width - surface.nut_width) * position / final
+        ) / 2.0
+
+    (low, high), across = custom_limits(surface, frets)
+
+    def fret_line(position: float) -> list[list[float]]:
+        half = half_at(position)
+        return [
+            [round(position + skew.at(position) * y, 2), round(y, 2)]
+            for y in (-half, half)
+        ]
+
+    return {
+        "fret": first,
+        "front": round(0.0 if first == 1 else positions[first - 1], 3),
+        "back": round(positions[first], 3),
+        "nut_half": surface.nut_width / 2.0,
+        "final_half": surface.last_fret_width / 2.0,
+        "final_position": round(final, 3),
+        "bass_sign": parameters.bass_sign,
+        "mirrored": built.left_handed,
+        "custom": parameters.inlay_style == "custom",
+        "points": points,
+        "limits": {"along": [low, high], "across": across},
+        "markers": markers,
+        "frets": [fret_line(0.0)]
+        + [fret_line(positions[n]) for n in range(1, surface.fret_count + 1)],
+        "problem": problem,
+    }
 
 
 def headstock_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:

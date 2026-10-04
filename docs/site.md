@@ -40,7 +40,8 @@ Python.
    pickguard, arm contour and battery box in the body editor, the tuner layout
    (`headstock_style`) and the nut's style (`nut_style`: on the shelf, in
    a slot, behind a zero fret) in the headstock editor, which draws the
-   nut too. Each is a copy of the
+   nut too, and the markers' style, depth and edge margin in the inlay
+   editor. Each is a copy of the
    form's field, whose row in the form is hidden; the field itself is
    what is saved, loaded and built. Choosing a locking nut wider
    than the neck (`locking_nut` "r3") widens `nut_width` to it, to the
@@ -136,6 +137,19 @@ Python.
    `neck_templates` in the schema (`NECK_TEMPLATES`): the Telecaster neck's
    slotted nut, flat six-in-line headstock, drawn Telecaster outline and
    heel-adjusted truss rod.
+   Below it the **inlay editor** (*Inlay design*) draws the first fret
+   marker's space on the board, nut to the left, with the style's marker
+   in it (`webapp.inlay_editor_layout()`, `InlayLayout.editable_points()`)
+   and the whole board below with every marker as it is cut. Dragging a
+   corner, clicking a side to add one or Alt-clicking (right-clicking) one
+   to remove it writes `inlay_points` and switches `inlay_style` to
+   `custom`: every marker becomes that shape fitted to its own fret space.
+   A dashed line shows where the corners fit every marker
+   (`custom_limits()`: 1 mm from the frets in the shortest space and from
+   the edges where the board is narrowest), and a drag stops at it; the
+   panel says at which fret a shape does not fit. *Start over* empties
+   `inlay_points` (a block). `inlay_style`, `inlay_depth` and
+   `inlay_block_edge_margin` sit in its pane.
 3. **Save design** downloads every setting as one JSON file on the user's
    own computer — the instrument, the guitar's name, all `prototype` and
    `machining` values, the drawn body's `control_points` and the drawn

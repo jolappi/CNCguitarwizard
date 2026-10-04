@@ -14,8 +14,8 @@
 - Instruments: six-, seven- and eight-string guitars and a four-string bass
 - FreeCAD script export (FCStd and STEP) and GRBL G-code for body, neck,
   fretboard and covers, with toolpath previews
-- Web app running the package in the browser (Pyodide), with body and
-  headstock editors and NC Viewer simulation
+- Web app running the package in the browser (Pyodide), with body,
+  headstock and inlay editors and NC Viewer simulation
 - Headless guitars and basses: no headstock, the strings anchored at the
   nut end and tuned at the bridge
 - Carved (arched) tops, Les Paul style, on any body, roughed to sand by

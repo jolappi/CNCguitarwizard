@@ -4,6 +4,21 @@
 
 ### Added
 
+- An inlay editor in the web app (*Inlay design*, under the headstock
+  editor):
+  - It draws the first fret marker's space on the board with the chosen
+    style's marker in it, and the whole board below with every marker.
+  - Dragging a corner, adding one (click a side) or removing one
+    (Alt-click or right-click) draws your own marker: the new `custom`
+    inlay style, its corners in `inlay_points`.
+  - Every marker is that shape fitted to its own fret space and the
+    board's width there.
+  - A dashed line shows where the shape fits every marker (1 mm from the
+    frets and the edges); a drag stops at it, and the panel names the fret
+    a shape does not fit.
+  - *Start over* goes back to a block.
+  - Drawn markers are cut, sheet-cut as pieces and modelled like the other
+    styles, with slanted and fanned frets too.
 - An ESP LTD Alexi Hexed style body template (mockup, not the original):
   - The Jackson RR style outline (ESP's Alexi body is an offset V after
     Alexi Laiho's Jackson RRs).

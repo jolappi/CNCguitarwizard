@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field, replace
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 from ..cam.planar import distance_to_boundary, offset_polygon, simplified
 from ..geometry.body import (
@@ -614,7 +614,13 @@ class Prototype001Parameters:
     # board with its taper (inlay_block_length_fraction of the fret
     # spacing long, inlay_block_edge_margin from each edge): Gibson
     # blocks, Les Paul trapezoids, Jackson sharktooth, parallelograms,
-    # diamonds or Gibson split blocks (see geometry.fretboard.inlay_layout).
+    # diamonds or Gibson split blocks (see geometry.fretboard.inlay_layout);
+    # or "custom", inlay_points' own shape: its corners as (along, across),
+    # along 0 at the fret toward the nut and 1 at the marker's fret, across
+    # the share of the board's half-width toward the bass edge (-1 the
+    # treble edge, +1 the bass edge), drawn on the first marker in the web
+    # app's inlay editor and fitted to every marker's fret space and the
+    # board's taper (a block until drawn).
     inlay_depth: float = 2.0
     inlay_single_marker_frets: tuple[int, ...] = (3, 5, 7, 9, 15, 17, 19, 21)
     inlay_double_marker_frets: tuple[int, ...] = (12, 24)
@@ -622,6 +628,7 @@ class Prototype001Parameters:
     inlay_dot_diameter: float = 6.0
     inlay_block_length_fraction: float = 0.6
     inlay_block_edge_margin: float = 5.0
+    inlay_points: tuple[tuple[float, float], ...] = ()
     # Solid body (right-handed, as drawn): outline, pickup routes, bridge baseplate
     # cutout, and the rear control and switch cavities (each with its
     # cover recess) are all digitised directly from the user's own
@@ -3287,6 +3294,62 @@ class Prototype001Parameters:
             clear_of_truss_rod(automatic, truss_rod_access), automatic=True
         )
 
+    def fretboard_surface(self) -> FretboardSurface:
+        """Return the fretboard's playing surface, a bound board's narrower.
+
+        Raises:
+            NeckGeometryError: For a binding outside 0 to
+                ``MAX_FRETBOARD_BINDING``.
+        """
+        # A bound board is cut narrower by its binding each side.
+        binding = self.fretboard_binding_width
+        if not math.isfinite(binding) or not 0.0 <= binding <= MAX_FRETBOARD_BINDING:
+            raise NeckGeometryError(
+                "fretboard_binding_width must lie between 0 and "
+                f"{MAX_FRETBOARD_BINDING:g} mm."
+            )
+        return FretboardSurface(
+            self.centre_scale,
+            self.fret_count,
+            self.nut_width - 2.0 * binding,
+            self.final_fret_width - 2.0 * binding,
+            self.fretboard_radius,
+            self.fretboard_thickness,
+            end_extension=self.fretboard_end_extension,
+            profile_sample_count=self.profile_sample_count,
+            skew=self.fret_skew,
+        )
+
+    def inlay_design(self, surface: FretboardSurface | None = None) -> InlayLayout:
+        """Return the fret markers (cheap: the web app's inlay editor uses it).
+
+        Markers listed beyond the last fret (the 24th-fret pair on a
+        22-fret neck, say) are simply not cut.
+        """
+        return InlayLayout(
+            surface or self.fretboard_surface(),
+            self.inlay_depth,
+            single_marker_frets=tuple(
+                fret
+                for fret in self.inlay_single_marker_frets
+                if fret <= self.fret_count
+            ),
+            double_marker_frets=tuple(
+                fret
+                for fret in self.inlay_double_marker_frets
+                if fret <= self.fret_count
+            ),
+            style=self.inlay_style,
+            dot_diameter=self.inlay_dot_diameter,
+            block_length_fraction=self.inlay_block_length_fraction,
+            block_edge_margin=self.inlay_block_edge_margin,
+            bass_sign=self.bass_sign,
+            # (Checked by the layout: a pair of numbers each.)
+            custom_points=tuple(
+                cast(tuple[float, float], tuple(point)) for point in self.inlay_points
+            ),
+        )
+
     def _check_bridge_strings(self) -> None:
         """Reject a bridge made for another number of strings.
 
@@ -3970,26 +4033,9 @@ class Prototype001Parameters:
             profile_sample_count=self.profile_sample_count,
             segments_per_region=self.segments_per_region,
         )
-        # A bound board is cut narrower by its binding each side.
-        binding = self.fretboard_binding_width
-        if not math.isfinite(binding) or not 0.0 <= binding <= MAX_FRETBOARD_BINDING:
-            raise NeckGeometryError(
-                "fretboard_binding_width must lie between 0 and "
-                f"{MAX_FRETBOARD_BINDING:g} mm."
-            )
-        board_nut_width = self.nut_width - 2.0 * binding
-        board_final_width = self.final_fret_width - 2.0 * binding
-        fretboard_surface = FretboardSurface(
-            self.centre_scale,
-            self.fret_count,
-            board_nut_width,
-            board_final_width,
-            self.fretboard_radius,
-            self.fretboard_thickness,
-            end_extension=self.fretboard_end_extension,
-            profile_sample_count=self.profile_sample_count,
-            skew=self.fret_skew,
-        )
+        fretboard_surface = self.fretboard_surface()
+        board_nut_width = fretboard_surface.nut_width
+        board_final_width = fretboard_surface.last_fret_width
         final_fret_fraction = 1.0 - 2.0 ** (-self.fret_count / 12.0)
         width_at_scale_end = (
             board_nut_width
@@ -4016,27 +4062,7 @@ class Prototype001Parameters:
             self.fret_skew,
             zero_fret=locking_nut is not None and locking_nut.zero_fret,
         )
-        # Markers listed beyond the last fret (the 24th-fret pair on a
-        # 22-fret neck, say) are simply not cut.
-        inlay_layout = InlayLayout(
-            fretboard_surface,
-            self.inlay_depth,
-            single_marker_frets=tuple(
-                fret
-                for fret in self.inlay_single_marker_frets
-                if fret <= self.fret_count
-            ),
-            double_marker_frets=tuple(
-                fret
-                for fret in self.inlay_double_marker_frets
-                if fret <= self.fret_count
-            ),
-            style=self.inlay_style,
-            dot_diameter=self.inlay_dot_diameter,
-            block_length_fraction=self.inlay_block_length_fraction,
-            block_edge_margin=self.inlay_block_edge_margin,
-            bass_sign=self.bass_sign,
-        )
+        inlay_layout = self.inlay_design(fretboard_surface)
         truss_rod_channel = self.truss_rod(outline)
         carbon_rods = self.carbon_rods(outline, neck_surface, truss_rod_channel)
         headstock = self.headstock_solid(headstock_plan)

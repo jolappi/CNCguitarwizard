@@ -68,6 +68,7 @@ one of `INLAY_STYLES`:
 | `parallelogram` | Leaning blocks, the treble edge `PARALLELOGRAM_LEAN` (35 % of the length) toward the nut |
 | `diamond` | A diamond, its points on the centreline and at the edges' margin |
 | `split_block` | Gibson split blocks: a block split along its diagonal (treble front corner to bass back corner) into two pieces `SPLIT_BLOCK_GAP` (1.5 mm) apart |
+| `custom` | Your own shape (`inlay_points`), drawn once and fitted to every fret space — see below |
 
 Every style but barbed wire and dots spans the board between its frets
 (`BOARD_STYLES`): one per listed fret, `inlay_block_length_fraction`
@@ -77,3 +78,22 @@ bass side comes from `headstock_bass_side` (`bass_sign`). With slanted or
 fanned frets these lean point by point with the frets; barbed wire turns
 to their angle and dots move onto the line between them. Every style but
 dots gets the sheet program for its pieces (`Fretboard_inlay_pieces.nc`).
+
+### A drawn marker
+
+The `custom` style's shape is drawn once, on the first marker's fret
+space, as corners (`inlay_points`, `InlayLayout.custom_points`) joined by
+straight lines and rounded 1 mm: `[along, across]`, `along` 0 at the fret
+toward the nut and 1 at the marker's own fret, `across` the share of the
+board's half-width there, toward the bass edge (−1 the treble edge, +1
+the bass edge). Every listed fret gets one marker, that shape fitted to
+its own fret space and to the board's width along it, so the markers
+shorten toward the body and widen with the board. Empty, it is a block
+(`DEFAULT_CUSTOM_POINTS`). At least three corners, inside the fret space
+and the board, sides that do not cross; every corner of every marker must
+keep `CUSTOM_CLEARANCE` (1 mm) from the fret slots and the board's edges,
+or the build says at which fret it does not. `custom_limits()` gives the
+range that fits every marker (the shortest fret space and the narrowest
+board decide it), and `InlayLayout.editable_points()` any style's first
+marker as such points, held inside that range, so the web app's inlay
+editor can start from any style.

@@ -101,8 +101,14 @@
   .nc-files { margin: 0 0 8px; padding-left: 18px; font-size: 13px; }
   #body-editor-template, #headstock-editor-template { min-width: 0; max-width: 100%; flex: 1 1 160px; }
   .body-editor select { padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; font: inherit; background: #fff; }
-  #body-editor-status.ok, #headstock-editor-status.ok { color: var(--ok); }
-  #body-editor-status.bad, #headstock-editor-status.bad { color: var(--bad); }
+  #body-editor-status.ok, #headstock-editor-status.ok, #inlay-editor-status.ok { color: var(--ok); }
+  #body-editor-status.bad, #headstock-editor-status.bad, #inlay-editor-status.bad { color: var(--bad); }
+  #inlay-editor-svg { max-height: 340px; }
+  #inlay-editor-board { margin-top: 0.5rem; max-height: 120px; }
+  #inlay-editor .inlay-handle { fill: #fff; stroke: #1f6fb2; stroke-width: 0.25; cursor: grab; }
+  #inlay-editor .inlay-handle:hover, #inlay-editor .inlay-handle.dragging { fill: #1f6fb2; }
+  #inlay-editor .inlay-hit { fill: none; stroke: transparent; stroke-width: 1.5; pointer-events: stroke; cursor: copy; }
+  #inlay-editor .inlay-hit:hover { stroke: var(--accent); stroke-opacity: 0.25; }
   .body-editor .handle { fill: #fff; stroke: var(--accent); stroke-width: 0.8; cursor: grab; }
   .body-editor .handle:hover, .body-editor .handle.dragging { fill: var(--accent); }
   .body-editor .movable { cursor: move; }
@@ -289,6 +295,22 @@
       </div>
       <p id="headstock-editor-status" class="note"></p>
       <svg id="headstock-editor-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+    <div id="inlay-editor" class="body-editor">
+      <h2>Inlay design <span id="inlay-editor-size" class="note"></span></h2>
+      <p class="note">The first fret marker's space on the board, the nut to the left: drag a corner to shape the
+        marker, click a side to add a corner, Alt/Option-click or right-click one to remove it. Every other marker is
+        the same shape fitted to its own fret space and the board's width there, as the whole board below shows.
+        Editing any style's marker starts a drawn one (<code>inlay_style</code> custom, its corners in
+        <code>inlay_points</code>); it keeps 1 mm from the fret slots and the board's edges, and its corners are
+        rounded 1 mm. <em>Start over</em> goes back to a block. The grid is 5 mm.</p>
+      <div id="inlay-editor-options" class="editor-options"></div>
+      <div class="actions">
+        <button id="inlay-editor-reset" class="secondary" type="button" title="Back to a block">Start over</button>
+      </div>
+      <p id="inlay-editor-status" class="note"></p>
+      <svg id="inlay-editor-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+      <svg id="inlay-editor-board" xmlns="http://www.w3.org/2000/svg"></svg>
     </div>
     <div id="error" class="error hidden"></div>
     <div id="output" class="hidden">
