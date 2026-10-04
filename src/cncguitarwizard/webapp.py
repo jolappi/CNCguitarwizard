@@ -79,6 +79,7 @@ _CHOICE_LABELS: dict[str, dict[str, str]] = {
         "neck_through": (
             "Neck-through (the neck runs on as the body's centre, wings glued on)"
         ),
+        "one_piece": "One piece (the neck and the whole body from one blank)",
     },
     "body_controls": CONTROL_LABELS,
     "post_processor": POST_PROCESSOR_LABELS,
@@ -452,7 +453,7 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
             "points": local(points),
         }
 
-    through = parameters.neck_joint == "neck_through"
+    through = parameters.neck_runs_through
     polygons: list[dict[str, Any]] = [
         polygon("Neck", "neck", neck.boundary),
         # A neck-through body has no pocket: the neck runs on through.
@@ -583,7 +584,7 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         "mirrored": built.left_handed,
         "neck_through": (
             {"width": round(parameters.neck_through_block_width(layout), 2)}
-            if through
+            if parameters.neck_joint == "neck_through"
             else None
         ),
         "scale_line": round(parameters.centre_scale, 3),

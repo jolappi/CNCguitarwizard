@@ -541,7 +541,10 @@ class Prototype001Parameters:
     # the body's two wings cut from their own blanks and glued to its
     # sides. The neck's back then falls to the body's thickness over
     # neck_through_heel_ramp, reaching it where the body begins.
-    neck_joint: Literal["bolt_on", "neck_through"] = "bolt_on"
+    # "one_piece" cuts the neck and the whole body from one blank, no
+    # wings and no glue joints at all (as a neck-through whose block is the
+    # whole body).
+    neck_joint: Literal["bolt_on", "neck_through", "one_piece"] = "bolt_on"
     neck_through_width: float | None = None
     neck_through_heel_ramp: float = 40.0
     heel_length: float = 4.0
@@ -1094,6 +1097,11 @@ class Prototype001Parameters:
                 f"{', '.join(INSTRUMENT_OVERRIDES)}."
             )
         return cls(instrument=instrument, **INSTRUMENT_OVERRIDES[instrument])
+
+    @property
+    def neck_runs_through(self) -> bool:
+        """Whether the neck runs on into the body (neck-through or one piece)."""
+        return self.neck_joint in ("neck_through", "one_piece")
 
     @property
     def left_handed(self) -> bool:
@@ -1714,12 +1722,12 @@ class Prototype001Parameters:
             NeckGeometryError: For an angle outside 0..``MAX_NECK_ANGLE``.
         """
         angle = self.neck_angle
-        if self.neck_joint == "neck_through":
+        if self.neck_runs_through:
             # The neck blank is the body's own centre: nothing to tilt.
             if angle not in (None, 0.0):
                 raise NeckGeometryError(
-                    "A neck-through neck takes no neck_angle (it is the body's "
-                    "own centre block): leave it empty or 0."
+                    "A neck-through or one-piece neck takes no neck_angle (it is "
+                    "the body's own wood): leave it empty or 0."
                 )
             return 0.0
         if angle is None:
@@ -2215,7 +2223,7 @@ class Prototype001Parameters:
         # outline stays as where the neck passes, for the keep-outs).
         neck_bolts = (
             ()
-            if self.neck_joint == "neck_through"
+            if self.neck_runs_through
             else self._neck_bolt_holes(outline, heel_end, neck_pocket)
         )
         truss_rod = self.truss_rod(outline)
@@ -2761,8 +2769,11 @@ class Prototype001Parameters:
     def neck_through_parts(
         self, outline: NeckOutline, plan: HeadstockPlan, layout: BodyLayout
     ) -> NeckThrough | None:
-        """Return a neck-through body's block and wings, or ``None`` (bolt-on)."""
-        if self.neck_joint != "neck_through":
+        """Return a neck-through body's block and wings, or ``None`` (bolt-on).
+
+        A one-piece instrument's block is the whole body, with no wings.
+        """
+        if not self.neck_runs_through:
             return None
         neck = outline.boundary
         # The neck's plan from its +Y corner at the nut round the headstock
@@ -2774,7 +2785,11 @@ class Prototype001Parameters:
         )
         return neck_through(
             layout.outline.points,
-            self.neck_through_block_width(layout),
+            (
+                None
+                if self.neck_joint == "one_piece"
+                else self.neck_through_block_width(layout)
+            ),
             head,
             sides,
             self.bass_sign,
@@ -3432,13 +3447,15 @@ class Prototype001Parameters:
             Complete backend-independent Prototype001 geometry.
         """
         heel_flat_start_offset = self.heel_flat_start_offset
-        if self.neck_joint not in ("bolt_on", "neck_through"):
-            raise NeckGeometryError('neck_joint must be "bolt_on" or "neck_through".')
-        through = self.neck_joint == "neck_through"
+        if self.neck_joint not in ("bolt_on", "neck_through", "one_piece"):
+            raise NeckGeometryError(
+                'neck_joint must be "bolt_on", "neck_through" or "one_piece".'
+            )
+        through = self.neck_runs_through
         if through and self.headless:
             raise NeckGeometryError(
-                "A neck-through neck needs a headstock: the headless neck is "
-                "bolt-on only for now."
+                "A neck-through or one-piece neck needs a headstock: the "
+                "headless neck is bolt-on only for now."
             )
         if (
             through
@@ -3446,9 +3463,9 @@ class Prototype001Parameters:
             and not self.truss_rod_spoke_wheel_fitted
         ):
             raise NeckGeometryError(
-                "A neck-through neck buries a heel adjuster in the body: adjust "
-                "the truss rod at the headstock, or fit a spoke wheel "
-                "(truss_rod_spoke_wheel)."
+                "A neck-through or one-piece neck buries a heel adjuster in the "
+                "body: adjust the truss rod at the headstock, or fit a spoke "
+                "wheel (truss_rod_spoke_wheel)."
             )
         if not through and (
             not math.isfinite(self.heel_mounting_length)

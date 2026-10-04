@@ -107,7 +107,9 @@ bridge routes and holes, a heel-adjusted truss rod's access notch, its
 share of a carve, its edges and any rear cavity reaching it — are cut by
 the body's programs (`plan_body_machining` with the neck's `fixture`, no
 outline cut) on the same dowels: `Neck_block_top` and the like with the
-top face up, `Neck_block_back...` after the neck's back. The wings get
+top face up, `Neck_block_back...` after the neck's back. A one-piece
+instrument (`neck_joint` "one_piece") is cut the same way, its "block"
+the whole body (`Neck_body_...`), with no wings. The wings get
 the body's programs each on its own blank (`Wing_bass_...`,
 `Wing_treble_...`), their dowels on a line along each wing's middle.
 

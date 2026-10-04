@@ -48,8 +48,9 @@ FIELD_HELP: dict[str, str] = {
     # Neck
     "neck_joint": (
         "How the neck joins the body: bolt-on (its heel screwed into a pocket "
-        "in the body) or neck-through (the neck blank runs on through the "
-        "body as its centre, the two body wings glued to its sides)."
+        "in the body), neck-through (the neck blank runs on through the body "
+        "as its centre, the two body wings glued to its sides) or one piece "
+        "(the neck and the whole body cut from one blank)."
     ),
     "nut_width": (
         "The fretboard's and neck's width at the nut, in mm (42 to 43 on a guitar)."

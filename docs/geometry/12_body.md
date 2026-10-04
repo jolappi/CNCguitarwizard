@@ -212,6 +212,19 @@ faces lying in the block's top and bottom planes), `Wing_bass` and
 `Wing_treble`. The plan view and the body editor draw the block a shade
 darker; its long sides are the glue lines.
 
+### One piece
+
+`neck_joint = "one_piece"` cuts the neck and the whole body from one
+blank: a neck-through whose block is the whole body (`neck_through` with
+no width: `NeckThrough.one_piece`, no wings and no glue lines). Its
+blank runs from the headstock tip to the tail and is as wide as the body
+(995 × 364 × 44 mm for the default guitar, 1053 × 398 mm for the Les Paul
+template); the neck blank's programs cut the body's features on their
+own dowels (`Neck_body_...`) and its whole outline full depth. The
+FreeCAD model shows the body as one object (`Body (one piece with the
+neck)`). Everything a neck-through refuses it refuses too: a neck angle,
+a buried heel adjuster, a headless neck.
+
 ## Pickups
 
 `body_pickups` picks a named layout (`PICKUP_CONFIGURATIONS`) giving the

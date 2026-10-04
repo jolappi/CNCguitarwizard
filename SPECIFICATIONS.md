@@ -174,6 +174,18 @@ objektinsa, koska kaulan loftin pinnat ovat keskiosan ylä- ja alapinnan
 tasossa ja yhdistäminen epäonnistuu), `Wing_bass` ja `Wing_treble`.
 Plan-kuva ja runkoeditori piirtävät keskiosan vähän tummempana.
 
+
+### Yksiosainen
+
+`neck_joint = "one_piece"` jyrsii kaulan ja koko rungon samasta
+aihiosta: kuin läpikaula, jonka keskiosa on koko runko, ilman siipiä ja
+liimasaumoja. Aihio ulottuu lavan kärjestä rungon häntään ja on rungon
+levyinen (oletuskitara 995 × 364 × 44 mm, Les Paul -pohja 1053 × 398 mm).
+Kaula-aihion ohjelmat jyrsivät rungon kolot samoilla tapeilla
+(`Neck_body_...`) ja koko ääriviivan täyteen syvyyteen. FreeCAD-mallissa
+runko on yksi objekti (`Body (one piece with the neck)`). Samat
+rajoitukset kuin läpikaulassa: ei kaulan kulmaa, ei kantapäähän jäävää
+säätömutteria eikä päätöntä kaulaa.
 ## Kaulan kiinnitys
 
 Neljä kaulapulttia rungon takaa: holkkiupotus Ø 14 mm, 5 mm syvä, ja sen

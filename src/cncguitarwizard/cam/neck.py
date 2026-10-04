@@ -934,8 +934,13 @@ def plan_neck_machining(
     back_outline = Setup(
         "Neck_back_outline",
         (
-            "Neck-through back - plan outline of the neck and body block, full "
-            "depth, with tabs"
+            (
+                "One-piece back - plan outline of the neck and body, full depth, "
+                "with tabs"
+                if through.one_piece
+                else "Neck-through back - plan outline of the neck and body block, "
+                "full depth, with tabs"
+            )
             if through is not None
             else "Neck back - plan outline through the skin, with tabs"
         ),
@@ -959,8 +964,12 @@ def plan_neck_machining(
                 "Cuts the whole outline of the neck and its body block, the "
                 f"waste beside the block from the top, leaving {flat.tab_count} "
                 "tabs; saw and sand them off, then fair the back edges into "
-                "the sides by hand. The block's glue faces stay square: glue "
-                "the wings to them."
+                "the sides by hand."
+                + (
+                    ""
+                    if through.one_piece
+                    else " The block's glue faces stay square: glue the wings to them."
+                )
                 if through is not None
                 else f"Cuts the {parameters.skin:g} mm skin around the outline, "
                 f"leaving {flat.tab_count} tabs; saw and sand them off, then "
@@ -978,7 +987,8 @@ def plan_neck_machining(
         block_plan = plan_body_machining(
             body_part(geometry.body, through.block),
             body_parameters or flat,
-            prefix="Neck_block",
+            # A one-piece instrument's "block" is its whole body.
+            prefix="Neck_body" if through.one_piece else "Neck_block",
             fixture=(pins, stock),
             cut_outline=False,
         )

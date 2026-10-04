@@ -2469,6 +2469,15 @@ class FreeCADScriptExporter:
                 ")\n"
             )
             lines.append("body_feature.Shape = body_shape\n")
+        elif neck_through.width is None:
+            # One piece with the neck: the whole body, no glue lines.
+            lines.append(
+                "neck_block_feature = document.addObject(\n"
+                '    "Part::Feature", "Body"\n'
+                ")\n"
+                "neck_block_feature.Shape = body_shape\n"
+                "neck_block_feature.Label = 'Body (one piece with the neck)'\n"
+            )
         else:
             # Split along the glue lines: the block joins the neck (whose
             # heel already runs on into it), each wing is its own part.
@@ -2971,8 +2980,11 @@ where it failed quietly."""
 def _wing_sides(neck_through: NeckThrough) -> dict[str, tuple[float, float]]:
     """Return each side's wing name and the Y range it is split off over.
 
-    One object a side, however many pieces the glue line leaves it.
+    One object a side, however many pieces the glue line leaves it; none
+    for a one-piece instrument.
     """
+    if neck_through.width is None:
+        return {}
     half = neck_through.width / 2.0
     sides: dict[str, tuple[float, float]] = {}
     for wing in neck_through.wings:

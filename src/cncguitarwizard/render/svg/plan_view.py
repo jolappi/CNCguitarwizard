@@ -84,7 +84,7 @@ def render_plan_view_svg(geometry: Prototype001Geometry) -> str:
                     'fill="#e2cc9f" stroke="#6b4a1f" stroke-width="0.6"',
                 ),
             )
-            if geometry.neck_through is not None
+            if geometry.neck_through is not None and not geometry.neck_through.one_piece
             else ()
         ),
         path(geometry.headstock.plan.boundary, wood),

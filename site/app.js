@@ -558,7 +558,7 @@ function showResult(result) {
     });
     tabs.appendChild(button);
     // The body's top (a neck-through's block, on the neck) is shown first.
-    const first = previews.includes("Body_top.svg") ? "Body_top.svg" : "Neck_block_top.svg";
+    const first = ["Body_top.svg", "Neck_block_top.svg", "Neck_body_top.svg"].find((n) => previews.includes(n));
     if (name === first || (previews.length === 1 && index === 0)) button.click();
   });
 

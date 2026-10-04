@@ -4,6 +4,11 @@
 
 ### Added
 
+- A one-piece instrument (`neck_joint` "one_piece"): the neck and the
+  whole body cut from one blank, as a neck-through whose block is the
+  whole body — no wings, no glue lines; its body programs are
+  `Neck_body_...` on the neck blank's dowels, and the FreeCAD model shows
+  the body as one object.
 - Carbon fibre neck reinforcement (`neck_carbon_rods`; the bars'
   `neck_carbon_rod_size` 3.2 x 6.35 mm, 4 x 4 mm, 3.2 x 9.5 mm or custom;
   their start, length and offset): two bars in channels beside

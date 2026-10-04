@@ -179,5 +179,31 @@ def test_the_model_and_the_editor() -> None:
         for group in parameter_schema()["prototype"]
         for field in group["fields"]
     }
-    assert fields["neck_joint"]["options"] == ["bolt_on", "neck_through"]
+    assert fields["neck_joint"]["options"] == ["bolt_on", "neck_through", "one_piece"]
     assert not fields["neck_joint"]["advanced"]
+
+
+def test_a_one_piece_guitar_is_cut_whole_with_its_neck() -> None:
+    parameters = replace(THROUGH, neck_joint="one_piece")
+    geometry = parameters.build()
+    through = geometry.neck_through
+    assert through is not None and through.one_piece and not through.wings
+    body = geometry.body
+    # The whole body is the block; no pocket, no bolts, no glue lines.
+    assert abs(area(through.block.outline)) == pytest.approx(
+        abs(area(body.outline.points))
+    )
+    assert body.neck_pocket is None and not body.rear_holes
+    plan = plan_neck_machining(geometry, NeckMachiningParameters())
+    names = [setup.name for setup in plan.setups]
+    assert "Neck_body_top" in names and not any("block" in n for n in names)
+    assert plan.stock_width > max(p.y for p in body.outline.points) * 2.0
+    assert "glue the wings" not in " ".join(plan.back_outline.notes)
+    source = FreeCADScriptExporter().render_prototype001(geometry)
+    assert "Body (one piece with the neck)" in source
+    assert '"Wing_bass"' not in source and "glue_box" not in source
+    layout = body_editor_layout({"prototype": {"neck_joint": "one_piece"}})
+    assert layout["neck_through"] is None
+    assert not any(polygon["name"] == "Neck pocket" for polygon in layout["polygons"])
+    with pytest.raises(NeckGeometryError, match="one-piece"):
+        replace(parameters, neck_angle=2.0).build()

@@ -174,7 +174,9 @@ class NeckThrough:
     """A neck-through body split along its two glue lines.
 
     Args:
-        width: The centre block's width (the glue lines at ``+-width / 2``).
+        width: The centre block's width (the glue lines at ``+-width / 2``),
+            or ``None`` for a one-piece instrument: the block is the whole
+            body and there are no wings.
         block: The centre block: the body's outline between the glue lines.
         wings: The wings beyond them, each a ``BodyPart``.
         front_x: Where the body first meets the neck's sides, along X:
@@ -183,11 +185,16 @@ class NeckThrough:
             to the block.
     """
 
-    width: float
+    width: float | None
     block: BodyPart
     wings: tuple[BodyPart, ...]
     front_x: float
     plan: tuple[Point2D, ...]
+
+    @property
+    def one_piece(self) -> bool:
+        """Whether the neck and the whole body are one piece (no wings)."""
+        return self.width is None
 
     @property
     def parts(self) -> tuple[BodyPart, ...]:
@@ -197,7 +204,7 @@ class NeckThrough:
 
 def neck_through(
     outline: Sequence[Point2D],
-    width: float,
+    width: float | None,
     head: Sequence[Point2D],
     sides: tuple[Sequence[Point2D], Sequence[Point2D]],
     bass_sign: float,
@@ -209,18 +216,26 @@ def neck_through(
     headstock to its -Y corner; ``sides`` the neck's two sides, (+Y, -Y),
     each a line from the nut to a point well inside the body. ``reach`` is how
     far an edge finish is carried past a glue line (see
-    ``BodyPart.edge_outline``).
+    ``BodyPart.edge_outline``). A ``width`` of ``None`` makes the whole
+    body the block: a one-piece instrument, cut with its neck from one
+    blank.
 
     Raises:
         BodyGeometryError: For a block no wider than the neck where it
             enters the body, a body the glue lines leave no block or no
             wings, or a block in pieces.
     """
-    half = width / 2.0
     points = tuple(outline)
     if _area(points) < 0.0:
         points = tuple(reversed(points))
-    blocks = strip(points, -half, half) if math.isfinite(half) and half > 0.0 else []
+    if width is None:
+        half = math.inf
+        blocks = [points]
+    else:
+        half = width / 2.0
+        blocks = (
+            strip(points, -half, half) if math.isfinite(half) and half > 0.0 else []
+        )
     if len(blocks) != 1:
         raise BodyGeometryError(
             "The neck-through block must be one piece of the body: "
@@ -232,16 +247,19 @@ def neck_through(
     neck_half = max(abs(high[1].y), abs(low[1].y))
     if half <= neck_half + 1.0:
         raise BodyGeometryError(
-            f"The neck-through block ({width:.1f} mm) must be wider than the "
+            f"The neck-through block ({2.0 * half:.1f} mm) must be wider than the "
             f"neck where it enters the body ({2.0 * neck_half:.1f} mm)."
         )
-    (block_edge,) = [
-        piece
-        for piece in strip(points, -half - reach, half + reach)
-        if point_in_polygon(_inside_point(block), piece)
-    ]
+    if width is None:
+        (block_edge,) = blocks
+    else:
+        (block_edge,) = [
+            piece
+            for piece in strip(points, -half - reach, half + reach)
+            if point_in_polygon(_inside_point(block), piece)
+        ]
     wings: list[BodyPart] = []
-    for sign in (1.0, -1.0):
+    for sign in (1.0, -1.0) if width is not None else ():
         name = "Wing_bass" if sign == bass_sign else "Wing_treble"
         pieces = split_by_line(points, sign * half, keep_above=sign > 0.0)
         edges = split_by_line(points, sign * (half - reach), keep_above=sign > 0.0)
@@ -251,7 +269,7 @@ def neck_through(
             wings.append(
                 BodyPart(f"{name}_{number}" if number > 1 else name, piece, edge)
             )
-    if not wings:
+    if width is not None and not wings:
         raise BodyGeometryError("The neck-through block leaves the body no wings.")
     # Round the back from where the -Y side meets the block (counter-
     # clockwise) to where the +Y side does, then the neck's +Y side to the
