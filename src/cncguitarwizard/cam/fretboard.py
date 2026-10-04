@@ -229,6 +229,14 @@ def plan_fretboard_machining(
 
     nut = geometry.locking_nut
     slotted = nut is not None and not nut.is_locking
+    # After the radius the blank's own top is left only round the board:
+    # every later program's Z zero is there, as the radius program's was.
+    touch_z = (
+        "re-touch Z on the blank's untouched top beside the board (Z zero, as "
+        "for Fretboard_radius) - not on the radiused surface, which lies "
+        f"{skim:g} mm lower at the crown: touched there, every cut would go "
+        "that much too deep."
+    )
 
     index_pins = Setup(
         "Fretboard_index_pins",
@@ -332,8 +340,7 @@ def plan_fretboard_machining(
         + (" - and the nut's slot" if slotted else ""),
         tuple(inlay_paths),
         (
-            "Same fixture and X/Y zero; change to the inlay end mill and "
-            "re-touch Z on the blank top.",
+            "Same fixture and X/Y zero; change to the inlay end mill and " + touch_z,
             "Each pocket follows its marker rounded to the tool, as its "
             "piece is cut (Fretboard_inlay_pieces); barbs narrower than the "
             "tool are left out of both.",
@@ -399,9 +406,11 @@ def plan_fretboard_machining(
         f"{geometry.fret_slot_depth:g} mm below the radius",
         tuple(slot_paths),
         (
-            "Same fixture and X/Y zero; change to the fret-slot cutter and "
-            "re-touch Z on the blank top.",
-            f"Each slot follows the radius across the board in {passes} passes.",
+            "Same fixture and X/Y zero; change to the fret-slot cutter and " + touch_z,
+            f"Each slot follows the radius across the board in {passes} passes "
+            f"of {geometry.fret_slot_depth / passes:.2f} mm: it starts "
+            f"{parameters.slot_overshoot:g} mm past the board's edge, the cutter "
+            "brought down to 1 mm over the radius there and fed in from it.",
             *(
                 (
                     "The first slot is the zero fret's, on the nut line: the "
@@ -504,7 +513,7 @@ def plan_fretboard_machining(
             ),
         ),
         (
-            "Same fixture and X/Y zero; back to the flat end mill, re-touch Z.",
+            "Same fixture and X/Y zero; back to the flat end mill and " + touch_z,
             f"Leaves {flat.tab_count} tabs {flat.tab_height:g} mm high; saw and "
             "sand them off.",
             *shelf_notes,

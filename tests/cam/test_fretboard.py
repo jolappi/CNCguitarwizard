@@ -1,6 +1,7 @@
 """Tests for the single-sided fretboard machining plan on Prototype001."""
 
 import math
+from dataclasses import replace
 
 import pytest
 
@@ -208,3 +209,28 @@ def test_the_inlay_cutter_is_fast_and_shallow_too(geometry) -> None:  # type: ig
     assert "M3 S28000" in GCodeWriter.for_parameters(machining).render(
         pieces.pieces, machining
     )
+
+
+@pytest.mark.parametrize("nut_style", ["shelf", "zero_fret"])
+def test_every_slot_starts_one_step_into_the_radius(nut_style: str) -> None:
+    """No slot starts deeper than a pass: its cutter comes down over the
+    radius at the start and feeds in one step."""
+    geometry = replace(Prototype001Parameters(), nut_style=nut_style).build()  # type: ignore[arg-type]
+    parameters = FretboardMachiningParameters()
+    plan = plan_fretboard_machining(geometry, parameters)
+    surface = geometry.fretboard_surface
+    skim = parameters.blank_thickness - surface.center_thickness
+    origin_y = plan.index_pin_positions[0][1]
+
+    def radius_z(machine_y: float) -> float:
+        y = machine_y + origin_y
+        return -(skim + surface.radius - math.sqrt(surface.radius**2 - y**2))
+
+    step = parameters.slot.step_down
+    for path in plan.slots.toolpaths:
+        first = next(move for move in path.moves if not move.rapid)
+        assert radius_z(first.y) - first.z <= step + 1e-6
+        # Rapids stay over the radius, the last one 1 mm over it.
+        rapids = [move for move in path.moves if move.rapid]
+        assert all(move.z >= radius_z(move.y) + 1.0 - 1e-6 for move in rapids)
+    assert any("not on the radiused surface" in note for note in plan.slots.notes)

@@ -417,6 +417,10 @@
 
 ### Changed
 
+- The fretboard programs' notes say where to re-touch Z: on the blank's
+  untouched top beside the board, not on the radiused surface (1 mm lower
+  at the crown, so every cut, the fret slots' first included, would go
+  that much too deep); the slot program also says how each slot starts.
 - The fret slots are cut at 30 000 rpm, at most 0.2 mm a pass (they were
   12 000 rpm, 0.9 mm), so the 0.6 mm cutter does not snap; both are
   settings in the machining form (`fret_slot_spindle_speed`,
