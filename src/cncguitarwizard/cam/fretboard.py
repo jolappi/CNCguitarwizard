@@ -15,7 +15,7 @@ changes between programs (re-touch Z on the blank top after each):
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING
 
 from ..geometry.primitives import Point2D, rounded_polygon_points
@@ -45,23 +45,27 @@ def _ball_tool() -> MachiningParameters:
 
 
 def _slot_tool() -> MachiningParameters:
+    # Fast and shallow: a 0.6 mm cutter snaps otherwise (the machining
+    # form's fret_slot_spindle_speed and fret_slot_step_down).
     return MachiningParameters(
         tool_diameter=0.6,
-        spindle_speed=12000.0,
+        spindle_speed=30000.0,
         feed_rate=300.0,
         plunge_rate=100.0,
-        step_down=0.9,
+        step_down=0.2,
         stock_margin=35.0,
     )
 
 
 def _inlay_tool() -> MachiningParameters:
+    # As the fret-slot cutter: fast and shallow (the machining form's
+    # inlay_spindle_speed and inlay_step_down).
     return MachiningParameters(
         tool_diameter=1.0,
-        spindle_speed=12000.0,
+        spindle_speed=30000.0,
         feed_rate=300.0,
         plunge_rate=100.0,
-        step_down=1.0,
+        step_down=0.2,
         finishing_allowance=0.0,
         stock_margin=35.0,
     )
@@ -109,6 +113,29 @@ class FretboardMachiningParameters:
             raise ToolpathError("slot_overshoot must be finite and non-negative.")
         if self.ball.tool_tip != "ball":
             raise ToolpathError("The surfacing tool must be a ball nose.")
+
+    def with_form_settings(
+        self, machining: MachiningParameters
+    ) -> FretboardMachiningParameters:
+        """Return these with the small cutters' speeds and step-downs set.
+
+        From the machining form: the fret-slot cutter's
+        (``fret_slot_spindle_speed``, ``fret_slot_step_down``) and the
+        inlay cutter's (``inlay_spindle_speed``, ``inlay_step_down``).
+        """
+        return replace(
+            self,
+            slot=replace(
+                self.slot,
+                spindle_speed=machining.fret_slot_spindle_speed,
+                step_down=machining.fret_slot_step_down,
+            ),
+            inlay=replace(
+                self.inlay,
+                spindle_speed=machining.inlay_spindle_speed,
+                step_down=machining.inlay_step_down,
+            ),
+        )
 
 
 @dataclass(frozen=True, slots=True)

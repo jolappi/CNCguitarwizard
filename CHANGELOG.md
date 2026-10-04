@@ -417,6 +417,12 @@
 
 ### Changed
 
+- The fret slots are cut at 30 000 rpm, at most 0.2 mm a pass (they were
+  12 000 rpm, 0.9 mm), so the 0.6 mm cutter does not snap; both are
+  settings in the machining form (`fret_slot_spindle_speed`,
+  `fret_slot_step_down`). The 1 mm inlay cutter likewise (it was
+  12 000 rpm, 1 mm a pass), for the inlay pockets, a slotted nut's slot
+  and the inlay pieces (`inlay_spindle_speed`, `inlay_step_down`).
 - A closed engraving line the area cuts (a ripple ring, the pinstripe) is
   turned to start at the cut, so its pieces are no longer split again at
   its seam.

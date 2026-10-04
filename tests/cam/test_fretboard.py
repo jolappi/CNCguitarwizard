@@ -6,12 +6,16 @@ import pytest
 
 from cncguitarwizard.cam import (
     FretboardMachiningParameters,
+    MachiningParameters,
     ToolpathError,
     fretboard_outline_polygon,
     plan_fretboard_machining,
 )
+from cncguitarwizard.cam.gcode import GCodeWriter
+from cncguitarwizard.cam.inlays import plan_inlay_machining
 from cncguitarwizard.geometry.primitives import Point2D, point_in_polygon
 from cncguitarwizard.presets import Prototype001Parameters
+from cncguitarwizard.webapp import parameter_schema
 
 
 @pytest.fixture(scope="module")
@@ -109,9 +113,14 @@ def test_fret_slots_follow_the_radius_across_the_board(  # type: ignore[no-untyp
     assert min(move.z for move in centre) == pytest.approx(-(skim + depth), abs=0.01)
     half = abs(geometry.fret_layout.slots[0].start.y) + parameters.slot_overshoot
     assert max(abs(move.y + origin_y) for move in cut_moves) == pytest.approx(half)
-    # Three passes of at most 0.9 mm.
-    depths = sorted({round(move.z, 2) for move in centre}, reverse=True)
-    assert len(depths) == 3
+    # Passes of at most 0.2 mm, so the 0.6 mm cutter does not snap, at
+    # 30 000 rpm.
+    depths = sorted({round(move.z, 3) for move in centre}, reverse=True)
+    assert len(depths) == math.ceil(depth / 0.2 - 1e-9)
+    assert all(a - b <= 0.2 + 1e-6 for a, b in zip(depths, depths[1:], strict=False))
+    assert plan.slots.tool is not None
+    assert plan.slots.tool.spindle_speed == 30000.0
+    assert plan.slots.tool.step_down == 0.2
 
 
 def test_inlay_pockets_are_cut_from_the_crown_to_their_depth(  # type: ignore[no-untyped-def]
@@ -139,3 +148,63 @@ def test_blank_thinner_than_the_board_is_rejected(geometry) -> None:  # type: ig
         plan_fretboard_machining(
             geometry, FretboardMachiningParameters(blank_thickness=5.0)
         )
+
+
+def test_the_machining_form_sets_the_fret_slot_cutter(geometry) -> None:  # type: ignore[no-untyped-def]
+    machining = MachiningParameters(
+        fret_slot_spindle_speed=24000.0, fret_slot_step_down=0.3
+    )
+    plan = plan_fretboard_machining(
+        geometry, FretboardMachiningParameters().with_form_settings(machining)
+    )
+    tool = plan.slots.tool
+    assert tool is not None
+    assert tool.spindle_speed == 24000.0 and tool.step_down == 0.3
+    assert f"in {math.ceil(geometry.fret_slot_depth / 0.3 - 1e-9)} passes" in " ".join(
+        plan.slots.notes
+    )
+    program = GCodeWriter.for_parameters(machining).render(plan.slots, machining)
+    assert "M3 S24000" in program
+    # The defaults: 30 000 rpm, 0.2 mm a pass.
+    default = MachiningParameters()
+    assert default.fret_slot_spindle_speed == 30000.0
+    assert default.fret_slot_step_down == 0.2
+    with pytest.raises(ToolpathError, match="fret_slot_step_down"):
+        MachiningParameters(fret_slot_step_down=0.0)
+    fields = {
+        field["name"]: field
+        for group in parameter_schema()["machining"]
+        for field in group["fields"]
+    }
+    for name in (
+        "fret_slot_spindle_speed",
+        "fret_slot_step_down",
+        "inlay_spindle_speed",
+        "inlay_step_down",
+    ):
+        assert not fields[name]["advanced"] and fields[name]["help"]
+
+
+def test_the_inlay_cutter_is_fast_and_shallow_too(geometry) -> None:  # type: ignore[no-untyped-def]
+    default = plan_fretboard_machining(geometry, FretboardMachiningParameters())
+    tool = default.inlays.tool
+    assert tool is not None
+    assert tool.spindle_speed == 30000.0 and tool.step_down == 0.2
+    # Every pocket in passes of at most 0.2 mm down to its floor.
+    levels = sorted(
+        {round(move.z, 3) for move in default.inlays.toolpaths[0].moves if move.z < 0},
+        reverse=True,
+    )
+    assert all(a - b <= 0.2 + 1e-6 for a, b in zip(levels, levels[1:], strict=False))
+    machining = MachiningParameters(inlay_spindle_speed=28000.0, inlay_step_down=0.4)
+    tuned = FretboardMachiningParameters().with_form_settings(machining)
+    plan = plan_fretboard_machining(geometry, tuned)
+    assert plan.inlays.tool is not None
+    assert plan.inlays.tool.spindle_speed == 28000.0
+    assert plan.inlays.tool.step_down == 0.4
+    pieces = plan_inlay_machining(geometry.inlay_layout, tuned)
+    assert pieces is not None and pieces.pieces.tool is not None
+    assert pieces.pieces.tool.spindle_speed == 28000.0
+    assert "M3 S28000" in GCodeWriter.for_parameters(machining).render(
+        pieces.pieces, machining
+    )

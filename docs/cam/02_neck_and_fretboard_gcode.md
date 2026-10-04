@@ -15,8 +15,8 @@ sample that grid.
 | --- | --- | --- |
 | 6 mm flat end mill | index pins, truss-rod channel, headstock face, tuner marks, neck roughing, both outlines | as the body |
 | 6 mm ball nose | neck back finish, fretboard radius | same feeds, `tool_tip="ball"` |
-| 1 mm end mill | inlay pockets | 12 000 rpm, F300, plunge F100, 1 mm step-down |
-| 0.6 mm fret-slot cutter | fret slots | 12 000 rpm, F300, plunge F100, 0.9 mm per pass |
+| 1 mm end mill | inlay pockets, a slotted nut's slot, the inlay pieces | `inlay_spindle_speed` (30 000 rpm), F300, plunge F100, at most `inlay_step_down` (0.2 mm) per pass, so it does not snap — both set in the machining form |
+| 0.6 mm fret-slot cutter | fret slots | `fret_slot_spindle_speed` (30 000 rpm), F300, plunge F100, at most `fret_slot_step_down` (0.2 mm) per pass, so the thin cutter does not snap — both set in the machining form |
 
 Every program states its tool in the header. The machine has no tool
 changer, so after each change the operator re-touches Z on the blank top;
@@ -124,7 +124,7 @@ the top in one fixturing.
 | `Fretboard_index_pins.nc` | flat | Both dowel holes |
 | `Fretboard_radius.nc` | ball | 430 mm radius; the crown ends `blank − 6` mm below the blank top, the edges 0.9 mm lower |
 | `Fretboard_inlays.nc` | 1 mm | Twelve barbed-wire pockets 2 mm below the crown, each the marker rounded to the tool (see below); barbs narrower than the tool are left out |
-| `Fretboard_slots.nc` | 0.6 mm | 24 slots that follow the radius across the board, 2.7 mm below the surface, three 0.9 mm passes, 1 mm past each edge |
+| `Fretboard_slots.nc` | 0.6 mm | 24 slots that follow the radius across the board, 2.7 mm below the surface, in equal passes of at most `fret_slot_step_down` (14 of 0.19 mm at 0.2), 1 mm past each edge, at `fret_slot_spindle_speed` (30 000 rpm) |
 | `Fretboard_outline.nc` | flat | A locking nut's shelf first, when the board runs on under it; then the tapered outline with square nut corners (`fretboard_nut_corner_radius`, 0 by default) and tabs |
 
 Under an R2 locking nut (see [Headstock](../geometry/06_headstock.md#locking-nut))

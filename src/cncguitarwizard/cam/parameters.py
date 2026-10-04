@@ -89,6 +89,17 @@ class MachiningParameters:
         engraving_feed_rate: Feed along the engraved lines.
         relief_tool_diameter: The flat end mill clearing a relief
             engraving's shapes (the camo pattern) to their levels.
+        fret_slot_spindle_speed: The 0.6 mm fret-slot cutter's spindle
+            speed, rpm (30 000 by default: a cutter that thin wants it
+            fast).
+        fret_slot_step_down: The most the fret-slot cutter goes down per
+            pass, in mm (0.2 by default, so it does not snap); the slot's
+            depth is split into equal passes no deeper.
+        inlay_spindle_speed: The 1 mm inlay cutter's spindle speed, rpm
+            (30 000 by default), for the inlay pockets, a slotted nut's
+            slot and the inlay pieces cut from sheet.
+        inlay_step_down: The most the inlay cutter goes down per pass, in
+            mm (0.2 by default, so it does not snap).
         carve_tool_diameter: The flat end mill roughing a carved top;
             ``0`` uses the main tool. A bigger one roughs the arch far
             quicker (the time goes with the wood over its width).
@@ -130,6 +141,10 @@ class MachiningParameters:
     engraving_step_down: float = 1.0
     engraving_feed_rate: float = 600.0
     relief_tool_diameter: float = 3.0
+    fret_slot_spindle_speed: float = 30000.0
+    fret_slot_step_down: float = 0.2
+    inlay_spindle_speed: float = 30000.0
+    inlay_step_down: float = 0.2
     carve_tool_diameter: float = 0.0
     carve_finish: bool = False
 
@@ -153,6 +168,10 @@ class MachiningParameters:
             "engraving_step_down": self.engraving_step_down,
             "engraving_feed_rate": self.engraving_feed_rate,
             "relief_tool_diameter": self.relief_tool_diameter,
+            "fret_slot_spindle_speed": self.fret_slot_spindle_speed,
+            "fret_slot_step_down": self.fret_slot_step_down,
+            "inlay_spindle_speed": self.inlay_spindle_speed,
+            "inlay_step_down": self.inlay_step_down,
         }
         for name, value in positive.items():
             if not math.isfinite(value) or value <= 0.0:

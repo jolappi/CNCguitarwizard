@@ -214,16 +214,14 @@ class Prototype001Build:
 
     def _plan_fretboard(self) -> None:
         assert self.geometry is not None
+        # The machining form sets the fret-slot and inlay cutters' speeds
+        # and step-downs.
+        fretboard = self.fretboard_machining.with_form_settings(self.machining)
         self._plans.append(
-            (
-                "Fretboard",
-                plan_fretboard_machining(self.geometry, self.fretboard_machining),
-            )
+            ("Fretboard", plan_fretboard_machining(self.geometry, fretboard))
         )
         # The marker pieces, cut from sheet to fit the pockets (none for dots).
-        inlays = plan_inlay_machining(
-            self.geometry.inlay_layout, self.fretboard_machining
-        )
+        inlays = plan_inlay_machining(self.geometry.inlay_layout, fretboard)
         if inlays is not None:
             self._plans.append(("Inlays", inlays))
 

@@ -252,6 +252,10 @@ _BASIC_FIELDS: frozenset[str] = frozenset(
         "neck_carbon_rod_size",
         "carve_tool_diameter",
         "carve_finish",
+        "fret_slot_spindle_speed",
+        "fret_slot_step_down",
+        "inlay_spindle_speed",
+        "inlay_step_down",
     }
 )
 
