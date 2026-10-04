@@ -68,6 +68,21 @@ prism cuts it back to the tip (`_render_headstock_tip_cut`); the neck's
 outline program, its blank and the tuner holes' tip clearance follow the
 shaped tip. A fitted headstock ignores them.
 
+A sharp point (a Jackson style headstock) is the two edges meeting: drawn
+edges whose tip corners end less than `TIP_POINT_WIDTH` (1 mm) apart meet
+in one point between them (`HeadstockPlan.pointed`, `tip_point`), with no
+tip line and no tip points (refused with one). The edges may narrow to it
+under 1 mm wide over their last run, narrowing all the way; anywhere else
+they must stay 1 mm apart (a pinch, or edges crossing before the tip, is
+still "the drawn edges meet or cross"). The outline runs down one edge to
+the point and back up the other, so the neck's outline program cuts the
+point. The FreeCAD loft keeps `POINT_LOFT_WIDTH` (12 mm) wide over that
+last run under it (`point_start`, `envelope_y`) and a prism cuts it back to
+the two edges and the point from 1 mm before (`_render_headstock_tip_cut`).
+In the headstock editor, a tip corner dragged within 3 mm of the other
+snaps onto it; the point then drags as one, and Shift-dragging a corner
+parts them again.
+
 The tuner holes still come from `headstock_style`. `headstock_design()`
 checks every hole against the drawn outline — across the neck to each
 edge at the hole's own distance from the nut and along it to the tip, as

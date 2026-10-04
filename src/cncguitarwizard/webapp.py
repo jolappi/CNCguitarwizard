@@ -125,6 +125,7 @@ _CHOICE_LABELS: dict[str, dict[str, str]] = {
         "flame": "Flame (wavy lines across the body)",
         "ripples": "Ripples (rings over rings)",
         "crackle": "Crackle (random cells)",
+        "camo": "Camo (woodland relief, four levels)",
         "pinstripe": "Pinstripe (round the edge, Jackson RR / Alexi Hexed)",
     },
     "inlay_style": {
@@ -465,7 +466,9 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         drawn), its pickup and switch openings and its holes — or ``None``;
         ``arm_contour`` and ``belly_cut`` ``{"points", "automatic"}`` — the
         lines where they start (see ``_contour_line``) — or ``None``;
-        ``engraving`` the decorative engraving's lines, or ``None``.
+        ``engraving`` the decorative engraving's lines, or ``None``;
+        ``relief`` a relief engraving's shapes ``{"outline", "depth"}``
+        (camo), empty for none.
     """
     try:
         built = Prototype001Parameters(**_coerce(payload.get("prototype", {})))
@@ -664,6 +667,15 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
             [local(line) for line in layout.engraving.lines]
             if layout.engraving is not None
             else None
+        ),
+        # A relief's shapes and their depths (camo).
+        "relief": (
+            [
+                {"outline": local(shape.outline), "depth": shape.depth}
+                for shape in layout.engraving.pockets
+            ]
+            if layout.engraving is not None
+            else []
         ),
     }
 

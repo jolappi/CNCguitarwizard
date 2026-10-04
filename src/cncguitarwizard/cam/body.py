@@ -60,6 +60,8 @@ class BodyMachiningPlan:
             back roundover, or ``None``.
         top_engraving: Top-face V-bit program for the decorative
             engraving, or ``None``.
+        top_relief: Top-face flat end mill program clearing a relief
+            engraving's shapes (camo) to their levels, or ``None``.
         top_carve: Top-face program arching a carved top (roughed with
             the main tool, finished with a ball nose), run first, or
             ``None``.
@@ -93,6 +95,7 @@ class BodyMachiningPlan:
     top_edges: Setup | None = None
     back_edges: Setup | None = None
     top_engraving: Setup | None = None
+    top_relief: Setup | None = None
     top_carve: Setup | None = None
     top_steps: Setup | None = None
 
@@ -112,6 +115,7 @@ class BodyMachiningPlan:
             self.top_small_holes,
             self.top_edges,
             self.top_engraving,
+            self.top_relief,
             self.back,
             self.back_controls,
             self.back_small_holes,
@@ -278,6 +282,16 @@ def plan_body_machining(
             "The outline is cut to half depth plus overlap; the blank stays in "
             "one piece.",
             "The jack bore enters from the edge and is not part of this program.",
+            *(
+                (
+                    "Drill the wire holes by hand once every cavity is cut, "
+                    "with a long bit:",
+                    *(hole.note() for hole in body.wire_holes),
+                )
+                if body.wire_holes
+                else ()
+            ),
+            *body.wire_notes,
         ),
         reference_points,
     )
@@ -415,6 +429,7 @@ def plan_body_machining(
     )
 
     top_engraving = _engraving_setup(body, top_frame, parameters, reference_points)
+    top_relief = _relief_setup(body, top_frame, parameters, reference_points)
     top_carve = _carve_setup(body, top_frame, parameters, reference_points)
     top_steps = _steps_setup(body, top_frame, parameters, reference_points)
 
@@ -424,7 +439,13 @@ def plan_body_machining(
     for optional in (top_carve, top_steps):
         if optional is not None:
             previews.append(top_outline)
-    for optional in (top_controls, top_small_holes, top_edges, top_engraving):
+    for optional in (
+        top_controls,
+        top_small_holes,
+        top_edges,
+        top_engraving,
+        top_relief,
+    ):
         if optional is not None:
             previews.append(top_outline)
     previews.append(back_outline)
@@ -449,6 +470,7 @@ def plan_body_machining(
         top_edges=top_edges,
         back_edges=back_edges,
         top_engraving=top_engraving,
+        top_relief=top_relief,
         top_carve=top_carve,
         top_steps=top_steps,
     )
@@ -496,6 +518,7 @@ def _renamed(plan: BodyMachiningPlan, prefix: str) -> BodyMachiningPlan:
             "top_edges",
             "back_edges",
             "top_engraving",
+            "top_relief",
             "top_carve",
             "top_steps",
         )
@@ -825,6 +848,57 @@ def _engraving_setup(
             f"{parameters.engraving_tool_angle:g} degree V-bit and re-touch Z "
             "on the stock top.",
             f"The grooves come out {tool.tool_diameter:.2f} mm wide at the face.",
+            "Run it before any roundover, while the top is still flat.",
+        ),
+        reference_points,
+        tool,
+    )
+
+
+def _relief_setup(
+    body: BodySolid,
+    frame: _Frame,
+    parameters: MachiningParameters,
+    reference_points: tuple[tuple[float, float], ...],
+) -> Setup | None:
+    """Return the flat end mill's program for a relief engraving, or ``None``.
+
+    Each shape is cleared flat to its level below the face over it (a
+    stepped top's band lowers both); one inside another is cut on from
+    that one's floor.
+    """
+    if body.engraving is None or not body.engraving.pockets:
+        return None
+    tool = replace(
+        parameters,
+        tool_diameter=parameters.relief_tool_diameter,
+        step_down=min(parameters.step_down, parameters.engraving_step_down),
+        plunge_rate=min(parameters.plunge_rate, 150.0),
+    )
+    shapes = body.engraving.pockets
+    paths = tuple(
+        pocket(
+            f"Relief shape {index} ({shape.depth:g} mm)",
+            frame.polygon(shape.outline),
+            shape.face_drop + shape.depth,
+            tool,
+            start_depth=shape.face_drop
+            + (shapes[shape.within].depth if shape.within is not None else 0.0),
+        )
+        for index, shape in enumerate(shapes, start=1)
+    )
+    levels = ", ".join(f"{depth:g}" for depth in sorted({s.depth for s in shapes}))
+    return Setup(
+        "Body_top_relief",
+        f"Body top face - relief, {len(shapes)} shapes cleared {levels} mm deep "
+        f"with a {tool.tool_diameter:g} mm flat end mill",
+        paths,
+        (
+            "Same fixture and X/Y zero as Body_top; change to a "
+            f"{tool.tool_diameter:g} mm flat end mill and re-touch Z on the stock "
+            "top.",
+            "Each shape is cleared flat to its own level below the face; a "
+            "shape inside another is cut on from that one's floor.",
             "Run it before any roundover, while the top is still flat.",
         ),
         reference_points,

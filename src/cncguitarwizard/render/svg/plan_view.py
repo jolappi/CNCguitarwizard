@@ -183,6 +183,18 @@ def render_plan_view_svg(geometry: Prototype001Geometry) -> str:
     jack = body.jack_hole
     if jack is not None:
         parts.append(circle(jack.start_x, jack.start_y, jack.diameter / 2.0, hole))
+    # The wire holes drilled by hand, dashed from cavity to cavity.
+    for wire in body.wire_holes:
+        parts.append(
+            line(
+                wire.start.x,
+                wire.start.y,
+                wire.end.x,
+                wire.end.y,
+                f'stroke="#c0392b" stroke-width="{wire.diameter:g}" '
+                'stroke-opacity="0.45" stroke-dasharray="3,2"',
+            )
+        )
     parts.append(
         line(
             min_x + 5.0,

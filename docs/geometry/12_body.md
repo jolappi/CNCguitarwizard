@@ -26,6 +26,7 @@ coordinate gives the left-handed twin, which `handedness = "left"` builds
 | `DrilledHole` | Vertical round hole from the top face (pot/switch shafts, screw recesses). |
 | `BridgeMounting` | Bridge reference line with optional pivot-stud holes and optional sustain-block cavity. |
 | `JackHole` | Sideways cylindrical bore in from the edge. |
+| `WireHole` | A straight wire hole drilled by hand from one cavity into another (`plan_wiring`, see *Wire channels*). |
 | `BodySolid` | The complete assembly; cross-validates every feature. |
 
 All three cavity classes share one read interface — `name`, `depth`,
@@ -553,6 +554,61 @@ would sit on each other) and any hole that would open into the battery
 box: a top hole deep enough to reach its floor (a string-through hole) or
 a hole from the back under its cover.
 
+### Wire channels
+
+`body_wire_channels` (on by default) wires the pickups to the controls and
+grounds the bridge (`geometry.body.wiring.plan_wiring`, laid out at build
+time, not in the body editor). Each pickup route joins whichever cavity
+already wired is nearest — the control cavity (the rear one, or a
+pickguard's or plate's in the top) or a pickup route wired before it — so
+pickups in a row chain to the controls as on a Stratocaster or a Les Paul.
+The bridge's ground wire runs from the control cavity to a tremolo's
+spring cavity (its claw) if a hole reaches it, or else to the nearest of
+the bridge's routes and holes (a Kahler's baseplate cutout, a
+Tune-o-matic's stud, a string-through hole). No controls (`none`), no
+wiring.
+
+A machine cutting from one face leaves any channel open on it, so a
+channel is routed only where the pickguard hides it: between two top
+routes (pickups, a pickguard's control cavity), `WIRE_CHANNEL_WIDTH`
+(10 mm) wide and `WIRE_CHANNEL_DEPTH` (16 mm) deep at most, every part of
+it outside the routes under the guard and off its openings (they may
+reach `_OPENING_SLACK`, 1 mm, past a route), `WIRE_WALL` (2 mm) from every
+other cavity and hole. It is one of the body's top cavities
+(`BodySolid.wire_channels`), cut in `Body_top` and in the model; it may
+open into the routes it joins.
+
+Every other way is a straight hole drilled by hand with a long bit
+(`BodySolid.wire_holes`, `WireHole`; `WIRE_HOLE_DIAMETER` 6 mm, the ground
+`GROUND_HOLE_DIAMETER` 3 mm). The bit goes in through the open face of the
+cavity it is drilled from — the top of a route, the back of a rear cavity
+— clearing its far rim, and meets the wood on that cavity's wall; the hole
+runs on down (or up) through the wood and breaks into the other cavity
+through its wall. In plan it runs centre to centre, or between the
+cavities' nearest points if that is shorter. Its height and slope are
+found so that it
+
+- opens into both cavities through their walls (a route above its floor,
+  a rear cavity below its ceiling),
+- leaves `WIRE_SKIN` (3 mm) under the top (lower over a carved or stepped
+  top or an arm contour) and over the back (higher in a belly cut), and
+  `WIRE_WALL` round every other cavity and hole (the jack's bore
+  included) — it may pass under a route or over a rear cavity,
+- stays within the body, `WIRE_WALL` from its edge, no steeper than
+  `WIRE_STEEPEST` (60°), the bit's run from the rim no longer than
+  `WIRE_DRILL_REACH` (300 mm).
+
+Of the holes that fit, both ways round, the one that leaves (or reaches)
+its route nearest the route's floor, where the leads lie, then the
+shallowest; between two rear cavities simply the shallowest. Each is cut
+in the model and drawn dashed red in the plan view, and `Body_top`'s
+notes say how to drill it: the cavity it is drilled from and into, the
+face the bit comes in through, its angle from level, where it starts
+(with its height above the back) and where it aims, and its length. A way
+no straight hole fits is left to the builder with a note
+(`BodySolid.wire_notes`). A neck-through body's parts carry the channels
+that reach them; the holes are drilled through the glued body.
+
 ## Edge finishes and contours
 
 Optional, and off by default (`geometry.body.edges`):
@@ -821,7 +877,47 @@ are the scroll's own):
 | `flame` | Wavy lines across the body as in flamed maple, about a fifth of the spacing (at least 6 mm) apart, each drifting a little from the last so they never cross (`FLAME_WAVELENGTH`, `FLAME_AMPLITUDE`) |
 | `ripples` | Groups of `RIPPLE_RINGS` (2–6) rings `RIPPLE_GAP` (8 mm) apart, one group per twice the spacing squared, each covering the groups laid before it |
 | `crackle` | The cells of a random Voronoi pattern, as crazed lacquer, about the spacing across, each shared edge engraved once |
+| `camo` | Woodland camouflage as a relief, not lines: closed shapes cleared flat to four levels (see *Camo relief*, below) |
 | `pinstripe` | One stripe round the body `PINSTRIPE_INSET` (0.5 mm) inside the margin, following the edge as a painted pinstripe does (Jackson RR, ESP LTD Alexi Hexed), broken where a cavity, the bridge, the pickguard or a contour is in its way and where a horn narrows past twice the margin; neither the seed nor the spacing changes it — set its distance from the edge with `body_engraving_margin` and its width with `body_engraving_depth` (the V-bit's groove is about 1.15 × the depth wide) |
+
+### Camo relief
+
+`camo` (`pattern_pockets`, `RELIEF_PATTERNS`) is cut as a relief, not as
+lines: `Engraving.pockets`, closed shapes (`EngravedPocket`) each cleared
+flat to its own level with a flat end mill. Each is a lobed round
+(`CAMO_LOBES`, five harmonics round it) with `CAMO_ARMS` (1–3) arms
+reaching out of it (`CAMO_ARM_LENGTH` 0.35–0.8 × its size, tapering off
+over `CAMO_ARM_WIDTH`, 0.25–0.5 rad), `CAMO_SIZE` (0.3–0.55 × the spacing,
+at least `CAMO_SMALLEST` 12 mm) wide, stretched `CAMO_STRETCH` (up to
+2.3 ×) along the pattern's direction (one per seed, each shape ±
+`CAMO_TURN` 25°). Each gets one of `CAMO_LEVELS` (4) levels,
+`body_engraving_depth` / 4 apart — 0.5, 1, 1.5 and 2 mm at the default
+2 mm — at random, or one deeper than any shape its centre lies on. Up to
+`CAMO_COVER` (2.5) per the spacing squared of the area's bounds are laid,
+each wholly in the area, until `CAMO_GIVE_UP` (600) tries in a row lay
+none.
+Shapes at one level keep `CAMO_GAP` (3 mm) apart, so they never merge;
+shapes at different levels may lie over one another — the deeper shows
+where they overlap, as cutting each to its own depth leaves it — as long
+as each keeps `CAMO_KEEP` (half) of its outline showing; two that do not
+overlap keep `CAMO_GAP` apart too, so no thin wall stands between them. A
+shape that does not fit is tried again with fewer arms (an arm is what
+most often runs into something), then `CAMO_SHRINK` (0.75 ×) smaller and
+rounder, down to the smallest, so the gaps fill — still at least 12 mm
+across and armed or lobed. One started inside a shallower shape is shaped
+after it (`CAMO_INNER` 0.4–0.6 × its size, one arm at most; `CAMO_NEST`, a
+quarter of the tries, start inside a big one on purpose); one that lies
+wholly inside it is cut from its floor (`within`).
+
+A shape lies over a level face only (`EngravingArea.level`, the top's
+drop): on a carved top its plateau, on a stepped top within one band,
+its level measured from that band's face (`face_drop`).
+`Body_top_relief.nc` clears each shape with `relief_tool_diameter` (3 mm)
+in `engraving_step_down` passes, one inside another from that one's
+floor; the FreeCAD model cuts them a level at a time, and the body
+editor shades them darker the deeper they go, the deeper over the
+shallower. A neck-through part keeps
+the shapes that reach it, whole.
 
 ## Bridges
 

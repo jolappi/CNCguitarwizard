@@ -1236,7 +1236,16 @@ const bodyEditor = {
       });
     });
 
-    // The decorative engraving, drawn as the bit's centre lines.
+    // The decorative engraving, drawn as the bit's centre lines; a
+    // relief's shapes (camo) shaded darker the deeper they are cut, the
+    // deeper over the shallower where they overlap (as they are cut).
+    const deepest = Math.max(0, ...(layout.relief || []).map((shape) => shape.depth));
+    for (const shape of [...(layout.relief || [])].sort((a, b) => a.depth - b.depth)) {
+      const relief = this.element("path", {
+        class: "relief", d: this.pathData(shape.outline), "fill-opacity": 0.15 + 0.6 * shape.depth / deepest,
+      });
+      this.element("title", {}, relief).textContent = `Relief shape, ${shape.depth} mm deep`;
+    }
     for (const line of layout.engraving || []) {
       this.element("path", { class: "engraving", d: this.openPath(line) });
     }
@@ -2171,6 +2180,12 @@ function smoothCurve(points) {
   };
 }
 
+// A drawn headstock's edges meet in a point when their tip corners lie
+// closer than this (Python's TIP_POINT_WIDTH); dragged within the snap
+// distance, the corners are brought together.
+const HEADSTOCK_TIP_POINT = 1.0;
+const HEADSTOCK_POINT_SNAP = 3.0;
+
 const headstockEditor = {
   panel: document.getElementById("headstock-editor"),
   svg: document.getElementById("headstock-editor-svg"),
@@ -2283,6 +2298,19 @@ const headstockEditor = {
     return [Math.min(...ys), Math.max(...ys)];
   },
 
+  // Whether the edges meet in a point at the tip (closer than
+  // TIP_POINT_WIDTH, as Python's HeadstockPlan.pointed).
+  pointed() {
+    const [low, high] = this.tipCorners();
+    return high - low < HEADSTOCK_TIP_POINT;
+  },
+
+  // Where a pointed tip's edges meet.
+  tipPoint() {
+    const [low, high] = this.tipCorners();
+    return [-this.length(), (low + high) / 2];
+  },
+
   // Model Y of the +Y (1) or -Y (-1) edge at a distance from the nut.
   edgeY(distance, ySign) {
     const side = ySign * this.layout.bass_sign > 0 ? "bass" : "treble";
@@ -2295,6 +2323,7 @@ const headstockEditor = {
   // edge.
   tipOutline() {
     const length = this.length();
+    if (this.pointed()) return [this.tipPoint(), this.tipPoint()];
     const low = [-length, this.edgeY(length, -1)], high = [-length, this.edgeY(length, 1)];
     if (!this.tip.length) return [low, high];
     const points = [low, ...this.tip.map(([past, y]) => [-(length + past), y]), high];
@@ -2487,8 +2516,11 @@ const headstockEditor = {
     return bodyEditor.toModel.call(this, event);
   },
 
-  // Move one handle; a tip handle sets the length of both edges.
-  place(side, index, [x, y]) {
+  // Move one handle; a tip handle sets the length of both edges. Tip
+  // corners brought within HEADSTOCK_POINT_SNAP of each other meet in a
+  // point; a pointed tip's corners then move together (the point), unless
+  // Shift parts them.
+  place(side, index, [x, y], part = false) {
     const edge = this.edges[side];
     const isTip = index === edge.length - 1;
     const half = Math.round(y * this.sign(side) * 10) / 10;
@@ -2499,6 +2531,22 @@ const headstockEditor = {
       );
       distance = Math.max(distance, before + 2);
       for (const s of ["bass", "treble"]) this.edges[s][this.edges[s].length - 1][0] = distance;
+      const other = side === "bass" ? "treble" : "bass";
+      const otherEnd = this.edges[other][this.edges[other].length - 1];
+      const otherY = this.sign(other) * otherEnd[1];
+      if (this.dragPointed && !part) {
+        // The point moves: both corners to it.
+        edge[index][1] = half;
+        otherEnd[1] = Math.round(y * this.sign(other) * 10) / 10;
+        this.tip = [];
+        return;
+      }
+      if (!part && Math.abs(y - otherY) < HEADSTOCK_POINT_SNAP) {
+        // Close enough: they meet.
+        edge[index][1] = Math.round(otherY * this.sign(side) * 10) / 10;
+        this.tip = [];
+        return;
+      }
     } else {
       const low = index > 0 ? edge[index - 1][0] + 1 : 1;
       distance = Math.min(Math.max(distance, low), edge[index + 1][0] - 1);
@@ -2514,8 +2562,10 @@ const headstockEditor = {
     }
     event.preventDefault();
     handle.classList.add("dragging");
+    // A pointed tip's corner drags the point, unless Shift parts them.
+    this.dragPointed = index === this.edges[side].length - 1 && this.pointed();
     const move = (moveEvent) => {
-      this.place(side, index, this.toModel(moveEvent));
+      this.place(side, index, this.toModel(moveEvent), moveEvent.shiftKey);
       const bass = this.samples("bass"), treble = this.samples("treble");
       this.paths.bass.setAttribute("d", this.pathData(bass));
       this.paths.treble.setAttribute("d", this.pathData(treble));
@@ -2591,6 +2641,10 @@ const headstockEditor = {
   },
 
   addTipPoint(event) {
+    if (this.pointed()) {
+      this.setStatus("A pointed tip takes no tip handles: Shift-drag a tip corner to part the corners first.", "bad");
+      return;
+    }
     const [x, y] = this.toModel(event);
     const [low, high] = this.tipCorners();
     if (y <= low + 0.5 || y >= high - 0.5 || this.tip.some(([, py]) => Math.abs(py - y) < 0.5)) return;
@@ -2686,7 +2740,16 @@ const headstockEditor = {
     }
     this.size.textContent = `— ${this.reach().toFixed(0)} mm long`;
     const [low, high] = this.tipCorners();
-    if (this.tip.some(([, y]) => y <= low || y >= high)) {
+    // Nowhere narrower than HEADSTOCK_TIP_POINT but a pointed tip's last
+    // run, narrowing all the way to the point (as Python checks).
+    const length = this.length(), pointed = this.pointed();
+    const widths = [];
+    for (let d = 0; d < length; d += 2.5) widths.push([d, bassCurve(d) + trebleCurve(d)]);
+    const pinch = widths.find(([, width], i) => width < HEADSTOCK_TIP_POINT
+      && !(pointed && width > 0 && widths.slice(i + 1).every(([, later]) => later <= width + 1e-9)));
+    if (pinch) {
+      this.setStatus(`The edges meet or cross ${pinch[0].toFixed(0)} mm from the nut: keep them apart, or bring both tip corners together for a pointed tip.`, "bad");
+    } else if (this.tip.some(([, y]) => y <= low || y >= high)) {
       this.setStatus("A tip handle lies outside the tip's corners: move it in or remove it.", "bad");
     } else if (close.length) {
       this.setStatus(`Too close to the edge (keep ${limit} mm): ${close.join(", ")}.`, "bad");

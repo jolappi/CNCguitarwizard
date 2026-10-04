@@ -87,6 +87,8 @@ class MachiningParameters:
             degrees (its groove is ``2 * depth * tan(angle / 2)`` wide).
         engraving_step_down: Depth cut per engraving pass.
         engraving_feed_rate: Feed along the engraved lines.
+        relief_tool_diameter: The flat end mill clearing a relief
+            engraving's shapes (the camo pattern) to their levels.
         carve_tool_diameter: The flat end mill roughing a carved top;
             ``0`` uses the main tool. A bigger one roughs the arch far
             quicker (the time goes with the wood over its width).
@@ -127,6 +129,7 @@ class MachiningParameters:
     engraving_tool_angle: float = 60.0
     engraving_step_down: float = 1.0
     engraving_feed_rate: float = 600.0
+    relief_tool_diameter: float = 3.0
     carve_tool_diameter: float = 0.0
     carve_finish: bool = False
 
@@ -149,6 +152,7 @@ class MachiningParameters:
             "raster_link_spacing": self.raster_link_spacing,
             "engraving_step_down": self.engraving_step_down,
             "engraving_feed_rate": self.engraving_feed_rate,
+            "relief_tool_diameter": self.relief_tool_diameter,
         }
         for name, value in positive.items():
             if not math.isfinite(value) or value <= 0.0:

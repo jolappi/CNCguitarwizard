@@ -22,7 +22,7 @@ from .bridges import (
 from .carve import CarvedTop, plateau_round
 from .covers import CoverPlate, cover_screw_points
 from .edges import ContourCut, EdgeProfile
-from .engraving import Engraving
+from .engraving import EngravedPocket, Engraving
 from .hardware import (
     BridgeMounting,
     Cavity,
@@ -42,6 +42,7 @@ from .neck_through import (
 )
 from .outline import BodyOutline, TracedOutline
 from .steps import SteppedTop
+from .wiring import WireHole, WireSpace, Wiring, plan_wiring
 
 __all__ = [
     "CarvedTop",
@@ -62,6 +63,7 @@ __all__ = [
     "CircularCavity",
     "DrilledHole",
     "EdgeProfile",
+    "EngravedPocket",
     "Engraving",
     "FloydRoseSpec",
     "FloydRoseWidths",
@@ -80,6 +82,10 @@ __all__ = [
     "cover_screw_points",
     "mirrored_hardware",
     "turned_hardware",
+    "WireHole",
+    "WireSpace",
+    "Wiring",
+    "plan_wiring",
     "BodyPart",
     "body_part",
     "NeckThrough",

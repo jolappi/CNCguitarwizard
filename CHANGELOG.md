@@ -4,6 +4,46 @@
 
 ### Added
 
+- Pointed headstocks: drawn edges whose tip corners meet make a sharp
+  point (a Jackson style tip) instead of a tip line.
+  - In the headstock editor a tip corner dragged within 3 mm of the
+    other snaps onto it; the point then moves as one, and Shift-drag
+    parts the corners again.
+  - The edges may narrow to the point over their last run; a pinch or a
+    crossing anywhere else is still refused.
+  - The neck's outline program cuts the point, and the FreeCAD model is
+    lofted wide and cut back to it.
+- A `camo` engraving pattern, cut as a relief:
+  - Closed, lobed woodland shapes with one to three arms, stretched one
+    way and laid densely; a shape that does not fit is tried with fewer
+    arms, then smaller and rounder, so the gaps fill — the smallest still
+    12 mm across.
+  - Shapes at different levels lie over one another (the deeper shows
+    where they overlap, each keeping half its outline showing); shapes at
+    one level, and any two side by side, keep 3 mm apart.
+  - Each is cleared flat to one of four levels, a quarter of
+    `body_engraving_depth` apart (0.5, 1, 1.5 and 2 mm by default); one
+    wholly inside another is cut on from its floor.
+  - `Body_top_relief.nc` cuts them with a flat end mill
+    (`relief_tool_diameter`, 3 mm); the FreeCAD model cuts them and the
+    body editor shades them by depth.
+  - On a carved or stepped top they keep to a level face.
+- Wire channels between the cavities (`body_wire_channels`, on by
+  default):
+  - Every pickup route is wired to the controls, nearest first, so a row
+    of pickups chains to them.
+  - The bridge's ground wire runs from the controls to a tremolo's spring
+    cavity, or else the nearest bridge route or hole.
+  - Under a pickguard the channel is routed from the top (10 mm wide, up
+    to 16 mm deep) in `Body_top`.
+  - Every other way is a straight hole drilled by hand (6 mm, the ground
+    3 mm). Its height and angle are found so the bit gets in through the
+    cavity's open face, the hole keeps 3 mm under the top and over the
+    back and 2 mm from other cavities, and it opens into both cavities.
+  - Each hole is modelled in FreeCAD, drawn dashed in the plan view and
+    given in `Body_top`'s notes (from where, the angle, the aim, the
+    length).
+  - A way no straight hole fits is left to the builder with a note.
 - An inlay editor in the web app (*Inlay design*, under the headstock
   editor):
   - It draws the first fret marker's space on the board with the chosen
@@ -377,6 +417,9 @@
 
 ### Changed
 
+- A closed engraving line the area cuts (a ripple ring, the pinstripe) is
+  turned to start at the cut, so its pieces are no longer split again at
+  its seam.
 - The web app's build button reads *Build 3D and CNC files* (it was
   *Build Prototype001*).
 - A bridge kind takes only the string counts it is made for

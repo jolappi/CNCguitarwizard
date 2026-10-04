@@ -393,7 +393,25 @@ def body_part(body: BodySolid, part: BodyPart) -> BodySolid:
                 run = []
             if len(run) >= 2:
                 runs.append(tuple(run))
-        engraving = replace(engraving, lines=tuple(runs)) if runs else None
+        # A relief's shapes that reach the part, whole (one inside another
+        # reaches it too), renumbered.
+        kept = [
+            index
+            for index, shape in enumerate(engraving.pockets)
+            if reaches(shape.outline)
+        ]
+        renumbered: dict[int | None, int | None] = {
+            old: new for new, old in enumerate(kept)
+        }
+        pockets = tuple(
+            replace(shape, within=renumbered.get(shape.within))
+            for shape in (engraving.pockets[index] for index in kept)
+        )
+        engraving = (
+            replace(engraving, lines=tuple(runs), pockets=pockets)
+            if runs or pockets
+            else None
+        )
     return replace(
         body,
         outline=TracedOutline(outline),
@@ -418,6 +436,10 @@ def body_part(body: BodySolid, part: BodyPart) -> BodySolid:
         control_top_marks=tuple(h for h in body.control_top_marks if hole_reaches(h)),
         contours=tuple(c for c in body.contours if reaches(c.region())),
         truss_rod_access=cavity(body.truss_rod_access),
+        wire_channels=tuple(c for c in body.wire_channels if reaches(c.outline)),
+        # Drilled by hand through the glued body, not in a part's blank.
+        wire_holes=(),
+        wire_notes=(),
         engraving=engraving,
         edge_outline=part.edge_outline,
         checked=False,

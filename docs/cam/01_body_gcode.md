@@ -59,12 +59,13 @@ Three programs are written, in running order:
 | --- | --- | --- |
 | `Body_index_pins.nc` | Top up | The two dowel holes, through the blank (a body with no tail notch on the centerline, such as the drawn body's starting shape, gets a blank lengthened so the tail pin sits in waste; likewise a body whose neck pocket runs out past its face, such as the Jackson RR and Les Paul style templates, gets a blank long enough for pin 1 ahead of the pocket — a dowel plus the tool's and `index_pin_wall`'s clearance and `stock_edge_margin`) |
 | `Body_top_steps.nc` | Top up, on the dowels (only with `body_stepped_top`), before `Body_top` | A stepped top's bands, each a step deeper than the band inside it, in passes along the edge, each step's wall cut true by the last (see *Stepped top* in the body docs) |
-| `Body_top.nc` | Top up, on the dowels | Neck pocket (with a `neck_angle`, its floor then stepped down toward the mouth in 0.1 mm terraces), pickup routes, baseplate cutout, screw recesses, pot and switch shaft holes, a superstrat cavity's blade switch slot (through the top into its pocket), outline to half depth + overlap |
+| `Body_top.nc` | Top up, on the dowels | Neck pocket (with a `neck_angle`, its floor then stepped down toward the mouth in 0.1 mm terraces), pickup routes, baseplate cutout, screw recesses, pot and switch shaft holes, a superstrat cavity's blade switch slot (through the top into its pocket), the wire channels routed under a pickguard, outline to half depth + overlap; the notes say how to drill each wire hole by hand |
 | `Body_top_small_holes.nc` | Top up, on the dowels (only when needed) | Holes narrower than the main tool — a hardtail's string-through and pilot holes, a superstrat cavity's blade switch screws — with the `small_hole_tool_diameter` drill |
 | `Body_top_controls.nc` | Top up, on the dowels (Tele or Jazz Bass plate only) | The control plate recess, then the control cavity from its floor |
 | `Body_back.nc` | Flipped, on the dowels | Any tremolo spring cavity with its cover recess and deeper block clearance pocket, the neck-bolt ferrules, outline to half depth + overlap with tabs |
 | `Body_back_controls.nc` | Back up, on the dowels (rear control layouts or a battery box) | The control, switch and battery cover recesses and cavities, and a superstrat cavity's deeper blade switch pocket (the battery lead's channel is drilled by hand) |
 | `Body_top_edges.nc` | Top up, on the dowels (only with an arm contour or top roundover) | The arm contour (roughed in step-down layers, then finished with 1 mm passes) and the top roundover, with a ball nose the main tool's size |
+| `Body_top_relief.nc` | Top up, on the dowels (only with the `camo` engraving) | The camo relief's shapes, each cleared flat to its level (0.5, 1, 1.5 or 2 mm at the default depth) with a flat end mill (`relief_tool_diameter`, 3 mm) in `engraving_step_down` passes, one inside another on from that one's floor; run it before a top roundover |
 | `Body_top_engraving.nc` | Top up, on the dowels (only with `body_engraving`) | The decorative engraving with a V-bit (`engraving_tool_angle`, 60°), each line in `engraving_step_down` (1 mm) passes back and forth to `body_engraving_depth` (2 mm), the nearest line next; run it before a top roundover, while the top is flat |
 | `Body_back_small_holes.nc` | Back up, on the dowels | The neck-bolt holes (narrower than the main tool) with the `small_hole_tool_diameter` drill, from each ferrule's floor into the neck pocket, and the cover-screw spots on the recess ledges |
 | `Body_back_edges.nc` | Back up, on the dowels (only with a belly cut or back roundover) | The belly cut and the back roundover, with the ball nose |
@@ -148,7 +149,9 @@ cut, and the back setup's final passes lift over evenly spaced tabs.
 ## What the G-code does not cover
 
 - The jack bore enters from the edge and needs a drill jig.
-- Wire channels between cavities are not modelled.
+- The wire holes between cavities (where no pickguard hides a routed
+  channel) are drilled by hand with a long bit, as `Body_top`'s notes
+  say (see *Wire channels* in the body docs).
 - Every `.nc` file should be run through a simulator or air-cut before the
   first real blank; the planner has been checked geometrically (every
   cutting move lies inside its own feature), not on a machine.

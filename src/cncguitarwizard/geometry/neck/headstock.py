@@ -18,6 +18,15 @@ default) and +Y on a left-handed one (``bass_sign = 1.0``).
 """
 
 
+TIP_POINT_WIDTH = 1.0
+"""Drawn edges that end closer together than this (mm) meet in a point:
+a pointed tip."""
+
+POINT_LOFT_WIDTH = 12.0
+"""How wide a pointed tip's solid is lofted, at least (mm), before it is
+cut back to the point."""
+
+
 @dataclass(frozen=True, slots=True)
 class HeadstockPlan:
     """Represent a modern tapered headstock outline, symmetric by default.
@@ -60,7 +69,10 @@ class HeadstockPlan:
             through them, leaving each corner along its edge, so a round
             Stratocaster-like end meets its sides without a corner; empty,
             it is the straight cut ``tip_line``. A negative distance
-            notches the tip.
+            notches the tip. Drawn edges that end less than
+            ``TIP_POINT_WIDTH`` apart meet in a point instead (``pointed``,
+            a Jackson style point): no tip line and no tip points, the
+            edges narrowing to it.
 
     Raises:
         HeadstockGeometryError: If dimensions cannot form the tapered
@@ -85,6 +97,7 @@ class HeadstockPlan:
     shoulder_line: Line2D = field(init=False)
     tip_line: Line2D = field(init=False)
     boundary: tuple[Point2D, ...] = field(init=False)
+    point_start: float = field(init=False)
 
     def __post_init__(self) -> None:
         """Validate dimensions and construct the symmetric outline."""
@@ -133,17 +146,27 @@ class HeadstockPlan:
             Line2D(shoulder_left, shoulder_right),
         )
         object.__setattr__(self, "tip_line", Line2D(tip_left, tip_right))
-        tip = self.tip_outline()[1:-1]
-        object.__setattr__(
-            self,
-            "boundary",
-            (
+        if self.pointed:
+            # The two edges meet in the point: it once, between them.
+            boundary = (
                 nut_left,
-                *right_side,
-                *tip,
-                *reversed(left_side[1:]),
-            ),
-        )
+                *right_side[:-1],
+                self.tip_point,
+                *reversed(left_side[1:-1]),
+            )
+        else:
+            tip = self.tip_outline()[1:-1]
+            boundary = (nut_left, *right_side, *tip, *reversed(left_side[1:]))
+        object.__setattr__(self, "boundary", boundary)
+        # Where a pointed tip's last run under POINT_LOFT_WIDTH starts.
+        start = self.length
+        if self.pointed:
+            while (
+                start > self.shoulder_distance
+                and self.width_at_distance(start - 0.5) < POINT_LOFT_WIDTH
+            ):
+                start -= 0.5
+        object.__setattr__(self, "point_start", start)
 
     def _validate(self) -> None:
         """Reject dimensions that cannot form the intended tapered shape."""
@@ -190,6 +213,21 @@ class HeadstockPlan:
         """Return whether the edges were drawn rather than tapered."""
         return self.bass_edge is not None
 
+    @property
+    def pointed(self) -> bool:
+        """Return whether the drawn edges meet in a point at the tip."""
+        return self.is_drawn and (
+            abs(self.width_at_distance(self.length)) < TIP_POINT_WIDTH
+        )
+
+    @property
+    def tip_point(self) -> Point2D:
+        """Return where a pointed tip's edges meet: between their ends."""
+        return Point2D(
+            -self.length,
+            (self.edge_y(self.length, 1.0) + self.edge_y(self.length, -1.0)) / 2.0,
+        )
+
     def _edge_curve(self, side: Side) -> SmoothCurve:
         edge = self.bass_edge if side == "bass" else self.treble_edge
         assert edge is not None
@@ -223,17 +261,39 @@ class HeadstockPlan:
                     f"The drawn {side} edge must run from the nut to the tip "
                     f"without doubling back ({error})"
                 ) from error
-        for distance in self._drawn_distances():
-            if self.width_at_distance(distance) < 1.0:
+        # Nowhere under TIP_POINT_WIDTH, but for a pointed tip's last run,
+        # narrowing all the way to the point.
+        distances = self._drawn_distances()
+        widths = [self.width_at_distance(distance) for distance in distances]
+        pointed = abs(widths[-1]) < TIP_POINT_WIDTH
+        for index, (distance, width) in enumerate(
+            zip(distances[:-1], widths[:-1], strict=True)
+        ):
+            narrowing = pointed and all(
+                later <= width + 1e-9 for later in widths[index + 1 :]
+            )
+            if width < TIP_POINT_WIDTH and not (narrowing and width > 0.0):
                 raise HeadstockGeometryError(
-                    f"The drawn edges meet or cross {distance:.0f} mm from the nut."
+                    f"The drawn edges meet or cross {distance:.0f} mm from the "
+                    "nut: keep them apart, or bring both tip corners together "
+                    "for a pointed tip."
                 )
+        if not pointed and widths[-1] < TIP_POINT_WIDTH:
+            raise HeadstockGeometryError(
+                f"The drawn edges cross at the tip, {self.length:g} mm from the "
+                "nut."
+            )
 
     def _validate_tip(self) -> None:
         if not self.tip_points:
             return
         if not self.is_drawn:
             raise HeadstockGeometryError("Only a drawn headstock's tip takes points.")
+        if self.pointed:
+            raise HeadstockGeometryError(
+                "A pointed tip takes no tip points: remove them, or part the "
+                "tip corners."
+            )
         low = -self.half_width_at_y(self.length, -1.0)
         high = self.half_width_at_y(self.length, 1.0)
         previous = low
@@ -261,6 +321,8 @@ class HeadstockPlan:
         through them, leaving and reaching each corner along that side's
         edge (its tangent as long as the span's chord).
         """
+        if self.pointed:
+            return (self.tip_point, self.tip_point)
         low = Point2D(-self.length, self.edge_y(self.length, -1.0))
         high = Point2D(-self.length, self.edge_y(self.length, 1.0))
         if not self.tip_points:
@@ -336,6 +398,13 @@ class HeadstockPlan:
         solid built to this envelope covers a tip that bulges out.
         """
         edge = self.edge_y(distance, y_sign)
+        if self.pointed and distance >= self.point_start:
+            # Kept POINT_LOFT_WIDTH wide round its middle, to be cut back
+            # to the point.
+            middle = (self.edge_y(distance, 1.0) + self.edge_y(distance, -1.0)) / 2.0
+            return middle + y_sign * max(
+                POINT_LOFT_WIDTH / 2.0, y_sign * (edge - middle)
+            )
         if distance <= self.length or not self.tip_points:
             return edge
         reach = max(y_sign * point.y for point in self.tip_outline())

@@ -122,6 +122,7 @@
   #headstock-editor .lettering-line { fill: none; stroke: #1f6fb2; stroke-width: 0.9; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
   #headstock-editor .lettering-hit { fill: none; stroke: transparent; stroke-width: 5; pointer-events: stroke; cursor: move; }
   .body-editor .engraving { fill: none; stroke: #1f6fb2; stroke-width: 1.2; stroke-linecap: round; pointer-events: none; }
+  .body-editor .relief { fill: #2f4a1e; stroke: #1f6fb2; stroke-width: 0.6; pointer-events: none; }
   .body-editor .contour-line { fill: none; stroke-width: 0.9; pointer-events: none; }
   .body-editor .contour-handle { fill: #fff; stroke-width: 0.8; cursor: grab; }
   .body-editor .contour-line.arm, .body-editor .contour-handle.arm { stroke: #3d6b3a; }
@@ -278,9 +279,10 @@
     <div id="headstock-editor" class="body-editor hidden">
       <h2>Headstock design <span id="headstock-editor-size" class="note"></span></h2>
       <p class="note">Drag the handles to shape the two edges; drag a tip handle to change the length.
-        Click an edge to add a handle there, or the tip to shape it with one (drag it out for a point, in
-        for a notch); Alt/Option-click or right-click a handle to remove
-        it. The tuner holes come from the headstock style and stay put; every hole must keep its
+        Click an edge to add a handle there, or the tip to shape it with one (drag it out for a round
+        nose, in for a notch); Alt/Option-click or right-click a handle to remove
+        it. For a sharp point (Jackson style) drag one tip corner onto the other: within 3 mm they
+        meet, and the point then moves as one (Shift-drag a corner to part them again). The tuner holes come from the headstock style and stay put; every hole must keep its
         distance from the edge. Until you move a handle the outline follows the fitted one (a changed
         style redraws it); <em>Start over</em> goes back to it. <em>Start from</em> loads a whole neck: the
         Telecaster neck sets a slotted nut (the fretboard running on under it), a flat six-in-line headstock

@@ -360,6 +360,12 @@ FIELD_HELP: dict[str, str] = {
         "A belly cut: the back bevelled where the body meets the player, "
         "this deep in mm (0: none)."
     ),
+    "body_wire_channels": (
+        "Wires the pickups to the controls and grounds the bridge: a channel "
+        "routed from the top where a pickguard hides it, else a straight hole "
+        "drilled by hand from cavity to cavity, modelled, its angle in "
+        "Body_top's notes."
+    ),
     "body_battery_box": (
         "A 9 V battery box routed in the back (for active pickups or a "
         "preamp), with its own cover cut from sheet."
@@ -368,8 +374,10 @@ FIELD_HELP: dict[str, str] = {
     "body_engraving": "Engraves a decorative pattern into the top with a V-bit.",
     "body_engraving_pattern": (
         "The engraved pattern: Design by Jone's scrolls, EVH style stripes, "
-        "flame, ripples, crackle, or a pinstripe round the body just inside "
-        "the margin (as on a Jackson RR or an ESP LTD Alexi Hexed)."
+        "flame, ripples, crackle, a woodland camo relief (closed shapes "
+        "cleared to four levels down to body_engraving_depth), or a pinstripe "
+        "round the body just inside the margin (as on a Jackson RR or an ESP "
+        "LTD Alexi Hexed)."
     ),
     "body_engraving_seed": (
         "Lays the pattern out anew: each number gives a different layout."

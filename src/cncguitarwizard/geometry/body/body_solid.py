@@ -14,6 +14,7 @@ from .engraving import Engraving
 from .hardware import BridgeMounting, Cavity, DrilledHole, JackHole, RearCavity
 from .outline import BodyOutline, TracedOutline
 from .steps import SteppedTop
+from .wiring import WireHole
 
 Outline = BodyOutline | TracedOutline
 
@@ -112,6 +113,13 @@ class BodySolid:
             cavity must leave ``CARVE_WALL`` under it too.
         engraving: Decorative lines engraved into the top, or ``None``;
             it must leave half the slab.
+        wire_channels: Wire channels routed from the top between the
+            routes they join (under a pickguard); they open into those
+            routes by design.
+        wire_holes: Wire holes drilled by hand from one cavity into
+            another (``wiring.WireHole``); modelled, not machined.
+        wire_notes: The wiring left to the builder (a way no straight
+            hole fits), for the programs' notes.
         edge_outline: The outline the edge finishes (roundover, binding)
             follow, if not ``outline``: on one part of a neck-through body,
             the body's outline carried on past its glue lines into the
@@ -154,6 +162,9 @@ class BodySolid:
     engraving: Engraving | None = None
     carved_top: CarvedTop | None = None
     stepped_top: SteppedTop | None = None
+    wire_channels: tuple[Cavity, ...] = ()
+    wire_holes: tuple[WireHole, ...] = ()
+    wire_notes: tuple[str, ...] = ()
     edge_outline: tuple[Point2D, ...] = ()
     checked: bool = True
 
@@ -215,7 +226,7 @@ class BodySolid:
         top_cavities = tuple(
             cavity
             for cavity in self.top_cavities
-            if cavity not in self.through_cavities
+            if cavity not in self.through_cavities and cavity not in self.wire_channels
         )
         for index, first in enumerate(top_cavities):
             for second in top_cavities[index + 1 :]:
@@ -287,6 +298,12 @@ class BodySolid:
                         raise BodyGeometryError(
                             f"{pocket.name} would break through into {top.name}."
                         )
+        for wire in self.wire_holes:
+            for end in (wire.start, wire.end):
+                if not 0.0 < end.z < self.thickness or not point_in_polygon(
+                    Point2D(end.x, end.y), self.outline.points
+                ):
+                    raise BodyGeometryError(f"{wire.name} must lie in the body.")
         if self.bridge_mounting.pivot_hole_depth >= self.thickness:
             raise BodyGeometryError(
                 "Bridge pivot holes must leave material beneath their floor."
@@ -602,6 +619,7 @@ class BodySolid:
             cavities.append(self.bridge_mounting.sustain_block_cavity)
         cavities.extend(self.extra_cavities)
         cavities.extend(self.control_top_cavities)
+        cavities.extend(self.wire_channels)
         cavities.extend(self.through_cavities)
         return tuple(cavities)
 

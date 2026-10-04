@@ -415,8 +415,16 @@ uusi kahva lisätään klikkaamalla reunaa. Myös lavan päähän voi lisätä
 pisteitä klikkaamalla (`headstock_tip_points`): kärki on pyöreä käyrä
 kulmasta pisteiden kautta toiseen kulmaan, ja se lähtee kulmista reunan
 suuntaan, joten pyöreä pää liittyy sivuihin ilman kulmaa. Ulospäin
-raahattu piste tekee terävän tai pyöreän pään ja sisäänpäin raahattu
-loven. Myös reunat ovat pyöreitä käyriä, jotka saavat kaartua kahvojen
+raahattu piste tekee pyöreän nokan ja sisäänpäin raahattu loven. Terävä
+kärki (Jackson-tyylinen) syntyy, kun reunat kohtaavat: jos kärkikulmat
+ovat alle 1 mm (`TIP_POINT_WIDTH`) toisistaan, reunat yhtyvät niiden
+puolivälissä yhteen pisteeseen (`pointed`), eikä kärkeen saa silloin
+kärkipisteitä. Reunat saavat kapeta alle 1 mm:n vain viimeisellä,
+kärkeen asti kapenevalla matkalla; muualla kurouma tai risteäminen on
+edelleen virhe. Editorissa kärkikulma tarttuu toiseen 3 mm:n päästä,
+terävä kärki liikkuu sen jälkeen yhtenä ja Shift-raahaus erottaa kulmat.
+FreeCAD-malli lofataan kärjen lähellä vähintään 12 mm leveäksi ja
+leikataan sitten reunojen ja kärjen mukaiseksi. Myös reunat ovat pyöreitä käyriä, jotka saavat kaartua kahvojen
 ohi, joten esimerkiksi Stratocaster- tai Schecter-tyylisen lavan voi
 piirtää. Kunnes kahvaa siirretään, reunat
 seuraavat sovitettua ääriviivaa (myös lavatyylin vaihtuessa), kun virittimien
@@ -526,6 +534,7 @@ varmistaa tämän.
 | Potikkakolo | DXF:n manteli tallan takana, takaa 36 mm (8 mm puuta kanteen), kansiura 2 mm |
 | Kytkinkolo | DXF:n ympyrä Ø 44 yläsakaran juuressa, takaa 36 mm, kansiura Ø 59,5 × 2 mm |
 | Akselireiät | Kytkin Ø 12,7; potikat 2 × Ø 10 kohdissa (642, 86) ja (682, 87) |
+| Johdinkanavat | `body_wire_channels` (oletus päällä): jokainen mikkiura johdotetaan ohjainkoloon lähimmän jo johdotetun kolon kautta (ohjainkolo tai aiemmin johdotettu mikkiura), joten rivissä olevat mikit ketjuuntuvat kuten Stratissa ja Les Paulissa; tallan maadoitus ohjainkolosta tremolon jousikoloon (jousipidin), muuten lähimpään tallan uraan tai reikään. Ei ohjaimia (`none`), ei johdotusta. Pickguardin alla kanava jyrsitään päältä (10 mm leveä, enintään 16 mm syvä, ei uria syvempi) `Body_top`-ohjelmassa; kanavan uran ulkopuolinen osa on oltava pickguardin alla eikä sen aukoissa (aukko saa ylittää uran 1 mm), 2 mm muista koloista. Muualla suora käsin porattava reikä pitkällä terällä (Ø 6, maadoitus Ø 3): terä tulee kolon avoimesta pinnasta (uran päältä, takakolon takaa) sen kauemman reunan ohi, reikä alkaa kolon seinästä ja päättyy toisen kolon seinään. Korkeus ja kulma haetaan niin, että reikä aukeaa molempiin koloihin seinän kautta, jättää 3 mm puuta pinnan alle (veistetty tai porrastettu kansi ja käsinoja huomioiden) ja takapinnan yläpuolelle (vatsaleikkaus huomioiden), 2 mm muihin koloihin ja reikiin (myös jakkiporaus), pysyy rungossa 2 mm reunasta, on enintään 60° jyrkkä ja terän matka reunalta enintään 300 mm. Sopivista valitaan se, joka on lähimpänä mikkiuran pohjaa (johdot kulkevat siellä), sitten loivin. Reiät mallinnetaan FreeCADiin, piirretään plan-kuvaan punaisella katkoviivalla ja `Body_top`-muistiinpanoissa on porausohje (mistä kolosta mihin, kummalta pinnalta, kulma, alku korkeuksineen, suunta ja pituus). Jos suoraa reikää ei löydy, muistiinpano jättää sen rakentajalle. Runkoeditori ei laske johdotusta (vain build). Neck-through-rungon osissa ovat niihin ulottuvat kanavat; reiät porataan liimattuun runkoon |
 | Jakki | Ø 12,5 poraus alkaa siitä, missä muodon jakkilinja (oletus 742, 107,5 suuntaan 202,5°) kohtaa rungon ääriviivan, millä tahansa rungolla, ja jatkuu 3 mm ohjainkolon seinän yli (muuten 55 mm; `body_jack_depth` kiinnittää pituuden). `body_jack`: side (kylkilevy tai putkijakki), cup (Tele-kuppi tai Electrosocket: 7/8" eli 22,2 mm upotus 25 mm syvä reunassa), strat (Strat-tyylinen kansilevy päällä: Ø 25,4 × 32 mm kolo ylhäältä 4 mm reunasta, poraus jatkuu siitä ohjainkoloon) tai plate (Jazz Bass -levyssä, vain `jazz_bass`-asettelun kanssa: ei porausta). Runkoeditori varoittaa, jos poraus ei osu ohjainkoloon |
 
 ## Reunat ja viisteet
@@ -664,6 +673,7 @@ jätetään pois):
 | `flame` | Liekkivaahteran tapaiset aaltoviivat rungon poikki, noin spacing/5 (vähintään 6 mm) välein, vierekkäiset lähes samassa vaiheessa, joten ne eivät leikkaa |
 | `ripples` | Ryhmiä sisäkkäisiä renkaita (2–6 kpl, 8 mm välein), myöhempi ryhmä peittää aiemmat |
 | `crackle` | Satunnainen solukuvio (Voronoi) kuin säröillyt lakka, solu noin spacingin kokoinen |
+| `camo` | Woodland-maastokuvio reliefinä, ei viivoina: suljettuja lohkoisia muotoja (viisi harmonista lohkoa) 1–3 ulos työntyvällä sakaralla (0,35–0,8 × koko, kapenevat), leveys 0,3–0,55 × spacing (vähintään 12 mm), venytetty enintään 2,3-kertaiseksi kuvion suuntaan (yksi suunta siementä kohden, muoto ±25°). Jokainen saa yhden neljästä tasosta, `body_engraving_depth` / 4 välein (oletuksena 0,5, 1, 1,5 ja 2 mm), satunnaisesti, tai syvemmän kuin muoto, jonka päälle sen keskipiste osuu. Muotoja tavoitellaan 2,5 spacingin neliötä kohden, kunnes 600 peräkkäistä yritystä ei tuota yhtään. Saman tason muodot pysyvät 3 mm erillään (eivät sulaudu); eri tasojen muodot saavat mennä päällekkäin, jolloin syvempi näkyy (kuten jyrsinnässä, kun kukin tasku jyrsitään omaan syvyyteensä), kunhan jokaisesta jää näkyviin vähintään puolet ääriviivasta; toisistaan erillään olevat pysyvät 3 mm erillään, ettei väliin jää ohutta seinämää. Jos muoto ei mahdu, sitä kokeillaan ensin vähemmillä sakaroilla, sitten 0,75-kertaisena pienempänä ja pyöreämpänä; pienimmätkin ovat vähintään 12 mm leveitä ja lohkoisia. Toisen sisältä aloitettu muoto muotoillaan sen mukaan (0,4–0,6 × koko, enintään yksi sakara; neljännes yrityksistä aloitetaan tarkoituksella ison muodon sisältä), ja kokonaan matalamman sisällä oleva jyrsitään sen pohjasta. Muoto vain tasaisen pinnan päälle: veistetyllä kannella sen tasanteelle, porrastetulla yhden portaan sisälle, taso mitattuna portaan pinnasta. `Body_top_relief.nc` jyrsii muodot tasapäisellä jyrsimellä (`relief_tool_diameter`, 3 mm) `engraving_step_down`-askelin; FreeCAD leikkaa ne taso kerrallaan, runkoeditori varjostaa ne sitä tummemmiksi mitä syvempiä, syvemmät päällimmäisinä |
 | `pinstripe` | Yksi raita rungon ympäri 0,5 mm marginaalin sisäpuolella, reunaa myötäillen kuin maalattu pinstripe (Jackson RR, ESP LTD Alexi Hexed); katkeaa kolojen, tallan, pleksin ja muotoilujen kohdalla sekä siellä, missä sakara kapenee alle kaksinkertaisen marginaalin. Siemen ja spacing eivät vaikuta; etäisyys reunasta on `body_engraving_margin` ja leveys syntyy syvyydestä (`body_engraving_depth`, V-terän ura noin 1,15 × syvyys) |
 
 Porrastettu kansi (`body_stepped_top`, myös runkoeditorin vieressä)

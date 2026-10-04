@@ -123,8 +123,10 @@ Python.
    `headstock_outline` "drawn" (the default) a headstock panel is open:
    both edges are handle chains from the shoulder to the tip (the tip
    handles set the length; click an edge to add a handle, click the tip
-   to shape it with one — `headstock_tip_points`, dragged out for a point
-   or a round end, in for a notch; edges and tip are rounded curves
+   to shape it with one — `headstock_tip_points`, dragged out for a round
+   nose, in for a notch; a tip corner dragged within 3 mm of the other
+   meets it in a sharp point (`HeadstockPlan.pointed`), which then drags as
+   one, Shift-drag parting the corners again; edges and tip are rounded curves
    through their handles, so a Stratocaster or Schecter style outline
    can be drawn — Alt-click or right-click one to remove it), drawn over the fixed tuner holes of the
    chosen style with a keep-out circle `tuner_edge_offset` round each; the

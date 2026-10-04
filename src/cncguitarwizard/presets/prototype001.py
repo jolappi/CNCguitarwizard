@@ -40,6 +40,7 @@ from ..geometry.body import (
     turned_hardware,
 )
 from ..geometry.body.neck_through import NeckThrough
+from ..geometry.body.wiring import WireSpace, Wiring, plan_wiring
 from ..geometry.exceptions import (
     BodyGeometryError,
     GeometryException,
@@ -96,7 +97,12 @@ from .controls import (
     control_features,
     rear_cover,
 )
-from .engraving import EngravingArea, EngravingPattern, pattern_lines
+from .engraving import (
+    EngravingArea,
+    EngravingPattern,
+    pattern_lines,
+    pattern_pockets,
+)
 from .pickguard import (
     PICKGUARD_STYLES,
     SADDLE_REACH,
@@ -477,6 +483,7 @@ class BodyLayout:
     engraving: Engraving | None = None
     carved_top: CarvedTop | None = None
     stepped_top: SteppedTop | None = None
+    wiring: Wiring = field(default_factory=Wiring)
 
 
 TRUSS_ROD_STOCK_LENGTHS: tuple[float, ...] = tuple(
@@ -793,7 +800,8 @@ class Prototype001Parameters:
     body_pickguard_style: PickguardStyleName = "stratocaster"
     # A decorative pattern engraved into the top (see presets.engraving):
     # body_engraving puts it on, body_engraving_pattern picks it (Design by
-    # Jone's scrolls, EVH stripes, flame, ripples or crackle), laid out at
+    # Jone's scrolls, EVH stripes, flame, ripples, crackle, woodland camo or
+    # a pinstripe round the edge), laid out at
     # random from body_engraving_seed (the same seed, the same pattern),
     # body_engraving_spacing setting its scale (the scroll copies about that
     # far apart, as in the drawing), cut
@@ -864,6 +872,16 @@ class Prototype001Parameters:
     body_jack: Literal["side", "cup", "strat", "plate"] = "side"
     body_jack_diameter: float = 12.5
     body_jack_depth: float | None = None
+    # The wire channels (see geometry.body.wiring): every pickup route
+    # wired to the controls, nearest first (a row of pickups chains to
+    # them), and the bridge's ground wire from the controls to its nearest
+    # cavity or hole. Under a pickguard a channel is routed from the top
+    # (WIRE_CHANNEL_WIDTH wide, at most WIRE_CHANNEL_DEPTH deep); every
+    # other way is a straight hole drilled by hand (WIRE_HOLE_DIAMETER,
+    # the ground GROUND_HOLE_DIAMETER), modelled and given in Body_top's
+    # notes with its angle; a way no straight hole fits is left to the
+    # builder in a note. False leaves the wiring to the builder.
+    body_wire_channels: bool = True
     # Bolt-on neck: the body shape's own neck_bolts, or else four bolts
     # in a rectangle centred across the neck, body_neck_bolt_spacing_x
     # along it and _y across it, the tail pair as close to the pocket's end
@@ -2700,6 +2718,10 @@ class Prototype001Parameters:
                     for pivot in bridge_mounting.pivot_holes
                 ),
             ],
+            # A relief keeps to where the face is level.
+            (lambda point: lowered.drop_at(point.x, point.y))
+            if lowered is not None
+            else None,
         )
         return BodyLayout(
             heel_end,
@@ -2735,6 +2757,166 @@ class Prototype001Parameters:
             engraving,
             carved_top,
             stepped_top,
+            # Built only (the body editor draws no wiring).
+            self._wiring(
+                body_outline.points,
+                (
+                    neck_pocket,
+                    *((truss_rod_access,) if truss_rod_access else ()),
+                    *((jack_cavity,) if jack_cavity else ()),
+                ),
+                [p for p in (neck_pickup, middle_pickup, bridge_pickup) if p],
+                bridge,
+                bridge_mounting,
+                controls,
+                (*holes, *controls.holes, *controls.top_marks),
+                (*neck_bolts, *controls.back_marks),
+                jack_hole,
+                contours,
+                lowered,
+                guard,
+            )
+            if self.body_wire_channels and check_steps
+            else Wiring(),
+        )
+
+    def _wiring(
+        self,
+        outline: tuple[Point2D, ...],
+        others: tuple[Cavity, ...],
+        pickups: list[TracedCavity],
+        bridge: BridgeHardware,
+        mounting: BridgeMounting,
+        controls: ControlFeatures,
+        top_holes: tuple[DrilledHole, ...],
+        back_holes: tuple[DrilledHole, ...],
+        jack: JackHole | None,
+        contours: tuple[ContourCut, ...],
+        lowered: CarvedTop | SteppedTop | None,
+        guard: Pickguard | None,
+    ) -> Wiring:
+        """Return the wire channels and holes (see ``body_wire_channels``).
+
+        No controls, no wiring.
+        """
+        thickness = self.body_thickness
+
+        def from_top(cavity: Cavity, face: bool = True) -> WireSpace:
+            deepest = getattr(cavity, "deepest", cavity.depth)
+            return WireSpace(
+                cavity.name,
+                cavity.outline,
+                max(0.0, thickness - deepest),
+                thickness,
+                "top" if face else None,
+            )
+
+        def from_back(rear: RearCavity) -> WireSpace:
+            return WireSpace(
+                rear.name,
+                rear.cavity.outline,
+                0.0,
+                rear.cavity.depth,
+                "back",
+                (rear.cover_recess.outline, *(step.outline for step in rear.steps)),
+            )
+
+        def drilled(hole: DrilledHole, back: bool = False) -> WireSpace:
+            return WireSpace(
+                hole.name,
+                _circle_points(hole.center, hole.diameter / 2.0),
+                0.0 if back else max(0.0, thickness - hole.depth),
+                min(hole.depth, thickness) if back else thickness,
+            )
+
+        plate = [c for c in controls.top_cavities if c.name == "Control cavity"]
+        if controls.control_cavity is not None:
+            control = from_back(controls.control_cavity)
+        elif plate:
+            control = replace(
+                from_top(plate[0]),
+                parts=tuple(
+                    c.outline for c in controls.top_cavities if c is not plate[0]
+                ),
+            )
+        else:
+            return Wiring()
+        targets = [
+            *(from_back(rear) for rear in bridge.rear_cavities),
+            *(
+                from_top(cavity)
+                for cavity in (
+                    *bridge.top_cavities,
+                    *bridge.through_cavities,
+                    *(
+                        (mounting.sustain_block_cavity,)
+                        if mounting.sustain_block_cavity is not None
+                        else ()
+                    ),
+                )
+            ),
+            *(drilled(hole) for hole in bridge.holes),
+            *(
+                drilled(
+                    DrilledHole(
+                        "Pivot stud hole",
+                        pivot.x,
+                        pivot.y,
+                        mounting.pivot_hole_diameter,
+                        mounting.pivot_hole_depth,
+                    )
+                )
+                for pivot in mounting.pivot_holes
+            ),
+        ]
+        obstacles = [
+            *(from_top(cavity, face=False) for cavity in others),
+            *(from_top(cavity, face=False) for cavity in controls.top_cavities),
+            *(from_top(cavity, face=False) for cavity in controls.through_cavities),
+            *(
+                from_back(rear)
+                for rear in (controls.switch_cavity, controls.battery_cavity)
+                if rear is not None
+            ),
+            *(drilled(hole) for hole in top_holes),
+            *(drilled(hole, back=True) for hole in back_holes),
+        ]
+        if jack is not None:
+            obstacles.append(_jack_space(jack, thickness))
+        top_contours = [c for c in contours if c.face == "top"]
+        back_contours = [c for c in contours if c.face == "back"]
+
+        def top_at(point: Point2D) -> float:
+            return (
+                thickness
+                - (lowered.drop_at(point.x, point.y) if lowered is not None else 0.0)
+                - max((c.depth_at(point) for c in top_contours), default=0.0)
+            )
+
+        def back_at(point: Point2D) -> float:
+            return max((c.depth_at(point) for c in back_contours), default=0.0)
+
+        return plan_wiring(
+            thickness,
+            outline,
+            control,
+            [from_top(pickup) for pickup in pickups],
+            targets,
+            obstacles,
+            covers=(guard.plate.outline,) if guard is not None else (),
+            openings=(
+                (
+                    *(slot.outline for slot in guard.plate.slots),
+                    *(
+                        _circle_points(hole.center, hole.diameter / 2.0)
+                        for hole in guard.plate.holes
+                    ),
+                )
+                if guard is not None
+                else ()
+            ),
+            top_at=top_at,
+            back_at=back_at if back_contours else None,
         )
 
     def carbon_rods(
@@ -3187,12 +3369,14 @@ class Prototype001Parameters:
         outline: tuple[Point2D, ...],
         keep_out: list[tuple[Point2D, ...]],
         holes: list[tuple[Point2D, float]],
+        level: Callable[[Point2D], float] | None = None,
     ) -> Engraving | None:
         """Return the top's decorative engraving, or ``None`` without one.
 
         The pattern (``presets.engraving``) is laid out from
         ``body_engraving_seed`` over the top ``body_engraving_margin`` in
-        from the edge, clear of ``keep_out`` and ``holes``.
+        from the edge, clear of ``keep_out`` and ``holes``; a relief
+        (camo) only where ``level``, the top's drop, is level.
         """
         if not self.body_engraving:
             return None
@@ -3202,15 +3386,18 @@ class Prototype001Parameters:
             tuple(tuple(polygon) for polygon in keep_out),
             tuple(holes),
             self.body_engraving_clearance,
+            level,
+        )
+        layout = (
+            self.body_engraving_pattern,
+            area,
+            self.body_engraving_seed,
+            self.body_engraving_spacing,
         )
         return Engraving(
-            pattern_lines(
-                self.body_engraving_pattern,
-                area,
-                self.body_engraving_seed,
-                self.body_engraving_spacing,
-            ),
+            pattern_lines(*layout),
             self.body_engraving_depth,
+            pattern_pockets(*layout, self.body_engraving_depth),
         )
 
     def _pickguard(
@@ -4102,6 +4289,9 @@ class Prototype001Parameters:
             engraving=body_parts.engraving,
             carved_top=body_parts.carved_top,
             stepped_top=body_parts.stepped_top,
+            wire_channels=body_parts.wiring.channels,
+            wire_holes=body_parts.wiring.holes,
+            wire_notes=body_parts.wiring.by_hand,
         )
         return Prototype001Geometry(
             outline,
@@ -4406,6 +4596,50 @@ def _reach_between(outline: tuple[Point2D, ...], low: float, high: float) -> flo
             t = (y - start.y) / (end.y - start.y)
             reach = max(reach, start.x + t * (end.x - start.x))
     return reach
+
+
+def _circle_points(centre: Point2D, radius: float) -> tuple[Point2D, ...]:
+    """Return a round hole's outline, 16 points."""
+    return tuple(
+        Point2D(
+            centre.x + radius * math.cos(math.pi * k / 8.0),
+            centre.y + radius * math.sin(math.pi * k / 8.0),
+        )
+        for k in range(16)
+    )
+
+
+def _jack_space(jack: JackHole, thickness: float) -> WireSpace:
+    """Return the jack's bore (and counterbore) as the wiring keeps clear of it.
+
+    It runs level through the middle of the body's thickness.
+    """
+    radians = math.radians(jack.direction_degrees)
+    ux, uy = math.cos(radians), math.sin(radians)
+
+    def bar(length: float, width: float) -> tuple[Point2D, ...]:
+        half = width / 2.0
+        return tuple(
+            Point2D(
+                jack.start_x + ux * along - uy * across,
+                jack.start_y + uy * along + ux * across,
+            )
+            for along, across in (
+                (0.0, -half),
+                (length, -half),
+                (length, half),
+                (0.0, half),
+            )
+        )
+
+    widest = max(jack.diameter, jack.cup_diameter)
+    return WireSpace(
+        "Jack bore",
+        bar(jack.depth, jack.diameter),
+        thickness / 2.0 - widest / 2.0,
+        thickness / 2.0 + widest / 2.0,
+        parts=((bar(jack.cup_depth, jack.cup_diameter),) if jack.cup_diameter else ()),
+    )
 
 
 def _line_crossings(

@@ -1216,24 +1216,49 @@ class FreeCADScriptExporter:
         tip's own points, wider than the headstock, cuts it back. Its
         faces cross the loft rather than touching it.
 
+        A pointed tip is lofted ``POINT_LOFT_WIDTH`` wide over its last
+        run (``point_start``) and cut back to its two edges meeting in the
+        point, from 1 mm before that run on.
+
         Returns:
             FreeCAD source for the cut, or an empty string for a straight
             tip.
         """
         plan = headstock.plan
-        if not plan.tip_points:
+        if plan.pointed:
+            start = plan.point_start - 1.0
+            steps = max(2, math.ceil((plan.length - start) / 0.5))
+            distances = [
+                start + (plan.length - start) * k / steps for k in range(steps)
+            ]
+            low_edge = [(-d, plan.edge_y(d, -1.0)) for d in distances]
+            high_edge = [(-d, plan.edge_y(d, 1.0)) for d in distances]
+            low = min(y for _, y in low_edge) - 10.0
+            high = max(y for _, y in high_edge) + 10.0
+            far = -(plan.reach + 10.0)
+            outline = [
+                (-start, high),
+                (far, high),
+                (far, low),
+                (-start, low),
+                *low_edge,
+                (plan.tip_point.x, plan.tip_point.y),
+                *reversed(high_edge),
+            ]
+        elif plan.tip_points:
+            tip = plan.tip_outline()
+            low = min(point.y for point in tip) - 10.0
+            high = max(point.y for point in tip) + 10.0
+            far = -(plan.reach + 10.0)
+            outline = [
+                (-plan.length, high),
+                (far, high),
+                (far, low),
+                (-plan.length, low),
+                *((point.x, point.y) for point in tip),
+            ]
+        else:
             return ""
-        tip = plan.tip_outline()
-        low = min(point.y for point in tip) - 10.0
-        high = max(point.y for point in tip) + 10.0
-        far = -(plan.reach + 10.0)
-        outline = [
-            (-plan.length, high),
-            (far, high),
-            (far, low),
-            (-plan.length, low),
-            *((point.x, point.y) for point in tip),
-        ]
         corners = ", ".join(f"App.Vector({x!r}, {y!r}, -80.0)" for x, y in outline)
         return (
             "# The tip, lofted past its furthest point, cut back to its shape.\n"
@@ -2322,6 +2347,8 @@ class FreeCADScriptExporter:
             cavity_cuts.append((extra_cavity, f"extra cavity {index} cut"))
         for control in body.control_top_cavities:
             cavity_cuts.append((control, f"{control.name.lower()} cut"))
+        for channel in body.wire_channels:
+            cavity_cuts.append((channel, f"{channel.name.lower()} cut"))
         for through in body.through_cavities:
             cavity_cuts.append((through, f"{through.name.lower()} through cut"))
         for cavity, label in cavity_cuts:
@@ -2329,6 +2356,30 @@ class FreeCADScriptExporter:
             lines.append(
                 f"body_shape = cavity_cut(body_shape, {outline}, "
                 f"{cavity.depth}, {label!r})\n"
+            )
+        if body.engraving is not None and body.engraving.pockets:
+            # A relief's shapes, each cleared to its level (below a stepped
+            # top's band too), cut a level at a time.
+            levels: dict[float, list[list[tuple[float, float]]]] = {}
+            for shape in body.engraving.pockets:
+                levels.setdefault(round(shape.face_drop + shape.depth, 4), []).append(
+                    [(round(p.x, 3), round(p.y, 3)) for p in shape.outline]
+                )
+            lines.append(
+                f"RELIEF_LEVELS = {sorted(levels.items())!r}\n"
+                "for relief_depth, relief_outlines in RELIEF_LEVELS:\n"
+                "    relief_down = App.Vector(0.0, 0.0, -relief_depth - body_overcut)\n"
+                "    relief_tools = Part.Compound([\n"
+                "        Part.Face(Part.makePolygon(\n"
+                "            [App.Vector(x, y, body_overcut) for x, y in outline]\n"
+                "            + [App.Vector(*outline[0], body_overcut)]\n"
+                "        )).extrude(relief_down)\n"
+                "        for outline in relief_outlines\n"
+                "    ])\n"
+                "    body_shape = require_shape(\n"
+                "        body_shape.cut(relief_tools).removeSplitter(),\n"
+                '        f"relief {relief_depth:g} mm cut",\n'
+                "    )\n"
             )
         pocket = body.neck_pocket
         slope = getattr(pocket, "floor_slope", 0.0)
@@ -2451,6 +2502,34 @@ class FreeCADScriptExporter:
                     f'    "{label} cut",\n'
                     ")\n"
                 )
+        # The wire holes, drilled by hand from cavity to cavity: each from
+        # 1 mm inside the cavity it is drilled from to 1 mm into the other
+        # (heights above the back, the model's top at Z = 0).
+        for wire in body.wire_holes:
+            run = (
+                wire.end.x - wire.start.x,
+                wire.end.y - wire.start.y,
+                wire.end.z - wire.start.z,
+            )
+            length = math.sqrt(sum(value * value for value in run))
+            direction = tuple(value / length for value in run)
+            wire_start = (
+                wire.start.x - direction[0],
+                wire.start.y - direction[1],
+                wire.start.z - body.thickness - direction[2],
+            )
+            lines.append(
+                "wire_hole = Part.makeCylinder(\n"
+                f"    {wire.diameter / 2.0},\n"
+                f"    {length + 2.0},\n"
+                f"    App.Vector{wire_start},\n"
+                f"    App.Vector{direction},\n"
+                ")\n"
+                "body_shape = require_shape(\n"
+                "    body_shape.cut(wire_hole),\n"
+                f"    {wire.name.lower() + ' cut'!r},\n"
+                ")\n"
+            )
         # The edge finishes come last: the cavities cut quicker into the
         # plain slab.
         if carve is not None and carve.edge_rim > 0.0:
