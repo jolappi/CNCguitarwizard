@@ -561,3 +561,34 @@ def test_schema_lists_each_pickup_layouts_types() -> None:
     assert layouts["HH"] == ["humbucker", "none", "humbucker"]
     assert layouts["RR"] == ["rickenbacker", "none", "rickenbacker"]
     assert "custom" not in layouts
+
+
+def test_the_nc_programs_download_as_one_zip_named_for_the_guitar(
+    tmp_path: Path,
+) -> None:
+    import base64
+    import io
+    import zipfile
+
+    from cncguitarwizard.webapp import archive_name, nc_archive, run_build
+
+    assert archive_name("Jone / #1") == "Jone-1"
+    assert archive_name("Läpikaula 2026") == "Läpikaula 2026"
+    assert archive_name("  ") == "cncguitarwizard"
+    result = run_build({"prototype": {}}, str(tmp_path))
+    archive = nc_archive("Jonen Strat")
+    assert archive["name"] == "Jonen Strat.zip"
+    with zipfile.ZipFile(io.BytesIO(base64.b64decode(archive["data"]))) as zipped:
+        names = zipped.namelist()
+        programs = [name for name in result["files"] if name.endswith(".nc")]
+        # Every program, in a folder a part, numbered in running order.
+        assert len(names) == len(programs) + 1
+        assert "Jonen Strat/README.txt" in names
+        assert "Jonen Strat/Body/01_Body_index_pins.nc" in names
+        assert "Jonen Strat/Neck/01_Neck_index_pins.nc" in names
+        assert (
+            zipped.read("Jonen Strat/Body/01_Body_index_pins.nc").decode()
+            == (result["files"]["Body_index_pins.nc"])
+        )
+        readme = zipped.read("Jonen Strat/README.txt").decode()
+        assert readme.index("Body:") < readme.index("Neck:")

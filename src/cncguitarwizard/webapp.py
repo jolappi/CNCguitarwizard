@@ -10,11 +10,15 @@ dataclasses.
 
 from __future__ import annotations
 
+import base64
 import dataclasses
+import io
 import json
 import math
+import re
 import types
 import typing
+import zipfile
 from pathlib import Path
 from typing import Any
 
@@ -58,6 +62,12 @@ _CHOICE_LABELS: dict[str, dict[str, str]] = {
     "handedness": {
         "right": "Right-handed (as drawn)",
         "left": "Left-handed (the mirror image)",
+    },
+    "neck_joint": {
+        "bolt_on": "Bolt-on (the heel screwed into a pocket)",
+        "neck_through": (
+            "Neck-through (the neck runs on as the body's centre, wings glued on)"
+        ),
     },
     "body_controls": CONTROL_LABELS,
     "post_processor": POST_PROCESSOR_LABELS,
@@ -207,6 +217,7 @@ _BASIC_FIELDS: frozenset[str] = frozenset(
         "step_over",
         "tab_count",
         "handedness",
+        "neck_joint",
         "carve_tool_diameter",
         "carve_finish",
     }
@@ -373,7 +384,10 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
     Returns:
         ``{"heel_end", "scale_line", "samples_per_segment", "widening",
         "start_points", "templates", "polygons", "circles", "jack"}``, or
-        ``{"error": message}``. ``scale_line`` is the bridge line's X on
+        ``{"error": message}``. ``mirrored``: the design is shown mirrored
+        (a left-handed build); ``neck_through``: ``{"width"}`` of a
+        neck-through's centre block (its glue lines at +-width / 2), or
+        ``None``. ``scale_line`` is the bridge line's X on
         the centerline (a multiscale's mean scale). ``widening`` is the
         body's opening along the centreline (see
         ``body_shapes.widen_points``), which the editor applies to the
@@ -424,9 +438,17 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
             "points": local(points),
         }
 
+    through = parameters.neck_joint == "neck_through"
     polygons: list[dict[str, Any]] = [
         polygon("Neck", "neck", neck.boundary),
-        polygon(layout.neck_pocket.name, "pocket", layout.neck_pocket.outline),
+        # A neck-through body has no pocket: the neck runs on through.
+        *(
+            []
+            if through
+            else [
+                polygon(layout.neck_pocket.name, "pocket", layout.neck_pocket.outline)
+            ]
+        ),
         *(
             [polygon(access.name, "pocket", access.outline)]
             if (access := layout.truss_rod_access) is not None
@@ -545,6 +567,11 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
     return {
         "heel_end": round(heel_end, 2),
         "mirrored": built.left_handed,
+        "neck_through": (
+            {"width": round(parameters.neck_through_block_width(layout), 2)}
+            if through
+            else None
+        ),
         "scale_line": round(parameters.centre_scale, 3),
         "samples_per_segment": OUTLINE_SAMPLES_PER_SEGMENT,
         "widening": parameters.body_widening_amount(),
@@ -879,10 +906,91 @@ def finish_build() -> dict[str, Any]:
     ):
         files[path.name] = path.read_text(encoding="utf-8")
     report = json.loads(files[result.report_path.name])
+    global _LAST_BUILD
+    _LAST_BUILD = (files, report)
     return {
         "files": files,
         "report": report,
         "plan_view": render_plan_view_svg(build.geometry),
+    }
+
+
+_LAST_BUILD: tuple[dict[str, str], dict[str, Any]] | None = None
+"""The last finished build's files and report, for ``nc_archive``."""
+
+_PART_ORDER = (
+    "Body",
+    "Wing bass",
+    "Wing treble",
+    "Neck",
+    "Fretboard",
+    "Inlays",
+    "Covers",
+)
+"""The parts in the order they are made (an unknown part goes last)."""
+
+
+def archive_name(name: str) -> str:
+    """Return ``name`` made safe for a file name, or ``cncguitarwizard``.
+
+    Letters (accented ones too), digits, spaces, dots, dashes and
+    underscores stay; anything else becomes a dash.
+    """
+    safe = re.sub(r"[^\w .-]+", "-", name.strip())
+    # "Jone / #1" gives "Jone-1", not "Jone - -1".
+    safe = re.sub(r"[\s-]*-[\s-]*", "-", safe).strip(" .-")
+    return safe[:80] or "cncguitarwizard"
+
+
+def nc_archive(name: str = "") -> dict[str, str]:
+    """Return the last build's NC programs in one ZIP, named for the guitar.
+
+    Inside a folder named ``name``, one folder a part, each program
+    numbered in running order (``Neck/02_Neck_top.nc``), and a
+    ``README.txt`` listing them with their tools and run times.
+
+    Returns:
+        ``{"name": "<name>.zip", "data": base64}``, or ``{"error": message}``
+        before a build has finished.
+    """
+    if _LAST_BUILD is None:
+        return {"error": "Build the guitar first."}
+    files, report = _LAST_BUILD
+    title = archive_name(name)
+    programs = sorted(
+        report["gcode"].items(),
+        key=lambda item: (
+            _PART_ORDER.index(item[1]["part"])
+            if item[1]["part"] in _PART_ORDER
+            else len(_PART_ORDER),
+            item[1]["part"],
+            item[1]["step"],
+        ),
+    )
+    lines = [
+        f"{name.strip() or title} - NC programs from CNCguitarwizard",
+        f"Generated {report.get('generated_utc', '')}",
+        "",
+        "Each part's programs, numbered in the order to run them.",
+    ]
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
+        part = None
+        for program, info in programs:
+            if info["part"] != part:
+                part = info["part"]
+                lines += ["", f"{part}:"]
+            folder = archive_name(info["part"])
+            entry = f"{info['step']:02d}_{info['file']}"
+            archive.writestr(f"{title}/{folder}/{entry}", files[info["file"]])
+            lines.append(
+                f"  {folder}/{entry}  {info['tool']}, "
+                f"about {info['estimated_minutes']:g} min"
+            )
+        archive.writestr(f"{title}/README.txt", "\n".join(lines) + "\n")
+    return {
+        "name": f"{title}.zip",
+        "data": base64.b64encode(buffer.getvalue()).decode("ascii"),
     }
 
 

@@ -79,7 +79,8 @@
   details.advanced > .fields { padding-top: 0; }
   .toggle { display: flex; gap: 6px; align-items: center; margin: -4px 0 10px; }
   .instrument { display: flex; gap: 10px; align-items: center; margin: 0 0 12px; font-weight: 600; }
-  .instrument select { flex: 1; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; font: inherit; background: #fff; }
+  .instrument select, .instrument input { flex: 1; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; font: inherit; background: #fff; }
+  .instrument label { min-width: 7em; }
   .body-editor { margin-bottom: 20px; }
   .body-editor svg { display: block; width: 100%; height: auto; max-height: 75vh; border: 1px solid var(--line);
     border-radius: 6px; background: #fff; touch-action: none; user-select: none; }
@@ -216,6 +217,11 @@
       <label for="instrument">Instrument</label>
       <select id="instrument"></select>
     </div>
+    <div class="instrument">
+      <label for="guitar-name">Guitar name</label>
+      <input id="guitar-name" type="text" maxlength="60" placeholder="Prototype001"
+        title="Names the NC download (name.zip) and the saved design">
+    </div>
     </div>
     <div class="aside-form">
     <p class="note">Every value below is a field of <code>Prototype001Parameters</code> or
@@ -284,6 +290,10 @@
       <div id="tabs" class="tabs"></div>
       <div id="toolpath" class="preview"></div>
       <h2>Downloads</h2>
+      <div class="actions">
+        <button id="download-nc-zip" type="button"
+          title="Every NC program in one ZIP, named for the guitar: a folder a part, each program numbered in running order">Download all NC files (.zip)</button>
+      </div>
       <p class="note">Each part has its own list, its programs numbered in the order to run them.
         The <em>Simulate</em> button copies that program to the clipboard and opens
         <a href="https://ncviewer.com" target="_blank" rel="noopener">NC Viewer</a> below: click into its

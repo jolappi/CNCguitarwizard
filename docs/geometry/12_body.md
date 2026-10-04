@@ -172,6 +172,46 @@ reads points back through it); the lettering they show is the built one
 mirrored back, so it reads right there too. A carved top's fall matches
 its mirror within its grid's sampling (about 0.03 mm).
 
+## Neck-through
+
+`neck_joint = "neck_through"` runs the neck blank on through the body
+(`geometry.body.neck_through`): the body's outline between two glue lines
+`Y = +-neck_through_width / 2` is the neck blank's **centre block**, the
+outline beyond them the two **wings** (`Wing_bass`, `Wing_treble`), each
+cut from its own blank and glued to the block's sides. An empty
+`neck_through_width` makes the block wide enough for the pickup routes
+and the bridge's routes and holes (and the neck's heel) with
+`NECK_THROUGH_MARGIN` (3 mm) of wood beside them: 92 mm with two
+humbuckers, 99 mm under a Tune-o-matic. `split_by_line` splits the outline
+along a glue line into its pieces (a deep cutaway leaves two, not one
+joined by a zero-width bridge); the block must be one piece.
+
+The body has no neck pocket and no neck bolts; the pocket's outline stays
+as where the neck passes, for the pickguard, carve and engraving
+keep-outs. The neck's back keeps its D profile, then falls to the body's
+thickness over `neck_through_heel_ramp` (40 mm), reaching it at
+`front_x`, where the body first meets the neck's sides (the neck back's
+own heel transition, its depth the body's). There is no neck angle (it
+is refused; a Tune-o-matic's automatic 2 degrees is 0 here), and a
+heel-adjusted truss rod needs a spoke wheel: a nut at the heel's end
+would be buried in the block.
+
+Each part is cut from a blank a little larger than it (`body_part`): it
+carries every feature that reaches into it whole — a control cavity
+across a glue line is cut in both parts, its far side in each one's
+waste — a carve and contours whole, the engraving within reach, and its
+edge finishes along `edge_outline`: the body's outline carried on
+`NECK_THROUGH_EDGE_REACH` (12 mm) past the glue line into the waste, so a
+roundover or binding runs right across the glue line and the glue face
+stays square. The profile then trims the waste.
+
+The FreeCAD model builds the body whole and splits it along the glue
+lines: `Neck_block` (one piece of wood with the neck, its heel running
+on into it; an object of its own, since a fuse fails on the neck loft's
+faces lying in the block's top and bottom planes), `Wing_bass` and
+`Wing_treble`. The plan view and the body editor draw the block a shade
+darker; its long sides are the glue lines.
+
 ## Pickups
 
 `body_pickups` picks a named layout (`PICKUP_CONFIGURATIONS`) giving the

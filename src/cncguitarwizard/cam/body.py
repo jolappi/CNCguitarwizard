@@ -13,7 +13,7 @@ from __future__ import annotations
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
-from typing import Literal
+from typing import Any, Literal
 
 from ..geometry.body import (
     BodySolid,
@@ -118,28 +118,47 @@ class BodyMachiningPlan:
 def plan_body_machining(
     body: BodySolid,
     parameters: MachiningParameters,
+    *,
+    prefix: str = "Body",
+    fixture: tuple[tuple[tuple[float, float], ...], StockBounds] | None = None,
+    cut_outline: bool = True,
+    pin_axis_y: float = 0.0,
 ) -> BodyMachiningPlan:
     """Return toolpaths for every machinable feature of the body.
+
+    For one part of a neck-through body (``body_part``): ``prefix`` names
+    its programs (``Wing_bass_top`` ...); ``fixture`` gives the pins and
+    blank it shares with other programs (the neck blank's, for its centre
+    block), whose own outline cut then stays out (``cut_outline``); a
+    wing's own dowels go on ``Y = pin_axis_y``, its blank's middle.
 
     Raises:
         ToolpathError: If an index pin would end up in the finished body,
             too close to a cut or the blank's edge, or a feature cannot
             be cut with the tool.
     """
-    stock = StockBounds.around(body.outline.points, parameters.stock_margin)
-    pins, stock = resolve_index_pins(
-        body.outline.points,
-        [cavity.outline for cavity in _top_cavities(body)]
-        + (
-            # A carved top's rim is cut on past the edge: the dowels keep
-            # clear of that band too.
-            [offset_polygon(body.outline.points, body.carved_top.band, inward=False)]
-            if body.carved_top is not None
-            else []
-        ),
-        parameters,
-        stock,
-    )
+    if fixture is not None:
+        pins, stock = fixture
+    else:
+        stock = StockBounds.around(body.outline.points, parameters.stock_margin)
+        pins, stock = resolve_index_pins(
+            body.outline.points,
+            [cavity.outline for cavity in _top_cavities(body)]
+            + (
+                # A carved top's rim is cut on past the edge: the dowels keep
+                # clear of that band too.
+                [
+                    offset_polygon(
+                        body.outline.points, body.carved_top.band, inward=False
+                    )
+                ]
+                if body.carved_top is not None
+                else []
+            ),
+            parameters,
+            stock,
+            pin_axis_y,
+        )
     origin_x, origin_y = pins[0]
     reference_points = tuple((x - origin_x, y - origin_y) for x, y in pins[1:])
 
@@ -163,9 +182,14 @@ def plan_body_machining(
         (
             "Clamp the blank top face up on a spoilboard.",
             "Set X/Y zero at the index pin 1 position and Z zero on the stock top.",
-            "Both dowels sit in the waste on the centerline - pin 1 in the horn "
-            "gap ahead of the neck pocket, pin 2 in the tail notch - so they "
-            "never end up in the finished body.",
+            (
+                "Both dowels sit in the waste on the centerline - pin 1 in the "
+                "horn gap ahead of the neck pocket, pin 2 in the tail notch - "
+                "so they never end up in the finished body."
+                if pin_axis_y == 0.0
+                else "Both dowels sit in the waste ahead of and behind the part, "
+                "on a line along its middle, so they never end up in it."
+            ),
             f"Blank: at least {stock.length:.0f} x {stock.width:.0f} x "
             f"{body.thickness:g} mm; pin 1 is "
             f"{pins[0][0] - stock.min_x:.1f} mm from the nut-end edge "
@@ -219,19 +243,20 @@ def plan_body_machining(
                 parameters,
             )
         )
-    top_paths.append(
-        profile(
-            "Outline, upper half",
-            top_frame.polygon(body.outline.points),
-            half_depth,
-            parameters,
+    if cut_outline:
+        top_paths.append(
+            profile(
+                "Outline, upper half",
+                top_frame.polygon(body.outline.points),
+                half_depth,
+                parameters,
+            )
         )
-    )
     if body.top_edge.has_binding:
         top_paths.append(
             binding_path(
                 "Top binding channel",
-                top_frame.polygon(body.outline.points),
+                top_frame.polygon(body.edge_points),
                 body.top_edge,
                 parameters,
                 # On a carved top's rim, the carve's height down.
@@ -316,20 +341,21 @@ def plan_body_machining(
     for hole in body.rear_holes:
         if hole not in back_small:
             back_paths.append(_drill_rear_hole(hole, body, back_frame, parameters))
-    back_paths.append(
-        profile(
-            "Outline, lower half with tabs",
-            back_frame.polygon(body.outline.points),
-            half_depth,
-            parameters,
-            with_tabs=True,
+    if cut_outline:
+        back_paths.append(
+            profile(
+                "Outline, lower half with tabs",
+                back_frame.polygon(body.outline.points),
+                half_depth,
+                parameters,
+                with_tabs=True,
+            )
         )
-    )
     if body.back_edge.has_binding:
         back_paths.append(
             binding_path(
                 "Back binding channel",
-                back_frame.polygon(body.outline.points),
+                back_frame.polygon(body.edge_points),
                 body.back_edge,
                 parameters,
             )
@@ -400,7 +426,7 @@ def plan_body_machining(
     for optional in (back_controls, back_small_holes, back_edges):
         if optional is not None:
             previews.append(back_outline)
-    return BodyMachiningPlan(
+    plan = BodyMachiningPlan(
         pin_setup,
         top,
         back,
@@ -420,6 +446,54 @@ def plan_body_machining(
         top_engraving=top_engraving,
         top_carve=top_carve,
     )
+    return plan if prefix == "Body" else _renamed(plan, prefix)
+
+
+def _renamed(plan: BodyMachiningPlan, prefix: str) -> BodyMachiningPlan:
+    """Return ``plan`` with its programs named for one part (``prefix``).
+
+    ``Body_top`` becomes ``Wing_bass_top``, its description and notes
+    follow, and a flip turns about the dowels' own line.
+    """
+    label = prefix.replace("_", " ")
+
+    def text(value: str) -> str:
+        return (
+            value.replace("Body_", f"{prefix}_")
+            .replace("Body ", f"{label} ")
+            .replace(
+                "Flip the blank about the neck centerline",
+                "Flip the blank about the line through the dowels",
+            )
+        )
+
+    def renamed(setup: Setup | None) -> Setup | None:
+        if setup is None:
+            return None
+        return replace(
+            setup,
+            name=text(setup.name),
+            description=text(setup.description),
+            notes=tuple(text(note) for note in setup.notes),
+        )
+
+    changes: dict[str, Any] = {
+        name: renamed(getattr(plan, name))
+        for name in (
+            "index_pins",
+            "top",
+            "back",
+            "top_small_holes",
+            "back_small_holes",
+            "top_controls",
+            "back_controls",
+            "top_edges",
+            "back_edges",
+            "top_engraving",
+            "top_carve",
+        )
+    }
+    return replace(plan, **changes)
 
 
 CARVE_FINISH_STEP = 1.0
@@ -605,7 +679,7 @@ def _edge_setup(
         paths.append(
             roundover_path(
                 f"{face.capitalize()} edge roundover",
-                frame.polygon(body.outline.points),
+                frame.polygon(body.edge_points),
                 edge.radius,
                 ball,
                 lambda point: (

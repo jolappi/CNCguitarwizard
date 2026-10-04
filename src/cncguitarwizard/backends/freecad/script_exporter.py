@@ -9,7 +9,14 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from pathlib import Path
 
-from ...geometry.body import BodySolid, CarvedTop, ContourCut, Engraving
+from ...geometry.body import (
+    BodySolid,
+    CarvedTop,
+    Cavity,
+    ContourCut,
+    Engraving,
+    NeckThrough,
+)
 from ...geometry.body.carve import CELL
 from ...geometry.fretboard import FretboardSurface, FretLayout, InlayLayout
 from ...geometry.neck import (
@@ -135,6 +142,7 @@ class FreeCADScriptExporter:
             nut_corner_radius=geometry.fret_layout.fretboard.nut_corner_radius,
             locking_nut=geometry.locking_nut,
             body=geometry.body,
+            neck_through=geometry.neck_through,
             fretboard_binding_width=geometry.fretboard_binding_width,
             headstock_engraving=geometry.headstock_engraving,
             neck_tilt=geometry.neck_tilt,
@@ -200,6 +208,7 @@ class FreeCADScriptExporter:
         locking_nut: LockingNut | None = None,
         body: BodySolid | None = None,
         body_object_name: str = "Body",
+        neck_through: NeckThrough | None = None,
         fretboard_binding_width: float = 0.0,
         headstock_engraving: Engraving | None = None,
         neck_tilt: tuple[float, float, float] = (0.0, 0.0, 0.0),
@@ -435,7 +444,12 @@ class FreeCADScriptExporter:
             export_feature_names.append("headstock_feature")
         if fretboard_binding_width > 0.0:
             export_feature_names.append("fretboard_binding_feature")
-        if body is not None:
+        if body is not None and neck_through is not None:
+            export_feature_names += ["neck_block_feature"]
+            export_feature_names += [
+                f"{name.lower()}_feature" for name in _wing_sides(neck_through)
+            ]
+        elif body is not None:
             export_feature_names.append("body_feature")
         export_features = "[" + ", ".join(export_feature_names) + "]"
         output_commands = self._render_output_commands(
@@ -469,7 +483,7 @@ class FreeCADScriptExporter:
         inlay_source = self._render_inlay_cuts(inlay_layout)
         locking_nut_shelf_source = self._render_locking_nut_shelf(locking_nut)
         locking_nut_screw_source = self._render_locking_nut_screws(locking_nut)
-        body_source = self._render_body(body, body_object_name)
+        body_source = self._render_body(body, body_object_name, neck_through)
         binding_source = self._render_fretboard_binding(
             fretboard_surface, fretboard_binding_width, fretboard_object_name
         ) + self._render_headstock_lettering(headstock, headstock_engraving)
@@ -2106,6 +2120,7 @@ class FreeCADScriptExporter:
     def _render_body(
         body: BodySolid | None,
         object_name: str,
+        neck_through: NeckThrough | None = None,
     ) -> str:
         """Return FreeCAD commands that build the solid body and its cuts.
 
@@ -2120,6 +2135,10 @@ class FreeCADScriptExporter:
         (pot/switch shafts, pickup-screw recesses) go straight down from
         the top face; only the jack bore runs sideways, in from the
         edge.
+
+        A neck-through body (``neck_through``) is built whole, then split
+        along its glue lines into the centre block (one piece of wood with
+        the neck, its heel running on into it) and the wings.
         """
         if body is None:
             return ""
@@ -2254,7 +2273,11 @@ class FreeCADScriptExporter:
                 "    )\n"
                 "body_shape = carved_body\n"
             )
-        cavity_cuts = [(body.neck_pocket, "neck pocket cut")]
+        cavity_cuts: list[tuple[Cavity, str]] = (
+            [(body.neck_pocket, "neck pocket cut")]
+            if body.neck_pocket is not None
+            else []
+        )
         if body.truss_rod_access is not None:
             cavity_cuts.append((body.truss_rod_access, "truss-rod access cut"))
         if body.bridge_pickup is not None:
@@ -2277,11 +2300,11 @@ class FreeCADScriptExporter:
                 f"body_shape = cavity_cut(body_shape, {outline}, "
                 f"{cavity.depth}, {label!r})\n"
             )
-        slope = getattr(body.neck_pocket, "floor_slope", 0.0)
-        if slope > 0.0:
+        pocket = body.neck_pocket
+        slope = getattr(pocket, "floor_slope", 0.0)
+        if pocket is not None and slope > 0.0:
             # The pocket's floor sinks toward its mouth: the wedge under
             # its heel-end depth, within its outline.
-            pocket = body.neck_pocket
             front = pocket.min_x - 1.0
             deep = pocket.depth + slope * (pocket.max_x - front)
             low_y, high_y = pocket.min_y - 1.0, pocket.max_y + 1.0
@@ -2429,12 +2452,53 @@ class FreeCADScriptExporter:
             )
         lines += _body_edge_lines(body, outline_literal)
         lines += carve_lines
-        lines.append(
-            "body_feature = document.addObject(\n"
-            f'    "Part::Feature", "{object_name}"\n'
-            ")\n"
-        )
-        lines.append("body_feature.Shape = body_shape\n")
+        if neck_through is None:
+            lines.append(
+                "body_feature = document.addObject(\n"
+                f'    "Part::Feature", "{object_name}"\n'
+                ")\n"
+            )
+            lines.append("body_feature.Shape = body_shape\n")
+        else:
+            # Split along the glue lines: the block joins the neck (whose
+            # heel already runs on into it), each wing is its own part.
+            half = neck_through.width / 2.0
+            lines.append(
+                f"glue_half = {half!r}\n"
+                "body_box = body_shape.BoundBox\n"
+                "def glue_box(y_low, y_high):\n"
+                "    return Part.makeBox(\n"
+                "        body_box.XLength + 20.0, y_high - y_low,\n"
+                "        body_box.ZLength + 20.0,\n"
+                "        App.Vector(\n"
+                "            body_box.XMin - 10.0, y_low, body_box.ZMin - 10.0\n"
+                "        ),\n"
+                "    )\n"
+                # Its own object, one piece of wood with the neck: a fuse
+                # fails on the neck loft's faces lying in the block's top and
+                # bottom planes.
+                "neck_block_feature = document.addObject(\n"
+                '    "Part::Feature", "Neck_block"\n'
+                ")\n"
+                "neck_block_feature.Shape = require_shape(\n"
+                "    body_shape.common(glue_box(-glue_half, glue_half)),\n"
+                '    "neck-through block",\n'
+                ")\n"
+                "neck_block_feature.Label = (\n"
+                "    'Neck-through block (one piece with the neck)'\n"
+                ")\n"
+            )
+            for name, (low, high) in _wing_sides(neck_through).items():
+                variable = f"{name.lower()}_feature"
+                lines.append(
+                    f"{variable} = document.addObject(\n"
+                    f'    "Part::Feature", "{name}"\n'
+                    ")\n"
+                    f"{variable}.Shape = require_shape(\n"
+                    f"    body_shape.common(glue_box({low!r}, {high!r})),\n"
+                    f'    "{name} split",\n'
+                    ")\n"
+                )
         if body.engraving is not None and body.engraving.lines:
             # The engraving is drawn as lines on the top face, not cut:
             # a hundred-odd grooves would make the solid slow to build.
@@ -2842,6 +2906,26 @@ CARVE_PLATEAU_LIFT = 0.3
 stands, in mm: the first 0.3 mm of the fall's start is left (the G-code
 cuts it), and the cut crosses the top cleanly instead of nearly tangent,
 where it failed quietly."""
+
+
+def _wing_sides(neck_through: NeckThrough) -> dict[str, tuple[float, float]]:
+    """Return each side's wing name and the Y range it is split off over.
+
+    One object a side, however many pieces the glue line leaves it.
+    """
+    half = neck_through.width / 2.0
+    sides: dict[str, tuple[float, float]] = {}
+    for wing in neck_through.wings:
+        # A second piece (``Wing_bass_2``) joins its side's object.
+        name = "_".join(wing.name.split("_")[:2])
+        ys = [point.y for point in wing.outline]
+        if min(ys) >= 0.0:
+            reach = (half, max(ys) + 10.0)
+        else:
+            reach = (min(ys) - 10.0, -half)
+        low, high = sides.get(name, reach)
+        sides[name] = (min(low, reach[0]), max(high, reach[1]))
+    return sides
 
 
 def _carve_removed(carve: CarvedTop) -> float:

@@ -30,6 +30,7 @@ from ..cam import (
     plan_neck_machining,
     render_setup_svg,
 )
+from ..geometry.body import body_part
 from ..presets import Prototype001Geometry, Prototype001Parameters
 from ..version import PROJECT_MARK, PROJECT_NAME, __version__
 from .exceptions import BuildWorkflowError, FreeCADExecutionError
@@ -172,9 +173,27 @@ class Prototype001Build:
 
     def _plan_body(self) -> None:
         assert self.geometry is not None
-        self._plans.append(
-            ("Body", plan_body_machining(self.geometry.body, self.machining))
-        )
+        through = self.geometry.neck_through
+        if through is None:
+            self._plans.append(
+                ("Body", plan_body_machining(self.geometry.body, self.machining))
+            )
+            return
+        # A neck-through body: each wing from its own blank (the block is
+        # cut with the neck).
+        for wing in through.wings:
+            ys = [point.y for point in wing.outline]
+            self._plans.append(
+                (
+                    wing.name.replace("_", " "),
+                    plan_body_machining(
+                        body_part(self.geometry.body, wing),
+                        self.machining,
+                        prefix=wing.name,
+                        pin_axis_y=round((min(ys) + max(ys)) / 2.0, 1),
+                    ),
+                )
+            )
 
     def _plan_neck(self) -> None:
         assert self.geometry is not None
@@ -187,6 +206,8 @@ class Prototype001Build:
                     replace(self.neck_machining, blank="laminated")
                     if self.machining.neck_blank == "laminated"
                     else self.neck_machining,
+                    # A neck-through block's features are the body's.
+                    self.machining,
                 ),
             )
         )

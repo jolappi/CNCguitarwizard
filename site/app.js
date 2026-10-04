@@ -16,6 +16,8 @@ const intro = document.getElementById("intro");
 const showAdvanced = document.getElementById("show-advanced");
 const instrumentSelect = document.getElementById("instrument");
 const saveDesignButton = document.getElementById("save-design");
+const guitarName = document.getElementById("guitar-name");
+const ncZipButton = document.getElementById("download-nc-zip");
 const loadDesignButton = document.getElementById("load-design");
 const loadDesignFile = document.getElementById("load-design-file");
 
@@ -535,7 +537,9 @@ function showResult(result) {
       toolpath.innerHTML = result.files[name];
     });
     tabs.appendChild(button);
-    if (name === "Body_top.svg" || (previews.length === 1 && index === 0)) button.click();
+    // The body's top (a neck-through's block, on the neck) is shown first.
+    const first = previews.includes("Body_top.svg") ? "Body_top.svg" : "Neck_block_top.svg";
+    if (name === first || (previews.length === 1 && index === 0)) button.click();
   });
 
   // One list per part (body, neck, fretboard, covers), each program
@@ -548,7 +552,7 @@ function showResult(result) {
   const stemOf = (name) => name.replace(/\.(nc|knc|svg)$/, "");
   const programOf = (name) => (/\.(nc|knc|svg)$/.test(name) ? gcode[stemOf(name)] : undefined);
   // build.json lists the programs alphabetically: order by part, then step.
-  const partOrder = ["Model and report", "Body", "Neck", "Fretboard", "Inlays", "Covers"];
+  const partOrder = ["Model and report", "Body", "Wing bass", "Wing treble", "Neck", "Fretboard", "Inlays", "Covers"];
   const groups = new Map(partOrder.map((part) => [part, []]));
   for (const info of Object.values(gcode)) if (!groups.has(info.part)) groups.set(info.part, []);
   for (const name of Object.keys(result.files)) {
@@ -561,6 +565,8 @@ function showResult(result) {
   };
   const titles = {
     Body: "Body — top face up first, then flipped onto the dowels",
+    "Wing bass": "Bass wing — from its own blank, glued to the neck-through block",
+    "Wing treble": "Treble wing — from its own blank, glued to the neck-through block",
     Neck: "Neck",
     Fretboard: "Fretboard",
     Inlays: "Inlays — the marker pieces, cut from sheet to fit the pockets",
@@ -704,10 +710,47 @@ function designDocument() {
     version: 1,
     saved: new Date().toISOString(),
     app: window.CNCGW_MANIFEST ? window.CNCGW_MANIFEST.wheel : null,
+    name: guitarName.value.trim(),
     instrument,
     prototype,
     machining: values.machining,
   };
+}
+
+// Download every NC program of the last build in one ZIP, named for the
+// guitar (Python packs it: webapp.nc_archive).
+async function downloadNcZip() {
+  ncZipButton.disabled = true;
+  try {
+    pyodide.globals.set("guitar_name", guitarName.value);
+    const archive = await runPython(
+      "import json\nfrom cncguitarwizard.webapp import nc_archive\n" +
+      "json.dumps(nc_archive(guitar_name))"
+    );
+    if (archive.error) {
+      showError(archive.error);
+      return;
+    }
+    const bytes = Uint8Array.from(atob(archive.data), (c) => c.charCodeAt(0));
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(new Blob([bytes], { type: "application/zip" }));
+    link.download = archive.name;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    setStatus(`Saved ${archive.name}`, "ok");
+  } catch (error) {
+    showError(`Cannot make the ZIP: ${error}`);
+  } finally {
+    ncZipButton.disabled = false;
+  }
+}
+
+// A file name from the guitar's name, as Python makes the ZIP's.
+function fileStem(name) {
+  return name.trim().replace(/[^\p{L}\p{N}_ .-]+/gu, "-").replace(/[\s-]*-[\s-]*/g, "-")
+    .replace(/^[ .-]+|[ .-]+$/g, "").slice(0, 80);
 }
 
 function saveDesign() {
@@ -721,7 +764,10 @@ function saveDesign() {
   const blob = new Blob([JSON.stringify(design, null, 2) + "\n"], { type: "application/json" });
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
-  link.download = `cncguitarwizard-${design.instrument}-${design.saved.slice(0, 10)}.json`;
+  const stem = fileStem(guitarName.value);
+  link.download = stem
+    ? `${stem}.json`
+    : `cncguitarwizard-${design.instrument}-${design.saved.slice(0, 10)}.json`;
   document.body.appendChild(link);
   link.click();
   link.remove();
@@ -792,6 +838,7 @@ function applyDesign(design) {
   }
   instrumentSelect.value = design.instrument;
   instrumentSelect.dataset.current = design.instrument;
+  guitarName.value = typeof design.name === "string" ? design.name : "";
   renderForm();
   const unknown = [
     ...applyValues("prototype", design.prototype),
@@ -1010,6 +1057,20 @@ const bodyEditor = {
     this.element("line", { x1: minX, y1: 0, x2: maxX, y2: 0, stroke: "#bbb", "stroke-width": 0.5, "stroke-dasharray": "4,3" });
 
     this.outlinePath = this.element("path", { class: "outline", d: this.pathData(this.outline()) });
+    // A neck-through's centre block: the strip between its glue lines,
+    // within the outline (clipped to it, so it follows the outline's edits).
+    this.blockClip = null;
+    if (layout.neck_through) {
+      const half = layout.neck_through.width / 2;
+      const clip = this.element("clipPath", { id: "neck-through-clip" });
+      this.blockClip = this.element("path", { d: this.pathData(this.outline()) }, clip);
+      const block = this.element("rect", {
+        x: minX, y: -half, width: maxX - minX, height: 2 * half,
+        fill: "#e2cc9f", stroke: "#6b4a1f", "stroke-width": 0.6,
+        "clip-path": "url(#neck-through-clip)", "pointer-events": "none",
+      });
+      this.element("title", {}, block).textContent = "Neck-through block: the wings are glued to its sides";
+    }
 
     const styles = {
       neck: { fill: "#3b2a1a", "fill-opacity": 0.85, stroke: "none" },
@@ -1188,6 +1249,7 @@ const bodyEditor = {
       handle.setAttribute("cx", shown[0]);
       handle.setAttribute("cy", -shown[1]);
       this.outlinePath.setAttribute("d", this.pathData(this.outline()));
+      if (this.blockClip) this.blockClip.setAttribute("d", this.pathData(this.outline()));
       this.outlineHit.setAttribute("d", this.pathData(this.outline()));
       this.check();
     };
@@ -2507,6 +2569,7 @@ instrumentSelect.addEventListener("change", async () => {
 buildButton.addEventListener("click", build);
 resetButton.addEventListener("click", reset);
 saveDesignButton.addEventListener("click", saveDesign);
+ncZipButton.addEventListener("click", downloadNcZip);
 loadDesignButton.addEventListener("click", async () => {
   if (form.querySelector(".changed") && !(await askConfirm(
     "Load a design? Every current value is replaced by the file's."

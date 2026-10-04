@@ -85,10 +85,12 @@ def automatic_index_pins(
     avoid: Sequence[Sequence[Point2D]],
     parameters: MachiningParameters,
     stock: StockBounds,
+    axis_y: float = 0.0,
 ) -> tuple[tuple[float, float], tuple[float, float]]:
     """Place two dowels on the centerline in the blank's waste.
 
-    The centerline ``Y = 0`` is scanned across the blank for runs where a
+    The centerline ``Y = 0`` (or the line ``Y = axis_y``, for a part off
+    it such as a neck-through body's wing) is scanned across the blank for runs where a
     dowel fits (see ``pin_fits``). Pin 1 is the middle of the first run
     from the nut end, pin 2 the middle of the last run toward the tail.
     Both lie on the centerline, so flipping the blank about it leaves
@@ -102,7 +104,7 @@ def automatic_index_pins(
     x = stock.min_x
     current: float | None = None
     while x <= stock.max_x + 1e-9:
-        fits = pin_fits(Point2D(x, 0.0), outline, avoid, parameters, stock)
+        fits = pin_fits(Point2D(x, axis_y), outline, avoid, parameters, stock)
         if fits and current is None:
             current = x
         elif not fits and current is not None:
@@ -119,8 +121,8 @@ def automatic_index_pins(
         )
     first, last = runs[0], runs[-1]
     return (
-        ((first[0] + first[1]) / 2.0, 0.0),
-        ((last[0] + last[1]) / 2.0, 0.0),
+        ((first[0] + first[1]) / 2.0, axis_y),
+        ((last[0] + last[1]) / 2.0, axis_y),
     )
 
 
@@ -129,8 +131,9 @@ def resolve_index_pins(
     avoid: Sequence[Sequence[Point2D]],
     parameters: MachiningParameters,
     stock: StockBounds,
+    axis_y: float = 0.0,
 ) -> tuple[tuple[tuple[float, float], ...], StockBounds]:
-    """Return the pins and the blank they sit in.
+    """Return the pins and the blank they sit in (on ``Y = axis_y``).
 
     Explicit ``index_pin_positions`` are checked as given. Otherwise the
     pins are placed automatically; when the blank's ``stock_margin`` has
@@ -147,7 +150,7 @@ def resolve_index_pins(
         )
     else:
         try:
-            pins = automatic_index_pins(outline, avoid, parameters, stock)
+            pins = automatic_index_pins(outline, avoid, parameters, stock, axis_y)
         except ToolpathError:
             # Room for a whole dowel (and a step of the scan) between the
             # cuts' clearance and the blank's edge margin, at each end.
@@ -169,7 +172,9 @@ def resolve_index_pins(
             )
             for grown in candidates:
                 try:
-                    pins = automatic_index_pins(outline, avoid, parameters, grown)
+                    pins = automatic_index_pins(
+                        outline, avoid, parameters, grown, axis_y
+                    )
                 except ToolpathError:
                     if grown is candidates[-1]:
                         raise

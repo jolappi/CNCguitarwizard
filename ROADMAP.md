@@ -16,6 +16,20 @@
   fretboard and covers, with toolpath previews
 - Web app running the package in the browser (Pyodide), with body and
   headstock editors and NC Viewer simulation
+- Headless guitars and basses: no headstock, the strings anchored at the
+  nut end and tuned at the bridge
+- Carved (arched) tops, Les Paul style, on any body, roughed to sand by
+  hand (a bigger roughing tool or a ball-nose finish on request)
+- Fretboard binding; more fretboard markers, cut from sheet where they
+  are not dots
+- Decorative engravings on the top (scrolls, EVH stripes, flame, ripples,
+  crackle) and lettering engraved in the headstock face
+- Left-handed instruments: any design built as its mirror image
+- Neck-through construction: the neck blank as the body's centre block,
+  two wings cut on their own and glued to its sides
+- Neck angle (a tilted pocket floor for a Tune-o-matic), a Telecaster
+  neck (slotted nut, Tele headstock), low-profile truss rods and a spoke
+  wheel choice
 
 ## Before v1
 
@@ -48,11 +62,7 @@
 ## v2
 
 Instruments and construction
-- Headless guitars and basses: no headstock, the strings anchored at the
-  nut end and tuned at the bridge.
-- Neck-through and set (glued) necks alongside the bolt-on neck (the
-  Jackson RR is a neck-through in its original form).
-- Carved (arched) tops, Les Paul style.
+- Set (glued) necks alongside the bolt-on and neck-through necks.
 - More bridges: Floyd Rose and Kahler for seven and eight strings, and
   more bass bridges.
 
@@ -65,18 +75,12 @@ Electronics
   is still refused).
 
 Neck and fretboard
-- Fretboard binding.
-- A program for the filler that closes a headstock-adjusted truss rod's
-  route under the nut, and the parts now given as notes (the sleeve bore)
-  modelled or cut where the machine can.
-
-Decoration
-- Decorative carvings and engravings.
-- A name or logo engraved in the headstock face.
+- The parts now given as notes (a truss rod's sleeve bore) modelled or
+  cut where the machine can.
 
 Tools and templates
-- Rotating features (cavities, pickups, the battery box) in the body
-  editor, not only moving them.
+- Rotating the pickups in the body editor (the control cavity, the
+  battery box and the jack already turn).
 - More mockup body templates, and headstock templates, made the same way
   (traced, reshaped by hand, marked as mockups).
 - DXF export of the plan outlines.
@@ -84,6 +88,7 @@ Tools and templates
 ```mermaid
 flowchart TD
     Done["Done: guitar, bass, 7/8-string, CAD and CAM, slanted and fanned frets"] --> Beta["v1.0.0-beta1"]
-    Beta --> V1["v1.0.0: machine-verified toolpaths"]
-    V1 --> V2["v2: headless, neck-through, carved tops, binding, engraving, wire channels"]
+    Beta --> More["Since: headless, carved tops, binding, engraving, left-handed, neck-through"]
+    More --> V1["v1.0.0: machine-verified toolpaths"]
+    V1 --> V2["v2: set necks, 7/8-string tremolos, wire channels, DXF export"]
 ```

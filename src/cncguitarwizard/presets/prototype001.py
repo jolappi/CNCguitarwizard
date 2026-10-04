@@ -31,10 +31,12 @@ from ..geometry.body import (
     TracedOutline,
     TuneOMaticSpec,
     mirrored_hardware,
+    neck_through,
     outlines_overlap,
     plateau_round,
     turned_hardware,
 )
+from ..geometry.body.neck_through import NeckThrough
 from ..geometry.exceptions import (
     BodyGeometryError,
     GeometryException,
@@ -198,6 +200,24 @@ CARVE_MIN_FALL = 25.0
 mm: where the plateau comes nearer the edge, the rim narrows (down to its
 ``edge_rim``) to leave the fall that room."""
 
+NECK_THROUGH_MARGIN = 3.0
+"""Wood a neck-through block keeps beside the pickup and bridge routes and
+holes it carries, in mm (its automatic width)."""
+
+NECK_THROUGH_BLOCK_FEATURES: tuple[str, ...] = (
+    "Bridge",
+    "Tailpiece",
+    "String",
+    "Floyd",
+    "Kahler",
+)
+"""What a neck-through block carries besides the pickups: the bridge's
+routes and holes, by name."""
+
+NECK_THROUGH_EDGE_REACH = 12.0
+"""How far past a neck-through glue line a part's edge finish (a
+roundover, a binding) runs on into its waste, in mm."""
+
 NECK_ANGLE_TUNE_O_MATIC = 2.0
 """A Tune-o-matic's neck angle on the flat top, in degrees (2-2.5 is usual;
 a carved Les Paul top takes 3-5)."""
@@ -329,6 +349,8 @@ class Prototype001Geometry:
     """Lettering engraved into the headstock face, or ``None``."""
     neck_tilt: tuple[float, float, float] = (0.0, 0.0, 0.0)
     """The neck's back-tilt in degrees and the ``(x, z)`` it turns about."""
+    neck_through: NeckThrough | None = None
+    """A neck-through body's block and wings, or ``None`` for a bolt-on neck."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -489,6 +511,16 @@ class Prototype001Parameters:
     final_fret_width: float = 56.0
     heel_width: float = 56.0
     heel_mounting_length: float = 54.0
+    # neck_joint: "bolt_on" screws the neck's heel into a pocket in the
+    # body; "neck_through" runs the neck blank on through the body as a
+    # centre block neck_through_width wide (empty: wide enough for the
+    # pickup and bridge routes and holes, NECK_THROUGH_MARGIN each side),
+    # the body's two wings cut from their own blanks and glued to its
+    # sides. The neck's back then falls to the body's thickness over
+    # neck_through_heel_ramp, reaching it where the body begins.
+    neck_joint: Literal["bolt_on", "neck_through"] = "bolt_on"
+    neck_through_width: float | None = None
+    neck_through_heel_ramp: float = 40.0
     heel_length: float = 4.0
     fretboard_end_extension: float = 4.0
     # Square nut-end corners: the board meets the nut with no rounding.
@@ -1633,6 +1665,14 @@ class Prototype001Parameters:
             NeckGeometryError: For an angle outside 0..``MAX_NECK_ANGLE``.
         """
         angle = self.neck_angle
+        if self.neck_joint == "neck_through":
+            # The neck blank is the body's own centre: nothing to tilt.
+            if angle not in (None, 0.0):
+                raise NeckGeometryError(
+                    "A neck-through neck takes no neck_angle (it is the body's "
+                    "own centre block): leave it empty or 0."
+                )
+            return 0.0
         if angle is None:
             return (
                 NECK_ANGLE_TUNE_O_MATIC
@@ -2115,7 +2155,13 @@ class Prototype001Parameters:
             self.heel_thickness,
             floor_slope=math.tan(math.radians(self.neck_angle_degrees)),
         )
-        neck_bolts = self._neck_bolt_holes(outline, heel_end, neck_pocket)
+        # A neck-through body has no pocket to bolt a heel into (the pocket's
+        # outline stays as where the neck passes, for the keep-outs).
+        neck_bolts = (
+            ()
+            if self.neck_joint == "neck_through"
+            else self._neck_bolt_holes(outline, heel_end, neck_pocket)
+        )
         truss_rod = self.truss_rod(outline)
         truss_rod_access = (
             TracedCavity(
@@ -2530,6 +2576,69 @@ class Prototype001Parameters:
             bridge.footprint,
             engraving,
             carved_top,
+        )
+
+    def neck_through_block_width(self, layout: BodyLayout) -> float:
+        """Return a neck-through block's width.
+
+        ``neck_through_width``, or wide enough for the pickup and bridge
+        routes and holes (and the neck's heel) with ``NECK_THROUGH_MARGIN``
+        of wood beside them.
+
+        Raises:
+            BodyGeometryError: For a width that is not positive.
+        """
+        if self.neck_through_width is not None:
+            width = self.neck_through_width
+            if not math.isfinite(width) or width <= 0.0:
+                raise BodyGeometryError("neck_through_width must be positive.")
+            return width
+        outlines = [
+            pickup.outline
+            for pickup in (
+                layout.neck_pickup,
+                layout.middle_pickup,
+                layout.bridge_pickup,
+            )
+            if pickup is not None
+        ] + [
+            cavity.outline
+            for cavity in (*layout.extra_cavities, *layout.through_cavities)
+            if cavity.name.startswith(NECK_THROUGH_BLOCK_FEATURES)
+        ]
+        reach = max(
+            (abs(point.y) for points in outlines for point in points),
+            default=0.0,
+        )
+        for hole in layout.holes:
+            if hole.name.startswith(NECK_THROUGH_BLOCK_FEATURES) or (
+                "pickup" in hole.name
+            ):
+                reach = max(reach, abs(hole.center_y) + hole.diameter / 2.0)
+        reach = max(reach, self.heel_width / 2.0)
+        return 2.0 * (reach + NECK_THROUGH_MARGIN)
+
+    def neck_through_parts(
+        self, outline: NeckOutline, plan: HeadstockPlan, layout: BodyLayout
+    ) -> NeckThrough | None:
+        """Return a neck-through body's block and wings, or ``None`` (bolt-on)."""
+        if self.neck_joint != "neck_through":
+            return None
+        neck = outline.boundary
+        # The neck's plan from its +Y corner at the nut round the headstock
+        # to its -Y corner, and its two sides from the nut on.
+        head = (neck[0], *reversed(plan.boundary[2:]), neck[1])
+        sides = (
+            (neck[0], neck[7], neck[6], neck[5]),
+            (neck[1], neck[2], neck[3], neck[4]),
+        )
+        return neck_through(
+            layout.outline.points,
+            self.neck_through_block_width(layout),
+            head,
+            sides,
+            self.bass_sign,
+            NECK_THROUGH_EDGE_REACH,
         )
 
     def headstock_solid(self, plan: HeadstockPlan) -> HeadstockSolid:
@@ -3183,7 +3292,25 @@ class Prototype001Parameters:
             Complete backend-independent Prototype001 geometry.
         """
         heel_flat_start_offset = self.heel_flat_start_offset
+        if self.neck_joint not in ("bolt_on", "neck_through"):
+            raise NeckGeometryError('neck_joint must be "bolt_on" or "neck_through".')
+        through = self.neck_joint == "neck_through"
+        if through and self.headless:
+            raise NeckGeometryError(
+                "A neck-through neck needs a headstock: the headless neck is "
+                "bolt-on only for now."
+            )
         if (
+            through
+            and self.truss_rod_adjustment == "heel"
+            and not self.truss_rod_spoke_wheel_fitted
+        ):
+            raise NeckGeometryError(
+                "A neck-through neck buries a heel adjuster in the body: adjust "
+                "the truss rod at the headstock, or fit a spoke wheel "
+                "(truss_rod_spoke_wheel)."
+            )
+        if not through and (
             not math.isfinite(self.heel_mounting_length)
             or self.heel_mounting_length < 40.0
         ):
@@ -3350,11 +3477,27 @@ class Prototype001Parameters:
         twelfth_fret_wood_thickness = (
             self.twelfth_fret_thickness - self.fretboard_thickness
         )
+        # The body first: a neck-through neck's back falls to the body's
+        # thickness where the body begins.
+        headstock_plan, tuner_layout = self.headstock_design()
+        body_parts = self._body_layout(outline)
+        through_parts = self.neck_through_parts(outline, headstock_plan, body_parts)
+        heel_depth = self.heel_thickness
+        heel_transition = self.heel_root_length
+        if through_parts is not None:
+            heel_depth = self.body_thickness
+            ramp = self.neck_through_heel_ramp
+            if not math.isfinite(ramp) or ramp <= 0.0:
+                raise NeckGeometryError("neck_through_heel_ramp must be positive.")
+            heel_transition = ramp
+            heel_flat_start_offset = max(
+                1.0, outline.last_fret_position - through_parts.front_x
+            )
         neck_surface = NeckBackSurface(
             outline,
             first_fret_wood_thickness,
             twelfth_fret_wood_thickness,
-            self.heel_thickness,
+            heel_depth,
             nut_transition_thickness=self.headstock_thickness,
             nut_shelf_length=self.nut_shelf_length + self.nut_shelf_reach(),
             nut_transition_length=self.headstock_volute_length,
@@ -3367,7 +3510,7 @@ class Prototype001Parameters:
             ),
             nut_volute_peak_fraction=self.headstock_volute_peak_fraction,
             nut_root_side_extension=self.headstock_root_side_extension,
-            heel_transition_length=self.heel_root_length,
+            heel_transition_length=heel_transition,
             heel_flat_start_offset=heel_flat_start_offset,
             heel_scoop_depth=self.heel_scoop_depth,
             heel_root_center_extension=self.heel_root_center_extension,
@@ -3439,15 +3582,14 @@ class Prototype001Parameters:
             bass_sign=self.bass_sign,
         )
         truss_rod_channel = self.truss_rod(outline)
-        headstock_plan, tuner_layout = self.headstock_design()
         headstock = self.headstock_solid(headstock_plan)
-        body_parts = self._body_layout(outline)
         if body_parts.pickguard is not None:
             check_on_body(body_parts.pickguard, body_parts.outline.points)
         body = BodySolid(
             body_parts.outline,
             self.body_thickness,
-            body_parts.neck_pocket,
+            # A neck-through body has no pocket: the neck runs on through.
+            None if through_parts is not None else body_parts.neck_pocket,
             body_parts.bridge_pickup,
             body_parts.neck_pickup,
             body_parts.bridge_mounting,
@@ -3509,6 +3651,7 @@ class Prototype001Parameters:
             self.fretboard_binding_width,
             self.headstock_lettering(headstock, tuner_layout, truss_rod_channel),
             (self.neck_angle_degrees, *self.neck_pivot()),
+            through_parts,
         )
 
 

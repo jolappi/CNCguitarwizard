@@ -30,6 +30,13 @@ from .hardware import (
     RectangularCavity,
     TracedCavity,
 )
+from .neck_through import (
+    BodyPart,
+    NeckThrough,
+    body_part,
+    neck_through,
+    split_by_line,
+)
 from .outline import BodyOutline, TracedOutline
 
 __all__ = [
@@ -65,4 +72,9 @@ __all__ = [
     "cover_screw_points",
     "mirrored_hardware",
     "turned_hardware",
+    "BodyPart",
+    "body_part",
+    "NeckThrough",
+    "neck_through",
+    "split_by_line",
 ]

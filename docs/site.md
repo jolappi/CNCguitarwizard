@@ -114,10 +114,11 @@ Python.
    slotted nut, flat six-in-line headstock, drawn Telecaster outline and
    heel-adjusted truss rod.
 3. **Save design** downloads every setting as one JSON file on the user's
-   own computer — the instrument, all `prototype` and `machining` values,
-   the drawn body's `control_points` and the drawn headstock edges
-   included (`{"format": "cncguitarwizard-design", "version": 1,
-   "instrument", "prototype", "machining"}`). **Load design** opens such a
+   own computer — the instrument, the guitar's name, all `prototype` and
+   `machining` values, the drawn body's `control_points` and the drawn
+   headstock edges included (`{"format": "cncguitarwizard-design",
+   "version": 1, "name", "instrument", "prototype", "machining"}`), named
+   for the guitar (*Guitar name*, beside the instrument) when it has one. **Load design** opens such a
    file: it switches to the saved instrument, puts every value back into
    the form (variant kinds first, then their fields) and redraws the
    editors — the body editor from the loaded `control_points`, so a drag
@@ -148,6 +149,14 @@ Python.
    in its editor (Ctrl/Cmd+A), pasting (Ctrl/Cmd+V) and pressing *Plot*
    (or dropping the downloaded file) runs the simulation — the
    viewer has no URL or message API a page could feed directly.
+   *Download all NC files (.zip)* gives every program in one ZIP named
+   for the guitar (`<Guitar name>.zip`; `webapp.nc_archive` packs the last
+   build's programs in Python): a folder named for the guitar, one folder
+   a part inside it, each program numbered in running order
+   (`Neck/02_Neck_top.nc`), and a `README.txt` listing them with their
+   tools and run times. The name is made safe for a file name
+   (`webapp.archive_name`: letters, digits, spaces, dots, dashes and
+   underscores stay).
 
 FreeCAD cannot run in a browser, so `.FCStd` and STEP are made locally:
 download `Prototype001_freecad.py` and run

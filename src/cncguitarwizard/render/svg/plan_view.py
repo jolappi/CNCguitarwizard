@@ -75,6 +75,18 @@ def render_plan_view_svg(geometry: Prototype001Geometry) -> str:
             f'width="{width * 1.2:.0f}" height="{height * 1.2:.0f}">'
         ),
         path(body.outline.points, wood),
+        # A neck-through's block runs on from the neck, a shade darker; its
+        # long sides are the glue lines to the wings.
+        *(
+            (
+                path(
+                    geometry.neck_through.block.outline,
+                    'fill="#e2cc9f" stroke="#6b4a1f" stroke-width="0.6"',
+                ),
+            )
+            if geometry.neck_through is not None
+            else ()
+        ),
         path(geometry.headstock.plan.boundary, wood),
         path(geometry.neck_outline.boundary, wood),
     ]

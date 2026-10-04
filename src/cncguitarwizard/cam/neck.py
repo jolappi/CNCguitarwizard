@@ -22,10 +22,12 @@ from __future__ import annotations
 
 import math
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING, Literal
 
+from ..geometry.body import body_part
 from ..geometry.primitives import Point2D, point_in_polygon
+from .body import plan_body_machining
 from .engraving import engraving_path, engraving_tool
 from .exceptions import ToolpathError
 from .fixturing import StockBounds, resolve_index_pins
@@ -179,21 +181,28 @@ class NeckMachiningPlan:
     headstock_block: HeadstockBlock | None = None
     headstock_setups: tuple[Setup, ...] = ()
     top_engraving: Setup | None = None
+    block_top_setups: tuple[Setup, ...] = ()
+    block_back_setups: tuple[Setup, ...] = ()
 
     @property
     def setups(self) -> tuple[Setup, ...]:
         """Return the setups in running order.
 
         A laminated blank's headstock programs come after the neck's own,
-        once the block is glued on, and the outline last of all.
+        once the block is glued on, and the outline last of all. A
+        neck-through blank's body block (its pickup and bridge routes, its
+        share of a carve) is cut with the neck's top face, and its back
+        after the neck's back.
         """
         return (
             self.index_pins,
             self.top,
+            *self.block_top_setups,
             *((self.top_engraving,) if self.top_engraving is not None else ()),
             self.back_rough,
             self.back_finish,
             *self.headstock_setups,
+            *self.block_back_setups,
             self.back_outline,
         )
 
@@ -422,6 +431,7 @@ def neck_plan_polygon(geometry: Prototype001Geometry) -> tuple[Point2D, ...]:
 def plan_neck_machining(
     geometry: Prototype001Geometry,
     parameters: NeckMachiningParameters,
+    body_parameters: MachiningParameters | None = None,
 ) -> NeckMachiningPlan:
     """Return toolpaths for every machinable feature of the neck.
 
@@ -434,8 +444,17 @@ def plan_neck_machining(
     Z zero on the blank's back — the block's underside on a laminated
     blank — so over the neck the first passes cut air.
 
+    A neck-through blank runs on through the body as its centre block, as
+    thick as the body: its outline is the neck and the block together, its
+    back is milled only up to where the body begins (the block's back is
+    the blank's), and the block's own features are cut by the body's
+    programs (``body_parameters``, else the flat tool's) on the neck's
+    fixture, named ``Neck_block_...``; the outline is then cut full depth.
+
     Raises:
-        ToolpathError: If an index pin cannot be placed.
+        ToolpathError: If an index pin cannot be placed, or a neck-through
+            headstock needs a blank thicker than the body (glue a block
+            under it: ``blank="laminated"``).
     """
     flat = parameters.flat
     ball = parameters.ball
@@ -448,11 +467,17 @@ def plan_neck_machining(
     neck_lowest = min(
         point.z for row in geometry.neck_surface.mesh.rows for point in row
     )
+    through = geometry.neck_through
     plank = _round_up(-neck_lowest)
     needed = _round_up(-min(headstock_lowest, neck_lowest))
     thickness = max(parameters.blank_thickness or 0.0, needed)
+    if through is not None:
+        # The block is the body's own centre: exactly as thick as it.
+        plank = geometry.body.thickness
+        needed = max(needed, plank)
+        thickness = max(parameters.blank_thickness or 0.0, needed)
 
-    outline = neck_plan_polygon(geometry)
+    outline = through.plan if through is not None else neck_plan_polygon(geometry)
     min_x, min_y, max_x, max_y = polygon_bounds(outline)
     radius = max(flat.tool_radius, ball.tool_radius)
     sweep = (
@@ -467,6 +492,12 @@ def plan_neck_machining(
     if laminated:
         assert block is not None
         thickness = plank + block.thickness
+    elif through is not None and thickness > plank + 1e-6:
+        raise ToolpathError(
+            f"The neck-through blank must be the body's {plank:g} mm thick, but "
+            f"the headstock needs {thickness:g} mm: glue a block under it "
+            "(neck_blank 'laminated') or set the headstock flatter."
+        )
     pins, stock = resolve_index_pins(outline, [sweep], flat, stock)
     origin_x, origin_y = pins[0]
     top_frame = _Frame(origin_x, origin_y, mirror_y=False)
@@ -705,7 +736,7 @@ def plan_neck_machining(
         margin = 3.0 * max(flat.tool_diameter, ball.tool_diameter)
         cut_x = back_frame.x_range((x_from, x_to))
         sample_x = back_frame.x_range((x_from - margin, x_to + margin))
-        carve_y = back_frame.y_range((min_y - radius, max_y + radius))
+        carve_y = back_frame.y_range((carve_low - radius, carve_high + radius))
         sampled = sample_surface(
             surface.machine_z,
             sample_x,
@@ -760,6 +791,18 @@ def plan_neck_machining(
         return rough, finish
 
     flip = "Flip the blank about the neck centerline onto the same two index pins."
+    # The back is carved across the neck and headstock: a neck-through
+    # block's waste beside the neck goes with its full-depth outline cut.
+    _, carve_low, _, carve_high = (
+        polygon_bounds(neck_plan_polygon(geometry))
+        if through is not None
+        else (min_x, min_y, max_x, max_y)
+    )
+    # A neck-through block's back is the blank's own: the back is milled
+    # only until the body begins.
+    back_end = (
+        through.front_x + 2.0 * radius if through is not None else max_x
+    ) + radius
     headstock_setups: tuple[Setup, ...] = ()
     if laminated:
         assert block is not None
@@ -769,7 +812,7 @@ def plan_neck_machining(
             "Neck",
             plank,
             split,
-            max_x + radius,
+            back_end,
             (
                 flip,
                 "Keep X/Y zero at index pin 1; set Z zero on the plank's back.",
@@ -823,7 +866,7 @@ def plan_neck_machining(
             "Neck",
             thickness,
             min_x - radius,
-            max_x + radius,
+            back_end,
             (
                 flip,
                 "Keep X/Y zero at index pin 1; set Z zero on the (new) blank top.",
@@ -831,27 +874,96 @@ def plan_neck_machining(
         )
     back_outline = Setup(
         "Neck_back_outline",
-        "Neck back - plan outline through the skin, with tabs",
+        (
+            "Neck-through back - plan outline of the neck and body block, full "
+            "depth, with tabs"
+            if through is not None
+            else "Neck back - plan outline through the skin, with tabs"
+        ),
         (
             profile(
                 "Neck outline with tabs",
                 back_frame.polygon(outline),
                 thickness + flat.through_overshoot,
                 flat,
-                start_depth=thickness - parameters.skin - 0.5,
+                # Round a neck-through block the waste is still whole.
+                start_depth=(
+                    0.0 if through is not None else thickness - parameters.skin - 0.5
+                ),
                 with_tabs=True,
             ),
         ),
         (
             "Same fixture and X/Y zero; back to the flat end mill, re-touch Z"
             + (" on the block's underside." if laminated else "."),
-            f"Cuts the {parameters.skin:g} mm skin around the outline, leaving "
-            f"{flat.tab_count} tabs; saw and sand them off, then fair the "
-            "back edges into the sides by hand.",
+            (
+                "Cuts the whole outline of the neck and its body block, the "
+                f"waste beside the block from the top, leaving {flat.tab_count} "
+                "tabs; saw and sand them off, then fair the back edges into "
+                "the sides by hand. The block's glue faces stay square: glue "
+                "the wings to them."
+                if through is not None
+                else f"Cuts the {parameters.skin:g} mm skin around the outline, "
+                f"leaving {flat.tab_count} tabs; saw and sand them off, then "
+                "fair the back edges into the sides by hand."
+            ),
         ),
         reference_points,
         flat,
     )
+    block_top: tuple[Setup, ...] = ()
+    block_back: tuple[Setup, ...] = ()
+    block_top_previews: tuple[tuple[Point2D, ...], ...] = ()
+    block_back_previews: tuple[tuple[Point2D, ...], ...] = ()
+    if through is not None:
+        block_plan = plan_body_machining(
+            body_part(geometry.body, through.block),
+            body_parameters or flat,
+            prefix="Neck_block",
+            fixture=(pins, stock),
+            cut_outline=False,
+        )
+        top_names = {
+            setup.name
+            for setup in (
+                block_plan.top_carve,
+                block_plan.top,
+                block_plan.top_controls,
+                block_plan.top_small_holes,
+                block_plan.top_edges,
+                block_plan.top_engraving,
+            )
+            if setup is not None
+        }
+        for setup, preview in zip(
+            block_plan.setups, block_plan.preview_outlines, strict=True
+        ):
+            if setup is block_plan.index_pins or not setup.toolpaths:
+                continue
+            on_top = setup.name in top_names
+            setup = replace(
+                setup,
+                notes=(
+                    (
+                        "The neck blank on its two index pins, glue face up, "
+                        "same work zero as Neck_top."
+                        if on_top
+                        else "The neck blank flipped onto its two index pins, "
+                        "as for Neck_back_rough."
+                    ),
+                    *(
+                        note
+                        for note in setup.notes
+                        if "index pin" not in note and "Flip the blank" not in note
+                    ),
+                ),
+            )
+            if on_top:
+                block_top += (setup,)
+                block_top_previews += (preview,)
+            else:
+                block_back += (setup,)
+                block_back_previews += (preview,)
 
     top_outline = top_frame.polygon(outline)
     back_outline_polygon = back_frame.polygon(outline)
@@ -882,13 +994,17 @@ def plan_neck_machining(
         headstock_block=block,
         headstock_setups=headstock_setups,
         top_engraving=top_engraving,
+        block_top_setups=block_top,
+        block_back_setups=block_back,
         preview_outlines=(
             top_outline,
             top_outline,
+            *block_top_previews,
             *((top_outline,) if top_engraving is not None else ()),
             back_outline_polygon,
             back_outline_polygon,
             *headstock_previews,
+            *block_back_previews,
             back_outline_polygon,
         ),
     )

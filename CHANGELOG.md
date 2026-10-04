@@ -4,6 +4,23 @@
 
 ### Added
 
+- The web app names the guitar (*Guitar name*, saved with the design and
+  naming its file) and downloads every NC program in one ZIP named for it
+  (*Download all NC files (.zip)*, `webapp.nc_archive`): a folder a part,
+  each program numbered in running order, and a README listing them with
+  their tools and run times.
+- A neck-through construction (`neck_joint` "neck_through",
+  `neck_through_width`, `neck_through_heel_ramp`): the neck blank runs on
+  through the body as its centre block (wide enough for the pickup and
+  bridge routes by default), the two wings cut from their own blanks and
+  glued to its sides. No neck pocket or bolts; the neck's back falls to
+  the body's thickness where the body begins. The neck blank's programs
+  cut the block's features on its own dowels (`Neck_block_...`) and its
+  whole outline full depth; each wing gets the body's programs
+  (`Wing_bass_...`, `Wing_treble_...`), every feature reaching it cut
+  whole and its edge finishes run on past the glue line so the glue faces
+  stay square. The FreeCAD model splits the body into `Neck_block` and
+  the wings; the plan view and body editor show the block.
 - A left-handed option (`handedness`, "right" or "left", first in the
   form): the instrument built as its mirror image across the centreline
   while the design stays stored as drawn. The body shape and its

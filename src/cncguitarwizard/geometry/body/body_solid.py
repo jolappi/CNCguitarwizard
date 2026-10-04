@@ -60,7 +60,8 @@ class BodySolid:
     Args:
         outline: The body's plan-view silhouette.
         thickness: Overall slab thickness in millimetres.
-        neck_pocket: Recess that receives the neck heel.
+        neck_pocket: Recess that receives the neck heel, or ``None`` on a
+            neck-through body (the neck blank runs on through it).
         bridge_pickup: Route for the bridge-position pickup, or ``None``.
         neck_pickup: Route for the neck-position pickup, or ``None``.
         bridge_mounting: Kahler-style bridge cavity and pivot holes.
@@ -105,6 +106,13 @@ class BodySolid:
             must leave ``CARVE_WALL`` of wood under it.
         engraving: Decorative lines engraved into the top, or ``None``;
             it must leave half the slab.
+        edge_outline: The outline the edge finishes (roundover, binding)
+            follow, if not ``outline``: on one part of a neck-through body,
+            the body's outline carried on past its glue lines into the
+            part's waste, so its glue faces stay square.
+        checked: ``False`` for one part of a neck-through body, cut from
+            its own blank: the whole body was checked, and the part carries
+            every feature that reaches it, past its glue lines too.
 
     Raises:
         BodyGeometryError: If any cavity is deeper than the slab, falls
@@ -117,7 +125,7 @@ class BodySolid:
 
     outline: Outline
     thickness: float
-    neck_pocket: Cavity
+    neck_pocket: Cavity | None
     bridge_pickup: Cavity | None
     neck_pickup: Cavity | None
     bridge_mounting: BridgeMounting
@@ -139,11 +147,15 @@ class BodySolid:
     truss_rod_access: Cavity | None = None
     engraving: Engraving | None = None
     carved_top: CarvedTop | None = None
+    edge_outline: tuple[Point2D, ...] = ()
+    checked: bool = True
 
     def __post_init__(self) -> None:
         """Cross-check every cavity against the slab and outline bounds."""
         if not math.isfinite(self.thickness) or self.thickness <= 0.0:
             raise BodyGeometryError("Body thickness must be finite and positive.")
+        if not self.checked:
+            return
         if self.carved_top is not None:
             self._check_carve()
         if self.engraving is not None and self.engraving.depth >= self.thickness / 2.0:
@@ -515,9 +527,16 @@ class BodySolid:
         )
 
     @property
+    def edge_points(self) -> tuple[Point2D, ...]:
+        """Return the outline the edge finishes follow (see ``edge_outline``)."""
+        return self.edge_outline or self.outline.points
+
+    @property
     def top_cavities(self) -> tuple[Cavity, ...]:
         """Return every cavity cut down from the top face, through routes last."""
-        cavities: list[Cavity] = [self.neck_pocket]
+        cavities: list[Cavity] = (
+            [self.neck_pocket] if self.neck_pocket is not None else []
+        )
         if self.truss_rod_access is not None:
             cavities.append(self.truss_rod_access)
         cavities.extend(

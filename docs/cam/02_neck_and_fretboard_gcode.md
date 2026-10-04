@@ -84,6 +84,25 @@ straight 5 mm ledge (the model's U-shaped trim is not machined), the
 headstock-root volute follows the mesh/plane union rather than the
 FreeCAD fillets, and the spoke-wheel access pocket is not modelled.
 
+### Neck-through
+
+A neck-through blank (`geometry.neck_through`) runs from the headstock tip
+to the body's tail and is exactly as thick as the body (a headstock
+needing more is refused: glue a block under it, `blank="laminated"`).
+Its outline is the neck and the body's centre block joined
+(`NeckThrough.plan`); the dowels go beyond the headstock tip and beyond
+the block's tail. The back is carved only across the neck and headstock
+and only up to where the body begins (the block's back is the blank's);
+`Neck_back_outline` then cuts the whole outline full depth, the waste
+beside the block too, with tabs. The block's own features — pickup and
+bridge routes and holes, a heel-adjusted truss rod's access notch, its
+share of a carve, its edges and any rear cavity reaching it — are cut by
+the body's programs (`plan_body_machining` with the neck's `fixture`, no
+outline cut) on the same dowels: `Neck_block_top` and the like with the
+top face up, `Neck_block_back...` after the neck's back. The wings get
+the body's programs each on its own blank (`Wing_bass_...`,
+`Wing_treble_...`), their dowels on a line along each wing's middle.
+
 ## Fretboard (`FretboardMachiningParameters`, five programs and the inlay pieces)
 
 The board is a flat blank `blank_thickness` (7 mm) thick, glue face down,

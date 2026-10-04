@@ -133,6 +133,46 @@ raahaus luetaan); editorin tekstin esikatselu on rakennettu teksti
 peilattuna takaisin, joten se näkyy luettavana. Aiemmin koodi ja
 dokumentit kutsuivat oletusta virheellisesti vasenkätiseksi.
 
+## Läpikaula
+
+`neck_joint = "neck_through"` jatkaa kaula-aihion rungon läpi: rungon
+ääriviiva kahden liimalinjan `Y = ±neck_through_width / 2` välissä on
+kaula-aihion **keskiosa**, niiden ulkopuolella kaksi **siipeä**
+(`Wing_bass`, `Wing_treble`), jotka jyrsitään kukin omasta aihiostaan ja
+liimataan keskiosan kylkiin. Tyhjä `neck_through_width` tekee keskiosasta
+niin leveän, että mikkien ja tallan kolot ja reiät (ja kaulan kanta)
+mahtuvat siihen 3 mm (`NECK_THROUGH_MARGIN`) puuta vierellään: kahdella
+humbuckerilla 92 mm, Tune-o-maticin kanssa 99 mm. Rungossa ei ole
+kaulataskua eikä kaulapultteja. Kaulan selkä pitää D-profiilinsa ja
+laskeutuu sitten rungon paksuuteen `neck_through_heel_ramp` (40 mm)
+matkalla, saavuttaen sen siinä, missä runko kohtaa kaulan kyljet. Kaulan
+kulmaa ei ole (Tune-o-maticin automaattinen 2° on tässä 0), ja
+kantapäästä säädettävä kaularauta vaatii säätöpyörän, koska kantapään
+mutteri jäisi keskiosan sisään. Päätön kaula on toistaiseksi vain
+pulttikaulana.
+
+Jokainen osa jyrsitään vähän osaa suuremmasta aihiosta: se saa jokaisen
+siihen ulottuvan kolon ja reiän kokonaan (liimalinjan ylittävä säädinkolo
+jyrsitään kumpaankin osaan, toinen puoli kummankin hukkapuuhun),
+kaareutuksen ja viisteet kokonaan, kaiverruksen ulottuvilta osin ja
+reunan pyöristyksen ja reunanauhan ääriviivaa pitkin, joka jatkuu 12 mm
+liimalinjan yli hukkapuuhun — liimapinnat jäävät suoriksi. Ääriviivan
+profiili lopuksi leikkaa hukkapuun pois.
+
+Kaula-aihio on läpikaulassa tasan rungon paksuinen ja ulottuu lavan
+kärjestä rungon häntään (ohjaustapit lavan kärjen eteen ja keskiosan
+hännän taakse). Sen selkä jyrsitään vain kaulan ja lavan leveydeltä ja
+vain rungon alkuun asti; `Neck_back_outline` leikkaa koko ääriviivan
+täyteen syvyyteen kielekkeineen. Keskiosan kolot jyrsitään rungon
+ohjelmilla samoilla tapeilla (`Neck_block_top` ym. yläpuoli ylöspäin,
+`Neck_block_back...` kaulan selän jälkeen). Siivet saavat rungon ohjelmat
+omille aihioilleen (`Wing_bass_...`, `Wing_treble_...`), tapit kunkin
+siiven keskilinjalle. FreeCAD-malli rakentaa rungon kokonaisena ja jakaa
+sen liimalinjoja pitkin: `Neck_block` (yhtä puuta kaulan kanssa, oma
+objektinsa, koska kaulan loftin pinnat ovat keskiosan ylä- ja alapinnan
+tasossa ja yhdistäminen epäonnistuu), `Wing_bass` ja `Wing_treble`.
+Plan-kuva ja runkoeditori piirtävät keskiosan vähän tummempana.
+
 ## Kaulan kiinnitys
 
 Neljä kaulapulttia rungon takaa: holkkiupotus Ø 14 mm, 5 mm syvä, ja sen
@@ -519,7 +559,14 @@ jätetään pois):
 ## Omat suunnitelmat
 
 Web-sovelluksen **Save design** tallentaa kaikki asetukset, myös soittimen,
-piirretyn rungon ja lavan reunat, JSON-tiedostoksi omalle koneelle.
+kitaran nimen, piirretyn rungon ja lavan reunat, JSON-tiedostoksi omalle
+koneelle; kun kitaralla on nimi (*Guitar name*, soittimen valinnan alla),
+tiedosto nimetään sen mukaan. Rakennuksen jälkeen **Download all NC files
+(.zip)** lataa kaikki NC-ohjelmat yhtenä ZIP-tiedostona kitaran nimellä
+(`<Guitar name>.zip`): sen sisällä kitaran niminen kansio, siinä kansio
+osaa kohden ja ohjelmat numeroituina ajojärjestykseen
+(`Neck/02_Neck_top.nc`) sekä `README.txt`, jossa ohjelmat työkaluineen ja
+aika-arvioineen.
 **Load design** lataa tiedoston takaisin lomakkeeseen ja editoreihin. Asetukset,
 joita käytössä oleva versio ei tunne, ohitetaan ja luetellaan. Mitään ei
 tallenneta palvelimelle.
