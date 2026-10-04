@@ -1,5 +1,7 @@
 """Tests for a drawn headstock whose edges meet in a point at the tip."""
 
+import ast
+import re
 from dataclasses import replace
 
 import pytest
@@ -111,5 +113,13 @@ def test_a_pointed_headstock_builds_machines_and_exports() -> None:
     assert headstock.pointed
     source = FreeCADScriptExporter().render_prototype001(geometry)
     assert '"headstock tip cut"' in source
+    # The neck's loft is never pinched to the point: its tip section is
+    # POINT_LOFT_WIDTH wide, cut back to the point afterwards.
+    sections = ast.literal_eval(
+        re.search(r"^NECK_SECTION_POINTS = (.*)$", source, re.M).group(1)  # type: ignore[union-attr]
+    )
+    tip = min(sections, key=lambda section: section[0][0])
+    assert tip[0][0] == pytest.approx(-167.2)
+    assert tip[-1][1] - tip[0][1] == pytest.approx(POINT_LOFT_WIDTH, abs=0.01)
     neck = plan_neck_machining(geometry, NeckMachiningParameters())
     assert neck.setups

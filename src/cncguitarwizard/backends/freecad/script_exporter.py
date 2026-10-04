@@ -1717,14 +1717,17 @@ class FreeCADScriptExporter:
             # away down the rounded run-in, leaving sunken wedges either
             # side of the seat and its transition (as long as a locking
             # nut's 16 mm seat made them, they were plain to see).
+            # A pointed tip's last run is lofted wide (its envelope), to be
+            # cut back to the point.
             top_distance = max(0.0, -position)
+            edge_y = (
+                headstock.plan.envelope_y
+                if headstock.plan.pointed
+                else headstock.plan.edge_y
+            )
             new_row = list(row)
-            new_row[0] = Point3D(
-                position, headstock.plan.edge_y(top_distance, -1.0), top_z
-            )
-            new_row[count - 1] = Point3D(
-                position, headstock.plan.edge_y(top_distance, 1.0), top_z
-            )
+            new_row[0] = Point3D(position, edge_y(top_distance, -1.0), top_z)
+            new_row[count - 1] = Point3D(position, edge_y(top_distance, 1.0), top_z)
             rebuilt.append(tuple(new_row))
         return tuple(rebuilt)
 
