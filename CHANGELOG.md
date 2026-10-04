@@ -4,6 +4,10 @@
 
 ### Added
 
+- A set neck (`neck_joint` "set", `set_neck_glue_gap` 0.05 mm): the heel
+  glued into a tight pocket, Gibson style — no bolts or ferrules, a neck
+  angle as for a bolt-on neck, a heel-adjusted truss rod only with its
+  spoke wheel; the neck's notes say how to glue it in.
 - A one-piece instrument (`neck_joint` "one_piece"): the neck and the
   whole body cut from one blank, as a neck-through whose block is the
   whole body — no wings, no glue lines; its body programs are
@@ -295,6 +299,8 @@
 
 ### Changed
 
+- The web app's build button reads *Build 3D and CNC files* (it was
+  *Build Prototype001*).
 - The FreeCAD script writes its coordinate data to 0.1 micron
   (`SERIAL_DECIMALS`) instead of full floats: a far shorter macro.
 - The Tune-o-matic's bass post sits `bass_setback` (3.2 mm, 1/8 in)
@@ -357,6 +363,9 @@
 
 ### Fixed
 
+- The Les Paul style template's outline had a bump on the bass side by
+  the neck pocket (two control points too close together); one point
+  moved, as drawn in the body editor.
 - The web form's body shape showed a dropdown of its one kind ("Your
   design"), its hidden row shown by the field style; it is gone, and the
   shape's fields fold away under *body_shape — Advanced*.

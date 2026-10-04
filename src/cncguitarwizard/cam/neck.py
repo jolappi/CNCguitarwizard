@@ -699,6 +699,16 @@ def plan_neck_machining(
             else ()
         ),
         *_adjuster_notes(geometry),
+        *(
+            (
+                "Set neck: once the neck is finished and fretted, glue its heel "
+                "into the body's pocket (a tight fit, cut by Body_top) with "
+                "wood glue, clamp it down onto the pocket floor and let it "
+                "cure; there are no bolts.",
+            )
+            if geometry.set_neck
+            else ()
+        ),
         # A board running on under the nut covers the route there itself.
         *(
             ()

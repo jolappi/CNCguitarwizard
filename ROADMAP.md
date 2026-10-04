@@ -27,7 +27,7 @@
 - Left-handed instruments: any design built as its mirror image
 - Neck-through construction: the neck blank as the body's centre block,
   two wings cut on their own and glued to its sides; or the neck and the
-  whole body from one blank
+  whole body from one blank; and set (glued) necks
 - Carbon fibre neck reinforcement beside the truss rod; a zero fret
 - Neck angle (a tilted pocket floor for a Tune-o-matic), a Telecaster
   neck (slotted nut, Tele headstock), low-profile truss rods and a spoke
@@ -64,7 +64,6 @@
 ## v2
 
 Instruments and construction
-- Set (glued) necks alongside the bolt-on and neck-through necks.
 - More bridges: Floyd Rose and Kahler for seven and eight strings, and
   more bass bridges.
 
@@ -92,5 +91,5 @@ flowchart TD
     Done["Done: guitar, bass, 7/8-string, CAD and CAM, slanted and fanned frets"] --> Beta["v1.0.0-beta1"]
     Beta --> More["Since: headless, carved tops, binding, engraving, left-handed, neck-through"]
     More --> V1["v1.0.0: machine-verified toolpaths"]
-    V1 --> V2["v2: set necks, 7/8-string tremolos, wire channels, DXF export"]
+    V1 --> V2["v2: 7/8-string tremolos, wire channels, DXF export"]
 ```

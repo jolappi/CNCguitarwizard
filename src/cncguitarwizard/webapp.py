@@ -76,6 +76,7 @@ _CHOICE_LABELS: dict[str, dict[str, str]] = {
     },
     "neck_joint": {
         "bolt_on": "Bolt-on (the heel screwed into a pocket)",
+        "set": "Set neck (the heel glued into a tight pocket, Gibson style)",
         "neck_through": (
             "Neck-through (the neck runs on as the body's centre, wings glued on)"
         ),

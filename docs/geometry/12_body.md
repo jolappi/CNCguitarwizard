@@ -172,6 +172,18 @@ reads points back through it); the lettering they show is the built one
 mirrored back, so it reads right there too. A carved top's fall matches
 its mirror within its grid's sampling (about 0.03 mm).
 
+## Set neck
+
+`neck_joint = "set"` glues the neck's heel into the pocket, Gibson style,
+instead of bolting it: no neck bolts or ferrules, and the pocket only
+`set_neck_glue_gap` (0.05 mm) a side round the heel for a tight glue
+joint (a bolt-on pocket keeps `body_neck_pocket_clearance`, 0.15 mm). A
+neck angle works as for a bolt-on neck (the pocket's floor slopes; a Les
+Paul's 4 degrees, say). The neck never comes off, so a heel-adjusted
+truss rod needs its spoke wheel, turned through the body's notch; the
+neck's notes say to glue and clamp it in once it is finished and
+fretted. A long tenon reaching under the neck pickup is not modelled.
+
 ## Neck-through
 
 `neck_joint = "neck_through"` runs the neck blank on through the body

@@ -134,6 +134,19 @@ raahaus luetaan); editorin tekstin esikatselu on rakennettu teksti
 peilattuna takaisin, joten se näkyy luettavana. Aiemmin koodi ja
 dokumentit kutsuivat oletusta virheellisesti vasenkätiseksi.
 
+## Liimattu kaula
+
+`neck_joint = "set"` liimaa kaulan kantapään taskuun Gibson-tyylisesti
+pulttaamisen sijaan: ei kaulapultteja eikä hylsyjä, ja tasku on vain
+`set_neck_glue_gap` (0,05 mm) sivulle kantapäätä leveämpi tiukkaa
+liimasaumaa varten (pulttikaulan tasku 0,15 mm). Kaulan kulma toimii
+kuten pulttikaulassa (taskun pohja viettää; esim. Les Paulin 4°). Kaula
+ei enää irtoa, joten kantapäästä säädettävä kaularauta vaatii
+säätöpyörän, jota käännetään rungon loven kautta; kaulan muistiinpanot
+neuvovat liimaamaan ja puristamaan kaulan paikalleen, kun se on valmis ja
+nauhoitettu. Pitkää, kaulamikin alle ulottuvaa kielekettä (long tenon)
+ei mallinneta.
+
 ## Läpikaula
 
 `neck_joint = "neck_through"` jatkaa kaula-aihion rungon läpi: rungon

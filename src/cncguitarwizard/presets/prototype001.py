@@ -374,6 +374,8 @@ class Prototype001Geometry:
     """A neck-through body's block and wings, or ``None`` for a bolt-on neck."""
     carbon_rods: CarbonRods | None = None
     """The carbon fibre bars beside the truss rod, or ``None``."""
+    set_neck: bool = False
+    """Whether the neck is glued into its pocket (no bolts)."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -543,8 +545,12 @@ class Prototype001Parameters:
     # neck_through_heel_ramp, reaching it where the body begins.
     # "one_piece" cuts the neck and the whole body from one blank, no
     # wings and no glue joints at all (as a neck-through whose block is the
-    # whole body).
-    neck_joint: Literal["bolt_on", "neck_through", "one_piece"] = "bolt_on"
+    # whole body). "set" glues the heel into the pocket instead of bolting
+    # it (Gibson style): no bolts, the pocket set_neck_glue_gap a side
+    # round the heel for a tight glue joint; a neck angle is as for a
+    # bolt-on neck.
+    neck_joint: Literal["bolt_on", "set", "neck_through", "one_piece"] = "bolt_on"
+    set_neck_glue_gap: float = 0.05
     neck_through_width: float | None = None
     neck_through_heel_ramp: float = 40.0
     heel_length: float = 4.0
@@ -1168,7 +1174,14 @@ class Prototype001Parameters:
         start = heel_end - self.body_neck_pocket_length
         if start < 0.0:
             raise NeckGeometryError("Neck pocket must not reach past the nut.")
-        clearance = self.body_neck_pocket_clearance
+        # A set neck's pocket is a tight glue joint.
+        clearance = (
+            self.set_neck_glue_gap
+            if self.neck_joint == "set"
+            else self.body_neck_pocket_clearance
+        )
+        if not math.isfinite(clearance) or clearance < 0.0:
+            raise NeckGeometryError("The neck pocket's clearance must not be negative.")
         last_fret = outline.last_fret_position
 
         def taper_half_width(x: float) -> float:
@@ -2219,12 +2232,13 @@ class Prototype001Parameters:
             self.heel_thickness,
             floor_slope=math.tan(math.radians(self.neck_angle_degrees)),
         )
-        # A neck-through body has no pocket to bolt a heel into (the pocket's
-        # outline stays as where the neck passes, for the keep-outs).
+        # Only a bolt-on neck has bolts: a set neck is glued, and a
+        # neck-through body has no pocket (its outline stays as where the
+        # neck passes, for the keep-outs).
         neck_bolts = (
-            ()
-            if self.neck_runs_through
-            else self._neck_bolt_holes(outline, heel_end, neck_pocket)
+            self._neck_bolt_holes(outline, heel_end, neck_pocket)
+            if self.neck_joint == "bolt_on"
+            else ()
         )
         truss_rod = self.truss_rod(outline)
         truss_rod_access = (
@@ -3447,9 +3461,9 @@ class Prototype001Parameters:
             Complete backend-independent Prototype001 geometry.
         """
         heel_flat_start_offset = self.heel_flat_start_offset
-        if self.neck_joint not in ("bolt_on", "neck_through", "one_piece"):
+        if self.neck_joint not in ("bolt_on", "set", "neck_through", "one_piece"):
             raise NeckGeometryError(
-                'neck_joint must be "bolt_on", "neck_through" or "one_piece".'
+                'neck_joint must be "bolt_on", "set", "neck_through" or "one_piece".'
             )
         through = self.neck_runs_through
         if through and self.headless:
@@ -3458,22 +3472,21 @@ class Prototype001Parameters:
                 "headless neck is bolt-on only for now."
             )
         if (
-            through
+            (through or self.neck_joint == "set")
             and self.truss_rod_adjustment == "heel"
             and not self.truss_rod_spoke_wheel_fitted
         ):
             raise NeckGeometryError(
-                "A neck-through or one-piece neck buries a heel adjuster in the "
-                "body: adjust the truss rod at the headstock, or fit a spoke "
-                "wheel (truss_rod_spoke_wheel)."
+                "A set, neck-through or one-piece neck buries a heel adjuster "
+                "in the body (the neck never comes off): adjust the truss rod "
+                "at the headstock, or fit a spoke wheel (truss_rod_spoke_wheel)."
             )
         if not through and (
             not math.isfinite(self.heel_mounting_length)
             or self.heel_mounting_length < 40.0
         ):
             raise NeckGeometryError(
-                "Heel mounting length must be at least 40 mm for a secure "
-                "bolt-on joint."
+                "Heel mounting length must be at least 40 mm for a secure neck joint."
             )
         if heel_flat_start_offset <= 0.0:
             raise NeckGeometryError(
@@ -3816,6 +3829,7 @@ class Prototype001Parameters:
             (self.neck_angle_degrees, *self.neck_pivot()),
             through_parts,
             carbon_rods,
+            self.neck_joint == "set",
         )
 
 

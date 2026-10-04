@@ -138,7 +138,7 @@ Python.
    this version does not know are skipped and listed,
    and a file that is not a design is refused. Nothing is stored on a
    server.
-4. On **Build** runs the build in stages — `start_build()`, then
+4. On **Build 3D and CNC files** runs the build in stages — `start_build()`, then
    `advance_build()` once per stage of `workflows.Prototype001Build`
    (geometry, body, neck and fretboard toolpaths, cover plates, G-code,
    FreeCAD script),

@@ -530,7 +530,7 @@ async function build() {
   } finally {
     buildButton.disabled = false;
     buildButton.classList.remove("busy");
-    buildButton.textContent = "Build Prototype001";
+    buildButton.textContent = "Build 3D and CNC files";
     setTimeout(() => progress.classList.add("hidden"), 1500);
   }
 }

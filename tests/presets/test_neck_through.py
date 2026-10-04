@@ -179,7 +179,12 @@ def test_the_model_and_the_editor() -> None:
         for group in parameter_schema()["prototype"]
         for field in group["fields"]
     }
-    assert fields["neck_joint"]["options"] == ["bolt_on", "neck_through", "one_piece"]
+    assert fields["neck_joint"]["options"] == [
+        "bolt_on",
+        "set",
+        "neck_through",
+        "one_piece",
+    ]
     assert not fields["neck_joint"]["advanced"]
 
 
