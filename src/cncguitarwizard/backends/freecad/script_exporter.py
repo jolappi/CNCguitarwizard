@@ -2849,10 +2849,9 @@ class FreeCADScriptExporter:
 
         A FreeCAD Part loft requires corresponding profiles to retain the
         same edge structure. The heel therefore uses the same sampled profile
-        as the playing neck: it is planar through the central mounting area
-        and has only a small rounded relief at the two outer side edges.
+        as the playing neck, its points spread so the mounting area is a
+        rectangle: square sides and a flat bottom.
         """
-        return row
         return row
 
     @staticmethod

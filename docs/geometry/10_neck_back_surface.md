@@ -51,9 +51,14 @@ triangular bevel. Cubic Hermite depth interpolation controls the centerline
 depth, while quintic longitudinal blending progressively changes each
 cross-section from the playing D into a rounded lead-in for the heel. The
 remaining 54 mm heel mounting region retains the same sampled loft topology required by
-FreeCAD: its central mounting area is flat in the longitudinal direction and
-almost flat across its width, with only small rounded relief at the outer side
-edges. The transition and heel belong to one loft, so no separate heel solid,
+FreeCAD, its points spread so its section is a true rectangle: flat in the
+longitudinal direction and across its width, with square sides from the glue
+face down to the full depth, so the block fits the pocket's square walls. On
+the way there the sections pass through a squarish superellipse (exponent 32),
+and by the same blend their inner points move out to the rectangle's even
+spacing — the first and last onto its sides — and down onto its bottom
+(`HEEL_SUPERELLIPSE_EXPONENT`); a superellipse alone never reaches the corners,
+and left the sides sloping in 1.75 mm at the bottom. The transition and heel belong to one loft, so no separate heel solid,
 boolean seam, or overlap step is introduced.
 Prototype001 adds a 1.5 mm inward longitudinal scoop. The scoop is zero with
 zero slope at both transition ends, so it reverses the visible hump without

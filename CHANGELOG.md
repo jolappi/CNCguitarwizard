@@ -546,6 +546,12 @@
 
 ### Fixed
 
+- The neck heel's mounting block is a true rectangle: its sides are
+  square from the glue face down to the full depth and its bottom flat
+  right out to them. They sloped in 1.75 mm at the bottom (the squarish
+  section's last points fell away to the edge), so the heel met the
+  pocket's square walls only at the top; the lead-in from the D profile
+  now squares up toward it.
 - A zero fret (`nut_style` "zero_fret") is no longer dropped without a
   word under a locking nut (a Floyd Rose's, `locking_nut` "auto"): the
   zero fret's slot is cut and the locking nut stands `zero_fret_gap`

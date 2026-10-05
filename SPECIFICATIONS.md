@@ -39,6 +39,7 @@ toisin mainita.
 | Kannan puupaksuus | 20 mm otelaudan alla |
 | Tasainen kiinnitysalue | Säädettävä, vähintään 40 mm; Prototype001: 54 mm |
 | Kannan alapuoli | Tasainen runkoon kiinnittämistä varten |
+| Kannan sivut | Suorakulmaiset: kiinnitysalueen poikkileikkaus on suorakaide (sivut pystysuoraan liimapinnasta täyteen syvyyteen, pohja tasainen reunoihin asti), joten kanta sopii kaulataskun suoriin seiniin ilman pyöristettyjä reunoja |
 | Liitos | Kapeneva, pyöristetty D-profiilista kannan suoralle alueelle |
 | Heel root | Säädettävä; oletus 45 mm |
 | Keskiscoop | Säädettävä; oletus 1,5 mm sisäänpäin |

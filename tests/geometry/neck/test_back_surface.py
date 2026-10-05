@@ -87,7 +87,10 @@ def test_heel_rows_remain_parallel_and_constant_depth() -> None:
         assert row[center_index].z == pytest.approx(-surface.final_fret_thickness)
 
 
-def test_heel_terminal_section_remains_a_valid_rounded_profile() -> None:
+def test_heel_terminal_section_is_a_square_rectangle() -> None:
+    """Regression: the heel's sides sloped in 1.75 mm at the bottom (the
+    superellipse's last points fell away to the edge), so the heel met the
+    pocket's square walls only at the top."""
     surface = NeckBackSurface(
         make_outline(),
         17.0,
@@ -99,11 +102,12 @@ def test_heel_terminal_section_remains_a_valid_rounded_profile() -> None:
     )
     heel_row = surface.mesh.rows[-1]
 
-    assert heel_row[0].y < heel_row[1].y
-    assert heel_row[-2].y < heel_row[-1].y
-    assert heel_row[2].z < heel_row[1].z
-    assert heel_row[2].z == pytest.approx(-20.0, abs=2.0)
+    # Square sides: straight down from the glue face to the full depth...
+    assert heel_row[0].y == pytest.approx(heel_row[1].y)
+    assert heel_row[-2].y == pytest.approx(heel_row[-1].y)
     assert heel_row[0].z == heel_row[-1].z == 0.0
+    # ...and a flat bottom right out to them.
+    assert all(point.z == pytest.approx(-20.0) for point in heel_row[1:-1])
 
 
 def test_heel_terminal_profile_can_begin_before_the_final_fret() -> None:
@@ -123,9 +127,10 @@ def test_heel_terminal_profile_can_begin_before_the_final_fret() -> None:
         flat_start / surface.neck_outline.last_fret_position
     )
 
-    assert row[2].z == pytest.approx(-20.0, abs=2.0)
-    assert row[0].y < row[1].y
-    assert row[-2].y < row[-1].y
+    # The mounting block is square from its first row on.
+    assert all(point.z == pytest.approx(-20.0) for point in row[1:-1])
+    assert row[0].y == pytest.approx(row[1].y)
+    assert row[-2].y == pytest.approx(row[-1].y)
     assert row[-1].y - row[0].y == pytest.approx(expected_width)
 
 
@@ -158,6 +163,7 @@ def test_heel_uses_a_tangent_three_dimensional_blend_not_a_bevel() -> None:
 
 
 def test_heel_intermediate_section_is_a_widening_rounded_rectangle() -> None:
+    # On its way to the square heel the section is still rounded.
     surface = NeckBackSurface(
         make_outline(),
         11.0,

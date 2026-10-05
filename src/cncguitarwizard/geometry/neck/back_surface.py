@@ -11,6 +11,10 @@ from ..fret.calculator import FretCalculator
 from ..primitives import Point3D, QuadFace, SurfaceMesh
 from .outline import NeckOutline
 
+HEEL_SUPERELLIPSE_EXPONENT = 32.0
+"""The squarish superellipse a section passes through on its way from the
+playing D to the heel's rectangle."""
+
 
 @dataclass(frozen=True, slots=True)
 class NeckBackSurface:
@@ -324,6 +328,13 @@ class NeckBackSurface:
         into the heel plane while the shoulders open outward as continuous
         curves, avoiding the triangular ramp produced by moving every profile
         point along a straight line.
+
+        The superellipse alone never reaches the corners: its last points
+        fall away to the edge, leaving the heel's sides sloping in at the
+        bottom. So, by the same blend, the inner points also move out to
+        the flat rectangle's own spacing (the first and last onto the
+        sides) and down onto its bottom, and the mounting block is a true
+        rectangle — square sides that fit the pocket's walls, no rounding.
         """
         last_index = self.profile_sample_count - 1
         if index in (0, last_index):
@@ -334,23 +345,25 @@ class NeckBackSurface:
             0.0,
             1.0,
             self.exponent,
-            32.0,
+            HEEL_SUPERELLIPSE_EXPONENT,
         )
         normalized_lateral = abs(lateral) / half_width
-        heel_z = -depth * (1.0 - normalized_lateral**heel_exponent) ** (
-            1.0 / heel_exponent
-        )
+
+        def superellipse_z(exponent: float) -> float:
+            fill: float = (1.0 - normalized_lateral**exponent) ** (1.0 / exponent)
+            return -depth * fill
+
+        heel_z = superellipse_z(heel_exponent)
         section_blend = self._smootherstep(blend)
+        z = self._interpolate_value(section_blend, 0.0, 1.0, curved_z, heel_z)
+        # Toward the rectangle: its points evenly across the full width, the
+        # first and last on the sides, all on the bottom.
+        flat_lateral = -half_width + 2.0 * half_width * (index - 1) / (last_index - 2)
+        corner_z = -depth - superellipse_z(HEEL_SUPERELLIPSE_EXPONENT)
         return Point3D(
             position,
-            lateral,
-            self._interpolate_value(
-                section_blend,
-                0.0,
-                1.0,
-                curved_z,
-                heel_z,
-            ),
+            lateral + section_blend * (flat_lateral - lateral),
+            z + section_blend * corner_z,
         )
 
     def _width_at(self, position: float) -> float:
