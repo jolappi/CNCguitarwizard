@@ -28,6 +28,7 @@ from ..geometry.body import (
     JackHole,
     KahlerBridgeSpec,
     RearCavity,
+    SideHole,
     SingleStringBridgeSpec,
     SteppedTop,
     TracedCavity,
@@ -479,6 +480,8 @@ class BodyLayout:
         pickup_centres: Each fitted pickup's position (``"neck"``,
             ``"middle"``, ``"bridge"``) and the X of its centre on the
             centreline, the point it turns about.
+        side_holes: The bridge's holes drilled sideways by hand (a
+            tremolo claw's screws), modelled.
     """
 
     heel_end: float
@@ -509,6 +512,7 @@ class BodyLayout:
     wiring: Wiring = field(default_factory=Wiring)
     bridge_notes: tuple[str, ...] = ()
     pickup_centres: tuple[tuple[str, float], ...] = ()
+    side_holes: tuple[SideHole, ...] = ()
 
 
 TRUSS_ROD_STOCK_LENGTHS: tuple[float, ...] = tuple(
@@ -1039,11 +1043,16 @@ class Prototype001Parameters:
     truss_rod_profile: Literal["standard", "low_profile"] = "standard"
     truss_rod_low_profile_width: float = 6.35
     truss_rod_low_profile_depth: float = 9.5
-    # truss_rod_sleeve_bore: model the adjuster sleeve's hand-drilled bore
-    # at the heel (and note it in the neck's G-code); truss_rod_trough: rout
-    # the adjuster's trough in the headstock face (and cut its cover). Turn
-    # either off to leave that part to be made by hand, or not at all.
+    # truss_rod_sleeve_bore: model the adjuster sleeve's bore at the heel;
+    # with truss_rod_sleeve_routed (the default) Neck_top cuts it from the
+    # top as a slot the bore's width down to its floor, which the
+    # fretboard closes over (a router cannot drill along the neck),
+    # otherwise the neck's G-code notes it to be drilled by hand.
+    # truss_rod_trough: rout the adjuster's trough in the headstock face
+    # (and cut its cover). Turn either off to leave that part to be made
+    # by hand, or not at all.
     truss_rod_sleeve_bore: bool = True
+    truss_rod_sleeve_routed: bool = True
     truss_rod_trough: bool = True
     # Carbon fibre reinforcement (neck_carbon_rods): two bars glued into
     # channels in the neck's top, one each side of the truss rod, flush
@@ -2073,6 +2082,7 @@ class Prototype001Parameters:
                 if self.truss_rod_sleeve_bore and wheel
                 else 0.0
             ),
+            sleeve_routed=self.truss_rod_sleeve_routed,
             nut_diameter=self.truss_rod_nut_diameter,
             nut_length=self.truss_rod_nut_length,
             access_length=access if heel or self.truss_rod_trough else 0.0,
@@ -2897,6 +2907,7 @@ class Prototype001Parameters:
                 )
                 if kind != "none"
             ),
+            bridge.side_holes,
         )
 
     def _string_ferrules(self, holes: tuple[DrilledHole, ...]) -> list[DrilledHole]:
@@ -4667,6 +4678,7 @@ class Prototype001Parameters:
             stepped_top=body_parts.stepped_top,
             wire_channels=body_parts.wiring.channels,
             wire_holes=body_parts.wiring.holes,
+            side_holes=body_parts.side_holes,
             wire_notes=body_parts.wiring.by_hand,
             bridge_notes=body_parts.bridge_notes,
         )

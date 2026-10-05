@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 
 from ..exceptions import BodyGeometryError
 from ..primitives import Point2D, nudge_inward, point_in_polygon
+from .bridges import SideHole
 from .carve import CarvedTop
 from .edges import ContourCut, EdgeProfile
 from .engraving import Engraving
@@ -21,6 +22,10 @@ Outline = BodyOutline | TracedOutline
 EDGE_RIM_TOLERANCE = 1.0
 """How far a roundover may lower a cavity's rim, in mm (a pickup ring or
 cover hides it)."""
+
+
+SIDE_HOLE_SAMPLE = 2.0
+"""How often, in mm, a sideways hole is checked along its length."""
 
 
 def rim_drop(radius: float, inset: float) -> float:
@@ -118,6 +123,10 @@ class BodySolid:
             routes by design.
         wire_holes: Wire holes drilled by hand from one cavity into
             another (``wiring.WireHole``); modelled, not machined.
+        side_holes: Holes drilled sideways by hand into a cavity's wall
+            (``bridges.SideHole``: a tremolo claw's screws); modelled, not
+            machined. Each must stay in the body and keep out of every
+            other cavity.
         wire_notes: The wiring left to the builder (a way no straight
             hole fits), for the programs' notes.
         bridge_notes: The bridge's fitting notes (its routing sheet, what
@@ -166,6 +175,7 @@ class BodySolid:
     stepped_top: SteppedTop | None = None
     wire_channels: tuple[Cavity, ...] = ()
     wire_holes: tuple[WireHole, ...] = ()
+    side_holes: tuple[SideHole, ...] = ()
     wire_notes: tuple[str, ...] = ()
     bridge_notes: tuple[str, ...] = ()
     edge_outline: tuple[Point2D, ...] = ()
@@ -301,6 +311,7 @@ class BodySolid:
                         raise BodyGeometryError(
                             f"{pocket.name} would break through into {top.name}."
                         )
+        self._check_side_holes()
         for wire in self.wire_holes:
             for end in (wire.start, wire.end):
                 if not 0.0 < end.z < self.thickness or not point_in_polygon(
@@ -639,6 +650,39 @@ class BodySolid:
         outline_min_y = min(point.y for point in self.outline.points)
         outline_max_y = max(point.y for point in self.outline.points)
         return (outline_max_y - outline_min_y) / 2.0
+
+    def _check_side_holes(self) -> None:
+        """Keep each sideways hole in the body and out of the other cavities.
+
+        Sampled along it from 1 mm into the wood: every point in the
+        outline, between the back and the top, and in no rear pocket below
+        its floor or top route above its floor.
+        """
+        for hole in self.side_holes:
+            steps = max(1, math.ceil(hole.length / SIDE_HOLE_SAMPLE))
+            for step in range(steps + 1):
+                point = hole.along(min(hole.length, 1.0 + step * SIDE_HOLE_SAMPLE))
+                plan = Point2D(point.x, point.y)
+                if not (
+                    0.0 < point.z < self.thickness
+                    and point_in_polygon(plan, self.outline.points)
+                ):
+                    raise BodyGeometryError(f"{hole.name} must lie in the body.")
+                for rear in self.rear_cavities:
+                    for pocket in rear.pockets:
+                        if point.z < pocket.depth and point_in_polygon(
+                            plan, pocket.outline
+                        ):
+                            raise BodyGeometryError(
+                                f"{hole.name} would break into {pocket.name}."
+                            )
+                for top in self.top_cavities:
+                    if point.z > self.thickness - top.depth and point_in_polygon(
+                        plan, top.outline
+                    ):
+                        raise BodyGeometryError(
+                            f"{hole.name} would break into {top.name}."
+                        )
 
 
 def _distance_to_outline(point: Point2D, outline: tuple[Point2D, ...]) -> float:

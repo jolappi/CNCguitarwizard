@@ -124,7 +124,16 @@ def test_the_neck_program_cuts_the_steps_and_trough_and_notes_the_bore() -> None
     assert min(m.z for m in paths["Truss-rod channel"].moves) == pytest.approx(-7.5)
     assert min(m.z for m in paths["Truss-rod step"].moves) == pytest.approx(-10.5)
     assert min(m.z for m in paths["Truss-rod pocket"].moves) == pytest.approx(-11.0)
-    assert any("sleeve bore by hand" in note for note in heel.top.notes)
+    # The adjuster sleeve's bore is routed from the top as a slot down to
+    # its floor (axis 7.5 + radius 4.5), under the fretboard.
+    assert min(m.z for m in paths["Truss-rod sleeve slot"].moves) == pytest.approx(
+        -12.0
+    )
+    assert any("no bore is drilled" in note for note in heel.top.notes)
+    by_hand = replace(HEEL, truss_rod_sleeve_routed=False).build()
+    drilled = plan_neck_machining(by_hand, NeckMachiningParameters())
+    assert "Truss-rod sleeve slot" not in {p.name for p in drilled.top.toolpaths}
+    assert any("sleeve bore by hand" in note for note in drilled.top.notes)
     head = plan_neck_machining(HEADSTOCK.build(), NeckMachiningParameters())
     paths = {path.name: path for path in head.top.toolpaths}
     # The key's notch: the rod's axis plus the key's radius.

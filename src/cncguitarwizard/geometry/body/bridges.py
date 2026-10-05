@@ -25,7 +25,7 @@ from dataclasses import dataclass, fields, replace
 from typing import Any, Literal, NamedTuple
 
 from ..exceptions import BodyGeometryError
-from ..primitives import Point2D, rounded_polygon_points
+from ..primitives import Point2D, Point3D, rounded_polygon_points
 from .hardware import (
     BridgeMounting,
     Cavity,
@@ -34,6 +34,58 @@ from .hardware import (
     RectangularCavity,
     TracedCavity,
 )
+
+
+@dataclass(frozen=True, slots=True)
+class SideHole:
+    """A hole drilled sideways by hand into a cavity's wall, modelled.
+
+    A router cannot drill sideways; the hole is in the model (FreeCAD, the
+    plan view, the DXF) so its place is seen and checked. The bit meets
+    the wood at ``start``, on the wall, and stops at ``end``; heights are
+    above the back face.
+
+    Args:
+        name: ``"Trem claw screw 1 hole"``.
+        start: Where the bit meets the wood.
+        end: Where the hole ends.
+        diameter: The bit's diameter.
+        drilled_from: The cavity it is drilled from.
+
+    Raises:
+        BodyGeometryError: For a non-positive diameter or a hole of no
+            length.
+    """
+
+    name: str
+    start: Point3D
+    end: Point3D
+    diameter: float
+    drilled_from: str
+
+    def __post_init__(self) -> None:
+        """Reject a hole of no size."""
+        if not math.isfinite(self.diameter) or self.diameter <= 0.0:
+            raise BodyGeometryError(f"{self.name} needs a positive diameter.")
+        if self.length <= 0.0:
+            raise BodyGeometryError(f"{self.name} needs a length.")
+
+    @property
+    def length(self) -> float:
+        """The hole's length."""
+        return math.dist(
+            (self.start.x, self.start.y, self.start.z),
+            (self.end.x, self.end.y, self.end.z),
+        )
+
+    def along(self, distance: float) -> Point3D:
+        """Return the point ``distance`` along the hole from its start."""
+        t = distance / self.length
+        return Point3D(
+            self.start.x + (self.end.x - self.start.x) * t,
+            self.start.y + (self.end.y - self.start.y) * t,
+            self.start.z + (self.end.z - self.start.z) * t,
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,6 +104,8 @@ class BridgeHardware:
         footprint: The outline the bridge itself covers on the top where
             that reaches past its routes (a Kahler's plate), or empty; a
             pickguard keeps clear of it.
+        side_holes: Holes drilled sideways by hand into a cavity's wall
+            (a tremolo claw's screws), modelled.
     """
 
     mounting: BridgeMounting
@@ -61,6 +115,7 @@ class BridgeHardware:
     holes: tuple[DrilledHole, ...] = ()
     notes: tuple[str, ...] = ()
     footprint: tuple[Point2D, ...] = ()
+    side_holes: tuple[SideHole, ...] = ()
 
 
 def turned_hardware(
@@ -114,7 +169,19 @@ def turned_hardware(
         ),
         holes=tuple(turn_hole(hole) for hole in hardware.holes),
         footprint=tuple(turn(point) for point in hardware.footprint),
+        side_holes=tuple(
+            replace(
+                hole,
+                start=_lifted(turn(Point2D(hole.start.x, hole.start.y)), hole.start.z),
+                end=_lifted(turn(Point2D(hole.end.x, hole.end.y)), hole.end.z),
+            )
+            for hole in hardware.side_holes
+        ),
     )
+
+
+def _lifted(point: Point2D, z: float) -> Point3D:
+    return Point3D(point.x, point.y, z)
 
 
 def mirrored_hardware(hardware: BridgeHardware) -> BridgeHardware:
@@ -148,6 +215,14 @@ def mirrored_hardware(hardware: BridgeHardware) -> BridgeHardware:
         ),
         holes=tuple(replace(hole, center_y=-hole.center_y) for hole in hardware.holes),
         footprint=tuple(flip(point) for point in reversed(hardware.footprint)),
+        side_holes=tuple(
+            replace(
+                hole,
+                start=Point3D(hole.start.x, -hole.start.y, hole.start.z),
+                end=Point3D(hole.end.x, -hole.end.y, hole.end.z),
+            )
+            for hole in hardware.side_holes
+        ),
     )
 
 
@@ -384,6 +459,14 @@ class FloydRoseSpec:
             for the cover's six screws on the ledge (a Strat-style cover's
             overlap; the routing diagram leaves the cover to the builder).
         cover_depth: Cover recess depth.
+        claw_screw_spacing: The tremolo claw's two screws apart, about the
+            spring cavity's centre (34 mm on a Gotoh claw).
+        claw_screw_height: The screws' height above the back face; empty
+            for halfway up the spring cavity.
+        claw_screw_diameter: Their pilot holes' diameter (for 4.2 mm
+            screws).
+        claw_screw_depth: How deep the pilots run into the spring
+            cavity's nut-ward wall, along the neck.
     """
 
     kind: Literal["floyd_rose"] = "floyd_rose"
@@ -416,6 +499,10 @@ class FloydRoseSpec:
     block_pocket_depth: float | None = None
     cover_margin: float = 8.0
     cover_depth: float = 2.0
+    claw_screw_spacing: float = 34.0
+    claw_screw_height: float | None = None
+    claw_screw_diameter: float = 3.5
+    claw_screw_depth: float = 30.0
 
     def widths(self) -> FloydRoseWidths:
         """Return the string-count dependent sizes, the empty ones filled.
@@ -482,7 +569,21 @@ class FloydRoseSpec:
             "block_pocket_length",
             "cover_margin",
             "cover_depth",
+            "claw_screw_spacing",
+            "claw_screw_diameter",
+            "claw_screw_depth",
         )
+        if self.claw_screw_spacing >= self.spring_cavity_width:
+            raise BodyGeometryError(
+                "The trem claw's screws must lie inside the spring cavity's "
+                "width: make claw_screw_spacing smaller."
+            )
+        if self.claw_screw_height is not None and not (
+            0.0 < self.claw_screw_height < body_thickness
+        ):
+            raise BodyGeometryError(
+                "claw_screw_height must lie between the back and the top."
+            )
         widths = self.widths()
         self._check_layout(body_thickness, widths)
         sign = 1.0 if self.treble_side == "+y" else -1.0
@@ -623,6 +724,27 @@ class FloydRoseSpec:
                 "the back) and the pocket is cut at the cavity's tail end, "
                 "under the spring cover.",
             )
+        # The tremolo claw's two screws go into the spring cavity's
+        # nut-ward wall along the neck, drilled sideways by hand.
+        wall = tail - self.spring_cavity_length
+        height = (
+            (self.spring_cavity_depth + extra) / 2.0
+            if self.claw_screw_height is None
+            else self.claw_screw_height
+        )
+        claw = tuple(
+            SideHole(
+                f"Trem claw screw {index} hole",
+                Point3D(wall, y, height),
+                Point3D(wall - self.claw_screw_depth, y, height),
+                self.claw_screw_diameter,
+                "Floyd Rose spring cavity",
+            )
+            for index, y in enumerate(
+                (-self.claw_screw_spacing / 2.0, self.claw_screw_spacing / 2.0),
+                start=1,
+            )
+        )
         return BridgeHardware(
             mounting,
             top_cavities=(recess, fine_tuners),
@@ -630,9 +752,14 @@ class FloydRoseSpec:
             rear_cavities=(spring_cavity,),
             notes=(
                 *notes,
-                "Drill the two trem-claw screw holes into the spring cavity's "
-                "nut-ward wall by hand.",
+                f"Drill the trem claw's two screws' {self.claw_screw_diameter:g} "
+                "mm pilots by hand into the spring cavity's nut-ward wall, "
+                f"{self.claw_screw_depth:g} mm deep along the neck, "
+                f"{self.claw_screw_spacing:g} mm apart about the centreline and "
+                f"{height:g} mm up from the back (modelled: Trem claw screw "
+                "holes; set the bridge's claw_screw_* to the claw's own).",
             ),
+            side_holes=claw,
         )
 
     def _check_layout(self, body_thickness: float, widths: FloydRoseWidths) -> None:

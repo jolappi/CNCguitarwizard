@@ -41,6 +41,9 @@
   battery box and the jack
 - The battery box and the controls placed together, so neither blocks
   the other
+- Parts once left to notes machined where a router can (the truss rod's
+  sleeve slot, a locking nut's screw pilots) and modelled where it cannot
+  (a Floyd Rose's trem-claw screw holes)
 - More templates traced from product photos: Mockingbird (reshaped by
   hand), Telecaster, SG, Explorer and Flying V bodies;
   Stratocaster, Gibson style, Flying V, Explorer and Mockingbird
@@ -82,16 +85,9 @@
 - Machine-verified toolpaths: air cuts and the first real blanks for the
   body, neck, fretboard and covers.
 
-## v2
-
-Body
-- The trem-claw screw holes, drilled into a spring cavity's wall by hand,
-  modelled.
-
 ```mermaid
 flowchart TD
     Done["Done: guitar, bass, 7/8-string, CAD and CAM, slanted and fanned frets"] --> Beta["v1.0.0-beta1"]
-    Beta --> More["Since: headless, carved tops, binding, engraving, left-handed, neck-through, 7/8-string tremolos, more controls, wiring, DXF, traced templates, turning pickups, battery and controls together"]
+    Beta --> More["Since: headless, carved tops, binding, engraving, left-handed, neck-through, 7/8-string tremolos, more controls, wiring, DXF, traced templates, turning pickups, battery and controls together, notes machined or modelled"]
     More --> V1["v1.0.0: machine-verified toolpaths"]
-    V1 --> V2["v2: trem-claw screw holes"]
 ```

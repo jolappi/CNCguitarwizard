@@ -115,7 +115,11 @@ def test_seven_and_eight_string_guitars_take_them_with_their_nuts() -> None:
     assert nut is not None
     assert [p.y for p in nut.screw_centres()] == pytest.approx([-13.3, 0.0, 13.3])
     plan = plan_neck_machining(geometry, NeckMachiningParameters())
-    assert any("Drill its 3 screws'" in note for note in plan.top.notes)
+    assert any("Its 3 screws'" in note for note in plan.top.notes)
+    assert plan.small_holes is not None
+    assert [path.name for path in plan.small_holes.toolpaths] == [
+        f"Locking nut screw {index} pilot" for index in (1, 2, 3)
+    ]
     source = FreeCADScriptExporter().render_prototype001(geometry)
     assert '"locking nut screw 3 in the neck"' in source
 

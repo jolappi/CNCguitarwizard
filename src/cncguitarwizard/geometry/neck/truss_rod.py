@@ -28,19 +28,31 @@ class TrussRodPocket:
 
 @dataclass(frozen=True, slots=True)
 class TrussRodBore:
-    """A horizontal bore along the rod's axis, drilled by hand.
+    """A horizontal bore along the rod's axis for the adjuster's sleeve.
+
+    A router cannot drill it along the neck, but it can cut it from the
+    neck's top as a slot the bore's width down to the bore's floor, which
+    the fretboard closes over (``routed``); otherwise it is drilled by
+    hand.
 
     Args:
         start: Bore start along the neck.
         end: Bore end along the neck.
         axis_depth: Depth of the rod's axis below the neck's top.
         diameter: Bore diameter.
+        routed: Whether it is routed from the top as a slot.
     """
 
     start: float
     end: float
     axis_depth: float
     diameter: float
+    routed: bool = False
+
+    @property
+    def floor_depth(self) -> float:
+        """The bore's lowest point below the neck's top: a slot's floor."""
+        return self.axis_depth + self.diameter / 2.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -57,7 +69,8 @@ class TrussRodChannel:
 
     * ``"heel"`` — the route ends ``sleeve_length`` before the heel end;
       the adjuster's sleeve runs on through a bore of ``sleeve_diameter``
-      (``bore``, drilled by hand — a router cannot cut it) and its round
+      (``bore``: drilled by hand, or with ``sleeve_routed`` cut from the
+      top as a slot down to the bore's floor, under the fretboard) and its round
       head, ``nut_diameter`` × ``nut_length``, sits past the heel end on
       the body side, in the body's ``access_boundary`` notch
       (``access_length`` long, 1 mm clear of the head all round).
@@ -87,6 +100,8 @@ class TrussRodChannel:
         pocket_depth: Its depth.
         sleeve_length: At the heel, the adjuster sleeve's bore length.
         sleeve_diameter: The bore's diameter.
+        sleeve_routed: Cut the bore from the top as a slot (see
+            ``TrussRodBore``) rather than leave it to be drilled by hand.
         nut_diameter: The adjuster's round head (spoke wheel) diameter.
         nut_length: The head's length along the rod.
         access_length: At the heel, how far the body's notch runs past the
@@ -117,6 +132,7 @@ class TrussRodChannel:
     pocket_depth: float = 0.0
     sleeve_length: float = 0.0
     sleeve_diameter: float = 0.0
+    sleeve_routed: bool = False
     nut_diameter: float = 0.0
     nut_length: float = 0.0
     access_length: float = 0.0
@@ -218,7 +234,11 @@ class TrussRodChannel:
                     )
                 if self.sleeve_length > 0.0 and self.sleeve_diameter > 0.0:
                     bore = TrussRodBore(
-                        end_position, heel_end, axis_depth, self.sleeve_diameter
+                        end_position,
+                        heel_end,
+                        axis_depth,
+                        self.sleeve_diameter,
+                        self.sleeve_routed,
                     )
                 if self.access_length > 0.0:
                     access = _rectangle(heel_end, heel_end + self.access_length, half)

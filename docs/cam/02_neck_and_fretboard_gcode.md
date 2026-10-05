@@ -61,7 +61,8 @@ beyond the headstock tip and beyond the heel, on the centerline.
 | Program | Setup | Contents |
 | --- | --- | --- |
 | `Neck_index_pins.nc` | glue face up | Both dowel holes through the blank |
-| `Neck_top.nc` | glue face up, on dowels | Truss-rod channel; the 8° headstock face as Z-limited roughing plus a finishing raster with the flat tool; the truss rod's step and pocket at its adjusting end, each run 3 mm on over its neighbour so no round corner is left for the rod's square blocks (and a headstock-adjusted rod's access trough, unless `truss_rod_trough` is off in the headstock face; the heel adjuster's sleeve bore is drilled by hand, as the notes say); 0.5 mm centre marks for the six tuner holes |
+| `Neck_top.nc` | glue face up, on dowels | Truss-rod channel; the 8° headstock face as Z-limited roughing plus a finishing raster with the flat tool; the truss rod's step and pocket at its adjusting end, each run 3 mm on over its neighbour so no round corner is left for the rod's square blocks (and a headstock-adjusted rod's access trough, unless `truss_rod_trough` is off in the headstock face; the heel adjuster's sleeve as a 9 mm slot down to the bore's floor, under the fretboard — or, with `truss_rod_sleeve_routed` off, a bore to drill by hand, as the notes say); 0.5 mm centre marks for the six tuner holes |
+| `Neck_top_small_holes.nc` | same fixture and zero, the small drill (`small_hole_tool_diameter`) | A locking nut's screw pilots: drilled to size and depth where the drill is no wider than them, else started 2 mm deep as a guide to drill on by hand (the default 3 mm drill and the R2's 2.5 mm pilots); only with a locking nut |
 | `Headstock_engraving.nc` | same fixture and zero as `Neck_top` (with a laminated blank: right after `Headstock_top`), V-bit | The headstock lettering (`headstock_engraving_text`), each line in 1 mm passes to `headstock_engraving_depth` below the finished face, following its angle; only with lettering |
 | `Neck_back_rough.nc` | flipped about the centerline | Z-limited roughing of the neck back and headstock back, 3 mm layers, 60 % step-over |
 | `Neck_back_finish.nc` | same, ball nose | Finishing raster along the neck, 0.75 mm step-over (≈ 0.023 mm scallop) |
@@ -141,7 +142,8 @@ Under an R2 locking nut (see [Headstock](../geometry/06_headstock.md#locking-nut
 the outline runs 16 mm on past the nut line and a pocket mills that end
 down to the nut's shelf, reaching past the board's sides and end so only
 the wall at the nut line is left. `Neck_top.nc`'s notes say how to fit the
-nut and drill its screws. A slotted Fender style nut (`nut_style` "slot")
+nut; its screws' pilots are drilled in `Neck_top_small_holes.nc` (through
+the board's shelf by hand once it is glued on). A slotted Fender style nut (`nut_style` "slot")
 gets its slot in `Fretboard_inlays.nc` (`Nut slot`, `nut_thickness` 3.5 mm
 wide, `nut_slot_depth` 3 mm below the crown, closed behind by the board's
 full-height lip, so the 1 mm inlay end mill cuts it); the outline runs on

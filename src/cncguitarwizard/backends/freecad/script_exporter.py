@@ -2552,6 +2552,33 @@ class FreeCADScriptExporter:
                 f"    {wire.name.lower() + ' cut'!r},\n"
                 ")\n"
             )
+        # The holes drilled sideways by hand into a cavity's wall (a
+        # tremolo claw's screws): each from 1 mm inside that cavity to its
+        # end.
+        for side in body.side_holes:
+            run = (
+                side.end.x - side.start.x,
+                side.end.y - side.start.y,
+                side.end.z - side.start.z,
+            )
+            direction = tuple(value / side.length for value in run)
+            side_start = (
+                side.start.x - direction[0],
+                side.start.y - direction[1],
+                side.start.z - body.thickness - direction[2],
+            )
+            lines.append(
+                "side_hole = Part.makeCylinder(\n"
+                f"    {side.diameter / 2.0},\n"
+                f"    {side.length + 1.0},\n"
+                f"    App.Vector{side_start},\n"
+                f"    App.Vector{direction},\n"
+                ")\n"
+                "body_shape = require_shape(\n"
+                "    body_shape.cut(side_hole),\n"
+                f"    {side.name.lower() + ' cut'!r},\n"
+                ")\n"
+            )
         # The edge finishes come last: the cavities cut quicker into the
         # plain slab.
         if carve is not None and carve.edge_rim > 0.0:
@@ -2762,7 +2789,24 @@ class FreeCADScriptExporter:
                 "truss_rod_nut_shapes",
                 "truss-rod access trough cut",
             )
-        if channel.bore is not None:
+        if channel.bore is not None and channel.bore.routed:
+            # The adjuster sleeve's bore cut from the top as a slot down to
+            # its floor, out through the heel end, as Neck_top routs it.
+            bore = channel.bore
+            half = bore.diameter / 2.0
+            end = bore.end + 1.0
+            source += pieces(
+                (
+                    Point2D(bore.start, -half),
+                    Point2D(end, -half),
+                    Point2D(end, half),
+                    Point2D(bore.start, half),
+                ),
+                bore.floor_depth,
+                "truss_rod_sleeve_shapes",
+                "truss-rod sleeve slot",
+            )
+        elif channel.bore is not None:
             # The adjuster sleeve's bore through the heel end: drilled by
             # hand, shown here for the fit.
             bore = channel.bore

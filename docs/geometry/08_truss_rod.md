@@ -75,8 +75,14 @@ outline.
   `truss_rod_sleeve_length` (12 mm) before the heel end — channel, then the
   step, then the pocket — and the adjuster's sleeve runs on to the heel end
   through a bore on the rod's axis (`TrussRodChannel.bore`). A router
-  cannot cut a horizontal bore, so it is in the FreeCAD model for the fit
-  and `Neck_top.nc`'s notes say where to drill it by hand. The adjuster's
+  cannot drill along the neck, but the bore's top lies 3 mm under the glue
+  face, which the fretboard covers right to the heel end: so `Neck_top.nc`
+  cuts it from the top as a slot the bore's width (9 mm) down to its floor
+  (the axis plus its radius, 12 mm), out through the heel's end face, and
+  the fretboard closes it over (`TrussRodBore.routed`, the default
+  `truss_rod_sleeve_routed`; the FreeCAD model shows the slot). With
+  `truss_rod_sleeve_routed=False` it stays a round bore in the model and
+  `Neck_top.nc`'s notes say where to drill it by hand. The adjuster's
   round head (Ø 15 × 6 mm) sits past the heel end on the body side, in a
   `Truss rod access` notch in the body (`BodySolid.truss_rod_access`) 1 mm
   clear of it all round, 15.5 mm deep (the axis plus the head's radius and
@@ -151,8 +157,8 @@ at the heel's end face, at the headstock it is reached through the key's
 notch.
 
 Both adjuster openings are on by default and can be left out:
-`truss_rod_sleeve_bore=False` drops the heel sleeve's bore from the model
-and the G-code notes (the body's notch for the head stays), and
+`truss_rod_sleeve_bore=False` drops the heel sleeve's bore (or slot) from
+the model and the G-code (the body's notch for the head stays), and
 `truss_rod_trough=False` leaves the headstock trough unrouted, and with it
 its cover.
 

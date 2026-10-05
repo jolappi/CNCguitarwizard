@@ -184,6 +184,7 @@ class NeckMachiningPlan:
     block_top_setups: tuple[Setup, ...] = ()
     block_back_setups: tuple[Setup, ...] = ()
     carbon_rods: Setup | None = None
+    small_holes: Setup | None = None
 
     @property
     def setups(self) -> tuple[Setup, ...]:
@@ -199,6 +200,7 @@ class NeckMachiningPlan:
             self.index_pins,
             self.top,
             *((self.carbon_rods,) if self.carbon_rods is not None else ()),
+            *((self.small_holes,) if self.small_holes is not None else ()),
             *self.block_top_setups,
             *((self.top_engraving,) if self.top_engraving is not None else ()),
             self.back_rough,
@@ -253,6 +255,10 @@ def _lettering_setup(
 CARBON_ROD_TOOL = 3.0
 """The end mill that cuts the carbon fibre bars' channels, in mm (narrower
 channels take a smaller one)."""
+
+PILOT_GUIDE_DEPTH = 2.0
+"""How deep, in mm, a pilot hole narrower than the small drill is started
+with it, as a guide to drill on from by hand."""
 
 
 def _round_up(depth: float) -> float:
@@ -388,10 +394,10 @@ def _locking_nut_notes(geometry: Prototype001Geometry) -> tuple[str, ...]:
     )
     return (
         f"{nut.spec.name} locking nut, {front}: {seat}. "
-        f"Drill its {screws} screws' {nut.screw_diameter:g} mm pilot holes by "
-        f"hand through the nut, {nut.screw_depth:g} mm into the neck, "
-        f"{spacing} and {nut.spec.set_back + nut.spec.depth / 2.0:g} mm "
-        "behind the nut line.",
+        f"Its {screws} screws' {nut.screw_diameter:g} mm pilot holes, "
+        f"{nut.screw_depth:g} mm into the neck, {spacing} and "
+        f"{nut.spec.set_back + nut.spec.depth / 2.0:g} mm behind the nut line, "
+        "are drilled, or started, in Neck_top_small_holes.",
     )
 
 
@@ -615,6 +621,28 @@ def plan_neck_machining(
         pocket(name, top_frame.polygon(boundary), depth, flat)
         for name, boundary, depth in route
     ]
+    bore = truss.bore
+    if bore is not None and bore.routed:
+        # The adjuster sleeve's bore, cut from the top as a slot down to the
+        # bore's floor (the fretboard closes it over), out past the heel's
+        # end so it opens cleanly through its end face.
+        half = bore.diameter / 2.0
+        end = bore.end + flat.tool_radius + 1.0
+        truss_paths.append(
+            pocket(
+                "Truss-rod sleeve slot",
+                top_frame.polygon(
+                    (
+                        Point2D(bore.start, -half),
+                        Point2D(end, -half),
+                        Point2D(end, half),
+                        Point2D(bore.start, half),
+                    )
+                ),
+                bore.floor_depth,
+                flat,
+            )
+        )
     if truss.adjuster_boundary:
         truss_paths.append(
             pocket(
@@ -701,6 +729,15 @@ def plan_neck_machining(
         "the rod's square blocks.",
         *(
             (
+                f"The truss-rod adjuster's sleeve sits in a {truss.bore.diameter:g} "
+                f"mm slot cut here along the rod's axis, "
+                f"{truss.bore.end - truss.bore.start:g} mm in from the heel end "
+                f"and {truss.bore.floor_depth:g} mm deep (its axis "
+                f"{truss.bore.axis_depth:g} mm below the glue face): the "
+                "fretboard closes it over, so no bore is drilled.",
+            )
+            if truss.bore is not None and truss.bore.routed
+            else (
                 f"Drill the truss-rod adjuster's sleeve bore by hand: "
                 f"{truss.bore.diameter:g} mm, "
                 f"{truss.bore.end - truss.bore.start:g} mm in from the heel "
@@ -797,6 +834,63 @@ def plan_neck_machining(
             ),
             reference_points,
             small,
+        )
+
+    # ---- top face: the locking nut's screw pilots ---------------------------
+    small_holes: Setup | None = None
+    nut = geometry.locking_nut
+    screws = nut.screw_centres() if nut is not None else ()
+    if nut is not None and screws:
+        drill_tool = replace(
+            flat,
+            tool_diameter=flat.small_hole_tool_diameter,
+            finishing_allowance=0.0,
+            plunge_rate=min(flat.plunge_rate, 150.0),
+        )
+        # Drilled to size where the small drill fits the pilot, else
+        # started with it as a guide.
+        full = drill_tool.tool_diameter <= nut.screw_diameter + 1e-6
+        small_holes = Setup(
+            "Neck_top_small_holes",
+            "Neck glue face - the locking nut's screw pilots",
+            tuple(
+                drill(
+                    f"Locking nut screw {index} pilot",
+                    top_frame.point(centre),
+                    nut.screw_diameter if full else drill_tool.tool_diameter,
+                    nut.screw_depth if full else PILOT_GUIDE_DEPTH,
+                    drill_tool,
+                )
+                for index, centre in enumerate(screws, start=1)
+            ),
+            (
+                "Same fixture and X/Y zero as Neck_top; change to the "
+                f"{drill_tool.tool_diameter:g} mm drill and re-touch Z on the "
+                "glue face.",
+                (
+                    f"The {nut.spec.name} locking nut's {len(screws)} screws' "
+                    f"pilots, {nut.screw_diameter:g} mm and {nut.screw_depth:g} "
+                    "mm deep, hidden under the nut."
+                    if full
+                    else f"The {nut.spec.name} locking nut's {len(screws)} "
+                    f"screws' pilots are started {PILOT_GUIDE_DEPTH:g} mm deep "
+                    f"with the {drill_tool.tool_diameter:g} mm drill, wider than "
+                    f"their {nut.screw_diameter:g} mm: drill them on to "
+                    f"{nut.screw_depth:g} mm by hand (a {nut.screw_diameter:g} "
+                    "mm small_hole_tool_diameter drills them to size here)."
+                ),
+                *(
+                    (
+                        "The fretboard runs on under the nut: once it is glued "
+                        "on, drill on through its shelf into these pilots by "
+                        "hand.",
+                    )
+                    if nut.on_fretboard
+                    else ()
+                ),
+            ),
+            reference_points,
+            drill_tool,
         )
 
     # ---- back: roughing, ball finishing, outline ---------------------------
@@ -1088,10 +1182,12 @@ def plan_neck_machining(
         block_top_setups=block_top,
         block_back_setups=block_back,
         carbon_rods=carbon_rods,
+        small_holes=small_holes,
         preview_outlines=(
             top_outline,
             top_outline,
             *((top_outline,) if carbon_rods is not None else ()),
+            *((top_outline,) if small_holes is not None else ()),
             *block_top_previews,
             *((top_outline,) if top_engraving is not None else ()),
             back_outline_polygon,

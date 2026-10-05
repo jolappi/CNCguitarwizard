@@ -183,6 +183,19 @@ def render_plan_view_svg(geometry: Prototype001Geometry) -> str:
     jack = body.jack_hole
     if jack is not None:
         parts.append(circle(jack.start_x, jack.start_y, jack.diameter / 2.0, hole))
+    # The holes drilled sideways by hand into a cavity's wall (a tremolo
+    # claw's screws), dashed.
+    for side in body.side_holes:
+        parts.append(
+            line(
+                side.start.x,
+                side.start.y,
+                side.end.x,
+                side.end.y,
+                f'stroke="#7d3c98" stroke-width="{side.diameter:g}" '
+                'stroke-opacity="0.45" stroke-dasharray="2,1.5"',
+            )
+        )
     # The wire holes drilled by hand, dashed from cavity to cavity.
     for wire in body.wire_holes:
         parts.append(

@@ -439,6 +439,7 @@ def body_part(body: BodySolid, part: BodyPart) -> BodySolid:
         wire_channels=tuple(c for c in body.wire_channels if reaches(c.outline)),
         # Drilled by hand through the glued body, not in a part's blank.
         wire_holes=(),
+        side_holes=(),
         wire_notes=(),
         engraving=engraving,
         edge_outline=part.edge_outline,

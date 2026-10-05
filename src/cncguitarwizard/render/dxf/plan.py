@@ -5,7 +5,8 @@
 body, neck, headstock and fretboard outlines, the nut, the fret slots,
 the inlays and tuner holes, every cavity, hole and wire hole of the body,
 the top's carve, steps and contours, the engraving and the cover plates,
-each kind on a layer of its own. ``render_covers_dxf`` lays the sheet
+each kind on a layer of its own (the holes drilled sideways by hand,
+a tremolo claw's screws, on ``SIDE_HOLES``). ``render_covers_dxf`` lays the sheet
 plates (cavity covers, control plates, the pickguard, the truss-rod cover)
 out side by side for cutting, each with its holes and slots and a label.
 """
@@ -104,6 +105,14 @@ def render_plan_dxf(geometry: Prototype001Geometry) -> str:
                 Point2D(wire.start.x, wire.start.y),
                 Point2D(wire.end.x, wire.end.y),
                 wiring,
+            )
+    if body.side_holes:
+        sideways = dxf.layer("SIDE_HOLES", 6)
+        for side in body.side_holes:
+            dxf.line(
+                Point2D(side.start.x, side.start.y),
+                Point2D(side.end.x, side.end.y),
+                sideways,
             )
     engraving = body.engraving
     if engraving is not None:

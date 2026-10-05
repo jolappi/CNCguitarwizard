@@ -4,6 +4,21 @@
 
 ### Added
 
+- Parts once left to notes are machined where a three-axis router can,
+  and modelled where it cannot:
+  - A heel-adjusted truss rod's sleeve bore is cut in `Neck_top` from
+    the top as a 9 mm slot down to the bore's floor, out through the
+    heel end, which the fretboard closes over
+    (`truss_rod_sleeve_routed`, on by default; off, a bore to drill by
+    hand as before).
+  - A locking nut's screw pilots are drilled in a new
+    `Neck_top_small_holes` program with the small drill — to size where
+    it is no wider than them, else started 2 mm deep as a guide.
+  - A Floyd Rose's two trem-claw screw holes are modelled (in FreeCAD,
+    the plan view and the DXF's `SIDE_HOLES` layer, checked to stay in
+    the body and out of other cavities), placed by the bridge's
+    `claw_screw_spacing`, `_height`, `_diameter` and `_depth`; they are
+    still drilled by hand, a router cannot drill sideways.
 - The battery box and the controls are placed together, so neither
   blocks the other: where the box as drawn keeps the controls from their
   clear place or sits in their way, the controls take the place they

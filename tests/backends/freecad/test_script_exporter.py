@@ -1186,8 +1186,10 @@ def test_the_truss_rod_nut_pocket_is_cut_with_short_boxes() -> None:
     assert "for index in range(7)" in source
     assert "neck_shape.cut(truss_rod_pocket_shapes_0).removeSplitter()" in source
     assert "neck_shape.cut(truss_rod_pocket_shapes_1).removeSplitter()" in source
-    # The adjuster sleeve's bore, drilled by hand, is shown in the model.
-    assert '"truss-rod sleeve bore"' in source
+    # The adjuster sleeve's bore, routed from the top as a slot, in short
+    # boxes too.
+    assert "neck_shape.cut(truss_rod_sleeve_shapes).removeSplitter()" in source
+    assert "'truss-rod sleeve slot'" in source
 
 
 def test_the_nut_seat_is_a_strip_along_the_nut_line() -> None:

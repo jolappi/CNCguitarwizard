@@ -1011,9 +1011,18 @@ the floor and break-through checks but required to reach the back face or a
 rear cavity they overlap) and `extra_rear_cavities`.
 
 Every bridge's fitting notes (`BridgeHardware.notes`: its routing sheet,
-what to check against the unit, what is left to the hand — a Floyd Rose's
-trem-claw screw holes, drilled into the spring cavity's wall) are given in
-`Body_top`'s notes (`BodySolid.bridge_notes`). A seven- or eight-string
+what to check against the unit, what is left to the hand) are given in
+`Body_top`'s notes (`BodySolid.bridge_notes`). Holes drilled sideways by
+hand into a cavity's wall, which a router cannot drill, are modelled
+(`BridgeHardware.side_holes`, `BodySolid.side_holes`, `SideHole`): in
+FreeCAD, dashed purple in the plan view and on the DXF's `SIDE_HOLES`
+layer, each checked to stay in the body and out of every other cavity. A
+Floyd Rose's trem claw has two: 3.5 mm pilots for its 4.2 mm screws
+(`claw_screw_diameter`), `claw_screw_depth` (30 mm) into the spring
+cavity's nut-ward wall along the neck, `claw_screw_spacing` (34 mm, a
+Gotoh claw's) apart about its centre and `claw_screw_height` above the
+back (empty: halfway up the cavity); the note gives where to drill them,
+and the fields set them to the claw in hand. A seven- or eight-string
 Floyd Rose's sheet routes no block pocket deeper than the spring cavity;
 should the block touch on a deep dive, `block_pocket_depth` 28.19 (the
 six-string sheet's) cuts it at the cavity's tail end, under the cover.

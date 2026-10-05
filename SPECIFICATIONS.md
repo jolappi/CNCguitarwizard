@@ -121,8 +121,15 @@ kielireiän (myös yksikielisten tallojen) alle porataan takaa holkin upotus
 `body_string_ferrule_diameter` × `body_string_ferrule_depth` (kitara 8 × 6 mm
 eli 5/16", basso 9,5 × 6,5 mm eli 3/8"; syvyys 0 = käsin) `Body_back`-ohjelmassa,
 ja holkki peittää sen. Tallojen asennusmuistiinpanot (reitityspiirros, mitä
-tarkistaa, mitä tehdään käsin, kuten Floydin trem-clawn ruuvireiät) näkyvät
-`Body_top`-ohjelman muistiinpanoissa. 7- ja 8-kielisen Floydin piirroksessa ei
+tarkistaa, mitä tehdään käsin) näkyvät `Body_top`-ohjelman
+muistiinpanoissa. Sivuttain käsin porattavat reiät (CNC ei poraa
+vaakasuoraan) mallinnetaan: Floydin trem-clawn kaksi ruuvia, 3,5 mm
+pilotit 4,2 mm ruuveille (`claw_screw_diameter`) 30 mm syvälle
+(`claw_screw_depth`) jousikolon kaulanpuoleiseen seinään kaulan suuntaan,
+34 mm välein (`claw_screw_spacing`, Gotohin clawn) ja oletuksena kolon
+puolessa välissä takapinnasta (`claw_screw_height`); ne näkyvät
+FreeCAD-mallissa, plan-kuvassa ja DXF:n `SIDE_HOLES`-tasolla, ja ne
+tarkistetaan pysymään rungossa ja irti muista koloista. 7- ja 8-kielisen Floydin piirroksessa ei
 ole jousikoloa syvempää taskua; jos lohko koskee syvässä divessä, `block_pocket_depth`
 28,19 (6-kielisen piirroksen) jyrsii sen kolon peräpäähän kannen alle.
  Basson oletukset:
@@ -477,7 +484,7 @@ säilyy 5 mm:nä kaikissa lapaliitoksen muutoksissa.
 | Säätöpää lavassa | Kaularauta on kokonaan kaulan puolella (kanava alkaa satulan istukan takaa). Tavallisen raudan 11 mm tasku ja 10,5 mm porras ovat silloin kaulan ohuessa osassa satulan lähellä (oletuskaulassa 11 mm puuta 1. nauhalla), joten kaula tehdään 1. nauhalta niin paksuksi, että taskun ja portaan alle jää 1 mm (`TRUSS_ROD_MIN_FLOOR`) myös niiden reunoilla, missä D-profiili on jo kaartunut ylös: 17 mm → 18,3 mm (`first_fret_thickness_needed`; paksumpi `first_fret_thickness` säilyy) |
 | Matala kaularauta | `truss_rod_profile` low_profile: matala kaksitoiminen rauta (kuten StewMacin/Hoscon Hot Rod Low-profile: suora 1/4 × 3/8 in kanava liimapinnasta, 4 mm kuusiokoloavain; myös Next Genin Low Pro 6,25 × 9,25 mm sopii samaan). Yksi suora 6,35 × 9,5 mm kanava (`truss_rod_low_profile_width` / `_depth`) ilman porrasta ja taskua; alle jää oletuskaulassa 1,5 mm puuta, joten kaulaa ei tarvitse paksuntaa. Auto ei laita sille spoke wheeliä: kannassa mutteri on kannan päädyssä, lavassa avaimen lovi |
 | Säätöholkki | Säädettävät mitat: pyöreä pää Ø 15 × 6 mm rungon puolella, kaulan puolella 12 mm pitkä Ø 9 mm reikä raudan akselilla; akseli 7,5 mm liimapinnasta (mitattu, `truss_rod_axis_depth`) |
-| Kannan säätö | Holkin reikä porataan käsin (CNC ei aja vaakasuoraa porausta; mukana mallissa ja G-coden ohjeissa); rungon kaulataskun päähän lovi holkin päälle, 1 mm välys, 15,5 mm syvä |
+| Kannan säätö | Holkin reikä jyrsitään `Neck_top`-ohjelmassa päältä urana (`truss_rod_sleeve_routed`, oletus): 9 mm leveä ura reiän pohjaan asti (akseli + säde = 12 mm) kannan päädyn läpi; reiän yläreuna on 3 mm liimapinnan alla, joten otelauta peittää uran kannan päähän asti (CNC ei poraa vaakasuoraan). Pois päältä reikä jää malliin pyöreänä ja porataan käsin G-coden ohjeen mukaan; rungon kaulataskun päähän lovi holkin päälle, 1 mm välys, 15,5 mm syvä |
 | Lavan säätö | Kanava jatkuu satulan alta; mutteri 32 mm urassa lavan pinnassa, uralle Gibson-tyylinen kansi (3 ruuvia) levystä omana NC-ohjelmanaan |
 | Satulan istukka | Kannan säädössä satulahylly on tasainen koko satulan leveydeltä (myös monimensuurin vinolla satulalla). Lavan säädössä raudan tasku kulkee satulan alta, joten G-koodin ohje pyytää liimaamaan taskuun raudan päälle puisen täytepalan (esim. 9 × 5 mm) satulahyllyn tasoon ennen satulan liimausta |
 | Valinnaiset aukot | Holkin reikä (`truss_rod_sleeve_bore`) ja lavan ura kansineen (`truss_rod_trough`) ovat oletuksena mukana, mutta ne voi jättää pois |

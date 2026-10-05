@@ -31,6 +31,7 @@ read it; pick millimetres on import otherwise.
 | `BODY_HOLES_TOP`, `BODY_HOLES_BACK` | Holes drilled from the top (pivot studs, pots, screws, string holes, screw spots) and from the back (neck-bolt and string ferrules, cover screw spots) |
 | `JACK` | The jack's bore where it meets the edge |
 | `WIRE_HOLES` | Each wire hole's line in plan, from cavity to cavity |
+| `SIDE_HOLES` | Each hole drilled sideways by hand into a cavity's wall (a Floyd Rose's trem-claw screws), its line in plan |
 | `ENGRAVING` | The engraving's lines, or a relief's shapes |
 | `COVERS`, `COVER_HOLES` | The plates where they are fitted, their holes and slots |
 | `CENTERLINE` | The neck's centreline |
