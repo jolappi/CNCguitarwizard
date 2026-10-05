@@ -249,11 +249,11 @@ def test_stepwise_build_reports_progress_between_stages(tmp_path: Path) -> None:
     started = start_build({"prototype": {}, "machining": {}}, str(tmp_path))
 
     assert started["stages"][0] == "Building the geometry"
-    assert len(started["stages"]) == 7
+    assert len(started["stages"]) == 8
     first = advance_build()
     assert first == {
         "completed": 1,
-        "total": 7,
+        "total": 8,
         "done": False,
         "next": "Planning the body toolpaths",
     }
@@ -261,9 +261,12 @@ def test_stepwise_build_reports_progress_between_stages(tmp_path: Path) -> None:
     step = first
     while not step["done"]:
         step = advance_build()
-    assert step["completed"] == 7 and step["next"] is None
+    assert step["completed"] == 8 and step["next"] is None
     result = finish_build()
     assert "Body_top.nc" in result["files"] and result["plan_view"].startswith("<svg")
+    # The DXF outlines come with the files.
+    assert result["files"]["Prototype001_plan.dxf"].endswith("EOF\n")
+    assert "Prototype001_covers.dxf" in result["files"]
     assert advance_build() == {"error": "No build has been started."}
 
 

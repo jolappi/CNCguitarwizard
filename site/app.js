@@ -623,7 +623,8 @@ function showResult(result) {
     const info = programOf(name);
     const number = info && isProgram(name) ? `${info.step}.` : "";
     const type = name.endsWith(".svg") ? "image/svg+xml"
-      : name.endsWith(".json") ? "application/json" : "text/plain";
+      : name.endsWith(".json") ? "application/json"
+      : name.endsWith(".dxf") ? "application/dxf" : "text/plain";
     const url = URL.createObjectURL(new Blob([text], { type }));
     blobUrls.push(url);
     const row = document.createElement("tr");
@@ -1792,7 +1793,7 @@ const bodyEditor = {
       let bolts = readValue(input);
       if (!bolts.length) {
         bolts = this.layout.circles
-          .filter((c) => c.rear && c.name.endsWith("ferrule"))
+          .filter((c) => c.rear && c.name.startsWith("Neck bolt") && c.name.endsWith("ferrule"))
           .map((c) => [c.x, c.y]);
       }
       const index = Number(group.split(":")[1]);
@@ -1966,7 +1967,7 @@ const bodyEditor = {
       let bolts = readValue(input);
       if (!bolts.length) {
         bolts = this.layout.circles
-          .filter((c) => c.rear && c.name.endsWith("ferrule"))
+          .filter((c) => c.rear && c.name.startsWith("Neck bolt") && c.name.endsWith("ferrule"))
           .map((c) => [c.x, c.y]);
       }
       const target = Number(group.split(":")[1]);

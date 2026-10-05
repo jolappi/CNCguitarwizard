@@ -50,6 +50,7 @@ Everything lands in the `build/` directory (git-ignored):
 | `Body_*.nc` | GRBL G-code for the body (index pins, top, back) — see [Body G-code](docs/cam/01_body_gcode.md) |
 | `Neck_*.nc`, `Fretboard_*.nc` | GRBL G-code for the neck (five programs, flat + ball nose) and the fretboard (five programs, four tools) — see [Neck and fretboard G-code](docs/cam/02_neck_and_fretboard_gcode.md) |
 | `*.svg` next to each `.nc` | Toolpath plots of those programs |
+| `Prototype001_plan.dxf`, `Prototype001_covers.dxf` | The plan outlines (a layer a kind) and the sheet plates laid out for cutting, R12 DXF for other CAD, CAM and laser programs — see [DXF](docs/render/02_dxf.md) |
 | `build.json` | Every parameter used, stock size, per-program time estimates, checksums |
 | `freecad.log` | FreeCAD's own output from the run |
 

@@ -32,6 +32,7 @@ from ..cam import (
 )
 from ..geometry.body import body_part
 from ..presets import Prototype001Geometry, Prototype001Parameters
+from ..render.dxf import render_covers_dxf, render_plan_dxf
 from ..version import PROJECT_MARK, PROJECT_NAME, __version__
 from .exceptions import BuildWorkflowError, FreeCADExecutionError
 
@@ -49,6 +50,7 @@ class Prototype001BuildResult:
     freecad_log_path: Path
     gcode_paths: tuple[Path, ...] = ()
     toolpath_preview_paths: tuple[Path, ...] = ()
+    dxf_paths: tuple[Path, ...] = ()
 
 
 class Prototype001Build:
@@ -102,6 +104,7 @@ class Prototype001Build:
         ] = []
         self._gcode_paths: list[Path] = []
         self._preview_paths: list[Path] = []
+        self._dxf_paths: list[Path] = []
         self._gcode_report: dict[str, object] = {}
         self._stock_report: dict[str, dict[str, object]] = {}
         self._report: dict[str, object] = {}
@@ -118,6 +121,7 @@ class Prototype001Build:
             ("Planning the fretboard toolpaths", self._plan_fretboard),
             ("Planning the cover plates", self._plan_covers),
             ("Writing G-code and toolpath previews", self._write_gcode),
+            ("Writing the DXF outlines", self._write_dxf),
             ("Writing the FreeCAD script and report", self._write_script_and_report),
         ]
         if run_freecad:
@@ -163,6 +167,7 @@ class Prototype001Build:
             self._freecad_log_path,
             gcode_paths=tuple(self._gcode_paths),
             toolpath_preview_paths=tuple(self._preview_paths),
+            dxf_paths=tuple(self._dxf_paths),
         )
 
     # -- stages -----------------------------------------------------------
@@ -298,6 +303,18 @@ class Prototype001Build:
                     },
                 }
 
+    def _write_dxf(self) -> None:
+        """Write the plan outlines and the sheet plates as DXF."""
+        assert self.geometry is not None
+        plan_path = self.destination / "Prototype001_plan.dxf"
+        plan_path.write_text(render_plan_dxf(self.geometry), encoding="utf-8")
+        self._dxf_paths.append(plan_path)
+        covers = render_covers_dxf(self.geometry.covers)
+        if covers is not None:
+            covers_path = self.destination / "Prototype001_covers.dxf"
+            covers_path.write_text(covers, encoding="utf-8")
+            self._dxf_paths.append(covers_path)
+
     def _write_script_and_report(self) -> None:
         assert self.geometry is not None
         exporter = FreeCADScriptExporter()
@@ -320,6 +337,7 @@ class Prototype001Build:
             "generated_files": {
                 "freecad_macro": self._macro_path.name,
                 "freecad_python": self._python_path.name,
+                "dxf": [path.name for path in self._dxf_paths],
             },
             "freecad_targets": {
                 "document": self._fcstd_path.name,

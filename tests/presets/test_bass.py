@@ -113,7 +113,7 @@ def test_the_hardtail_follows_its_string_count() -> None:
 def test_the_bass_neck_bolts_spread_toward_the_body_edge(bass) -> None:  # type: ignore[no-untyped-def]
     parameters = Prototype001Parameters.for_instrument("bass_guitar")
     heel_end = parameters.body_layout().heel_end
-    ferrules = [h for h in bass.body.rear_holes if h.name.endswith("ferrule")]
+    ferrules = [h for h in bass.body.rear_holes if h.name.startswith("Neck bolt")]
     xs = sorted({round(h.center_x - heel_end, 1) for h in ferrules})
 
     # 56 mm apart along the neck: the pair at the pocket's mouth sits

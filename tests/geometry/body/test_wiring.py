@@ -247,6 +247,7 @@ def test_the_default_guitar_is_wired_by_drilled_holes() -> None:
     assert set(names) == {
         "Neck pickup wire hole",
         "Bridge pickup wire hole",
+        "Switch wire hole",
         "Bridge ground hole",
     }
     assert body.wire_channels == () and body.wire_notes == ()
@@ -274,7 +275,7 @@ def test_the_default_guitar_is_wired_by_drilled_holes() -> None:
     )
     assert all(hole.note() in top.notes for hole in body.wire_holes)
     source = FreeCADScriptExporter().render_prototype001(geometry)
-    assert source.count("wire_hole = Part.makeCylinder(") == 3
+    assert source.count("wire_hole = Part.makeCylinder(") == 4
     assert "'neck pickup wire hole cut'" in source
     assert 'stroke="#c0392b"' in render_plan_view_svg(geometry)
 
@@ -327,3 +328,29 @@ def test_no_controls_or_switched_off_no_wiring() -> None:
 
 def test_the_body_editor_lays_no_wiring_out() -> None:
     assert GUITAR.body_layout().wiring.holes == ()
+
+
+def test_the_switch_and_the_battery_are_wired_too() -> None:
+    parameters = replace(GUITAR, body_battery_box=True)
+    body = parameters.build().body
+    holes = {hole.name: hole for hole in body.wire_holes}
+    spaces = _spaces(body)
+    # The switch by the neck pickup (a Les Paul's way) or the controls,
+    # the battery's lead straight to the controls.
+    switch = holes["Switch wire hole"]
+    assert "Switch cavity" in (switch.drilled_from, switch.into)
+    battery = holes["Battery wire hole"]
+    assert {battery.drilled_from, battery.into} == {"Battery cavity", "Control cavity"}
+    for hole in (switch, battery):
+        _check_hole(hole, spaces, body.thickness, body.outline.points)
+    # Planned, the battery's hand-drilling note gives way to its hole.
+    plan = plan_body_machining(body, MachiningParameters())
+    (controls,) = [s for s in plan.setups if s.name == "Body_back_controls"]
+    assert not any("battery lead" in note for note in controls.notes)
+    (top,) = [s for s in plan.setups if s.name == "Body_top"]
+    assert battery.note() in top.notes
+    # Wiring off, the note is back.
+    off = replace(parameters, body_wire_channels=False).build().body
+    plan = plan_body_machining(off, MachiningParameters())
+    (controls,) = [s for s in plan.setups if s.name == "Body_back_controls"]
+    assert any("battery lead" in note for note in controls.notes)

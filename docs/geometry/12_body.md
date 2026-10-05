@@ -538,9 +538,9 @@ The body shape places it: `battery_offset` (X from the heel end),
 `battery_y` and `battery_angle_degrees` (the box's long axis from the
 neck's). Its cover (`Battery cavity cover`, `Cover_battery_cavity.nc`) is
 held by two screws on the ledge at the box's ends. The battery lead's
-channel to the control cavity is drilled by hand, so each shape and
-template puts the box near its control cavity (18–32 mm between the
-cavities), in a spot that clears every control
+hole to the control cavity is drilled by hand (planned with the wiring,
+*Wire channels* below), so each shape and template puts the box near its
+control cavity (18–32 mm between the cavities), in a spot that clears every control
 layout, bridge and pickup: beside the control cavity behind the bridge,
 turned 15°, on the drawn bodies; behind the bridge next to the almond,
 nearly across the neck (85°) with 10 mm of wood to the tail's edge, on
@@ -556,12 +556,17 @@ a hole from the back under its cover.
 
 ### Wire channels
 
-`body_wire_channels` (on by default) wires the pickups to the controls and
-grounds the bridge (`geometry.body.wiring.plan_wiring`, laid out at build
-time, not in the body editor). Each pickup route joins whichever cavity
-already wired is nearest — the control cavity (the rear one, or a
-pickguard's or plate's in the top) or a pickup route wired before it — so
-pickups in a row chain to the controls as on a Stratocaster or a Les Paul.
+`body_wire_channels` (on by default) wires the pickups, a separate switch
+cavity and a battery box to the controls and grounds the bridge
+(`geometry.body.wiring.plan_wiring`, laid out at build time, not in the
+body editor). Each pickup route, and the round switch cavity of a rear
+layout, joins whichever cavity already wired is nearest — the control
+cavity (the rear one, or a pickguard's or plate's in the top), a pickup
+route or the switch cavity wired before it — so pickups in a row chain to
+the controls as on a Stratocaster or a Les Paul, and a Les Paul's toggle
+switch joins by its neck pickup. A battery box's lead runs straight to
+the control cavity (`Battery wire hole`); its old hand-drilling note in
+`Body_back_controls` stays only when the wiring is off or finds no way.
 The bridge's ground wire runs from the control cavity to a tremolo's
 spring cavity (its claw) if a hole reaches it, or else to the nearest of
 the bridge's routes and holes (a Kahler's baseplate cutout, a
@@ -932,7 +937,7 @@ all placed relative to the scale line:
 | `FloydRoseSpec` | `floyd_rose` | Floyd Rose Original recessed routing per the manufacturer's *Original Series Routing Diagrams*: two Ø 10 stud holes 73.91 mm apart, 11.9 mm ahead of the scale line (25.03 in on a 25.5 in scale); a 95.25 mm wide recess, 79.38 mm long, narrowing to 71.12 mm after 42.44 mm, cut 6.73 mm deep over its whole footprint (continuous walls) and deepened to 11.18 mm behind the front 15.88 mm stud shelf as a step inside it, with a 20.96 × 82.85 mm block route 29.59 mm deep through that floor that opens into the spring cavity only where the two overlap; a rear 123.19 × 56.64 × 16.13 mm spring cavity with a 28.19 mm deep block clearance pocket at its tail end and a 2 mm cover recess 8 mm wider all round (`cover_margin`), closed by a sheet cover with six screws on the ledge (`Floyd Rose spring cavity cover`, `Cover_floyd_rose_spring_cavity.nc`, made like the cavity covers by `controls.rear_cover`). The diagram is for a 1.75 in (44.45 mm) body, where the block route runs 1.27 mm into the spring cavity; in a thicker body the spring cavity and block pocket reach deeper by the difference (`FLOYD_ROSE_DRAWN_THICKNESS`), so the block route always opens into the back. The recess is 3.56 mm wider on the tremolo-arm (treble) side; `treble_side` picks that side (`"+y"` on the right-handed Prototype001 body; a left-handed build flips it). `string_count` 6, 7 or 8: every width across the body follows the studs' spacing by the same margins on Floyd Rose's six- and seven-string sheets (the walls 8.89 / 12.45 mm outside the studs, the block route 8.94 mm wider than the studs are apart, the fine-tuner part 2.79 mm narrower), so the widths left empty (`pivot_stud_spacing`, `recess_*_half_width`, `fine_tuner_width`, `block_route_width`; `FloydRoseSpec.widths()`) come from the string count's stud spacing — 73.91, 84.58 (the *FR 7-String Routing* sheet: a 105.92 mm recess narrowing to 81.79 mm, a 93.52 mm block route) or 95.5 mm (the FRT8's post spacing; Floyd Rose publishes no eight-string routing, so the eight-string is the seven-string sheet widened). Everything along the neck and every depth is the same on both sheets, except that the seven-string sheet routes no block pocket deeper than the spring cavity: seven and eight strings get none (`block_pocket_depth` left empty), the notes saying to deepen the cavity's tail by hand should the block touch on a deep dive |
 | `TuneOMaticSpec` | `tune_o_matic` | Two Ø 11.2 post holes, the treble one `compensation` (1.6 mm, 1/16 in) behind the scale line and the bass one `bass_setback` (3.2 mm, 1/8 in) further back, so the bridge leans with the strings' compensation and every saddle starts mid-travel (mirrored onto a +Y bass side, `mirrored_hardware`); two Ø 11.2 stop-bar stud holes 45 mm behind the scale line |
 | `HeadlessBridgeSpec` | `headless` | A headless bridge: saddles and tuners in one unit screwed flat to the top. Four Ø 3 × 12 mm pilot holes `screw_inset` (6 mm) in from the plate's corners; the plate, from `front_reach` (12 mm) ahead of the scale line, `length` (90 mm) long and `side_margin` (10 mm) past the outer strings (`string_count`, `string_spacing`), is the bridge's `footprint`, which must lie on the body and which the pickguard and the engraving keep clear of |
-| `HardtailSpec` | `hardtail` | `string_count` (6) Ø 3 string-through holes 14 mm behind the scale line and five pilot holes for the baseplate screws; the bass uses four strings 19 mm apart, 30 mm behind the scale line. With `string_through` off the bridge is top-loaded (most bass bridges string either way): no string holes |
+| `HardtailSpec` | `hardtail` | `string_count` (6) Ø 3 string-through holes 14 mm behind the scale line and five pilot holes for the baseplate screws; the bass uses four strings 19 mm apart, 30 mm behind the scale line. With `string_through` off the bridge is top-loaded (most bass bridges string either way): no string holes. Each string-through hole (a single-string bridge's too) gets its ferrule's counterbore from the back, `body_string_ferrule_diameter` × `body_string_ferrule_depth` (8 × 6 mm, 5/16 in; a bass 9.5 × 6.5 mm, 3/8 in; depth 0 leaves it to the builder), drilled in `Body_back` — the ferrule hides it |
 | `SingleStringBridgeSpec` | `single_string` | A small bridge of its own for every string (`string_count`, `string_spacing`; ABM 3710-style bass singles by default: 60 × 15 mm, 19 mm apart): each unit reaches `front_reach` (15 mm) ahead of its string's scale point, two Ø 3 × 12 mm screw pilots on its centre line `screw_inset` (6 mm) in from its ends, and with `string_through` a Ø 4 string hole through the body 30 mm behind the scale point. On a multiscale each unit stands at its own string's scale on the fanned bridge line, still square to its string — the bridge follows the fan without turning (`hardware(..., lean)`), which is why fanned basses use them. Their footprint round all the units is kept clear like a plate; `unit_width` may not exceed the string spacing |
 
 `Prototype001Parameters.body_bridge` holds the spec; in the web form it is a
@@ -968,6 +973,14 @@ Two new `BodySolid` fields carry bridge features: `through_cavities` (top
 routes that open into a rear cavity or clean through the body, exempt from
 the floor and break-through checks but required to reach the back face or a
 rear cavity they overlap) and `extra_rear_cavities`.
+
+Every bridge's fitting notes (`BridgeHardware.notes`: its routing sheet,
+what to check against the unit, what is left to the hand — a Floyd Rose's
+trem-claw screw holes, drilled into the spring cavity's wall) are given in
+`Body_top`'s notes (`BodySolid.bridge_notes`). A seven- or eight-string
+Floyd Rose's sheet routes no block pocket deeper than the spring cavity;
+should the block touch on a deep dive, `block_pocket_depth` 28.19 (the
+six-string sheet's) cuts it at the cavity's tail end, under the cover.
 
 ## Two anchors
 

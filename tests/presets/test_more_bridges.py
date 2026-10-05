@@ -56,7 +56,7 @@ def test_the_seven_string_floyd_rose_follows_its_routing_sheet() -> None:
     spring = hardware.rear_cavities[0]
     assert spring.steps == () and spring.depth == 16.13
     assert any("7-String Routing sheet" in note for note in hardware.notes)
-    assert any("deepen the cavity's tail" in note for note in hardware.notes)
+    assert any("block_pocket_depth to 28.19" in note for note in hardware.notes)
 
 
 def test_the_eight_string_floyd_rose_is_widened_to_its_studs() -> None:

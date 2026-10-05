@@ -484,6 +484,7 @@ class BodyLayout:
     carved_top: CarvedTop | None = None
     stepped_top: SteppedTop | None = None
     wiring: Wiring = field(default_factory=Wiring)
+    bridge_notes: tuple[str, ...] = ()
 
 
 TRUSS_ROD_STOCK_LENGTHS: tuple[float, ...] = tuple(
@@ -872,10 +873,11 @@ class Prototype001Parameters:
     body_jack: Literal["side", "cup", "strat", "plate"] = "side"
     body_jack_diameter: float = 12.5
     body_jack_depth: float | None = None
-    # The wire channels (see geometry.body.wiring): every pickup route
-    # wired to the controls, nearest first (a row of pickups chains to
-    # them), and the bridge's ground wire from the controls to its nearest
-    # cavity or hole. Under a pickguard a channel is routed from the top
+    # The wire channels (see geometry.body.wiring): every pickup route and
+    # a separate switch cavity wired to the controls, nearest first (a row
+    # of pickups chains to them), a battery box's lead straight to them,
+    # and the bridge's ground wire from the controls to its nearest cavity
+    # or hole. Under a pickguard a channel is routed from the top
     # (WIRE_CHANNEL_WIDTH wide, at most WIRE_CHANNEL_DEPTH deep); every
     # other way is a straight hole drilled by hand (WIRE_HOLE_DIAMETER,
     # the ground GROUND_HOLE_DIAMETER), modelled and given in Body_top's
@@ -906,6 +908,14 @@ class Prototype001Parameters:
     body_neck_bolt_hole_diameter: float = 5.0
     body_neck_bolt_edge_wall: float = 5.0
     body_neck_bolts_outward: bool = True
+    # A string-through bridge's ferrules (the hardtail, single-string
+    # bridges): every hole the strings pass through the body by gets a
+    # counterbore from the back body_string_ferrule_diameter wide and
+    # body_string_ferrule_depth deep, drilled in Body_back (the ferrule
+    # hides it); 5/16 in by default on a guitar, 3/8 in on a bass. A depth
+    # of 0 leaves them to the builder.
+    body_string_ferrule_diameter: float = 8.0
+    body_string_ferrule_depth: float = 6.0
     # Truss rod: a plain channel truss_rod_width x truss_rod_depth, then,
     # at the adjusting end, a step (truss_rod_step_*) and a wider, deeper
     # pocket (truss_rod_pocket_*) for the rod's anchor and adjuster. The
@@ -2741,7 +2751,7 @@ class Prototype001Parameters:
             (*bridge.through_cavities, *controls.through_cavities),
             bridge.rear_cavities,
             middle_pickup,
-            neck_bolts,
+            (*neck_bolts, *self._string_ferrules(bridge.holes)),
             controls,
             EdgeProfile(
                 self.body_top_edge_radius,
@@ -2781,7 +2791,44 @@ class Prototype001Parameters:
             )
             if self.body_wire_channels and check_steps
             else Wiring(),
+            bridge.notes,
         )
+
+    def _string_ferrules(self, holes: tuple[DrilledHole, ...]) -> list[DrilledHole]:
+        """Return the counterbores from the back for the strings' ferrules.
+
+        One under every hole a string passes through the body by
+        (``body_string_ferrule_diameter`` x ``_depth``); none with a depth
+        of 0.
+
+        Raises:
+            BodyGeometryError: For a ferrule not wider than its string's
+                hole, or a depth not leaving half the body.
+        """
+        depth = self.body_string_ferrule_depth
+        diameter = self.body_string_ferrule_diameter
+        through = [hole for hole in holes if "through hole" in hole.name]
+        if not through or depth == 0.0:
+            return []
+        if not math.isfinite(depth) or not 0.0 < depth < self.body_thickness / 2.0:
+            raise BodyGeometryError(
+                "body_string_ferrule_depth must be 0 or positive and under half "
+                "the body's thickness."
+            )
+        if not math.isfinite(diameter) or diameter <= max(h.diameter for h in through):
+            raise BodyGeometryError(
+                "body_string_ferrule_diameter must be wider than the string holes."
+            )
+        return [
+            DrilledHole(
+                hole.name.replace("through hole", "ferrule"),
+                hole.center_x,
+                hole.center_y,
+                diameter,
+                depth,
+            )
+            for hole in through
+        ]
 
     def _wiring(
         self,
@@ -2876,11 +2923,6 @@ class Prototype001Parameters:
             *(from_top(cavity, face=False) for cavity in others),
             *(from_top(cavity, face=False) for cavity in controls.top_cavities),
             *(from_top(cavity, face=False) for cavity in controls.through_cavities),
-            *(
-                from_back(rear)
-                for rear in (controls.switch_cavity, controls.battery_cavity)
-                if rear is not None
-            ),
             *(drilled(hole) for hole in top_holes),
             *(drilled(hole, back=True) for hole in back_holes),
         ]
@@ -2906,6 +2948,16 @@ class Prototype001Parameters:
             [from_top(pickup) for pickup in pickups],
             targets,
             obstacles,
+            switch=(
+                from_back(controls.switch_cavity)
+                if controls.switch_cavity is not None
+                else None
+            ),
+            battery=(
+                from_back(controls.battery_cavity)
+                if controls.battery_cavity is not None
+                else None
+            ),
             covers=(guard.plate.outline,) if guard is not None else (),
             openings=(
                 (
@@ -4295,6 +4347,7 @@ class Prototype001Parameters:
             wire_channels=body_parts.wiring.channels,
             wire_holes=body_parts.wiring.holes,
             wire_notes=body_parts.wiring.by_hand,
+            bridge_notes=body_parts.bridge_notes,
         )
         return Prototype001Geometry(
             outline,
@@ -4386,6 +4439,9 @@ _BASS_OVERRIDES: dict[str, Any] = {
     "tuner_edge_offset": 20.0,
     "tuner_post_diameter": 12.0,
     "body_pickups": "PJ",
+    # A bass's string ferrules, 3/8 in.
+    "body_string_ferrule_diameter": 9.5,
+    "body_string_ferrule_depth": 6.5,
     "body_neck_pickup": "precision_bass",
     "body_bridge_pickup": "jazz_bass",
     "body_neck_pickup_offset": 102.7,

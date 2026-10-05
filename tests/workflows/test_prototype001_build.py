@@ -132,6 +132,7 @@ def test_stepwise_build_runs_one_stage_per_advance(tmp_path: Path) -> None:
         "Planning the fretboard toolpaths",
         "Planning the cover plates",
         "Writing G-code and toolpath previews",
+        "Writing the DXF outlines",
         "Writing the FreeCAD script and report",
     )
     assert build.completed == 0 and not build.done

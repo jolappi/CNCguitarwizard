@@ -1159,6 +1159,7 @@ def finish_build() -> dict[str, Any]:
         result.report_path,
         *result.gcode_paths,
         *result.toolpath_preview_paths,
+        *result.dxf_paths,
     ):
         files[path.name] = path.read_text(encoding="utf-8")
     report = json.loads(files[result.report_path.name])

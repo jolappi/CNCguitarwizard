@@ -618,9 +618,10 @@ class FloydRoseSpec:
             notes += (
                 "As the 7-string sheet draws it, the block has no pocket deeper "
                 "than the spring cavity behind it; should it touch the wood on "
-                "a deep dive, deepen the cavity's tail end by hand as the "
-                f"6-string sheet does ({FLOYD_ROSE_SIX_STRING_POCKET:g} mm from "
-                "the back).",
+                "a deep dive, set the bridge's block_pocket_depth to "
+                f"{FLOYD_ROSE_SIX_STRING_POCKET:g} (the 6-string sheet's, from "
+                "the back) and the pocket is cut at the cavity's tail end, "
+                "under the spring cover.",
             )
         return BridgeHardware(
             mounting,
@@ -871,7 +872,9 @@ class HardtailSpec:
             holes=tuple(holes),
             notes=(
                 (
-                    "Hardtail: counterbore the string ferrules on the back by hand."
+                    "Hardtail, strung through the body: the string ferrules' "
+                    "counterbores are drilled from the back (Body_back, "
+                    "body_string_ferrule_diameter and _depth)."
                     if self.string_through
                     else "Hardtail, top-loaded: the strings load through the "
                     "bridge's tail; nothing passes through the body."

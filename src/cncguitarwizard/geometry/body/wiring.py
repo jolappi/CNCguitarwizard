@@ -1,11 +1,13 @@
 """Wire channels between the electronics cavities.
 
-Every pickup route is wired to the controls, nearest first: a route joins
-whichever cavity already wired is nearest (the controls, or a pickup
-route wired before it), so pickups in a row chain to the controls as on a
-Stratocaster or a Les Paul. The bridge's ground wire runs from the
-controls to a tremolo's spring cavity (its claw), or else to the nearest
-bridge cavity or hole.
+Every pickup route, and a separate switch cavity, is wired to the
+controls, nearest first: each joins whichever cavity already wired is
+nearest (the controls, or a pickup route or the switch cavity wired before
+it), so pickups in a row chain to the controls as on a Stratocaster or a
+Les Paul, and a Les Paul's toggle switch by its neck pickup. A battery
+box's lead runs straight to the controls. The bridge's ground wire runs
+from the controls to a tremolo's spring cavity (its claw), or else to the
+nearest bridge cavity or hole.
 
 A machine cutting from the top or the back leaves any channel open on
 that face, so a channel is routed only where a pickguard hides it: a slot
@@ -204,18 +206,24 @@ def plan_wiring(
     bridge: Sequence[WireSpace],
     obstacles: Sequence[WireSpace],
     *,
+    switch: WireSpace | None = None,
+    battery: WireSpace | None = None,
     covers: Sequence[tuple[Point2D, ...]] = (),
     openings: Sequence[tuple[Point2D, ...]] = (),
     top_at: Callable[[Point2D], float] | None = None,
     back_at: Callable[[Point2D], float] | None = None,
 ) -> Wiring:
-    """Return the channels and holes wiring the pickups and the bridge.
+    """Return the channels and holes wiring the electronics and the bridge.
 
     Args:
         thickness: The body's thickness.
         outline: The body's outline.
         controls: The cavity the pots are in.
         pickups: The pickup routes.
+        switch: A switch cavity of its own (a Les Paul's toggle's), wired
+            in the chain as a pickup is, or ``None``.
+        battery: A battery box, its lead straight to the controls, or
+            ``None``.
         bridge: The bridge's cavities and holes its ground wire can reach.
         obstacles: Every other cavity and hole; a space in ``pickups``,
             ``bridge`` or ``controls`` may be listed too, and is kept clear
@@ -227,10 +235,17 @@ def plan_wiring(
         back_at: The back's height at a point (above ``0`` in a belly
             cut), ``0`` if not given.
     """
+    sources = [*pickups, *((switch,) if switch is not None else ())]
     planner = _Planner(
         thickness,
         tuple(outline),
-        (controls, *pickups, *bridge, *obstacles),
+        (
+            controls,
+            *sources,
+            *((battery,) if battery is not None else ()),
+            *bridge,
+            *obstacles,
+        ),
         tuple(covers),
         tuple(openings),
         top_at or (lambda point: thickness),
@@ -240,7 +255,7 @@ def plan_wiring(
     holes: list[WireHole] = []
     by_hand: list[str] = []
     wired = [controls]
-    waiting = list(pickups)
+    waiting = list(sources)
     while waiting:
         best: tuple[_Link, WireSpace] | None = None
         for pickup in waiting:
@@ -262,6 +277,17 @@ def plan_wiring(
             holes.append(link.hole)
         wired.append(pickup)
         waiting.remove(pickup)
+    if battery is not None:
+        lead = planner.link(battery, controls, f"{battery.label} wire")
+        if lead is None:
+            by_hand.append(
+                f"No straight hole joins the {battery.name.lower()} to the "
+                "controls: make its lead's way by hand."
+            )
+        elif lead.hole is not None:
+            holes.append(lead.hole)
+        elif lead.channel is not None:
+            channels.append(lead.channel)
     if bridge:
         grounds = [
             (target.face == "back", hole)

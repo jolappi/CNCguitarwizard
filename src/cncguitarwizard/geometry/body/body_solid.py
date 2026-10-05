@@ -120,6 +120,8 @@ class BodySolid:
             another (``wiring.WireHole``); modelled, not machined.
         wire_notes: The wiring left to the builder (a way no straight
             hole fits), for the programs' notes.
+        bridge_notes: The bridge's fitting notes (its routing sheet, what
+            to check or do by hand), for the programs' notes.
         edge_outline: The outline the edge finishes (roundover, binding)
             follow, if not ``outline``: on one part of a neck-through body,
             the body's outline carried on past its glue lines into the
@@ -165,6 +167,7 @@ class BodySolid:
     wire_channels: tuple[Cavity, ...] = ()
     wire_holes: tuple[WireHole, ...] = ()
     wire_notes: tuple[str, ...] = ()
+    bridge_notes: tuple[str, ...] = ()
     edge_outline: tuple[Point2D, ...] = ()
     checked: bool = True
 

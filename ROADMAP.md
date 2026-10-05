@@ -34,9 +34,13 @@
 - More control layouts: a superstrat rear cavity with the 5-way blade
   switch, a single volume pot, an active bass's four pots, and a Jazz Bass
   plate carrying the jack
-- Wire channels: the pickups wired to the controls and the bridge
-  grounded, routed under a pickguard, elsewhere drilled by hand (modelled,
-  with each hole's angle in the notes)
+- String ferrules counterbored from the back, the bridges' fitting notes
+  in the programs
+- DXF export of the plan outlines and the sheet plates
+- Wire channels: the pickups, a switch cavity and a battery box wired to
+  the controls and the bridge grounded, routed under a pickguard,
+  elsewhere drilled by hand (modelled, with each hole's angle in the
+  notes)
 - Carbon fibre neck reinforcement beside the truss rod; a zero fret
 - Neck angle (a tilted pocket floor for a Tune-o-matic), a Telecaster
   neck (slotted nut, Tele headstock), low-profile truss rods and a spoke
@@ -73,27 +77,24 @@
 ## v2
 
 Electronics
-- The battery box's lead and a separate switch cavity wired the same way
-  as the pickups (their holes still drilled by hand without a plan).
 - The battery box and the controls placed together, so neither blocks the
   other (Jackson RR with a Gibson cavity, a Floyd Rose and a battery box
   is still refused).
 
-Neck and fretboard
-- The parts now given as notes (a truss rod's sleeve bore) modelled or
-  cut where the machine can.
+Body
+- The trem-claw screw holes, drilled into a spring cavity's wall by hand,
+  modelled.
 
 Tools and templates
 - Rotating the pickups in the body editor (the control cavity, the
   battery box and the jack already turn).
 - More mockup body templates, and headstock templates, made the same way
   (traced, reshaped by hand, marked as mockups).
-- DXF export of the plan outlines.
 
 ```mermaid
 flowchart TD
     Done["Done: guitar, bass, 7/8-string, CAD and CAM, slanted and fanned frets"] --> Beta["v1.0.0-beta1"]
-    Beta --> More["Since: headless, carved tops, binding, engraving, left-handed, neck-through, 7/8-string tremolos, more controls, wiring"]
+    Beta --> More["Since: headless, carved tops, binding, engraving, left-handed, neck-through, 7/8-string tremolos, more controls, wiring, DXF"]
     More --> V1["v1.0.0: machine-verified toolpaths"]
-    V1 --> V2["v2: battery and controls together, DXF export"]
+    V1 --> V2["v2: battery and controls together"]
 ```

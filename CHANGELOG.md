@@ -4,6 +4,23 @@
 
 ### Added
 
+- DXF export: every build writes `Prototype001_plan.dxf`, the whole
+  instrument's plan outlines (body, neck, headstock, fretboard, nut, fret
+  slots, inlays, tuner holes, cavities, holes, wire holes, carve, steps,
+  contours, engraving, plates), a layer a kind, and
+  `Prototype001_covers.dxf`, the sheet plates side by side for cutting
+  with their holes, slots and labels. R12 ASCII DXF in millimetres,
+  written without a library; listed in the web app's downloads and the
+  command line's output.
+- String ferrules: every hole a string passes through the body by (a
+  hardtail's, single-string bridges') gets its ferrule's counterbore from
+  the back, drilled in `Body_back` where the ferrule hides it
+  (`body_string_ferrule_diameter` × `_depth`, 8 × 6 mm on a guitar,
+  9.5 × 6.5 mm on a bass; 0 deep leaves them to the builder).
+- The bridge's fitting notes (its routing sheet, what to check, what is
+  left to the hand) are given in `Body_top`'s notes; a seven- or
+  eight-string Floyd Rose's note says how to have the deep-dive pocket cut
+  under the spring cover.
 - Pointed headstocks: drawn edges whose tip corners meet make a sharp
   point (a Jackson style tip) instead of a tip line.
   - In the headstock editor a tip corner dragged within 3 mm of the
@@ -31,7 +48,9 @@
 - Wire channels between the cavities (`body_wire_channels`, on by
   default):
   - Every pickup route is wired to the controls, nearest first, so a row
-    of pickups chains to them.
+    of pickups chains to them; a separate switch cavity joins the chain
+    the same way (a Les Paul's toggle by its neck pickup), and a battery
+    box's lead runs straight to the controls.
   - The bridge's ground wire runs from the controls to a tremolo's spring
     cavity, or else the nearest bridge route or hole.
   - Under a pickguard the channel is routed from the top (10 mm wide, up

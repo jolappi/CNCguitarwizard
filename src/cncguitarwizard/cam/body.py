@@ -282,6 +282,7 @@ def plan_body_machining(
             "The outline is cut to half depth plus overlap; the blank stays in "
             "one piece.",
             "The jack bore enters from the edge and is not part of this program.",
+            *(f"Bridge: {note}" for note in body.bridge_notes),
             *(
                 (
                     "Drill the wire holes by hand once every cavity is cut, "
@@ -349,7 +350,12 @@ def plan_body_machining(
                         "Drill the battery lead's channel from the battery box "
                         "to the control cavity by hand.",
                     )
+                    # Unless the wiring planned it (Body_top's notes).
                     if body.battery_cavity is not None
+                    and not any(
+                        "battery" in hole.name.lower() for hole in body.wire_holes
+                    )
+                    and not any("battery" in note for note in body.wire_notes)
                     else ()
                 ),
             ),

@@ -361,7 +361,8 @@ FIELD_HELP: dict[str, str] = {
         "this deep in mm (0: none)."
     ),
     "body_wire_channels": (
-        "Wires the pickups to the controls and grounds the bridge: a channel "
+        "Wires the pickups, a switch cavity and a battery box to the controls "
+        "and grounds the bridge: a channel "
         "routed from the top where a pickguard hides it, else a straight hole "
         "drilled by hand from cavity to cavity, modelled, its angle in "
         "Body_top's notes."
@@ -407,6 +408,15 @@ FIELD_HELP: dict[str, str] = {
         "their diameter in mm."
     ),
     "body_neck_ferrule_depth": "How deep those ferrule counterbores are, in mm.",
+    "body_string_ferrule_diameter": (
+        "A string-through bridge's string ferrules: the counterbore drilled "
+        "from the back under each string's hole, in mm (5/16 in on a guitar, "
+        "3/8 in on a bass)."
+    ),
+    "body_string_ferrule_depth": (
+        "How deep the string ferrules' counterbores are, in mm (0: drilled "
+        "by hand)."
+    ),
     "body_neck_bolt_hole_diameter": (
         "The neck bolts' holes through the body to the neck pocket, their "
         "diameter in mm."

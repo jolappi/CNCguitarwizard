@@ -13,11 +13,11 @@ def test_plan_view_draws_every_feature_once() -> None:
     svg = render_plan_view_svg(geometry)
 
     assert svg.startswith("<svg") and svg.rstrip().endswith("</svg>")
-    # 24 frets and the centreline, 3 wire holes (two pickups and the
-    # ground), 12 inlay markers, 6 tuner holes + 7 body holes + jack, 4
-    # neck-bolt ferrules with their bolt holes on the back, and 4 + 3
-    # cover-screw spots.
-    assert svg.count("<line") == 24 + 1 + 3
+    # 24 frets and the centreline, 4 wire holes (two pickups, the switch
+    # and the ground), 12 inlay markers, 6 tuner holes + 7 body holes +
+    # jack, 4 neck-bolt ferrules with their bolt holes on the back, and
+    # 4 + 3 cover-screw spots.
+    assert svg.count("<line") == 24 + 1 + 4
     assert svg.count('fill="#e8e2d0"') == 12
     assert svg.count("<circle") == 6 + 7 + 1 + 8 + 7
     # Body outline, headstock, neck, fretboard, the nut, 4 top cavities
