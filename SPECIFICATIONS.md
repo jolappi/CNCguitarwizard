@@ -390,7 +390,15 @@ on 20 × 88 mm pyöreäpäinen; keskimikki on oletuksena kaula- ja tallamikin
 välisen raon keskellä (`body_middle_pickup_offset` siirtää sen), tallan
 single coil on 10° kulmassa diskanttipää tallaa kohti
 (`body_bridge_single_coil_angle`), ja piirtoeditorissa
-sitä voi raahata kaulan suunnassa.
+sitä voi raahata kaulan suunnassa. Jokaista mikkiä voi lisäksi kääntää
+oman keskipisteensä ympäri (`body_neck_pickup_angle`,
+`body_middle_pickup_angle`, `body_bridge_pickup_angle`, enintään 45°
+kumpaankin suuntaan, positiivinen kääntää diskanttipään tallaa kohti, single
+coil -vinouden ja multiscalen viuhkan päälle): runkoeditorissa
+Shift-raahaus kääntää mikkiä, ja kolo, korkeusruuvien upotukset ja
+pickguardin aukko kääntyvät mukana. Keskipiste pysyy paikallaan, paitsi
+että käännetty tallamikki pitää yhä välyksensä tallaan ja siirtyy tarvittaessa
+kaulaa kohti.
 
 Tallamikki on `body_bridge_pickup_offset`:n (21,73 mm) verran mensuurilinjan
 edellä, mutta siirtyy itse eteenpäin niin, että sen kolon ja tallan lähimmän

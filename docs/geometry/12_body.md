@@ -279,8 +279,16 @@ end — or, left empty, in the middle of the gap between the neck and bridge
 routes' facing edges, so a single coil between a single coil and a wider
 humbucker still looks centred. A bridge single coil slants
 `body_bridge_single_coil_angle` (10°), its treble end toward the bridge as
-on a Strat; its screws turn with it. The middle route is one of the body's
-extra top cavities. The route types:
+on a Strat; its screws turn with it. Each pickup can be turned further
+about its own centre — `body_neck_pickup_angle`, `body_middle_pickup_angle`,
+`body_bridge_pickup_angle` (up to `MAX_PICKUP_ANGLE`, 45°, either way), a
+positive angle swinging the treble end toward the bridge, on top of that
+slant and a multiscale's fan — its route, screw recesses and pickguard
+opening with it; Shift-dragging a pickup in the body editor sets it. Its
+centre stays put (`BodyLayout.pickup_centres`), except that a turned
+bridge pickup still keeps `body_bridge_pickup_clearance` to the bridge,
+moving toward the neck if its turned ends would reach nearer. The middle
+route is one of the body's extra top cavities. The route types:
 
 | Type | Route | Height-screw recesses |
 | --- | --- | --- |

@@ -1820,14 +1820,17 @@ const bodyEditor = {
   },
 
   // The groups Shift-drag turns: the control cavity (with its cover, pots
-  // or plate), the battery box and the jack. Round ones only move.
+  // or plate), the battery box, the jack and each pickup (about its own
+  // centre). Round ones only move.
   turnable(group) {
+    if (group && group.startsWith("pickup:")) return Boolean(this.layout.pickups && this.layout.pickups[group]);
     return group === "control" || group === "battery" || group === "jack";
   },
 
   // The point a group turns about, in the editor's frame (from the heel
-  // end): the cavity's centre, or the jack's socket.
+  // end): the cavity's centre, a pickup's own centre, or the jack's socket.
   turnCentre(group) {
+    if (group.startsWith("pickup:")) return this.layout.pickups[group].centre;
     if (group === "jack" && this.layout.jack) return [this.layout.jack.x, this.layout.jack.y];
     if (group === "control" && this.layout.control) return this.layout.control.centre;
     const names = group === "battery"
@@ -1855,7 +1858,7 @@ const bodyEditor = {
       // The SVG's Y runs down: a counter-clockwise turn in the plan is
       // a negative SVG rotation.
       for (const member of members) member.setAttribute("transform", `rotate(${-degrees} ${cx} ${-cy})`);
-      this.setStatus(`Turning ${group === "control" ? "the controls" : `the ${group}`} ${Math.round(degrees * 10) / 10}°`, "");
+      this.setStatus(`Turning ${this.groupLabel(group)} ${Math.round(degrees * 10) / 10}°`, "");
     };
     const end = () => {
       window.removeEventListener("pointermove", move);
@@ -1874,12 +1877,22 @@ const bodyEditor = {
     window.addEventListener("pointercancel", end);
   },
 
+  // What the status line calls a group while it turns.
+  groupLabel(group) {
+    if (group === "control") return "the controls";
+    if (group.startsWith("pickup:")) return `the ${group.split(":")[1]} pickup`;
+    return `the ${group}`;
+  },
+
   // Turn a group by `degrees` (counter-clockwise in the plan) about
   // `centre`: the fields that hold its angle, and a drawn almond's own
-  // pots with it.
+  // pots with it. A pickup's angle swings its treble end toward the tail,
+  // so a counter-clockwise turn adds to it on the bass side's sign.
   applyTurn(group, degrees, [cx, cy]) {
     const shape = "prototype.body_shape";
-    if (group === "battery") {
+    if (group.startsWith("pickup:")) {
+      this.shiftField("prototype", this.layout.pickups[group].field, degrees * this.layout.bass_sign);
+    } else if (group === "battery") {
       this.shiftField(shape, "battery_angle_degrees", degrees);
     } else if (group === "jack") {
       this.shiftField(shape, "jack_direction_degrees", degrees);

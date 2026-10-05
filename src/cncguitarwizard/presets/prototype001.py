@@ -284,6 +284,9 @@ PICKGUARD_CONTROL_TURNS = (0.0, 10.0, -10.0, 20.0, -20.0, 30.0, -30.0)
 """The turns (degrees) tried, in order, for controls that do not fit
 under a guard square."""
 
+MAX_PICKUP_ANGLE = 45.0
+"""How far a pickup may be turned about its centre, either way, in degrees."""
+
 MAX_MULTISCALE_RATIO = 1.15
 """The longest bass scale accepted, as a multiple of the treble scale."""
 
@@ -456,6 +459,9 @@ class BodyLayout:
         carved_top: The arched top, or ``None`` (see ``body_carved_top``).
         stepped_top: The top in levels along the edge, or ``None`` (see
             ``body_stepped_top``).
+        pickup_centres: Each fitted pickup's position (``"neck"``,
+            ``"middle"``, ``"bridge"``) and the X of its centre on the
+            centreline, the point it turns about.
     """
 
     heel_end: float
@@ -485,6 +491,7 @@ class BodyLayout:
     stepped_top: SteppedTop | None = None
     wiring: Wiring = field(default_factory=Wiring)
     bridge_notes: tuple[str, ...] = ()
+    pickup_centres: tuple[tuple[str, float], ...] = ()
 
 
 TRUSS_ROD_STOCK_LENGTHS: tuple[float, ...] = tuple(
@@ -699,6 +706,16 @@ class Prototype001Parameters:
     body_bridge_pickup: PickupType = "humbucker"
     body_middle_pickup_offset: float | None = None
     body_bridge_single_coil_angle: float = 10.0
+    # Each pickup can be turned about its own centre (Shift-drag in the
+    # body editor): body_neck_pickup_angle / body_middle_pickup_angle /
+    # body_bridge_pickup_angle degrees, a positive angle swinging its
+    # treble end toward the tail as the bridge single coil's slant does,
+    # on top of that slant and a multiscale's fan. The pickup's centre
+    # stays put; a turned bridge pickup still keeps its clearance to the
+    # bridge.
+    body_neck_pickup_angle: float = 0.0
+    body_middle_pickup_angle: float = 0.0
+    body_bridge_pickup_angle: float = 0.0
     # Clearance recesses for the pickup height-adjustment screw tips,
     # drilled on down from the route floor at the centre of each of the
     # route's two mounting-ear tabs (the DXF ears are centred 39.95 mm
@@ -2434,7 +2451,12 @@ class Prototype001Parameters:
         single_slant = (
             self.body_bridge_single_coil_angle if bridge_type == "single_coil" else 0.0
         )
-        bridge_angle = single_slant + fan_angle(scale - self.body_bridge_pickup_offset)
+        bridge_turn = self.body_bridge_pickup_angle
+        bridge_angle = (
+            single_slant
+            + fan_angle(scale - self.body_bridge_pickup_offset)
+            + bridge_turn
+        )
 
         # A pickup turned with fanned frets reaches further along the neck;
         # it moves back by that much, so its near edge keeps the same gap
@@ -2446,15 +2468,15 @@ class Prototype001Parameters:
 
         neck_pickup_x = heel_end + self.body_neck_pickup_offset
         neck_pickup_x += turned_reach(neck_type, fan_angle(neck_pickup_x))
-        neck_angle = fan_angle(neck_pickup_x)
+        neck_angle = fan_angle(neck_pickup_x) + self.body_neck_pickup_angle
         own_offset = self.body_bridge_pickup_offset + turned_reach(
-            bridge_type, bridge_angle - single_slant
+            bridge_type, bridge_angle - single_slant - bridge_turn
         )
         needed_offset = self._bridge_pickup_clearance_offset(
             bridge, bridge_type, bridge_angle, bass_sign
         )
         bridge_pickup_x = scale - max(own_offset, needed_offset)
-        bridge_angle = single_slant + fan_angle(bridge_pickup_x)
+        bridge_angle = single_slant + fan_angle(bridge_pickup_x) + bridge_turn
         # Left empty, the middle pickup goes in the middle of the gap
         # between the neck and bridge routes' facing edges, so a single
         # coil between a single coil and a wide humbucker looks centred.
@@ -2469,7 +2491,7 @@ class Prototype001Parameters:
             if self.body_middle_pickup_offset is None
             else heel_end + self.body_middle_pickup_offset
         )
-        middle_angle = fan_angle(middle_pickup_x)
+        middle_angle = fan_angle(middle_pickup_x) + self.body_middle_pickup_angle
         neck_pickup = pickup_route(
             neck_type,
             "Neck pickup route",
@@ -2806,6 +2828,15 @@ class Prototype001Parameters:
             if self.body_wire_channels and check_steps
             else Wiring(),
             bridge.notes,
+            tuple(
+                (position, x)
+                for position, kind, x in (
+                    ("neck", neck_type, neck_pickup_x),
+                    ("middle", middle_type, middle_pickup_x),
+                    ("bridge", bridge_type, bridge_pickup_x),
+                )
+                if kind != "none"
+            ),
         )
 
     def _string_ferrules(self, holes: tuple[DrilledHole, ...]) -> list[DrilledHole]:
@@ -4164,6 +4195,16 @@ class Prototype001Parameters:
             not math.isfinite(self.body_widening) or self.body_widening < 0.0
         ):
             raise NeckGeometryError("Body widening must be zero or more.")
+        for name in (
+            "body_neck_pickup_angle",
+            "body_middle_pickup_angle",
+            "body_bridge_pickup_angle",
+        ):
+            angle = getattr(self, name)
+            if not math.isfinite(angle) or abs(angle) > MAX_PICKUP_ANGLE:
+                raise BodyGeometryError(
+                    f"{name} must be within {MAX_PICKUP_ANGLE:g} degrees."
+                )
         if not self.headless and (
             sum(HEADSTOCK_STYLES[self.headstock_style]) != self.string_count
         ):

@@ -250,6 +250,22 @@ FIELD_HELP: dict[str, str] = {
         "(10 mm for most); the G-code marks their centres to drill on a drill "
         "press."
     ),
+    "body_neck_pickup_angle": (
+        "How far the neck pickup is turned about its centre, in degrees: "
+        "positive swings its treble end toward the bridge (Shift-drag it in "
+        "the body editor)."
+    ),
+    "body_middle_pickup_angle": (
+        "How far the middle pickup is turned about its centre, in degrees: "
+        "positive swings its treble end toward the bridge (Shift-drag it in "
+        "the body editor)."
+    ),
+    "body_bridge_pickup_angle": (
+        "How far the bridge pickup is turned about its centre, in degrees, "
+        "on top of a single coil's slant: positive swings its treble end "
+        "toward the bridge (Shift-drag it in the body editor); it still keeps "
+        "its clearance to the bridge."
+    ),
     "tuner_inline_offsets": (
         "Where a row of tuners' posts sit across the headstock, in mm from "
         "the centreline toward the row's side, one per tuner from the nut "

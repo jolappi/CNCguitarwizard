@@ -4,6 +4,14 @@
 
 ### Added
 
+- Each pickup turns about its own centre: Shift-drag it in the body
+  editor, as the control cavity, the battery box and the jack already
+  turn (`body_neck_pickup_angle`, `body_middle_pickup_angle`,
+  `body_bridge_pickup_angle`, up to 45 degrees either way, a positive
+  angle swinging the treble end toward the bridge, on top of a single
+  coil's slant and a fan). The route, its screw recesses and a
+  pickguard's opening turn with it; a turned bridge pickup still keeps
+  its clearance to the bridge.
 - Five more body templates traced from straight-on product photos
   (scaled from the frets, the last fret 4 mm ahead of the heel end, as
   the default neck's is; strap buttons and jack rims left out):

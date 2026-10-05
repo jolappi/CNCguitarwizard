@@ -465,9 +465,14 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         centre, its long axis (a unit vector), the two ends of its cover
         (or the Tele plate) on that axis and its two sides square to it,
         the editor's stretch handles — or ``None`` without a control
-        layout; ``pickguard`` ``{"points", "automatic", "openings",
-        "holes"}`` — the guard's control points (laid out automatically or
-        drawn), its pickup and switch openings and its holes — or ``None``;
+        layout; ``pickups`` maps each fitted pickup's group to
+        ``{"centre", "field"}``, the point it turns about and the angle
+        field a turn changes, and ``bass_sign`` the side the bass strings
+        are on (a counter-clockwise turn in the plan changes that field by
+        the turn times ``bass_sign``); ``pickguard`` ``{"points",
+        "automatic", "openings", "holes"}`` — the guard's control points
+        (laid out automatically or drawn), its pickup and switch openings
+        and its holes — or ``None``;
         ``arm_contour`` and ``belly_cut`` ``{"points", "automatic"}`` — the
         lines where they start (see ``_contour_line``) — or ``None``;
         ``engraving`` the decorative engraving's lines, or ``None``;
@@ -641,6 +646,14 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         "circles": circles,
         "jack": _jack_view(layout.jack_hole, heel_end, control_outlines),
         "control": control,
+        "pickups": {
+            f"pickup:{position}": {
+                "centre": [round(x - heel_end, 2), 0.0],
+                "field": f"body_{position}_pickup_angle",
+            }
+            for position, x in layout.pickup_centres
+        },
+        "bass_sign": parameters.bass_sign,
         "steps": _steps_view(parameters, layout, local),
         "pickguard": (
             {

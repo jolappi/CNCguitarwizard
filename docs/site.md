@@ -76,9 +76,12 @@ Python.
    (dashed: drilled from the back) and the jack (none with the jack on a
    Jazz Bass plate) can be dragged too, and the pickup routes slide
    along the neck. Shift-dragging the control cavity (with its cover and
-   pots, or the Tele plate), the battery box or the jack turns it about
-   its centre (the jack about its socket) instead; round cavities only
-   move. A feature dropped wholly outside the outline asks whether to
+   pots, or the Tele plate), the battery box, the jack or a pickup turns
+   it about its centre (the jack about its socket, a pickup about its own
+   centre on the centreline, from `pickups` in the layout) instead,
+   changing `control_angle_degrees`, `battery_angle_degrees`,
+   `jack_direction_degrees` or the pickup's `body_*_pickup_angle`; round
+   cavities only move. A feature dropped wholly outside the outline asks whether to
    remove it: a pickup (the layout turns "custom" with that position
    empty, from `pickup_configurations` in the schema), the controls
    (`body_controls` "none"), the battery box, one of several pots or neck
