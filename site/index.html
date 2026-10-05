@@ -214,6 +214,8 @@
     <div class="actions">
       <button id="build" disabled>Build 3D and CNC files</button>
       <button id="reset" class="secondary" disabled>Reset</button>
+      <button class="secondary undo-button" type="button" disabled>Undo</button>
+      <button class="secondary redo-button" type="button" disabled>Redo</button>
     </div>
     <div class="actions design-file">
       <button id="save-design" class="secondary" type="button" disabled
@@ -258,7 +260,8 @@
         handles to stretch or shrink it and its cover from that end, or a side handle to make them wider
         or narrower; the pickup routes
         slide along the neck. With a pickguard on, its square handles shape it: click its edge to add one, Alt/Option-click or right-click one to remove it, drag its edge to move the whole guard or onto <em>Create NC file</em> for its own programs (<em>Auto pickguard</em> goes back to the automatic guard). With an arm contour on (<code>body_arm_contour_depth</code>), the green line with round handles is where it starts: drag a handle, click the line to add one, Alt/Option-click or right-click one to remove it; the line's ends sit on the body's edge (<em>Auto arm contour</em> goes back to the automatic one); with a belly cut on (<code>body_belly_cut_depth</code>) its line on the back is drawn the same way in blue (<em>Auto belly cut</em>). With a stepped top on (<code>body_stepped_top</code>), each step's line is drawn in purple with diamond handles, straight between them: drag a handle, click a line to add one, Alt/Option-click or right-click one to remove it (<em>Auto steps</em> goes back to the steps <code>body_top_step_insets</code> in from the edge). With <code>body_engraving</code> on, the decorative engraving is drawn in blue lines; <em>New pattern</em> lays it out from a new random seed (<code>body_engraving_seed</code>). Drag a feature right off the body to remove it (you are asked first), or onto <em>Create NC file</em> to cut it on its own. The neck, its pocket and the bridge follow the neck and scale and stay put.
-        The grid is 50 mm.</p>
+        <em>Undo</em> and <em>Redo</em> (Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z) step back and forward through the
+        design's changes, whichever editor or field they were made in. The grid is 50 mm.</p>
       <div id="body-editor-options" class="editor-options"></div>
       <div id="body-editor-nc" class="nc-drop" title="Drop a feature here">Create NC file — drag a feature
         here to cut it on its own, zeroed at its centre (with its cover)</div>
@@ -272,6 +275,8 @@
         <button id="body-editor-auto-steps" class="secondary" type="button" title="Back to the steps body_top_step_insets in from the edge">Auto steps</button>
         <button id="body-editor-auto-belly" class="secondary" type="button" title="Back to the automatic belly cut">Auto belly cut</button>
         <button id="body-editor-new-pattern" class="secondary" type="button" title="Lay the engraving out from a new random seed">New pattern</button>
+        <button class="secondary undo-button" type="button" disabled>Undo</button>
+        <button class="secondary redo-button" type="button" disabled>Redo</button>
       </div>
       <p id="body-editor-status" class="note"></p>
       <svg id="body-editor-svg" xmlns="http://www.w3.org/2000/svg"></svg>
@@ -284,7 +289,7 @@
         it. For a sharp point (Jackson style) drag one tip corner onto the other: within 3 mm they
         meet, and the point then moves as one (Shift-drag a corner to part them again). The tuner holes come from the headstock style and stay put; every hole must keep its
         distance from the edge. Until you move a handle the outline follows the fitted one (a changed
-        style redraws it); <em>Start over</em> goes back to it. <em>Start from</em> loads a whole neck: the
+        style redraws it); <em>Start over</em> goes back to it; <em>Undo</em> steps back a change, <em>Redo</em> forward again. <em>Start from</em> loads a whole neck: the
         Telecaster neck sets a slotted nut (the fretboard running on under it), a flat six-in-line headstock
         drawn as a Telecaster's and a truss rod adjusted at the heel (set <code>truss_rod_adjustment</code> to
         headstock for the modern way, reached behind the nut; <code>truss_rod_spoke_wheel</code> says whether the adjuster is a spoke wheel). Lettering typed in <code>headstock_engraving_text</code> is drawn in blue: drag it to move it (it must keep 2 mm from the edge, the nut's seat and the tuner holes). The grid is 10 mm.</p>
@@ -294,6 +299,8 @@
         <select id="headstock-editor-template"></select>
         <button id="headstock-editor-load" class="secondary" type="button">Load</button>
         <button id="headstock-editor-reset" class="secondary" type="button">Start over</button>
+        <button class="secondary undo-button" type="button" disabled>Undo</button>
+        <button class="secondary redo-button" type="button" disabled>Redo</button>
       </div>
       <p id="headstock-editor-status" class="note"></p>
       <svg id="headstock-editor-svg" xmlns="http://www.w3.org/2000/svg"></svg>
@@ -305,10 +312,13 @@
         the same shape fitted to its own fret space and the board's width there, as the whole board below shows.
         Editing any style's marker starts a drawn one (<code>inlay_style</code> custom, its corners in
         <code>inlay_points</code>); it keeps 1 mm from the fret slots and the board's edges, and its corners are
-        rounded 1 mm. <em>Start over</em> goes back to a block. The grid is 5 mm.</p>
+        rounded 1 mm. <em>Start over</em> goes back to a block; <em>Undo</em> steps back a change, <em>Redo</em>
+        forward again. The grid is 5 mm.</p>
       <div id="inlay-editor-options" class="editor-options"></div>
       <div class="actions">
         <button id="inlay-editor-reset" class="secondary" type="button" title="Back to a block">Start over</button>
+        <button class="secondary undo-button" type="button" disabled>Undo</button>
+        <button class="secondary redo-button" type="button" disabled>Redo</button>
       </div>
       <p id="inlay-editor-status" class="note"></p>
       <svg id="inlay-editor-svg" xmlns="http://www.w3.org/2000/svg"></svg>

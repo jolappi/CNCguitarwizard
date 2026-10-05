@@ -176,6 +176,17 @@ Python.
    this version does not know are skipped and listed,
    and a file that is not a design is refused. Nothing is stored on a
    server.
+   **Undo** and **Redo** (beside *Reset* and in each editor's pane, or
+   Ctrl/Cmd+Z and Ctrl/Cmd+Shift+Z / Ctrl+Y) step back and forward
+   through the design's changes: `undoHistory` in `app.js` keeps every
+   form value (`collectValues()`, the instrument included) once a change
+   has settled — a drag in an editor (kept when it ends), a template, a
+   removal, a field changed in the form, a reset, an instrument switch or
+   a loaded design — up to 100 steps, and puts back only the values that
+   differ (another instrument's form drawn first), redrawing the editors.
+   One history serves the whole page; a button's tooltip names the fields
+   its step changes, and a new change clears the redo steps. In a text
+   field the keys keep the browser's own undo of the typing.
 4. On **Build 3D and CNC files** runs the build in stages — `start_build()`, then
    `advance_build()` once per stage of `workflows.Prototype001Build`
    (geometry, body, neck and fretboard toolpaths, cover plates, G-code,

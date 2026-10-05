@@ -79,6 +79,7 @@ async function boot() {
     resetButton.disabled = false;
     saveDesignButton.disabled = false;
     loadDesignButton.disabled = false;
+    undoHistory.start();
     setStatus(`Ready — ${manifest.wheel} (build ${manifest.build || "dev"})`, "ok");
   } catch (error) {
     console.error(error);
@@ -123,6 +124,7 @@ function renderForm() {
   headstockEditor.fillTemplates();
   setTimeout(() => headstockEditor.sync(), 0);
   setTimeout(() => inlayEditor.refresh(), 0);
+  undoHistory.note();
 }
 
 // The settings that shape an editor's drawing are shown in its own pane:
@@ -920,6 +922,177 @@ async function loadDesign(file) {
     showError(`Cannot load ${file.name}: ${error.message}`);
   }
 }
+
+// ---------------------------------------------------------------------------
+// Undo and redo: the design's values are kept after every change — a drag,
+// a template or a removal in an editor, a field changed in the form, a
+// reset, an instrument switch or a loaded design — so each can be stepped
+// back and forward again. One history serves the whole page: the Undo and
+// Redo buttons (beside Reset and in each editor's pane) and Ctrl/Cmd+Z,
+// Ctrl/Cmd+Shift+Z or Ctrl+Y step through it.
+
+const HISTORY_LIMIT = 100;
+
+const undoHistory = {
+  undo: [],       // the values before each change (JSON), the latest last
+  redo: [],
+  current: null,  // the values as they are
+  timer: null,
+  restoring: false,
+  pointerDown: false,
+
+  snapshot() {
+    try {
+      return JSON.stringify(collectValues());
+    } catch (error) {
+      return null;  // a field still being typed
+    }
+  },
+
+  // Start afresh on the form just drawn.
+  start() {
+    this.undo = [];
+    this.redo = [];
+    this.current = this.snapshot();
+    this.update();
+  },
+
+  // Values may have changed: keep them once things settle (a drag ended,
+  // a load or a template has put all its values in).
+  note() {
+    if (this.restoring) return;
+    clearTimeout(this.timer);
+    this.timer = setTimeout(() => this.flush(), 300);
+  },
+
+  flush() {
+    clearTimeout(this.timer);
+    this.timer = null;
+    if (this.restoring || this.current === null) return;
+    if (this.pointerDown) {
+      this.note();
+      return;
+    }
+    const now = this.snapshot();
+    if (now === null || now === this.current) return;
+    this.undo.push(this.current);
+    if (this.undo.length > HISTORY_LIMIT) this.undo.shift();
+    this.redo = [];
+    this.current = now;
+    this.update();
+  },
+
+  undoStep() {
+    this.flush();
+    if (!this.undo.length) return;
+    this.redo.push(this.current);
+    this.restore(this.undo.pop());
+  },
+
+  redoStep() {
+    this.flush();
+    if (!this.redo.length) return;
+    this.undo.push(this.current);
+    this.restore(this.redo.pop());
+  },
+
+  // Put kept values back: only those that differ, as a loaded design's
+  // are (another instrument's form drawn first), and redraw the editors.
+  restore(json) {
+    const target = JSON.parse(json);
+    const { instrument, ...prototype } = target.prototype;
+    this.restoring = true;
+    try {
+      if (instrument !== instrumentSelect.value) {
+        instrumentSelect.value = instrument;
+        instrumentSelect.dataset.current = instrument;
+        renderForm();
+      }
+      let now = null;
+      try {
+        now = collectValues();
+      } catch (error) {
+        // A field mid-edit: every value goes back.
+      }
+      const differing = (set, values) => Object.fromEntries(Object.entries(values).filter(
+        ([name, value]) => !now || JSON.stringify(value) !== JSON.stringify(now[set][name])
+      ));
+      applyValues("prototype", differing("prototype", prototype));
+      applyValues("machining", differing("machining", target.machining));
+      applyStringLimits();
+      syncMirrors();
+      headstockEditor.sync();
+      inlayEditor.scheduleRefresh();
+      bodyEditor.reloadPoints();
+      bodyEditor.scheduleRefresh();
+    } finally {
+      this.restoring = false;
+      clearTimeout(this.timer);
+    }
+    this.current = this.snapshot() || json;
+    this.update();
+  },
+
+  // The fields a kept step differs from the values now in (a variant's
+  // own fields by name), for the buttons' tooltips.
+  changes(json) {
+    const kept = JSON.parse(json), now = JSON.parse(this.current);
+    const names = [];
+    for (const set of ["prototype", "machining"]) {
+      for (const name of new Set([...Object.keys(kept[set]), ...Object.keys(now[set])])) {
+        const a = kept[set][name], b = now[set][name];
+        if (JSON.stringify(a) === JSON.stringify(b)) continue;
+        if (a && b && typeof a === "object" && a.kind !== undefined && a.kind === b.kind) {
+          for (const sub of Object.keys(a)) {
+            if (JSON.stringify(a[sub]) !== JSON.stringify(b[sub])) names.push(`${name}.${sub}`);
+          }
+        } else {
+          names.push(name);
+        }
+      }
+    }
+    if (names.length > 4) return `${names.slice(0, 4).join(", ")} and ${names.length - 4} more`;
+    return names.join(", ") || "the last change";
+  },
+
+  update() {
+    const label = (stack) => (stack.length ? this.changes(stack[stack.length - 1]) : "");
+    const undone = label(this.undo), redone = label(this.redo);
+    for (const button of document.querySelectorAll(".undo-button")) {
+      button.disabled = !this.undo.length;
+      button.title = undone ? `Undo: ${undone} (Ctrl/Cmd+Z)` : "Nothing to undo";
+    }
+    for (const button of document.querySelectorAll(".redo-button")) {
+      button.disabled = !this.redo.length;
+      button.title = redone ? `Redo: ${redone} (Ctrl/Cmd+Shift+Z)` : "Nothing to redo";
+    }
+  },
+};
+
+// A drag writes its values when it ends; until then nothing is kept.
+window.addEventListener("pointerdown", () => { undoHistory.pointerDown = true; }, true);
+for (const type of ["pointerup", "pointercancel"]) {
+  window.addEventListener(type, () => { undoHistory.pointerDown = false; }, true);
+}
+form.addEventListener("change", () => undoHistory.note());
+document.addEventListener("click", (event) => {
+  if (event.target.closest(".undo-button")) undoHistory.undoStep();
+  else if (event.target.closest(".redo-button")) undoHistory.redoStep();
+});
+document.addEventListener("keydown", (event) => {
+  if (!(event.ctrlKey || event.metaKey) || event.altKey || !schema) return;
+  const key = event.key.toLowerCase();
+  const redo = (key === "z" && event.shiftKey) || (key === "y" && !event.shiftKey);
+  if (!redo && !(key === "z" && !event.shiftKey)) return;
+  // Text being typed keeps the browser's own undo.
+  const target = event.target;
+  const typing = target.isContentEditable || target.tagName === "TEXTAREA"
+    || (target.tagName === "INPUT" && !["checkbox", "radio", "button", "file"].includes(target.type));
+  if (typing || document.querySelector("dialog[open]")) return;
+  event.preventDefault();
+  if (redo) undoHistory.redoStep();
+  else undoHistory.undoStep();
+});
 
 // ---------------------------------------------------------------------------
 // "Your design" body editor: drag the outline's control points over the
@@ -1829,6 +2002,7 @@ const bodyEditor = {
     markChanged(input);
     const fold = input.closest("details.advanced");
     if (fold) flagAdvancedSummary(fold);
+    undoHistory.note();
   },
 
   shiftField(set, name, amount) {
@@ -2124,6 +2298,7 @@ const bodyEditor = {
     markChanged(this.input);
     const fold = this.input.closest("details.advanced");
     if (fold) flagAdvancedSummary(fold);
+    undoHistory.note();
   },
 
   // Report features left outside the outline and the body's size.

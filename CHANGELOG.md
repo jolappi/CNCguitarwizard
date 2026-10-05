@@ -4,6 +4,12 @@
 
 ### Added
 
+- Undo and redo in the web app: **Undo** and **Redo** beside *Reset* and
+  in the body, headstock and inlay editors' panes, or Ctrl/Cmd+Z and
+  Ctrl/Cmd+Shift+Z (Ctrl+Y), step back and forward through the design's
+  changes — a drag, template or removal in an editor, a field changed in
+  the form, a reset, an instrument switch or a loaded design — up to 100
+  steps. A button's tooltip names the fields its step changes.
 - Parts once left to notes are machined where a three-axis router can,
   and modelled where it cannot:
   - A heel-adjusted truss rod's sleeve bore is cut in `Neck_top` from

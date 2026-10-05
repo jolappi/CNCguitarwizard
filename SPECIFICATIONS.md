@@ -772,6 +772,14 @@ lapaeditori asetuksineen on auki kuten uudessa suunnitelmassa. Kun editorin
 ruutu on piilossa (headless-kaula tai sovitettu lapa piirretyin reunoin),
 sen ruudun asetukset (`headstock_style`, `nut_style`, kaiverrus) näkyvät
 lomakkeessa. Mitään ei tallenneta palvelimelle.
+**Undo** ja **Redo** (Resetin vieressä ja jokaisen editorin ruudussa, tai
+Ctrl/Cmd+Z ja Ctrl/Cmd+Shift+Z / Ctrl+Y) kumoavat ja palauttavat
+suunnitelman muutoksia: editorin raahaus (kun se päättyy), pohja tai
+poisto, lomakkeen kentän muutos, Reset, soittimen vaihto ja ladattu
+suunnitelma ovat kukin yksi askel, enintään 100 askelta. Historia on koko
+sivulle yhteinen; napin vihje kertoo, mitä kenttiä askel muuttaa, ja uusi
+muutos tyhjentää palautettavat askeleet. Tekstikentässä näppäimet kumoavat
+selaimen tapaan kirjoitusta.
 
 ## CNC
 
