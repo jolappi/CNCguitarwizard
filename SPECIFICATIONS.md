@@ -764,8 +764,14 @@ osaa kohden ja ohjelmat numeroituina ajojärjestykseen
 (`Neck/02_Neck_top.nc`) sekä `README.txt`, jossa ohjelmat työkaluineen ja
 aika-arvioineen.
 **Load design** lataa tiedoston takaisin lomakkeeseen ja editoreihin. Asetukset,
-joita käytössä oleva versio ei tunne, ohitetaan ja luetellaan. Mitään ei
-tallenneta palvelimelle.
+joita käytössä oleva versio ei tunne, ohitetaan ja luetellaan. Vanhemman
+version arvot päivitetään ensin (`webapp.upgrade_design`): ennen
+lapaeditoria tallennettu `headstock_outline` "fitted" ilman piirrettyjä
+reunoja latautuu "drawn"-muodossa, joka on sama sovitettu ääriviiva, joten
+lapaeditori asetuksineen on auki kuten uudessa suunnitelmassa. Kun editorin
+ruutu on piilossa (headless-kaula tai sovitettu lapa piirretyin reunoin),
+sen ruudun asetukset (`headstock_style`, `nut_style`, kaiverrus) näkyvät
+lomakkeessa. Mitään ei tallenneta palvelimelle.
 
 ## CNC
 

@@ -44,6 +44,8 @@
 - Parts once left to notes machined where a router can (the truss rod's
   sleeve slot, a locking nut's screw pilots) and modelled where it cannot
   (a Floyd Rose's trem-claw screw holes)
+- Older saved designs brought up to date on loading, every setting in
+  view and every editor drawn
 - More templates traced from product photos: Mockingbird (reshaped by
   hand), Telecaster, SG, Explorer and Flying V bodies;
   Stratocaster, Gibson style, Flying V, Explorer and Mockingbird

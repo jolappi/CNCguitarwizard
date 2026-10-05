@@ -13,6 +13,7 @@ from cncguitarwizard.webapp import (
     parameter_schema,
     run_build,
     start_build,
+    upgrade_design,
 )
 
 
@@ -424,6 +425,47 @@ def test_headstock_editor_layout_gives_fitted_edges_and_the_holes(
     )
     assert "error" not in built
     json.dumps(layout)
+
+
+@pytest.mark.parametrize("style", ["3+3", "6_inline", "4+2"])
+def test_an_older_designs_fitted_headstock_loads_as_drawn(style: str) -> None:
+    from cncguitarwizard.presets import Prototype001Parameters
+
+    old = {
+        "format": "cncguitarwizard-design",
+        "instrument": "electric_guitar",
+        "prototype": {
+            "headstock_style": style,
+            "headstock_outline": "fitted",
+            "headstock_bass_edge": [],
+            "headstock_treble_edge": [],
+        },
+        "machining": {"feed_rate": 800.0},
+    }
+    upgraded = upgrade_design(old)
+    # Loaded as drawn, so the headstock editor opens with its settings...
+    assert upgraded["prototype"]["headstock_outline"] == "drawn"
+    assert upgraded["machining"] == old["machining"]
+    assert old["prototype"]["headstock_outline"] == "fitted"
+    # ...and with no edges drawn the drawn outline is the fitted one.
+    fitted = Prototype001Parameters(headstock_style=style, headstock_outline="fitted")
+    drawn = Prototype001Parameters(headstock_style=style, headstock_outline="drawn")
+    assert drawn.headstock_design() == fitted.headstock_design()
+
+
+def test_a_headless_or_drawn_fitted_headstock_stays_fitted() -> None:
+    def outline(instrument: str, **values: object) -> str:
+        prototype = {"headstock_outline": "fitted", **values}
+        design = {"instrument": instrument, "prototype": prototype}
+        return str(upgrade_design(design)["prototype"]["headstock_outline"])
+
+    assert outline("electric_guitar", headless=True) == "fitted"
+    # A headless instrument's design without the field is headless too.
+    assert outline("headless_guitar") == "fitted"
+    edge = [[22.5, 20.0], [150.0, 30.0]]
+    assert outline("electric_guitar", headstock_bass_edge=edge) == "fitted"
+    assert outline("electric_guitar") == "drawn"
+    assert upgrade_design({"instrument": "bass_guitar"})["prototype"] == {}
 
 
 def test_body_editor_layout_moves_the_middle_pickup_as_its_own_group() -> None:

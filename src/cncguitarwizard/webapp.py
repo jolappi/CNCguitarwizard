@@ -385,6 +385,34 @@ def parameter_schema() -> dict[str, Any]:
     }
 
 
+def upgrade_design(design: dict[str, Any]) -> dict[str, Any]:
+    """Bring a saved design's values up to this version's before it loads.
+
+    Designs saved before the headstock editor have ``headstock_outline``
+    "fitted", the default then. With no edges drawn a "drawn" outline is
+    that same fitted outline, so such a design loads as "drawn": the
+    headstock editor opens on it, as on a new design, with the settings
+    shown in it. A headless neck, or edges kept from a drawing, stay
+    fitted as saved.
+
+    Args:
+        design: The saved design, ``{"instrument", "prototype", ...}``.
+
+    Returns:
+        A copy with the outdated values brought up to date.
+    """
+    prototype = dict(design.get("prototype") or {})
+    overrides = INSTRUMENT_OVERRIDES.get(design.get("instrument", ""), {})
+    if (
+        prototype.get("headstock_outline") == "fitted"
+        and not prototype.get("headless", overrides.get("headless", False))
+        and not prototype.get("headstock_bass_edge")
+        and not prototype.get("headstock_treble_edge")
+    ):
+        prototype["headstock_outline"] = "drawn"
+    return {**design, "prototype": prototype}
+
+
 def _editor_group(name: str) -> str | None:
     """Return which draggable group a body feature belongs to, if any.
 

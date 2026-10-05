@@ -42,7 +42,9 @@ Python.
    a slot, behind a zero fret) in the headstock editor, which draws the
    nut too, and the markers' style, depth and edge margin in the inlay
    editor. Each is a copy of the
-   form's field, whose row in the form is hidden; the field itself is
+   form's field, whose row in the form is hidden while the pane is shown
+   (a fitted or headless headstock has no editor, so its settings are back
+   in the form); the field itself is
    what is saved, loaded and built. Choosing a locking nut wider
    than the neck (`locking_nut` "r3") widens `nut_width` to it, to the
    next half millimetre (`locking_nut_widths` in the schema). A field whose type is a union of
@@ -164,7 +166,10 @@ Python.
    headstock edges included (`{"format": "cncguitarwizard-design",
    "version": 1, "name", "instrument", "prototype", "machining"}`), named
    for the guitar (*Guitar name*, beside the instrument) when it has one. **Load design** opens such a
-   file: it switches to the saved instrument, puts every value back into
+   file: it brings an older design's values up to date
+   (`webapp.upgrade_design`: a `headstock_outline` "fitted" with no edges
+   drawn, the default before the headstock editor, loads as "drawn", the
+   same outline with the editor open), switches to the saved instrument, puts every value back into
    the form (variant kinds first, then their fields) and redraws the
    editors — the body editor from the loaded `control_points`, so a drag
    afterwards changes the loaded outline, not the start shape; settings

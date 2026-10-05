@@ -127,8 +127,8 @@ function renderForm() {
 
 // The settings that shape an editor's drawing are shown in its own pane:
 // each is a copy of the form's field, which stays the one that is saved,
-// loaded and built (its row in the form is hidden). A change on either
-// side is passed to the other.
+// loaded and built (its row in the form is hidden while the pane is shown).
+// A change on either side is passed to the other.
 const EDITOR_FIELDS = {
   "body-editor-options": ["body_pickups", "body_bridge", "body_controls", "body_switch", "body_jack", "body_pickguard", "body_pickguard_style", "body_arm_contour_depth", "body_belly_cut_depth", "body_carved_top", "body_carve_depth", "body_stepped_top", "body_engraving", "body_engraving_pattern", "body_engraving_seed", "body_battery_box", "body_battery_count"],
   "headstock-editor-options": ["headstock_style", "nut_style", "headstock_engraving_text", "headstock_engraving_font", "headstock_engraving_height", "headstock_engraving_angle"],
@@ -148,7 +148,6 @@ function mirrorEditorFields() {
         || form.querySelector(`.variant[data-set="prototype"][data-name="${name}"] select.kind`);
       if (!original) continue;
       const row = original.closest(".field");
-      row.classList.add("mirrored");
       const copy = original.cloneNode(true);
       copy.id = `${id}.${name}`;
       delete copy.dataset.set;
@@ -173,6 +172,16 @@ function mirrorEditorFields() {
     }
   }
   syncMirrors();
+  showMirroredRows();
+}
+
+// A hidden pane (a fitted or headless headstock has no editor) gives its
+// settings back to the form, where they can still be seen and changed.
+function showMirroredRows() {
+  for (const [original, copy] of mirrors) {
+    const shown = !copy.closest(".body-editor").classList.contains("hidden");
+    original.closest(".field")?.classList.toggle("mirrored", shown);
+  }
 }
 
 function syncMirrors() {
@@ -874,6 +883,13 @@ function applyDesign(design) {
   if (!(design.instrument in schema.instruments)) {
     throw new Error(`Unknown instrument ${JSON.stringify(design.instrument)}.`);
   }
+  // An older design's outdated values are brought up to date first
+  // (webapp.upgrade_design).
+  pyodide.globals.set("design_json", JSON.stringify(design));
+  design = JSON.parse(pyodide.runPython(
+    "import json\nfrom cncguitarwizard.webapp import upgrade_design\n" +
+    "json.dumps(upgrade_design(json.loads(design_json)))"
+  ));
   instrumentSelect.value = design.instrument;
   instrumentSelect.dataset.current = design.instrument;
   guitarName.value = typeof design.name === "string" ? design.name : "";
@@ -984,6 +1000,7 @@ const bodyEditor = {
     this.input = subfields.querySelector("input[data-name='control_points']");
     const active = kind === "your_design" && this.input !== null;
     this.panel.classList.toggle("hidden", !active);
+    showMirroredRows();
     if (!active) return;
     try {
       this.points = JSON.parse(this.input.value);
@@ -2228,6 +2245,7 @@ const headstockEditor = {
     const headless = form.querySelector("[data-set='prototype'][data-name='headless']");
     const active = outline && outline.value === "drawn" && !(headless && headless.checked);
     this.panel.classList.toggle("hidden", !active);
+    showMirroredRows();
     if (!active) return;
     try {
       this.edges = { bass: JSON.parse(bass.value), treble: JSON.parse(treble.value) };
@@ -2794,6 +2812,7 @@ const inlayEditor = {
   layout: null,
   points: [],
   refreshTimer: null,
+  request: 0,
 
   async refresh() {
     if (!pyodide) return;
@@ -2804,18 +2823,33 @@ const inlayEditor = {
       this.setStatus(`Cannot lay the markers out: ${error.message}`, "bad");
       return;
     }
-    pyodide.globals.set("payload_json", JSON.stringify(payload));
-    const layout = await runPython(
-      "import json\nfrom cncguitarwizard.webapp import inlay_editor_layout\n" +
-      "json.dumps(inlay_editor_layout(json.loads(payload_json)))"
-    );
+    // Only the latest request is drawn: one overtaken by a newer form (a
+    // design loaded meanwhile) is dropped.
+    const request = ++this.request;
+    let layout;
+    try {
+      pyodide.globals.set("payload_json", JSON.stringify(payload));
+      layout = await runPython(
+        "import json\nfrom cncguitarwizard.webapp import inlay_editor_layout\n" +
+        "json.dumps(inlay_editor_layout(json.loads(payload_json)))"
+      );
+    } catch (error) {
+      if (request === this.request) this.setStatus(`Cannot lay the markers out: ${error.message}`, "bad");
+      return;
+    }
+    if (request !== this.request) return;
     if (layout.error) {
       this.setStatus(layout.error, "bad");
       return;
     }
-    this.layout = layout;
-    this.points = layout.points.map((p) => [...p]);
-    this.draw();
+    // A drawing that fails says why, rather than leaving the panes blank.
+    try {
+      this.layout = layout;
+      this.points = layout.points.map((p) => [...p]);
+      this.draw();
+    } catch (error) {
+      this.setStatus(`Cannot draw the markers: ${error.message}`, "bad");
+    }
   },
 
   scheduleRefresh() {

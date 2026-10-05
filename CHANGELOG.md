@@ -579,6 +579,16 @@
 
 ### Fixed
 
+- Older saved designs load with every setting in view and every editor
+  drawn. They have `headstock_outline` "fitted" (the default before the
+  headstock editor), which hid the headstock editor and, with it, the
+  settings shown only in its pane (`headstock_style`, `nut_style`, the
+  engraving). A fitted outline with no edges drawn now loads as "drawn"
+  — the same outline — so the editor opens on it (`upgrade_design` in
+  `webapp`), and a pane that is hidden (a headless neck, or a fitted
+  outline kept with drawn edges) gives its settings back to the form.
+  The inlay editor draws only its latest layout and says why when it
+  cannot, rather than leaving its pictures blank.
 - The neck heel's mounting block is a true rectangle: its sides are
   square from the glue face down to the full depth and its bottom flat
   right out to them. They sloped in 1.75 mm at the bottom (the squarish
