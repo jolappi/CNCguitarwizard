@@ -533,9 +533,26 @@ nearest place, out from the centreline and along the neck by up to
 `CONTROL_CLEARANCE_SHIFT` (20 mm) in 1 mm steps, that clears them with
 its cover in the body and off the spring-cavity and battery covers
 (`Prototype001Parameters._placed_controls`). The drawn almond stays put.
-The one combination still refused is a Gibson cavity with a Floyd Rose
-and the battery box on the Jackson RR, whose narrow treble wing the
-battery box already takes; drag the box aside.
+
+The battery box and the controls are placed together, so neither blocks
+the other. Where the box as drawn keeps the controls from the place that
+clears the top routes, or sits in their way itself (its cover over
+theirs, its floor over a top-routed control cavity), the controls take
+the place they would have without it and the box moves the least that
+clears them and everything else (`Prototype001Parameters._moved_battery`):
+its cover in the body and off every other cover, wood kept between its
+floor and every top route, the controls' own included, and no hole
+opening into it. It slides out from where the shape puts it, nearest
+places first, in `BATTERY_SHIFT_STEP` (3 mm) steps every 15 degrees up to
+`BATTERY_SHIFT` (90 mm), turning a little too (`BATTERY_TURNS`: up to 30
+degrees either way, or square; each degree weighs `BATTERY_TURN_COST`,
+0.5 mm of sliding); where nothing near clears, the whole body is searched
+on a `BATTERY_GRID` (10 mm) grid, nearest first. So a Jackson RR takes a
+Gibson cavity, a Floyd Rose and the box (the box 3 mm along its wing), a
+superstrat cavity (the box turned 15 degrees) or an active bass's four
+pots in a row (the box on the bass wing, the treble wing full). A box
+that fits where it is drawn stays there, and one drawn off the body is
+not moved: the body's check reports it.
 
 Every cover is a `geometry.body.CoverPlate` (`Prototype001Geometry.covers`):
 the recess outline, the recess depth as the sheet thickness, 3.2 mm screw

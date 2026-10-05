@@ -4,6 +4,16 @@
 
 ### Added
 
+- The battery box and the controls are placed together, so neither
+  blocks the other: where the box as drawn keeps the controls from their
+  clear place or sits in their way, the controls take the place they
+  would have without it and the box moves the least that clears them
+  and everything else — nearby first (turning a little if need be),
+  else anywhere in the body. A Jackson RR now takes a Gibson cavity, a
+  Floyd Rose and a battery box (and a superstrat or active bass layout
+  with one), which were refused.
+- Telling two outlines apart is quicker: those whose bounding boxes are
+  apart are not compared edge by edge.
 - Each pickup turns about its own centre: Shift-drag it in the body
   editor, as the control cavity, the battery box and the jack already
   turn (`body_neck_pickup_angle`, `body_middle_pickup_angle`,

@@ -192,3 +192,74 @@ def test_a_box_for_two_batteries_holds_them_side_by_side() -> None:
 def test_a_battery_box_holds_one_or_two_batteries(count: int) -> None:
     with pytest.raises(BodyGeometryError, match="one or two"):
         with_battery(body_battery_count=count).build()
+
+
+def _centre(points):  # type: ignore[no-untyped-def]
+    return (
+        sum(p.x for p in points) / len(points),
+        sum(p.y for p in points) / len(points),
+    )
+
+
+RR = YOUR_DESIGN_TEMPLATES["jackson_rr"][1]
+
+
+def test_the_battery_box_makes_way_for_the_controls() -> None:
+    """Regression: a Jackson RR with a Gibson cavity, a Floyd Rose and a
+    battery box was refused — the box kept the controls from the place
+    that clears the tremolo's recess."""
+    from cncguitarwizard.geometry.body import FloydRoseSpec
+
+    parameters = with_battery(
+        body_shape=RR, body_controls="gibson_4", body_bridge=FloydRoseSpec()
+    )
+    layout = parameters.body_layout()
+    alone = replace(parameters, body_battery_box=False).body_layout()
+    # The controls take the place they would have without the box...
+    assert layout.control_cavity is not None and alone.control_cavity is not None
+    assert layout.control_cavity.cavity.outline == alone.control_cavity.cavity.outline
+    # ...and the box moves the least that clears them, staying beside them.
+    battery = layout.controls.battery_cavity
+    assert battery is not None
+    x, y = _centre(battery.cavity.outline)
+    drawn = (layout.heel_end + RR.battery_offset, RR.battery_y)
+    assert 0.0 < math.dist((x, y), drawn) < 15.0
+    parameters.build()
+
+
+@pytest.mark.parametrize(
+    ("controls", "far"),
+    [("superstrat", False), ("active_4", True), ("pickguard", False)],
+)
+def test_the_battery_box_finds_room_beside_any_layout(controls: str, far: bool) -> None:
+    parameters = with_battery(body_shape=RR, body_controls=controls)
+    layout = parameters.body_layout()
+    battery = layout.controls.battery_cavity
+    assert battery is not None
+    centre = _centre(battery.cavity.outline)
+    drawn = (layout.heel_end + RR.battery_offset, RR.battery_y)
+    if far:
+        # No room on the treble wing beside four pots in a row: the box
+        # goes to the bass wing.
+        assert centre[1] < 0.0 < RR.battery_y
+    else:
+        assert math.dist(centre, drawn) < 20.0
+    parameters.build()
+
+
+def test_a_battery_box_that_fits_stays_where_it_is_drawn() -> None:
+    for name, shape in BODIES.items():
+        instrument = "bass_guitar" if "bass" in name else "electric_guitar"
+        layout = replace(
+            Prototype001Parameters.for_instrument(instrument),
+            body_shape=shape,
+            body_battery_box=True,
+        ).body_layout()
+        battery = layout.controls.battery_cavity
+        assert battery is not None
+        built = replace(
+            Prototype001Parameters.for_instrument(instrument), body_shape=shape
+        ).built_body_shape
+        assert _centre(battery.cavity.outline) == pytest.approx(
+            (layout.heel_end + built.battery_offset, built.battery_y), abs=1e-6
+        ), name

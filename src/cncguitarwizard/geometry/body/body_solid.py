@@ -660,8 +660,16 @@ def outlines_overlap(first: tuple[Point2D, ...], second: tuple[Point2D, ...]) ->
 
     Their bounding boxes may overlap without the shapes doing so (two
     pickups turned for fanned frets), so this tests the edges themselves:
-    two edges crossing, or one outline lying inside the other.
+    two edges crossing, or one outline lying inside the other. Outlines
+    whose bounding boxes are apart are told apart at once.
     """
+    if (
+        max(p.x for p in first) < min(p.x for p in second)
+        or max(p.x for p in second) < min(p.x for p in first)
+        or max(p.y for p in first) < min(p.y for p in second)
+        or max(p.y for p in second) < min(p.y for p in first)
+    ):
+        return False
 
     def cross(o: Point2D, a: Point2D, b: Point2D) -> float:
         return (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x)

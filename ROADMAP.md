@@ -39,6 +39,8 @@
 - DXF export of the plan outlines and the sheet plates
 - Pickups turned in the body editor (Shift-drag), as the controls, the
   battery box and the jack
+- The battery box and the controls placed together, so neither blocks
+  the other
 - More templates traced from product photos: Mockingbird (reshaped by
   hand), Telecaster, SG, Explorer and Flying V bodies;
   Stratocaster, Gibson style, Flying V, Explorer and Mockingbird
@@ -82,11 +84,6 @@
 
 ## v2
 
-Electronics
-- The battery box and the controls placed together, so neither blocks the
-  other (Jackson RR with a Gibson cavity, a Floyd Rose and a battery box
-  is still refused).
-
 Body
 - The trem-claw screw holes, drilled into a spring cavity's wall by hand,
   modelled.
@@ -94,7 +91,7 @@ Body
 ```mermaid
 flowchart TD
     Done["Done: guitar, bass, 7/8-string, CAD and CAM, slanted and fanned frets"] --> Beta["v1.0.0-beta1"]
-    Beta --> More["Since: headless, carved tops, binding, engraving, left-handed, neck-through, 7/8-string tremolos, more controls, wiring, DXF, traced templates, turning pickups"]
+    Beta --> More["Since: headless, carved tops, binding, engraving, left-handed, neck-through, 7/8-string tremolos, more controls, wiring, DXF, traced templates, turning pickups, battery and controls together"]
     More --> V1["v1.0.0: machine-verified toolpaths"]
-    V1 --> V2["v2: battery and controls together"]
+    V1 --> V2["v2: trem-claw screw holes"]
 ```

@@ -175,6 +175,23 @@ FLAT_HEADSTOCK_FACE_DROP = 4.0
 16 mm in the bottom of a 20 mm blank below the fretboard, so the strings
 break over the nut toward the tuners."""
 
+BATTERY_SHIFT = 90.0
+"""How far, in mm, a battery box may slide from where its shape puts it to
+clear the controls (see ``Prototype001Parameters._moved_battery``)."""
+
+BATTERY_SHIFT_STEP = 3.0
+"""The battery box's search steps, in mm."""
+
+BATTERY_TURNS: tuple[float, ...] = (0.0, -15.0, 15.0, -30.0, 30.0, 90.0)
+"""How far, in degrees, a battery box may also turn as it slides."""
+
+BATTERY_TURN_COST = 0.5
+"""A turn's cost against sliding, in mm per degree: 15 degrees weighs as
+much as 7.5 mm."""
+
+BATTERY_GRID = 10.0
+"""The whole-body search's grid, in mm, where nothing near clears."""
+
 CONTROL_CLEARANCE_SHIFT = 20.0
 """How far, in mm, a generated control cavity may move out from the
 centreline to clear a deep top route (see ``_placed_controls``)."""
@@ -522,6 +539,25 @@ class TrussRodFit:
     rod_length: float | None
     route_length: float
     outside: float
+
+
+@dataclass(frozen=True, slots=True)
+class _BatteryObstacles:
+    """What a battery box must keep clear of besides the controls.
+
+    Args:
+        outline: The body outline its cover must lie in.
+        top_cavities: The top routes its pockets must keep wood under.
+        covers: Other rear covers (the bridge's) its cover must not meet.
+        holes: Holes from the top that must not open into it.
+        rear_holes: Holes from the back that must not meet it at all.
+    """
+
+    outline: tuple[Point2D, ...]
+    top_cavities: tuple[Cavity, ...]
+    covers: tuple[tuple[Point2D, ...], ...]
+    holes: tuple[DrilledHole, ...]
+    rear_holes: tuple[DrilledHole, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -2545,39 +2581,63 @@ class Prototype001Parameters:
                     f"{self.body_rear_cavity_top_wall:g} mm of the top: at most "
                     f"{room:g} mm in this body."
                 )
-            battery = battery_features(
-                shape,
-                heel_end,
-                length=self.body_battery_cavity_length,
-                width=self.body_battery_cavity_width,
-                depth=self.body_battery_cavity_depth,
-                cover_margin=self.body_battery_cover_margin,
-                cover_depth=self.body_cover_recess_depth,
-                count=self.body_battery_count,
-            )
+            battery = self._battery_box(shape, heel_end)
+        top_routes: tuple[Cavity, ...] = (
+            neck_pocket,
+            *bridge.top_cavities,
+            *(
+                route
+                for route in (neck_pickup, middle_pickup, bridge_pickup)
+                if route is not None
+            ),
+        )
+        bridge_covers = tuple(
+            rear.cover_recess.outline for rear in bridge.rear_cavities
+        )
+        battery_cover = (
+            (battery.battery_cavity.cover_recess.outline,)
+            if battery is not None and battery.battery_cavity is not None
+            else ()
+        )
         controls = self._placed_controls(
             shape,
             heel_end,
             body_outline.points,
-            (
-                neck_pocket,
-                *bridge.top_cavities,
-                *(
-                    route
-                    for route in (neck_pickup, middle_pickup, bridge_pickup)
-                    if route is not None
-                ),
-            ),
-            tuple(
-                rear.cover_recess.outline
-                for rear in (
-                    *bridge.rear_cavities,
-                    *((battery.battery_cavity,) if battery is not None else ()),
-                )
-                if rear is not None
-            ),
+            top_routes,
+            (*bridge_covers, *battery_cover),
         )
         if battery is not None:
+            # The battery box and the controls are placed together: where
+            # the box as drawn keeps the controls from their place or sits
+            # in their way, the controls take the place they would have
+            # without it and the box moves the least that clears them and
+            # everything else (see _moved_battery).
+            top_holes = (
+                *bridge.holes,
+                *self._pickup_screw_spots(
+                    (neck_type, neck_pickup_x, neck_angle),
+                    (middle_type, middle_pickup_x, middle_angle),
+                    (bridge_type, bridge_pickup_x, bridge_angle),
+                ),
+            )
+            obstacles = _BatteryObstacles(
+                body_outline.points, top_routes, bridge_covers, top_holes, neck_bolts
+            )
+            # A box drawn off the body is the drawing's to fix, not moved.
+            drawn_in_body = point_in_polygon(
+                Point2D(heel_end + shape.battery_offset, shape.battery_y),
+                body_outline.points,
+            )
+            if drawn_in_body and not (
+                self._controls_clear(controls, top_routes, battery_cover)
+                and self._battery_fits(battery, controls, obstacles)
+            ):
+                free = self._placed_controls(
+                    shape, heel_end, body_outline.points, top_routes, bridge_covers
+                )
+                moved = self._moved_battery(shape, heel_end, free, obstacles)
+                if moved is not None:
+                    controls, battery = free, moved
             controls = controls.with_battery(battery)
         # The bridge's own rear cavities (a Floyd Rose's spring cavity)
         # close with a six-screw sheet cover too.
@@ -3837,6 +3897,196 @@ class Prototype001Parameters:
             cavity,
         )
 
+    def _battery_box(self, shape: BodyShapeSpec, heel_end: float) -> ControlFeatures:
+        """Return the battery box where ``shape`` places it."""
+        return battery_features(
+            shape,
+            heel_end,
+            length=self.body_battery_cavity_length,
+            width=self.body_battery_cavity_width,
+            depth=self.body_battery_cavity_depth,
+            cover_margin=self.body_battery_cover_margin,
+            cover_depth=self.body_cover_recess_depth,
+            count=self.body_battery_count,
+        )
+
+    def _pickup_screw_spots(
+        self, *pickups: tuple[PickupType, float, float]
+    ) -> tuple[DrilledHole, ...]:
+        """Return the pickups' height-screw recesses as holes, for checking."""
+        depth = self.body_pickup_route_depth + self.body_pickup_screw_recess_extra_depth
+        return tuple(
+            DrilledHole(
+                "Pickup screw recess",
+                x,
+                y,
+                self.body_pickup_screw_recess_diameter,
+                depth,
+            )
+            for kind, centre_x, angle in pickups
+            for _, x, y in pickup_screws(
+                kind,
+                centre_x,
+                self.bass_sign,
+                self.body_pickup_screw_spacing,
+                angle,
+                string_count=self.string_count,
+            )
+        )
+
+    def _controls_clear(
+        self,
+        controls: ControlFeatures,
+        top_cavities: tuple[Cavity, ...],
+        covers: tuple[tuple[Point2D, ...], ...],
+    ) -> bool:
+        """Whether the controls' rear cavities keep wood under the top routes
+        and their covers off ``covers``, as the body checks them."""
+        for rear in (controls.control_cavity, controls.switch_cavity):
+            if rear is None:
+                continue
+            for pocket in rear.pockets:
+                if any(
+                    pocket.depth + top.depth >= self.body_thickness
+                    and outlines_overlap(pocket.outline, top.outline)
+                    for top in top_cavities
+                ):
+                    return False
+            if any(outlines_overlap(rear.cover_recess.outline, c) for c in covers):
+                return False
+        return True
+
+    def _battery_fits(
+        self,
+        battery: ControlFeatures,
+        controls: ControlFeatures,
+        obstacles: _BatteryObstacles,
+    ) -> bool:
+        """Whether a battery box sits clear of the controls and everything
+        else, as the body checks it: its cover in the body and off every
+        other cover, its pockets keeping wood under the top routes (the
+        controls' own too), and no hole opening into it."""
+        box = battery.battery_cavity
+        if box is None:
+            return True
+        cover = box.cover_recess.outline
+        covers = (
+            *obstacles.covers,
+            *(
+                rear.cover_recess.outline
+                for rear in (controls.control_cavity, controls.switch_cavity)
+                if rear is not None
+            ),
+        )
+        if any(outlines_overlap(cover, other) for other in covers):
+            return False
+        for pocket in box.pockets:
+            for top in (*obstacles.top_cavities, *controls.top_cavities):
+                if pocket.depth + top.depth >= self.body_thickness and (
+                    outlines_overlap(pocket.outline, top.outline)
+                ):
+                    return False
+        for hole in (*obstacles.holes, *controls.holes, *obstacles.rear_holes):
+            from_back = hole in obstacles.rear_holes
+            for pocket in (box.cavity, box.cover_recess):
+                if not from_back and hole.depth + pocket.depth < self.body_thickness:
+                    continue
+                if point_in_polygon(hole.center, pocket.outline) or (
+                    distance_to_boundary(hole.center, pocket.outline)
+                    < hole.diameter / 2.0
+                ):
+                    return False
+        # Last, as the dearest: the cover and its screws in the body.
+        return all(
+            point_in_polygon(point, obstacles.outline)
+            for point in (*cover, *(mark.center for mark in battery.back_marks))
+        )
+
+    def _moved_battery(
+        self,
+        shape: BodyShapeSpec,
+        heel_end: float,
+        controls: ControlFeatures,
+        obstacles: _BatteryObstacles,
+    ) -> ControlFeatures | None:
+        """Return the battery box moved the least that clears ``controls``
+        and the other features, or ``None`` if nowhere in the body does.
+
+        First it slides out from where the shape puts it, nearest places
+        first, in ``BATTERY_SHIFT_STEP`` steps every 15 degrees up to
+        ``BATTERY_SHIFT``, turned a little too (``BATTERY_TURNS``, each
+        degree counted as ``BATTERY_TURN_COST`` mm of sliding). Where
+        nothing near clears (a narrow wing full of controls), the whole
+        body is searched on a ``BATTERY_GRID`` mm grid, nearest first, the
+        box laid at every 45 degrees.
+        """
+        steps = int(BATTERY_SHIFT / BATTERY_SHIFT_STEP)
+        rings = [(0.0, 0.0)] + [
+            (
+                step * BATTERY_SHIFT_STEP * math.cos(math.radians(bearing)),
+                step * BATTERY_SHIFT_STEP * math.sin(math.radians(bearing)),
+            )
+            for step in range(1, steps + 1)
+            for bearing in range(0, 360, 15)
+        ]
+        near = sorted(
+            (
+                (math.hypot(dx, dy) + abs(turn) * BATTERY_TURN_COST, dx, dy, turn)
+                for dx, dy in rings
+                for turn in BATTERY_TURNS
+            ),
+            key=lambda candidate: candidate[0],
+        )
+
+        outline = obstacles.outline
+        # The box's narrow side's half-width with its cover: a centre
+        # nearer the edge than that never fits, whichever way it lies.
+        reach = (
+            self.body_battery_cavity_width + 2.0 * self.body_battery_cover_margin
+        ) / 2.0
+        here = (heel_end + shape.battery_offset, shape.battery_y)
+        roomy: dict[tuple[float, float], bool] = {}
+
+        def room(dx: float, dy: float) -> bool:
+            if (dx, dy) not in roomy:
+                centre = Point2D(here[0] + dx, here[1] + dy)
+                roomy[dx, dy] = point_in_polygon(centre, outline) and (
+                    distance_to_boundary(centre, outline) >= reach
+                )
+            return roomy[dx, dy]
+
+        def tried(dx: float, dy: float, angle: float) -> ControlFeatures | None:
+            if not room(dx, dy):
+                return None
+            moved = replace(
+                shape,
+                battery_offset=shape.battery_offset + dx,
+                battery_y=shape.battery_y + dy,
+                battery_angle_degrees=angle,
+            )
+            battery = self._battery_box(moved, heel_end)
+            return battery if self._battery_fits(battery, controls, obstacles) else None
+
+        for _, dx, dy, turn in near:
+            found = tried(dx, dy, shape.battery_angle_degrees + turn)
+            if found is not None:
+                return found
+        # Nowhere near: anywhere in the body, nearest first.
+        xs = [point.x for point in outline]
+        ys = [point.y for point in outline]
+        grid = [
+            (x, y)
+            for x in _frange(min(xs), max(xs), BATTERY_GRID)
+            for y in _frange(min(ys), max(ys), BATTERY_GRID)
+        ]
+        grid.sort(key=lambda point: math.dist(point, here))
+        for x, y in grid:
+            for angle in (0.0, 45.0, 90.0, 135.0):
+                found = tried(x - here[0], y - here[1], angle)
+                if found is not None:
+                    return found
+        return None
+
     def _placed_controls(
         self,
         shape: BodyShapeSpec,
@@ -5092,3 +5342,9 @@ def _back_z(rows: tuple[tuple[Point3D, ...], ...], x: float, y: float) -> float:
                 + (across(rows[index]) - across(rows[index - 1])) * t
             )
     return across(rows[-1])
+
+
+def _frange(start: float, stop: float, step: float) -> list[float]:
+    """Return ``start``, ``start + step``, ... up to ``stop``."""
+    count = int((stop - start) / step) + 1
+    return [start + index * step for index in range(count)]

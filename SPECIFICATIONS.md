@@ -378,6 +378,19 @@ ohjainkoloon porataan käsin. `body_battery_count` 2 tekee kotelon
 kahdelle paristolle rinnakkain (18 V): kolo on 28 mm leveämpi, 56 × 58 mm
 ja kansiupotus 70 × 72 mm. Kahden takakolon kansiupotukset eivät saa
 mennä päällekkäin, eikä mikään reikä saa avautua paristokoteloon.
+Paristokotelo ja ohjaimet sijoitetaan yhdessä, etteivät ne estä
+toisiaan: jos piirretty kotelo estää ohjaimia pääsemästä paikkaan, jossa
+ne eivät puhkea yläkoloihin, tai on itse niiden tiellä (kannet
+päällekkäin tai pohja ylhäältä jyrsityn ohjainkolon päällä), ohjaimet
+saavat paikan, jonka ne saisivat ilman koteloa, ja kotelo siirtyy
+vähiten mahdollista niin, että se mahtuu kaiken muun väliin: ensin
+lähistöltä 3 mm askelin 15° välein enintään 90 mm ja tarvittaessa
+kääntyen enintään 30° (tai 90°), ja jos lähistöltä ei löydy, koko
+rungosta 10 mm ruudukolla lähimmästä alkaen. Näin Jackson RR ottaa
+Gibson-kolon, Floyd Rosen ja paristokotelon (kotelo siirtyy 3 mm),
+superstrat-kolon (kotelo kääntyy 15°) tai aktiivibasson neljä pottia
+(kotelo bassosiivelle). Paikallaan mahtuva kotelo pysyy paikallaan, eikä
+rungon ulkopuolelle piirrettyä koteloa siirretä.
 
 ## Mikit
 
