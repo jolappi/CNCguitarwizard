@@ -45,6 +45,7 @@ from ..geometry.body.wiring import WireSpace, Wiring, plan_wiring
 from ..geometry.exceptions import (
     BodyGeometryError,
     GeometryException,
+    HeadstockGeometryError,
     NeckGeometryError,
 )
 from ..geometry.fretboard import (
@@ -1407,6 +1408,7 @@ class Prototype001Parameters:
         """
         bass_sign = self.bass_sign
         bass_count, treble_count = HEADSTOCK_STYLES[self.headstock_style]
+        self._check_inline_offsets()
         hole_edge = self.tuner_hole_diameter / 2.0 + self.tuner_edge_clearance
 
         # Bass-positive lateral position of string n (1 = low E) at a
@@ -1610,6 +1612,84 @@ class Prototype001Parameters:
         # The steps are drawn wherever they fall; the build checks them.
         return self._body_layout(self.neck_outline(), check_steps=False)
 
+    def _check_inline_offsets(self) -> None:
+        """Check that ``tuner_inline_offsets``, if given, fit the style's row.
+
+        Raises:
+            NeckGeometryError: If the style has no row, or the offsets are
+                not one finite value per tuner in it.
+        """
+        if not self.tuner_inline_offsets:
+            return
+        bass_count, treble_count = HEADSTOCK_STYLES[self.headstock_style]
+        if bass_count == treble_count:
+            raise NeckGeometryError(
+                "tuner_inline_offsets places a row of tuners; a "
+                f"{self.headstock_style} headstock has none (use "
+                "tuner_side_offsets)."
+            )
+        row_count = max(bass_count, treble_count)
+        if len(self.tuner_inline_offsets) != row_count:
+            raise NeckGeometryError(
+                f"A {self.headstock_style} headstock's row needs "
+                f"{row_count} tuner_inline_offsets, one per tuner from the "
+                "nut outward."
+            )
+        if not all(math.isfinite(value) for value in self.tuner_inline_offsets):
+            raise NeckGeometryError("tuner_inline_offsets must be finite.")
+
+    def _check_headstock_plan(self, layout: _HeadstockLayout) -> None:
+        """Name the setting behind a headstock plan that cannot be drawn.
+
+        ``HeadstockPlan`` can only say that one of its dimensions is not
+        positive; this says which setting made it so, and how to mend it.
+
+        Args:
+            layout: The resolved (fitted) headstock layout.
+
+        Raises:
+            HeadstockGeometryError: If the nut, the root or a fitted or
+                given width is not positive, or the root is not shorter
+                than the headstock.
+        """
+        if not (math.isfinite(self.nut_width) and self.nut_width > 0.0):
+            raise HeadstockGeometryError(
+                f"nut_width must be positive (it is {self.nut_width:g} mm)."
+            )
+        root = self.headstock_root_length
+        if not (math.isfinite(root) and 0.0 < root < layout.length):
+            raise HeadstockGeometryError(
+                f"headstock_root_length ({root:g} mm) must be positive and "
+                f"shorter than the headstock ({layout.length:g} mm)."
+            )
+        for name, given, width, where, at in (
+            (
+                "headstock_shoulder_width",
+                self.headstock_shoulder_width,
+                layout.shoulder_width,
+                "shoulder",
+                root,
+            ),
+            (
+                "headstock_tip_width",
+                self.headstock_tip_width,
+                layout.tip_width,
+                "tip",
+                layout.length,
+            ),
+        ):
+            if math.isfinite(width) and width > 0.0:
+                continue
+            if given is not None:
+                raise HeadstockGeometryError(
+                    f"{name} must be positive (it is {given:g} mm)."
+                )
+            raise HeadstockGeometryError(
+                f"The fitted headstock narrows to {width:.1f} mm at its "
+                f"{where}, {at:g} mm from the nut: shorten headstock_length "
+                f"(or bring the last tuner nearer the nut), or set {name}."
+            )
+
     def headstock_design(self) -> tuple[HeadstockPlan, TunerLayout]:
         """Return the headstock plan and its tuner holes, validated.
 
@@ -1625,6 +1705,7 @@ class Prototype001Parameters:
         if self.headless:
             return self._headless_design()
         layout = self._headstock_layout()
+        self._check_headstock_plan(layout)
         drawn = (
             self.headstock_outline == "drawn"
             and bool(self.headstock_bass_edge)
@@ -4484,22 +4565,8 @@ class Prototype001Parameters:
                 f"A {self.headstock_style} headstock needs {bass_count} "
                 "tuner_station_distances (and tuner_side_offsets)."
             )
-        if self.tuner_inline_offsets and not self.headless:
-            row_count = max(bass_count, treble_count)
-            if bass_count == treble_count:
-                raise NeckGeometryError(
-                    "tuner_inline_offsets places a row of tuners; a "
-                    f"{self.headstock_style} headstock has none (use "
-                    "tuner_side_offsets)."
-                )
-            if len(self.tuner_inline_offsets) != row_count:
-                raise NeckGeometryError(
-                    f"A {self.headstock_style} headstock's row needs "
-                    f"{row_count} tuner_inline_offsets, one per tuner from the "
-                    "nut outward."
-                )
-            if not all(math.isfinite(value) for value in self.tuner_inline_offsets):
-                raise NeckGeometryError("tuner_inline_offsets must be finite.")
+        if not self.headless:
+            self._check_inline_offsets()
         inline_values = (
             self.tuner_inline_first_distance,
             self.tuner_inline_spacing,

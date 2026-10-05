@@ -224,3 +224,7 @@ def test_given_inline_offsets_place_a_row_and_must_match_it() -> None:
         replace(base, tuner_inline_offsets=(20.0, 12.0)).build()
     with pytest.raises(NeckGeometryError, match="has none"):
         replace(base, headstock_style="3+3").build()
+    # The editors lay the headstock out before the build checks it: the
+    # same message, not an IndexError (the Explorer's six on a 7-in-line).
+    with pytest.raises(NeckGeometryError, match="needs 7 tuner_inline_offsets"):
+        replace(base, headstock_style="7_inline").headstock_design()

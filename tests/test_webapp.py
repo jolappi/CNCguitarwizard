@@ -512,6 +512,24 @@ def test_a_saved_design_loads_as_the_web_app_loads_it() -> None:
         load_design({"format": "cncguitarwizard-design", "instrument": "ukulele"})
 
 
+def test_the_headstock_editor_reports_rather_than_raises() -> None:
+    # A locking nut wider than the neck, and offsets for a shorter row:
+    # the editor says why instead of failing without a word.
+    nut = headstock_editor_layout({"prototype": {"locking_nut": "r3"}})
+    assert "nut_width must be at least" in nut["error"]
+    row = headstock_editor_layout(
+        {
+            "prototype": {
+                "headstock_style": "7_inline",
+                "tuner_inline_offsets": [20, 12, 4, -4, -12, -20],
+            }
+        }
+    )
+    assert "needs 7 tuner_inline_offsets" in row["error"]
+    long = headstock_editor_layout({"prototype": {"headstock_length": 400.0}})
+    assert "shorten headstock_length" in long["error"]
+
+
 def test_body_editor_layout_moves_the_middle_pickup_as_its_own_group() -> None:
     layout = body_editor_layout({"prototype": {"body_pickups": "HSH"}})
     groups = {p["name"]: p["group"] for p in layout["polygons"]}

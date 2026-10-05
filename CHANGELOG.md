@@ -590,6 +590,15 @@
 
 ### Fixed
 
+- A headstock that cannot be drawn names the setting to mend instead of
+  "Headstock plan dimensions must be finite and positive": a fitted
+  outline narrowing to nothing at its tip (a `headstock_length` far past
+  the tuners: shorten it, bring the last tuner nearer the nut or set
+  `headstock_tip_width`), or a nut, root, shoulder or tip width that is
+  not positive. The headstock editor reports, rather than silently
+  failing on, `tuner_inline_offsets` that do not fit the style's row (an
+  Explorer neck's six on a 7-in-line) and a locking nut wider than the
+  neck.
 - Older saved designs load with every setting in view and every editor
   drawn. They have `headstock_outline` "fitted" (the default before the
   headstock editor), which hid the headstock editor and, with it, the

@@ -1048,6 +1048,9 @@ def headstock_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
             parameters, headstock_outline="fitted"
         ).headstock_design()
         centres = parameters.tuner_centres()
+        # A locking nut wider than the neck is refused here too.
+        nut = _nut_drawing(parameters)
+        lettering = _headstock_lettering(built)
     except (CNCGuitarWizardError, TypeError, ValueError) as error:
         return {"error": f"{type(error).__name__}: {error}"}
     root = parameters.headstock_root_length
@@ -1062,8 +1065,8 @@ def headstock_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         for side in ("bass", "treble")
     }
     return {
-        "lettering": _headstock_lettering(built),
-        "nut": _nut_drawing(parameters),
+        "lettering": lettering,
+        "nut": nut,
         "mirrored": built.left_handed,
         "nut_half_width": parameters.nut_width / 2.0,
         "bass_sign": fitted.bass_sign,

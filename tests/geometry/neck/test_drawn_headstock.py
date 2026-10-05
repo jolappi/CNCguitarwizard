@@ -207,3 +207,23 @@ def test_only_a_drawn_headstock_takes_tip_points() -> None:
     )
     # The fitted outline ignores them, as it ignores drawn edges.
     assert fitted.build().headstock.plan.tip_points == ()
+
+
+@pytest.mark.parametrize(
+    ("change", "message"),
+    [
+        ({"headstock_length": 400.0}, "narrows to -3.1 mm at its tip, 400 mm"),
+        ({"headstock_root_length": 0.0}, "headstock_root_length \\(0 mm\\)"),
+        ({"nut_width": 0.0}, "nut_width must be positive"),
+        ({"headstock_tip_width": 0.0}, "headstock_tip_width must be positive"),
+        ({"headstock_shoulder_width": -2.0}, "headstock_shoulder_width must be"),
+    ],
+)
+def test_a_plan_that_cannot_be_drawn_names_its_setting(
+    change: dict[str, float], message: str
+) -> None:
+    # Not just "Headstock plan dimensions must be finite and positive":
+    # the setting to mend, drawn or fitted.
+    for parameters in (Prototype001Parameters(), drawn()):
+        with pytest.raises(HeadstockGeometryError, match=message):
+            replace(parameters, **change).headstock_design()  # type: ignore[arg-type]

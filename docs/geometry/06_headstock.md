@@ -26,6 +26,16 @@ never inside the style's wood reserve (see
 [Tuner-hole layout](07_tuner_layout.md)), so the widths above are what
 Prototype001's 3+3 stations produce, not fixed inputs.
 
+A fitted edge keeps its slope out to the tip, so a 3+3's converging edges
+meet if the headstock runs on far past its tuners (past about 370 mm on
+the default). A plan that cannot be drawn names the setting to mend
+(`Prototype001Parameters._check_headstock_plan`): a nut, root, shoulder or
+tip width that is not positive, a root not shorter than the headstock, or
+a fitted outline narrowing to nothing at its tip (shorten
+`headstock_length`, bring the last tuner nearer the nut, or set
+`headstock_tip_width`) — rather than `HeadstockPlan`'s own
+"dimensions must be finite and positive".
+
 `HeadstockPlan` takes optional `shoulder_shift` and `tip_shift` values
 (positive toward the bass side) that move the outline's centre at the
 shoulder and at the tip while the nut stays centred on the neck, and a
