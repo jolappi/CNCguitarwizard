@@ -37,6 +37,9 @@
 - String ferrules counterbored from the back, the bridges' fitting notes
   in the programs
 - DXF export of the plan outlines and the sheet plates
+- More templates traced from product photos: Mockingbird (reshaped by
+  hand), Telecaster, SG, Explorer and Flying V bodies;
+  Stratocaster, Gibson style, Flying V and Mockingbird headstocks
 - Wire channels: the pickups, a switch cavity and a battery box wired to
   the controls and the bridge grounded, routed under a pickguard,
   elsewhere drilled by hand (modelled, with each hole's angle in the
@@ -88,13 +91,14 @@ Body
 Tools and templates
 - Rotating the pickups in the body editor (the control cavity, the
   battery box and the jack already turn).
-- More mockup body templates, and headstock templates, made the same way
-  (traced, reshaped by hand, marked as mockups).
+- In-line tuner rows along a drawn edge, not only on the strings' lines,
+  for Explorer and Jackson style headstocks (their tuners run in a steep
+  diagonal row along the edge).
 
 ```mermaid
 flowchart TD
     Done["Done: guitar, bass, 7/8-string, CAD and CAM, slanted and fanned frets"] --> Beta["v1.0.0-beta1"]
-    Beta --> More["Since: headless, carved tops, binding, engraving, left-handed, neck-through, 7/8-string tremolos, more controls, wiring, DXF"]
+    Beta --> More["Since: headless, carved tops, binding, engraving, left-handed, neck-through, 7/8-string tremolos, more controls, wiring, DXF, traced templates"]
     More --> V1["v1.0.0: machine-verified toolpaths"]
     V1 --> V2["v2: battery and controls together"]
 ```

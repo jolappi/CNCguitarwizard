@@ -65,7 +65,8 @@ Python.
    right-click to remove one; *Start from* shows the template the drawing
    is ("Your own drawing" once its outline has been changed); choosing
    one and *Load* replaces the drawing with that template — Design by Jone, Les Paul, Stratocaster, Jackson RR,
-   ESP LTD Alexi Hexed or Jazz Bass style (mockups, not the original outlines) — and its cavity placements;
+   ESP LTD Alexi Hexed, Mockingbird, Telecaster, SG, Explorer, Flying V or Jazz Bass style
+   (mockups, not the original outlines) — and its cavity placements;
    a template's own other values, the Alexi Hexed's pickup, controls, Floyd Rose and stepped top
    (`values` in the layout's templates), are set too, the confirmation naming them), drawn
    over the neck, pocket, pickup and bridge routes and dashed rear
@@ -138,7 +139,9 @@ Python.
    fitted start edges). *Start from* → *Load* sets a whole neck from
    `neck_templates` in the schema (`NECK_TEMPLATES`): the Telecaster neck's
    slotted nut, flat six-in-line headstock, drawn Telecaster outline and
-   heel-adjusted truss rod.
+   heel-adjusted truss rod, or the Stratocaster, Gibson style, Flying V
+   or Mockingbird neck (mockups traced from product photos): its
+   headstock style, angle, drawn outline, tuner stations and truss rod.
    Below it the **inlay editor** (*Inlay design*) draws the first fret
    marker's space on the board, nut to the left, with the style's marker
    in it (`webapp.inlay_editor_layout()`, `InlayLayout.editable_points()`)

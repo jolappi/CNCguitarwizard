@@ -4509,8 +4509,213 @@ TELECASTER_NECK: dict[str, Any] = {
 """A Telecaster neck (see ``NECK_TEMPLATES``): a slotted nut, a flat
 six-in-line headstock drawn as a Telecaster's, adjusted at the heel."""
 
+STRATOCASTER_NECK: dict[str, Any] = {
+    "nut_style": "slot",
+    "locking_nut": "none",
+    "headstock_angle": 0.0,
+    "headstock_style": "6_inline",
+    "headstock_outline": "drawn",
+    # The posts 22.5 mm apart from 51 mm, as on the original; they follow
+    # the strings, so the tuner edge runs straight along them the edge
+    # offset out (a little wider than the original's) and round the last
+    # one onto the top of the lobe.
+    "tuner_inline_first_distance": 51.0,
+    "tuner_inline_spacing": 22.5,
+    "headstock_bass_edge": (
+        (8.0, 23.0),
+        (14.0, 30.0),
+        (20.0, 38.0),
+        (26.0, 42.5),
+        (51.0, 35.4),
+        (100.0, 21.5),
+        (141.0, 9.8),
+        (163.5, 3.4),
+        (171.0, 1.0),
+        (176.5, -5.0),
+        (179.2, -13.0),
+        (180.3, -21.0),
+        (180.5, -27.0),
+    ),
+    # Traced: the corner flaring out from the nut, the straight run in to
+    # the waist and the round treble lobe.
+    "headstock_treble_edge": (
+        (11.4, 21.6),
+        (19.1, 23.2),
+        (26.8, 26.4),
+        (34.5, 31.8),
+        (40.6, 39.5),
+        (45.1, 47.2),
+        (49.0, 47.5),
+        (62.5, 45.9),
+        (80.0, 42.3),
+        (97.2, 38.1),
+        (114.6, 34.8),
+        (122.3, 33.8),
+        (127.8, 36.7),
+        (132.3, 44.4),
+        (139.0, 51.4),
+        (146.7, 55.0),
+        (154.5, 55.9),
+        (162.2, 54.6),
+        (169.9, 51.0),
+        (175.0, 46.0),
+        (178.2, 40.1),
+        (180.5, 33.0),
+    ),
+    "truss_rod_adjustment": "headstock",
+}
+"""A Stratocaster neck (see ``NECK_TEMPLATES``): a slotted nut and a flat
+six-in-line headstock traced from a straight-on product photo (scaled from
+its frets), its tuner edge redrawn along the posts — a mockup, not the
+original outline."""
+
+_GIBSON_EDGE: tuple[tuple[float, float], ...] = (
+    (12.0, 21.6),
+    (22.0, 23.0),
+    (30.0, 25.8),
+    (36.0, 29.1),
+    (42.0, 33.0),
+    (50.0, 34.0),
+    (70.0, 33.2),
+    (95.0, 33.1),
+    (120.0, 34.2),
+    (145.0, 36.2),
+    (166.5, 38.4),
+)
+
+GIBSON_NECK: dict[str, Any] = {
+    "headstock_style": "3+3",
+    "headstock_angle": 17.0,
+    "headstock_outline": "drawn",
+    "headstock_bass_edge": _GIBSON_EDGE,
+    "headstock_treble_edge": _GIBSON_EDGE,
+    # The open book's top: two humps either side of a notch.
+    "headstock_tip_points": (
+        (0.5, -27.0),
+        (1.5, -21.5),
+        (3.0, -16.8),
+        (5.3, -13.1),
+        (7.2, -9.5),
+        (8.0, -5.2),
+        (6.3, -2.5),
+        (5.0, 0.0),
+        (6.3, 2.5),
+        (8.0, 5.2),
+        (7.2, 9.5),
+        (5.3, 13.1),
+        (3.0, 16.8),
+        (1.5, 21.5),
+        (0.5, 27.0),
+    ),
+    # The original's stations; the posts a little further in than its,
+    # tuner_edge_offset from the edge.
+    "tuner_station_distances": (66.0, 100.0, 134.0),
+    "tuner_side_offsets": (18.5, 18.5, 20.5),
+    "truss_rod_adjustment": "headstock",
+}
+"""A Gibson style neck (see ``NECK_TEMPLATES``): a 17 degree three-a-side
+"open book" headstock traced from a straight-on product photo of an SG
+(scaled from its frets), adjusted at the headstock — a mockup, not the
+original outline."""
+
+_FLYING_V_EDGE: tuple[tuple[float, float], ...] = (
+    (12.0, 23.0),
+    (20.0, 26.6),
+    (26.0, 31.0),
+    (31.0, 36.5),
+    (35.0, 43.0),
+    (38.0, 49.5),
+    (41.0, 50.6),
+    (46.0, 49.0),
+    (80.0, 38.8),
+    (130.0, 23.5),
+    (165.0, 13.0),
+)
+
+FLYING_V_NECK: dict[str, Any] = {
+    "headstock_style": "3+3",
+    "headstock_angle": 17.0,
+    "headstock_outline": "drawn",
+    "headstock_bass_edge": _FLYING_V_EDGE,
+    "headstock_treble_edge": _FLYING_V_EDGE,
+    # The rounded point.
+    "headstock_tip_points": (
+        (3.1, -10.0),
+        (5.5, -6.5),
+        (6.5, -3.1),
+        (6.8, 0.0),
+        (6.5, 3.1),
+        (5.5, 6.5),
+        (3.1, 10.0),
+    ),
+    # The posts closing in up the narrowing headstock, as on the original.
+    "tuner_station_distances": (55.0, 84.0, 112.0),
+    "tuner_side_offsets": (30.0, 22.0, 13.5),
+    "truss_rod_adjustment": "headstock",
+}
+"""A Flying V neck (see ``NECK_TEMPLATES``): a 17 degree three-a-side
+headstock with flared wings at its foot, narrowing to a rounded point,
+traced from a straight-on product photo (scaled from its frets) — a
+mockup, not the original outline."""
+
+_MOCKINGBIRD_EDGE: tuple[tuple[float, float], ...] = (
+    (10.0, 22.0),
+    (20.0, 27.0),
+    (30.0, 36.5),
+    (36.0, 38.9),
+    (44.0, 37.0),
+    (56.0, 35.0),
+    (70.0, 34.2),
+    (90.0, 34.0),
+    (105.0, 35.2),
+    (118.0, 37.5),
+    (132.0, 40.8),
+    (146.0, 42.4),
+)
+
+MOCKINGBIRD_NECK: dict[str, Any] = {
+    "headstock_style": "3+3",
+    "headstock_outline": "drawn",
+    "headstock_bass_edge": _MOCKINGBIRD_EDGE,
+    "headstock_treble_edge": _MOCKINGBIRD_EDGE,
+    # The top rising to a point in the middle (drawn up higher and
+    # sharper by hand).
+    "headstock_tip_points": (
+        (3.3, -37.2),
+        (7.0, -27.2),
+        (12.5, -21.5),
+        (16.2, -14.0),
+        (23.4, -7.6),
+        (27.4, 0.0),
+        (23.4, 7.6),
+        (16.2, 14.0),
+        (12.5, 21.5),
+        (7.0, 27.2),
+        (3.3, 37.2),
+    ),
+    # The original's stations, the middle pair closer in.
+    "tuner_station_distances": (53.0, 87.0, 120.0),
+    "tuner_side_offsets": (20.0, 18.0, 21.0),
+    "truss_rod_adjustment": "headstock",
+}
+"""A Mockingbird neck (see ``NECK_TEMPLATES``): the B.C. Rich three-a-side
+headstock, flared at its foot and widening to a pointed top, traced from
+the straight-on product photo the Mockingbird style body came from
+(scaled from its frets) and its point then drawn higher by hand — a
+mockup, not the original outline."""
+
 NECK_TEMPLATES: dict[str, tuple[str, dict[str, Any]]] = {
     "telecaster": ("Telecaster neck", TELECASTER_NECK),
+    "stratocaster": (
+        "Stratocaster neck (mockup, not the original)",
+        STRATOCASTER_NECK,
+    ),
+    "gibson": ("Gibson style neck (mockup, not the original)", GIBSON_NECK),
+    "flying_v": ("Flying V neck (mockup, not the original)", FLYING_V_NECK),
+    "mockingbird": (
+        "Mockingbird neck (mockup, not the original)",
+        MOCKINGBIRD_NECK,
+    ),
 }
 """Neck and headstock starting points the headstock editor can load: each
 a label and the values it sets (for a six-string guitar; the truss rod can

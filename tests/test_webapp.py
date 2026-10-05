@@ -311,8 +311,16 @@ def test_body_editor_layout_lists_the_fixed_features_relative_to_the_heel() -> N
         "stratocaster",
         "jackson_rr",
         "alexi_hexed",
+        "mockingbird",
+        "telecaster",
+        "sg",
+        "explorer",
+        "flying_v",
         "jazz_bass",
     ]
+    assert templates["mockingbird"]["label"] == (
+        "Mockingbird style (mockup, not the original)"
+    )
     assert templates["les_paul"]["label"] == "Les Paul style (mockup, not the original)"
     assert templates["stratocaster"]["label"] == (
         "Stratocaster style (mockup, not the original)"

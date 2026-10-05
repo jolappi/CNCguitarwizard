@@ -4,6 +4,23 @@
 
 ### Added
 
+- Five more body templates traced from straight-on product photos
+  (scaled from the frets, the last fret 4 mm ahead of the heel end, as
+  the default neck's is; strap buttons and jack rims left out):
+  - "Mockingbird style": traced from a B.C. Rich Mockingbird and then
+    reshaped by hand in the body editor (the long horn longer and
+    sharper, the beak, the bass scoop's front and lower lobe).
+  - "Telecaster style", "SG style", "Explorer style" and "Flying V
+    style" mockups; the Flying V's switch, control cavity (turned along
+    the wing), jack and battery box all on its treble wing.
+- Four more neck templates for the headstock editor's *Start from*,
+  mockups traced from the same kind of photos:
+  - Stratocaster: flat six-in-line on a slotted nut, the posts 22.5 mm
+    apart, the tuner edge redrawn along them.
+  - Gibson style: a 17 degree "open book" three-a-side.
+  - Flying V: a 17 degree three-a-side narrowing to a rounded point.
+  - Mockingbird: the B.C. Rich three-a-side, its top rising to a point
+    (drawn higher by hand).
 - DXF export: every build writes `Prototype001_plan.dxf`, the whole
   instrument's plan outlines (body, neck, headstock, fretboard, nut, fret
   slots, inlays, tuner holes, cavities, holes, wire holes, carve, steps,

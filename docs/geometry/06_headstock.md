@@ -214,6 +214,21 @@ adjusted at the heel, vintage style; `truss_rod_adjustment = "headstock"`
 gives the modern one. The plan view draws the nut in its slot, the board
 running on behind it with a line where it starts sloping down.
 
+Four more neck templates are mockups traced from straight-on product
+photos (scaled from the frets, the tuner keys left out), for a six-string
+guitar:
+
+| Key | Label | Headstock |
+| --- | --- | --- |
+| `stratocaster` | Stratocaster neck (mockup, not the original) | Flat six-in-line on a slotted nut, the posts 22.5 mm apart from 51 mm (`tuner_inline_first_distance`, `tuner_inline_spacing`); the treble side traced — the corner flaring from the nut, the straight run in to the waist and the round lobe — and the tuner edge redrawn straight along the posts, `tuner_edge_offset` out (the posts follow the strings, so it is a little wider than the original's), round the last one onto the lobe; adjusted at the headstock |
+| `gibson` | Gibson style neck (mockup, not the original) | A 17 degree three-a-side "open book" traced from an SG: the sides narrowing a little above the flared foot, the top's two humps either side of a notch (`headstock_tip_points`); the original's stations (66, 100 and 134 mm), the posts a little further in than its so they keep `tuner_edge_offset` to the edge |
+| `flying_v` | Flying V neck (mockup, not the original) | A 17 degree three-a-side with flared wings at its foot, narrowing straight to a rounded point, the posts closing in up it (30, 22 and 13.5 mm out) |
+| `mockingbird` | Mockingbird neck (mockup, not the original) | The B.C. Rich three-a-side from the photo the Mockingbird style body came from: flared at its foot, a waist between the tuners, widening to a top that rises to a point in the middle (drawn higher and sharper by hand); the original's stations, the middle pair closer in; the default angle |
+
+Explorer and Jackson style heads are not among them: their tuners run in
+a steep diagonal row along the edge, while a row here keeps every post on
+its own string's line past the nut.
+
 Behind the seat the top eases onto the face over
 `headstock_face_transition` (12 mm), meeting it at its own slope, so there
 is no step (`HeadstockSolid.top_z`): an angled face is eased in with a
