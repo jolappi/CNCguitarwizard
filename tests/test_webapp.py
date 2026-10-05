@@ -10,6 +10,7 @@ from cncguitarwizard.webapp import (
     body_editor_layout,
     finish_build,
     headstock_editor_layout,
+    load_design,
     parameter_schema,
     run_build,
     start_build,
@@ -466,6 +467,49 @@ def test_a_headless_or_drawn_fitted_headstock_stays_fitted() -> None:
     assert outline("electric_guitar", headstock_bass_edge=edge) == "fitted"
     assert outline("electric_guitar") == "drawn"
     assert upgrade_design({"instrument": "bass_guitar"})["prototype"] == {}
+
+
+def test_a_saved_design_loads_as_the_web_app_loads_it() -> None:
+    from cncguitarwizard.exceptions import CNCGuitarWizardError
+    from cncguitarwizard.presets import Prototype001Parameters
+
+    loaded = load_design(
+        {
+            "format": "cncguitarwizard-design",
+            "name": "Seven",
+            "instrument": "seven_string_guitar",
+            "prototype": {
+                "body_thickness": 41.0,
+                "headstock_outline": "fitted",
+                "inlay_dot_diameter": 5.0,
+                "gone_setting": True,
+                "body_bridge": {"kind": "hardtail", "string_count": 7, "old": 1},
+                "body_shape": {"kind": "no_such_body"},
+            },
+            "machining": {
+                "feed_rate": 750.0,
+                "index_pin_positions": [[-40, 0], [440, 0]],
+            },
+        }
+    )
+    parameters = loaded.parameters
+    assert loaded.name == "Seven"
+    assert parameters.body_thickness == 41.0
+    assert parameters.inlay_dot_diameter == 5.0
+    # A value the file lacks is the instrument's default...
+    assert parameters.string_count == 7
+    assert parameters.scale_length == 647.7
+    assert parameters.body_shape == Prototype001Parameters().body_shape
+    # ...it is brought up to date, and the unknown settings are skipped.
+    assert parameters.headstock_outline == "drawn"
+    assert parameters.body_bridge.kind == "hardtail"
+    assert loaded.skipped == ("gone_setting", "body_bridge.old", "body_shape.kind")
+    assert loaded.machining.feed_rate == 750.0
+    assert loaded.machining.index_pin_positions == ((-40, 0), (440, 0))
+    with pytest.raises(CNCGuitarWizardError, match="not a CNCguitarwizard design"):
+        load_design({"format": "other"})
+    with pytest.raises(CNCGuitarWizardError, match="Unknown instrument 'ukulele'"):
+        load_design({"format": "cncguitarwizard-design", "instrument": "ukulele"})
 
 
 def test_body_editor_layout_moves_the_middle_pickup_as_its_own_group() -> None:

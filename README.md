@@ -40,6 +40,15 @@ The build locates `freecadcmd` on its own (including the standard macOS
 `--freecad-command /path/to/freecadcmd` or the `FREECAD_CMD` environment
 variable, or skip FreeCAD entirely with `--scripts-only`.
 
+To build your own design, save it in the web app (*Save design*) and pass
+the JSON file with `--design`; the FCStd and STEP models, which the
+browser cannot make, then come out of the local build with everything
+else:
+
+```bash
+python -m cncguitarwizard build-prototype001 --design my_guitar.json --output build/my_guitar
+```
+
 Everything lands in the `build/` directory (git-ignored):
 
 | File | What it is |
@@ -80,7 +89,9 @@ Pyodide, draws a form from the parameter dataclasses, and builds the
 FreeCAD script, body G-code, toolpath plots and report in the browser —
 no installation needed. Only the `.FCStd`/STEP step still needs a local
 FreeCAD. **Save design** and **Load design** keep your settings and your
-drawn body and headstock in a JSON file on your own computer. **Undo** and **Redo**
+drawn body and headstock in a JSON file on your own computer; that file
+builds locally, FCStd and STEP included, with
+`build-prototype001 --design` (see above). **Undo** and **Redo**
 (Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z) step back and forward through your
 changes in the editors and the form. See [Web app](docs/site.md) for
 local preview and deployment.

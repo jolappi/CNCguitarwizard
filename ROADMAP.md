@@ -47,6 +47,8 @@
 - Older saved designs brought up to date on loading, every setting in
   view and every editor drawn
 - Undo and redo for the editors and the form
+- A saved design built locally from the command line (`--design`),
+  FreeCAD models included
 - More templates traced from product photos: Mockingbird (reshaped by
   hand), Telecaster, SG, Explorer and Flying V bodies;
   Stratocaster, Gibson style, Flying V, Explorer and Mockingbird
@@ -91,6 +93,6 @@
 ```mermaid
 flowchart TD
     Done["Done: guitar, bass, 7/8-string, CAD and CAM, slanted and fanned frets"] --> Beta["v1.0.0-beta1"]
-    Beta --> More["Since: headless, carved tops, binding, engraving, left-handed, neck-through, 7/8-string tremolos, more controls, wiring, DXF, traced templates, turning pickups, battery and controls together, notes machined or modelled, undo"]
+    Beta --> More["Since: headless, carved tops, binding, engraving, left-handed, neck-through, 7/8-string tremolos, more controls, wiring, DXF, traced templates, turning pickups, battery and controls together, notes machined or modelled, undo, local design builds"]
     More --> V1["v1.0.0: machine-verified toolpaths"]
 ```

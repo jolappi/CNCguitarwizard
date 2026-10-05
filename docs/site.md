@@ -223,7 +223,10 @@ Python.
 FreeCAD cannot run in a browser, so `.FCStd` and STEP are made locally:
 download `Prototype001_freecad.py` and run
 `freecadcmd Prototype001_freecad.py` (or open the `.FCMacro` in FreeCAD).
-The script writes its outputs next to wherever it is executed.
+The script writes its outputs next to wherever it is executed. Or save
+the design (*Save design*) and build it all locally from a clone with
+`python -m cncguitarwizard build-prototype001 --design my_guitar.json
+--output build/my_guitar`: the G-code, DXF, FCStd and STEP together.
 
 ## Building and previewing locally
 

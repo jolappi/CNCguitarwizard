@@ -413,6 +413,101 @@ def upgrade_design(design: dict[str, Any]) -> dict[str, Any]:
     return {**design, "prototype": prototype}
 
 
+DESIGN_FORMAT = "cncguitarwizard-design"
+"""The ``format`` entry of a design saved with the web app's Save design."""
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class LoadedDesign:
+    """A saved design's values, ready to build.
+
+    Attributes:
+        name: The guitar's name ("" when it has none).
+        parameters: The instrument's defaults with the design's values.
+        machining: The design's body machining values.
+        skipped: The settings this version does not know, which were
+            skipped (``name``, or ``name.field`` inside a bridge or body
+            shape).
+    """
+
+    name: str
+    parameters: Prototype001Parameters
+    machining: MachiningParameters
+    skipped: tuple[str, ...]
+
+
+def load_design(design: dict[str, Any]) -> LoadedDesign:
+    """Turn a design saved with the web app's Save design into parameters.
+
+    It is read as the web app loads one: brought up to date first
+    (``upgrade_design``), a value the file lacks is the instrument's
+    default, and a setting this version does not know is skipped and
+    listed.
+
+    Args:
+        design: The saved design, as read from its JSON file.
+
+    Returns:
+        The design's name, parameters and machining values, and the
+        settings skipped.
+
+    Raises:
+        CNCGuitarWizardError: If it is not a design, names an unknown
+            instrument, or its values make no valid instrument.
+        TypeError: If a value has the wrong type.
+        ValueError: If a value is out of range.
+    """
+    if not isinstance(design, dict) or design.get("format") != DESIGN_FORMAT:
+        raise CNCGuitarWizardError("This is not a CNCguitarwizard design file.")
+    instrument = design.get("instrument")
+    if instrument not in INSTRUMENT_OVERRIDES:
+        raise CNCGuitarWizardError(f"Unknown instrument {instrument!r}.")
+    design = upgrade_design(design)
+    skipped: list[str] = []
+    prototype = _known_values(
+        Prototype001Parameters, design.get("prototype") or {}, skipped
+    )
+    machining = _known_values(
+        MachiningParameters, design.get("machining") or {}, skipped
+    )
+    parameters = dataclasses.replace(
+        Prototype001Parameters.for_instrument(instrument), **_coerce(prototype)
+    )
+    name = design.get("name")
+    return LoadedDesign(
+        name=name if isinstance(name, str) else "",
+        parameters=parameters,
+        machining=MachiningParameters(**_coerce(machining)),
+        skipped=tuple(skipped),
+    )
+
+
+def _known_values(
+    cls: type, values: dict[str, Any], skipped: list[str]
+) -> dict[str, Any]:
+    """Return the values that are fields of ``cls``, noting the others.
+
+    A bridge or body shape keeps only its own kind's fields; one of a
+    kind this version does not have is skipped whole (``name.kind``).
+    """
+    names = {field.name for field in dataclasses.fields(cls)}
+    known: dict[str, Any] = {}
+    for name, value in values.items():
+        if name not in names:
+            skipped.append(name)
+            continue
+        if isinstance(value, dict) and "kind" in value:
+            spec_class = {**BRIDGE_KINDS, **BODY_SHAPE_KINDS}.get(value["kind"])
+            if spec_class is None:
+                skipped.append(f"{name}.kind")
+                continue
+            own = {"kind"} | {field.name for field in dataclasses.fields(spec_class)}
+            skipped.extend(f"{name}.{key}" for key in value if key not in own)
+            value = {key: item for key, item in value.items() if key in own}
+        known[name] = value
+    return known
+
+
 def _editor_group(name: str) -> str | None:
     """Return which draggable group a body feature belongs to, if any.
 

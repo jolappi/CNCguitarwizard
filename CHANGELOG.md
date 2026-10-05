@@ -4,6 +4,11 @@
 
 ### Added
 
+- `build-prototype001 --design my_guitar.json` builds a design saved with
+  the web app's *Save design* locally — G-code, DXF, and the FCStd and
+  STEP models the browser cannot make — read as the web app loads it
+  (`webapp.load_design`): an older design brought up to date, a missing
+  value the instrument's default, an unknown setting skipped and listed.
 - Undo and redo in the web app: **Undo** and **Redo** beside *Reset* and
   in the body, headstock and inlay editors' panes, or Ctrl/Cmd+Z and
   Ctrl/Cmd+Shift+Z (Ctrl+Y), step back and forward through the design's

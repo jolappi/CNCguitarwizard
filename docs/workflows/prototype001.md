@@ -12,6 +12,20 @@ An installed package also provides:
 cncguitarwizard build-prototype001 --output build/
 ```
 
+A design saved with the web app's *Save design* is built with `--design`:
+
+```bash
+python -m cncguitarwizard build-prototype001 --design my_guitar.json --output build/my_guitar
+```
+
+The file is read as the web app loads it (`webapp.load_design`): an
+older design's values are brought up to date (`upgrade_design`), a value
+it lacks is its instrument's default, and a setting this version does not
+know is skipped and listed. Its body machining values go to the build;
+the neck's and fretboard's are the defaults, as in the web app. A file
+that is not a design, or whose values make no valid instrument, ends the
+command with the reason.
+
 The command creates:
 
 - `Prototype001.FCMacro`, for execution as a FreeCAD macro;

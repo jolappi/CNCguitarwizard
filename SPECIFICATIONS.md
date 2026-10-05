@@ -780,6 +780,12 @@ suunnitelma ovat kukin yksi askel, enintään 100 askelta. Historia on koko
 sivulle yhteinen; napin vihje kertoo, mitä kenttiä askel muuttaa, ja uusi
 muutos tyhjentää palautettavat askeleet. Tekstikentässä näppäimet kumoavat
 selaimen tapaan kirjoitusta.
+Tallennettu suunnitelma rakennetaan paikallisesti komennolla
+`python -m cncguitarwizard build-prototype001 --design oma.json --output
+build/oma`: G-koodit, DXF:t sekä FCStd- ja STEP-mallit, joita selain ei
+pysty tekemään. Tiedosto luetaan kuten web-sovellus sen lataa
+(`webapp.load_design`): vanhan version arvot päivitetään, puuttuva arvo on
+soittimen oletus ja tuntematon asetus ohitetaan ja luetellaan.
 
 ## CNC
 
