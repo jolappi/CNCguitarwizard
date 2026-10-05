@@ -135,7 +135,7 @@ a complete `YourDesignShape` (outline and electronics placements):
 | `mockingbird` | Mockingbird style (mockup, not the original) | Traced from a straight-on product photo of a B.C. Rich Mockingbird (its edge as photographed, the strap button and the jack's rim left out), scaled from its 24 frets and placed with its 24th fret 4 mm ahead of the heel end, as the default neck's is, then reshaped by hand: the long curved horn on the treble side longer and sharper, the beak below it redrawn, the front of the bass side's deep scoop and its lower lobe drawn out; the notched short horn on the bass side. The switch a little in from the narrow treble waist, the jack in the lower treble edge and the battery box behind the bridge, square to the neck |
 | `telecaster` | Telecaster style (mockup, not the original) | Single cutaway traced from a straight-on product photo, scaled from its frets (its 22nd fret 4 mm ahead of the heel end) — a genre mockup, not the original outline; the jack into the treble side nearest the control cavity |
 | `sg` | SG style (mockup, not the original) | Double cutaway traced the same way — the horns meet the neck near its end, so the outline runs on along the neck's sides to hold a bolt-on neck's pocket |
-| `explorer` | Explorer style (mockup, not the original) | Traced the same way: the long wing forward on the treble side, the long bottom corner back on the bass side |
+| `explorer` | Explorer style (mockup, not the original) | Traced the same way, then reshaped by hand: the bass shoulder, the long bottom corner and the wing's tip sharper, the tip further forward; the long wing forward on the treble side, the long bottom corner back on the bass side |
 | `flying_v` | Flying V style (mockup, not the original) | Traced the same way: two straight wings and a rounded notch; the switch behind the bridge, the control cavity turned 20 degrees along the treble wing (a Tele plate there too), the jack into the wing's outer edge and the battery box on past them toward its tip |
 | `jazz_bass` | Jazz Bass style (mockup, not the original) | Offset waist traced from a reference render (straightened on its centre stripe, scaled from its bridge pickup) and reshaped by hand at both horns and the treble cutaway — a genre mockup, not the original outline; its pots and control cavity on the lower bout behind the bridge pickup; the bass guitar's default body (`BASS_BODY`) |
 
@@ -147,7 +147,7 @@ white background, scaled from the frets — a least-squares fit of the
 fret positions to the scale length — and turned square to the neck,
 hardware such as strap buttons left out), and their control points
 chosen so the spline stays within 0.75 mm of the trace; the Mockingbird
-was then reshaped by hand in the body editor. A template that sets more than its shape (the Alexi Hexed) says
+and the Explorer were then reshaped by hand in the body editor. A template that sets more than its shape (the Alexi Hexed) says
 which values in the editor's confirmation.
 
 `Prototype001Parameters.body_layout()` returns the outline and every

@@ -1097,6 +1097,13 @@ class Prototype001Parameters:
     tuner_side_offsets: tuple[float, ...] = (15.0, 12.0, 10.0)
     tuner_inline_first_distance: float = 50.0
     tuner_inline_spacing: float = 25.4
+    # tuner_inline_offsets puts a row's posts where they are given instead
+    # of on the strings' lines: one offset from the centreline per row
+    # tuner, from the nut outward, toward the row's own side (negative
+    # past the centreline), so a row can run along a steep drawn edge (an Explorer
+    # or Jackson head, whose strings bend at the nut toward their posts).
+    # Empty: every post on its own string's line.
+    tuner_inline_offsets: tuple[float, ...] = ()
     tuner_edge_offset: float = 15.0
     tuner_tip_margin: float = 5.0
     tuner_post_diameter: float = 6.0
@@ -1314,7 +1321,10 @@ class Prototype001Parameters:
         Posts: in the row styles every post sits on its own string's
         straight continuation past the nut (the bridge-to-nut line from
         ``bridge_string_spacing`` and ``nut_string_spacing``), the post
-        radius outboard of the string, so no string bends at the nut. The
+        radius outboard of the string, so no string bends at the nut —
+        or, with ``tuner_inline_offsets``, the row's posts sit at the
+        offsets given (toward the row's side), the strings bending at the
+        nut toward them. The
         row takes its side's strings nearest first (low E to the first
         bass post) and the pair the other side's outermost strings, so a
         six-in-line row runs diagonally across the centreline and a 4+2
@@ -1394,9 +1404,13 @@ class Prototype001Parameters:
                     (
                         distance,
                         row_side,
-                        string_u(string, distance) + row_sign * post_radius,
+                        row_sign * self.tuner_inline_offsets[index]
+                        if self.tuner_inline_offsets
+                        else string_u(string, distance) + row_sign * post_radius,
                     )
-                    for distance, string in zip(row_distances, row_strings, strict=True)
+                    for index, (distance, string) in enumerate(
+                        zip(row_distances, row_strings, strict=True)
+                    )
                 ]
                 # The opposite side's tuners sit between the row's stations.
                 stations += [
@@ -4168,6 +4182,22 @@ class Prototype001Parameters:
                 f"A {self.headstock_style} headstock needs {bass_count} "
                 "tuner_station_distances (and tuner_side_offsets)."
             )
+        if self.tuner_inline_offsets and not self.headless:
+            row_count = max(bass_count, treble_count)
+            if bass_count == treble_count:
+                raise NeckGeometryError(
+                    "tuner_inline_offsets places a row of tuners; a "
+                    f"{self.headstock_style} headstock has none (use "
+                    "tuner_side_offsets)."
+                )
+            if len(self.tuner_inline_offsets) != row_count:
+                raise NeckGeometryError(
+                    f"A {self.headstock_style} headstock's row needs "
+                    f"{row_count} tuner_inline_offsets, one per tuner from the "
+                    "nut outward."
+                )
+            if not all(math.isfinite(value) for value in self.tuner_inline_offsets):
+                raise NeckGeometryError("tuner_inline_offsets must be finite.")
         inline_values = (
             self.tuner_inline_first_distance,
             self.tuner_inline_spacing,
@@ -4658,6 +4688,60 @@ headstock with flared wings at its foot, narrowing to a rounded point,
 traced from a straight-on product photo (scaled from its frets) — a
 mockup, not the original outline."""
 
+EXPLORER_NECK: dict[str, Any] = {
+    "headstock_style": "6_inline",
+    "headstock_angle": 17.0,
+    "headstock_outline": "drawn",
+    # The original's row: 18.7 mm apart from 48 mm, in a straight line
+    # along the steep tuner edge (tuner_inline_offsets), the strings
+    # bending at the nut toward their posts.
+    "tuner_inline_first_distance": 48.0,
+    "tuner_inline_spacing": 18.7,
+    "tuner_inline_offsets": (24.4, 11.0, -2.4, -15.8, -29.2, -42.6),
+    # The corner flaring out from the nut, the straight tuner edge running
+    # up across the centreline and curving over into the tip.
+    "headstock_bass_edge": (
+        (12.0, 23.4),
+        (20.0, 26.7),
+        (26.0, 31.5),
+        (31.0, 37.2),
+        (34.0, 43.0),
+        (37.0, 49.5),
+        (45.0, 45.8),
+        (80.0, 20.5),
+        (120.0, -8.5),
+        (152.4, -32.0),
+        (160.5, -38.1),
+        (166.6, -43.6),
+        (171.3, -49.6),
+        (175.0, -55.7),
+        (179.4, -67.9),
+        (180.7, -75.3),
+    ),
+    # The long concave sweep out to the hooked tip (its end drawn fuller
+    # by hand).
+    "headstock_treble_edge": (
+        (13.4, 21.9),
+        (30.7, 25.9),
+        (50.9, 31.7),
+        (69.8, 38.9),
+        (90.0, 46.7),
+        (110.2, 56.9),
+        (130.5, 68.1),
+        (150.1, 79.4),
+        (160.4, 86.3),
+        (168.9, 90.4),
+        (176.8, 92.6),
+        (180.7, 81.4),
+    ),
+    "truss_rod_adjustment": "headstock",
+}
+"""An Explorer neck (see ``NECK_TEMPLATES``): a 17 degree six-in-line
+"hockey stick" headstock, its tuners in a row along the steep tuner edge
+and its tip hooked over to the treble side, traced from a straight-on
+product photo (scaled from its frets) and its tip then reshaped by hand —
+a mockup, not the original outline."""
+
 _MOCKINGBIRD_EDGE: tuple[tuple[float, float], ...] = (
     (10.0, 22.0),
     (20.0, 27.0),
@@ -4712,6 +4796,7 @@ NECK_TEMPLATES: dict[str, tuple[str, dict[str, Any]]] = {
     ),
     "gibson": ("Gibson style neck (mockup, not the original)", GIBSON_NECK),
     "flying_v": ("Flying V neck (mockup, not the original)", FLYING_V_NECK),
+    "explorer": ("Explorer neck (mockup, not the original)", EXPLORER_NECK),
     "mockingbird": (
         "Mockingbird neck (mockup, not the original)",
         MOCKINGBIRD_NECK,

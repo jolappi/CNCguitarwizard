@@ -250,6 +250,13 @@ FIELD_HELP: dict[str, str] = {
         "(10 mm for most); the G-code marks their centres to drill on a drill "
         "press."
     ),
+    "tuner_inline_offsets": (
+        "Where a row of tuners' posts sit across the headstock, in mm from "
+        "the centreline toward the row's side, one per tuner from the nut "
+        "outward (negative past the centreline), so the row can run along "
+        "a steep edge as on an Explorer; empty: each post on its own "
+        "string's line, so no string bends at the nut."
+    ),
     "tuner_tip_margin": (
         "Wood kept between the last tuner hole and the headstock's tip, in "
         "mm; the headstock grows when it needs it."
@@ -414,8 +421,7 @@ FIELD_HELP: dict[str, str] = {
         "3/8 in on a bass)."
     ),
     "body_string_ferrule_depth": (
-        "How deep the string ferrules' counterbores are, in mm (0: drilled "
-        "by hand)."
+        "How deep the string ferrules' counterbores are, in mm (0: drilled by hand)."
     ),
     "body_neck_bolt_hole_diameter": (
         "The neck bolts' holes through the body to the neck pocket, their "

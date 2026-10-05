@@ -39,7 +39,8 @@
 - DXF export of the plan outlines and the sheet plates
 - More templates traced from product photos: Mockingbird (reshaped by
   hand), Telecaster, SG, Explorer and Flying V bodies;
-  Stratocaster, Gibson style, Flying V and Mockingbird headstocks
+  Stratocaster, Gibson style, Flying V, Explorer and Mockingbird
+  headstocks, a row of tuners placed along a steep edge
 - Wire channels: the pickups, a switch cavity and a battery box wired to
   the controls and the bridge grounded, routed under a pickguard,
   elsewhere drilled by hand (modelled, with each hole's angle in the
@@ -91,9 +92,6 @@ Body
 Tools and templates
 - Rotating the pickups in the body editor (the control cavity, the
   battery box and the jack already turn).
-- In-line tuner rows along a drawn edge, not only on the strings' lines,
-  for Explorer and Jackson style headstocks (their tuners run in a steep
-  diagonal row along the edge).
 
 ```mermaid
 flowchart TD

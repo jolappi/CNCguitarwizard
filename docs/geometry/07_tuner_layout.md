@@ -38,6 +38,17 @@ at the nut), and a 4+2 row converges toward it with the G post almost on
 it. A 3+3 keeps `tuner_side_offsets`: with both rows at the same stations,
 straight strings would put the D and G posts too close together.
 
+**Posts where they are given.** `tuner_inline_offsets` instead places a
+row's posts at the offsets given — one per row tuner from the nut
+outward, measured from the centreline toward the row's side, negative
+past it — still `tuner_inline_spacing` apart along the neck from
+`tuner_inline_first_distance`. The strings then bend at the nut toward
+their posts, as on a Gibson or Jackson head, and the row can run along a
+steep drawn edge: the Explorer neck template's six posts sit 13.4 mm
+further across at each station, in a line along its tuner edge. It needs
+one offset per row tuner (a 4+2's pair still follows its strings), and a
+3+3, which has no row, refuses it.
+
 **Edges follow the holes, outside a wood reserve.** Each headstock edge
 that carries tuners is the straight line fitted through those holes
 `tuner_edge_offset` (15 mm) further out, from the shoulder to the tip, so

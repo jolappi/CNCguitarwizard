@@ -1030,7 +1030,7 @@ _EXPLORER_POINTS: tuple[tuple[float, float], ...] = (
     (-13.2, -44.5),
     (-2.7, -70.1),
     (2.2, -78.1),
-    (17.7, -86.8),
+    (10.6, -90.1),
     (46.4, -84.3),
     (75.0, -80.8),
     (103.5, -77.2),
@@ -1047,10 +1047,7 @@ _EXPLORER_POINTS: tuple[tuple[float, float], ...] = (
     (347.3, -197.9),
     (371.4, -211.2),
     (395.3, -225.5),
-    (419.4, -239.6),
-    (435.4, -243.1),
-    (439.3, -233.3),
-    (438.6, -225.7),
+    (438.0, -240.1),
     (435.8, -204.8),
     (431.7, -176.5),
     (426.7, -148.7),
@@ -1069,7 +1066,7 @@ _EXPLORER_POINTS: tuple[tuple[float, float], ...] = (
     (335.1, 113.8),
     (321.1, 137.8),
     (305.8, 161.4),
-    (292.2, 163.3),
+    (294.1, 162.7),
     (279.2, 159.1),
     (257.1, 151.4),
     (231.1, 142.3),
@@ -1088,8 +1085,8 @@ _EXPLORER_POINTS: tuple[tuple[float, float], ...] = (
     (-54.7, 174.3),
     (-81.0, 183.4),
     (-92.4, 184.2),
-    (-100.4, 179.7),
-    (-103.8, 173.1),
+    (-111.0, 182.4),
+    (-109.5, 172.2),
     (-102.0, 163.2),
     (-90.5, 149.0),
     (-71.4, 127.4),
@@ -1111,10 +1108,12 @@ _EXPLORER_POINTS: tuple[tuple[float, float], ...] = (
 Traced from a straight-on product photo (its edge as photographed, the
 strap button left out), scaled from its frets and placed with its 22nd
 fret 4 mm ahead of the heel end; the neck crossed off 64 mm ahead of the
-heel end. The long wing reaches forward on the treble side, the long
-bottom corner is on the bass side. 82 control points. A genre starting
-point, free to use and change, not a reproduction of any maker's
-body."""
+heel end. Then reshaped by hand in the body editor: the bass shoulder,
+the long bottom corner and the wing's tip drawn sharper, the tip
+further forward. The long wing reaches forward on the treble side, the
+long bottom corner is on the bass side. 79 control points. A genre
+starting point, free to use and change, not a reproduction of any
+maker's body."""
 
 
 _FLYING_V_POINTS: tuple[tuple[float, float], ...] = (
@@ -1887,7 +1886,8 @@ along the edge). The Mockingbird, Telecaster, SG, Explorer and Flying V
 style ones are traced from straight-on product photos, scaled from their
 frets and placed with their last fret 4 mm ahead of the heel end, as the
 default neck's is — genre mockups, the Mockingbird reshaped by hand at
-its horn, beak and bass lobe; the Flying V's switch,
+its horn, beak and bass lobe, the Explorer at its shoulder, bottom
+corner and wing tip; the Flying V's switch,
 controls (turned along the wing) and battery box all on its treble
 wing. The Jazz Bass style
 one, a mockup the same way, is the bass

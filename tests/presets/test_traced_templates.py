@@ -33,7 +33,7 @@ def _front(key: str, side: float, out: float = 1000.0) -> float:
         ("mockingbird", "Mockingbird style", (464.0, 358.0)),
         ("telecaster", "Telecaster style", (409.0, 327.0)),
         ("sg", "SG style", (428.0, 329.0)),
-        ("explorer", "Explorer style", (543.0, 428.0)),
+        ("explorer", "Explorer style", (553.0, 425.0)),
         ("flying_v", "Flying V style", (543.0, 425.0)),
     ],
 )
@@ -123,7 +123,7 @@ def test_the_traced_bodies_build_left_handed_and_neck_through(key: str) -> None:
     replace(base, neck_joint="neck_through").build()
 
 
-NEW_NECKS = ("stratocaster", "gibson", "flying_v", "mockingbird")
+NEW_NECKS = ("stratocaster", "gibson", "flying_v", "explorer", "mockingbird")
 
 
 @pytest.mark.parametrize("key", NEW_NECKS)
@@ -175,3 +175,52 @@ def test_the_neck_templates_keep_their_heads_shapes() -> None:
     # The top rises to a point in the middle.
     peak = max(mockingbird["headstock_tip_points"])
     assert peak[1] == 0.0
+
+
+def test_the_explorer_neck_runs_its_tuners_along_the_steep_edge() -> None:
+    values = NECK_TEMPLATES["explorer"][1]
+    parameters = replace(Prototype001Parameters(), **values)
+    plan, tuners = parameters.headstock_design()
+    posts = sorted(
+        ((-hole.center.x, hole.center.y) for hole in tuners.holes),
+        key=lambda post: post[0],
+    )
+    # 18.7 mm apart from 48 mm, in a straight row across the centreline
+    # (low E on the bass side, high E far out on the treble side) — not on
+    # the strings' lines.
+    assert [round(d, 1) for d, _ in posts] == [48.0, 66.7, 85.4, 104.1, 122.8, 141.5]
+    assert [round(y, 1) for _, y in posts] == [-24.4, -11.0, 2.4, 15.8, 29.2, 42.6]
+    # Every post keeps the edge offset across the neck to the tuner edge.
+    for d, y in posts:
+        assert y - plan.edge_y(d, -1.0) >= parameters.tuner_edge_offset - 0.5
+    # The tip hooks over to the treble side.
+    tip = values["headstock_bass_edge"][-1]
+    assert -tip[1] > 70.0 and tip[0] == plan.length
+
+
+def test_given_inline_offsets_place_a_row_and_must_match_it() -> None:
+    from cncguitarwizard.geometry.exceptions import NeckGeometryError
+
+    base = replace(
+        Prototype001Parameters(),
+        headstock_style="6_inline",
+        headstock_outline="fitted",
+        tuner_inline_offsets=(20.0, 12.0, 4.0, -4.0, -12.0, -20.0),
+    )
+    _, tuners = base.headstock_design()
+    assert [round(h.center.y, 1) for h in tuners.holes] == [
+        -20.0,
+        -12.0,
+        -4.0,
+        4.0,
+        12.0,
+        20.0,
+    ]
+    # A treble-side row: offsets toward the treble side.
+    reverse = replace(base, headstock_style="6_inline_reverse")
+    _, tuners = reverse.headstock_design()
+    assert tuners.holes[0].center.y == pytest.approx(20.0)
+    with pytest.raises(NeckGeometryError, match="needs 6 tuner_inline_offsets"):
+        replace(base, tuner_inline_offsets=(20.0, 12.0)).build()
+    with pytest.raises(NeckGeometryError, match="has none"):
+        replace(base, headstock_style="3+3").build()

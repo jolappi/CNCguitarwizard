@@ -10,15 +10,23 @@
   - "Mockingbird style": traced from a B.C. Rich Mockingbird and then
     reshaped by hand in the body editor (the long horn longer and
     sharper, the beak, the bass scoop's front and lower lobe).
-  - "Telecaster style", "SG style", "Explorer style" and "Flying V
-    style" mockups; the Flying V's switch, control cavity (turned along
+  - "Telecaster style", "SG style", "Explorer style" (reshaped by hand
+    at its shoulder, bottom corner and wing tip) and "Flying V style"
+    mockups; the Flying V's switch, control cavity (turned along
     the wing), jack and battery box all on its treble wing.
-- Four more neck templates for the headstock editor's *Start from*,
+- Five more neck templates for the headstock editor's *Start from*,
   mockups traced from the same kind of photos:
   - Stratocaster: flat six-in-line on a slotted nut, the posts 22.5 mm
     apart, the tuner edge redrawn along them.
   - Gibson style: a 17 degree "open book" three-a-side.
   - Flying V: a 17 degree three-a-side narrowing to a rounded point.
+  - Explorer: a 17 degree six-in-line "hockey stick", its tip hooked
+    over to the treble side (drawn fuller by hand), the original's row of
+    posts along its steep tuner edge.
+- `tuner_inline_offsets`: a row of tuners' posts where they are given
+  (one per tuner, across the headstock from the centreline) instead of
+  on the strings' lines, so the row can run along a steep drawn edge; the
+  strings then bend at the nut toward their posts.
   - Mockingbird: the B.C. Rich three-a-side, its top rising to a point
     (drawn higher by hand).
 - DXF export: every build writes `Prototype001_plan.dxf`, the whole
