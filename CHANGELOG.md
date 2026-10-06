@@ -4,6 +4,17 @@
 
 ### Added
 
+- The fretboard blank in the machining form: a bought blank's length and
+  width (`fretboard_blank_length`, `fretboard_blank_width`, the board
+  centred on it; 540 × 70 mm takes the default board and its dowels),
+  its thickness (`fretboard_blank_thickness`, 7 mm by default) and a
+  carrier board for a blank too short for the dowels
+  (`fretboard_carrier_thickness`: the blank glued on it, the dowels
+  drilled through it past the blank's ends, the notes giving its size).
+  A board longer or wider than its blank is refused; a blank thick
+  enough to take the radius deeper than the ball nose's step-down is
+  roughed in layers first; a blank leaving the outline cutter little
+  frame beside the board is to be fixed down.
 - `build-prototype001 --design my_guitar.json` builds a design saved with
   the web app's *Save design* locally — G-code, DXF, and the FCStd and
   STEP models the browser cannot make — read as the web app loads it

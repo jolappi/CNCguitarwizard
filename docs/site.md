@@ -218,6 +218,7 @@ Python.
    links for the FreeCAD script (`.py` and `.FCMacro`), every `.nc`
    program (body, electronics, neck, fretboard and one per cover plate), the SVG plots, the DXF outlines
    (`Prototype001_plan.dxf`, `Prototype001_covers.dxf`; see [DXF](render/02_dxf.md)) and `build.json`, and a summary with stock size
+   (a fretboard blank's carrier on a row of its own, `fretboard_carrier_thickness`)
    and time estimates. The downloads come in one list per part — the
    model and report first, then body, neck, fretboard, the inlay pieces and covers — each
    program numbered in the order it is run (`build.json` gives it as the

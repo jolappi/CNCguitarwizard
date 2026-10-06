@@ -2,8 +2,10 @@
 
 The fretboard blank is a flat board ``blank_thickness`` thick, glue
 face down, held on two dowels in the waste beyond the nut and beyond
-the end. Everything is cut from the top in one fixturing, with tool
-changes between programs (re-touch Z on the blank top after each):
+the end — or, a bought blank too short for them, glued on a longer
+carrier board that takes them. Everything is cut from the top in one
+fixturing, with tool changes between programs (re-touch Z on the blank
+top after each):
 
 1. ball nose — the radiused playing surface;
 2. small end mill — the inlay pockets, measured from the crown;
@@ -25,7 +27,8 @@ from .gcode import Setup
 from .inlays import inlay_fit_outline
 from .operations import drill, pocket, profile
 from .parameters import MachiningParameters
-from .surfacing import build_offset_grid, raster_finish
+from .planar import polygon_bounds
+from .surfacing import build_offset_grid, raster_finish, raster_rough
 from .toolpath import PathBuilder, Toolpath
 
 if TYPE_CHECKING:
@@ -84,6 +87,15 @@ class FretboardMachiningParameters:
         blank_thickness: Board thickness before the radius is cut; the
             crown ends ``blank_thickness - center_thickness`` below the
             blank top.
+        blank_length: The blank's length as bought, the board centred on
+            it; ``None`` cuts it from stock ``flat.stock_margin`` longer
+            at each end, lengthened where the index pins need it.
+        blank_width: The blank's width, the board centred on it; ``None``
+            leaves ``flat.stock_margin`` of waste each side.
+        carrier_thickness: A carrier board the blank is glued on, which
+            takes the index pins past a given blank's ends where it is too
+            short for them; the pins are drilled through it. ``None``: no
+            carrier, and the pins must fit in the blank.
         finishing_step_over: Raster step for the radius, in millimetres.
         slot_overshoot: How far each slot runs past the board edges.
         grid_spacing_x: Drop-cutter grid spacing along the board.
@@ -99,6 +111,9 @@ class FretboardMachiningParameters:
     slot_overshoot: float = 1.0
     grid_spacing_x: float = 2.0
     grid_spacing_y: float = 0.5
+    blank_length: float | None = None
+    blank_width: float | None = None
+    carrier_thickness: float | None = None
 
     def __post_init__(self) -> None:
         for name, value in (
@@ -106,7 +121,12 @@ class FretboardMachiningParameters:
             ("finishing_step_over", self.finishing_step_over),
             ("grid_spacing_x", self.grid_spacing_x),
             ("grid_spacing_y", self.grid_spacing_y),
+            ("blank_length", self.blank_length),
+            ("blank_width", self.blank_width),
+            ("carrier_thickness", self.carrier_thickness),
         ):
+            if value is None:
+                continue
             if not math.isfinite(value) or value <= 0.0:
                 raise ToolpathError(f"{name} must be finite and positive.")
         if not math.isfinite(self.slot_overshoot) or self.slot_overshoot < 0.0:
@@ -117,14 +137,20 @@ class FretboardMachiningParameters:
     def with_form_settings(
         self, machining: MachiningParameters
     ) -> FretboardMachiningParameters:
-        """Return these with the small cutters' speeds and step-downs set.
+        """Return these with the form's small cutters and blank set.
 
         From the machining form: the fret-slot cutter's
         (``fret_slot_spindle_speed``, ``fret_slot_step_down``) and the
-        inlay cutter's (``inlay_spindle_speed``, ``inlay_step_down``).
+        inlay cutter's (``inlay_spindle_speed``, ``inlay_step_down``)
+        speeds and step-downs, and the blank (``fretboard_blank_*``,
+        ``fretboard_carrier_thickness``).
         """
         return replace(
             self,
+            blank_thickness=machining.fretboard_blank_thickness,
+            blank_length=machining.fretboard_blank_length,
+            blank_width=machining.fretboard_blank_width,
+            carrier_thickness=machining.fretboard_carrier_thickness,
             slot=replace(
                 self.slot,
                 spindle_speed=machining.fret_slot_spindle_speed,
@@ -139,8 +165,30 @@ class FretboardMachiningParameters:
 
 
 @dataclass(frozen=True, slots=True)
+class FretboardCarrier:
+    """The board a fretboard blank is glued on to take the index pins.
+
+    Args:
+        length: Its least length, in mm.
+        width: Its least width (the blank's), in mm.
+        thickness: Its thickness, in mm.
+        nut_overhang: How far it reaches past the blank's nut end.
+        end_overhang: How far it reaches past the blank's far end.
+    """
+
+    length: float
+    width: float
+    thickness: float
+    nut_overhang: float
+    end_overhang: float
+
+
+@dataclass(frozen=True, slots=True)
 class FretboardMachiningPlan:
-    """The setups that machine one fretboard, in running order."""
+    """The setups that machine one fretboard, in running order.
+
+    ``carrier`` is the board the blank is glued on, or ``None``.
+    """
 
     index_pins: Setup
     radius: Setup
@@ -154,10 +202,45 @@ class FretboardMachiningPlan:
     origin_y: float
     index_pin_positions: tuple[tuple[float, float], ...]
     preview_outlines: tuple[tuple[Point2D, ...], ...]
+    carrier: FretboardCarrier | None = None
 
     @property
     def setups(self) -> tuple[Setup, ...]:
         return (self.index_pins, self.radius, self.inlays, self.slots, self.outline)
+
+
+def _given_blank(
+    outline: tuple[Point2D, ...],
+    automatic: StockBounds,
+    parameters: FretboardMachiningParameters,
+) -> StockBounds:
+    """Return the blank as given (a bought one), the board centred on it.
+
+    A length or width not given is the automatic blank's.
+
+    Raises:
+        ToolpathError: If the board does not fit on it.
+    """
+    min_x, min_y, max_x, max_y = polygon_bounds(outline)
+    length = parameters.blank_length or automatic.length
+    width = parameters.blank_width or automatic.width
+    if length < max_x - min_x:
+        raise ToolpathError(
+            f"The fretboard is {max_x - min_x:.1f} mm long: a {length:g} mm "
+            "blank (fretboard_blank_length) is too short for it."
+        )
+    if width < max_y - min_y:
+        raise ToolpathError(
+            f"The fretboard is {max_y - min_y:.1f} mm wide at its widest: a "
+            f"{width:g} mm blank (fretboard_blank_width) is too narrow for it."
+        )
+    middle_x, middle_y = (min_x + max_x) / 2.0, (min_y + max_y) / 2.0
+    return StockBounds(
+        middle_x - length / 2.0,
+        middle_y - width / 2.0,
+        middle_x + length / 2.0,
+        middle_y + width / 2.0,
+    )
 
 
 def fretboard_outline_polygon(geometry: Prototype001Geometry) -> tuple[Point2D, ...]:
@@ -212,7 +295,36 @@ def plan_fretboard_machining(
         Point2D(min(xs) - radius, max(ys) + radius),
     )
     stock = StockBounds.around(outline, flat.stock_margin)
-    pins, stock = resolve_index_pins(outline, [sweep], flat, stock)
+    given = parameters.blank_length is not None or parameters.blank_width is not None
+    if given:
+        stock = _given_blank(outline, stock, parameters)
+    pins, pin_stock = resolve_index_pins(outline, [sweep], flat, stock)
+    carrier: FretboardCarrier | None = None
+    if parameters.blank_length is not None and pin_stock.length > stock.length:
+        # A bought blank too short for the dowels: they go in a carrier.
+        if parameters.carrier_thickness is None:
+            raise ToolpathError(
+                f"The index pins do not fit in the {stock.length:g} mm "
+                f"fretboard blank: they need {pin_stock.length:.0f} mm. Glue "
+                "it on a longer carrier board (fretboard_carrier_thickness) "
+                "that takes them, or use a longer blank."
+            )
+    else:
+        stock = pin_stock
+    if parameters.carrier_thickness is not None:
+        carrier = FretboardCarrier(
+            length=pin_stock.length,
+            width=stock.width,
+            thickness=parameters.carrier_thickness,
+            nut_overhang=stock.min_x - pin_stock.min_x,
+            end_overhang=pin_stock.max_x - stock.max_x,
+        )
+    # A carrier is drilled through with the blank, into the spoilboard.
+    pin_depth = (
+        parameters.blank_thickness
+        + (0.0 if carrier is None else carrier.thickness)
+        + flat.through_overshoot
+    )
     origin_x, origin_y = pins[0]
     reference_points = tuple((x - origin_x, y - origin_y) for x, y in pins[1:])
 
@@ -238,24 +350,53 @@ def plan_fretboard_machining(
         "that much too deep."
     )
 
+    min_x, min_y, max_x, max_y = polygon_bounds(outline)
+    if given:
+        blank_note = (
+            f"Blank: {stock.length:g} x {stock.width:g} x "
+            f"{parameters.blank_thickness:g} mm, the board centred on it: "
+            f"{min_x - stock.min_x:.1f} mm of waste at each end, "
+            f"{min_y - stock.min_y:.1f} mm each side."
+        )
+    else:
+        blank_note = (
+            f"Blank: at least {stock.length:.0f} x {stock.width:.0f} x "
+            f"{parameters.blank_thickness:g} mm."
+        )
+    if carrier is None:
+        fixing: tuple[str, ...] = (
+            "Clamp the blank glue face down on a spoilboard.",
+            blank_note,
+        )
+    else:
+        fixing = (
+            blank_note,
+            f"Glue (or tape) the blank glue face down on a carrier board at "
+            f"least {carrier.length:.0f} x {carrier.width:g} x "
+            f"{carrier.thickness:g} mm, reaching {carrier.nut_overhang:.0f} mm "
+            f"past the blank's nut end and {carrier.end_overhang:.0f} mm past "
+            "its far end, and clamp the carrier on a spoilboard: the pins are "
+            "drilled through it. The outline cuts "
+            f"{flat.through_overshoot:g} mm into it, so the board stays on it "
+            "until parted from it.",
+        )
     index_pins = Setup(
         "Fretboard_index_pins",
-        "Fretboard index pins - drill both dowel holes through the blank",
+        "Fretboard index pins - drill both dowel holes through the "
+        + ("blank" if carrier is None else "blank and its carrier"),
         tuple(
             drill(
                 f"Index pin {index}",
                 machine(Point2D(x, y)),
                 flat.index_pin_diameter,
-                parameters.blank_thickness + flat.through_overshoot,
+                pin_depth,
                 flat,
             )
             for index, (x, y) in enumerate(pins, start=1)
         ),
         (
-            "Clamp the blank glue face down on a spoilboard.",
+            *fixing,
             "Set X/Y zero at the index pin 1 position and Z zero on the blank top.",
-            f"Blank: at least {stock.length:.0f} x {stock.width:.0f} x "
-            f"{parameters.blank_thickness:g} mm.",
         ),
         reference_points,
         flat,
@@ -271,10 +412,28 @@ def plan_fretboard_machining(
         spacing_x=parameters.grid_spacing_x,
         spacing_y=parameters.grid_spacing_y,
     )
+    # A thick blank is roughed down in layers no deeper than the ball's
+    # step-down before the finishing pass follows the radius.
+    deepest = surface_depth(max(abs(min(ys)), abs(max(ys))))
+    roughing = (
+        (
+            raster_rough(
+                "Radius roughing",
+                grid,
+                parameters.ball,
+                x_range=x_range,
+                y_range=y_range,
+                step_over=parameters.ball.raster_spacing,
+            ),
+        )
+        if deepest > parameters.ball.step_down
+        else ()
+    )
     radius_setup = Setup(
         "Fretboard_radius",
         f"Fretboard playing surface - {surface.radius:g} mm radius, ball nose",
         (
+            *roughing,
             raster_finish(
                 "Radius surface",
                 grid,
@@ -288,6 +447,15 @@ def plan_fretboard_machining(
             "Blank on the two index pins, same work zero.",
             f"The crown ends {skim:g} mm below the blank top; the edges "
             f"{surface_depth(max(ys)):.2f} mm.",
+            *(
+                (
+                    f"Roughed first in layers of at most "
+                    f"{parameters.ball.step_down:g} mm: the surface goes down "
+                    f"to {deepest:.1f} mm.",
+                )
+                if roughing
+                else ()
+            ),
         ),
         reference_points,
         parameters.ball,
@@ -499,6 +667,24 @@ def plan_fretboard_machining(
             f"The board's slope behind the nut's lip is cut in {count} "
             f"terraces down to the glue face; sand them into one slope.",
         )
+    # A bought blank only a little wider than the board leaves the outline
+    # cutter little or no frame for the tabs to hold the board in.
+    waste = min(
+        min_x - stock.min_x,
+        stock.max_x - max_x,
+        min_y - stock.min_y,
+        stock.max_y - max_y,
+    )
+    thin_frame = (
+        (
+            f"Only {waste:.1f} mm of blank beside the board, the outline "
+            f"cutter {flat.tool_diameter:g} mm wide: the frame round it is "
+            "thin or cut away, so fix the blank down (double-sided tape) for "
+            "the tabs not to be all that holds the board.",
+        )
+        if carrier is None and waste < flat.tool_diameter + 2.0
+        else ()
+    )
     outline_setup = Setup(
         "Fretboard_outline",
         "Fretboard outline - tapered profile with tabs",
@@ -516,6 +702,7 @@ def plan_fretboard_machining(
             "Same fixture and X/Y zero; back to the flat end mill and " + touch_z,
             f"Leaves {flat.tab_count} tabs {flat.tab_height:g} mm high; saw and "
             "sand them off.",
+            *thin_frame,
             *shelf_notes,
             *binding_notes(
                 f"The board is cut {binding:g} mm narrower each side for its "
@@ -540,6 +727,7 @@ def plan_fretboard_machining(
         origin_y=origin_y,
         index_pin_positions=pins,
         preview_outlines=(preview,) * 5,
+        carrier=carrier,
     )
 
 

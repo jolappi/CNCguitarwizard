@@ -234,3 +234,99 @@ def test_every_slot_starts_one_step_into_the_radius(nut_style: str) -> None:
         rapids = [move for move in path.moves if move.rapid]
         assert all(move.z >= radius_z(move.y) + 1.0 - 1e-6 for move in rapids)
     assert any("not on the radiused surface" in note for note in plan.slots.notes)
+
+
+def test_a_bought_blank_is_cut_as_it_is(geometry) -> None:  # type: ignore[no-untyped-def]
+    # A 540 x 70 blank (all a tester can buy): the board centred on it,
+    # the dowels still in its ends.
+    parameters = FretboardMachiningParameters(blank_length=540.0, blank_width=70.0)
+    plan = plan_fretboard_machining(geometry, parameters)
+    assert (plan.stock_length, plan.stock_width) == (540.0, 70.0)
+    assert plan.carrier is None
+    (x1, _), (x2, _) = plan.index_pin_positions
+    # The board runs 0 to 461.2 mm: 39.4 mm of blank past each end.
+    assert -39.4 + 11.0 <= x1 < 0.0 and 461.2 < x2 <= 500.6 - 11.0
+    notes = " ".join(plan.index_pins.notes)
+    assert "540 x 70 x 7 mm, the board centred on it" in notes
+    assert "39.4 mm of waste at each end, 6.9 mm each side" in notes
+    # 6.9 mm beside the board, the cutter 6 mm: fix the blank down.
+    assert any("double-sided tape" in note for note in plan.outline.notes)
+
+
+def test_a_blank_too_short_for_the_pins_goes_on_a_carrier(geometry) -> None:  # type: ignore[no-untyped-def]
+    short = FretboardMachiningParameters(blank_length=500.0, blank_width=70.0)
+    with pytest.raises(ToolpathError, match="need 527 mm.*carrier"):
+        plan_fretboard_machining(geometry, short)
+    plan = plan_fretboard_machining(geometry, replace(short, carrier_thickness=12.0))
+    carrier = plan.carrier
+    assert carrier is not None
+    assert plan.stock_length == 500.0
+    assert carrier.length == pytest.approx(527.2, abs=0.1)
+    assert carrier.nut_overhang + carrier.end_overhang == pytest.approx(
+        carrier.length - 500.0
+    )
+    assert (carrier.width, carrier.thickness) == (70.0, 12.0)
+    # Drilled through the blank and the carrier into the spoilboard.
+    for path in plan.index_pins.toolpaths:
+        assert path.deepest_z() == pytest.approx(-(7.0 + 12.0 + 0.5))
+    assert "carrier board at least 527 x 70 x 12 mm" in " ".join(plan.index_pins.notes)
+    assert not any("double-sided tape" in note for note in plan.outline.notes)
+
+
+@pytest.mark.parametrize(
+    ("given", "message"),
+    [
+        ({"blank_length": 400.0}, "461.2 mm long: a 400 mm blank"),
+        ({"blank_width": 50.0}, "56.1 mm wide at its widest: a 50 mm blank"),
+        ({"carrier_thickness": 0.0}, "carrier_thickness must be"),
+    ],
+)
+def test_the_board_must_fit_its_blank(geometry, given, message) -> None:  # type: ignore[no-untyped-def]
+    with pytest.raises(ToolpathError, match=message):
+        plan_fretboard_machining(geometry, FretboardMachiningParameters(**given))
+
+
+def test_a_thick_blank_is_roughed_before_the_radius(geometry) -> None:  # type: ignore[no-untyped-def]
+    plan = plan_fretboard_machining(
+        geometry, FretboardMachiningParameters(blank_thickness=11.0)
+    )
+    rough, finish = plan.radius.toolpaths
+    assert rough.name == "Radius roughing"
+    # Down to 6 mm at the edges, its first layer no deeper than 3 mm.
+    cutting = [move.z for move in rough.moves if move.z < 0.0]
+    assert max(cutting) >= -3.0
+    assert min(cutting) == pytest.approx(finish.deepest_z())
+    assert finish.deepest_z() < -5.0
+    assert any("Roughed first in layers" in note for note in plan.radius.notes)
+    # A 7 mm blank needs no roughing.
+    default = plan_fretboard_machining(geometry, FretboardMachiningParameters())
+    assert [path.name for path in default.radius.toolpaths] == ["Radius surface"]
+
+
+def test_the_form_sets_the_blank() -> None:
+    machining = MachiningParameters(
+        fretboard_blank_length=540.0,
+        fretboard_blank_width=70.0,
+        fretboard_blank_thickness=8.0,
+        fretboard_carrier_thickness=10.0,
+    )
+    parameters = FretboardMachiningParameters().with_form_settings(machining)
+    assert (
+        parameters.blank_length,
+        parameters.blank_width,
+        parameters.blank_thickness,
+        parameters.carrier_thickness,
+    ) == (540.0, 70.0, 8.0, 10.0)
+    fields = {
+        field["name"]: field for field in parameter_schema()["machining"][0]["fields"]
+    }
+    for name in (
+        "fretboard_blank_length",
+        "fretboard_blank_width",
+        "fretboard_blank_thickness",
+        "fretboard_carrier_thickness",
+    ):
+        assert fields[name]["advanced"] is False
+    assert fields["fretboard_blank_length"]["type"] == "optional_float"
+    with pytest.raises(ToolpathError, match="fretboard_blank_width"):
+        MachiningParameters(fretboard_blank_width=-1.0)

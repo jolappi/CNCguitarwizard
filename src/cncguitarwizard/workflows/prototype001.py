@@ -302,6 +302,16 @@ class Prototype001Build:
                         "from_nut": -block.start_x,
                     },
                 }
+            if isinstance(plan, FretboardMachiningPlan) and plan.carrier:
+                # A bought blank glued on a carrier that takes the pins.
+                carrier = plan.carrier
+                self._stock_report[part]["carrier"] = {
+                    "length_mm": round(carrier.length, 1),
+                    "width_mm": round(carrier.width, 1),
+                    "thickness_mm": carrier.thickness,
+                    "past_nut_end_mm": round(carrier.nut_overhang, 1),
+                    "past_far_end_mm": round(carrier.end_overhang, 1),
+                }
 
     def _write_dxf(self) -> None:
         """Write the plan outlines and the sheet plates as DXF."""

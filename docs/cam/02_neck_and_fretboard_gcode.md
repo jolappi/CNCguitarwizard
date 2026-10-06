@@ -130,6 +130,30 @@ The board is a flat blank `blank_thickness` (7 mm) thick, glue face down,
 on two dowels beyond the nut and beyond the end. Everything is cut from
 the top in one fixturing.
 
+**The blank.** Left to the build, it is the board's outline with
+`flat.stock_margin` (35 mm) of waste on every side, lengthened where the
+dowels need it (531 × 126 mm on the default board). A bought blank is
+given instead (`blank_length`, `blank_width`; in the machining form
+`fretboard_blank_length`, `fretboard_blank_width`), the board centred on
+it; a board longer or wider than it is refused, naming both. Its
+thickness (`blank_thickness`, form `fretboard_blank_thickness`, 7 mm) must
+be at least the board's; the radius takes the rest off the top, and where
+the surface goes deeper than the ball nose's step-down (a 10 mm blank
+for a 6 mm board) `Fretboard_radius.nc` roughs it in layers first
+(`Radius roughing`). A 540 × 70 blank takes the default board's dowels in
+its 39 mm of waste at each end; a shorter one does not, and the build
+says how long the dowels need it — then glue (or tape) it on a longer
+carrier board (`carrier_thickness`, form `fretboard_carrier_thickness`):
+the dowels go through the carrier past the blank's ends, drilled through
+it into the spoilboard, and the index-pin program's notes give the
+carrier's least size and how far it reaches past each end of the blank
+(`FretboardCarrier`, `stock.Fretboard.carrier` in `build.json`, a row of
+its own in the web summary). The outline then cuts into the carrier by
+the through overshoot, so the board stays fixed on it. Where less than
+the outline cutter's width and 2 mm of blank is left beside the board
+(6.9 mm on a 70 mm blank), the outline program's notes say to fix the
+blank down, for the tabs are not all that holds the board.
+
 | Program | Tool | Contents |
 | --- | --- | --- |
 | `Fretboard_index_pins.nc` | flat | Both dowel holes |

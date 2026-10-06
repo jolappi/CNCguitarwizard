@@ -257,6 +257,10 @@ _BASIC_FIELDS: frozenset[str] = frozenset(
         "fret_slot_step_down",
         "inlay_spindle_speed",
         "inlay_step_down",
+        "fretboard_blank_length",
+        "fretboard_blank_width",
+        "fretboard_blank_thickness",
+        "fretboard_carrier_thickness",
     }
 )
 

@@ -107,6 +107,23 @@ class MachiningParameters:
             roughing tool, in fine passes; off (the default) leaves the
             roughing's rows, the flat tool following the arch, to sand
             smooth by hand, as a carve routed in steps is.
+        fretboard_blank_length: The fretboard blank's length, in mm, the
+            board centred on it (a bought blank, 540 mm say); none (the
+            default) cuts it from stock 35 mm longer at each end, longer
+            still where the index pins need it.
+        fretboard_blank_width: The fretboard blank's width, in mm, the
+            board centred on it (70 mm say); none (the default) leaves
+            35 mm of waste each side.
+        fretboard_blank_thickness: The fretboard blank's thickness before
+            the radius is cut, in mm (7 by default); at least the board's
+            ``fretboard_thickness``. The radius takes the rest off the
+            top, roughed in layers first where it is deeper than the ball
+            nose's step-down.
+        fretboard_carrier_thickness: A carrier board under the fretboard
+            blank, in mm: the blank glued (or taped) on it, the index pins
+            go through it past the blank's ends where the blank is too
+            short to take them (the program's notes give how far). None
+            (the default): no carrier, and the pins must fit in the blank.
 
     Raises:
         ToolpathError: If any value is non-finite or out of its range.
@@ -147,6 +164,10 @@ class MachiningParameters:
     inlay_step_down: float = 0.2
     carve_tool_diameter: float = 0.0
     carve_finish: bool = False
+    fretboard_blank_length: float | None = None
+    fretboard_blank_width: float | None = None
+    fretboard_blank_thickness: float = 7.0
+    fretboard_carrier_thickness: float | None = None
 
     def __post_init__(self) -> None:
         """Reject parameters the planner cannot cut safely with."""
@@ -172,7 +193,15 @@ class MachiningParameters:
             "fret_slot_step_down": self.fret_slot_step_down,
             "inlay_spindle_speed": self.inlay_spindle_speed,
             "inlay_step_down": self.inlay_step_down,
+            "fretboard_blank_thickness": self.fretboard_blank_thickness,
         }
+        for name, value in (
+            ("fretboard_blank_length", self.fretboard_blank_length),
+            ("fretboard_blank_width", self.fretboard_blank_width),
+            ("fretboard_carrier_thickness", self.fretboard_carrier_thickness),
+        ):
+            if value is not None:
+                positive[name] = value
         for name, value in positive.items():
             if not math.isfinite(value) or value <= 0.0:
                 raise ToolpathError(f"{name} must be finite and positive.")

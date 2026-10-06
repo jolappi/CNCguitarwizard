@@ -317,3 +317,21 @@ def test_build_writes_the_laminated_neck_programs(tmp_path: Path) -> None:
     assert report["stock"]["Neck"]["blank"] == "laminated"
     assert report["stock"]["Neck"]["thickness_mm"] == 40.0
     assert report["gcode"]["Headstock_top"]["part"] == "Neck"
+
+
+def test_build_reports_a_fretboard_blank_on_its_carrier(tmp_path: Path) -> None:
+    result = build_prototype001(
+        tmp_path / "output",
+        run_freecad=False,
+        machining=MachiningParameters(
+            fretboard_blank_length=500.0,
+            fretboard_blank_width=70.0,
+            fretboard_carrier_thickness=12.0,
+        ),
+    )
+    stock = json.loads(result.report_path.read_text(encoding="utf-8"))["stock"]
+    fretboard = stock["Fretboard"]
+    assert (fretboard["length_mm"], fretboard["width_mm"]) == (500.0, 70.0)
+    assert fretboard["carrier"]["length_mm"] == 527.2
+    assert fretboard["carrier"]["thickness_mm"] == 12.0
+    assert "carrier" not in stock["Neck"]

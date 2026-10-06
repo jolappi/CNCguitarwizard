@@ -658,6 +658,11 @@ function showResult(result) {
   const rows = [];
   for (const [part, stock] of Object.entries(report.stock)) {
     rows.push([`${part} blank`, `${stock.length_mm} × ${stock.width_mm} × ${stock.thickness_mm} mm, pins at machine X ${stock.index_pins_machine_xy.map((p) => p[0]).join(" / ")}`]);
+    // A bought fretboard blank glued on a carrier that takes the pins.
+    const carrier = stock.carrier;
+    if (carrier) {
+      rows.push([`${part} carrier`, `${carrier.length_mm} × ${carrier.width_mm} × ${carrier.thickness_mm} mm under the blank, reaching ${carrier.past_nut_end_mm} mm past its nut end and ${carrier.past_far_end_mm} mm past its far end; the pins go through it`]);
+    }
     // A neck blank can be the neck's own plank with a block glued under
     // the headstock end once the neck is cut (neck_blank "laminated").
     const block = stock.laminated && stock.laminated.headstock_block_mm;
