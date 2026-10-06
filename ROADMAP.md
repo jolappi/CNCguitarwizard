@@ -49,7 +49,8 @@
 - Undo and redo for the editors and the form
 - A saved design built locally from the command line (`--design`),
   FreeCAD models included
-- Headstock errors that name the setting to mend
+- Headstock errors that name the setting to mend; a hooked drawn tip
+  modelled as drawn
 - More templates traced from product photos: Mockingbird (reshaped by
   hand), Telecaster, SG, Explorer and Flying V bodies;
   Stratocaster, Gibson style, Flying V, Explorer and Mockingbird

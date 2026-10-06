@@ -590,6 +590,11 @@
 
 ### Fixed
 
+- A drawn headstock's tip is modelled as drawn: the headstock loft's
+  sections are now at most 3 mm apart (`MAX_HEADSTOCK_SECTION_GAP`), not
+  11 mm at the tip, where a sharply hooked tip (an edge turning in over
+  its last 20 mm, the other crossing the centreline) swung the FreeCAD
+  loft out into a curl the headstock editor did not show.
 - A headstock that cannot be drawn names the setting to mend instead of
   "Headstock plan dimensions must be finite and positive": a fitted
   outline narrowing to nothing at its tip (a `headstock_length` far past

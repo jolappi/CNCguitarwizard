@@ -55,6 +55,14 @@ TRUSS_ROD_POCKET_PIECE_LENGTH = 5.0
 MIN_SECTION_GAP = 0.2
 """Least distance between two loft sections along the neck, in mm."""
 
+MAX_HEADSTOCK_SECTION_GAP = 3.0
+"""Most distance between two loft sections along the headstock, in mm.
+
+The headstock is one smooth loft through its sections, so where they are
+far apart and the drawn edges turn sharply between them (a hooked tip)
+its spline swings out into a curl past the outline.
+"""
+
 
 @dataclass(frozen=True, slots=True)
 class FreeCADScriptExporter:
@@ -1929,25 +1937,32 @@ class FreeCADScriptExporter:
         plan = headstock.plan
         tip_x = -(plan.reach + 1.0) if plan.tip_points else -plan.length
         segments = 32
-        sections = []
-        for step in range(segments + 1):
+        positions = [tip_x]
+        for step in range(1, segments + 1):
             u = step / segments
             # Bias sampling density toward the end: that is where this
             # loft has to agree with the following blended run's own
             # unblended starting value closely enough for one continuous
             # loft to actually track it, rather than chording across it.
-            # The tip end has no such match to keep and can stay coarser.
             fraction = 1.0 - (1.0 - u) ** 2
             position = tip_x + (end_position - tip_x) * fraction
-            sections.append(
-                FreeCADScriptExporter._angled_headstock_root_section(
-                    headstock,
-                    neck_surface,
-                    position,
-                    lateral_edge_fillet_radius,
-                )
+            # The tip end is sparser, but never more than
+            # MAX_HEADSTOCK_SECTION_GAP: 11 mm apart there, a hooked drawn
+            # tip's sharp turn swung the loft out into a curl.
+            previous = positions[-1]
+            fill = math.ceil((position - previous) / MAX_HEADSTOCK_SECTION_GAP)
+            positions += [
+                previous + (position - previous) * k / fill for k in range(1, fill + 1)
+            ]
+        return tuple(
+            FreeCADScriptExporter._angled_headstock_root_section(
+                headstock,
+                neck_surface,
+                position,
+                lateral_edge_fillet_radius,
             )
-        return tuple(sections)
+            for position in positions
+        )
 
     @staticmethod
     def _headstock_root_sections(

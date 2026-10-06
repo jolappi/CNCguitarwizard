@@ -10,7 +10,10 @@ import pytest
 
 from cncguitarwizard.backends.freecad import FreeCADScriptExporter
 from cncguitarwizard.backends.freecad.exceptions import FreeCADBackendError
-from cncguitarwizard.backends.freecad.script_exporter import TRANSITION_CUT_SAMPLES
+from cncguitarwizard.backends.freecad.script_exporter import (
+    MAX_HEADSTOCK_SECTION_GAP,
+    TRANSITION_CUT_SAMPLES,
+)
 from cncguitarwizard.geometry.body import (
     BodyOutline,
     BodySolid,
@@ -1263,3 +1266,42 @@ def test_a_shaped_tip_is_lofted_past_it_and_cut_back() -> None:
     )
     # The neck's CAM outline follows the point too.
     assert min(p.x for p in neck_plan_polygon(geometry)) == pytest.approx(-165.0)
+
+
+def test_a_hooked_drawn_tip_is_lofted_closely_enough_to_follow_it() -> None:
+    # A six-in-line reverse whose bass edge turns in sharply over its last
+    # 20 mm and whose treble edge crosses the centreline: with sections
+    # 11 mm apart at the tip the loft swung out into a curl past it.
+    parameters = replace(
+        Prototype001Parameters(),
+        scale_length=635.0,
+        nut_style="zero_fret",
+        headstock_style="6_inline_reverse",
+        headstock_outline="drawn",
+        headstock_bass_edge=(
+            (21.5, 31.9), (44.8, 35.6), (64.8, 31.4), (83.5, 29.5),
+            (106.8, 32.8), (126.4, 39.7), (145.4, 35.4), (168.7, 35.7),
+            (181.6, 36.4), (185.6, 27.5), (198.9, 9.6),
+        ),
+        headstock_treble_edge=(
+            (22.5, 28.5), (45.0, 36.0), (63.8, 31.2), (82.5, 26.5),
+            (101.2, 21.7), (120.0, 17.0), (138.8, 12.2), (157.5, 7.4),
+            (176.2, 2.7), (198.9, -2.1),
+        ),
+    )  # fmt: skip
+    geometry = parameters.build()
+    headstock = geometry.headstock
+    assert headstock is not None
+    sections = FreeCADScriptExporter._headstock_transition_sections(
+        headstock, geometry.neck_surface, parameters.joint_fillet_radius
+    )
+    tip = [row for row in sections if row[0].x <= -headstock.plan.shoulder_distance]
+    assert tip[0][0].x == pytest.approx(-198.9)
+    gaps = [b[0].x - a[0].x for a, b in zip(tip, tip[1:])]
+    assert max(gaps) <= MAX_HEADSTOCK_SECTION_GAP + 1e-9
+    # Every row runs between the drawn edges at its own distance.
+    plan = headstock.plan
+    for row in tip:
+        distance = -row[0].x
+        assert row[0].y == pytest.approx(plan.envelope_y(distance, -1.0))
+        assert row[-1].y == pytest.approx(plan.envelope_y(distance, 1.0))

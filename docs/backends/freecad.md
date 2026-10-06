@@ -134,6 +134,12 @@ inspection mode remains the default and keeps the two objects separate.
 Fusion requires matching nut widths, and STEP output contains only the fused
 wood solid plus the separate fretboard.
 
+The headstock is one smooth loft through cross-sections from its tip to
+the nut, crowded toward the root where it must meet the neck's own rise,
+but never more than `MAX_HEADSTOCK_SECTION_GAP` (3 mm) apart: a drawn tip
+that turns in sharply between two sections 11 mm apart swung the loft's
+spline out into a curl past the outline.
+
 An existing `TrussRodChannel` can be applied as a rectangular subtraction
 from the neck solid:
 
