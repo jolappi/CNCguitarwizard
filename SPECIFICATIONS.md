@@ -765,7 +765,10 @@ tiedosto nimetään sen mukaan. Rakennuksen jälkeen **Download all NC files
 osaa kohden ja ohjelmat numeroituina ajojärjestykseen
 (`Neck/02_Neck_top.nc`) sekä `README.txt`, jossa ohjelmat työkaluineen ja
 aika-arvioineen.
-**Load design** lataa tiedoston takaisin lomakkeeseen ja editoreihin. Asetukset,
+**Load design** lataa tiedoston takaisin lomakkeeseen ja editoreihin. Tiedostovalitsin
+aukeaa heti napista (Safari ei avaa sitä vahvistusdialogin jälkeen), ja
+kysymys muutettujen arvojen korvaamisesta tulee vasta, kun tiedosto on
+valittu. Asetukset,
 joita käytössä oleva versio ei tunne, ohitetaan ja luetellaan. Vanhemman
 version arvot päivitetään ensin (`webapp.upgrade_design`): ennen
 lapaeditoria tallennettu `headstock_outline` "fitted" ilman piirrettyjä

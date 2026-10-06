@@ -3288,16 +3288,18 @@ buildButton.addEventListener("click", build);
 resetButton.addEventListener("click", reset);
 saveDesignButton.addEventListener("click", saveDesign);
 ncZipButton.addEventListener("click", downloadNcZip);
-loadDesignButton.addEventListener("click", async () => {
-  if (form.querySelector(".changed") && !(await askConfirm(
-    "Load a design? Every current value is replaced by the file's."
-  ))) return;
-  loadDesignFile.click();
-});
-loadDesignFile.addEventListener("change", () => {
+// The file chooser opens straight from the click: a browser lets a page
+// open it only while handling the click itself (Safari not after a
+// dialog has been answered), so the question comes once a file is chosen.
+loadDesignButton.addEventListener("click", () => loadDesignFile.click());
+loadDesignFile.addEventListener("change", async () => {
   const [file] = loadDesignFile.files;
   loadDesignFile.value = "";
-  if (file) loadDesign(file);
+  if (!file) return;
+  if (form.querySelector(".changed") && !(await askConfirm(
+    `Load ${file.name}? Every current value is replaced by the file's.`
+  ))) return;
+  loadDesign(file);
 });
 showAdvanced.addEventListener("change", applyAdvancedToggle);
 boot();

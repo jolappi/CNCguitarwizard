@@ -166,7 +166,10 @@ Python.
    headstock edges included (`{"format": "cncguitarwizard-design",
    "version": 1, "name", "instrument", "prototype", "machining"}`), named
    for the guitar (*Guitar name*, beside the instrument) when it has one. **Load design** opens such a
-   file: it brings an older design's values up to date
+   file — the file chooser straight from the click (a browser opens one
+   only while handling the click itself; Safari not once a dialog has been
+   answered), the question whether to replace changed values once a file
+   is chosen: it brings an older design's values up to date
    (`webapp.upgrade_design`: a `headstock_outline` "fitted" with no edges
    drawn, the default before the headstock editor, loads as "drawn", the
    same outline with the editor open), switches to the saved instrument, puts every value back into

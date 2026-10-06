@@ -590,6 +590,11 @@
 
 ### Fixed
 
+- **Load design** opens the file chooser every time. With values already
+  changed it asked first and opened the chooser only once that was
+  answered, which Safari refuses (a page may open it only while handling
+  the click itself), so a second load did nothing; the question now comes
+  once a file is chosen.
 - A drawn headstock's tip is modelled as drawn: the headstock loft's
   sections are now at most 3 mm apart (`MAX_HEADSTOCK_SECTION_GAP`), not
   11 mm at the tip, where a sharply hooked tip (an edge turning in over
