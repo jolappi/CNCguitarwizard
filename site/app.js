@@ -2905,17 +2905,21 @@ const headstockEditor = {
   },
 
   // Back to the fitted outline: the edge fields are emptied, so the
-  // drawing follows the fitted outline again until the next edit.
+  // drawing follows the fitted outline again until the next edit. It
+  // works with no drawing too (one that could not be laid out), and lays
+  // the headstock out afresh.
   async reset() {
-    if (!this.layout) return;
     if (!(await askConfirm("Replace the drawn headstock with the fitted outline?"))) return;
     const { bass, treble, tip } = this.inputs();
     bodyEditor.setField(bass, []);
     bodyEditor.setField(treble, []);
     bodyEditor.setField(tip, []);
-    this.edges = structuredClone(this.layout.start_edges);
     this.tip = [];
-    this.draw();
+    if (this.layout) {
+      this.edges = structuredClone(this.layout.start_edges);
+      this.draw();
+    }
+    this.refresh();
   },
 
   commit() {

@@ -530,6 +530,63 @@ def test_the_headstock_editor_reports_rather_than_raises() -> None:
     assert "shorten headstock_length" in long["error"]
 
 
+def test_the_headstock_editor_opens_on_a_drawing_its_tuners_no_longer_fit() -> None:
+    # A six-in-line reverse drawn for a 635 mm scale and a zero fret: on
+    # 609.6 mm with a shelf nut the last post moves to 14.5 mm from the
+    # drawn edge. With lettering on, the whole layout failed, so the
+    # editor showed nothing and Start over had nothing to start over from.
+    edges = {
+        "headstock_bass_edge": [
+            [21.5, 31.9], [44.8, 35.6], [64.8, 31.4], [83.5, 29.5],
+            [106.8, 32.8], [126.4, 39.7], [145.4, 35.4], [168.7, 35.7],
+            [181.6, 36.4], [185.6, 27.5], [198.9, 9.6],
+        ],
+        "headstock_treble_edge": [
+            [22.5, 28.5], [45, 36], [63.8, 31.2], [82.5, 26.5],
+            [101.2, 21.7], [120, 17], [138.8, 12.2], [157.5, 7.4],
+            [176.2, 2.7], [198.9, -2.1],
+        ],
+    }  # fmt: skip
+    layout = headstock_editor_layout(
+        {
+            "prototype": {
+                "headstock_style": "6_inline_reverse",
+                "headstock_outline": "drawn",
+                "headstock_engraving_text": "ALEKSI",
+                **edges,
+            }
+        }
+    )
+    assert "error" not in layout
+    lettering = layout["lettering"]
+    assert lettering["lines"]
+    assert "14.5 mm from the drawn headstock edge" in lettering["problem"]
+
+
+def test_the_headstock_editor_opens_on_any_drawing() -> None:
+    bass = [[45.0, 30.8], [80.0, 34.0], [120.0, 27.0], [170.0, 30.0]]
+    treble = [[45.0, 30.8], [95.0, 29.0], [140.0, 24.0], [170.0, 18.0]]
+    drawn = {
+        "headstock_outline": "drawn",
+        "headstock_bass_edge": bass,
+        "headstock_treble_edge": treble,
+        "headstock_engraving_text": "JONE",
+    }
+    # The fitted outline it would start over from narrows to nothing:
+    # the drawing still opens, its start edges its own.
+    long = headstock_editor_layout({"prototype": {**drawn, "headstock_length": 400.0}})
+    assert "error" not in long
+    assert long["start_edges"]["bass"][-1] == [170.0, 30.0]
+    # Edges dragged across each other (a figure eight): it opens, and
+    # says where they cross.
+    crossed = [[45.0, 30.8], [100.0, -40.0], [170.0, 30.0]]
+    eight = headstock_editor_layout(
+        {"prototype": {**drawn, "headstock_bass_edge": crossed}}
+    )
+    assert "error" not in eight
+    assert "meet or cross" in eight["lettering"]["problem"]
+
+
 def test_body_editor_layout_moves_the_middle_pickup_as_its_own_group() -> None:
     layout = body_editor_layout({"prototype": {"body_pickups": "HSH"}})
     groups = {p["name"]: p["group"] for p in layout["polygons"]}

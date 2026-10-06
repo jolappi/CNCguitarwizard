@@ -1638,14 +1638,21 @@ class Prototype001Parameters:
         if not all(math.isfinite(value) for value in self.tuner_inline_offsets):
             raise NeckGeometryError("tuner_inline_offsets must be finite.")
 
-    def _check_headstock_plan(self, layout: _HeadstockLayout) -> None:
+    def _check_headstock_plan(
+        self, layout: _HeadstockLayout, length: float, drawn: bool
+    ) -> None:
         """Name the setting behind a headstock plan that cannot be drawn.
 
         ``HeadstockPlan`` can only say that one of its dimensions is not
         positive; this says which setting made it so, and how to mend it.
+        A drawn outline is its edges, so the fitted widths are not checked
+        for it: a fitted outline that would narrow to nothing (a
+        ``headstock_length`` far past the tuners) does not stop a drawing.
 
         Args:
             layout: The resolved (fitted) headstock layout.
+            length: The plan's length: the drawn edges' or the fitted one.
+            drawn: Whether the plan is the drawn edges.
 
         Raises:
             HeadstockGeometryError: If the nut, the root or a fitted or
@@ -1657,11 +1664,13 @@ class Prototype001Parameters:
                 f"nut_width must be positive (it is {self.nut_width:g} mm)."
             )
         root = self.headstock_root_length
-        if not (math.isfinite(root) and 0.0 < root < layout.length):
+        if not (math.isfinite(root) and 0.0 < root < length):
             raise HeadstockGeometryError(
                 f"headstock_root_length ({root:g} mm) must be positive and "
-                f"shorter than the headstock ({layout.length:g} mm)."
+                f"shorter than the headstock ({length:g} mm)."
             )
+        if drawn:
+            return
         for name, given, width, where, at in (
             (
                 "headstock_shoulder_width",
@@ -1690,6 +1699,43 @@ class Prototype001Parameters:
                 f"(or bring the last tuner nearer the nut), or set {name}."
             )
 
+    def headstock_plan(self) -> HeadstockPlan:
+        """Return the headstock's plan outline, its tuner holes unchecked.
+
+        The headstock editor draws a drawing its tuners no longer fit (a
+        changed scale moves an in-line row's posts), so that it can be
+        mended; ``headstock_design`` checks the holes.
+
+        Raises:
+            HeadstockGeometryError: If the plan is invalid.
+        """
+        if self.headless:
+            return self._headless_design()[0]
+        return self._plan(self._headstock_layout())
+
+    def _plan(self, layout: _HeadstockLayout) -> HeadstockPlan:
+        """Return the plan from the fitted layout, or the drawn edges."""
+        drawn = (
+            self.headstock_outline == "drawn"
+            and bool(self.headstock_bass_edge)
+            and bool(self.headstock_treble_edge)
+        )
+        length = self.headstock_bass_edge[-1][0] if drawn else layout.length
+        self._check_headstock_plan(layout, length, drawn)
+        return HeadstockPlan(
+            length,
+            self.nut_width,
+            self.headstock_root_length,
+            layout.shoulder_width,
+            layout.tip_width,
+            shoulder_shift=layout.shoulder_shift,
+            tip_shift=layout.tip_shift,
+            bass_sign=layout.bass_sign,
+            bass_edge=self.headstock_bass_edge if drawn else None,
+            treble_edge=self.headstock_treble_edge if drawn else None,
+            tip_points=self.built_tip_points() if drawn else (),
+        )
+
     def headstock_design(self) -> tuple[HeadstockPlan, TunerLayout]:
         """Return the headstock plan and its tuner holes, validated.
 
@@ -1705,25 +1751,8 @@ class Prototype001Parameters:
         if self.headless:
             return self._headless_design()
         layout = self._headstock_layout()
-        self._check_headstock_plan(layout)
-        drawn = (
-            self.headstock_outline == "drawn"
-            and bool(self.headstock_bass_edge)
-            and bool(self.headstock_treble_edge)
-        )
-        plan = HeadstockPlan(
-            self.headstock_bass_edge[-1][0] if drawn else layout.length,
-            self.nut_width,
-            self.headstock_root_length,
-            layout.shoulder_width,
-            layout.tip_width,
-            shoulder_shift=layout.shoulder_shift,
-            tip_shift=layout.tip_shift,
-            bass_sign=layout.bass_sign,
-            bass_edge=self.headstock_bass_edge if drawn else None,
-            treble_edge=self.headstock_treble_edge if drawn else None,
-            tip_points=self.built_tip_points() if drawn else (),
-        )
+        plan = self._plan(layout)
+        drawn = plan.is_drawn
         tuners = TunerLayout(
             plan,
             hole_diameter=self.tuner_hole_diameter,

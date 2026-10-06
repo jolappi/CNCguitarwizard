@@ -47,7 +47,7 @@ from .geometry.exceptions import GeometryException
 from .geometry.fret import FretCalculator
 from .geometry.fretboard.inlay_layout import DEFAULT_CUSTOM_POINTS, custom_limits
 from .geometry.lettering import text_lines
-from .geometry.neck import LOCKING_NUT_SPECS
+from .geometry.neck import LOCKING_NUT_SPECS, TunerLayout
 from .geometry.primitives import Point2D, point_in_polygon
 from .presets import Prototype001Parameters
 from .presets.body_shapes import (
@@ -1044,9 +1044,17 @@ def headstock_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         built = Prototype001Parameters(**_coerce(payload.get("prototype", {})))
         # As drawn (right-handed), shown mirrored for a left-handed build.
         parameters = dataclasses.replace(built, handedness="right")
-        fitted, _ = dataclasses.replace(
-            parameters, headstock_outline="fitted"
-        ).headstock_design()
+        try:
+            fitted, _ = dataclasses.replace(
+                parameters, headstock_outline="fitted"
+            ).headstock_design()
+        except CNCGuitarWizardError:
+            # A drawing stands on its own; the fitted outline Start over
+            # brings back may not (a headstock_length far past the
+            # tuners), so the editor starts from the drawing meanwhile.
+            fitted = parameters.headstock_plan()
+            if not fitted.is_drawn:
+                raise
         centres = parameters.tuner_centres()
         # A locking nut wider than the neck is refused here too.
         nut = _nut_drawing(parameters)
@@ -1139,7 +1147,21 @@ def _headstock_lettering(parameters: Prototype001Parameters) -> dict[str, Any] |
     text = parameters.headstock_engraving_text.strip()
     if not text:
         return None
-    plan, tuners = parameters.headstock_design()
+    outline_problem: str | None = None
+    tuners: TunerLayout | None = None
+    try:
+        plan, tuners = parameters.headstock_design()
+    except CNCGuitarWizardError as error:
+        # A drawn outline that no longer fits its tuners (a changed scale
+        # moves an in-line row's posts), or edges dragged across each
+        # other: the editor still opens on the drawing, and says why.
+        if parameters.headstock_outline != "drawn":
+            raise
+        outline_problem = str(error)
+        try:
+            plan = parameters.headstock_plan()
+        except CNCGuitarWizardError:
+            return {"lines": [], "centre": [0.0, 0.0], "problem": outline_problem}
     headstock = parameters.headstock_solid(plan)
     centre = parameters.headstock_engraving_centre(headstock)
     flip = -1.0 if parameters.left_handed else 1.0
@@ -1155,15 +1177,16 @@ def _headstock_lettering(parameters: Prototype001Parameters) -> dict[str, Any] |
         return {
             "lines": [],
             "centre": [centre.x, flip * centre.y],
-            "problem": str(error),
+            "problem": outline_problem or str(error),
         }
-    problem = None
-    try:
-        parameters.headstock_lettering(
-            headstock, tuners, parameters.truss_rod(parameters.neck_outline())
-        )
-    except CNCGuitarWizardError as error:
-        problem = str(error)
+    problem = outline_problem
+    if tuners is not None:
+        try:
+            parameters.headstock_lettering(
+                headstock, tuners, parameters.truss_rod(parameters.neck_outline())
+            )
+        except CNCGuitarWizardError as error:
+            problem = str(error)
     return {
         "lines": [
             [[round(p.x, 2), round(flip * p.y, 2)] for p in line] for line in lines

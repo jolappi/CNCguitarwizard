@@ -169,14 +169,18 @@ class HeadstockPlan:
         object.__setattr__(self, "point_start", start)
 
     def _validate(self) -> None:
-        """Reject dimensions that cannot form the intended tapered shape."""
-        dimensions = (
+        """Reject dimensions that cannot form the intended tapered shape.
+
+        A drawn plan's outline is its edges: the fitted shoulder and tip
+        widths it carries are not used, so they are not checked.
+        """
+        dimensions: tuple[float, ...] = (
             self.length,
             self.nut_width,
             self.shoulder_distance,
-            self.shoulder_width,
-            self.tip_width,
         )
+        if not self.is_drawn:
+            dimensions += (self.shoulder_width, self.tip_width)
         if not all(math.isfinite(value) and value > 0.0 for value in dimensions):
             raise HeadstockGeometryError(
                 "Headstock plan dimensions must be finite and positive."
@@ -185,7 +189,7 @@ class HeadstockPlan:
             raise HeadstockGeometryError(
                 "Headstock shoulder must lie between the nut and tip."
             )
-        if self.shoulder_width < self.nut_width:
+        if not self.is_drawn and self.shoulder_width < self.nut_width:
             raise HeadstockGeometryError(
                 "Headstock shoulder must not be narrower than the nut."
             )
@@ -202,7 +206,7 @@ class HeadstockPlan:
         self._validate_drawn()
         self._validate_tip()
         for side in ("bass", "treble"):
-            if self._shoulder_half(side) < self.nut_width / 2.0:
+            if not self.is_drawn and self._shoulder_half(side) < self.nut_width / 2.0:
                 raise HeadstockGeometryError(
                     f"Headstock shoulder on the {side} side must not be "
                     "narrower than the nut."

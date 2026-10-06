@@ -141,7 +141,12 @@ Python.
    the drawing follows the fitted outline (a changed style or length
    redraws it); the first edit writes them, and *Start over* empties them
    again (`webapp.headstock_editor_layout()` supplies the holes and the
-   fitted start edges). *Start from* → *Load* sets a whole neck from
+   fitted start edges). A drawing its tuners no longer fit (a changed
+   scale or nut moves an in-line row's posts) still opens, the holes too
+   close named in red, so it can be mended by dragging or *Start over*;
+   so does one whose edges cross (a figure eight) or whose fitted outline
+   would narrow to nothing, and *Start over* works even when no drawing
+   could be laid out. *Start from* → *Load* sets a whole neck from
    `neck_templates` in the schema (`NECK_TEMPLATES`): the Telecaster neck's
    slotted nut, flat six-in-line headstock, drawn Telecaster outline and
    heel-adjusted truss rod, or the Stratocaster, Gibson style, Flying V,

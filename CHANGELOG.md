@@ -590,6 +590,19 @@
 
 ### Fixed
 
+- A drawn headstock is its edges: the fitted outline it would start over
+  from no longer stops it when that would narrow to nothing ("The fitted
+  headstock narrows to -11.5 mm at its tip, 220 mm from the nut" on a
+  long or Flying V style headstock), and the headstock editor opens on
+  any drawing — one whose edges cross included — with the problem named.
+- A saved drawn headstock whose tuners no longer fit it (a changed scale
+  or nut moves an in-line row's posts nearer the edge) opens in the
+  headstock editor again. With lettering on, the editor's whole layout
+  failed, so it drew nothing and *Start over* had nothing to start over
+  from; a tester got past it only by copying the default headstock values
+  into the saved file. The drawing now opens with the holes too close
+  named, the lettering is placed on the fitted outline until the edges
+  are mended, and *Start over* always goes back to the fitted outline.
 - **Load design** opens the file chooser every time. With values already
   changed it asked first and opened the chooser only once that was
   answered, which Safari refuses (a page may open it only while handling

@@ -34,7 +34,11 @@ tip width that is not positive, a root not shorter than the headstock, or
 a fitted outline narrowing to nothing at its tip (shorten
 `headstock_length`, bring the last tuner nearer the nut, or set
 `headstock_tip_width`) — rather than `HeadstockPlan`'s own
-"dimensions must be finite and positive".
+"dimensions must be finite and positive". A drawn outline is its edges:
+the fitted widths a drawn `HeadstockPlan` carries are not used, so they
+are not checked, and a fitted outline that would narrow to nothing does
+not stop a drawing. `headstock_plan()` gives the plan without checking
+the tuner holes, for an editor to draw a drawing they no longer fit.
 
 `HeadstockPlan` takes optional `shoulder_shift` and `tip_shift` values
 (positive toward the bass side) that move the outline's centre at the

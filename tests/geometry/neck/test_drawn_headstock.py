@@ -210,20 +210,36 @@ def test_only_a_drawn_headstock_takes_tip_points() -> None:
 
 
 @pytest.mark.parametrize(
-    ("change", "message"),
+    ("change", "message", "drawn_too"),
     [
-        ({"headstock_length": 400.0}, "narrows to -3.1 mm at its tip, 400 mm"),
-        ({"headstock_root_length": 0.0}, "headstock_root_length \\(0 mm\\)"),
-        ({"nut_width": 0.0}, "nut_width must be positive"),
-        ({"headstock_tip_width": 0.0}, "headstock_tip_width must be positive"),
-        ({"headstock_shoulder_width": -2.0}, "headstock_shoulder_width must be"),
+        ({"headstock_length": 400.0}, "narrows to -3.1 mm at its tip, 400 mm", False),
+        ({"headstock_root_length": 0.0}, "headstock_root_length \\(0 mm\\)", True),
+        ({"nut_width": 0.0}, "nut_width must be positive", True),
+        ({"headstock_tip_width": 0.0}, "headstock_tip_width must be positive", False),
+        ({"headstock_shoulder_width": -2.0}, "headstock_shoulder_width must be", False),
     ],
 )
 def test_a_plan_that_cannot_be_drawn_names_its_setting(
-    change: dict[str, float], message: str
+    change: dict[str, float], message: str, drawn_too: bool
 ) -> None:
     # Not just "Headstock plan dimensions must be finite and positive":
-    # the setting to mend, drawn or fitted.
-    for parameters in (Prototype001Parameters(), drawn()):
+    # the setting to mend.
+    with pytest.raises(HeadstockGeometryError, match=message):
+        replace(Prototype001Parameters(), **change).headstock_design()  # type: ignore[arg-type]
+    if drawn_too:
         with pytest.raises(HeadstockGeometryError, match=message):
-            replace(parameters, **change).headstock_design()  # type: ignore[arg-type]
+            drawn(**change).headstock_design()
+    else:
+        # A drawing is its edges: the fitted widths it would start over
+        # from do not stop it (a tester's long headstock, drawn).
+        plan, _ = drawn(**change).headstock_design()
+        assert plan.is_drawn and plan.length == 170.0
+
+
+def test_a_drawn_plan_ignores_the_fitted_widths_it_carries() -> None:
+    plan = HeadstockPlan(
+        170.0, 42.0, 45.0, 30.0, -11.5, bass_edge=BASS, treble_edge=TREBLE
+    )
+    assert plan.width_at_distance(170.0) == pytest.approx(48.0)
+    with pytest.raises(HeadstockGeometryError, match="finite and positive"):
+        HeadstockPlan(170.0, 42.0, 45.0, 65.0, -11.5)
