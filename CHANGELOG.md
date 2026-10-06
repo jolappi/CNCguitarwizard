@@ -590,6 +590,12 @@
 
 ### Fixed
 
+- The body editor's templates load the same way: one chosen in *Start
+  from* loads at once (*Load* loads it again; declined, the choice goes
+  back), and what the template before it set besides its shape and is
+  still as it left it goes back to its default — the Alexi Hexed's
+  single pickup, one volume, Floyd Rose and stepped top are no longer
+  left on a Les Paul loaded after it, while a value changed since stays.
 - A neck template loaded in the headstock editor no longer keeps the
   tuner places and tip of the one before it: the tuner and tip settings
   it does not set go back to their defaults (`NECK_TEMPLATE_RESETS`), so a

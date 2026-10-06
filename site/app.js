@@ -1168,8 +1168,13 @@ const bodyEditor = {
   outlinePath: null,
   handles: [],
   refreshTimer: null,
+  loaded: null,     // the template last loaded on this form
+  shown: "",        // the template Start from shows (the drawing's)
 
   sync(kind, subfields) {
+    // A new form (a reset, another instrument, a loaded design): no
+    // template loaded on it yet.
+    this.loaded = null;
     this.input = subfields.querySelector("input[data-name='control_points']");
     const active = kind === "your_design" && this.input !== null;
     this.panel.classList.toggle("hidden", !active);
@@ -2263,34 +2268,78 @@ const bodyEditor = {
       ([, template]) => JSON.stringify(template.shape.control_points) === drawn
     );
     select.value = match ? match[0] : "";
+    this.shown = select.value;
   },
 
-  // Replace the drawing with a template: its outline and its switch, pot
-  // and jack placements, which all stay editable afterwards — and any
-  // other values it sets (the Alexi Hexed's pickup, controls, bridge and
-  // pinstripe).
+  // Replace the drawing with a template, as soon as one is chosen in
+  // Start from (Load loads it again): its outline and its switch, pot and
+  // jack placements, which all stay editable afterwards — and any other
+  // values it sets (the Alexi Hexed's pickup, controls, bridge and
+  // pinstripe). What the template before it set besides its shape, and
+  // is still as that left it, goes back to its default, so nothing of it
+  // is left on the new one (an Alexi Hexed's stepped top on a Les Paul);
+  // a value changed since is kept. Declined, Start from goes back.
   async reset() {
     if (!this.layout) return;
-    const key = document.getElementById("body-editor-template").value;
+    const select = document.getElementById("body-editor-template");
+    const key = select.value;
     const template = this.layout.templates[key];
     if (!template) return;
     const values = template.values || {};
-    const also = Object.keys(values).length
-      ? ` It also sets ${Object.keys(values).join(", ")}.`
-      : "";
-    if (!(await askConfirm(`Replace your drawing with ${template.label}?${also}`))) return;
+    const leftovers = this.leftovers(template);
+    const also = [
+      Object.keys(values).length ? ` It also sets ${Object.keys(values).join(", ")}.` : "",
+      Object.keys(leftovers).length ? ` ${Object.keys(leftovers).join(", ")} go back to their defaults.` : "",
+    ].join("");
+    if (!(await askConfirm(`Replace your drawing with ${template.label}?${also}`))) {
+      select.value = this.shown || "";
+      return;
+    }
     const set = "prototype.body_shape";
     for (const [name, value] of Object.entries(template.shape)) {
       if (name === "kind" || name === "control_points") continue;
       this.setField(this.field(set, name), value);
     }
-    if (Object.keys(values).length) {
-      applyValues("prototype", values);
+    if (Object.keys(values).length || Object.keys(leftovers).length) {
+      applyValues("prototype", { ...leftovers, ...values });
       applyStringLimits();
     }
+    this.loaded = key;
+    this.shown = key;
     this.points = template.shape.control_points.map((p) => [...p]);
     this.commit();
     this.refresh();
+  },
+
+  // The values the template loaded before (or the one the drawing is)
+  // set besides its shape, still as it left them, that the next one does
+  // not set: each with its default, to put back.
+  leftovers(template) {
+    const previous = this.layout.templates[this.loaded || this.shown];
+    if (!previous || previous === template) return {};
+    let now;
+    try {
+      now = collectValues().prototype;
+    } catch (error) {
+      return {};
+    }
+    // Key order aside: a bridge's fields come back in the form's order.
+    const canonical = (value) => JSON.stringify(value, (_, v) => (
+      v && typeof v === "object" && !Array.isArray(v)
+        ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => a.localeCompare(b)))
+        : v
+    ));
+    const defaults = {};
+    for (const [name, value] of Object.entries(previous.values || {})) {
+      if (name in (template.values || {})) continue;
+      if (canonical(now[name]) !== canonical(value)) continue;
+      const input = this.field("prototype", name);
+      defaults[name] = variantFields[name]
+        ? variantFields[name].default
+        : input ? JSON.parse(input.dataset.default) : undefined;
+      if (defaults[name] === undefined) delete defaults[name];
+    }
+    return defaults;
   },
 
   commit() {
@@ -2348,6 +2397,7 @@ const bodyEditor = {
 };
 
 document.getElementById("body-editor-reset").addEventListener("click", () => bodyEditor.reset());
+document.getElementById("body-editor-template").addEventListener("change", () => bodyEditor.reset());
 document.getElementById("body-editor-auto-guard").addEventListener("click", () => bodyEditor.autoGuard());
 document.getElementById("body-editor-auto-steps").addEventListener("click", () => bodyEditor.autoSteps());
 document.getElementById("body-editor-auto-arm").addEventListener("click", () => bodyEditor.autoContour("arm"));

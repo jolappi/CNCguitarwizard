@@ -66,11 +66,16 @@ Python.
    are handles to drag (click the outline to add one, Alt-click or
    right-click to remove one; *Start from* shows the template the drawing
    is ("Your own drawing" once its outline has been changed); choosing
-   one and *Load* replaces the drawing with that template — Design by Jone, Les Paul, Stratocaster, Jackson RR,
+   one replaces the drawing with that template at once (*Load* loads it
+   again; declined, the choice goes back) — Design by Jone, Les Paul, Stratocaster, Jackson RR,
    ESP LTD Alexi Hexed, Mockingbird, Telecaster, SG, Explorer, Flying V or Jazz Bass style
    (mockups, not the original outlines) — and its cavity placements;
    a template's own other values, the Alexi Hexed's pickup, controls, Floyd Rose and stepped top
-   (`values` in the layout's templates), are set too, the confirmation naming them), drawn
+   (`values` in the layout's templates), are set too, the confirmation naming them; what the
+   template loaded before (or the one the drawing is) set that way, and is
+   still as it left it, goes back to its default, so an Alexi Hexed's
+   stepped top is not left on a Les Paul, while a value changed since is
+   kept), drawn
    over the neck, pocket, pickup and bridge routes and dashed rear
    cavities that `webapp.body_editor_layout()` lays out from the other
    settings. The control cavity (carrying its pots), each pot, the switch
