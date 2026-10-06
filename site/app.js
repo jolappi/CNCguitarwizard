@@ -2404,6 +2404,7 @@ const headstockEditor = {
   paths: {},
   hits: {},
   refreshTimer: null,
+  template: null,  // the neck template last loaded on this form
 
   inputs() {
     return {
@@ -2879,7 +2880,15 @@ const headstockEditor = {
 
   fillTemplates() {
     const select = document.getElementById("headstock-editor-template");
+    // A new form (a reset, another instrument, a loaded design) has no
+    // template on it.
+    select.value = "";
+    this.template = null;
     if (select.options.length || !schema.neck_templates) return;
+    const none = document.createElement("option");
+    none.value = "";
+    none.textContent = "Choose a neck…";
+    select.appendChild(none);
     for (const [key, template] of Object.entries(schema.neck_templates)) {
       const option = document.createElement("option");
       option.value = key;
@@ -2888,19 +2897,32 @@ const headstockEditor = {
     }
   },
 
-  // Load a neck template: its nut, headstock and truss rod values replace
-  // the form's, and the drawing becomes its outline (still editable).
+  // Load a neck template, as soon as one is chosen in Start from (Load
+  // loads it again): its nut, headstock and truss rod values replace the
+  // form's, the tuner and tip settings it does not set go back to their
+  // defaults (resets), and the drawing becomes its outline (still
+  // editable). Declined, Start from goes back to what it showed.
   async loadTemplate() {
-    const key = document.getElementById("headstock-editor-template").value;
+    const select = document.getElementById("headstock-editor-template");
+    const key = select.value;
     const template = schema.neck_templates && schema.neck_templates[key];
     if (!template) return;
     if (!(await askConfirm(
       `Load the ${template.label}? Its nut, headstock and truss rod settings replace yours.`
-    ))) return;
+    ))) {
+      select.value = this.template || "";
+      return;
+    }
     for (const [name, value] of Object.entries(template.values)) {
       const input = bodyEditor.field("prototype", name);
       if (input) setControlValue(input, value);
     }
+    for (const name of template.resets || []) {
+      const input = bodyEditor.field("prototype", name);
+      if (input) setControlValue(input, JSON.parse(input.dataset.default));
+    }
+    this.template = key;
+    select.value = key;
     this.sync();
   },
 
@@ -3236,6 +3258,7 @@ form.addEventListener("change", (event) => {
 
 document.getElementById("headstock-editor-reset").addEventListener("click", () => headstockEditor.reset());
 document.getElementById("headstock-editor-load").addEventListener("click", () => headstockEditor.loadTemplate());
+document.getElementById("headstock-editor-template").addEventListener("change", () => headstockEditor.loadTemplate());
 form.addEventListener("change", (event) => {
   if (["headstock_outline", "headless"].includes(event.target.dataset.name)) headstockEditor.sync();
   else if (!/^headstock_(bass_edge|treble_edge|tip_points)$/.test(event.target.dataset.name || "")) headstockEditor.scheduleRefresh();

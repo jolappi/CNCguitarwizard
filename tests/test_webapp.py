@@ -563,6 +563,19 @@ def test_the_headstock_editor_opens_on_a_drawing_its_tuners_no_longer_fit() -> N
     assert "14.5 mm from the drawn headstock edge" in lettering["problem"]
 
 
+def test_a_neck_template_puts_back_what_another_left() -> None:
+    templates = parameter_schema()["neck_templates"]
+    # The Explorer places its own row of posts and has no tip points; a
+    # Telecaster loaded after it must not keep that row under its outline.
+    assert "tuner_inline_offsets" not in templates["explorer"]["resets"]
+    assert "headstock_tip_points" in templates["explorer"]["resets"]
+    assert {"tuner_inline_offsets", "tuner_inline_first_distance"} <= set(
+        templates["telecaster"]["resets"]
+    )
+    for template in templates.values():
+        assert not set(template["resets"]) & set(template["values"])
+
+
 def test_the_headstock_editor_opens_on_any_drawing() -> None:
     bass = [[45.0, 30.8], [80.0, 34.0], [120.0, 27.0], [170.0, 30.0]]
     treble = [[45.0, 30.8], [95.0, 29.0], [140.0, 24.0], [170.0, 18.0]]

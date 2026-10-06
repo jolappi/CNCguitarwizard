@@ -64,6 +64,7 @@ from .presets.pickups import PICKUP_CONFIGURATIONS
 from .presets.prototype001 import (
     BODY_TEMPLATE_VALUES,
     INSTRUMENT_OVERRIDES,
+    NECK_TEMPLATE_RESETS,
     NECK_TEMPLATES,
 )
 from .render.svg import render_plan_view_svg
@@ -352,7 +353,9 @@ def parameter_schema() -> dict[str, Any]:
         ``locking_nut_widths`` maps each locking nut to its width, the
         least ``nut_width`` it fits (the form widens the neck to it);
         ``neck_templates`` each neck template (``NECK_TEMPLATES``) to
-        ``{"label", "values"}``, the values the headstock editor loads;
+        ``{"label", "values", "resets"}``, the values the headstock editor
+        loads and the settings it puts back to their defaults
+        (``NECK_TEMPLATE_RESETS`` the template does not set);
         ``pickup_configurations`` each named pickup layout to its
         ``[neck, middle, bridge]`` types (the body editor turns a layout
         into "custom" to remove one pickup).
@@ -367,7 +370,11 @@ def parameter_schema() -> dict[str, Any]:
         },
         "prototype": _group_fields(Prototype001Parameters),
         "neck_templates": {
-            key: {"label": label, "values": _jsonable(values)}
+            key: {
+                "label": label,
+                "values": _jsonable(values),
+                "resets": sorted(NECK_TEMPLATE_RESETS - set(values)),
+            }
             for key, (label, values) in NECK_TEMPLATES.items()
         },
         "pickup_configurations": {

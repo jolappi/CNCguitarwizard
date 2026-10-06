@@ -146,7 +146,10 @@ Python.
    close named in red, so it can be mended by dragging or *Start over*;
    so does one whose edges cross (a figure eight) or whose fitted outline
    would narrow to nothing, and *Start over* works even when no drawing
-   could be laid out. *Start from* → *Load* sets a whole neck from
+   could be laid out. A neck chosen in *Start from* loads at once (*Load*
+   loads it again; declined, the choice goes back), and the tuner and tip
+   settings it does not set go back to their defaults (`resets`:
+   `NECK_TEMPLATE_RESETS`), so none is left from another neck. *Start from* → *Load* sets a whole neck from
    `neck_templates` in the schema (`NECK_TEMPLATES`): the Telecaster neck's
    slotted nut, flat six-in-line headstock, drawn Telecaster outline and
    heel-adjusted truss rod, or the Stratocaster, Gibson style, Flying V,

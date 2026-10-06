@@ -51,7 +51,7 @@
   FreeCAD models included
 - Headstock errors that name the setting to mend; a hooked drawn tip
   modelled as drawn; a saved drawing its tuners no longer fit opens to
-  be mended
+  be mended; neck templates that leave nothing of the one before
 - More templates traced from product photos: Mockingbird (reshaped by
   hand), Telecaster, SG, Explorer and Flying V bodies;
   Stratocaster, Gibson style, Flying V, Explorer and Mockingbird

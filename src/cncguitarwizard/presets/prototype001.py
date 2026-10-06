@@ -5205,6 +5205,21 @@ NECK_TEMPLATES: dict[str, tuple[str, dict[str, Any]]] = {
 a label and the values it sets (for a six-string guitar; the truss rod can
 still be moved to the headstock afterwards)."""
 
+NECK_TEMPLATE_RESETS: frozenset[str] = frozenset(
+    {
+        "headstock_tip_points",
+        "tuner_inline_offsets",
+        "tuner_inline_first_distance",
+        "tuner_inline_spacing",
+        "tuner_station_distances",
+        "tuner_side_offsets",
+    }
+)
+"""The tuner and tip settings a neck template's outline is drawn round:
+loading a template puts back the defaults of those it does not set, so
+none is left over from another (an Explorer's row of posts under a
+Telecaster's outline)."""
+
 BODY_TEMPLATE_VALUES: dict[str, dict[str, Any]] = {
     "alexi_hexed": {
         "body_pickups": "H",

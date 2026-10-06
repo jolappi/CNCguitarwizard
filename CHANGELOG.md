@@ -590,6 +590,13 @@
 
 ### Fixed
 
+- A neck template loaded in the headstock editor no longer keeps the
+  tuner places and tip of the one before it: the tuner and tip settings
+  it does not set go back to their defaults (`NECK_TEMPLATE_RESETS`), so a
+  Telecaster after an Explorer no longer has the Explorer's row of posts
+  outside its outline. A neck chosen in *Start from* loads at once, its
+  `headstock_style` with it (*Load* loads it again), and Start from shows
+  no template until one is loaded.
 - A drawn headstock is its edges: the fitted outline it would start over
   from no longer stops it when that would narrow to nothing ("The fitted
   headstock narrows to -11.5 mm at its tip, 220 mm from the nut" on a
