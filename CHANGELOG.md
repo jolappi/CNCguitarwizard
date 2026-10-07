@@ -574,6 +574,9 @@
 
 ### Changed
 
+- `nut_string_spacing` and `bridge_string_spacing` explain themselves in
+  plain words on hover (the gap between neighbouring strings at the nut
+  or bridge), instead of the tuner rows' note they were named in.
 - The fretboard programs' notes say where to re-touch Z: on the blank's
   untouched top beside the board, not on the radiused surface (1 mm lower
   at the crown, so every cut, the fret slots' first included, would go

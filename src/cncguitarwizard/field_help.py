@@ -56,6 +56,16 @@ FIELD_HELP: dict[str, str] = {
     "nut_width": (
         "The fretboard's and neck's width at the nut, in mm (42 to 43 on a guitar)."
     ),
+    "nut_string_spacing": (
+        "The gap between neighbouring strings at the nut, centre to centre, "
+        "in mm. With bridge_string_spacing it sets where each string runs "
+        "(the tuner posts' lines, a multiscale's fanned frets)."
+    ),
+    "bridge_string_spacing": (
+        "The gap between neighbouring strings at the bridge, centre to "
+        "centre, in mm. With nut_string_spacing it sets where each string "
+        "runs (the tuner posts' lines, a multiscale's fanned frets)."
+    ),
     "final_fret_width": (
         "The fretboard's width at the last fret, in mm; the neck tapers from "
         "nut_width to this."
