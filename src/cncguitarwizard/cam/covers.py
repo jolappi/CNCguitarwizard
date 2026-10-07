@@ -179,10 +179,17 @@ def _cover_setup(
                 )
                 if cover.recessed
                 else (
-                    "Visible face up: it is screwed onto the headstock face over "
-                    "the truss-rod trough (no recess), into the pilots "
-                    "Neck_top_small_holes drills (on a laminated neck, drill "
-                    "them by hand through its holes).",
+                    (
+                        "Visible face up: it is screwed onto the top round its "
+                        "pickup (no recess), into the pilots "
+                        "Body_top_small_holes drills; the pickup's height "
+                        "screws are reached through its two larger holes."
+                        if cover.name.endswith("pickup frame")
+                        else "Visible face up: it is screwed onto the headstock "
+                        "face over the truss-rod trough (no recess), into the "
+                        "pilots Neck_top_small_holes drills (on a laminated "
+                        "neck, drill them by hand through its holes)."
+                    ),
                     "Break the tabs and sand the edge.",
                 )
             ),

@@ -377,6 +377,35 @@ lähimpään sopivaan paikkaan (enintään 40 mm) ja tarvittaessa kääntyvät
 (enintään 30°, esim. Jackson RR:n siipeä pitkin). Ne mahtuvat pleksin alle
 kaikilla pohjilla.
 
+Humbuckerin kehys (`body_pickup_frame`, oletuksena pois) on koriste-
+levy jokaisen humbuckerin ympärillä, leikattuna levystä
+(`body_pickup_frame_thickness` 2,5 mm) omana `Cover_<asema>_pickup_frame.nc`-
+ohjelmanaan: `horns` (päissä sarvet kaulaa kohti, tallan puoli pyöreä)
+tai `hook` (bassopää koukulla, diskanttipäässä pitkä sarvi). Molemmat on
+jäljitetty rakentajan piirroksesta (`humbframes.dxf`): viivat olivat
+kynänvetoja, joten niiden ulkoreuna on otettu, ja piirros on skaalattu
+niin, että sen kolo on humbuckerin, 70,5 mm kielten poikki (sarvikehys
+57 × 163 mm, koukkukehys 57 × 146 mm). Kolo ei ole piirroksen vaan mikin
+oma, sama kuin pleksin aukko (`pickup_openings`, 70,5 × 39 mm, 7- ja
+8-kielisellä pidempi). Kehyksen ääriviiva on suljettu Catmull-Rom-käyrä
+pisteidensä kautta (kuten runko), ja jokaisella mikillä on oma
+(`body_neck_frame_points`, `body_middle_frame_points`,
+`body_bridge_frame_points`; tyhjä = tyylin oma). Kehys kääntyy mikin
+mukana, levenee 7- ja 8-kielisen mikin mukana ja peilautuu
+vasenkätisessä. `body_pickup_frame_direction`: `auto` (oletus) sarvet
+kaulaa kohti, käännettynä ympäri jos vain niin mahtuu; `neck` tai
+`bridge`. Kiinnitys kahdella ruuvilla mikin korvakkeiden ulkopuolella
+mikin pitkällä akselilla, kohdassa jossa kehystä on 4 mm joka puolella
+(muuten lähimpänä akselia, koukkukehyksen bassopäässä akselin vieressä):
+3,2 mm reiät kehyksessä ja esiporaukset runkoon (`Body_top_small_holes`),
+ja kaksi 6,5 mm reikää mikin korkeusruuvien kohdalla säätöä varten.
+Kehyksen on oltava rungon päällä irti kaulasta, tallasta, muista
+mikeistä ja kehyksistä, päällä olevista kontrolleista ja kaularaudan
+säätölovesta; runkoeditori piirtää sopimattoman kehyksen punaisella
+syyn kera, ja build hylkää sen. Runkoeditorissa kehyksen pisteitä
+raahataan (reunaa klikkaamalla lisätään piste, Alt/oikea klikkaus
+poistaa), ja tyylin vaihto palauttaa tyylin oman muodon.
+
 Valinnainen 9 V:n paristokotelo (`body_battery_box`, oletuksena pois)
 jyrsitään takaa samaan `Body_back_controls.nc`-ohjelmaan: 56 × 30 mm kolo
 (r 5), 22 mm syvä takapinnasta, ja sen ympärillä 7 mm leveämpi

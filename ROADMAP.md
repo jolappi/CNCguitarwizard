@@ -47,6 +47,7 @@
 - Older saved designs brought up to date on loading, every setting in
   view and every editor drawn
 - Undo and redo for the editors and the form
+- Humbucker frames to draw in the body editor and cut from sheet
 - Body and headstock outlines drawn in another program: SVG templates out
   and back in
 - Index pins as wide as a main tool wider than 6 mm (an 8 mm end mill,

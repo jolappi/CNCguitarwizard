@@ -6,7 +6,7 @@ programs (`render.dxf`, the build's *Writing the DXF outlines* stage):
 | File | What it holds |
 | --- | --- |
 | `Prototype001_plan.dxf` | The whole instrument as the model lays it out: millimetres, X from the nut toward the tail, Y across the neck (left-handed builds already mirrored) |
-| `Prototype001_covers.dxf` | The sheet plates — cavity covers, control plates, the pickguard, a truss-rod cover — side by side for cutting, each with its holes, slots and a label; only when there are plates |
+| `Prototype001_covers.dxf` | The sheet plates — cavity covers, control plates, the pickguard, humbucker frames, a truss-rod cover — side by side for cutting, each with its holes, slots and a label; only when there are plates |
 
 Both are AutoCAD R12 (AC1009) ASCII DXF, the version almost every program
 reads, written without any library (`DxfDocument`): closed (or open)

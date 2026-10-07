@@ -132,7 +132,7 @@ function renderForm() {
 // loaded and built (its row in the form is hidden while the pane is shown).
 // A change on either side is passed to the other.
 const EDITOR_FIELDS = {
-  "body-editor-options": ["body_pickups", "body_bridge", "body_controls", "body_switch", "body_jack", "body_pickguard", "body_pickguard_style", "body_arm_contour_depth", "body_belly_cut_depth", "body_carved_top", "body_carve_depth", "body_stepped_top", "body_engraving", "body_engraving_pattern", "body_engraving_seed", "body_battery_box", "body_battery_count"],
+  "body-editor-options": ["body_pickups", "body_bridge", "body_controls", "body_switch", "body_jack", "body_pickguard", "body_pickguard_style", "body_pickup_frame", "body_pickup_frame_direction", "body_arm_contour_depth", "body_belly_cut_depth", "body_carved_top", "body_carve_depth", "body_stepped_top", "body_engraving", "body_engraving_pattern", "body_engraving_seed", "body_battery_box", "body_battery_count"],
   "headstock-editor-options": ["headstock_style", "nut_style", "headstock_engraving_text", "headstock_engraving_font", "headstock_engraving_height", "headstock_engraving_angle", "truss_rod_adjustment", "truss_rod_cover_style", "truss_rod_cover_length", "truss_rod_cover_width"],
   "inlay-editor-options": ["inlay_style", "inlay_depth", "inlay_block_edge_margin"],
 };
@@ -1478,6 +1478,34 @@ const bodyEditor = {
       });
     }
 
+    // The humbucker frames over the pickups, each with round handles at
+    // its points; dragging one draws that pickup's frame
+    // (body_<position>_frame_points), click its edge to add a point.
+    this.frameHandles = (layout.frames || []).map((frame) => frame.handles.map((p) => [...p]));
+    this.framePaths = [];
+    (layout.frames || []).forEach((frame, frameIndex) => {
+      const path = this.element("path", {
+        d: this.frameData(frameIndex), "fill-rule": "evenodd",
+        fill: "#1b1b1b", "fill-opacity": 0.8, stroke: frame.problem ? "#c0392b" : "#000",
+        "stroke-width": frame.problem ? 1.2 : 0.6, "pointer-events": "none",
+      });
+      this.framePaths.push(path);
+      const hit = this.element("path", { class: "outline-hit", d: this.pathData(closedCatmullRom(this.frameHandles[frameIndex], 8)) });
+      hit.addEventListener("click", (event) => this.addFramePoint(event, frameIndex));
+      this.element("title", {}, hit).textContent =
+        `The ${frame.position} pickup's frame${frame.turned ? " (turned round)" : ""} — click its edge to add a point`;
+      this.frameHandles[frameIndex].forEach((point, index) => {
+        const handle = this.element("circle", { class: "frame-handle", cx: point[0], cy: -point[1], r: 1.6 });
+        this.element("title", {}, handle).textContent =
+          `${frame.position[0].toUpperCase()}${frame.position.slice(1)} pickup frame point — drag to shape it, Alt-click or right-click to remove it`;
+        handle.addEventListener("pointerdown", (event) => {
+          if (event.altKey) { this.removeFramePoint(frameIndex, index); return; }
+          this.startFrameDrag(event, frameIndex, index, handle);
+        });
+        handle.addEventListener("contextmenu", (event) => { event.preventDefault(); this.removeFramePoint(frameIndex, index); });
+      });
+    });
+
     // A stepped top's lines, straight between their points, with diamond
     // handles; dragging one draws the steps (step_points).
     this.stepPoints = layout.steps ? layout.steps.points.map((line) => line.map((p) => [...p])) : null;
@@ -1850,6 +1878,83 @@ const bodyEditor = {
       d += ` M${hole.x - hole.r},${-hole.y} a${hole.r},${hole.r} 0 1,0 ${2 * hole.r},0 a${hole.r},${hole.r} 0 1,0 ${-2 * hole.r},0`;
     }
     return d;
+  },
+
+  // A frame with its opening and holes cut out of it (even-odd).
+  frameData(frameIndex) {
+    const frame = this.layout.frames[frameIndex];
+    let d = this.pathData(closedCatmullRom(this.frameHandles[frameIndex], 8));
+    for (const opening of frame.openings) d += " " + this.pathData(opening);
+    for (const hole of frame.holes) {
+      d += ` M${hole.x - hole.r},${-hole.y} a${hole.r},${hole.r} 0 1,0 ${2 * hole.r},0 a${hole.r},${hole.r} 0 1,0 ${-2 * hole.r},0`;
+    }
+    return d;
+  },
+
+  // An editor point in a frame's own frame: along the neck and across
+  // it (narrowed back by half its stretch past the middle).
+  toFrame(frameIndex, [x, y]) {
+    const frame = this.layout.frames[frameIndex];
+    const dx = x - frame.origin[0], dy = y - frame.origin[1];
+    const a = dx * frame.along[0] + dy * frame.along[1];
+    const stretched = dx * frame.across[0] + dy * frame.across[1];
+    const half = frame.stretch / 2;
+    const c = stretched > half ? stretched - half : stretched < -half ? stretched + half : 0;
+    return [Math.round(a * 10) / 10, Math.round(c * 10) / 10];
+  },
+
+  startFrameDrag(event, frameIndex, index, handle) {
+    event.preventDefault();
+    event.stopPropagation();
+    handle.classList.add("dragging");
+    const move = (moveEvent) => {
+      const point = this.toModel(moveEvent);
+      this.frameHandles[frameIndex][index] = point;
+      handle.setAttribute("cx", point[0]);
+      handle.setAttribute("cy", -point[1]);
+      this.framePaths[frameIndex].setAttribute("d", this.frameData(frameIndex));
+    };
+    const end = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", end);
+      window.removeEventListener("pointercancel", end);
+      handle.classList.remove("dragging");
+      this.commitFrame(frameIndex);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", end);
+    window.addEventListener("pointercancel", end);
+  },
+
+  // Write the frame's points (drawn from now on) and lay the body out again.
+  commitFrame(frameIndex) {
+    const frame = this.layout.frames[frameIndex];
+    const points = this.frameHandles[frameIndex].map((p) => this.toFrame(frameIndex, p));
+    this.setField(this.field("prototype", frame.field), points);
+    this.refresh();
+  },
+
+  addFramePoint(event, frameIndex) {
+    const [x, y] = this.toModel(event);
+    const handles = this.frameHandles[frameIndex];
+    // After the point whose span passes nearest the click (8 samples a span).
+    const outline = closedCatmullRom(handles, 8);
+    let best = 0, bestDistance = Infinity;
+    outline.forEach(([ox, oy], i) => {
+      const distance = (ox - x) ** 2 + (oy - y) ** 2;
+      if (distance < bestDistance) { bestDistance = distance; best = i; }
+    });
+    handles.splice(Math.floor(best / 8) + 1, 0, [x, y]);
+    this.commitFrame(frameIndex);
+  },
+
+  removeFramePoint(frameIndex, index) {
+    if (this.frameHandles[frameIndex].length <= 4) {
+      this.setStatus("A frame needs at least four points.", "bad");
+      return;
+    }
+    this.frameHandles[frameIndex].splice(index, 1);
+    this.commitFrame(frameIndex);
   },
 
   // Write the guard's points (drawn from now on) and lay the body out again.
@@ -2445,8 +2550,11 @@ const bodyEditor = {
     const jackNote = jackMisses
       ? " The jack's bore misses the control cavity: Shift-drag the jack to turn it toward it."
       : "";
+    const frameProblem = (this.layout.frames || []).find((frame) => frame.problem);
     if (outside.size) {
       this.setStatus(`Outside the outline: ${[...outside].join(", ")}.${jackNote}`, "bad");
+    } else if (frameProblem) {
+      this.setStatus(`${frameProblem.problem} Drag its points in (or turn it round with body_pickup_frame_direction).`, "bad");
     } else if (jackMisses) {
       this.setStatus(jackNote.trim(), "bad");
     } else if (this.guardGaveWay()) {
@@ -3550,6 +3658,16 @@ form.addEventListener("change", (event) => {
 document.getElementById("headstock-editor-reset").addEventListener("click", () => headstockEditor.reset());
 document.getElementById("headstock-editor-load").addEventListener("click", () => headstockEditor.loadTemplate());
 document.getElementById("headstock-editor-template").addEventListener("change", () => headstockEditor.loadTemplate());
+// A frame style chosen draws every frame as that style's own again.
+form.addEventListener("change", (event) => {
+  if (event.target.dataset.name !== "body_pickup_frame") return;
+  for (const position of ["neck", "middle", "bridge"]) {
+    const input = bodyEditor.field("prototype", `body_${position}_frame_points`);
+    if (input && input.value !== "[]") bodyEditor.setField(input, []);
+  }
+  bodyEditor.scheduleRefresh();
+});
+
 // A cover style chosen goes back to that style's own size (a drawn cover
 // keeps the size it was drawn at).
 form.addEventListener("change", (event) => {

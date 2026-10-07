@@ -558,6 +558,51 @@ Every cover is a `geometry.body.CoverPlate` (`Prototype001Geometry.covers`):
 the recess outline, the recess depth as the sheet thickness, 3.2 mm screw
 clearance holes, and for the Tele plate its pot holes and switch slot.
 
+### Humbucker frames
+
+`body_pickup_frame` puts a decorative frame round every humbucker
+(`presets.pickup_frames`), cut from `body_pickup_frame_thickness` (2.5 mm)
+sheet in its own cover program (`Cover_<position>_pickup_frame.nc`):
+`horns`, its ends sweeping into a horn either side toward the neck and
+its bridge side round, or `hook`, its bass end cut in to a hook and its
+treble end sweeping into one long horn. Both are traced from the
+builder's drawing (`humbframes.dxf`): its lines were pen strokes, so
+their outer edge is taken, and its size arbitrary, so it is scaled for
+its opening to be the humbucker's, 70.5 mm across the strings — 57 ×
+163 mm for the horns, 57 × 146 mm for the hook. The opening is not the
+drawing's but the pickup's own, the pickguard's (`pickup_openings`,
+70.5 × 39 mm, longer for seven and eight strings).
+
+A frame's outline is a closed Catmull-Rom loop through its points, like a
+drawn body, given in its own frame — along the neck toward the bridge
+and across it, the bass side negative, from the opening's centre, horns
+toward the neck — and each pickup has its own:
+`body_neck_frame_points`, `body_middle_frame_points` and
+`body_bridge_frame_points` (empty, the style's, its handles fitted
+within 0.25 mm of the tracing). It turns with its pickup, opens across
+the strings with the route for seven and eight strings (its points past
+the middle move out by half the stretch) and is mirrored for a
+left-handed build. `body_pickup_frame_direction` points its horns toward
+the neck, toward the bridge (the frame turned round), or — `auto`, the
+default — toward the neck where it fits and turned round where only that
+fits.
+
+It is held by two screws past the pickup's ears (`EAR_REACH`, the
+route's reach across), in the middle of the stretch of the pickup's long
+axis that has `FRAME_SCREW_ROOM` (4 mm) of frame all round — or, where
+the frame leaves none on the axis (the hook's bass end), as near it as
+there is, up to 20 mm along the neck either side: 3.2 mm holes in the
+frame and their pilots in the top (`Body_top_small_holes`). Two 6.5 mm
+holes over the pickup's height screws reach them through it.
+
+A frame must lie on the body clear of the neck, the bridge (its routes,
+plate and holes), the other pickups' routes and frames, the controls on
+the top and the truss rod's access: the body editor draws one that does
+not, outlined in red with the reason, to be mended, and the build
+refuses it. On the default body the bridge frame fits turned round and
+the neck frame fits neither way (its horns reach past the cutaway's
+edge), so it is to be drawn smaller there.
+
 ### Battery box
 
 `body_battery_box` (off by default) adds a rear 9 V battery box with any

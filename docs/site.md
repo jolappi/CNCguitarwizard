@@ -99,7 +99,18 @@ Python.
    (the automatic guard's style, `body_pickguard_style`, is chosen beside
    it). Choosing the controls in the pickguard (`body_controls`
    "pickguard") ticks `body_pickguard`; a drawn guard that does not cover
-   them gives way to the automatic one, and the status line says so. With `body_arm_contour_depth` set (also beside the
+   them gives way to the automatic one, and the status line says so.
+   With `body_pickup_frame` set (horns or hook, beside the editor with
+   `body_pickup_frame_direction`), every humbucker's frame is drawn dark
+   over it — its opening, screws and the holes over the height screws cut
+   out — with small round yellow handles at its points (`frames` in the
+   layout): dragging one writes that pickup's own
+   `body_<position>_frame_points` (the handle taken back into the frame's
+   own frame with the layout's `origin`, `along`, `across` and `stretch`),
+   a click on its edge adds a point and Alt/Option- or right-click
+   removes one (four at least); choosing a style again empties all three
+   fields. A frame that does not fit is outlined red and the status line
+   gives its reason. With `body_arm_contour_depth` set (also beside the
    editor), the line where the arm contour starts is drawn in green with
    round handles: dragging one writes `arm_contour_points`, a click on the
    line adds one, Alt- or right-click removes one, and *Auto arm contour*

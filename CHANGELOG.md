@@ -4,6 +4,21 @@
 
 ### Added
 
+- Humbucker frames (`body_pickup_frame`): a decorative frame round
+  every humbucker, cut from plastic sheet in its own cover program —
+  `horns` or `hook`, traced from the builder's drawing
+  (`humbframes.dxf`) and scaled for its opening to be the humbucker's,
+  the opening itself the pickup's own (the pickguard's, 70.5 × 39 mm).
+  Each pickup's frame is its own, drawn in the body editor
+  (`body_neck_frame_points`, `_middle_`, `_bridge_`); it turns, opens
+  for seven and eight strings and mirrors with its pickup, and
+  `body_pickup_frame_direction` points its horns toward the neck, the
+  bridge, or (auto) the neck where they fit and else turns it round. Two
+  screws hold it past the pickup's ears (pilots in
+  `Body_top_small_holes`), and two larger holes reach the height screws
+  through it. A frame off the body or into the neck, bridge, other
+  pickups, frames, top controls or truss-rod access is drawn red with
+  the reason and refused by the build.
 - The body and headstock outlines to draw in another program: *Export
   SVG* in the body and headstock editors saves the outline as an SVG
   template, 1:1 in millimetres — the outline as one Bézier path with a

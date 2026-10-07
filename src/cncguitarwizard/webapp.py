@@ -177,6 +177,16 @@ _CHOICE_LABELS: dict[str, dict[str, str]] = {
         "stratocaster": "Stratocaster (beside the neck, a tail past the bridge)",
         "superstrat": "Superstrat (close round the pickups)",
     },
+    "body_pickup_frame": {
+        "none": "None",
+        "horns": "Horns (a horn either end toward the neck, round toward the bridge)",
+        "hook": "Hook (a hooked bass end, a long horn on the treble side)",
+    },
+    "body_pickup_frame_direction": {
+        "auto": "Horns toward the neck, turned round where they do not fit",
+        "neck": "Horns toward the neck",
+        "bridge": "Horns toward the bridge (turned round)",
+    },
     "headstock_engraving_font": {
         "sans": "Plain sans (single stroke)",
         "script": "Script (Hershey Script)",
@@ -244,6 +254,9 @@ _BASIC_FIELDS: frozenset[str] = frozenset(
         "body_jack",
         "body_pickguard",
         "body_pickguard_style",
+        "body_pickup_frame",
+        "body_pickup_frame_direction",
+        "body_pickup_frame_thickness",
         "body_engraving",
         "body_engraving_pattern",
         "body_engraving_seed",
@@ -651,6 +664,14 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         and its holes — or ``None``;
         ``arm_contour`` and ``belly_cut`` ``{"points", "automatic"}`` — the
         lines where they start (see ``_contour_line``) — or ``None``;
+        ``frames`` each humbucker frame's ``{"position", "field", "turned",
+        "problem", "points", "handles", "origin", "along", "across",
+        "stretch", "openings", "holes"}`` — its points in its own frame (as
+        its ``field`` holds them) and as handles in the editor's frame, the
+        frame's origin and the directions of its own axes there (a handle
+        dragged to ``p`` is at ``a = (p - origin)·along``, ``c`` the same
+        across, narrowed by half the ``stretch``), and why it does not fit,
+        or ``None``;
         ``engraving`` the decorative engraving's lines, or ``None``;
         ``relief`` a relief engraving's shapes ``{"outline", "depth"}``
         (camo), empty for none.
@@ -850,6 +871,35 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
             if layout.pickguard is not None
             else None
         ),
+        "frames": [
+            {
+                "position": frame.position,
+                "field": f"body_{frame.position}_frame_points",
+                "turned": frame.turned,
+                "problem": frame.problem,
+                "points": [list(point) for point in frame.points],
+                "handles": local(
+                    [frame.placing.to_model(a, c) for a, c in frame.points]
+                ),
+                "origin": [
+                    round(frame.placing.origin.x - heel_end, 3),
+                    round(frame.placing.origin.y, 3),
+                ],
+                "along": list(frame.placing.along),
+                "across": list(frame.placing.across),
+                "stretch": frame.placing.stretch,
+                "openings": [local(slot.outline) for slot in frame.plate.slots],
+                "holes": [
+                    {
+                        "x": round(hole.center_x - heel_end, 2),
+                        "y": round(hole.center_y, 2),
+                        "r": hole.diameter / 2.0,
+                    }
+                    for hole in frame.plate.holes
+                ],
+            }
+            for frame in layout.pickup_frames
+        ],
         "arm_contour": _contour_line(
             parameters, layout.contours, local, "Arm contour", "arm_contour_points"
         ),

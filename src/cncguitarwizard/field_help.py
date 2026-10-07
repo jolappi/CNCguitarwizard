@@ -371,6 +371,19 @@ FIELD_HELP: dict[str, str] = {
         "The automatic pickguard's shape: Stratocaster (beside the neck, a "
         "tail past the bridge) or superstrat (close round the pickups)."
     ),
+    "body_pickup_frame": (
+        "A decorative frame round every humbucker, cut from plastic sheet in "
+        "its own program: horns or hook (traced from the builder's drawing), "
+        "its opening the pickup's own, held by two screws past the pickup's "
+        "ears, with holes to reach the pickup's height screws. Drag its "
+        "points in the body editor to shape each pickup's frame."
+    ),
+    "body_pickup_frame_direction": (
+        "Which way the frames' horns point: toward the neck, toward the "
+        "bridge (turned round), or toward the neck where they fit and else "
+        "turned round (auto)."
+    ),
+    "body_pickup_frame_thickness": "The frames' sheet thickness, in mm.",
     "body_top_edge_radius": "Rounds the top edge over, the radius in mm (0: square).",
     "body_back_edge_radius": "Rounds the back edge over, the radius in mm (0: square).",
     "body_top_binding_width": (

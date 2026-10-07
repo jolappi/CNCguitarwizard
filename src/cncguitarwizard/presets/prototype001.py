@@ -117,6 +117,16 @@ from .pickguard import (
     pickguard,
 )
 from .pickguard import automatic_points as automatic_pickguard_points
+from .pickup_frames import (
+    FRAME_POINTS,
+    PICKUP_FRAME_STYLES,
+    FrameDirection,
+    PickupFrame,
+    PickupFrameStyle,
+    frame_placing,
+    frame_problem,
+    pickup_frame,
+)
 from .pickups import (
     PICKUP_CONFIGURATIONS,
     PickupConfiguration,
@@ -125,6 +135,7 @@ from .pickups import (
     pickup_openings,
     pickup_route,
     pickup_screws,
+    pickup_stretch,
 )
 from .truss_rod_covers import (
     TRUSS_ROD_COVER_SIZES,
@@ -489,6 +500,9 @@ class BodyLayout:
             centreline, the point it turns about.
         side_holes: The bridge's holes drilled sideways by hand (a
             tremolo claw's screws), modelled.
+        pickup_frames: A frame round every humbucker, or none (see
+            ``body_pickup_frame``; their plates are also among the
+            ``controls``' covers).
     """
 
     heel_end: float
@@ -520,6 +534,7 @@ class BodyLayout:
     bridge_notes: tuple[str, ...] = ()
     pickup_centres: tuple[tuple[str, float], ...] = ()
     side_holes: tuple[SideHole, ...] = ()
+    pickup_frames: tuple[PickupFrame, ...] = ()
 
 
 TRUSS_ROD_STOCK_LENGTHS: tuple[float, ...] = tuple(
@@ -863,6 +878,26 @@ class Prototype001Parameters:
     body_pickguard_thickness: float = 2.5
     body_pickguard_margin: float = 6.0
     body_pickguard_style: PickguardStyleName = "stratocaster"
+    # Humbucker frames (see presets.pickup_frames): body_pickup_frame puts
+    # a decorative frame round every humbucker, "horns" or "hook" (traced
+    # from the builder's drawing), cut from body_pickup_frame_thickness
+    # sheet in its own cover program, its opening the pickup's own. It is
+    # held by two screws on the pickup's long axis past its ears, with
+    # holes to reach the pickup's height screws through it.
+    # body_pickup_frame_direction points its horns toward the neck
+    # ("neck"), the bridge ("bridge"), or toward the neck where they fit
+    # and else the bridge ("auto"). body_neck_frame_points,
+    # body_middle_frame_points and body_bridge_frame_points are a frame
+    # drawn in the body editor, each pickup's own: its handles as (along
+    # the neck toward the bridge, across toward the treble side) from its
+    # opening's centre, as the style draws it (horns toward the neck);
+    # empty, the style's own.
+    body_pickup_frame: PickupFrameStyle = "none"
+    body_pickup_frame_direction: FrameDirection = "auto"
+    body_pickup_frame_thickness: float = 2.5
+    body_neck_frame_points: tuple[tuple[float, float], ...] = ()
+    body_middle_frame_points: tuple[tuple[float, float], ...] = ()
+    body_bridge_frame_points: tuple[tuple[float, float], ...] = ()
     # A decorative pattern engraved into the top (see presets.engraving):
     # body_engraving puts it on, body_engraving_pattern picks it (Design by
     # Jone's scrolls, EVH stripes, flame, ripples, crackle, woodland camo or
@@ -2948,35 +2983,36 @@ class Prototype001Parameters:
                         + self.body_pickup_screw_recess_extra_depth,
                     )
                 )
+        bridge_areas: list[tuple[Point2D, ...]] = [
+            *(route.outline for route in bridge.top_cavities),
+            # The bridge's own plate, where it reaches past its routes.
+            *((bridge.footprint,) if bridge.footprint else ()),
+            *(route.outline for route in bridge.through_cavities),
+            # A bridge with no route of its own (a string-through
+            # hardtail, a Tune-o-matic) has its holes, and its saddles
+            # reaching ahead of the scale line.
+            *(
+                ((Point2D(scale - SADDLE_REACH, 0.0),),)
+                if not bridge.top_cavities
+                else ()
+            ),
+            *(
+                tuple(
+                    Point2D(
+                        hole.center_x + dx * hole.diameter / 2.0,
+                        hole.center_y + dy * hole.diameter / 2.0,
+                    )
+                    for dx, dy in ((-1, -1), (1, -1), (1, 1), (-1, 1))
+                )
+                for hole in bridge.holes
+            ),
+        ]
         guard = self._pickguard(
             shape,
             heel_end,
             body_outline.points,
             [route for route in (neck_pickup, middle_pickup, bridge_pickup) if route],
-            [
-                *(route.outline for route in bridge.top_cavities),
-                # The bridge's own plate, where it reaches past its routes.
-                *((bridge.footprint,) if bridge.footprint else ()),
-                *(route.outline for route in bridge.through_cavities),
-                # A bridge with no route of its own (a string-through
-                # hardtail, a Tune-o-matic) has its holes, and its saddles
-                # reaching ahead of the scale line.
-                *(
-                    ((Point2D(scale - SADDLE_REACH, 0.0),),)
-                    if not bridge.top_cavities
-                    else ()
-                ),
-                *(
-                    tuple(
-                        Point2D(
-                            hole.center_x + dx * hole.diameter / 2.0,
-                            hole.center_y + dy * hole.diameter / 2.0,
-                        )
-                        for dx, dy in ((-1, -1), (1, -1), (1, 1), (-1, 1))
-                    )
-                    for hole in bridge.holes
-                ),
-            ],
+            bridge_areas,
             controls,
             neck_pocket.outline,
             pickup_holes,
@@ -2985,6 +3021,41 @@ class Prototype001Parameters:
         if guard is not None:
             controls = controls.with_covers(
                 ControlFeatures(top_marks=guard.screw_spots, covers=(guard.plate,))
+            )
+        frames = self._pickup_frames(
+            [
+                ("neck", neck_type, neck_pickup_x, neck_angle, neck_pickup),
+                ("middle", middle_type, middle_pickup_x, middle_angle, middle_pickup),
+                ("bridge", bridge_type, bridge_pickup_x, bridge_angle, bridge_pickup),
+            ],
+            body_outline.points,
+            [
+                ("the neck", outline.boundary),
+                *(("the bridge", area) for area in bridge_areas),
+                *(
+                    (f"the {cavity.name.lower()}", cavity.outline)
+                    for cavity in controls.top_cavities
+                ),
+                *(
+                    (
+                        f"the {hole.name.lower()}",
+                        _circle_points(hole.center, hole.diameter / 2.0),
+                    )
+                    for hole in controls.holes
+                ),
+                *(
+                    (f"the {access.name.lower()}", access.outline)
+                    for access in (truss_rod_access,)
+                    if access is not None
+                ),
+            ],
+        )
+        if frames:
+            controls = controls.with_covers(
+                ControlFeatures(
+                    top_marks=tuple(s for frame in frames for s in frame.screw_spots),
+                    covers=tuple(frame.plate for frame in frames),
+                )
             )
         contours = self._contours(shape, body_outline.points, heel_end, bass_sign)
         carve_pickups = [
@@ -3166,6 +3237,7 @@ class Prototype001Parameters:
                 if kind != "none"
             ),
             bridge.side_holes,
+            frames,
         )
 
     def _string_ferrules(self, holes: tuple[DrilledHole, ...]) -> list[DrilledHole]:
@@ -3892,6 +3964,101 @@ class Prototype001Parameters:
             self.body_engraving_depth,
             pattern_pockets(*layout, self.body_engraving_depth),
         )
+
+    def _pickup_frames(
+        self,
+        pickups: Sequence[tuple[str, PickupType, float, float, TracedCavity | None]],
+        body_outline: Sequence[Point2D],
+        obstacles: Sequence[tuple[str, Sequence[Point2D]]],
+    ) -> tuple[PickupFrame, ...]:
+        """Return a frame round every humbucker (``body_pickup_frame``).
+
+        ``pickups`` are (position, kind, centre X, angle, route). Each frame
+        is its own drawing (``body_<position>_frame_points``) or the style's,
+        laid out with its horns toward the neck or turned round
+        (``body_pickup_frame_direction``; "auto" turns one round only where
+        it does not fit and turned it does). It must keep clear of
+        ``obstacles``, the other pickups' routes and the frames before it;
+        one that does not fit carries its ``problem`` (the body editor
+        draws it to be mended; the build refuses it).
+
+        Raises:
+            BodyGeometryError: For an unknown style or a drawn frame of
+                fewer than four points.
+        """
+        if self.body_pickup_frame == "none":
+            return ()
+        if self.body_pickup_frame not in FRAME_POINTS:
+            raise BodyGeometryError(
+                f"body_pickup_frame must be one of {', '.join(PICKUP_FRAME_STYLES)}."
+            )
+        drawn = {
+            "neck": self.body_neck_frame_points,
+            "middle": self.body_middle_frame_points,
+            "bridge": self.body_bridge_frame_points,
+        }
+        strings = self.string_count
+        bass_sign = self.bass_sign
+        frames: list[PickupFrame] = []
+        for position, kind, centre_x, angle, route in pickups:
+            if kind != "humbucker" or route is None:
+                continue
+            points = drawn[position] or FRAME_POINTS[self.body_pickup_frame]
+            if len(points) < 4:
+                raise BodyGeometryError(
+                    f"The {position} pickup's frame needs at least four points."
+                )
+            others = [
+                *obstacles,
+                *(
+                    (f"the {other} pickup", other_route.outline)
+                    for other, _, _, _, other_route in pickups
+                    if other != position and other_route is not None
+                ),
+                *(
+                    (f"the {frame.position} pickup's frame", frame.plate.outline)
+                    for frame in frames
+                ),
+            ]
+            (opening,) = pickup_openings(
+                "humbucker", centre_x, bass_sign, angle, strings
+            )
+            screws = pickup_screws(
+                "humbucker",
+                centre_x,
+                bass_sign,
+                self.body_pickup_screw_spacing,
+                angle,
+                string_count=strings,
+            )
+
+            def made(turned: bool) -> PickupFrame:
+                frame = pickup_frame(
+                    position,
+                    points,
+                    frame_placing(
+                        centre_x,
+                        bass_sign,
+                        angle,
+                        pickup_stretch("humbucker", strings),
+                        turned,
+                    ),
+                    turned,
+                    thickness=self.body_pickup_frame_thickness,
+                    opening=opening,
+                    height_screws=screws,
+                )
+                return replace(
+                    frame, problem=frame_problem(frame, body_outline, others)
+                )
+
+            frame = made(self.body_pickup_frame_direction == "bridge")
+            if self.body_pickup_frame_direction == "auto" and frame.problem:
+                turned = made(True)
+                if turned.problem is None:
+                    frame = turned
+            frames.append(frame)
+        return tuple(frames)
 
     def _pickguard(
         self,
@@ -4950,6 +5117,9 @@ class Prototype001Parameters:
         headstock = self.headstock_solid(headstock_plan)
         if body_parts.pickguard is not None:
             check_on_body(body_parts.pickguard, body_parts.outline.points)
+        for frame in body_parts.pickup_frames:
+            if frame.problem:
+                raise BodyGeometryError(frame.problem)
         body = BodySolid(
             body_parts.outline,
             self.body_thickness,
