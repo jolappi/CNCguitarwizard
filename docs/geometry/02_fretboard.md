@@ -61,6 +61,7 @@ one of `INLAY_STYLES`:
 | Style | Markers |
 | --- | --- |
 | `barbed_wire` (default) | A barbed-wire ribbon across the board; two at the double-marker frets (12, 24) |
+| `barbed_wire_2` | A knot of barbed wire across the board — two twisted strands, three coils, four barbs — traced from the builder's drawing as one piece (`BARBED_WIRE_2_OUTLINE`, see below); one at every marker fret, 12 and 24 too |
 | `dot` | Round dots (`inlay_dot_diameter`, 6 mm); two at 12 and 24 |
 | `block` | Gibson blocks |
 | `trapezoid` | Les Paul trapezoids: long at the bass edge, the treble edge `TRAPEZOID_SHORT_SIDE` (55 %) of it |
@@ -70,7 +71,19 @@ one of `INLAY_STYLES`:
 | `split_block` | Gibson split blocks: a block split along its diagonal (treble front corner to bass back corner) into two pieces `SPLIT_BLOCK_GAP` (1.5 mm) apart |
 | `custom` | Your own shape (`inlay_points`), drawn once and fitted to every fret space — see below |
 
-Every style but barbed wire and dots spans the board between its frets
+`barbed_wire_2` spans `BARBED_WIRE_2_SPAN` (80 %) of the board's width at
+its fret, centred, its barbs reaching along the neck; where the fret
+space is too short for that (the last frets) the knot is drawn smaller,
+its barbs `BARBED_WIRE_2_FRET_CLEARANCE` (1.5 mm) from the frets either
+side. Its outline (`geometry.fretboard.barbed_wire_2`) was traced once
+from the drawing `barbedwiretrue.dxf` (85 × 25 mm, 13 pieces): the
+pieces joined into one so it is one piece to cut and glue, thickened,
+a backbone run along the wire and the slits and spurs a 1 mm end mill
+cannot cut taken off, so at these sizes the 1 mm inlay cutter cuts each
+knot whole. The inlay editor starts from a coarser copy of it (43
+corners, `BARBED_WIRE_2_EDITOR_OUTLINE`).
+
+Every style but the barbed wires and dots spans the board between its frets
 (`BOARD_STYLES`): one per listed fret, `inlay_block_length_fraction`
 (60 %) of the fret spacing long, `inlay_block_edge_margin` (5 mm) inside
 each board edge with the board's taper, its corners rounded 1 mm. The

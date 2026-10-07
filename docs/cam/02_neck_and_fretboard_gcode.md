@@ -158,7 +158,7 @@ blank down, for the tabs are not all that holds the board.
 | --- | --- | --- |
 | `Fretboard_index_pins.nc` | flat | Both dowel holes |
 | `Fretboard_radius.nc` | ball | 430 mm radius; the crown ends `blank − 6` mm below the blank top, the edges 0.9 mm lower |
-| `Fretboard_inlays.nc` | 1 mm | Twelve barbed-wire pockets 2 mm below the crown, each the marker rounded to the tool (see below); barbs narrower than the tool are left out |
+| `Fretboard_inlays.nc` | 1 mm | Twelve barbed-wire pockets 2 mm below the crown (ten one-piece knots with `barbed_wire_2`), each the marker rounded to the tool (see below); barbs narrower than the tool are left out |
 | `Fretboard_slots.nc` | 0.6 mm | 24 slots that follow the radius across the board, 2.7 mm below the surface, in equal passes of at most `fret_slot_step_down` (14 of 0.19 mm at 0.2), 1 mm past each edge, at `fret_slot_spindle_speed` (30 000 rpm) |
 | `Fretboard_outline.nc` | flat | A locking nut's shelf first, when the board runs on under it; then the tapered outline with square nut corners (`fretboard_nut_corner_radius`, 0 by default) and tabs |
 

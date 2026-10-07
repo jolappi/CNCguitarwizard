@@ -47,6 +47,7 @@
 - Older saved designs brought up to date on loading, every setting in
   view and every editor drawn
 - Undo and redo for the editors and the form
+- A traced barbed-wire knot inlay (`barbed_wire_2`), one piece
 - The fretboard blank as bought: its size and thickness, and a carrier
   board taking the dowels past a short blank's ends
 - A saved design built locally from the command line (`--design`),

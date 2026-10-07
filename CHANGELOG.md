@@ -4,6 +4,14 @@
 
 ### Added
 
+- A second barbed-wire inlay style, `barbed_wire_2` ("Barbed wire 2"): a
+  knot of barbed wire — two twisted strands, three coils and four barbs —
+  traced from the builder's drawing (`barbedwiretrue.dxf`) and joined
+  into one piece to cut and glue, across the board at 80 % of its width,
+  one at every marker fret (12 and 24 too), drawn smaller where the fret
+  space is short to keep 1.5 mm from the frets. The 1 mm inlay cutter
+  cuts each knot whole, and its pieces come out of the sheet program as
+  any other style's. The original `barbed_wire` stays the default.
 - The fretboard blank in the machining form: a bought blank's length and
   width (`fretboard_blank_length`, `fretboard_blank_width`, the board
   centred on it; 540 × 70 mm takes the default board and its dowels),

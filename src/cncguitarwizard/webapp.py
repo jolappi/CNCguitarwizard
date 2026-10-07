@@ -131,6 +131,7 @@ _CHOICE_LABELS: dict[str, dict[str, str]] = {
     },
     "inlay_style": {
         "barbed_wire": "Barbed wire (two at the 12th and 24th)",
+        "barbed_wire_2": "Barbed wire 2 (a traced knot, one piece at every marker)",
         "dot": "Dots (two at the 12th and 24th)",
         "block": "Blocks (Gibson)",
         "trapezoid": "Trapezoids (Les Paul)",

@@ -61,6 +61,7 @@ def test_schema_lists_every_parameter_with_a_form_type() -> None:
         "advanced": False,
         "options": [
             "barbed_wire",
+            "barbed_wire_2",
             "dot",
             "block",
             "trapezoid",

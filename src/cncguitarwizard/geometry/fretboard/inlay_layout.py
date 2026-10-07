@@ -1,7 +1,9 @@
 """Position marker inlays cut into the fretboard surface.
 
 The styles share one layout: ``barbed_wire`` (the Prototype001 default)
-and round ``dot`` markers, two at the double-marker frets, and the
+and round ``dot`` markers, two at the double-marker frets; ``barbed_wire_2``,
+a knot of barbed wire across the board traced from the builder's drawing
+(``barbed_wire_2``), one piece at every marker fret; and the
 shapes that span the board between the frets, one per fret, following
 its taper (``BOARD_STYLES``): Gibson-style ``block``, Les Paul style
 ``trapezoid`` (long at the bass edge, short at the treble edge), Jackson
@@ -22,11 +24,17 @@ from typing import Literal
 from ..exceptions import FretboardGeometryError
 from ..fret import FretCalculator
 from ..primitives import Point2D, rounded_polygon_points
+from .barbed_wire_2 import (
+    BARBED_WIRE_2_ALONG,
+    BARBED_WIRE_2_EDITOR_OUTLINE,
+    BARBED_WIRE_2_OUTLINE,
+)
 from .skew import FretSkew
 from .surface import FretboardSurface
 
 InlayStyle = Literal[
     "barbed_wire",
+    "barbed_wire_2",
     "dot",
     "block",
     "trapezoid",
@@ -39,6 +47,7 @@ InlayStyle = Literal[
 
 INLAY_STYLES: tuple[str, ...] = (
     "barbed_wire",
+    "barbed_wire_2",
     "dot",
     "block",
     "trapezoid",
@@ -50,7 +59,11 @@ INLAY_STYLES: tuple[str, ...] = (
 )
 """Every inlay style, in the order the form offers them."""
 
-BOARD_STYLES: frozenset[str] = frozenset(INLAY_STYLES) - {"barbed_wire", "dot"}
+BOARD_STYLES: frozenset[str] = frozenset(INLAY_STYLES) - {
+    "barbed_wire",
+    "barbed_wire_2",
+    "dot",
+}
 """Styles that span the board between two frets, one per fret, leaning
 point by point with slanted frets."""
 
@@ -76,6 +89,13 @@ CUSTOM_CLEARANCE = 1.0
 """Wood a drawn marker keeps from the fret slots either side of it and from
 the board's edges, in mm."""
 
+BARBED_WIRE_2_SPAN = 0.8
+"""How much of the board's width a ``barbed_wire_2`` knot spans."""
+
+BARBED_WIRE_2_FRET_CLEARANCE = 1.5
+"""Wood a ``barbed_wire_2`` knot's barbs keep from the frets either side,
+in mm: in a short fret space the knot is drawn smaller to keep it."""
+
 
 @dataclass(frozen=True, slots=True)
 class InlayMarker:
@@ -100,9 +120,11 @@ class InlayLayout:
     Each single-marker fret receives one marker centred on the fretboard.
     Each double-marker fret receives two shorter markers offset either
     side of the centerline, matching the traditional double-dot layout
-    at the octave and double-octave — except in the styles that span the
-    board (blocks and the like, and a drawn ``custom`` shape), where every
-    listed fret gets one, as on a Gibson.
+    at the octave and double-octave — except in ``barbed_wire_2`` (one
+    traced knot, ``BARBED_WIRE_2_SPAN`` of the board's width, smaller where
+    the fret space is short) and the styles that span the board (blocks
+    and the like, and a drawn ``custom`` shape), where every listed fret
+    gets one, as on a Gibson.
 
     Args:
         fretboard_surface: Surface the markers are cut into. Its own
@@ -222,6 +244,24 @@ class InlayLayout:
                             ),
                         )
                     )
+        elif self.style == "barbed_wire_2":
+            for fret_number in sorted(
+                (*self.single_marker_frets, *self.double_marker_frets)
+            ):
+                previous = 0.0 if fret_number == 1 else fret_positions[fret_number - 1]
+                position = midpoint(fret_number)
+                half_span = _knot_half_span(
+                    fret_number,
+                    fret_positions[fret_number] - previous,
+                    half_width_at(position),
+                )
+                markers.append(
+                    InlayMarker(
+                        fret_number,
+                        position,
+                        _knot_outline(position, half_span, self.bass_sign),
+                    )
+                )
         else:
             for fret_number in sorted(self.single_marker_frets):
                 position = midpoint(fret_number)
@@ -353,6 +393,15 @@ class InlayLayout:
         elif self.style == "dot":
             corners = list(
                 _dot_outline(middle, 0.0, self.dot_diameter / 2.0, samples=12)
+            )
+        elif self.style == "barbed_wire_2":
+            corners = list(
+                _knot_outline(
+                    middle,
+                    _knot_half_span(fret_number, back - front, half_width_at(middle)),
+                    self.bass_sign,
+                    BARBED_WIRE_2_EDITOR_OUTLINE,
+                )
             )
         else:
             corners = list(
@@ -507,6 +556,57 @@ def _barbed_wire_outline(
         Point2D(position + longitudinal, lateral_offset + lateral)
         for lateral, longitudinal in loop
     )
+
+
+def _knot_half_span(fret_number: int, spacing: float, half_width: float) -> float:
+    """Return a ``barbed_wire_2`` knot's half-length across the board.
+
+    ``BARBED_WIRE_2_SPAN`` of the board's width, less where the knot's
+    barbs would come within ``BARBED_WIRE_2_FRET_CLEARANCE`` of the frets.
+
+    Raises:
+        FretboardGeometryError: If the fret space is too short for any.
+    """
+    half_span = min(
+        BARBED_WIRE_2_SPAN * half_width,
+        (spacing / 2.0 - BARBED_WIRE_2_FRET_CLEARANCE) / BARBED_WIRE_2_ALONG,
+    )
+    if half_span <= 0.0:
+        raise FretboardGeometryError(
+            f"Fret {fret_number}'s space is too short for a barbed_wire_2 marker."
+        )
+    return half_span
+
+
+def _knot_outline(
+    position: float,
+    half_span: float,
+    bass_sign: float,
+    outline: tuple[tuple[float, float], ...] = BARBED_WIRE_2_OUTLINE,
+) -> tuple[Point2D, ...]:
+    """Return the traced barbed-wire knot centred on one marker.
+
+    The wire runs across the board, ``half_span`` either side of the
+    centreline, its barbs reaching along the neck; the knot is drawn as
+    traced on a right-handed board and mirrored on a left-handed one,
+    counter-clockwise either way.
+
+    Args:
+        position: Longitudinal centre of the marker in millimetres.
+        half_span: Half the wire's length across the board, in mm.
+        bass_sign: Which side the bass strings are on (-1: -Y).
+        outline: The traced outline (``BARBED_WIRE_2_OUTLINE``) or the
+            editor's coarser one, in its own unit.
+
+    Returns:
+        Marker outline points ordered as one closed polygon loop, in
+        board-plane (longitudinal, lateral) coordinates.
+    """
+    points = [
+        Point2D(position + along * half_span, -bass_sign * across * half_span)
+        for along, across in outline
+    ]
+    return tuple(points if bass_sign < 0.0 else reversed(points))
 
 
 def _slanted(
