@@ -726,6 +726,10 @@ def test_the_neck_blank_is_a_basic_machining_choice() -> None:
     assert choice["advanced"] is False and choice["default"] == "solid"
     assert choice["options"] == ["solid", "laminated"]
     assert choice["labels"]["laminated"].startswith("Neck plank first")
+    back = fields["neck_back_cut"]
+    assert back["advanced"] is False and back["default"] == "rough_and_finish"
+    assert back["options"] == ["rough_and_finish", "ball"]
+    assert back["labels"]["ball"].startswith("Ball nose alone")
 
 
 def test_body_editor_layout_gives_the_control_cavity_stretch_handles() -> None:

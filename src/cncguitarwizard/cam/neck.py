@@ -79,6 +79,11 @@ class NeckMachiningParameters:
             its waste frame until the tabbed outline cut.
         roughing_step_over: Raster step for roughing, as a fraction of
             the tool diameter.
+        back_cut: How the back is carved: ``"rough_and_finish"`` roughs it
+            with the flat end mill and finishes it with the ball nose, in
+            two programs (``Neck_back_rough``, ``Neck_back_finish``);
+            ``"ball"`` does both with the ball nose in one (``Neck_back``),
+            roughing in layers and then finishing, with no tool change.
         finishing_step_over: Raster step for the ball finish, in
             millimetres (scallop height is step² / 8r).
         face_finish_step_over: Raster step for the flat-tool pass that
@@ -98,6 +103,7 @@ class NeckMachiningParameters:
     blank: Literal["solid", "laminated"] = "solid"
     skin: float = 2.0
     roughing_step_over: float = 0.6
+    back_cut: Literal["rough_and_finish", "ball"] = "rough_and_finish"
     finishing_step_over: float = 0.75
     face_finish_step_over: float = 2.0
     grid_spacing_x: float = 1.0
@@ -121,6 +127,8 @@ class NeckMachiningParameters:
                 raise ToolpathError(f"{name} must be finite and positive.")
         if self.blank not in ("solid", "laminated"):
             raise ToolpathError('blank must be "solid" or "laminated".')
+        if self.back_cut not in ("rough_and_finish", "ball"):
+            raise ToolpathError('back_cut must be "rough_and_finish" or "ball".')
         if not 0.0 < self.roughing_step_over <= 1.0:
             raise ToolpathError("roughing_step_over must lie in (0, 1].")
         if self.ball.tool_tip != "ball":
@@ -162,13 +170,15 @@ class NeckMachiningPlan:
     ``plank_thickness`` plank with ``headstock_block`` glued under its
     headstock end (``None`` when the plank alone is thick enough): the
     neck is cut from the plank first, and the ``headstock_*`` setups cut
-    the headstock after the block is glued on, before the outline.
+    the headstock after the block is glued on, before the outline. With
+    the back cut by the ball nose alone (``back_cut`` "ball") it is one
+    program, ``back_rough``, and ``back_finish`` is ``None``.
     """
 
     index_pins: Setup
     top: Setup
     back_rough: Setup
-    back_finish: Setup
+    back_finish: Setup | None
     back_outline: Setup
     stock_length: float
     stock_width: float
@@ -204,7 +214,7 @@ class NeckMachiningPlan:
             *self.block_top_setups,
             *((self.top_engraving,) if self.top_engraving is not None else ()),
             self.back_rough,
-            self.back_finish,
+            *((self.back_finish,) if self.back_finish is not None else ()),
             *self.headstock_setups,
             *self.block_back_setups,
             self.back_outline,
@@ -545,12 +555,15 @@ def plan_neck_machining(
     back_frame = _Frame(origin_x, origin_y, mirror_y=True)
     reference_points = tuple((x - origin_x, y - origin_y) for x, y in pins[1:])
     size = f"{stock.length:.0f} x {stock.width:.0f}"
+    # The back's programs: one with the ball nose alone, else two.
+    first_back = "Neck_back" if parameters.back_cut == "ball" else "Neck_back_rough"
+    last_back = "Neck_back" if parameters.back_cut == "ball" else "Neck_back_finish"
 
     if laminated:
         assert block is not None
         blank_notes: tuple[str, ...] = (
             f"Laminated blank: a {size} x {plank:g} mm plank now. After "
-            "Neck_back_finish, glue a "
+            f"{last_back}, glue a "
             f"{block.length:.0f} x {block.width:.0f} x {block.thickness:g} mm "
             f"block under its headstock end, from {-block.start_x:.0f} mm "
             "behind the nut to just past the tip (the tip's dowel stays in "
@@ -951,11 +964,13 @@ def plan_neck_machining(
         x_from: float,
         x_to: float,
         notes: tuple[str, ...],
-    ) -> tuple[Setup, Setup]:
+    ) -> tuple[Setup, ...]:
         """Rough and finish the back between x_from and x_to (model X).
 
-        The surface is sampled a little past both ends so the tool never
-        overlooks a neighbouring rise.
+        Two programs, the flat end mill roughing and the ball nose
+        finishing, or with ``back_cut`` "ball" one, the ball nose doing
+        both. The surface is sampled a little past both ends so the tool
+        never overlooks a neighbouring rise.
         """
         surface = _BackSurface(geometry, blank, parameters.skin, back_frame)
         margin = 3.0 * max(flat.tool_diameter, ball.tool_diameter)
@@ -969,6 +984,53 @@ def plan_neck_machining(
             spacing_x=parameters.grid_spacing_x,
             spacing_y=parameters.grid_spacing_y,
         )
+        skin_note = (
+            f"Roughing stops {parameters.skin:g} mm short of the glue plane "
+            "everywhere, so the neck stays attached to its waste frame."
+        )
+        scallop = (
+            f"Scallop height about "
+            f"{parameters.finishing_step_over**2 / (8.0 * ball.tool_radius):.3f} mm."
+        )
+        if parameters.back_cut == "ball":
+            # The ball nose alone: layers no deeper than its step-down at
+            # the roughing step, then the finishing rows, in one program.
+            ball_surface = offset_sampled_surface(sampled, ball)
+            rough_step = ball.tool_diameter * parameters.roughing_step_over
+            return (
+                Setup(
+                    f"{prefix}_back",
+                    f"{what} back - the ball nose alone, roughing then finishing",
+                    (
+                        raster_rough(
+                            f"{what} back roughing",
+                            ball_surface,
+                            ball,
+                            x_range=cut_x,
+                            y_range=carve_y,
+                            step_over=rough_step,
+                        ),
+                        raster_finish(
+                            f"{what} back finishing",
+                            ball_surface,
+                            ball,
+                            x_range=cut_x,
+                            y_range=carve_y,
+                            step_over=parameters.finishing_step_over,
+                        ),
+                    ),
+                    (
+                        *notes,
+                        f"The ball nose roughs the back in layers of at most "
+                        f"{ball.step_down:g} mm, then finishes it in the same "
+                        "program: no tool change.",
+                        skin_note,
+                        scallop,
+                    ),
+                    reference_points,
+                    ball,
+                ),
+            )
         rough = Setup(
             f"{prefix}_back_rough",
             f"{what} back - Z-limited roughing with the flat end mill",
@@ -982,11 +1044,7 @@ def plan_neck_machining(
                     step_over=flat.tool_diameter * parameters.roughing_step_over,
                 ),
             ),
-            (
-                *notes,
-                f"Roughing stops {parameters.skin:g} mm short of the glue plane "
-                "everywhere, so the neck stays attached to its waste frame.",
-            ),
+            (*notes, skin_note),
             reference_points,
             flat,
         )
@@ -1006,9 +1064,7 @@ def plan_neck_machining(
             (
                 f"Same fixture and X/Y zero as {prefix}_back_rough; change to "
                 "the ball nose and re-touch Z on the same surface.",
-                f"Scallop height about "
-                f"{parameters.finishing_step_over**2 / (8.0 * ball.tool_radius):.3f}"
-                " mm.",
+                scallop,
             ),
             reference_points,
             ball,
@@ -1029,10 +1085,11 @@ def plan_neck_machining(
         through.front_x + 2.0 * radius if through is not None else max_x
     ) + radius
     headstock_setups: tuple[Setup, ...] = ()
+    headstock_back: tuple[Setup, ...] = ()
     if laminated:
         assert block is not None
         split = block.start_x
-        back_rough, back_finish = back_setups(
+        neck_back = back_setups(
             "Neck",
             "Neck",
             plank,
@@ -1065,7 +1122,7 @@ def plan_neck_machining(
             reference_points,
             flat,
         )
-        headstock_rough, headstock_finish = back_setups(
+        headstock_back = back_setups(
             "Headstock",
             "Headstock",
             thickness,
@@ -1082,11 +1139,10 @@ def plan_neck_machining(
         headstock_setups = (
             headstock_top,
             *((lettering,) if lettering is not None else ()),
-            headstock_rough,
-            headstock_finish,
+            *headstock_back,
         )
     else:
-        back_rough, back_finish = back_setups(
+        neck_back = back_setups(
             "Neck",
             "Neck",
             thickness,
@@ -1184,7 +1240,7 @@ def plan_neck_machining(
                         "same work zero as Neck_top."
                         if on_top
                         else "The neck blank flipped onto its two index pins, "
-                        "as for Neck_back_rough."
+                        f"as for {first_back}."
                     ),
                     *(
                         note
@@ -1202,12 +1258,13 @@ def plan_neck_machining(
 
     top_outline = top_frame.polygon(outline)
     back_outline_polygon = back_frame.polygon(outline)
+    back_rough = neck_back[0]
+    back_finish = neck_back[1] if len(neck_back) > 1 else None
     headstock_previews = (
         (
             top_outline,
             *((top_outline,) if lettering is not None else ()),
-            back_outline_polygon,
-            back_outline_polygon,
+            *((back_outline_polygon,) * len(headstock_back)),
         )
         if headstock_setups
         else ()
@@ -1240,8 +1297,7 @@ def plan_neck_machining(
             *((top_outline,) if small_holes is not None else ()),
             *block_top_previews,
             *((top_outline,) if top_engraving is not None else ()),
-            back_outline_polygon,
-            back_outline_polygon,
+            *((back_outline_polygon,) * len(neck_back)),
             *headstock_previews,
             *block_back_previews,
             back_outline_polygon,

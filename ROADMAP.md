@@ -47,6 +47,7 @@
 - Older saved designs brought up to date on loading, every setting in
   view and every editor drawn
 - Undo and redo for the editors and the form
+- The neck's back carved with the ball nose alone, in one program
 - Truss-rod covers to choose (bell, Ibanez / ESP, PRS, rectangle) and to
   draw and size in the headstock editor
 - A traced barbed-wire knot inlay (`barbed_wire_2`), one piece

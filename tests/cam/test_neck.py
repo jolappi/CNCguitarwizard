@@ -9,6 +9,7 @@ from cncguitarwizard.cam import (
     GRBLWriter,
     MachiningParameters,
     NeckMachiningParameters,
+    ToolpathError,
     neck_plan_polygon,
     plan_neck_machining,
 )
@@ -353,3 +354,47 @@ def test_a_given_blank_thickness_is_raised_when_too_thin_and_kept_when_thicker()
     thick = plan_neck_machining(geometry, NeckMachiningParameters(blank_thickness=45.0))
 
     assert thick.stock_thickness == 45.0
+
+
+def test_the_ball_nose_alone_can_carve_the_back(geometry, plan) -> None:  # type: ignore[no-untyped-def]
+    ball = plan_neck_machining(geometry, NeckMachiningParameters(back_cut="ball"))
+    assert [setup.name for setup in ball.setups] == [
+        "Neck_index_pins",
+        "Neck_top",
+        "Neck_back",
+        "Neck_back_outline",
+    ]
+    back = ball.back_rough
+    assert ball.back_finish is None
+    assert back.tool.tool_tip == "ball"
+    rough, finish = back.toolpaths
+    assert (rough.name, finish.name) == ("Neck back roughing", "Neck back finishing")
+    # Its finish is the two-program plan's own, and so is the depth.
+    assert plan.back_finish is not None
+    two = plan.back_finish.toolpaths[0]
+    assert finish.deepest_z() == pytest.approx(two.deepest_z())
+    assert len(finish.moves) == len(two.moves)
+    # Layers no deeper than the ball's step-down, from the top.
+    levels = sorted({round(m.z, 3) for m in rough.moves if m.z < 0.0}, reverse=True)
+    assert levels[0] >= -back.tool.step_down
+    assert "no tool change" in " ".join(back.notes)
+    assert len(ball.preview_outlines) == len(ball.setups)
+
+
+def test_a_laminated_neck_cuts_its_headstock_with_the_ball_nose_too(geometry) -> None:  # type: ignore[no-untyped-def]
+    plan = plan_neck_machining(
+        geometry, NeckMachiningParameters(back_cut="ball", blank="laminated")
+    )
+    names = [setup.name for setup in plan.setups]
+    assert names == [
+        "Neck_index_pins",
+        "Neck_top",
+        "Neck_back",
+        "Headstock_top",
+        "Headstock_back",
+        "Neck_back_outline",
+    ]
+    assert "After Neck_back, glue" in " ".join(plan.index_pins.notes)
+    assert len(plan.preview_outlines) == len(plan.setups)
+    with pytest.raises(ToolpathError, match="back_cut"):
+        NeckMachiningParameters(back_cut="flat")  # type: ignore[arg-type]

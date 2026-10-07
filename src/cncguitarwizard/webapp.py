@@ -95,6 +95,10 @@ _CHOICE_LABELS: dict[str, dict[str, str]] = {
     },
     "body_controls": CONTROL_LABELS,
     "post_processor": POST_PROCESSOR_LABELS,
+    "neck_back_cut": {
+        "rough_and_finish": "Flat end mill roughs, ball nose finishes (two programs)",
+        "ball": "Ball nose alone, roughing then finishing (one program)",
+    },
     "neck_blank": {
         "solid": "One plank as thick as the headstock needs",
         "laminated": "Neck plank first, headstock block glued on after",
@@ -250,6 +254,7 @@ _BASIC_FIELDS: frozenset[str] = frozenset(
         "post_processor",
         "spindle_dwell",
         "neck_blank",
+        "neck_back_cut",
         "spindle_speed",
         "feed_rate",
         "plunge_rate",

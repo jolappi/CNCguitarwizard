@@ -4,6 +4,12 @@
 
 ### Added
 
+- The neck's back carved with the ball nose alone (`neck_back_cut`
+  "ball" in the machining form, `NeckMachiningParameters.back_cut`): one
+  program, `Neck_back`, the ball nose roughing in layers no deeper than
+  its step-down and then finishing in the same program, with no tool
+  change (`Headstock_back` for a laminated blank's headstock). The flat
+  roughing and ball finishing in two programs stay the default.
 - Truss-rod covers to choose and to draw in the headstock editor:
   `truss_rod_cover_style` a Gibson bell (three screws, the default), an
   Ibanez / ESP style rounded triangle or a PRS style teardrop (two

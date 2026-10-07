@@ -68,6 +68,14 @@ beyond the headstock tip and beyond the heel, on the centerline.
 | `Neck_back_finish.nc` | same, ball nose | Finishing raster along the neck, 0.75 mm step-over (≈ 0.023 mm scallop) |
 | `Neck_back_outline.nc` | same, flat tool | Plan outline through the 2 mm skin, six tabs |
 
+**The ball nose alone.** With `back_cut` "ball" (the machining form's
+`neck_back_cut`) the back is one program, `Neck_back.nc` (and on a
+laminated blank `Headstock_back.nc` for the headstock's), the ball nose
+doing both: Z-limited roughing in layers no deeper than its step-down
+(3 mm) at the roughing step-over (60 %), then in the same program the
+same finishing raster as `Neck_back_finish.nc` — no tool change and no Z
+to re-touch between them, in about the same time.
+
 The back height function is the neck-back mesh where the neck exists, the
 angled headstock back plane where the headstock exists (the deeper of the
 two where both do), and a **skin** level everywhere else: the carve never

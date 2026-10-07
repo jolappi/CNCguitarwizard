@@ -83,6 +83,11 @@ class MachiningParameters:
             plank as thick as the headstock needs, or ``"laminated"``, the
             neck cut from its own plank first and the headstock after a
             block is glued under it (``NeckMachiningParameters.blank``).
+        neck_back_cut: How the neck's back is carved: ``"rough_and_finish"``,
+            the flat end mill roughing it and the ball nose finishing it in
+            two programs, or ``"ball"``, the ball nose alone in one program,
+            roughing in layers and then finishing, no tool change
+            (``NeckMachiningParameters.back_cut``).
         engraving_tool_angle: The engraving V-bit's included angle, in
             degrees (its groove is ``2 * depth * tan(angle / 2)`` wide).
         engraving_step_down: Depth cut per engraving pass.
@@ -154,6 +159,7 @@ class MachiningParameters:
     post_processor: PostProcessor = "grbl"
     spindle_dwell: float = 0.0
     neck_blank: Literal["solid", "laminated"] = "solid"
+    neck_back_cut: Literal["rough_and_finish", "ball"] = "rough_and_finish"
     engraving_tool_angle: float = 60.0
     engraving_step_down: float = 1.0
     engraving_feed_rate: float = 600.0
@@ -223,6 +229,10 @@ class MachiningParameters:
             )
         if self.neck_blank not in ("solid", "laminated"):
             raise ToolpathError('neck_blank must be "solid" or "laminated".')
+        if self.neck_back_cut not in ("rough_and_finish", "ball"):
+            raise ToolpathError(
+                'neck_back_cut must be "rough_and_finish" or "ball".'
+            )
         if self.tool_tip not in ("flat", "ball", "vee"):
             raise ToolpathError('tool_tip must be "flat", "ball" or "vee".')
         if not 0.0 < self.engraving_tool_angle < 180.0:

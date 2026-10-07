@@ -669,7 +669,7 @@ function showResult(result) {
     if (block) {
       const glued = `${block.length} × ${block.width} × ${block.thickness} mm block under the headstock, from ${block.from_nut} mm behind the nut to past the tip`;
       rows.push(stock.blank === "laminated"
-        ? [`${part} blank (laminated)`, `${stock.length_mm} × ${stock.width_mm} × ${stock.laminated.plank_thickness_mm} mm plank first; after Neck_back_finish glue a ${glued}, then the Headstock_ programs and the outline`]
+        ? [`${part} blank (laminated)`, `${stock.length_mm} × ${stock.width_mm} × ${stock.laminated.plank_thickness_mm} mm plank first; after ${report.gcode.Neck_back ? "Neck_back" : "Neck_back_finish"} glue a ${glued}, then the Headstock_ programs and the outline`]
         : [`${part} blank, or laminated`, `${stock.length_mm} × ${stock.width_mm} × ${stock.laminated.plank_thickness_mm} mm plank + ${glued} (neck_blank "laminated": the headstock in programs of its own)`]);
     }
   }

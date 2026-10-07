@@ -335,3 +335,15 @@ def test_build_reports_a_fretboard_blank_on_its_carrier(tmp_path: Path) -> None:
     assert fretboard["carrier"]["length_mm"] == 527.2
     assert fretboard["carrier"]["thickness_mm"] == 12.0
     assert "carrier" not in stock["Neck"]
+
+
+def test_build_carves_the_neck_back_with_the_ball_nose_alone(tmp_path: Path) -> None:
+    result = build_prototype001(
+        tmp_path / "output",
+        run_freecad=False,
+        machining=MachiningParameters(neck_back_cut="ball"),
+    )
+    names = [path.name for path in result.gcode_paths]
+    assert "Neck_back.nc" in names
+    assert "Neck_back_rough.nc" not in names
+    assert "Neck_back_finish.nc" not in names

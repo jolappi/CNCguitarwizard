@@ -202,15 +202,19 @@ class Prototype001Build:
 
     def _plan_neck(self) -> None:
         assert self.geometry is not None
+        # The machining form's neck_blank picks a laminated blank, its
+        # neck_back_cut the ball nose alone for the back.
+        neck = self.neck_machining
+        if self.machining.neck_blank == "laminated":
+            neck = replace(neck, blank="laminated")
+        if self.machining.neck_back_cut == "ball":
+            neck = replace(neck, back_cut="ball")
         self._plans.append(
             (
                 "Neck",
                 plan_neck_machining(
                     self.geometry,
-                    # The machining form's neck_blank picks a laminated blank.
-                    replace(self.neck_machining, blank="laminated")
-                    if self.machining.neck_blank == "laminated"
-                    else self.neck_machining,
+                    neck,
                     # A neck-through block's features are the body's.
                     self.machining,
                 ),
