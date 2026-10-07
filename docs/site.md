@@ -215,6 +215,47 @@ Python.
    One history serves the whole page; a button's tooltip names the fields
    its step changes, and a new change clears the redo steps. In a text
    field the keys keep the browser's own undo of the typing.
+   **Export SVG** and **Import SVG** in the body and headstock editors
+   take an outline to another drawing program (Inkscape, Illustrator,
+   Affinity Designer, a CAD program) and back. Export downloads
+   `webapp.outline_template()`'s template, `<name>-body-outline.svg` or
+   `<name>-headstock-outline.svg`, drawn 1:1 in millimetres as the editor
+   shows the design (mirrored for a left-handed build, a seven- or
+   eight-string body widened): the layer *Outline* holds the outline as
+   one path of Bézier curves with a node at every handle (the body's
+   Catmull-Rom loop and the headstock's edges and tip convert exactly);
+   the layer *Reference*, locked, what it is drawn round — the neck,
+   pocket, routes, cavities, jack, centreline and bridge line, or the
+   neck, nut, tuner holes (dashed, the edge's clearance round them),
+   centreline and truss-rod cover — and three red registration marks.
+   Import reads a file chosen from the click (`outline-file`) with
+   `webapp.import_outline()`: `drawings.read_svg_shapes` reads any SVG
+   (paths with every command, arcs included, rects, circles, ellipses,
+   lines, polylines and polygons, in groups and layers with any
+   transform, in any unit), the marks place the drawing to the
+   millimetre whatever the program did to it (its page, its position, 72
+   or 96 pixels to the inch — the message says by how much it was
+   scaled), and the outline is the path still named `cgwOutline`, else the
+   largest closed shape outside the reference layer (an outline drawn
+   anew; its ends may be 3 mm apart). It becomes the editor's own handles,
+   every one on the drawn line: the drawing's own nodes first, and more
+   where the editor's curve strays more than 0.25 mm from it (a body span
+   is halved, its neighbours too where they would be left over two and a
+   half times as long; a headstock edge or tip gets a point where it
+   strays most) — a polyline's nodes, closer than 8 mm on average, are no
+   handles. A headstock's two edges end at one distance from the nut, the
+   tip line, and its tip runs across from one edge's end to the other's;
+   the tip line is the first that draws the outline within the tolerance
+   of: a pair of nodes at one distance on the two sides (the template's
+   own corners), where each side turns to run more across than along
+   (45°), and back from the far end a millimetre at a time — or the
+   closest; corners meeting make a pointed tip, and a tip that turns back
+   across the headstock (a hook) is refused, as is a file without its
+   marks or a closed outline. An outline exported and read back unchanged
+   comes back exactly as it was. The import is one step to undo; the
+   editor's status says how many handles it made, how close they keep,
+   and then what does not fit (a feature outside the body, a tuner hole
+   too near the edge).
 4. On **Build 3D and CNC files** runs the build in stages — `start_build()`, then
    `advance_build()` once per stage of `workflows.Prototype001Build`
    (geometry, body, neck and fretboard toolpaths, cover plates, G-code,

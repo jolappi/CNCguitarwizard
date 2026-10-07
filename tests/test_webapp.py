@@ -10,7 +10,9 @@ from cncguitarwizard.webapp import (
     body_editor_layout,
     finish_build,
     headstock_editor_layout,
+    import_outline,
     load_design,
+    outline_template,
     parameter_schema,
     run_build,
     start_build,
@@ -848,3 +850,72 @@ def test_every_form_field_explains_itself() -> None:
     # Another field's block gives only the sentences naming the field.
     block = "Edge finishes are optional. The rim is flat. body_x is round."
     assert _focus(block, "body_x") == "body_x is round."
+
+
+def test_the_body_outline_goes_out_as_a_template_and_comes_back() -> None:
+    import dataclasses
+
+    from cncguitarwizard.presets import Prototype001Parameters
+    from cncguitarwizard.webapp import _coerce, _jsonable
+
+    seven = Prototype001Parameters.for_instrument("seven_string_guitar")
+    # The form sends every value: a seven-string's own defaults.
+    seven_values = {
+        field.name: _jsonable(getattr(seven, field.name))
+        for field in dataclasses.fields(seven)
+    }
+    for prototype in ({}, {"handedness": "left"}, seven_values):
+        payload = {"prototype": prototype}
+        svg = outline_template(payload, "body")["svg"]
+        for name in ("cgwReference", "cgwOutline", "cgwMarkA", "Neck pocket"):
+            assert name in svg
+        back = import_outline(payload, "body", svg)
+        built = Prototype001Parameters(**_coerce(prototype))
+        points = built.body_shape.control_points  # type: ignore[union-attr]
+        # Unchanged, it is the same drawing (mirrored and widened as shown,
+        # read back as drawn).
+        assert back["values"]["control_points"] == [list(p) for p in points]
+        assert back["message"].startswith("Imported the outline: 64 handles")
+
+
+def test_the_headstock_outline_goes_out_as_a_template_and_comes_back() -> None:
+    payload = {"prototype": {"headstock_style": "6_inline"}}
+    svg = outline_template(payload, "headstock")["svg"]
+    assert "Tuner hole" in svg and "Keep the edge outside" in svg
+    # Moved and scaled by another program, and made 10 % longer there.
+    edited = svg.replace(
+        '<path id="cgwOutline"', '<path id="cgwOutline" transform="scale(1.1 1)"'
+    ).replace(
+        '  <g id="cgwReference"', '  <g transform="scale(0.75)"><g id="cgwReference"'
+    )
+    edited = edited.replace("</svg>", "</g></svg>")
+    values = import_outline(payload, "headstock", edited)
+    start = headstock_editor_layout(payload)["start_edges"]
+    assert values["values"]["headstock_outline"] == "drawn"
+    assert values["values"]["headstock_bass_edge"][-1][0] == pytest.approx(
+        start["bass"][-1][0] * 1.1, abs=0.02
+    )
+    assert "scaled it by 0.75" in values["message"]
+
+
+def test_an_outline_that_cannot_be_drawn_says_why() -> None:
+    drawn = {"prototype": {}}
+    assert "error" in outline_template(drawn, "fretboard")
+    assert (
+        "Only a drawn body"
+        in outline_template(
+            {"prototype": {"body_shape": {"kind": "design_by_jone"}}}, "body"
+        )["error"]
+    )
+    assert (
+        "headless"
+        in outline_template(
+            {"prototype": {"headless": True, "headstock_outline": "drawn"}}, "headstock"
+        )["error"]
+    )
+    assert "not an SVG file" in import_outline(drawn, "body", "{}")["error"]
+    svg = outline_template(drawn, "body")["svg"]
+    assert (
+        "cgwMarkC is missing"
+        in import_outline(drawn, "body", svg.replace("cgwMarkC", "x"))["error"]
+    )

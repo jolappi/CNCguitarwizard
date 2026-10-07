@@ -85,6 +85,11 @@ It also exports two polygon helpers used by the body model:
 corner of a polygon with a sampled fillet arc, and `point_in_polygon(point,
 polygon)` is a ray-casting containment test.
 
+`closed_catmull_rom_spans`, `smooth_curve_spans` and `hermite_spans` turn
+the smooth curves into exact cubic Bézier spans (`BezierSpan`), and
+`bezier_point` / `flatten_span` evaluate and flatten one (see
+[Geometry primitives](../geometry/01_primitives.md#bézier-spans)).
+
 ### `cncguitarwizard.geometry.utils`
 
 | API | Purpose |
@@ -222,6 +227,20 @@ from cncguitarwizard.render.svg import SVGRenderer
 svg = SVGRenderer().render(Point2D(10.0, 20.0))
 assert svg.startswith("<svg")
 ```
+
+## `cncguitarwizard.drawings`
+
+Outlines drawn in another program: SVG templates out, drawings back in
+(see [Outline templates](../render/03_svg_templates.md)).
+
+| API | Purpose |
+| --- | --- |
+| `read_svg_shapes()` | Every drawn shape of an SVG file as polylines in millimetres (`SvgShape`). |
+| `template_svg()` | An outline and what it is drawn round as a 1:1 SVG template (`TemplateFrame`, `ReferenceShape`). |
+| `read_template_outline()` | The outline drawn in a template, placed by its registration marks (`ReadOutline`). |
+| `fit_closed_spline()` | A drawn body outline as the editor's control points (`BodyFit`). |
+| `fit_headstock()` | A drawn headstock outline as its edges and tip points (`HeadstockFit`). |
+| `DrawingError` | A drawing that cannot be read or fitted, saying why. |
 
 ## `cncguitarwizard.validation`
 

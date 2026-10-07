@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from itertools import combinations
 from typing import Literal
@@ -318,6 +319,30 @@ class HeadstockPlan:
     TIP_SAMPLES_PER_SEGMENT = 16
     """Points sampled per span of a shaped tip."""
 
+    def tip_curve(
+        self,
+    ) -> tuple[tuple[Point2D, ...], tuple[tuple[float, float], ...]]:
+        """Return the tip's nodes, -Y corner to +Y corner, and tangents.
+
+        The corners and the tip points between them, with the cubic
+        Hermite tangent at each (see ``tip_tangents``); just the corners,
+        and no tangents, for a straight cut. Not for a pointed tip.
+        """
+        low = Point2D(-self.length, self.edge_y(self.length, -1.0))
+        high = Point2D(-self.length, self.edge_y(self.length, 1.0))
+        if not self.tip_points:
+            return (low, high), ()
+        points = (
+            low,
+            *(Point2D(-(self.length + past), y) for past, y in self.tip_points),
+            high,
+        )
+        return points, tip_tangents(
+            points,
+            tip_direction(lambda d: self.edge_y(d, -1.0), self.length),
+            tip_direction(lambda d: self.edge_y(d, 1.0), self.length),
+        )
+
     def tip_outline(self) -> tuple[Point2D, ...]:
         """Return the tip from its -Y corner to its +Y corner.
 
@@ -327,42 +352,9 @@ class HeadstockPlan:
         """
         if self.pointed:
             return (self.tip_point, self.tip_point)
-        low = Point2D(-self.length, self.edge_y(self.length, -1.0))
-        high = Point2D(-self.length, self.edge_y(self.length, 1.0))
-        if not self.tip_points:
-            return (low, high)
-        points = [
-            low,
-            *(Point2D(-(self.length + past), y) for past, y in self.tip_points),
-            high,
-        ]
-
-        def edge_direction(y_sign: float) -> tuple[float, float]:
-            # Along the edge away from the nut, per mm of distance.
-            step = min(0.5, self.length / 10.0)
-            slope = (
-                self.edge_y(self.length, y_sign)
-                - self.edge_y(self.length - step, y_sign)
-            ) / step
-            norm = math.hypot(1.0, slope)
-            return (-1.0 / norm, slope / norm)
-
-        tangents: list[tuple[float, float]] = []
-        for index, point in enumerate(points):
-            if index == 0:
-                chord = math.hypot(points[1].x - point.x, points[1].y - point.y)
-                dx, dy = edge_direction(-1.0)
-                tangents.append((dx * chord, dy * chord))
-            elif index == len(points) - 1:
-                chord = math.hypot(points[-2].x - point.x, points[-2].y - point.y)
-                dx, dy = edge_direction(1.0)
-                # Arriving: the edge's own direction, back toward the nut.
-                tangents.append((-dx * chord, -dy * chord))
-            else:
-                before, after = points[index - 1], points[index + 1]
-                tangents.append(
-                    ((after.x - before.x) / 2.0, (after.y - before.y) / 2.0)
-                )
+        points, tangents = self.tip_curve()
+        if len(points) == 2:
+            return points
         samples = [points[0]]
         count = self.TIP_SAMPLES_PER_SEGMENT
         for index in range(len(points) - 1):
@@ -477,6 +469,51 @@ def _segment_distance(point: Point2D, a: Point2D, b: Point2D) -> float:
     t = ((point.x - a.x) * dx + (point.y - a.y) * dy) / length_squared
     t = max(0.0, min(1.0, t))
     return math.hypot(point.x - (a.x + t * dx), point.y - (a.y + t * dy))
+
+
+def tip_direction(
+    edge_y: Callable[[float], float], length: float
+) -> tuple[float, float]:
+    """Return an edge's unit direction at the tip, away from the nut.
+
+    ``edge_y`` gives the edge's model Y at a distance from the nut; its
+    slope is taken over the last half millimetre (or tenth of the
+    headstock) before ``length``.
+    """
+    step = min(0.5, length / 10.0)
+    slope = (edge_y(length) - edge_y(length - step)) / step
+    norm = math.hypot(1.0, slope)
+    return (-1.0 / norm, slope / norm)
+
+
+def tip_tangents(
+    points: Sequence[Point2D],
+    low_direction: tuple[float, float],
+    high_direction: tuple[float, float],
+) -> tuple[tuple[float, float], ...]:
+    """Return a shaped tip's cubic Hermite tangents at its nodes.
+
+    ``points`` run from the -Y corner through the tip points to the +Y
+    corner. The curve leaves the first corner along its edge's
+    ``low_direction`` and reaches the last against ``high_direction``,
+    each tangent as long as its span's chord; between, each node's tangent
+    is half the chord between its neighbours (Catmull–Rom).
+    """
+    tangents: list[tuple[float, float]] = []
+    for index, point in enumerate(points):
+        if index == 0:
+            chord = math.hypot(points[1].x - point.x, points[1].y - point.y)
+            dx, dy = low_direction
+            tangents.append((dx * chord, dy * chord))
+        elif index == len(points) - 1:
+            chord = math.hypot(points[-2].x - point.x, points[-2].y - point.y)
+            dx, dy = high_direction
+            # Arriving: the edge's own direction, back toward the nut.
+            tangents.append((-dx * chord, -dy * chord))
+        else:
+            before, after = points[index - 1], points[index + 1]
+            tangents.append(((after.x - before.x) / 2.0, (after.y - before.y) / 2.0))
+    return tuple(tangents)
 
 
 @dataclass(frozen=True, slots=True)

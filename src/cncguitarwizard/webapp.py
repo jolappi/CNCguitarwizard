@@ -34,6 +34,16 @@ from .cam import (
 )
 from .cam.parameters import INDEX_PIN_DIAMETER
 from .cam.planar import simplified
+from .drawings import (
+    ReadOutline,
+    ReferenceShape,
+    TemplateFrame,
+    fit_closed_spline,
+    fit_headstock,
+    read_template_outline,
+    template_svg,
+)
+from .drawings.outlines import headstock_spans
 from .exceptions import CNCGuitarWizardError
 from .field_help import FIELD_HELP
 from .geometry.body import (
@@ -49,7 +59,7 @@ from .geometry.fret import FretCalculator
 from .geometry.fretboard.inlay_layout import DEFAULT_CUSTOM_POINTS, custom_limits
 from .geometry.lettering import text_lines
 from .geometry.neck import LOCKING_NUT_SPECS, TunerLayout
-from .geometry.primitives import Point2D, point_in_polygon
+from .geometry.primitives import Point2D, closed_catmull_rom_spans, point_in_polygon
 from .presets import Prototype001Parameters
 from .presets.body_shapes import (
     BODY_SHAPE_KINDS,
@@ -57,7 +67,10 @@ from .presets.body_shapes import (
     OUTLINE_SAMPLES_PER_SEGMENT,
     YOUR_DESIGN_START_POINTS,
     YOUR_DESIGN_TEMPLATES,
+    YourDesignShape,
     body_shape_from_dict,
+    narrow_y,
+    widen_points,
     widened_shape,
 )
 from .presets.controls import CONTROL_LABELS, SCREW_CLEARANCE
@@ -1289,6 +1302,342 @@ def _headstock_lettering(parameters: Prototype001Parameters) -> dict[str, Any] |
 
 
 _ACTIVE_BUILD: Prototype001Build | None = None
+
+
+class _LaidOutError(CNCGuitarWizardError):
+    """An editor layout's own error message, passed on as it is."""
+
+
+_BODY_MARKS = (Point2D(0.0, 0.0), Point2D(100.0, 0.0), Point2D(0.0, 100.0))
+"""The body template's registration marks: X from the heel end, Y."""
+
+_HEADSTOCK_MARKS = (Point2D(0.0, 0.0), Point2D(-100.0, 0.0), Point2D(0.0, 50.0))
+"""The headstock template's registration marks, in the model frame."""
+
+_REFERENCE_COLOURS = {
+    "neck": "#8a6a3a",
+    "pocket": "#4a7ab5",
+    "pickup": "#2f8f5b",
+    "bridge": "#9a5bb5",
+    "bridge_plate": "#9a5bb5",
+    "top_control": "#c27a1e",
+    "rear": "#8c8c8c",
+    "cover": "#b0b0b0",
+}
+"""The reference layer's colour for each kind of body feature."""
+
+
+def outline_template(payload: dict[str, Any], part: str) -> dict[str, Any]:
+    """Return the body's or the headstock's outline as an SVG template.
+
+    The template (see ``drawings.template_svg``) is drawn 1:1 in
+    millimetres, as the editor shows the design (mirrored for a
+    left-handed build, a seven- or eight-string body widened): its
+    *Outline* layer the outline, a node at every handle; its *Reference*
+    layer, locked, what the outline is drawn round — the neck, routes,
+    cavities and bridge line, or the nut, tuner holes (and the edge's
+    clearance round them) and truss-rod cover — and three registration
+    marks. ``import_outline`` reads it back.
+
+    Args:
+        payload: ``{"prototype": {...}}`` as for ``start_build``.
+        part: ``"body"`` (a drawn, Your design, body) or ``"headstock"``
+            (a drawn headstock).
+
+    Returns:
+        ``{"svg": text}`` or ``{"error": message}``.
+    """
+    try:
+        if part == "body":
+            return {"svg": _body_template(payload)}
+        if part == "headstock":
+            return {"svg": _headstock_template(payload)}
+        return {"error": f"There is no {part!r} outline."}
+    except _LaidOutError as error:
+        return {"error": str(error)}
+    except (CNCGuitarWizardError, TypeError, ValueError) as error:
+        return {"error": f"{type(error).__name__}: {error}"}
+
+
+def import_outline(payload: dict[str, Any], part: str, svg: str) -> dict[str, Any]:
+    """Return the form values that draw an outline read from a template.
+
+    The outline is placed by the template's registration marks and turned
+    into the editor's own handles (``drawings.fit_closed_spline``,
+    ``drawings.fit_headstock``), every one on the drawn line, as many as
+    keep the editor's curve within 0.25 mm of it: an outline exported and
+    read back unchanged comes back as it was.
+
+    Args:
+        payload: ``{"prototype": {...}}`` as for ``start_build``.
+        part: ``"body"`` or ``"headstock"``.
+        svg: The SVG file's text.
+
+    Returns:
+        ``{"values": {...}, "message": text}`` — for a body
+        ``{"control_points"}`` (the ``body_shape`` field), for a headstock
+        ``{"headstock_outline", "headstock_bass_edge",
+        "headstock_treble_edge", "headstock_tip_points"}`` — or
+        ``{"error": message}``.
+    """
+    try:
+        if part == "body":
+            return _import_body(payload, svg)
+        if part == "headstock":
+            return _import_headstock(payload, svg)
+        return {"error": f"There is no {part!r} outline."}
+    except _LaidOutError as error:
+        return {"error": str(error)}
+    except (CNCGuitarWizardError, TypeError, ValueError) as error:
+        return {"error": f"{type(error).__name__}: {error}"}
+
+
+def _drawn_body(payload: dict[str, Any]) -> tuple[YourDesignShape, dict[str, Any]]:
+    """Return the drawn body and its editor layout."""
+    parameters = Prototype001Parameters(**_coerce(payload.get("prototype", {})))
+    shape = parameters.body_shape
+    if not isinstance(shape, YourDesignShape):
+        raise CNCGuitarWizardError(
+            "Only a drawn body (Your design) has an outline to edit."
+        )
+    layout = body_editor_layout(payload)
+    if "error" in layout:
+        raise _LaidOutError(layout["error"])
+    return shape, layout
+
+
+def _body_template(payload: dict[str, Any]) -> str:
+    shape, layout = _drawn_body(payload)
+    widening = float(layout["widening"] or 0.0)
+    points = [Point2D(x, y) for x, y in widen_points(shape.control_points, widening)]
+    xs = [point.x for point in points]
+    ys = [abs(point.y) for point in points]
+    references = [
+        ReferenceShape(
+            polygon["name"],
+            tuple(Point2D(x, y) for x, y in polygon["points"]),
+            colour=_REFERENCE_COLOURS.get(polygon["role"], "#4a7ab5"),
+            dashed=polygon["role"] in ("cover", "contour_top", "contour_back"),
+        )
+        for polygon in layout["polygons"]
+    ]
+    references += [
+        ReferenceShape(
+            circle["name"],
+            (Point2D(circle["x"], circle["y"]),),
+            radius=circle["r"],
+            colour="#c27a1e",
+        )
+        for circle in layout["circles"]
+    ]
+    if layout["jack"] is not None:
+        jack = layout["jack"]
+        references.append(
+            ReferenceShape(
+                "Jack bore",
+                (Point2D(jack["x"], jack["y"]), Point2D(jack["x2"], jack["y2"])),
+                closed=False,
+                colour="#c27a1e",
+            )
+        )
+    reach = max(ys) + 10.0
+    bridge = layout["scale_line"] - layout["heel_end"]
+    references += [
+        ReferenceShape(
+            "Centreline",
+            (Point2D(min(xs) - 10.0, 0.0), Point2D(max(xs) + 10.0, 0.0)),
+            closed=False,
+            colour="#999999",
+            dashed=True,
+        ),
+        ReferenceShape(
+            "Bridge line (the scale length)",
+            (
+                Point2D(bridge, -reach),
+                Point2D(bridge, reach),
+            ),
+            closed=False,
+            colour="#d33",
+            dashed=True,
+        ),
+    ]
+    if layout["neck_through"] is not None:
+        half = layout["neck_through"]["width"] / 2.0
+        references += [
+            ReferenceShape(
+                "Neck-through block glue line",
+                (Point2D(min(xs), side * half), Point2D(max(xs), side * half)),
+                closed=False,
+                colour="#8a6a3a",
+                dashed=True,
+            )
+            for side in (-1.0, 1.0)
+        ]
+    return template_svg(
+        "CNCguitarwizard body outline",
+        TemplateFrame(_BODY_MARKS, bool(layout["mirrored"])),
+        closed_catmull_rom_spans(points),
+        references,
+        (
+            "CNCguitarwizard body outline, 1:1 in millimetres. Edit the black "
+            "path in layer Outline (or draw a new closed one there).",
+            "Keep layer Reference and its three red registration marks; read it "
+            "back with Import SVG in the body editor.",
+        ),
+    )
+
+
+def _import_body(payload: dict[str, Any], svg: str) -> dict[str, Any]:
+    _, layout = _drawn_body(payload)
+    widening = float(layout["widening"] or 0.0)
+    read = read_template_outline(
+        svg, TemplateFrame(_BODY_MARKS, bool(layout["mirrored"]))
+    )
+    fit = fit_closed_spline(read.points, read.nodes)
+    points = [
+        [round(point.x, 2), round(narrow_y(point.y, widening), 2)]
+        for point in fit.points
+    ]
+    return {
+        "values": {"control_points": points},
+        "message": _import_message(len(points), fit.deviation, read),
+    }
+
+
+def _drawn_headstock(
+    payload: dict[str, Any],
+) -> tuple[Prototype001Parameters, dict[str, Any]]:
+    """Return the design as drawn (right-handed, its edges drawn) and layout."""
+    layout = headstock_editor_layout(payload)
+    if "error" in layout:
+        raise _LaidOutError(layout["error"])
+    built = Prototype001Parameters(**_coerce(payload.get("prototype", {})))
+    if built.headless:
+        raise CNCGuitarWizardError("A headless neck has no headstock to draw.")
+    parameters = dataclasses.replace(
+        built, handedness="right", headstock_outline="drawn"
+    )
+    if not (parameters.headstock_bass_edge and parameters.headstock_treble_edge):
+        # Not drawn yet: the fitted outline the editor starts from.
+        parameters = dataclasses.replace(
+            parameters,
+            headstock_bass_edge=tuple(map(tuple, layout["start_edges"]["bass"])),
+            headstock_treble_edge=tuple(map(tuple, layout["start_edges"]["treble"])),
+            headstock_tip_points=(),
+        )
+    return parameters, layout
+
+
+def _headstock_template(payload: dict[str, Any]) -> str:
+    parameters, layout = _drawn_headstock(payload)
+    plan = parameters.headstock_plan()
+    half = layout["nut_half_width"]
+    references = [
+        ReferenceShape(
+            "Neck",
+            (
+                Point2D(0.0, -half),
+                Point2D(70.0, -half),
+                Point2D(70.0, half),
+                Point2D(0.0, half),
+            ),
+            colour="#8a6a3a",
+        ),
+        ReferenceShape(
+            "Centreline",
+            (Point2D(-plan.reach - 15.0, 0.0), Point2D(70.0, 0.0)),
+            closed=False,
+            colour="#999999",
+            dashed=True,
+        ),
+    ]
+    nut = layout["nut"]
+    for name, points in (("Nut", nut["nut"]), ("Fretboard past the nut", nut["board"])):
+        if points:
+            references.append(
+                ReferenceShape(name, tuple(Point2D(x, y) for x, y in points))
+            )
+    clearance = layout["min_edge_distance"]
+    for hole in layout["holes"]:
+        centre = (Point2D(hole["x"], hole["y"]),)
+        references += [
+            ReferenceShape("Tuner hole", centre, radius=hole["r"], colour="#2f8f5b"),
+            ReferenceShape(
+                f"Keep the edge outside: {clearance:g} mm round the tuner hole",
+                centre,
+                radius=hole["r"] + clearance,
+                colour="#2f8f5b",
+                dashed=True,
+            ),
+        ]
+    cover = layout["truss_cover"]
+    if cover is not None:
+        references.append(
+            ReferenceShape(
+                "Truss-rod cover",
+                tuple(Point2D(x, y) for x, y in cover["outline"]),
+                colour="#9a5bb5",
+            )
+        )
+    return template_svg(
+        "CNCguitarwizard headstock outline",
+        TemplateFrame(_HEADSTOCK_MARKS, bool(layout["mirrored"])),
+        headstock_spans(plan),
+        references,
+        (
+            "CNCguitarwizard headstock outline, 1:1 in millimetres. Edit the "
+            "black path in layer Outline: from the nut on one side round the "
+            "tip to the nut on the other.",
+            "Keep layer Reference and its three red registration marks; read it "
+            "back with Import SVG in the headstock editor.",
+        ),
+    )
+
+
+def _import_headstock(payload: dict[str, Any], svg: str) -> dict[str, Any]:
+    parameters, layout = _drawn_headstock(payload)
+    read = read_template_outline(
+        svg, TemplateFrame(_HEADSTOCK_MARKS, bool(layout["mirrored"]))
+    )
+    fit = fit_headstock(
+        read.points, layout["nut_half_width"], layout["bass_sign"], read.nodes
+    )
+    # The headstock is drawn as read; its tuners are the editor's to check.
+    dataclasses.replace(
+        parameters,
+        headstock_bass_edge=fit.bass_edge,
+        headstock_treble_edge=fit.treble_edge,
+        headstock_tip_points=fit.tip_points,
+    ).headstock_plan()
+    handles = len(fit.bass_edge) + len(fit.treble_edge) + len(fit.tip_points)
+    return {
+        "values": {
+            "headstock_outline": "drawn",
+            "headstock_bass_edge": [list(point) for point in fit.bass_edge],
+            "headstock_treble_edge": [list(point) for point in fit.treble_edge],
+            "headstock_tip_points": [list(point) for point in fit.tip_points],
+        },
+        "message": _import_message(handles, fit.deviation, read),
+    }
+
+
+def _import_message(handles: int, deviation: float, read: ReadOutline) -> str:
+    """Say what an import made of the drawing."""
+    message = (
+        f"Imported the outline: {handles} handles, within "
+        f"{max(deviation, 0.01):.2f} mm of the drawing"
+    )
+    if abs(read.scale - 1.0) > 0.005:
+        message += (
+            f" (its program had scaled it by {read.scale:.3g}; the registration "
+            "marks set it right)"
+        )
+    if read.ignored:
+        message += (
+            f"; {read.ignored} other closed shape"
+            f"{'s' if read.ignored > 1 else ''} left out (the largest is read)"
+        )
+    return message + "."
 
 
 def _group_title(group: str) -> str:

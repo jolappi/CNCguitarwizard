@@ -47,6 +47,15 @@ def widen_y(y: float, widening: float) -> float:
     return y + half if y > 0.0 else y - half if y < 0.0 else y
 
 
+def narrow_y(y: float, widening: float) -> float:
+    """Undo ``widen_y``: move a lateral coordinate back in by ``widening / 2``.
+
+    A point within ``widening / 2`` of the centreline goes onto it.
+    """
+    half = widening / 2.0
+    return y - half if y > half else y + half if y < -half else 0.0
+
+
 def widen_points(
     points: tuple[tuple[float, float], ...], widening: float
 ) -> tuple[tuple[float, float], ...]:

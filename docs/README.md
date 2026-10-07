@@ -15,5 +15,6 @@
 - [Neck and fretboard G-code](cam/02_neck_and_fretboard_gcode.md)
 - [Web app on GitHub Pages](site.md)
 - [SVG rendering](render/01_svg.md)
+- [Outline templates for other drawing programs](render/03_svg_templates.md)
 - [Architecture](../ARCHITECTURE)
 - [Roadmap](../ROADMAP)

@@ -829,6 +829,75 @@ function saveDesign() {
   setStatus(`Saved ${link.download}`, "ok");
 }
 
+// An editor's outline as an SVG template to draw in another program, and
+// read back from one (webapp.outline_template / import_outline).
+const outlineFile = document.getElementById("outline-file");
+
+async function exportOutline(part) {
+  const editor = part === "body" ? bodyEditor : headstockEditor;
+  if (!pyodide) return;
+  let payload;
+  try {
+    payload = collectValues();
+  } catch (error) {
+    editor.setStatus(`Cannot export the outline: ${error.message}`, "bad");
+    return;
+  }
+  pyodide.globals.set("payload_json", JSON.stringify(payload));
+  pyodide.globals.set("outline_part", part);
+  const result = await runPython(
+    "import json\nfrom cncguitarwizard.webapp import outline_template\n" +
+    "json.dumps(outline_template(json.loads(payload_json), outline_part))"
+  );
+  if (result.error) {
+    editor.setStatus(`Cannot export the outline: ${result.error}`, "bad");
+    return;
+  }
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(new Blob([result.svg], { type: "image/svg+xml" }));
+  link.download = `${fileStem(guitarName.value) || "cncguitarwizard"}-${part}-outline.svg`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+  editor.setStatus(`Saved ${link.download}: edit the black outline, keep the red marks, then Import SVG.`, "ok");
+}
+
+async function importOutline(part, file) {
+  const editor = part === "body" ? bodyEditor : headstockEditor;
+  if (!pyodide || !editor.layout) return;
+  let payload;
+  try {
+    payload = collectValues();
+  } catch (error) {
+    editor.setStatus(`Cannot import ${file.name}: ${error.message}`, "bad");
+    return;
+  }
+  pyodide.globals.set("payload_json", JSON.stringify(payload));
+  pyodide.globals.set("outline_part", part);
+  pyodide.globals.set("outline_svg", await file.text());
+  const result = await runPython(
+    "import json\nfrom cncguitarwizard.webapp import import_outline\n" +
+    "json.dumps(import_outline(json.loads(payload_json), outline_part, outline_svg))"
+  );
+  if (result.error) {
+    editor.setStatus(`Cannot import ${file.name}: ${result.error}`, "bad");
+    return;
+  }
+  const values = result.values;
+  if (part === "body") {
+    bodyEditor.points = values.control_points;
+  } else {
+    headstockEditor.edges = { bass: values.headstock_bass_edge, treble: values.headstock_treble_edge };
+    headstockEditor.tip = values.headstock_tip_points;
+  }
+  // One change to undo; the drawing then says what still does not fit.
+  editor.commit();
+  editor.draw();
+  const kind = editor.status.classList.contains("bad") ? "bad" : "ok";
+  editor.setStatus(`${result.message} ${editor.status.textContent}`.trim(), kind);
+}
+
 // Put one saved value into its form control, as if typed or picked.
 function setControlValue(control, value) {
   if (control.tagName === "SELECT") {
@@ -3551,6 +3620,18 @@ ncZipButton.addEventListener("click", downloadNcZip);
 // open it only while handling the click itself (Safari not after a
 // dialog has been answered), so the question comes once a file is chosen.
 loadDesignButton.addEventListener("click", () => loadDesignFile.click());
+for (const part of ["body", "headstock"]) {
+  document.getElementById(`${part}-editor-export`).addEventListener("click", () => exportOutline(part));
+  document.getElementById(`${part}-editor-import`).addEventListener("click", () => {
+    outlineFile.dataset.part = part;
+    outlineFile.click();
+  });
+}
+outlineFile.addEventListener("change", () => {
+  const [file] = outlineFile.files;
+  outlineFile.value = "";
+  if (file) importOutline(outlineFile.dataset.part, file);
+});
 loadDesignFile.addEventListener("change", async () => {
   const [file] = loadDesignFile.files;
   loadDesignFile.value = "";

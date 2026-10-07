@@ -1,5 +1,13 @@
 """Immutable two-dimensional geometry primitives."""
 
+from .bezier import (
+    BezierSpan,
+    bezier_point,
+    closed_catmull_rom_spans,
+    flatten_span,
+    hermite_spans,
+    smooth_curve_spans,
+)
 from .line2d import Line2D
 from .monotone_curve import MonotoneCurve, SmoothCurve
 from .nudge_inward import nudge_inward
@@ -12,6 +20,7 @@ from .surface_mesh import QuadFace, SurfaceMesh
 from .vector2d import Vector2D
 
 __all__ = [
+    "BezierSpan",
     "Line2D",
     "MonotoneCurve",
     "SmoothCurve",
@@ -20,6 +29,11 @@ __all__ = [
     "QuadFace",
     "SurfaceMesh",
     "Vector2D",
+    "bezier_point",
+    "closed_catmull_rom_spans",
+    "flatten_span",
+    "hermite_spans",
+    "smooth_curve_spans",
     "closed_catmull_rom",
     "nudge_inward",
     "open_catmull_rom",

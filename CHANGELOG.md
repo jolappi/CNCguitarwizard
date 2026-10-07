@@ -4,6 +4,19 @@
 
 ### Added
 
+- The body and headstock outlines to draw in another program: *Export
+  SVG* in the body and headstock editors saves the outline as an SVG
+  template, 1:1 in millimetres — the outline as one Bézier path with a
+  node at every handle in the layer *Outline*, and in the locked layer
+  *Reference* the neck, routes, cavities and bridge line (or the nut,
+  tuner holes with the edge's clearance round them, and truss-rod cover)
+  and three registration marks. Edited in Inkscape, Illustrator,
+  Affinity Designer or a CAD program, *Import SVG* reads it back: the
+  marks place it to the millimetre whatever the program did to its page,
+  position or units, and the outline becomes the editor's own handles on
+  the drawn line, within 0.25 mm of it (a headstock's edges and tip found
+  in it). An outline sent out and read back unchanged comes back exactly;
+  the import is one step to undo.
 - The neck's back carved with the ball nose alone (`neck_back_cut`
   "ball" in the machining form, `NeckMachiningParameters.back_cut`): one
   program, `Neck_back`, the ball nose roughing in layers no deeper than

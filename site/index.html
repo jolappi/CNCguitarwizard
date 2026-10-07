@@ -233,6 +233,7 @@
       <button id="load-design" class="secondary" type="button" disabled
         title="Open a design saved with Save design">Load design</button>
       <input id="load-design-file" type="file" accept=".json,application/json" hidden>
+      <input id="outline-file" type="file" accept=".svg,image/svg+xml" hidden>
     </div>
     <div id="progress" class="progress hidden" aria-live="polite">
       <div class="bar"><div class="fill"></div></div>
@@ -271,7 +272,11 @@
         or narrower; the pickup routes
         slide along the neck. With a pickguard on, its square handles shape it: click its edge to add one, Alt/Option-click or right-click one to remove it, drag its edge to move the whole guard or onto <em>Create NC file</em> for its own programs (<em>Auto pickguard</em> goes back to the automatic guard). With an arm contour on (<code>body_arm_contour_depth</code>), the green line with round handles is where it starts: drag a handle, click the line to add one, Alt/Option-click or right-click one to remove it; the line's ends sit on the body's edge (<em>Auto arm contour</em> goes back to the automatic one); with a belly cut on (<code>body_belly_cut_depth</code>) its line on the back is drawn the same way in blue (<em>Auto belly cut</em>). With a stepped top on (<code>body_stepped_top</code>), each step's line is drawn in purple with diamond handles, straight between them: drag a handle, click a line to add one, Alt/Option-click or right-click one to remove it (<em>Auto steps</em> goes back to the steps <code>body_top_step_insets</code> in from the edge). With <code>body_engraving</code> on, the decorative engraving is drawn in blue lines; <em>New pattern</em> lays it out from a new random seed (<code>body_engraving_seed</code>). Drag a feature right off the body to remove it (you are asked first), or onto <em>Create NC file</em> to cut it on its own. The neck, its pocket and the bridge follow the neck and scale and stay put.
         <em>Undo</em> and <em>Redo</em> (Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z) step back and forward through the
-        design's changes, whichever editor or field they were made in. The grid is 50 mm.</p>
+        design's changes, whichever editor or field they were made in. To draw the outline in another
+        program, <em>Export SVG</em> saves it as a template, 1:1 in millimetres: edit the black path in
+        its Outline layer (or draw a new closed one there) round the locked Reference layer's neck,
+        routes and cavities, keep the three red registration marks, and <em>Import SVG</em> reads it back
+        as handles on the drawn line (within 0.25 mm of it; <em>Undo</em> takes it back). The grid is 50 mm.</p>
       <div id="body-editor-options" class="editor-options"></div>
       <div id="body-editor-nc" class="nc-drop" title="Drop a feature here">Create NC file — drag a feature
         here to cut it on its own, zeroed at its centre (with its cover)</div>
@@ -285,6 +290,8 @@
         <button id="body-editor-auto-steps" class="secondary" type="button" title="Back to the steps body_top_step_insets in from the edge">Auto steps</button>
         <button id="body-editor-auto-belly" class="secondary" type="button" title="Back to the automatic belly cut">Auto belly cut</button>
         <button id="body-editor-new-pattern" class="secondary" type="button" title="Lay the engraving out from a new random seed">New pattern</button>
+        <button id="body-editor-export" class="secondary" type="button" title="Save the outline as an SVG template, 1:1 in millimetres, to edit in Inkscape, Illustrator or another drawing program">Export SVG</button>
+        <button id="body-editor-import" class="secondary" type="button" title="Read the outline back from an SVG template edited in another program">Import SVG</button>
         <button class="secondary undo-button" type="button" disabled>Undo</button>
         <button class="secondary redo-button" type="button" disabled>Redo</button>
       </div>
@@ -302,13 +309,15 @@
         style redraws it); <em>Start over</em> goes back to it; <em>Undo</em> steps back a change, <em>Redo</em> forward again. A neck chosen in <em>Start from</em> is loaded whole (<em>Load</em> loads it again), its tuners' places with it: the
         Telecaster neck sets a slotted nut (the fretboard running on under it), a flat six-in-line headstock
         drawn as a Telecaster's and a truss rod adjusted at the heel (set <code>truss_rod_adjustment</code> to
-        headstock for the modern way, reached behind the nut; <code>truss_rod_spoke_wheel</code> says whether the adjuster is a spoke wheel). Lettering typed in <code>headstock_engraving_text</code> is drawn in blue: drag it to move it (it must keep 2 mm from the edge, the nut's seat, the tuner holes and the truss-rod cover). With the truss rod adjusted at the headstock (<code>truss_rod_adjustment</code>) its cover is drawn over the dashed trough, in the style chosen (<code>truss_rod_cover_style</code>: a Gibson bell, Ibanez / ESP, a PRS teardrop or a rounded rectangle): drag one of its square corners to draw your own cover (click its edge to add a corner, Alt/Option-click or right-click one to remove it), or a round handle past its far end or beside its widest side to make it longer or wider; choosing a style again goes back to it. It must cover the trough and keep its screws in wood and clear of the edges and the tuner holes. The grid is 10 mm.</p>
+        headstock for the modern way, reached behind the nut; <code>truss_rod_spoke_wheel</code> says whether the adjuster is a spoke wheel). Lettering typed in <code>headstock_engraving_text</code> is drawn in blue: drag it to move it (it must keep 2 mm from the edge, the nut's seat, the tuner holes and the truss-rod cover). With the truss rod adjusted at the headstock (<code>truss_rod_adjustment</code>) its cover is drawn over the dashed trough, in the style chosen (<code>truss_rod_cover_style</code>: a Gibson bell, Ibanez / ESP, a PRS teardrop or a rounded rectangle): drag one of its square corners to draw your own cover (click its edge to add a corner, Alt/Option-click or right-click one to remove it), or a round handle past its far end or beside its widest side to make it longer or wider; choosing a style again goes back to it. It must cover the trough and keep its screws in wood and clear of the edges and the tuner holes. <em>Export SVG</em> saves the outline as a template, 1:1 in millimetres, to edit in another program: the black path in its Outline layer runs from the nut on one side round the tip to the nut on the other, round the locked Reference layer's nut, tuner holes (dashed, the edge's clearance round them) and truss-rod cover; keep the three red registration marks, and <em>Import SVG</em> reads it back as edges and tip handles (each edge running away from the nut, the tip across from one edge's end to the other's). The grid is 10 mm.</p>
       <div id="headstock-editor-options" class="editor-options"></div>
       <div class="actions">
         <label class="note" for="headstock-editor-template">Start from</label>
         <select id="headstock-editor-template"></select>
         <button id="headstock-editor-load" class="secondary" type="button">Load</button>
         <button id="headstock-editor-reset" class="secondary" type="button">Start over</button>
+        <button id="headstock-editor-export" class="secondary" type="button" title="Save the outline as an SVG template, 1:1 in millimetres, to edit in Inkscape, Illustrator or another drawing program">Export SVG</button>
+        <button id="headstock-editor-import" class="secondary" type="button" title="Read the outline back from an SVG template edited in another program">Import SVG</button>
         <button class="secondary undo-button" type="button" disabled>Undo</button>
         <button class="secondary redo-button" type="button" disabled>Redo</button>
       </div>

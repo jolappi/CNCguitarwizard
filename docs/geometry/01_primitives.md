@@ -184,6 +184,26 @@ edge = MonotoneCurve(((0.0, 21.0), (45.0, 33.0), (150.0, 20.0)))
 assert edge.value_at(45.0) == 33.0
 ```
 
+## Bézier spans
+
+The smooth curves are cubics, so each converts exactly to cubic Bézier
+spans, as an SVG path draws them, with a node at every control point:
+`closed_catmull_rom_spans(points)` (one span a point of the closed loop),
+`smooth_curve_spans(curve)` (a `SmoothCurve` y(x), a span between its
+points) and `hermite_spans(points, tangents)` (a headstock's shaped tip).
+`bezier_point(span, t)` evaluates a span and `flatten_span(span,
+tolerance)` turns it into points never further than `tolerance` from it.
+
+```python
+from cncguitarwizard.geometry.primitives import (
+    Point2D, bezier_point, closed_catmull_rom, closed_catmull_rom_spans,
+)
+
+square = (Point2D(0, 0), Point2D(10, 0), Point2D(10, 10), Point2D(0, 10))
+spans = closed_catmull_rom_spans(square)
+assert bezier_point(spans[1], 0.5) == closed_catmull_rom(square, 2)[3]
+```
+
 ## Why geometry objects are immutable
 
 All geometry objects are frozen dataclasses with slots. Once created, their
