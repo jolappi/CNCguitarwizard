@@ -21,6 +21,9 @@ POST_PROCESSOR_LABELS: dict[str, str] = {
 }
 """A readable name for each post processor."""
 
+INDEX_PIN_DIAMETER = 6.0
+"""The index pins' diameter, in mm, where the tool is no wider."""
+
 
 @dataclass(frozen=True, slots=True)
 class MachiningParameters:
@@ -52,7 +55,11 @@ class MachiningParameters:
         tab_count: Holding tabs left on the final profile passes.
         tab_length: Length of each tab along the profile.
         tab_height: Height of each tab above the profile floor.
-        index_pin_diameter: Diameter of the two-sided-machining dowels.
+        index_pin_diameter: Diameter of the two-sided-machining dowels,
+            or ``None`` (the default) for 6 mm, or the tool's own
+            diameter where it is wider: the holes are drilled with the
+            tool, so a dowel cannot be narrower than it (an 8 mm end mill
+            takes 8 mm dowels).
         index_pin_positions: Dowel centres in the model frame, or ``None``
             to place them automatically on the centerline in the blank's
             waste — in the horn gap ahead of the neck pocket and in the
@@ -148,7 +155,7 @@ class MachiningParameters:
     tab_count: int = 6
     tab_length: float = 8.0
     tab_height: float = 4.0
-    index_pin_diameter: float = 6.0
+    index_pin_diameter: float | None = None
     index_pin_positions: tuple[tuple[float, float], ...] | None = None
     index_pin_wall: float = 3.0
     stock_margin: float = 15.0
@@ -187,7 +194,6 @@ class MachiningParameters:
             "safe_height": self.safe_height,
             "tab_length": self.tab_length,
             "tab_height": self.tab_height,
-            "index_pin_diameter": self.index_pin_diameter,
             "stock_margin": self.stock_margin,
             "stock_edge_margin": self.stock_edge_margin,
             "small_hole_tool_diameter": self.small_hole_tool_diameter,
@@ -202,6 +208,7 @@ class MachiningParameters:
             "fretboard_blank_thickness": self.fretboard_blank_thickness,
         }
         for name, value in (
+            ("index_pin_diameter", self.index_pin_diameter),
             ("fretboard_blank_length", self.fretboard_blank_length),
             ("fretboard_blank_width", self.fretboard_blank_width),
             ("fretboard_carrier_thickness", self.fretboard_carrier_thickness),
@@ -247,6 +254,14 @@ class MachiningParameters:
             for x, y in self.index_pin_positions:
                 if not math.isfinite(x) or not math.isfinite(y):
                     raise ToolpathError("Index pin positions must be finite.")
+
+    @property
+    def pin_diameter(self) -> float:
+        """Return the index pins' diameter: ``index_pin_diameter``, else
+        6 mm, or the tool's diameter where it is wider."""
+        if self.index_pin_diameter is not None:
+            return self.index_pin_diameter
+        return max(INDEX_PIN_DIAMETER, self.tool_diameter)
 
     @property
     def tool_radius(self) -> float:

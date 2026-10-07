@@ -47,6 +47,8 @@
 - Older saved designs brought up to date on loading, every setting in
   view and every editor drawn
 - Undo and redo for the editors and the form
+- Index pins as wide as a main tool wider than 6 mm (an 8 mm end mill,
+  8 mm dowels)
 - The neck's back carved with the ball nose alone, in one program
 - Truss-rod covers to choose (bell, Ibanez / ESP, PRS, rectangle) and to
   draw and size in the headstock editor

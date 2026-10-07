@@ -631,6 +631,13 @@
 
 ### Fixed
 
+- A main tool wider than 6 mm (`tool_diameter`) no longer stops the
+  build at the index pins ("Index pin 1 (6.0 mm) is smaller than the
+  8.0 mm tool"): `index_pin_diameter` is empty by default, 6 mm dowels
+  or as wide as the tool where it is wider (an 8 mm end mill takes 8 mm
+  dowels), and each index-pin program names its dowels' size. Dowels
+  set narrower than the tool are refused with what to set, and a
+  design saved with the old 6 mm loads empty.
 - The body editor's templates load the same way: one chosen in *Start
   from* loads at once (*Load* loads it again; declined, the choice goes
   back), and what the template before it set besides its shape and is

@@ -32,6 +32,7 @@ from .cam import (
     MachiningParameters,
     plan_feature_machining,
 )
+from .cam.parameters import INDEX_PIN_DIAMETER
 from .cam.planar import simplified
 from .exceptions import CNCGuitarWizardError
 from .field_help import FIELD_HELP
@@ -423,12 +424,20 @@ def upgrade_design(design: dict[str, Any]) -> dict[str, Any]:
     shown in it. A headless neck, or edges kept from a drawing, stay
     fitted as saved.
 
+    Designs saved before the index pins followed the tool have
+    ``index_pin_diameter`` 6, the default then: it loads empty, 6 mm
+    dowels as before, or as wide as the tool where it is wider (where 6
+    was refused).
+
     Args:
         design: The saved design, ``{"instrument", "prototype", ...}``.
 
     Returns:
         A copy with the outdated values brought up to date.
     """
+    machining = dict(design.get("machining") or {})
+    if machining.get("index_pin_diameter") == INDEX_PIN_DIAMETER:
+        machining["index_pin_diameter"] = None
     prototype = dict(design.get("prototype") or {})
     overrides = INSTRUMENT_OVERRIDES.get(design.get("instrument", ""), {})
     if (
@@ -438,7 +447,10 @@ def upgrade_design(design: dict[str, Any]) -> dict[str, Any]:
         and not prototype.get("headstock_treble_edge")
     ):
         prototype["headstock_outline"] = "drawn"
-    return {**design, "prototype": prototype}
+    upgraded = {**design, "prototype": prototype}
+    if "machining" in design:
+        upgraded["machining"] = machining
+    return upgraded
 
 
 DESIGN_FORMAT = "cncguitarwizard-design"

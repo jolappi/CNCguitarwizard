@@ -177,12 +177,13 @@ def plan_body_machining(
 
     pin_setup = Setup(
         "Body_index_pins",
-        "Body index pins - drill both dowel holes through the blank",
+        f"Body index pins - drill both {parameters.pin_diameter:g} mm dowel holes "
+        "through the blank",
         tuple(
             drill(
                 f"Index pin {index}",
                 top_frame.point(Point2D(x, y)),
-                parameters.index_pin_diameter,
+                parameters.pin_diameter,
                 body.thickness + parameters.through_overshoot,
                 parameters,
             )

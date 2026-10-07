@@ -88,7 +88,7 @@ def test_automatic_index_pins_stay_in_the_waste(plan, body, parameters) -> None:
     """Both dowels sit on the centerline outside the finished body."""
     (x1, y1), (x2, y2) = plan.index_pin_positions
     clearance = (
-        parameters.index_pin_diameter / 2.0
+        parameters.pin_diameter / 2.0
         + parameters.tool_diameter
         + parameters.index_pin_wall
     )
@@ -228,6 +228,22 @@ def test_index_pins_go_through_the_blank(plan, body, parameters) -> None:  # typ
         assert path.deepest_z() == pytest.approx(
             -(body.thickness + parameters.through_overshoot)
         )
+
+
+def test_the_index_pins_follow_a_tool_wider_than_six_mm(body) -> None:  # type: ignore[no-untyped-def]
+    # 6 mm dowels with the 6 mm end mill, or a smaller one...
+    assert MachiningParameters().pin_diameter == 6.0
+    assert MachiningParameters(tool_diameter=3.0).pin_diameter == 6.0
+    # ...and an 8 mm end mill takes 8 mm dowels, its holes its own size.
+    wide = MachiningParameters(tool_diameter=8.0)
+    plan = plan_body_machining(body, wide)
+    assert "both 8 mm dowel holes" in plan.index_pins.description
+    for path in plan.index_pins.toolpaths:
+        assert len({(round(m.x, 6), round(m.y, 6)) for m in path.moves}) == 1
+    # Dowels given narrower than the tool are refused, saying what to set.
+    with pytest.raises(ToolpathError, match="leave it empty for dowels as wide"):
+        plan_body_machining(body, replace(wide, index_pin_diameter=6.0))
+    assert replace(wide, index_pin_diameter=10.0).pin_diameter == 10.0
 
 
 def test_both_outline_halves_overlap_at_the_mid_plane(plan, body, parameters) -> None:  # type: ignore[no-untyped-def]
@@ -383,7 +399,7 @@ def test_every_body_template_gets_two_index_pins(key: str) -> None:
     )
     plan = plan_body_machining(body, parameters)
     clearance = (
-        parameters.index_pin_diameter / 2.0
+        parameters.pin_diameter / 2.0
         + parameters.tool_diameter
         + parameters.index_pin_wall
     )

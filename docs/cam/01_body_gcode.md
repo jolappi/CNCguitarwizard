@@ -21,7 +21,7 @@ the Prototype001 manufacturing specification (TwoTrees H40, GRBL):
 | `spindle_speed` | 10 000 rpm | Emitted with `M3` |
 | `safe_height` | 5 mm | Rapid traverse height above the stock top |
 | `tab_count` / `tab_length` / `tab_height` | 6 / 8 mm / 4 mm | Holding tabs on the final profile passes |
-| `index_pin_diameter` / `index_pin_positions` | 6 mm, automatic | Dowels for the flip; `None` places them in the blank's waste on the centerline |
+| `index_pin_diameter` / `index_pin_positions` | automatic, automatic | Dowels for the flip. The holes are drilled with the main tool, so a dowel is never narrower than it: `None` (empty in the form) is 6 mm, or the tool's diameter where it is wider (an 8 mm end mill takes 8 mm dowels, a 1/4 in one 1/4 in dowels); dowels given narrower than the tool are refused. `None` positions place them in the blank's waste on the centerline |
 | `index_pin_wall` / `stock_margin` / `stock_edge_margin` | 3 / 15 / 8 mm | Wood between a dowel and the nearest cut; waste around the outline; dowel distance from the blank edge |
 | `small_hole_tool_diameter` | 3 mm | Drill for holes narrower than the main tool, in their own program |
 | `profile_overlap` | 0.5 mm | How far each side's outline cut passes the mid-plane |

@@ -67,7 +67,7 @@ def test_index_pins_sit_in_the_waste_beyond_tip_and_heel(  # type: ignore[no-unt
     polygon = neck_plan_polygon(geometry)
     (x1, y1), (x2, y2) = plan.index_pin_positions
     clearance = (
-        parameters.flat.index_pin_diameter / 2.0
+        parameters.flat.pin_diameter / 2.0
         + parameters.flat.tool_diameter
         + parameters.flat.index_pin_wall
     )
@@ -282,9 +282,7 @@ def test_an_angled_headstock_block_is_as_thick_as_the_neck_plank(geometry) -> No
     # enough for the outline cut.
     tip_pin_x = min(x for x, _ in plan.index_pin_positions)
     assert block.end_x < -headstock.plan.length
-    assert tip_pin_x + 0.5 * NeckMachiningParameters().flat.index_pin_diameter < (
-        block.end_x
-    )
+    assert tip_pin_x + 0.5 * NeckMachiningParameters().flat.pin_diameter < block.end_x
     assert block.width >= 2.0 * max(abs(p.y) for p in headstock.plan.boundary) + 12
     # A solid blank's notes offer the laminated way.
     assert any("blank='laminated'" in note for note in plan.index_pins.notes)

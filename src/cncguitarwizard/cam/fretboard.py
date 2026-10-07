@@ -382,13 +382,14 @@ def plan_fretboard_machining(
         )
     index_pins = Setup(
         "Fretboard_index_pins",
-        "Fretboard index pins - drill both dowel holes through the "
+        f"Fretboard index pins - drill both {flat.pin_diameter:g} mm dowel "
+        "holes through the "
         + ("blank" if carrier is None else "blank and its carrier"),
         tuple(
             drill(
                 f"Index pin {index}",
                 machine(Point2D(x, y)),
-                flat.index_pin_diameter,
+                flat.pin_diameter,
                 pin_depth,
                 flat,
             )

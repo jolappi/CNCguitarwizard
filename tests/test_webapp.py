@@ -470,6 +470,23 @@ def test_a_headless_or_drawn_fitted_headstock_stays_fitted() -> None:
     assert upgrade_design({"instrument": "bass_guitar"})["prototype"] == {}
 
 
+def test_a_design_saved_with_six_mm_index_pins_follows_a_wider_tool() -> None:
+    old = {
+        "format": "cncguitarwizard-design",
+        "instrument": "electric_guitar",
+        "machining": {"tool_diameter": 8.0, "index_pin_diameter": 6.0},
+    }
+    # 6 mm was the default: it loads empty, the dowels as wide as the tool.
+    upgraded = upgrade_design(old)
+    assert upgraded["machining"] == {"tool_diameter": 8.0, "index_pin_diameter": None}
+    assert old["machining"]["index_pin_diameter"] == 6.0
+    assert load_design(old).machining.pin_diameter == 8.0
+    # Other dowels stay as saved, and a design without machining has none.
+    kept = {**old, "machining": {"index_pin_diameter": 10.0}}
+    assert upgrade_design(kept)["machining"] == kept["machining"]
+    assert "machining" not in upgrade_design({"instrument": "bass_guitar"})
+
+
 def test_a_saved_design_loads_as_the_web_app_loads_it() -> None:
     from cncguitarwizard.exceptions import CNCGuitarWizardError
     from cncguitarwizard.presets import Prototype001Parameters

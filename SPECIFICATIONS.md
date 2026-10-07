@@ -807,7 +807,7 @@ soittimen oletus ja tuntematon asetus ohitetaan ja luetellaan.
 | Työjärjestys | Kalibrointilevy → testipalikka → Prototype001 |
 | Rungon G-koodi | `Body_index_pins.nc` → `Body_top.nc` → käännä keskilinjan ympäri tapeille → `Body_back.nc` |
 | Nollapiste | X/Y kohdistustappi 1, Z aihion yläpinta kummassakin asetuksessa; jokainen ohjelma alkaa ja päättyy tapin päällä |
-| Kohdistustapit | 2 × Ø6 keskilinjalla aihion hukkapuussa: tappi 1 sarvien välissä kaulataskun edessä, tappi 2 perän lovessa — eivät koskaan valmiissa kappaleessa; ≥ terä + 3 mm puuta joka leikkaukseen, ≥ 8 mm aihion reunasta; paikat `build.json`:ssa |
+| Kohdistustapit | 2 × Ø6 (`index_pin_diameter` tyhjä: 6 mm, tai pääterän levyiset, kun terä on leveämpi — reiät porataan pääterällä, joten 8 mm terä vaatii 8 mm tapit; terää kapeammiksi annetut tapit hylätään ohjeen kera, ja vanhan tallennuksen 6 mm latautuu tyhjänä) keskilinjalla aihion hukkapuussa: tappi 1 sarvien välissä kaulataskun edessä, tappi 2 perän lovessa — eivät koskaan valmiissa kappaleessa; ≥ terä + 3 mm puuta joka leikkaukseen, ≥ 8 mm aihion reunasta; paikat `build.json`:ssa |
 | Tarkistus | jokainen ohjelma ajaa ennen karan käynnistystä tappi 1 → tappi 2 → tappi 1 turvakorkeudella |
 | Aihio | vähintään 496 × 324 × 44 mm (ääriviiva + 15 mm joka puolelle) |
 | Ääriviiva | puolet paksuudesta + 0,5 mm kummaltakin puolelta; takapuolella 6 kpl 8 × 4 mm pidiketappia |

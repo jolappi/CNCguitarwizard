@@ -38,7 +38,7 @@ class StockBounds:
 def _pin_clearance(parameters: MachiningParameters) -> float:
     """Return how far a dowel's centre stays from the part and every cut."""
     return (
-        parameters.index_pin_diameter / 2.0
+        parameters.pin_diameter / 2.0
         + parameters.tool_diameter
         + parameters.index_pin_wall
     )
@@ -46,7 +46,7 @@ def _pin_clearance(parameters: MachiningParameters) -> float:
 
 def _pin_edge(parameters: MachiningParameters) -> float:
     """Return how far a dowel's centre stays inside the blank's edge."""
-    return parameters.index_pin_diameter / 2.0 + parameters.stock_edge_margin
+    return parameters.pin_diameter / 2.0 + parameters.stock_edge_margin
 
 
 def pin_fits(
@@ -113,7 +113,7 @@ def automatic_index_pins(
         x += step
     if current is not None:
         runs.append((current, stock.max_x))
-    runs = [run for run in runs if run[1] - run[0] >= parameters.index_pin_diameter]
+    runs = [run for run in runs if run[1] - run[0] >= parameters.pin_diameter]
     if len(runs) < 2:
         raise ToolpathError(
             "Could not find two waste areas on the centerline for the index "
@@ -143,7 +143,18 @@ def resolve_index_pins(
     the part and the cuts in ``avoid`` — at the front end alone, else the
     back end alone, else both — and the search is repeated, so the
     returned blank may be longer than ``StockBounds.around`` gave.
+
+    Raises:
+        ToolpathError: If the dowels are narrower than the tool that
+            drills their holes, or no place for them is found.
     """
+    if parameters.pin_diameter < parameters.tool_diameter - 1e-6:
+        raise ToolpathError(
+            f"The {parameters.pin_diameter:g} mm index pins are narrower than "
+            f"the {parameters.tool_diameter:g} mm tool that drills their "
+            "holes: set index_pin_diameter to dowels at least as wide, or "
+            "leave it empty for dowels as wide as the tool."
+        )
     if parameters.index_pin_positions:
         pins: tuple[tuple[float, float], ...] = tuple(
             (x, y) for x, y in parameters.index_pin_positions
@@ -157,7 +168,7 @@ def resolve_index_pins(
             reach = (
                 _pin_clearance(parameters)
                 + _pin_edge(parameters)
-                + parameters.index_pin_diameter
+                + parameters.pin_diameter
                 + 1.0
             )
             ends = [polygon_bounds(outline), *(polygon_bounds(a) for a in avoid)]

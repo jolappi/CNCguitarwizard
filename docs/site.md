@@ -195,7 +195,9 @@ Python.
    is chosen: it brings an older design's values up to date
    (`webapp.upgrade_design`: a `headstock_outline` "fitted" with no edges
    drawn, the default before the headstock editor, loads as "drawn", the
-   same outline with the editor open), switches to the saved instrument, puts every value back into
+   same outline with the editor open; an `index_pin_diameter` of 6, the
+   default before the dowels followed the tool, loads empty), switches to
+   the saved instrument, puts every value back into
    the form (variant kinds first, then their fields) and redraws the
    editors — the body editor from the loaded `control_points`, so a drag
    afterwards changes the loaded outline, not the start shape; settings

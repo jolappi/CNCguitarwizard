@@ -594,12 +594,13 @@ def plan_neck_machining(
         )
     index_pins = Setup(
         "Neck_index_pins",
-        "Neck index pins - drill both dowel holes through the blank",
+        f"Neck index pins - drill both {flat.pin_diameter:g} mm dowel holes "
+        "through the blank",
         tuple(
             drill(
                 f"Index pin {index}",
                 top_frame.point(Point2D(x, y)),
-                flat.index_pin_diameter,
+                flat.pin_diameter,
                 (plank if laminated else thickness) + flat.through_overshoot,
                 flat,
             )
