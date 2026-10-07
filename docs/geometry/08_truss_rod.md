@@ -95,10 +95,34 @@ outline.
   and ends 12 mm before the heel end; the adjuster is reached from the
   headstock face behind the shelf (see *Spoke wheel or not*), every
   trough at least 3 mm from every tuner hole in plan. Behind a shelf nut
-  a Gibson-style truss-rod cover (`truss_rod_cover`, on by default) 6 mm
-  larger than the trough, stopping 0.5 mm short of the nut shelf, with
-  three 3.2 mm screw holes, is cut from sheet as `Cover_truss_rod.nc`
-  like the cavity covers. The pocket and step then lie in the neck by the
+  a truss-rod cover (`truss_rod_cover`, on by default) is screwed onto the
+  face over the trough, its nut end 0.5 mm short of the nut shelf, cut
+  from sheet as `Cover_truss_rod.nc` like the cavity covers but to its own
+  outline (it sits on the face, in no recess). `truss_rod_cover_style`
+  picks its shape (`presets.truss_rod_covers`, mockups of the familiar
+  ones): `bell`, Gibson's, wide at the nut over the trough, its sides
+  flaring in a hollow curve from its foot (`BELL_FLARE`) into a narrow
+  waist and a round top toward the tip, a screw in each of its foot's
+  corners either side of the trough and one in its top (41 × 28.5 mm,
+  the top 55 % as wide);
+  `ibanez`, a rounded triangle wide at the nut, two screws in its corners
+  (26 × 26); `prs`, a teardrop, two screws past the trough (30 × 22);
+  `rectangle`, rounded, sized round the trough (8.5 mm past its far end,
+  6 mm past its sides) with three screws; or `custom`, drawn in the web
+  app's headstock editor (`truss_rod_cover_points`,
+  `truss_rod_cover_screws`: corners and screws as along 0 to 1 and across
+  -1 to 1, rounded 1.5 mm). `truss_rod_cover_length` / `_width` size any
+  of them. The cover must cover the trough with 1 mm to spare (but at
+  its nut end, which runs on under the shelf), keep each 3.2 mm screw
+  hole in 1 mm of wood clear of the trough and of its own edge, and keep
+  1 mm from the headstock's edges and the tuner holes
+  (`truss_rod_cover_problem`); the headstock lettering keeps its 2 mm
+  clear of it, and by default sits past its far end, at the first place
+  toward the tip where it fits clear of the tuner holes (a Gibson's logo
+  beyond its bell). The screws'
+  pilots (1.5 mm, 8 mm deep) are started from the face in
+  `Neck_top_small_holes.nc` (on a laminated neck, whose face is cut
+  later, drilled by hand through the cover). The pocket and step then lie in the neck by the
   nut, which thins to the first fret's wood (11 mm on the default 17 mm
   neck): a standard rod's 11 mm pocket would break through its back, so
   the neck is made thick enough at the first fret to leave

@@ -131,7 +131,13 @@ def _cover_setup(
         return Point2D(point.x - centre_x, -dy if mirror else dy)
 
     outline = tuple(frame(point) for point in cover.outline)
-    fitted = offset_polygon(outline, COVER_FIT_CLEARANCE, inward=True)
+    # A recessed cover is cut a little smaller to fit its recess; one on
+    # the face (a truss-rod cover) to its own outline.
+    fitted = (
+        offset_polygon(outline, COVER_FIT_CLEARANCE, inward=True)
+        if cover.recessed
+        else outline
+    )
     if not fitted:
         raise ToolpathError(f"{cover.name} is too small to cut.")
     through = cover.thickness + parameters.through_overshoot
@@ -165,9 +171,21 @@ def _cover_setup(
         (
             f"Sheet {cover.thickness:g} mm (plexiglass, pickguard plastic or "
             "plywood) screwed or taped to a spoilboard.",
-            f"Visible face up: this cover sits on the body's {face}.",
-            f"Cut {COVER_FIT_CLEARANCE:g} mm smaller than its recess per side; "
-            "break the tabs and sand the edge.",
+            *(
+                (
+                    f"Visible face up: this cover sits on the body's {face}.",
+                    f"Cut {COVER_FIT_CLEARANCE:g} mm smaller than its recess per "
+                    "side; break the tabs and sand the edge.",
+                )
+                if cover.recessed
+                else (
+                    "Visible face up: it is screwed onto the headstock face over "
+                    "the truss-rod trough (no recess), into the pilots "
+                    "Neck_top_small_holes drills (on a laminated neck, drill "
+                    "them by hand through its holes).",
+                    "Break the tabs and sand the edge.",
+                )
+            ),
             "Holes and slots first, then the outline.",
         ),
         tool=tool,

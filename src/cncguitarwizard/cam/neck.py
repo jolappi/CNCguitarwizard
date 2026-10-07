@@ -260,6 +260,12 @@ PILOT_GUIDE_DEPTH = 2.0
 """How deep, in mm, a pilot hole narrower than the small drill is started
 with it, as a guide to drill on from by hand."""
 
+COVER_SCREW_PILOT = 1.5
+"""A truss-rod cover screw's pilot hole in the headstock face, in mm."""
+
+COVER_SCREW_DEPTH = 8.0
+"""How deep a truss-rod cover screw's pilot runs into the face, in mm."""
+
 
 def _round_up(depth: float) -> float:
     """Return ``depth`` rounded up to the next 0.1 mm."""
@@ -836,24 +842,33 @@ def plan_neck_machining(
             small,
         )
 
-    # ---- top face: the locking nut's screw pilots ---------------------------
+    # ---- top face: the locking nut's and the truss-rod cover's pilots ------
     small_holes: Setup | None = None
     nut = geometry.locking_nut
     screws = nut.screw_centres() if nut is not None else ()
-    if nut is not None and screws:
+    cover = next(
+        (plate for plate in geometry.covers if plate.name == "Truss rod cover"), None
+    )
+    # A laminated neck's headstock face is cut later, on its block.
+    cover_screws = (
+        tuple(hole.center for hole in cover.holes)
+        if cover is not None and not laminated
+        else ()
+    )
+    if (nut is not None and screws) or cover_screws:
         drill_tool = replace(
             flat,
             tool_diameter=flat.small_hole_tool_diameter,
             finishing_allowance=0.0,
             plunge_rate=min(flat.plunge_rate, 150.0),
         )
-        # Drilled to size where the small drill fits the pilot, else
-        # started with it as a guide.
-        full = drill_tool.tool_diameter <= nut.screw_diameter + 1e-6
-        small_holes = Setup(
-            "Neck_top_small_holes",
-            "Neck glue face - the locking nut's screw pilots",
-            tuple(
+        pilots: list[Toolpath] = []
+        notes: list[str] = []
+        if nut is not None and screws:
+            # Drilled to size where the small drill fits the pilot, else
+            # started with it as a guide.
+            full = drill_tool.tool_diameter <= nut.screw_diameter + 1e-6
+            pilots += [
                 drill(
                     f"Locking nut screw {index} pilot",
                     top_frame.point(centre),
@@ -862,32 +877,67 @@ def plan_neck_machining(
                     drill_tool,
                 )
                 for index, centre in enumerate(screws, start=1)
+            ]
+            notes.append(
+                f"The {nut.spec.name} locking nut's {len(screws)} screws' "
+                f"pilots, {nut.screw_diameter:g} mm and {nut.screw_depth:g} "
+                "mm deep, hidden under the nut."
+                if full
+                else f"The {nut.spec.name} locking nut's {len(screws)} "
+                f"screws' pilots are started {PILOT_GUIDE_DEPTH:g} mm deep "
+                f"with the {drill_tool.tool_diameter:g} mm drill, wider than "
+                f"their {nut.screw_diameter:g} mm: drill them on to "
+                f"{nut.screw_depth:g} mm by hand (a {nut.screw_diameter:g} "
+                "mm small_hole_tool_diameter drills them to size here)."
+            )
+            if nut.on_fretboard:
+                notes.append(
+                    "The fretboard runs on under the nut: once it is glued "
+                    "on, drill on through its shelf into these pilots by hand."
+                )
+        if cover_screws:
+            # From the headstock face, which lies below the glue face.
+            full = drill_tool.tool_diameter <= COVER_SCREW_PILOT + 1e-6
+            for index, centre in enumerate(cover_screws, start=1):
+                face = -face_depth(centre.x, centre.y)
+                pilots.append(
+                    drill(
+                        f"Truss rod cover screw {index} pilot",
+                        top_frame.point(centre),
+                        COVER_SCREW_PILOT if full else drill_tool.tool_diameter,
+                        face + (COVER_SCREW_DEPTH if full else PILOT_GUIDE_DEPTH),
+                        drill_tool,
+                        start_depth=face,
+                    )
+                )
+            notes.append(
+                f"The truss-rod cover's {len(cover_screws)} screws' pilots in "
+                f"the headstock face, {COVER_SCREW_PILOT:g} mm and "
+                f"{COVER_SCREW_DEPTH:g} mm deep."
+                if full
+                else f"The truss-rod cover's {len(cover_screws)} screws' pilots "
+                f"are started {PILOT_GUIDE_DEPTH:g} mm deep in the headstock face "
+                f"with the {drill_tool.tool_diameter:g} mm drill: drill them on "
+                f"to {COVER_SCREW_PILOT:g} mm and {COVER_SCREW_DEPTH:g} mm by "
+                "hand, or through the cover itself."
+            )
+        small_holes = Setup(
+            "Neck_top_small_holes",
+            "Neck glue face - the "
+            + " and ".join(
+                what
+                for what, there in (
+                    ("locking nut's screw pilots", bool(screws)),
+                    ("truss-rod cover's screw pilots", bool(cover_screws)),
+                )
+                if there
             ),
+            tuple(pilots),
             (
                 "Same fixture and X/Y zero as Neck_top; change to the "
                 f"{drill_tool.tool_diameter:g} mm drill and re-touch Z on the "
                 "glue face.",
-                (
-                    f"The {nut.spec.name} locking nut's {len(screws)} screws' "
-                    f"pilots, {nut.screw_diameter:g} mm and {nut.screw_depth:g} "
-                    "mm deep, hidden under the nut."
-                    if full
-                    else f"The {nut.spec.name} locking nut's {len(screws)} "
-                    f"screws' pilots are started {PILOT_GUIDE_DEPTH:g} mm deep "
-                    f"with the {drill_tool.tool_diameter:g} mm drill, wider than "
-                    f"their {nut.screw_diameter:g} mm: drill them on to "
-                    f"{nut.screw_depth:g} mm by hand (a {nut.screw_diameter:g} "
-                    "mm small_hole_tool_diameter drills them to size here)."
-                ),
-                *(
-                    (
-                        "The fretboard runs on under the nut: once it is glued "
-                        "on, drill on through its shelf into these pilots by "
-                        "hand.",
-                    )
-                    if nut.on_fretboard
-                    else ()
-                ),
+                *notes,
             ),
             reference_points,
             drill_tool,

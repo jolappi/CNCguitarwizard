@@ -17,7 +17,8 @@ class CoverPlate:
     """A flat plate that closes a cavity, cut from sheet (plexiglass, plastic).
 
     The plate sits flush in its cavity's cover recess, so its outline is
-    that recess's outline and its thickness the recess depth.
+    that recess's outline and its thickness the recess depth — or, not
+    ``recessed``, on the face itself (a truss-rod cover on the headstock).
 
     Args:
         name: Plate name, e.g. ``"Control cavity cover"``.
@@ -29,6 +30,8 @@ class CoverPlate:
             shaft holes for a control plate.
         slots: Openings through the plate that are not round (a blade
             switch's slot).
+        recessed: Whether it sits in a recess (cut a little smaller to
+            fit it) rather than on the face.
 
     Raises:
         BodyGeometryError: For a non-positive thickness or an outline of
@@ -41,6 +44,7 @@ class CoverPlate:
     thickness: float
     holes: tuple[DrilledHole, ...] = ()
     slots: tuple[Cavity, ...] = ()
+    recessed: bool = True
 
     def __post_init__(self) -> None:
         """Reject a plate that cannot be cut."""

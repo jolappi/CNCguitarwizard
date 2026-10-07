@@ -146,7 +146,17 @@ Python.
    the drawing follows the fitted outline (a changed style or length
    redraws it); the first edit writes them, and *Start over* empties them
    again (`webapp.headstock_editor_layout()` supplies the holes and the
-   fitted start edges). A drawing its tuners no longer fit (a changed
+   fitted start edges). With the truss rod adjusted at the headstock its
+   cover is drawn over the dashed trough (`truss_cover` in the layout:
+   outline, screws, trough, size, corners and why it does not fit), its
+   style, length and width in the editor's pane with `truss_rod_adjustment`:
+   dragging a square corner handle writes a drawn cover
+   (`truss_rod_cover_style` custom, `truss_rod_cover_points` and `_screws`,
+   the size it was drawn at), a click on its edge adds a corner and an
+   Alt/Option- or right-click removes one, and the round handles past its
+   far end and beside its widest side write `truss_rod_cover_length` and
+   `_width`; choosing a style goes back to its own shape and size. A
+   drawing its tuners no longer fit (a changed
    scale or nut moves an in-line row's posts) still opens, the holes too
    close named in red, so it can be mended by dragging or *Start over*;
    so does one whose edges cross (a figure eight) or whose fitted outline

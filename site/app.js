@@ -133,7 +133,7 @@ function renderForm() {
 // A change on either side is passed to the other.
 const EDITOR_FIELDS = {
   "body-editor-options": ["body_pickups", "body_bridge", "body_controls", "body_switch", "body_jack", "body_pickguard", "body_pickguard_style", "body_arm_contour_depth", "body_belly_cut_depth", "body_carved_top", "body_carve_depth", "body_stepped_top", "body_engraving", "body_engraving_pattern", "body_engraving_seed", "body_battery_box", "body_battery_count"],
-  "headstock-editor-options": ["headstock_style", "nut_style", "headstock_engraving_text", "headstock_engraving_font", "headstock_engraving_height", "headstock_engraving_angle"],
+  "headstock-editor-options": ["headstock_style", "nut_style", "headstock_engraving_text", "headstock_engraving_font", "headstock_engraving_height", "headstock_engraving_angle", "truss_rod_adjustment", "truss_rod_cover_style", "truss_rod_cover_length", "truss_rod_cover_width"],
   "inlay-editor-options": ["inlay_style", "inlay_depth", "inlay_block_edge_margin"],
 };
 const mirrors = new Map();
@@ -2723,6 +2723,9 @@ const headstockEditor = {
       this.element("circle", { cx: hole.x, cy: -hole.y, r: hole.r, fill: "#fff", stroke: "#222", "stroke-width": 0.4, "pointer-events": "none" });
       this.element("circle", { cx: hole.x, cy: -hole.y, r: layout.min_edge_distance, fill: "none", stroke: "#8a4b1e", "stroke-width": 0.25, "stroke-dasharray": "1.5,1.5", "pointer-events": "none" });
     }
+    // The truss-rod cover over the adjuster's trough (an adjuster at the
+    // headstock), with its handles.
+    if (layout.truss_cover) this.drawCover(layout.truss_cover);
     for (const side of ["bass", "treble"]) {
       const sign = this.sign(side);
       this.edges[side].forEach(([d, h], index) => {
@@ -2747,6 +2750,167 @@ const headstockEditor = {
       this.element("title", {}, group).textContent = "The headstock lettering — drag it to move it";
     }
     this.check();
+  },
+
+  // The truss-rod cover: its trough dashed, the plate and its screws;
+  // square handles on its corners (drag one to draw your own cover,
+  // Alt/Option-click or right-click one to remove it, click its edge to
+  // add one) and round ones past its far end and its widest side to make
+  // it longer or wider.
+  drawCover(cover) {
+    const group = this.element("g", { class: "truss-cover" });
+    this.element("path", { class: "cover-trough", d: this.pathData(cover.trough) + " Z" }, group);
+    this.coverPath = this.element("path", { class: "cover-body", d: this.pathData(cover.outline) + " Z" }, group);
+    const hit = this.element("path", { class: "outline-hit", d: this.pathData(cover.outline) + " Z", "stroke-width": 3 }, group);
+    hit.addEventListener("click", (event) => {
+      if (event.detail <= 1) this.addCoverCorner(event);
+    });
+    this.element("title", {}, hit).textContent = "The truss-rod cover — click its edge to add a corner";
+    for (const [x, y] of cover.screws) {
+      this.element("circle", { cx: x, cy: -y, r: cover.screw_radius, fill: "#fff", stroke: "#222", "stroke-width": 0.3, "pointer-events": "none" }, group);
+    }
+    cover.corners.forEach((corner, index) => {
+      const [x, y] = this.coverPoint(corner);
+      const handle = this.element("rect", { class: "cover-handle", x: x - 1.1, y: -y - 1.1, width: 2.2, height: 2.2 }, group);
+      this.element("title", {}, handle).textContent = "A corner of the cover — drag it to draw your own cover, Alt/Option-click or right-click to remove it";
+      handle.addEventListener("pointerdown", (event) => {
+        if (event.altKey) {
+          this.removeCoverCorner(index);
+          return;
+        }
+        this.startCoverDrag(event, index, handle);
+      });
+      handle.addEventListener("contextmenu", (event) => {
+        event.preventDefault();
+        this.removeCoverCorner(index);
+      });
+    });
+    const widest = cover.corners.reduce((best, c) => (Math.abs(c[1]) > Math.abs(best[1]) ? c : best));
+    const [sideX, sideY] = this.coverPoint([widest[0], Math.abs(widest[1])]);
+    const stretches = [
+      ["length", [cover.back - cover.length - 3, 0], "Drag to make the cover longer or shorter (truss_rod_cover_length)"],
+      ["width", [sideX, sideY + 3], "Drag to make the cover wider or narrower (truss_rod_cover_width)"],
+    ];
+    for (const [kind, [x, y], title] of stretches) {
+      const handle = this.element("circle", { class: `cover-stretch ${kind}`, cx: x, cy: -y, r: 1.6 }, group);
+      this.element("title", {}, handle).textContent = title;
+      handle.addEventListener("pointerdown", (event) => this.startCoverStretch(event, kind, handle));
+    }
+  },
+
+  // A cover corner or screw, (along, across) as truss_rod_cover_points
+  // holds it, in the model frame.
+  coverPoint([u, v]) {
+    const cover = this.layout.truss_cover;
+    return [cover.back - u * cover.length, (v * cover.width) / 2];
+  },
+
+  coverUnit([x, y]) {
+    const cover = this.layout.truss_cover;
+    return [Math.max(0, (cover.back - x) / cover.length), (2 * y) / cover.width];
+  },
+
+  // Drag a corner; the outline is shown straight between the corners
+  // until Python rounds it again.
+  startCoverDrag(event, index, handle) {
+    event.preventDefault();
+    event.stopPropagation();
+    const corners = this.layout.truss_cover.corners.map((c) => [...c]);
+    const start = this.toModel(event);
+    const [x0, y0] = this.coverPoint(corners[index]);
+    let moved = false;
+    const preview = this.element("path", { class: "cover-preview" });
+    const move = (moveEvent) => {
+      const [x, y] = this.toModel(moveEvent);
+      corners[index] = this.coverUnit([x0 + x - start[0], y0 + y - start[1]]);
+      const [hx, hy] = this.coverPoint(corners[index]);
+      handle.setAttribute("x", hx - 1.1);
+      handle.setAttribute("y", -hy - 1.1);
+      preview.setAttribute("d", this.pathData(corners.map((c) => this.coverPoint(c))) + " Z");
+      moved = true;
+    };
+    const end = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", end);
+      window.removeEventListener("pointercancel", end);
+      if (moved) this.commitCover(corners);
+      else preview.remove();
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", end);
+    window.addEventListener("pointercancel", end);
+  },
+
+  // A click on the cover's edge adds a corner on the nearest side.
+  addCoverCorner(event) {
+    const corners = this.layout.truss_cover.corners.map((c) => [...c]);
+    const [x, y] = this.toModel(event);
+    const points = corners.map((c) => this.coverPoint(c));
+    let best = 0, bestDistance = Infinity;
+    points.forEach(([ax, ay], i) => {
+      const [bx, by] = points[(i + 1) % points.length];
+      const dx = bx - ax, dy = by - ay;
+      const t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy || 1)));
+      const distance = (ax + t * dx - x) ** 2 + (ay + t * dy - y) ** 2;
+      if (distance < bestDistance) { bestDistance = distance; best = i; }
+    });
+    corners.splice(best + 1, 0, this.coverUnit([x, y]));
+    this.commitCover(corners);
+  },
+
+  removeCoverCorner(index) {
+    const corners = this.layout.truss_cover.corners.map((c) => [...c]);
+    if (corners.length <= 3) return;
+    corners.splice(index, 1);
+    this.commitCover(corners);
+  },
+
+  // Write a drawn (custom) cover: its corners, the screws where they
+  // were, and the size it was drawn at.
+  commitCover(corners) {
+    const cover = this.layout.truss_cover;
+    const field = (name) => form.querySelector(`[data-set='prototype'][data-name='${name}']`);
+    const unit = (point) => point.map((v) => Math.round(v * 10000) / 10000);
+    setControlValue(field("truss_rod_cover_length"), cover.length);
+    setControlValue(field("truss_rod_cover_width"), cover.width);
+    setControlValue(field("truss_rod_cover_screws"), cover.screw_points.map(unit));
+    setControlValue(field("truss_rod_cover_points"), corners.map(unit));
+    const style = field("truss_rod_cover_style");
+    if (style.value !== "custom") setControlValue(style, "custom");
+    syncMirrors();
+  },
+
+  // Drag the round handle past the far end (length) or the widest side
+  // (width); on drop the size is written, to the half millimetre.
+  startCoverStretch(event, kind, handle) {
+    event.preventDefault();
+    event.stopPropagation();
+    const cover = this.layout.truss_cover;
+    const start = this.toModel(event);
+    let size = cover[kind];
+    const move = (moveEvent) => {
+      const [x, y] = this.toModel(moveEvent);
+      size = kind === "length"
+        ? Math.max(5, cover.length + (start[0] - x))
+        : Math.max(5, cover.width + 2 * (y - start[1]));
+      if (kind === "length") handle.setAttribute("cx", x);
+      else handle.setAttribute("cy", -y);
+      this.setStatus(`Cover ${kind}: ${size.toFixed(1)} mm`, "ok");
+    };
+    const end = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", end);
+      window.removeEventListener("pointercancel", end);
+      if (size === cover[kind]) return;
+      setControlValue(
+        form.querySelector(`[data-set='prototype'][data-name='truss_rod_cover_${kind}']`),
+        Math.round(size * 2) / 2,
+      );
+      syncMirrors();
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", end);
+    window.addEventListener("pointercancel", end);
   },
 
   // Drag the lettering; on drop its centre is written (headstock_engraving_x / _y).
@@ -3041,6 +3205,9 @@ const headstockEditor = {
       this.setStatus("A tip handle lies outside the tip's corners: move it in or remove it.", "bad");
     } else if (close.length) {
       this.setStatus(`Too close to the edge (keep ${limit} mm): ${close.join(", ")}.`, "bad");
+    } else if (this.layout.truss_cover?.problem) {
+      const problem = this.layout.truss_cover.problem;
+      this.setStatus(`${problem[0].toUpperCase()}${problem.slice(1)}.`, "bad");
     } else if (this.layout.lettering?.problem) {
       this.setStatus(this.layout.lettering.problem, "bad");
     } else {
@@ -3314,6 +3481,16 @@ form.addEventListener("change", (event) => {
 document.getElementById("headstock-editor-reset").addEventListener("click", () => headstockEditor.reset());
 document.getElementById("headstock-editor-load").addEventListener("click", () => headstockEditor.loadTemplate());
 document.getElementById("headstock-editor-template").addEventListener("change", () => headstockEditor.loadTemplate());
+// A cover style chosen goes back to that style's own size (a drawn cover
+// keeps the size it was drawn at).
+form.addEventListener("change", (event) => {
+  if (event.target.dataset.name !== "truss_rod_cover_style" || event.target.value === "custom") return;
+  for (const name of ["truss_rod_cover_length", "truss_rod_cover_width"]) {
+    const input = form.querySelector(`[data-set='prototype'][data-name='${name}']`);
+    if (input && input.value !== "") setControlValue(input, null);
+  }
+  syncMirrors();
+});
 form.addEventListener("change", (event) => {
   if (["headstock_outline", "headless"].includes(event.target.dataset.name)) headstockEditor.sync();
   else if (!/^headstock_(bass_edge|treble_edge|tip_points)$/.test(event.target.dataset.name || "")) headstockEditor.scheduleRefresh();

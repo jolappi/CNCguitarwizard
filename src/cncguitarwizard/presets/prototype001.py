@@ -126,6 +126,12 @@ from .pickups import (
     pickup_route,
     pickup_screws,
 )
+from .truss_rod_covers import (
+    TRUSS_ROD_COVER_SIZES,
+    TrussRodCoverStyle,
+    check_custom_cover,
+    truss_rod_cover_shape,
+)
 
 HEADSTOCK_ENGRAVING_SETBACK = 20.0
 """How far behind the nut's seat the headstock lettering sits by default."""
@@ -1019,6 +1025,28 @@ class Prototype001Parameters:
     truss_rod_nut_length: float = 6.0
     truss_rod_access_length: float | None = None
     truss_rod_cover: bool = True
+    # truss_rod_cover_style: the cover's shape (mockups of the familiar
+    # ones): "bell" (Gibson's, three screws), "ibanez" (a rounded triangle,
+    # two screws, Ibanez / ESP style), "prs" (a teardrop, two screws, PRS
+    # style), "rectangle" (rounded, three screws, sized round the trough)
+    # or "custom" (drawn in the headstock editor). Its nut end stops
+    # 0.5 mm short of the nut shelf, over the trough's own nut end;
+    # truss_rod_cover_length and truss_rod_cover_width size it (empty: the
+    # style's own size). It must cover the trough with 1 mm to spare, keep
+    # its screws in 1 mm of wood clear of the trough and of its own edge,
+    # and keep 1 mm from the headstock's edges and the tuner holes.
+    truss_rod_cover_style: TrussRodCoverStyle = "bell"
+    truss_rod_cover_length: float | None = None
+    truss_rod_cover_width: float | None = None
+    # truss_rod_cover_points and truss_rod_cover_screws: a custom cover's
+    # corners (straight lines between them, rounded 1.5 mm) and screw
+    # centres, as (along, across): along 0 at its nut end and 1 at its far
+    # end, across the share of its half-width (-1 to 1, toward the treble
+    # side of a right-handed neck), so truss_rod_cover_length and _width
+    # still size it. The headstock editor writes both when a corner of any
+    # style's cover is moved.
+    truss_rod_cover_points: tuple[tuple[float, float], ...] = ()
+    truss_rod_cover_screws: tuple[tuple[float, float], ...] = ()
     # truss_rod_spoke_wheel: an adjuster with a spoke wheel ("auto": at the
     # heel yes, at the headstock no). At the heel the wheel turns past the
     # heel end (above); without it the route runs right to the heel end,
@@ -2342,13 +2370,34 @@ class Prototype001Parameters:
             )
         return TrussRodFit(longest, recommended, rod, rod - outside, outside)
 
-    def truss_rod_cover_plate(self, channel: TrussRodChannel) -> CoverPlate | None:
-        """Return the cover over a headstock trough, or ``None``.
+    def truss_rod_cover_size(self, channel: TrussRodChannel) -> tuple[float, float]:
+        """Return the truss-rod cover's length and width, in mm.
 
-        It overlaps the trough by 6 mm all round except at the nut, where
-        it stops 0.5 mm short of the nut shelf; two screws near the nut
-        and one at the far end hold it. A spoke wheel's trough, or a
-        slotted (Fender style) nut's key notch, is left open.
+        As given (``truss_rod_cover_length`` / ``_width``), else the
+        style's own; a ``rectangle`` reaches 8.5 mm past the trough's far
+        end (its far screw in 3 mm of wood beyond it) and 6 mm past its
+        sides.
+        """
+        if self.truss_rod_cover_style == "rectangle":
+            trough = channel.adjuster_boundary
+            length = max(p.x for p in trough) - min(p.x for p in trough) + 8.0
+            width = 2.0 * (max(p.y for p in trough) + 6.0)
+        else:
+            length, width = TRUSS_ROD_COVER_SIZES[self.truss_rod_cover_style]
+        return (
+            self.truss_rod_cover_length or length,
+            self.truss_rod_cover_width or width,
+        )
+
+    def truss_rod_cover_outline(
+        self, channel: TrussRodChannel
+    ) -> tuple[tuple[Point2D, ...], tuple[Point2D, ...]] | None:
+        """Return the truss-rod cover's outline and screw centres, unchecked.
+
+        In the model frame (the headstock toward -X), or ``None`` where
+        there is no cover: a heel adjuster, ``truss_rod_cover`` off, no
+        trough, a spoke wheel's trough or a slotted (Fender style) nut's
+        key notch, which are left open.
         """
         nut = self.locking_nut_placed()
         if (
@@ -2359,24 +2408,122 @@ class Prototype001Parameters:
             or not channel.adjuster_boundary
         ):
             return None
+        length, width = self.truss_rod_cover_size(channel)
+        shape = truss_rod_cover_shape(
+            self.truss_rod_cover_style,
+            length,
+            width,
+            self.truss_rod_cover_points,
+            self.truss_rod_cover_screws,
+        )
+        back = max(p.x for p in channel.adjuster_boundary) - 0.5
+        # Across: toward the treble side of a right-handed neck, mirrored
+        # for a left-handed one.
+        side = -self.bass_sign
+
+        def placed(u: float, v: float) -> Point2D:
+            return Point2D(back - u, side * v)
+
+        corners = [placed(u, v) for u, v in shape.corners]
+        rounded = rounded_polygon_points(
+            corners, list(shape.radii), samples_per_corner=8
+        )
+        # Two roundings meeting halfway along a side give it one point twice.
+        outline = tuple(
+            point
+            for index, point in enumerate(rounded)
+            if math.hypot(
+                point.x - rounded[index - 1].x, point.y - rounded[index - 1].y
+            )
+            > 1e-9
+        )
+        return outline, tuple(placed(u, v) for u, v in shape.screws)
+
+    def truss_rod_cover_problem(
+        self,
+        channel: TrussRodChannel,
+        plan: HeadstockPlan,
+        tuners: TunerLayout,
+    ) -> str | None:
+        """Return why the truss-rod cover does not fit, or ``None``.
+
+        It must cover the trough with 1 mm to spare (but at the nut end,
+        which runs on under the nut shelf), keep each screw in 1 mm of
+        wood clear of the trough and of its own edge, and keep 1 mm from
+        the headstock's edges and the tuner holes.
+        """
+        if self.truss_rod_cover_style == "custom":
+            problem = check_custom_cover(
+                self.truss_rod_cover_points, self.truss_rod_cover_screws
+            )
+            if problem:
+                return problem
+        for name, value in (
+            ("truss_rod_cover_length", self.truss_rod_cover_length),
+            ("truss_rod_cover_width", self.truss_rod_cover_width),
+        ):
+            if value is not None and not (math.isfinite(value) and value > 0.0):
+                return f"{name} must be positive"
+        placed = self.truss_rod_cover_outline(channel)
+        if placed is None:
+            return None
+        outline, screws = placed
+        if _sides_cross(outline):
+            return "the truss-rod cover's sides cross"
+        margin = 1.0
+        back = max(p.x for p in outline)
         trough = channel.adjuster_boundary
-        front = min(p.x for p in trough) - 6.0
-        back = max(p.x for p in trough) - 0.5
-        half = max(p.y for p in trough) + 6.0
-        corners = [
-            Point2D(front, -half),
-            Point2D(back, -half),
-            Point2D(back, half),
-            Point2D(front, half),
-        ]
-        outline = rounded_polygon_points(
-            corners, [half * 0.9, 2.0, 2.0, half * 0.9], samples_per_corner=8
-        )
-        screws = (
-            (back - 3.5, -(half - 3.0)),
-            (back - 3.5, half - 3.0),
-            (front + 4.0, 0.0),
-        )
+        covered = [p for p in trough if p.x <= back]
+        if not all(
+            point_in_polygon(p, outline) and distance_to_boundary(p, outline) >= margin
+            for p in covered
+        ):
+            return (
+                "the truss-rod cover does not cover the trough with 1 mm to spare: "
+                "make it longer or wider (truss_rod_cover_length / _width)"
+            )
+        screw_radius = SCREW_CLEARANCE / 2.0
+        for index, screw in enumerate(screws, start=1):
+            if not point_in_polygon(screw, outline) or (
+                distance_to_boundary(screw, outline) < screw_radius + margin
+            ):
+                return f"the truss-rod cover's screw {index} is too near its edge"
+            if point_in_polygon(screw, trough) or (
+                distance_to_boundary(screw, trough) < screw_radius + margin
+            ):
+                return f"the truss-rod cover's screw {index} is in the trough"
+        if min(distance_to_headstock_edge(plan, p) for p in outline) < margin:
+            return "the truss-rod cover runs over the headstock's edge"
+        for hole in tuners.holes:
+            radius = hole.diameter / 2.0 + margin
+            if point_in_polygon(hole.center, outline) or (
+                distance_to_boundary(hole.center, outline) < radius
+            ):
+                return (
+                    f"the truss-rod cover runs into tuner {hole.side} {hole.index}'s "
+                    "hole"
+                )
+        return None
+
+    def truss_rod_cover_plate(self, channel: TrussRodChannel) -> CoverPlate | None:
+        """Return the cover over a headstock trough, or ``None``.
+
+        Of ``truss_rod_cover_style``, its nut end 0.5 mm short of the nut
+        shelf, screwed to the headstock face (no recess). A spoke wheel's
+        trough, or a slotted (Fender style) nut's key notch, is left open.
+
+        Raises:
+            NeckGeometryError: If it does not fit (see
+                ``truss_rod_cover_problem``).
+        """
+        placed = self.truss_rod_cover_outline(channel)
+        if placed is None:
+            return None
+        plan, tuners = self.headstock_design()
+        problem = self.truss_rod_cover_problem(channel, plan, tuners)
+        if problem:
+            raise NeckGeometryError(problem[0].upper() + problem[1:] + ".")
+        outline, screws = placed
         return CoverPlate(
             "Truss rod cover",
             "top",
@@ -2385,13 +2532,14 @@ class Prototype001Parameters:
             holes=tuple(
                 DrilledHole(
                     f"Screw {index}",
-                    x,
-                    y,
+                    screw.x,
+                    screw.y,
                     SCREW_CLEARANCE,
                     self.body_cover_recess_depth,
                 )
-                for index, (x, y) in enumerate(screws, start=1)
+                for index, screw in enumerate(screws, start=1)
             ),
+            recessed=False,
         )
 
     def locking_nut_placed(self) -> LockingNut | None:
@@ -3367,7 +3515,14 @@ class Prototype001Parameters:
         )
 
     def headstock_engraving_centre(self, headstock: HeadstockSolid) -> Point2D:
-        """Return where the headstock lettering is centred (model frame)."""
+        """Return where the headstock lettering is centred (model frame).
+
+        Not given (``headstock_engraving_x``), ``HEADSTOCK_ENGRAVING_SETBACK``
+        behind the nut's seat — or, with a truss-rod cover there, past its
+        far end (as a Gibson's logo sits beyond its bell) and on toward the
+        tip, a millimetre at a time, to the first place it fits, clear of
+        the tuner holes and the face's edges.
+        """
         # Left-handed, it sits on the mirrored side.
         y = (
             -self.headstock_engraving_y
@@ -3377,7 +3532,38 @@ class Prototype001Parameters:
         if self.headstock_engraving_x is not None:
             return Point2D(self.headstock_engraving_x, y)
         seat_end = headstock.nut_seat_length + headstock.nut_reach
-        return Point2D(-(seat_end + HEADSTOCK_ENGRAVING_SETBACK), y)
+        centre = Point2D(-(seat_end + HEADSTOCK_ENGRAVING_SETBACK), y)
+        text = self.headstock_engraving_text.strip()
+        if not text:
+            return centre
+        try:
+            channel = self.truss_rod(self.neck_outline())
+            placed = self.truss_rod_cover_outline(channel)
+            if placed is None:
+                return centre
+            _, tuners = self.headstock_design()
+
+            def lines_at(x: float) -> tuple[tuple[Point2D, ...], ...]:
+                return text_lines(
+                    text,
+                    self.headstock_engraving_height,
+                    Point2D(x, y),
+                    self.headstock_engraving_direction(),
+                    self.headstock_engraving_font,
+                )
+
+            nearest = max(p.x for line in lines_at(centre.x) for p in line)
+        except GeometryException:
+            return centre
+        limit = min(p.x for p in placed[0]) - HEADSTOCK_ENGRAVING_CLEARANCE - 1.0
+        past = Point2D(centre.x - max(0.0, nearest - limit), y)
+        x = past.x
+        while x > -headstock.plan.length:
+            problem = self._lettering_problem(lines_at(x), headstock, tuners, channel)
+            if problem is None:
+                return Point2D(x, y)
+            x -= 1.0
+        return past
 
     def headstock_engraving_direction(self) -> float:
         """Return the direction the headstock lettering runs, in degrees.
@@ -3400,6 +3586,54 @@ class Prototype001Parameters:
             return self.headstock_tip_points
         return tuple((past, -y) for past, y in reversed(self.headstock_tip_points))
 
+    def _lettering_problem(
+        self,
+        lines: Sequence[Sequence[Point2D]],
+        headstock: HeadstockSolid,
+        tuner_layout: TunerLayout,
+        truss_rod_channel: TrussRodChannel,
+    ) -> str | None:
+        """Return where lettering's strokes run that they must not, or ``None``.
+
+        Off the face, onto the nut's seat, into a tuner hole, the truss rod
+        adjuster's trough or under its cover, each within
+        ``HEADSTOCK_ENGRAVING_CLEARANCE``.
+        """
+        clearance = HEADSTOCK_ENGRAVING_CLEARANCE
+        face = offset_polygon(headstock.plan.boundary, clearance, inward=True)
+        seat_end = -(headstock.nut_seat_length + headstock.nut_reach + clearance)
+        trough = (
+            offset_polygon(truss_rod_channel.adjuster_boundary, clearance, inward=False)
+            if truss_rod_channel.adjuster_boundary
+            and max(p.x for p in truss_rod_channel.adjuster_boundary) <= 0.0
+            else ()
+        )
+        placed_cover = self.truss_rod_cover_outline(truss_rod_channel)
+        cover = (
+            offset_polygon(placed_cover[0], clearance, inward=False)
+            if placed_cover is not None
+            else ()
+        )
+        points = [p for line in lines for p in line]
+        return (
+            "runs off the face"
+            if not all(point_in_polygon(p, face) for p in points)
+            else "runs onto the nut's seat"
+            if any(p.x > seat_end for p in points)
+            else "runs into a tuner hole"
+            if any(
+                math.hypot(p.x - hole.center.x, p.y - hole.center.y)
+                < hole.diameter / 2.0 + clearance
+                for hole in tuner_layout.holes
+                for p in points
+            )
+            else "runs into the truss rod adjuster's trough"
+            if trough and any(point_in_polygon(p, trough) for p in points)
+            else "runs under the truss-rod cover"
+            if cover and any(point_in_polygon(p, cover) for p in points)
+            else None
+        )
+
     def headstock_lettering(
         self,
         headstock: HeadstockSolid,
@@ -3411,7 +3645,8 @@ class Prototype001Parameters:
         Raises:
             NeckGeometryError: For lettering the font cannot set, too deep,
                 or running off the face, onto the nut's seat, into a
-                tuner hole or the truss rod adjuster's trough.
+                tuner hole, the truss rod adjuster's trough or under its
+                cover.
         """
         text = self.headstock_engraving_text.strip()
         if not text:
@@ -3432,31 +3667,8 @@ class Prototype001Parameters:
             )
         except GeometryException as error:
             raise NeckGeometryError(str(error)) from error
-        clearance = HEADSTOCK_ENGRAVING_CLEARANCE
-        face = offset_polygon(headstock.plan.boundary, clearance, inward=True)
-        seat_end = -(headstock.nut_seat_length + headstock.nut_reach + clearance)
-        trough = (
-            offset_polygon(truss_rod_channel.adjuster_boundary, clearance, inward=False)
-            if truss_rod_channel.adjuster_boundary
-            and max(p.x for p in truss_rod_channel.adjuster_boundary) <= 0.0
-            else ()
-        )
-        points = [p for line in lines for p in line]
-        problem = (
-            "runs off the face"
-            if not all(point_in_polygon(p, face) for p in points)
-            else "runs onto the nut's seat"
-            if any(p.x > seat_end for p in points)
-            else "runs into a tuner hole"
-            if any(
-                math.hypot(p.x - hole.center.x, p.y - hole.center.y)
-                < hole.diameter / 2.0 + clearance
-                for hole in tuner_layout.holes
-                for p in points
-            )
-            else "runs into the truss rod adjuster's trough"
-            if trough and any(point_in_polygon(p, trough) for p in points)
-            else None
+        problem = self._lettering_problem(
+            lines, headstock, tuner_layout, truss_rod_channel
         )
         if problem is not None:
             raise NeckGeometryError(
@@ -5403,6 +5615,26 @@ def _jack_space(jack: JackHole, thickness: float) -> WireSpace:
         thickness / 2.0 + widest / 2.0,
         parts=((bar(jack.cup_depth, jack.cup_diameter),) if jack.cup_diameter else ()),
     )
+
+
+def _sides_cross(outline: Sequence[Point2D]) -> bool:
+    """Return whether any two sides of a closed outline cross."""
+
+    def turn(a: Point2D, b: Point2D, c: Point2D) -> float:
+        return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)
+
+    count = len(outline)
+    for i in range(count):
+        a, b = outline[i], outline[(i + 1) % count]
+        for j in range(i + 2, count):
+            if i == 0 and j == count - 1:
+                continue  # the side that closes the loop meets the first
+            c, d = outline[j], outline[(j + 1) % count]
+            if (turn(a, b, c) > 0.0) != (turn(a, b, d) > 0.0) and (
+                turn(c, d, a) > 0.0
+            ) != (turn(c, d, b) > 0.0):
+                return True
+    return False
 
 
 def _line_crossings(

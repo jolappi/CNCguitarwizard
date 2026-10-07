@@ -4,6 +4,22 @@
 
 ### Added
 
+- Truss-rod covers to choose and to draw in the headstock editor:
+  `truss_rod_cover_style` a Gibson bell (three screws, the default), an
+  Ibanez / ESP style rounded triangle or a PRS style teardrop (two
+  screws each), the rounded rectangle there was, or a cover of your own
+  (`custom`, its corners and screws in `truss_rod_cover_points` /
+  `_screws`), sized by `truss_rod_cover_length` / `_width`. With the truss
+  rod adjusted at the headstock the editor draws the cover over its
+  trough: drag a corner to draw your own, click its edge to add one,
+  Alt/Option- or right-click one to remove it, drag its round handles to
+  make it longer or wider. It must cover the trough, keep its screws in
+  wood clear of the trough and its edge, and keep clear of the
+  headstock's edges and the tuner holes, the editor and the build saying
+  why when it does not; the lettering keeps clear of it and by default
+  sits past it, at the first place it fits between the tuner holes. It is cut to its own outline (it sits on the face, in no
+  recess), and its screws' pilots are started from the face in
+  `Neck_top_small_holes`.
 - A second barbed-wire inlay style, `barbed_wire_2` ("Barbed wire 2"): a
   knot of barbed wire — two twisted strands, three coils and four barbs —
   traced from the builder's drawing (`barbedwiretrue.dxf`) and joined

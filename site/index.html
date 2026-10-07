@@ -121,6 +121,14 @@
   .body-editor .step-handle:hover, .body-editor .step-handle.dragging { fill: #6a4a8a; }
   #headstock-editor .lettering-line { fill: none; stroke: #1f6fb2; stroke-width: 0.9; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
   #headstock-editor .lettering-hit { fill: none; stroke: transparent; stroke-width: 5; pointer-events: stroke; cursor: move; }
+  #headstock-editor .cover-trough { fill: none; stroke: #8a4b1e; stroke-width: 0.3; stroke-dasharray: 1.5,1; pointer-events: none; }
+  #headstock-editor .cover-body { fill: #2b2b2b; fill-opacity: 0.55; stroke: #111; stroke-width: 0.4; pointer-events: none; }
+  #headstock-editor .cover-handle { fill: #fff; stroke: #1f6fb2; stroke-width: 0.3; cursor: grab; }
+  #headstock-editor .cover-handle:hover { fill: #1f6fb2; }
+  #headstock-editor .cover-stretch { fill: #1f6fb2; stroke: #fff; stroke-width: 0.3; }
+  #headstock-editor .cover-stretch.length { cursor: ew-resize; }
+  #headstock-editor .cover-stretch.width { cursor: ns-resize; }
+  #headstock-editor .cover-preview { fill: none; stroke: #1f6fb2; stroke-width: 0.3; stroke-dasharray: 1,0.6; pointer-events: none; }
   .body-editor .engraving { fill: none; stroke: #1f6fb2; stroke-width: 1.2; stroke-linecap: round; pointer-events: none; }
   .body-editor .relief { fill: #2f4a1e; stroke: #1f6fb2; stroke-width: 0.6; pointer-events: none; }
   .body-editor .contour-line { fill: none; stroke-width: 0.9; pointer-events: none; }
@@ -294,7 +302,7 @@
         style redraws it); <em>Start over</em> goes back to it; <em>Undo</em> steps back a change, <em>Redo</em> forward again. A neck chosen in <em>Start from</em> is loaded whole (<em>Load</em> loads it again), its tuners' places with it: the
         Telecaster neck sets a slotted nut (the fretboard running on under it), a flat six-in-line headstock
         drawn as a Telecaster's and a truss rod adjusted at the heel (set <code>truss_rod_adjustment</code> to
-        headstock for the modern way, reached behind the nut; <code>truss_rod_spoke_wheel</code> says whether the adjuster is a spoke wheel). Lettering typed in <code>headstock_engraving_text</code> is drawn in blue: drag it to move it (it must keep 2 mm from the edge, the nut's seat and the tuner holes). The grid is 10 mm.</p>
+        headstock for the modern way, reached behind the nut; <code>truss_rod_spoke_wheel</code> says whether the adjuster is a spoke wheel). Lettering typed in <code>headstock_engraving_text</code> is drawn in blue: drag it to move it (it must keep 2 mm from the edge, the nut's seat, the tuner holes and the truss-rod cover). With the truss rod adjusted at the headstock (<code>truss_rod_adjustment</code>) its cover is drawn over the dashed trough, in the style chosen (<code>truss_rod_cover_style</code>: a Gibson bell, Ibanez / ESP, a PRS teardrop or a rounded rectangle): drag one of its square corners to draw your own cover (click its edge to add a corner, Alt/Option-click or right-click one to remove it), or a round handle past its far end or beside its widest side to make it longer or wider; choosing a style again goes back to it. It must cover the trough and keep its screws in wood and clear of the edges and the tuner holes. The grid is 10 mm.</p>
       <div id="headstock-editor-options" class="editor-options"></div>
       <div class="actions">
         <label class="note" for="headstock-editor-template">Start from</label>

@@ -59,7 +59,7 @@ from .presets.body_shapes import (
     body_shape_from_dict,
     widened_shape,
 )
-from .presets.controls import CONTROL_LABELS
+from .presets.controls import CONTROL_LABELS, SCREW_CLEARANCE
 from .presets.pickups import PICKUP_CONFIGURATIONS
 from .presets.prototype001 import (
     BODY_TEMPLATE_VALUES,
@@ -67,6 +67,7 @@ from .presets.prototype001 import (
     NECK_TEMPLATE_RESETS,
     NECK_TEMPLATES,
 )
+from .presets.truss_rod_covers import editable_cover_points, truss_rod_cover_shape
 from .render.svg import render_plan_view_svg
 from .workflows import Prototype001Build
 
@@ -128,6 +129,13 @@ _CHOICE_LABELS: dict[str, dict[str, str]] = {
         "crackle": "Crackle (random cells)",
         "camo": "Camo (woodland relief, four levels)",
         "pinstripe": "Pinstripe (round the edge, Jackson RR / Alexi Hexed)",
+    },
+    "truss_rod_cover_style": {
+        "bell": "Gibson bell (3 screws)",
+        "ibanez": "Ibanez / ESP style (2 screws)",
+        "prs": "PRS style teardrop (2 screws)",
+        "rectangle": "Rounded rectangle (3 screws)",
+        "custom": "Custom (drawn in the headstock editor)",
     },
     "inlay_style": {
         "barbed_wire": "Barbed wire (two at the 12th and 24th)",
@@ -262,6 +270,9 @@ _BASIC_FIELDS: frozenset[str] = frozenset(
         "fretboard_blank_width",
         "fretboard_blank_thickness",
         "fretboard_carrier_thickness",
+        "truss_rod_cover_style",
+        "truss_rod_cover_length",
+        "truss_rod_cover_width",
     }
 )
 
@@ -1071,6 +1082,7 @@ def headstock_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         # A locking nut wider than the neck is refused here too.
         nut = _nut_drawing(parameters)
         lettering = _headstock_lettering(built)
+        truss_cover = _truss_cover_drawing(parameters)
     except (CNCGuitarWizardError, TypeError, ValueError) as error:
         return {"error": f"{type(error).__name__}: {error}"}
     root = parameters.headstock_root_length
@@ -1086,6 +1098,7 @@ def headstock_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
     }
     return {
         "lettering": lettering,
+        "truss_cover": truss_cover,
         "nut": nut,
         "mirrored": built.left_handed,
         "nut_half_width": parameters.nut_width / 2.0,
@@ -1102,6 +1115,56 @@ def headstock_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
             }
             for side, x, y in centres
         ],
+    }
+
+
+def _truss_cover_drawing(parameters: Prototype001Parameters) -> dict[str, Any] | None:
+    """Return the truss-rod cover for the headstock editor, or ``None``.
+
+    ``{"outline", "screws", "screw_radius", "trough", "back", "length",
+    "width", "style", "corners", "screw_points", "problem"}``: the cover's
+    outline and screw centres and the trough under it (model frame, as
+    drawn); its nut end's X, its size and style; its corners and screws as
+    ``truss_rod_cover_points`` / ``_screws`` would hold them, for the
+    editor to move one or add one (a drawn, ``custom``, cover from then
+    on); and why it does not fit, or ``None``. Drawn even where it does
+    not fit, so it can be mended. ``None`` where there is no cover (a heel
+    adjuster, say).
+    """
+    try:
+        channel = parameters.truss_rod(parameters.neck_outline())
+        placed = parameters.truss_rod_cover_outline(channel)
+    except (CNCGuitarWizardError, TypeError, ValueError):
+        return None
+    if placed is None:
+        return None
+    outline, screws = placed
+    length, width = parameters.truss_rod_cover_size(channel)
+    shape = truss_rod_cover_shape(
+        parameters.truss_rod_cover_style,
+        length,
+        width,
+        parameters.truss_rod_cover_points,
+        parameters.truss_rod_cover_screws,
+    )
+    corners, screw_points = editable_cover_points(shape, length, width)
+    try:
+        plan, tuners = parameters.headstock_design()
+        problem = parameters.truss_rod_cover_problem(channel, plan, tuners)
+    except (CNCGuitarWizardError, TypeError, ValueError):
+        problem = None  # the headstock's own problem is shown instead
+    return {
+        "outline": [[round(p.x, 2), round(p.y, 2)] for p in outline],
+        "screws": [[round(p.x, 2), round(p.y, 2)] for p in screws],
+        "screw_radius": SCREW_CLEARANCE / 2.0,
+        "trough": [[round(p.x, 2), round(p.y, 2)] for p in channel.adjuster_boundary],
+        "back": round(max(p.x for p in channel.adjuster_boundary) - 0.5, 3),
+        "length": round(length, 2),
+        "width": round(width, 2),
+        "style": parameters.truss_rod_cover_style,
+        "corners": [list(point) for point in corners],
+        "screw_points": [list(point) for point in screw_points],
+        "problem": problem,
     }
 
 
