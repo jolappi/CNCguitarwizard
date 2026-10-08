@@ -293,6 +293,20 @@
   #files td.links { white-space: nowrap; }
   #files td.links a + a { margin-left: 10px; }
   details.summary-programs { margin-top: 8px; }
+  .summary-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .summary-head button { padding: 3px 12px; font-size: 13px; font-weight: 500; }
+  .print-title { display: none; }
+  /* A built result prints as a sheet for the workshop: the guitar, the
+     summary, every program and the plan view; the rest of the page not
+     (see printResult). */
+  @media print {
+    body.print-result :is(header, aside, footer, #jump, .body-editor, #error, .no-print, .zoom-chip, button) { display: none !important; }
+    body.print-result main { display: block; min-height: 0; }
+    body.print-result section.results { padding: 0; }
+    body.print-result .print-title { display: block; margin: 0 0 8px; font-size: 18px; font-weight: 600; }
+    body.print-result #plan { border: 0; overflow: visible; break-inside: avoid; }
+    body.print-result #plan svg { max-height: 90vh; width: auto; margin: 0 auto; }
+  }
   details.summary-programs > table { margin: 0 10px 8px; }
   #files td:nth-child(3) { white-space: nowrap; }
   #files td.step { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -396,35 +410,40 @@
          column, or straight under the build button on a narrow screen. -->
     <div id="error" class="error hidden"></div>
     <div id="output" class="hidden">
+      <p id="print-title" class="print-title"></p>
       <p id="output-stale" class="stale" hidden>The design has changed since this build, so these files are
         not its own. <button id="rebuild" class="secondary" type="button" title="Ctrl/Cmd+Enter">Build again</button></p>
-      <h2>Summary</h2>
+      <div class="summary-head">
+        <h2>Summary</h2>
+        <button id="print-result" class="secondary" type="button"
+          title="Print the summary, every program and the plan view: a sheet for the workshop (Ctrl/Cmd+P)">Print</button>
+      </div>
       <table id="summary"></table>
       <details id="summary-programs" class="summary-programs">
         <summary>Every program: its tool, time and cutting</summary>
         <table></table>
       </details>
-      <h2>Downloads</h2>
-      <div class="actions">
+      <h2 class="no-print">Downloads</h2>
+      <div class="actions no-print">
         <button id="download-nc-zip" type="button"
           title="Every NC program in one ZIP, named for the guitar: a folder a part, each program numbered in running order">Download all NC files (.zip)</button>
       </div>
-      <p class="note">Each part opens to its programs, numbered in the order to run them; <em>Plot</em> downloads a
+      <p class="note no-print">Each part opens to its programs, numbered in the order to run them; <em>Plot</em> downloads a
         program's toolpaths drawn over its part. The <em>Simulate</em> button copies that program to the clipboard and
         opens <a href="https://ncviewer.com" target="_blank" rel="noopener">NC Viewer</a> below: click into its
         editor, select all (Ctrl/Cmd+A), paste (Ctrl/Cmd+V) and press <em>Plot</em> to see the toolpath
         simulated.</p>
-      <div id="files"></div>
-      <div id="simulator" class="simulator hidden">
+      <div id="files" class="no-print"></div>
+      <div id="simulator" class="simulator hidden no-print">
         <h2>Simulator <span id="simulator-file" class="note"></span></h2>
         <p id="simulator-hint" class="note"></p>
         <iframe id="simulator-frame" title="NC Viewer G-code simulator" allow="clipboard-read; clipboard-write"></iframe>
       </div>
-      <h2>Plan view <span class="note">— Ctrl/Cmd+wheel or pinch zooms, drag moves, double-click fits</span></h2>
+      <h2>Plan view <span class="note no-print">— Ctrl/Cmd+wheel or pinch zooms, drag moves, double-click fits</span></h2>
       <div id="plan" class="preview"></div>
-      <h2>Toolpaths</h2>
-      <div id="tabs" class="tabs"></div>
-      <div id="toolpath" class="preview"></div>
+      <h2 class="no-print">Toolpaths</h2>
+      <div id="tabs" class="tabs no-print"></div>
+      <div id="toolpath" class="preview no-print"></div>
     </div>
     <div id="body-editor" class="body-editor hidden">
       <h2>Your design <span id="body-editor-size" class="note"></span></h2>

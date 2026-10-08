@@ -3378,6 +3378,31 @@ function zoomablePlot(holder) {
   enableZoom({ svg, baseBox, zoom: null });
 }
 
+// A built result prints as a sheet for the workshop (the Print button, or
+// the browser's own printing): the guitar's name, instrument and the day
+// at its head, every program unfolded; the page's CSS leaves the rest out.
+// Nothing built, the page prints as it is.
+let programsOpenBeforePrint = false;
+
+window.addEventListener("beforeprint", () => {
+  const built = !output.classList.contains("hidden");
+  document.body.classList.toggle("print-result", built);
+  if (!built) return;
+  const instrument = instrumentSelect.selectedOptions[0]?.textContent ?? "";
+  const name = guitarName.value.trim() || "Prototype001";
+  document.getElementById("print-title").textContent =
+    `${name} — ${instrument} · ${new Date().toLocaleDateString()}`;
+  const programs = document.getElementById("summary-programs");
+  programsOpenBeforePrint = programs.open;
+  programs.open = true;
+});
+window.addEventListener("afterprint", () => {
+  if (!document.body.classList.contains("print-result")) return;
+  document.body.classList.remove("print-result");
+  document.getElementById("summary-programs").open = programsOpenBeforePrint;
+});
+document.getElementById("print-result").addEventListener("click", () => window.print());
+
 // The quick links, each only while its panel shows (a result once one is
 // built, the headstock editor while there is a headstock to draw, …).
 const jumpLinks = [...document.querySelectorAll("#jump a[data-panel]")];

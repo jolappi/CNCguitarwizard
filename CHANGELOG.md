@@ -4,6 +4,10 @@
 
 ### Added
 
+- *Print* beside the summary prints a sheet for the workshop: the
+  guitar, the summary, every program and the plan view, the rest of
+  the page left out (the browser's own printing too, once there is a
+  result).
 - *Save design •* is marked while the design differs from the one last
   saved or loaded (remembered across a reload).
 - A zoomed drawing or plot has a chip in its corner that says how far it

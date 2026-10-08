@@ -441,7 +441,13 @@ Python.
    behind it) and the toolpath plots, one at a time, chosen from a list by part
    (each program by its step, the body's top first) or stepped through
    with the arrows beside it (`toolpath-choice`); both zoom as an
-   editor's drawing does (`zoomablePlot`, `enableZoom`). The downloads come in one fold per part, closed
+   editor's drawing does (`zoomablePlot`, `enableZoom`). *Print*, beside
+   the summary's title (or the browser's own printing once there is a
+   result), prints a sheet for the workshop: the guitar's name,
+   instrument and the day at its head, the summary, every program
+   unfolded and the plan view, the stale-result note if the design has
+   changed since; the form, editors, downloads and toolpaths are left
+   out (`print-result`, set on `beforeprint`, and the page's print CSS). The downloads come in one fold per part, closed
    until opened (its title says how many programs) — the
    model and report first, then body, neck, fretboard, the inlay pieces, the nut jig and covers — each
    program numbered in the order it is run (`build.json` gives it as the

@@ -891,6 +891,12 @@ tulee huomautus, etteivät tiedostot enää ole suunnitelman omat, ja
 *Build again* -painike; kun suunnitelma on taas sama kuin rakennettaessa
 (esim. Undo), huomautus poistuu.
 
+Tuloksen *Print*-painike (tai selaimen oma tulostus, kun tulos on)
+tulostaa työpajaan sopivan sivun: kitaran nimi, soitin ja päivä
+otsikkona, yhteenveto, kaikki ohjelmat auki ja tasokuva sekä huomautus,
+jos suunnitelma on muuttunut rakennuksen jälkeen; lomake, editorit,
+lataukset ja työratakuvat jätetään pois.
+
 Lomakkeen ryhmien otsikot kertovat, montako ryhmän asetusta on muutettu
 oletuksesta (*Body · 3 changed*, editorien ruutujen asetukset mukaan
 luettuina), ja *Show only the settings changed from their defaults*
