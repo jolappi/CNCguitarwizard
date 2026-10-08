@@ -827,6 +827,17 @@
 
 ### Fixed
 
+- A body thickness (`body_thickness`) of zero or less no longer stops the
+  build at the first neck bolt ("Neck bolt 1 hole diameter and depth must
+  be finite and positive."), whose hole depth comes from the thickness:
+  the build says "Body thickness must be greater than zero." (or "must be
+  finite"), in the body editor too. A body too thin for what is cut from
+  it is named the same way: no thicker than the neck pocket
+  (`heel_thickness`) on a bolt-on neck, the pocket and the thickness
+  instead of the bolts; no thicker than `body_rear_cavity_top_wall`, the
+  thickness instead of the control cavity's depth; thinner than the
+  neck's wood at the 12th fret on a neck-through or one-piece neck, the
+  thickness instead of the neck's back.
 - The wheel over a selected number field no longer changes its value
   (a notch at a time, unseen) but scrolls the page as it does elsewhere.
 - A loaded design (and the one the page puts back) no longer shows the

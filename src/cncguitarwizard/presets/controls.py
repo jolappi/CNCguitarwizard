@@ -381,8 +381,9 @@ def control_features(
     output jack on a ``jazz_bass`` plate.
 
     Raises:
-        BodyGeometryError: When ``shape.control_stretch`` shortens the
-            control cavity or its cover past its rounded ends,
+        BodyGeometryError: When ``thickness`` leaves no room under
+            ``top_wall`` for the control cavity, ``shape.control_stretch``
+            shortens the control cavity or its cover past its rounded ends,
             ``shape.control_stretch_across`` leaves the cavity narrower
             than ``MIN_CONTROL_CAVITY_WIDTH``, or the jack is asked onto a
             layout with no plate for it.
@@ -395,6 +396,11 @@ def control_features(
     if layout == "none":
         return ControlFeatures()
     depth = thickness - top_wall
+    if depth <= 0.0:
+        raise BodyGeometryError(
+            f"Body thickness ({thickness:g} mm) must exceed the {top_wall:g} mm "
+            "wall the control cavity leaves (body_rear_cavity_top_wall)."
+        )
     pots = [(heel_end + x, y) for x, y in shape.pot_offsets]
     anchor_x = sum(x for x, _ in pots) / len(pots)
     anchor_y = sum(y for _, y in pots) / len(pots)

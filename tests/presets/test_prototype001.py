@@ -1,11 +1,13 @@
 """Tests for the complete Prototype001 parameter preset."""
 
+import math
 from dataclasses import FrozenInstanceError, replace
 
 import pytest
 
 from cncguitarwizard.geometry.body import FloydRoseSpec, HardtailSpec, TuneOMaticSpec
 from cncguitarwizard.geometry.exceptions import (
+    BodyGeometryError,
     HeadstockGeometryError,
     NeckGeometryError,
 )
@@ -286,6 +288,29 @@ def test_preset_rejects_outer_d_profile_guide_outside_supported_range(
             Prototype001Parameters(),
             headstock_outer_d_profile_guide_extension=extension,
         ).build()
+
+
+@pytest.mark.parametrize("thickness", (-5.0, 0.0))
+def test_preset_rejects_a_body_thickness_of_zero_or_less(thickness: float) -> None:
+    """Regression: the neck bolts, whose holes take their depth from the
+    thickness, were named instead of the thickness."""
+    parameters = replace(Prototype001Parameters(), body_thickness=thickness)
+
+    with pytest.raises(
+        BodyGeometryError, match=r"^Body thickness must be greater than zero\.$"
+    ):
+        parameters.build()
+    # The body editor lays the body out the same way.
+    with pytest.raises(
+        BodyGeometryError, match=r"^Body thickness must be greater than zero\.$"
+    ):
+        parameters.body_layout()
+
+
+@pytest.mark.parametrize("thickness", (math.nan, math.inf))
+def test_preset_rejects_a_body_thickness_that_is_not_finite(thickness: float) -> None:
+    with pytest.raises(BodyGeometryError, match=r"^Body thickness must be finite\.$"):
+        replace(Prototype001Parameters(), body_thickness=thickness).build()
 
 
 def test_preset_uses_root_lengths_without_reducing_flat_heel() -> None:

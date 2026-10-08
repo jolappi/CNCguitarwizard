@@ -8,7 +8,7 @@ from cncguitarwizard.backends.freecad import FreeCADScriptExporter
 from cncguitarwizard.cam import MachiningParameters, plan_body_machining
 from cncguitarwizard.cam.neck import NeckMachiningParameters, plan_neck_machining
 from cncguitarwizard.geometry.body import TuneOMaticSpec, body_part, split_by_line
-from cncguitarwizard.geometry.exceptions import NeckGeometryError
+from cncguitarwizard.geometry.exceptions import BodyGeometryError, NeckGeometryError
 from cncguitarwizard.geometry.primitives import Point2D, point_in_polygon
 from cncguitarwizard.presets import Prototype001Parameters
 from cncguitarwizard.presets.body_shapes import YOUR_DESIGN_TEMPLATES
@@ -101,6 +101,21 @@ def test_a_neck_through_refuses_what_it_cannot_take() -> None:
     assert replace(THROUGH, body_bridge=TuneOMaticSpec()).neck_angle_degrees == 0.0
     with pytest.raises(NeckGeometryError, match="buries a heel adjuster"):
         replace(THROUGH, truss_rod_spoke_wheel="no").build()
+
+
+@pytest.mark.parametrize("joint", ["neck_through", "one_piece"])
+def test_a_body_thinner_than_the_neck_names_its_thickness(joint: str) -> None:
+    # Regression: the neck's back falls to the body's thickness at the
+    # heel, and a body thinner than the neck was named as the neck's back
+    # thinning toward the heel.
+    parameters = replace(THROUGH, neck_joint=joint, body_thickness=12.0)
+
+    with pytest.raises(
+        BodyGeometryError,
+        match=r"^Body thickness \(12 mm\) must be at least the neck wood's 13 mm "
+        r"at the 12th fret",
+    ):
+        parameters.build()
 
 
 def test_the_neck_blank_carries_the_block() -> None:

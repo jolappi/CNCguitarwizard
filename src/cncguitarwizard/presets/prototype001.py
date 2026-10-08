@@ -1944,7 +1944,8 @@ class Prototype001Parameters:
 
         Raises:
             BodyGeometryError: If the sizes are not positive, the bolt hole
-                is not narrower than its ferrule, a bolt leaves less than
+                is not narrower than its ferrule, the neck pocket is at least
+                as deep as the body, a bolt leaves less than
                 the edge wall to the neck's edge or less than 3 mm of wood to
                 the truss-rod channel or its nut pocket, a ferrule leaves the
                 body, or two ferrules overlap.
@@ -1963,6 +1964,14 @@ class Prototype001Parameters:
         if self.body_neck_bolt_hole_diameter >= self.body_neck_ferrule_diameter:
             raise BodyGeometryError(
                 "The neck-bolt hole must be narrower than its ferrule."
+            )
+        # The bolts run from the back up to the pocket's floor, so a pocket
+        # as deep as the body leaves them no wood.
+        if pocket.depth >= self.body_thickness:
+            raise BodyGeometryError(
+                f"Neck pocket depth ({pocket.depth:g} mm, the heel thickness) "
+                "must leave material beneath its floor in the "
+                f"{self.body_thickness:g} mm thick body."
             )
         if self.built_body_shape.neck_bolts:
             centres = [(heel_end + x, y) for x, y in self.built_body_shape.neck_bolts]
@@ -2812,6 +2821,12 @@ class Prototype001Parameters:
     def _body_layout(
         self, outline: NeckOutline, *, check_steps: bool = True
     ) -> BodyLayout:
+        # Checked first: the neck-bolt and string-through holes take their
+        # depths from the thickness, and would otherwise be blamed for it.
+        if not math.isfinite(self.body_thickness):
+            raise BodyGeometryError("Body thickness must be finite.")
+        if self.body_thickness <= 0.0:
+            raise BodyGeometryError("Body thickness must be greater than zero.")
         heel_end = outline.last_fret_position + self.heel_length
         # Body features ride with the heel end, bridge features with the
         # scale length (see the body_* parameter comments).
@@ -5312,6 +5327,13 @@ class Prototype001Parameters:
         heel_transition = self.heel_root_length
         if through_parts is not None:
             heel_depth = self.body_thickness
+            if heel_depth < twelfth_fret_wood_thickness:
+                raise BodyGeometryError(
+                    f"Body thickness ({heel_depth:g} mm) must be at least the "
+                    f"neck wood's {twelfth_fret_wood_thickness:g} mm at the 12th "
+                    "fret: a neck-through or one-piece neck's back falls to the "
+                    "body's thickness at the heel."
+                )
             ramp = self.neck_through_heel_ramp
             if not math.isfinite(ramp) or ramp <= 0.0:
                 raise NeckGeometryError("neck_through_heel_ramp must be positive.")

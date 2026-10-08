@@ -618,7 +618,7 @@ varmistaa tämän.
 
 | Kohta | Speksi |
 | --- | --- |
-| Paksuus | 44 mm laatta; reunat ja viisteet valinnaisia (alla) |
+| Paksuus | 44 mm laatta; reunat ja viisteet valinnaisia (alla). Paksuuden on oltava äärellinen ja nollaa suurempi (*Body thickness must be greater than zero.*); virhe nimeää paksuuden eikä kaulapulttia, jonka reiän syvyys lasketaan siitä. Paksuuden nimeää myös virhe, kun pulttikaulan runko ei ole kaulataskun syvyyttä (`heel_thickness`, 20 mm) paksumpi, kun runko ei ole takakolojen yläpuolelle jäävää puuta (`body_rear_cavity_top_wall`, 8 mm) paksumpi tai kun läpikaulan tai yksiosaisen soittimen runko on ohuempi kuin kaulan puu 12. nauhalla (13 mm) |
 | Kaulatasku | Kaulan oma kapeneva ääriviiva + 0,15 mm välys/puoli, 79,5 mm pitkä, päättyy kannan päähän, 20 mm syvä; avautuu sarvien väliin |
 | Kaulan kulma | `neck_angle` (astetta): kaula kallistuu taaksepäin, lapa soittajaa kohti. Taskun pohja on vino: kannan päässä 20 mm syvä, suussa `body_neck_pocket_length` × tan(kulma) syvempi (2°: 22,8 mm), ja se jyrsitään 0,1 mm portaina (`FLOOR_TERRACE_STEP`) taskun jälkeen; portaat jäävät enintään 0,1 mm vinon pohjan yläpuolelle, ja kaula lepää niiden reunoilla. Kaula kääntyy taskun pohjan kannanpuoleisen pään ympäri, ja talla siirtyy niin, että mensuuri (ja 12. nauha puolivälissä) pitää kielen kallistettua linjaa pitkin nauhojen yläpinnan tasolla (2°, 24": talla 1,04 mm satulaa kohti). Tyhjä: 2° Tune-o-maticin kanssa (`NECK_ANGLE_TUNE_O_MATIC`; tasakantisella rungolla 2–2,5° on tavallinen, Les Paulin kaareva kansi 3–5°), muuten 0°. Enintään 6° |
 | Mikkikolot | DXF:n humbucker-kolo korvakkeineen, 41 × 85,9 mm, 22 mm syvä; keskipisteet x = 491,7 ja 587,9 |

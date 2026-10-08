@@ -96,6 +96,8 @@
 - Ctrl/Cmd+S and Ctrl/Cmd+O saving and loading the design
 - A design dropped on the page loaded
 - An outline dropped on an editor's drawing imported
+- A body too thin named by its thickness, not by a neck bolt, pocket or
+  cavity cut from it
 - Index pins as wide as a main tool wider than 6 mm (an 8 mm end mill,
   8 mm dowels)
 - The neck's back carved with the ball nose alone, in one program

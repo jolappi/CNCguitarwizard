@@ -127,3 +127,26 @@ def test_no_bolt_comes_closer_to_the_heel_end_than_the_end_wall() -> None:
         Prototype001Parameters(), body_shape=shape, body_neck_bolt_end_wall=2.5
     )
     assert len(ferrules(looser.build().body)) == 4
+
+
+@pytest.mark.parametrize("thickness", (5.0, 20.0))
+def test_a_body_no_thicker_than_the_pocket_names_the_pocket_not_a_bolt(
+    thickness: float,
+) -> None:
+    # Regression: the bolt holes, the body's thickness less the pocket's
+    # depth deep, were left no depth and named instead.
+    parameters = replace(Prototype001Parameters(), body_thickness=thickness)
+
+    with pytest.raises(
+        BodyGeometryError,
+        match=rf"^Neck pocket depth \(20 mm, the heel thickness\) .* "
+        rf"{thickness:g} mm thick body\.$",
+    ):
+        parameters.build()
+    # Thicker than the pocket, the bolts reach its floor.
+    hole = next(
+        h
+        for h in replace(parameters, body_thickness=44.0).build().body.rear_holes
+        if h.name == "Neck bolt 1 hole"
+    )
+    assert hole.depth == pytest.approx(44.0 - 20.0)

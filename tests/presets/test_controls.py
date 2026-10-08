@@ -458,3 +458,29 @@ def test_a_control_cavity_cannot_be_narrower_than_a_pot(layout: str) -> None:
 
     with pytest.raises(BodyGeometryError, match="at least 16 mm"):
         parameters.body_layout()
+
+
+@pytest.mark.parametrize("layout", [layout for layout in LAYOUTS if layout != "none"])
+def test_a_body_no_thicker_than_the_cavity_wall_names_its_thickness(
+    layout: str,
+) -> None:
+    # Regression: the control cavity, the body's thickness less this wall
+    # deep, was left no depth and named instead.
+    parameters = replace(
+        Prototype001Parameters(), body_controls=layout, body_rear_cavity_top_wall=44.0
+    )
+
+    with pytest.raises(
+        BodyGeometryError,
+        match=r"^Body thickness \(44 mm\) must exceed the 44 mm wall the control "
+        r"cavity leaves \(body_rear_cavity_top_wall\)\.$",
+    ):
+        parameters.build()
+
+
+def test_no_controls_need_no_room_under_the_cavity_wall() -> None:
+    parameters = replace(
+        Prototype001Parameters(), body_controls="none", body_rear_cavity_top_wall=44.0
+    )
+
+    assert parameters.body_layout().control_cavity is None
