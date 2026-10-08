@@ -3052,8 +3052,8 @@ for (const link of jumpLinks) {
 }
 syncJump();
 
-// A menu (File ▾) closes once one of its buttons is chosen, or on a
-// click anywhere else.
+// A menu (File ▾) closes once one of its buttons is chosen, on a click
+// anywhere else, or on Escape (the keyboard back on its title).
 for (const menu of document.querySelectorAll("details.menu")) {
   menu.addEventListener("click", (event) => {
     if (event.target.closest(".menu-items button")) menu.open = false;
@@ -3062,6 +3062,14 @@ for (const menu of document.querySelectorAll("details.menu")) {
 document.addEventListener("click", (event) => {
   for (const menu of document.querySelectorAll("details.menu[open]")) {
     if (!menu.contains(event.target)) menu.open = false;
+  }
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") return;
+  for (const menu of document.querySelectorAll("details.menu[open]")) {
+    if (menu.contains(document.activeElement)) menu.querySelector("summary").focus();
+    menu.open = false;
+    event.preventDefault();
   }
 });
 

@@ -291,7 +291,7 @@ Python.
    scrolls the page as ever, and every handle works as before.
    The editors' button rows keep to one line: their templates' four
    buttons sit in a *File ▾* menu (`details.menu`, closing once one is
-   chosen or on a click elsewhere), and the body editor's *Auto
+   chosen, on a click elsewhere or on Escape), and the body editor's *Auto
    pickguard*, *Auto arm contour*, *Auto steps* and *Auto belly cut*
    show only with a pickguard, an arm contour, a stepped top or a belly
    cut on, *New pattern* only with an engraving laid out at random (not

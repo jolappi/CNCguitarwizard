@@ -903,6 +903,9 @@ Tuloksen tasokuvaa ja työratakuvia voi zoomata samoin kuin editorien
 piirroksia: Ctrl/Cmd+rulla tai nipistys, raahaus siirtää ja tuplaklikkaus
 näyttää koko kuvan.
 
+Esc sulkee avoimen *File ▾* -valikon, ja näppäimistön kohdistus palaa
+valikon otsikkoon.
+
 Runkoeditorin *Turn upright* näyttää piirroksen pystyssä, kaula ylöspäin
 (neljännes myötäpäivään; *Turn sideways* palauttaa vaakanäkymän, joka on
 oletus). Se on pelkkä näkymä: koordinaatit ja kaikki raahaukset toimivat
