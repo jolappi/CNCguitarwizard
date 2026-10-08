@@ -894,6 +894,11 @@ Lomakkeen ryhmien otsikot kertovat, montako ryhmän asetusta on muutettu
 oletuksesta (*Body · 3 changed*, editorien ruutujen asetukset mukaan
 luettuina).
 
+Oikean sarakkeen yläreunassa on vieritettäessä näkyvissä pysyvä
+pikalinkkipalkki: *Result* (kun tulos on), *Body*, *Headstock*, *Inlays*
+(kun editori näkyy) ja kapealla näytöllä *Settings*, koska lomake on
+silloin sivun lopussa.
+
 Runkoeditorin *Turn upright* näyttää piirroksen pystyssä, kaula ylöspäin
 (neljännes myötäpäivään; *Turn sideways* palauttaa vaakanäkymän, joka on
 oletus). Se on pelkkä näkymä: koordinaatit ja kaikki raahaukset toimivat

@@ -4,6 +4,9 @@
 
 ### Added
 
+- Quick links at the top of the right-hand column, kept in view while it
+  scrolls: *Result*, *Body*, *Headstock*, *Inlays* and, on a narrow
+  screen where the form comes last, *Settings*.
 - A build's result says so once the design has changed since (and the
   files are no longer its own), with *Build again*; back as built (an
   undo, say), the note goes.

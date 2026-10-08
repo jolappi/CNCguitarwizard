@@ -3027,6 +3027,20 @@ function enableZoom(editor) {
     svg.setAttribute("viewBox", editor.baseBox.join(" "));
   });
 }
+// The quick links, each only while its panel shows (a result once one is
+// built, the headstock editor while there is a headstock to draw, …).
+const jumpLinks = [...document.querySelectorAll("#jump a[data-panel]")];
+function syncJump() {
+  for (const link of jumpLinks) {
+    link.hidden = document.getElementById(link.dataset.panel).classList.contains("hidden");
+  }
+}
+const panelWatch = new MutationObserver(syncJump);
+for (const link of jumpLinks) {
+  panelWatch.observe(document.getElementById(link.dataset.panel), { attributes: true, attributeFilter: ["class"] });
+}
+syncJump();
+
 // A menu (File ▾) closes once one of its buttons is chosen, or on a
 // click anywhere else.
 for (const menu of document.querySelectorAll("details.menu")) {

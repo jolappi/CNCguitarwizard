@@ -68,8 +68,20 @@
   @media (min-width: 901px) {
     .body-editor .undo-button, .body-editor .redo-button { display: none; }
   }
-  section.results { padding: 16px 22px 40px; overflow-x: hidden; }
+  /* Clipped, not hidden: a hidden overflow would make it a scroll box,
+     and the quick links could not stay at the top of the page. */
+  section.results { padding: 16px 22px 40px; overflow-x: clip; }
   #output > h2:first-child { margin-top: 0; }
+  /* The quick links, kept at the top while the column scrolls; a link's
+     target stops below them. */
+  .jump { position: sticky; top: 0; z-index: 4; display: flex; flex-wrap: wrap; gap: 4px 16px;
+    margin: -8px 0 12px; padding: 8px 0; background: var(--bg); border-bottom: 1px solid var(--line); }
+  .jump a { color: var(--accent); font-weight: 600; text-decoration: none; }
+  .jump a:hover { text-decoration: underline; }
+  #output, .body-editor, #find-setting { scroll-margin-top: 48px; }
+  @media (min-width: 901px) {
+    .jump .jump-settings { display: none; }
+  }
   /* The result of a design since changed: said above it. */
   .stale { margin: 0 0 12px; padding: 8px 12px; background: #fff3cd; border: 1px solid #e3c463; border-radius: 6px; }
   .stale button { margin-left: 8px; padding: 4px 12px; }
@@ -339,6 +351,15 @@
     </div>
   </aside>
   <section class="results">
+    <!-- Quick links to the result, the editors and (on a narrow screen,
+         where it comes last) the settings, kept in view while scrolling. -->
+    <nav id="jump" class="jump" aria-label="Go to">
+      <a href="#output" data-panel="output">Result</a>
+      <a href="#body-editor" data-panel="body-editor">Body</a>
+      <a href="#headstock-editor" data-panel="headstock-editor">Headstock</a>
+      <a href="#inlay-editor" data-panel="inlay-editor">Inlays</a>
+      <a href="#find-setting" class="jump-settings">Settings</a>
+    </nav>
     <!-- The build's result comes first: at the top of the right-hand
          column, or straight under the build button on a narrow screen. -->
     <div id="error" class="error hidden"></div>

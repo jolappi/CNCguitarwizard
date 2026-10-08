@@ -77,6 +77,7 @@
 - A loaded design's body and bridge not shown changed when they are the instrument's own
 - A result that says when the design has changed since its build
 - The form's groups counting their changed settings
+- Quick links to the result, the editors and the settings
 - Index pins as wide as a main tool wider than 6 mm (an 8 mm end mill,
   8 mm dowels)
 - The neck's back carved with the ball nose alone, in one program

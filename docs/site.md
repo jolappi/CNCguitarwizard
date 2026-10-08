@@ -372,7 +372,11 @@ Python.
    button between stages, since Pyodide runs Python on the page's own
    thread. Everything lands in Pyodide's in-memory file system and comes
    back as text.
-5. Shows the result first, as soon as it is done (`#output`, the first
+5. Quick links at the top of the right-hand column, kept in view while it
+   scrolls (`#jump`), go to the result (once there is one), the body,
+   headstock and inlay editors (while they show) and, on a narrow screen
+   where they come last, the settings.
+   Shows the result first, as soon as it is done (`#output`, the first
    thing in the right-hand column, above the editors; on a narrow screen
    straight under the build button and instrument choice, an error in
    the same place, and the page scrolls to either when it arrives out of
