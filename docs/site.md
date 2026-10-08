@@ -258,7 +258,12 @@ Python.
    afterwards changes the loaded outline, not the start shape; settings
    this version does not know are skipped and listed,
    and a file that is not a design is refused. Nothing is stored on a
-   server.
+   server. The design is kept in the browser too (`localStorage`,
+   `cncguitarwizard.lastDesign`: `designDocument()` saved after every
+   settled change and a change of the guitar's name) and put back when
+   the page is loaded again (`restoreLastDesign`, upgraded as a loaded
+   design is; the status says so unless it is the defaults); *Reset*
+   starts afresh, and a design that cannot be put back is passed over.
    **Undo** and **Redo** (beside *Reset* — on a wide screen the form
    column stays in view while the drawings and results scroll, so they
    are always at hand there; on a narrow one each editor's pane has them

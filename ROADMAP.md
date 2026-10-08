@@ -69,6 +69,7 @@
 - A shorter build result: downloads folded by part, programs summed up
 - Show only the settings changed from their defaults
 - Editor status lines: an import's note apart, problems in bold red
+- The design kept in the browser and put back on loading
 - Index pins as wide as a main tool wider than 6 mm (an 8 mm end mill,
   8 mm dowels)
 - The neck's back carved with the ball nose alone, in one program

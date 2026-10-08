@@ -4,6 +4,10 @@
 
 ### Added
 
+- The design is kept in the browser: every change (and the guitar's
+  name) is saved there, and the page puts it back when it is loaded
+  again, so a reload or a closed tab loses nothing. *Reset* starts
+  afresh.
 - *Show only the settings changed from their defaults* under the form's
   search: what has been set, at a glance (an editor pane's settings too),
   or a note that nothing is changed.

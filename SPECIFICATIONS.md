@@ -858,6 +858,11 @@ Editorin tilarivillä tuonnin huomautus on omalla rivillään (seuraavaan
 muutokseen asti) ja sen alla piirroksen tila; ongelma (mikä ei mahdu)
 näkyy lihavoituna punaisena.
 
+Suunnitelma säilyy selaimessa: jokainen muutos (ja kitaran nimi)
+tallentuu sinne, ja sivu palauttaa sen uudelleen ladattaessa (tilarivi
+kertoo sen, jos se ei ole oletukset), joten uudelleenlataus tai suljettu
+välilehti ei hukkaa mitään; *Reset* aloittaa alusta.
+
 Runkoeditorin *Turn upright* näyttää piirroksen pystyssä, kaula ylöspäin
 (neljännes myötäpäivään; *Turn sideways* palauttaa vaakanäkymän, joka on
 oletus). Se on pelkkä näkymä: koordinaatit ja kaikki raahaukset toimivat

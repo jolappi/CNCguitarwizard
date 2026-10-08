@@ -94,7 +94,15 @@ async function boot() {
     saveDesignButton.disabled = false;
     loadDesignButton.disabled = false;
     undoHistory.start();
-    setStatus(`Ready — ${manifest.wheel} (build ${manifest.build || "dev"})`, "ok");
+    // The design the page was last left with, kept in this browser (said
+    // so unless it is the defaults).
+    const defaults = undoHistory.current;
+    const restored = restoreLastDesign();
+    autosaveReady = true;
+    undoHistory.start();
+    const changed = restored && undoHistory.current !== defaults;
+    setStatus(`Ready — ${manifest.wheel} (build ${manifest.build || "dev"})` +
+      (changed ? " · your last design is back (Reset starts afresh)" : ""), "ok");
   } catch (error) {
     console.error(error);
     setStatus("Failed to start", "bad");
@@ -1163,6 +1171,38 @@ function applyValues(set, values) {
   return unknown;
 }
 
+// The design as the page was last left, kept in this browser: saved after
+// every settled change (and the guitar's name), put back on loading. A
+// design that cannot be put back is passed over; Reset starts afresh.
+const LAST_DESIGN = "cncguitarwizard.lastDesign";
+let autosaveReady = false;
+
+function autosave() {
+  if (!autosaveReady) return;
+  try {
+    localStorage.setItem(LAST_DESIGN, JSON.stringify(designDocument()));
+  } catch {
+    // No storage (a private window, or full), or a field mid-edit.
+  }
+}
+
+function restoreLastDesign() {
+  let text = null;
+  try {
+    text = localStorage.getItem(LAST_DESIGN);
+  } catch {
+    return false;
+  }
+  if (!text) return false;
+  try {
+    applyDesign(JSON.parse(text));
+    return true;
+  } catch (error) {
+    console.warn("The last design could not be put back:", error);
+    return false;
+  }
+}
+
 function applyDesign(design) {
   if (!design || design.format !== DESIGN_FORMAT) {
     throw new Error("This is not a CNCguitarwizard design file.");
@@ -1351,8 +1391,10 @@ const undoHistory = {
       button.disabled = !this.redo.length;
       button.title = redone ? `Redo: ${redone} (Ctrl/Cmd+Shift+Z)` : "Nothing to redo";
     }
+    autosave();
   },
 };
+guitarName.addEventListener("input", () => autosave());
 
 // A drag writes its values when it ends; until then nothing is kept.
 window.addEventListener("pointerdown", () => { undoHistory.pointerDown = true; }, true);
