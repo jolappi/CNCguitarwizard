@@ -803,6 +803,8 @@
 
 ### Fixed
 
+- The wheel over a selected number field no longer changes its value
+  (a notch at a time, unseen) but scrolls the page as it does elsewhere.
 - A loaded design (and the one the page puts back) no longer shows the
   drawn body's outline and placements, or another instrument's own bridge
   (a five-string bass's hardtail), as changed when they are as the

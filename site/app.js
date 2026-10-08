@@ -592,6 +592,36 @@ document.addEventListener("focusout", () => {
   }, 0);
 });
 
+// The wheel over a selected number field scrolls the page, as it does
+// everywhere else, and leaves the value alone: the browser would step it
+// a notch at a time, unseen. (Listened to on the field itself once it is
+// selected, so the rest of the page scrolls unhindered.)
+function scrollPastNumber(event) {
+  const control = event.currentTarget;
+  if (control !== document.activeElement || event.ctrlKey || event.metaKey) return;
+  event.preventDefault();
+  const scroller = scrollerOf(control);
+  const unit = event.deltaMode === WheelEvent.DOM_DELTA_LINE ? 16
+    : event.deltaMode === WheelEvent.DOM_DELTA_PAGE ? scroller.clientHeight : 1;
+  scroller.scrollBy(event.deltaX * unit, event.deltaY * unit);
+}
+
+// The nearest box around an element that scrolls (a column of its own on
+// a wide screen), or the page.
+function scrollerOf(element) {
+  for (let node = element.parentElement; node; node = node.parentElement) {
+    if (/auto|scroll/.test(getComputedStyle(node).overflowY) && node.scrollHeight > node.clientHeight) return node;
+  }
+  return document.scrollingElement;
+}
+
+document.addEventListener("focusin", (event) => {
+  const control = event.target;
+  if (control instanceof HTMLInputElement && control.type === "number") {
+    control.addEventListener("wheel", scrollPastNumber, { passive: false });
+  }
+});
+
 // A field's name in words: "body_pickup_frame_direction" reads "Pickup
 // frame direction" (the body's own fields drop their "body_"); its name
 // in the code, saved designs and help stays on hover and finds it too.

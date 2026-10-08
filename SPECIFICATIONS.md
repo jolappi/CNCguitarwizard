@@ -927,6 +927,9 @@ Lomakkeen käsin avatut ryhmät muistetaan selaimessa: uudelleenlataus,
 soittimen vaihto tai ladattu suunnitelma avaa samat ryhmät (haun avaamia
 ei muisteta); ilman muistettua tilaa auki ovat *Body* ja *Machining*.
 
+Hiiren rulla valitun numerokentän päällä vierittää sivua (tai saraketta)
+eikä muuta kentän arvoa, jota selain muuten askeltaisi huomaamatta.
+
 Runkoeditorin *Turn upright* näyttää piirroksen pystyssä, kaula ylöspäin
 (neljännes myötäpäivään; *Turn sideways* palauttaa vaakanäkymän, joka on
 oletus). Se on pelkkä näkymä: koordinaatit ja kaikki raahaukset toimivat
