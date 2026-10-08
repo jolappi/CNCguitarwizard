@@ -1197,8 +1197,8 @@ class Prototype001Parameters:
     # "drawn" replaces the fitted outline with the edges drawn in the web
     # app's headstock editor: (distance from the nut, half-width) points
     # per side, each ending at the tip. The tuner holes still come from
-    # headstock_style, and every hole must stay at least
-    # tuner_edge_offset from the drawn edge. Empty edges fall back to
+    # headstock_style (or tuner_hole_points), and every hole must stay at
+    # least tuner_edge_offset from the drawn edge. Empty edges fall back to
     # the fitted outline, so the default "drawn" with no edges drawn yet
     # is the fitted outline (and the web app's headstock editor is open).
     headstock_outline: Literal["fitted", "drawn"] = "drawn"
@@ -1260,6 +1260,16 @@ class Prototype001Parameters:
     # or Jackson head, whose strings bend at the nut toward their posts).
     # Empty: every post on its own string's line.
     tuner_inline_offsets: tuple[float, ...] = ()
+    # tuner_hole_points puts every tuner hole where it is given instead of
+    # where headstock_style lays it out: (distance from the nut, offset
+    # from the centreline toward the hole's own side) per hole, in the
+    # style's order (a 3+3's bass and treble hole at each station in turn;
+    # a row's holes from the nut outward, then the other side's), each
+    # side's from the nut to the tip. The web app's headstock editor writes
+    # them when a hole is dragged, or when a dragged edge takes its holes
+    # along; a fitted outline is fitted round them as round the style's.
+    # Empty: every hole where the style puts it.
+    tuner_hole_points: tuple[tuple[float, float], ...] = ()
     tuner_edge_offset: float = 15.0
     tuner_tip_margin: float = 5.0
     tuner_post_diameter: float = 6.0
@@ -1507,6 +1517,11 @@ class Prototype001Parameters:
         rows at the same stations, straight strings would put the D and G
         posts too close together.
 
+        Holes where they are given: ``tuner_hole_points`` replaces every
+        station with its own (distance, offset), the hole keeping the
+        style's side, and the headstock grows past ``headstock_length``
+        when the last hole needs it, as a row's does.
+
         Outline: each edge with tuners on it is the straight line fitted
         through those holes ``tuner_edge_offset`` further out, from the
         shoulder to the tip, so every hole sits the same distance from
@@ -1615,6 +1630,12 @@ class Prototype001Parameters:
             # Offsets are measured toward the hole's own side; a row post
             # past the centreline gets a negative one.
             offsets = tuple(u if side == "bass" else -u for _, side, u in stations)
+        if self.tuner_hole_points:
+            stations = self._placed_tuner_stations(stations)
+            sides = tuple(side for _, side, _ in stations)
+            distances = tuple(distance for distance, _, _ in stations)
+            offsets = tuple(u if side == "bass" else -u for _, side, u in stations)
+            length = max(length, max(distances) + hole_edge + self.tuner_tip_margin)
 
         # Edges: fit each side's line through its holes, edge_offset out,
         # never inside the style's reserve; then, keeping the shoulder
@@ -1723,6 +1744,53 @@ class Prototype001Parameters:
         self._check_bridge_strings()
         # The steps are drawn wherever they fall; the build checks them.
         return self._body_layout(self.neck_outline(), check_steps=False)
+
+    def _placed_tuner_stations(
+        self, stations: list[tuple[float, Side, float]]
+    ) -> list[tuple[float, Side, float]]:
+        """Return the style's stations moved to ``tuner_hole_points``.
+
+        Args:
+            stations: The style's holes as (distance, side, bass-positive
+                lateral position), in the style's order.
+
+        Returns:
+            The same holes, each at its given (distance, offset), the
+            offset turned bass-positive.
+
+        Raises:
+            NeckGeometryError: If the points are not one finite
+                (distance, offset) per hole, or a side's do not run from
+                the nut to the tip.
+        """
+        points = self.tuner_hole_points
+        if len(points) != len(stations):
+            raise NeckGeometryError(
+                f"A {self.headstock_style} headstock has {len(stations)} tuner "
+                f"holes; tuner_hole_points gives {len(points)}: one (distance, "
+                "offset) per hole, or none to lay them out by the style."
+            )
+        if not all(
+            len(point) == 2 and all(math.isfinite(value) for value in point)
+            for point in points
+        ):
+            raise NeckGeometryError(
+                "tuner_hole_points must be finite (distance, offset) pairs."
+            )
+        placed: list[tuple[float, Side, float]] = [
+            (distance, side, offset if side == "bass" else -offset)
+            for (distance, offset), (_, side, _) in zip(points, stations, strict=True)
+        ]
+        for side in ("bass", "treble"):
+            distances = [
+                distance for distance, hole_side, _ in placed if hole_side == side
+            ]
+            if distances != sorted(distances):
+                raise NeckGeometryError(
+                    f"tuner_hole_points: the {side} side's holes must run from "
+                    "the nut to the tip."
+                )
+        return placed
 
     def _check_inline_offsets(self) -> None:
         """Check that ``tuner_inline_offsets``, if given, fit the style's row.
@@ -5877,6 +5945,7 @@ NECK_TEMPLATE_RESETS: frozenset[str] = frozenset(
     {
         "headstock_tip_points",
         "tuner_inline_offsets",
+        "tuner_hole_points",
         "tuner_inline_first_distance",
         "tuner_inline_spacing",
         "tuner_station_distances",

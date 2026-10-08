@@ -219,14 +219,26 @@ Python.
    meets it in a sharp point (`HeadstockPlan.pointed`), which then drags as
    one, Shift-drag parting the corners again; edges and tip are rounded curves
    through their handles, so a Stratocaster or Schecter style outline
-   can be drawn — Alt-click or right-click one to remove it), drawn over the fixed tuner holes of the
+   can be drawn — Alt-click or right-click one to remove it), drawn over the tuner holes of the
    chosen style with a keep-out circle `tuner_edge_offset` round each; the
-   panel names any hole the edge comes too close to. Until a handle is
+   panel names any hole the edge comes too close to, or two holes with
+   less than `tuner_hole_clearance` of wood between them. A dragged hole
+   slides along its edge, kept as far in from it as it was, so the
+   tuner's key stays out past the edge (Shift-drag puts it anywhere
+   across), and along the neck between its side's neighbours
+   (`startHoleDrag`); a dragged edge takes its holes along, each kept as
+   far in from its edge as it was (`holeInsets`, `followEdges`). Either
+   writes every hole's place to `tuner_hole_points` (see
+   [Tuner layout](geometry/07_tuner_layout.md)). Changing the style, the
+   string count or the style's tuner settings by hand (in the form or the
+   pane) empties it, so the style lays the holes out again; *Start over*
+   and a neck template do too, while a loaded design or an undo keeps what
+   it sets. Until a handle is
    moved, `headstock_bass_edge` / `headstock_treble_edge` stay empty and
    the drawing follows the fitted outline (a changed style or length
    redraws it); the first edit writes them, and *Start over* empties them
-   again (`webapp.headstock_editor_layout()` supplies the holes and the
-   fitted start edges). With the truss rod adjusted at the headstock its
+   again (`webapp.headstock_editor_layout()` supplies the holes, the least
+   wood between them and the fitted start edges). With the truss rod adjusted at the headstock its
    cover is drawn over the dashed trough (`truss_cover` in the layout:
    outline, screws, trough, size, corners and why it does not fit), its
    style, length and width in the editor's pane with `truss_rod_adjustment`:

@@ -4,6 +4,13 @@
 
 ### Added
 
+- Tuner holes move in the headstock editor: a dragged hole slides along
+  its edge, kept as far from it as it was, so the tuner's key stays out
+  past the edge (Shift-drag moves it anywhere), and a dragged edge takes
+  its holes along, each kept as far from the edge as it was; two holes too close together are named there too.
+  The places go to the new `tuner_hole_points` (a fitted outline is
+  fitted round them); changing the style or its tuner settings, *Start
+  over* or a neck template lays the holes out by the style again.
 - A short tour of the basic path (*Tour* in the header, and by itself on
   the first visit): the instrument, the body, the headstock, the
   settings and Build, each lit up in turn with *Next*; in the drawings a

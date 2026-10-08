@@ -310,6 +310,13 @@ FIELD_HELP: dict[str, str] = {
         "a steep edge as on an Explorer; empty: each post on its own "
         "string's line, so no string bends at the nut."
     ),
+    "tuner_hole_points": (
+        "Where each tuner hole sits when it is not where the headstock style "
+        "puts it: (distance from the nut, offset from the centreline toward "
+        "its own side) in mm per hole. The headstock editor writes them when "
+        "a hole is dragged, or when a dragged edge takes its holes along; "
+        "empty: every hole where the style puts it."
+    ),
     "tuner_tip_margin": (
         "Wood kept between the last tuner hole and the headstock's tip, in "
         "mm; the headstock grows when it needs it."

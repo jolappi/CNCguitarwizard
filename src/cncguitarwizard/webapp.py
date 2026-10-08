@@ -1145,11 +1145,13 @@ def headstock_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
 
     Returns:
         ``{"nut_half_width", "bass_sign", "min_edge_distance",
-        "sample_step", "start_edges": {"bass", "treble"}, "holes"}`` or
-        ``{"error": message}``. ``start_edges`` are the fitted outline's
-        edges, sampled halfway to the shoulder, at the shoulder, at seven
-        points along the taper and at the tip (ten handles a side);
-        ``holes`` is a list of ``{"side", "x", "y", "r"}``; ``lettering``
+        "hole_clearance", "sample_step", "start_edges": {"bass", "treble"},
+        "holes"}`` or ``{"error": message}``. ``start_edges`` are the
+        fitted outline's edges, sampled halfway to the shoulder, at the
+        shoulder, at seven points along the taper and at the tip (ten
+        handles a side); ``holes`` is a list of ``{"side", "x", "y", "r"}``
+        in the order ``tuner_hole_points`` takes them, the least wood
+        between two of them ``hole_clearance``; ``lettering``
         the headstock's lettering (see ``_headstock_lettering``), or ``None``;
         ``engraving`` the lines drawn on its face (see
         ``_headstock_drawn_engraving``), or ``None``.
@@ -1197,6 +1199,7 @@ def headstock_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         "nut_half_width": parameters.nut_width / 2.0,
         "bass_sign": fitted.bass_sign,
         "min_edge_distance": parameters.tuner_edge_offset,
+        "hole_clearance": parameters.tuner_hole_clearance,
         "sample_step": 2.5,
         "start_edges": start_edges,
         "holes": [

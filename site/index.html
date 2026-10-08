@@ -177,6 +177,8 @@
   #inlay-editor .inlay-hit:hover { stroke: var(--accent); stroke-opacity: 0.25; }
   .body-editor .handle { fill: #fff; stroke: var(--accent); stroke-width: 0.8; cursor: grab; }
   .body-editor .handle:hover, .body-editor .handle.dragging { fill: var(--accent); }
+  .body-editor .tuner-hole { fill: #fff; stroke: #222; stroke-width: 0.4; cursor: grab; }
+  .body-editor .tuner-hole:hover, .body-editor .tuner-hole.dragging { fill: #f3e2cf; stroke: var(--accent); stroke-width: 0.8; }
   .body-editor .movable { cursor: move; }
   .body-editor .stretch-handle { fill: #fff; stroke: #5a3a8a; stroke-width: 0.8; cursor: ew-resize; }
   .body-editor .stretch-handle.across { cursor: ns-resize; }
@@ -541,8 +543,11 @@
           Click an edge to add a handle there, or the tip to shape it with one (drag it out for a round
           nose, in for a notch); Alt/Option-click or right-click a handle to remove
           it. For a sharp point (Jackson style) drag one tip corner onto the other: within 3 mm they
-          meet, and the point then moves as one (Shift-drag a corner to part them again). The tuner holes come from the headstock style and stay put; every hole must keep its
-          distance from the edge. Until you move a handle the outline follows the fitted one (a changed
+          meet, and the point then moves as one (Shift-drag a corner to part them again). The tuner holes come from the headstock style; drag one to slide it
+          along its edge, kept as far from it as it was so the tuner's key stays outside (Shift-drag moves it anywhere),
+          and an edge you drag takes its holes along, each keeping its distance from the edge. Every hole must keep
+          that distance from the edge, and the wood between holes. Changing the style or its tuner settings lays the holes
+          out by the style again. Until you move a handle the outline follows the fitted one (a changed
           style redraws it); <em>Start over</em> goes back to it; <em>Undo</em> steps back a change, <em>Redo</em> forward again. A neck chosen in <em>Start from</em> is loaded whole (<em>Load</em> loads it again), its tuners' places with it: the
           Telecaster neck sets a slotted nut (the fretboard running on under it), a flat six-in-line headstock
           drawn as a Telecaster's and a truss rod adjusted at the heel (set <code>truss_rod_adjustment</code> to

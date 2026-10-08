@@ -3319,7 +3319,7 @@ document.getElementById("body-editor-turn").addEventListener("click", () => body
 // (see begin).
 const ZOOM_TARGETS = ".handle, .frame-handle, .guard-handle, .step-handle, .contour-handle, " +
   ".stretch-handle, .movable, .outline-hit, .inlay-handle, .inlay-hit, .lettering-hit, " +
-  ".cover-handle, .cover-stretch";
+  ".cover-handle, .cover-stretch, .tuner-hole";
 
 function enableZoom(editor) {
   const svg = editor.svg;
@@ -3553,6 +3553,7 @@ const headstockEditor = {
       treble: form.querySelector("[data-set='prototype'][data-name='headstock_treble_edge']"),
       tip: form.querySelector("[data-set='prototype'][data-name='headstock_tip_points']"),
       outline: form.querySelector("[data-set='prototype'][data-name='headstock_outline']"),
+      holes: form.querySelector("[data-set='prototype'][data-name='tuner_hole_points']"),
     };
   },
 
@@ -3805,10 +3806,16 @@ const headstockEditor = {
       if (event.detail <= 1) this.addTipPoint(event);
     });
     this.element("title", {}, this.tipHit).textContent = "Click the tip to add a handle";
-    for (const hole of layout.holes) {
-      this.element("circle", { cx: hole.x, cy: -hole.y, r: hole.r, fill: "#fff", stroke: "#222", "stroke-width": 0.4, "pointer-events": "none" });
-      this.element("circle", { cx: hole.x, cy: -hole.y, r: layout.min_edge_distance, fill: "none", stroke: "#8a4b1e", "stroke-width": 0.25, "stroke-dasharray": "1.5,1.5", "pointer-events": "none" });
-    }
+    // The tuner holes, each with the edge's clearance round it (dashed):
+    // drag one to move it.
+    this.holeNodes = layout.holes.map((hole, index) => {
+      const ring = this.element("circle", { cx: hole.x, cy: -hole.y, r: layout.min_edge_distance, fill: "none", stroke: "#8a4b1e", "stroke-width": 0.25, "stroke-dasharray": "1.5,1.5", "pointer-events": "none" });
+      const node = this.element("circle", { class: "tuner-hole", cx: hole.x, cy: -hole.y, r: hole.r });
+      node.addEventListener("pointerdown", (event) => this.startHoleDrag(event, index, node));
+      this.element("title", {}, node).textContent =
+        `Tuner hole (${hole.side}) — drag to slide it along its edge, Shift-drag to move it anywhere`;
+      return { node, ring };
+    });
     // The truss-rod cover over the adjuster's trough (an adjuster at the
     // headstock), with its handles.
     if (layout.truss_cover) this.drawCover(layout.truss_cover);
@@ -4102,9 +4109,11 @@ const headstockEditor = {
     handle.classList.add("dragging");
     // A pointed tip's corner drags the point, unless Shift parts them.
     this.dragPointed = index === this.edges[side].length - 1 && this.pointed();
+    const insets = this.holeInsets();
     const move = (moveEvent) => {
       this.place(side, index, this.toModel(moveEvent), moveEvent.shiftKey);
       this.showEdges();
+      this.followEdges(insets);
       const [d, h] = this.edges[side][index];
       handle.setAttribute("cx", -d);
       handle.setAttribute("cy", -this.sign(side) * h);
@@ -4115,11 +4124,90 @@ const headstockEditor = {
       window.removeEventListener("pointerup", end);
       window.removeEventListener("pointercancel", end);
       this.commit();
+      if (this.holesMoved(insets)) this.commitHoles();
       this.draw();
     };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", end);
     window.addEventListener("pointercancel", end);
+  },
+
+  // How far in from its own edge each tuner hole sits, at its distance
+  // from the nut: a dragged edge keeps its holes that far in (see
+  // followEdges).
+  holeInsets() {
+    return this.layout.holes.map((hole) => {
+      const distance = -hole.x;
+      return { distance, y: hole.y, inset: this.curve(hole.side)(distance) - hole.y / this.sign(hole.side) };
+    });
+  },
+
+  // The holes moved with the edges as they are now, each its inset in
+  // from its own edge; drawn, not yet committed.
+  followEdges(insets) {
+    this.layout.holes.forEach((hole, index) => {
+      const { distance, inset } = insets[index];
+      hole.y = this.sign(hole.side) * (this.curve(hole.side)(distance) - inset);
+      this.showHole(index);
+    });
+  },
+
+  // Whether a hole has left the place it had when the insets were taken.
+  holesMoved(insets) {
+    return this.layout.holes.some((hole, index) => Math.abs(hole.y - insets[index].y) > 0.05);
+  },
+
+  showHole(index) {
+    const hole = this.layout.holes[index];
+    for (const node of Object.values(this.holeNodes[index])) {
+      node.setAttribute("cx", hole.x);
+      node.setAttribute("cy", -hole.y);
+    }
+  },
+
+  // Drag a tuner hole along its edge, kept as far in from it as it was,
+  // so the tuner's key stays out past the edge; Shift-drag puts it
+  // anywhere across. Along the neck it stays between its side's
+  // neighbours (each side's holes run from the nut to the tip).
+  startHoleDrag(event, index, node) {
+    event.preventDefault();
+    node.classList.add("dragging");
+    const hole = this.layout.holes[index];
+    const same = this.layout.holes.filter((other) => other.side === hole.side);
+    const at = same.indexOf(hole);
+    const nearer = at > 0 ? -same[at - 1].x + 1 : 1;
+    const further = at < same.length - 1 ? -same[at + 1].x - 1 : Infinity;
+    const sign = this.sign(hole.side);
+    const edge = this.curve(hole.side);
+    const inset = edge(-hole.x) - hole.y / sign;
+    const move = (moveEvent) => {
+      const [x, y] = this.toModel(moveEvent);
+      const distance = Math.min(Math.max(-x, nearer), further);
+      hole.x = -distance;
+      hole.y = moveEvent.shiftKey ? y : sign * (edge(distance) - inset);
+      this.showHole(index);
+      this.check();
+    };
+    const end = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", end);
+      window.removeEventListener("pointercancel", end);
+      node.classList.remove("dragging");
+      this.commitHoles();
+      this.draw();
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", end);
+    window.addEventListener("pointercancel", end);
+  },
+
+  // Every hole's place as tuner_hole_points takes it: (distance from the
+  // nut, offset toward its own side), in the layout's order.
+  commitHoles() {
+    const round = (value) => Math.round(value * 10) / 10;
+    bodyEditor.setField(this.inputs().holes, this.layout.holes.map(
+      (hole) => [round(-hole.x), round(hole.y / this.sign(hole.side))]
+    ));
   },
 
   addPoint(event, side) {
@@ -4255,10 +4343,11 @@ const headstockEditor = {
   // the headstock out afresh.
   async reset() {
     if (!(await askConfirm("Replace the drawn headstock with the fitted outline?"))) return;
-    const { bass, treble, tip } = this.inputs();
+    const { bass, treble, tip, holes } = this.inputs();
     bodyEditor.setField(bass, []);
     bodyEditor.setField(treble, []);
     bodyEditor.setField(tip, []);
+    bodyEditor.setField(holes, []);
     this.tip = [];
     if (this.layout) {
       this.edges = structuredClone(this.layout.start_edges);
@@ -4295,6 +4384,11 @@ const headstockEditor = {
       );
       if (gap < limit - 0.5) close.push(`${hole.side} at ${distance.toFixed(0)} mm (${gap.toFixed(1)} mm)`);
     }
+    // Two holes closer than their diameter and hole_clearance (as Python's
+    // TunerLayout checks it).
+    const holes = this.layout.holes;
+    const crowded = holes.some((hole, i) => holes.slice(i + 1).some((other) =>
+      Math.hypot(hole.x - other.x, hole.y - other.y) < hole.r + other.r + this.layout.hole_clearance - 0.05));
     this.size.textContent = `— ${this.reach().toFixed(0)} mm long`;
     const [low, high] = this.tipCorners();
     // Nowhere narrower than HEADSTOCK_TIP_POINT but a pointed tip's last
@@ -4310,6 +4404,8 @@ const headstockEditor = {
       this.setStatus("A tip handle lies outside the tip's corners: move it in or remove it.", "bad");
     } else if (close.length) {
       this.setStatus(`Too close to the edge (keep ${limit} mm): ${close.join(", ")}.`, "bad");
+    } else if (crowded) {
+      this.setStatus(`Two tuner holes are too close: keep ${this.layout.hole_clearance} mm of wood between them.`, "bad");
     } else if (this.layout.truss_cover?.problem) {
       const problem = this.layout.truss_cover.problem;
       this.setStatus(`${problem[0].toUpperCase()}${problem.slice(1)}.`, "bad");
@@ -4750,6 +4846,24 @@ loadDesignFile.addEventListener("change", () => {
   if (file) openDesign(file);
 });
 
+// The tuner holes go back to where the style lays them out when the style
+// or its tuner settings are changed by hand (in the form or an editor's
+// Settings), as they may then number or sit otherwise; a loaded design,
+// an undo or a neck template keeps what it sets.
+const TUNER_LAYOUT_FIELDS = new Set([
+  "headstock_style", "string_count", "tuner_station_distances", "tuner_side_offsets",
+  "tuner_inline_first_distance", "tuner_inline_spacing", "tuner_inline_offsets",
+]);
+document.addEventListener("change", (event) => {
+  if (!event.isTrusted) return;
+  const original = [...mirrors].find(([, copy]) => copy === event.target)?.[0] || event.target;
+  if (original.dataset?.set !== "prototype" || !TUNER_LAYOUT_FIELDS.has(original.dataset.name)) return;
+  const { holes } = headstockEditor.inputs();
+  if (!holes || (!valueProblem(holes) && readValue(holes).length === 0)) return;
+  bodyEditor.setField(holes, []);
+  headstockEditor.scheduleRefresh();
+});
+
 // A file dragged onto the page: a design (.json) dropped anywhere is
 // loaded, and an SVG or DXF dropped on an editor's drawing is read as its
 // outline (as its File ▾ Import does); a banner says which while it is
@@ -4834,8 +4948,8 @@ const TOUR_STEPS = [
     target: () => headstockEditor.svg,
     shown: () => !headstockEditor.panel.classList.contains("hidden"),
     title: "Shape the headstock",
-    text: "The same here: drag its handles, and the tuner holes stay clear of the edge. The inlays below work " +
-      "the same way.",
+    text: "The same here: drag its handles, and the tuner holes come along; drag a hole to slide it along the " +
+      "edge. The inlays below work the same way.",
     demo: (signal) => demoHeadstock(signal),
   },
   {
@@ -5067,17 +5181,23 @@ async function demoHeadstock(signal) {
     const edges = { bass: editor.edges.bass.map((p) => [...p]), treble: editor.edges.treble.map((p) => [...p]) };
     const tip = editor.tip.map((p) => [...p]);
     const handle = editor.edgeHandles[side][index];
+    const insets = editor.holeInsets();
     tour.restore = () => {
       editor.edges.bass = edges.bass.map((p) => [...p]);
       editor.edges.treble = edges.treble.map((p) => [...p]);
       editor.tip = tip.map((p) => [...p]);
       editor.showEdges();
+      editor.layout.holes.forEach((hole, i) => {
+        hole.y = insets[i].y;
+        editor.showHole(i);
+      });
       handle.setAttribute("cx", -d);
       handle.setAttribute("cy", -sign * h);
     };
     const pulled = await tourDrag(() => centreOf(handle), (t) => {
       editor.place(side, index, [-d, sign * (h + 6 * t)]);
       editor.showEdges();
+      editor.followEdges(insets);
       const [nd, nh] = editor.edges[side][index];
       handle.setAttribute("cx", -nd);
       handle.setAttribute("cy", -sign * nh);

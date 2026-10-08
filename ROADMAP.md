@@ -102,6 +102,7 @@
 - Save design marked while the design is unsaved
 - A printed sheet of the result for the workshop
 - A guided tour of the basic path, ending at Build
+- Tuner holes dragged in the headstock editor, and following a dragged edge
 - Index pins as wide as a main tool wider than 6 mm (an 8 mm end mill,
   8 mm dowels)
 - The neck's back carved with the ball nose alone, in one program

@@ -49,6 +49,24 @@ further across at each station, in a line along its tuner edge. It needs
 one offset per row tuner (a 4+2's pair still follows its strings), and a
 3+3, which has no row, refuses it.
 
+**Holes where they are given.** `tuner_hole_points` places every hole
+at its own (distance from the nut, offset from the centreline toward the
+hole's side) instead — one pair per hole in the style's order (a 3+3's
+bass and treble hole at each station in turn; a row's holes from the
+nut outward, then the other side's), each side's running from the nut
+to the tip. The holes keep the style's sides, need not mirror each
+other, and the headstock grows past `headstock_length` when the last
+one needs it; a fitted outline is fitted round them as round the
+style's (the edges below), a drawn one checked against them. The web
+app's headstock editor writes them when a hole is dragged — along its
+edge, as far in from it as it was, so the tuner's key stays out past
+the edge (Shift-drag: anywhere) — or when a dragged edge takes its holes
+along (each as far in from its edge as it was); changing the style or its tuner settings there empties them, as
+loading a neck template does (`NECK_TEMPLATE_RESETS`). Points that do
+not fit the style — another count, not finite, a side out of order —
+are refused, naming the field. Empty: every hole where the style puts
+it.
+
 **Edges follow the holes, outside a wood reserve.** Each headstock edge
 that carries tuners is the straight line fitted through those holes
 `tuner_edge_offset` (15 mm) further out, from the shoulder to the tip, so

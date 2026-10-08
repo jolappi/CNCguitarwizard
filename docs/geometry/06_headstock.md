@@ -97,7 +97,10 @@ In the headstock editor, a tip corner dragged within 3 mm of the other
 snaps onto it; the point then drags as one, and Shift-dragging a corner
 parts them again.
 
-The tuner holes still come from `headstock_style`. `headstock_design()`
+The tuner holes still come from `headstock_style`, or from
+`tuner_hole_points` where they are given (in the web app, by dragging a
+hole, or an edge that takes its holes along; see
+[Tuner layout](07_tuner_layout.md)). `headstock_design()`
 checks every hole against the drawn outline — across the neck to each
 edge at the hole's own distance from the nut and along it to the tip, as
 the fitted outline is laid out; the nut is not an edge — and rejects one
