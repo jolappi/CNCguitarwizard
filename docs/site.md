@@ -44,7 +44,10 @@ Python.
    hover text. While a field is selected its meaning shows under it too
    (`fieldHint`, the same text: for a touch screen, and help too long to
    hover over), in the form or an editor's *Settings*, gone when the
-   focus leaves the fields. Hovering a field's row shows what
+   focus leaves the fields; a field changed from its default shows the
+   default there too, with *Reset to default* (`defaultLine`; an
+   editor's copy passes the reset on to its form field as any change, so
+   Undo takes it back). Hovering a field's row shows what
    it means (its name is underlined dotted): `webapp._field_help` takes it
    from the code's own documentation — a dataclass's `Args:` entries, an
    attribute docstring, the comment block above the field (and the fields

@@ -481,27 +481,86 @@ function explain(row, field) {
 
 // A field's meaning shown under it while it is being set (its hover
 // text: for a touch screen, and help too long to hover over), in the form
-// or an editor's Settings; gone when the focus leaves the fields.
+// or an editor's Settings; gone when the focus leaves the fields. A field
+// changed from its default also shows the default there, with a button
+// that puts it back.
 const fieldHint = document.createElement("p");
 fieldHint.className = "field-hint";
 const FIELD_CONTROLS = "#form input, #form select, .editor-options input, .editor-options select";
 
-document.addEventListener("focusin", (event) => {
-  const control = event.target;
-  if (!(control instanceof Element) || !control.matches(FIELD_CONTROLS)) return;
+function showFieldHint(control) {
   const inEditor = control.closest(".editor-options");
   const text = inEditor ? control.title : control.closest(".field")?.title;
   if (!text) {
     fieldHint.remove();
     return;
   }
-  fieldHint.textContent = text;
+  fieldHint.replaceChildren(text);
+  if (control.classList.contains("changed")) fieldHint.append(defaultLine(control));
   if (inEditor) (control.closest(".with-button") || control).after(fieldHint);
   else control.closest(".field").after(fieldHint);
+}
+
+// "Default: 44 [Reset to default]" for a changed field (an editor's copy
+// reads its form field's default, and passes the reset on as any change).
+function defaultLine(control) {
+  const original = [...mirrors].find(([, copy]) => copy === control)?.[0] || control;
+  const value = defaultValue(original);
+  const line = document.createElement("span");
+  line.className = "hint-default";
+  let shown = defaultText(original, value);
+  if (shown.length > 60) shown = shown.slice(0, 59) + "…";
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "secondary";
+  button.textContent = "Reset to default";
+  // Pressed, it leaves the focus in the field, so the hint stays.
+  button.addEventListener("mousedown", (event) => event.preventDefault());
+  button.addEventListener("click", () => {
+    setControlValue(control, value);
+    control.focus();
+    showFieldHint(control);
+  });
+  line.append(`Default: ${shown}`, button);
+  return line;
+}
+
+// A field's default value: a variant's kind keeps it on its holder.
+function defaultValue(control) {
+  if (control.matches("select.kind")) return control.closest(".variant").dataset.defaultKind;
+  return JSON.parse(control.dataset.default);
+}
+
+// A default as its field shows it: a choice by its label, a checkbox on
+// or off, an empty optional value "auto".
+function defaultText(control, value) {
+  if (control.tagName === "SELECT") {
+    return [...control.options].find((option) => option.value === value)?.textContent ?? String(value);
+  }
+  const type = control.dataset.type;
+  if (type === "bool") return value ? "on" : "off";
+  if (type === "optional_float" && value === null) return "auto";
+  if (type === "str") return value === "" ? "empty" : value;
+  if (type === "float" || type === "int") return String(value);
+  return JSON.stringify(value);
+}
+
+document.addEventListener("focusin", (event) => {
+  const control = event.target;
+  if (!(control instanceof Element) || !control.matches(FIELD_CONTROLS)) return;
+  showFieldHint(control);
 });
+// Changed (or back to its default) as it is set, the hint follows.
+for (const type of ["input", "change"]) {
+  document.addEventListener(type, (event) => {
+    const control = event.target;
+    if (control === document.activeElement && control.matches?.(FIELD_CONTROLS)) showFieldHint(control);
+  });
+}
 document.addEventListener("focusout", () => {
   setTimeout(() => {
-    if (!document.activeElement?.matches(FIELD_CONTROLS)) fieldHint.remove();
+    const focused = document.activeElement;
+    if (!focused?.matches(FIELD_CONTROLS) && !fieldHint.contains(focused)) fieldHint.remove();
   }, 0);
 });
 

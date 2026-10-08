@@ -906,6 +906,10 @@ näyttää koko kuvan.
 Esc sulkee avoimen *File ▾* -valikon, ja näppäimistön kohdistus palaa
 valikon otsikkoon.
 
+Kun valittu kenttä on muutettu oletuksesta, sen selityksen alla näkyy
+oletusarvo (*Default: 44*) ja *Reset to default* -painike, joka palauttaa
+oletuksen (myös editorien *Settings*-kohdissa; Undo kumoaa palautuksen).
+
 Runkoeditorin *Turn upright* näyttää piirroksen pystyssä, kaula ylöspäin
 (neljännes myötäpäivään; *Turn sideways* palauttaa vaakanäkymän, joka on
 oletus). Se on pelkkä näkymä: koordinaatit ja kaikki raahaukset toimivat

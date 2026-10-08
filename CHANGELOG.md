@@ -4,6 +4,8 @@
 
 ### Added
 
+- A changed setting shows its default under it while it is selected,
+  with *Reset to default*.
 - Escape closes an open *File ▾* menu.
 - The plan view and the toolpath plots zoom as the editors do:
   Ctrl/Cmd+wheel or a pinch, a drag to move, a double-click to fit.
