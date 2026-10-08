@@ -923,6 +923,10 @@ Hakukentässä *Find a setting…* Enter vie ensimmäiseen löytyneeseen
 asetukseen (arvo valittuna, valmiina kirjoitettavaksi yli) ja Esc
 tyhjentää haun.
 
+Lomakkeen käsin avatut ryhmät muistetaan selaimessa: uudelleenlataus,
+soittimen vaihto tai ladattu suunnitelma avaa samat ryhmät (haun avaamia
+ei muisteta); ilman muistettua tilaa auki ovat *Body* ja *Machining*.
+
 Runkoeditorin *Turn upright* näyttää piirroksen pystyssä, kaula ylöspäin
 (neljännes myötäpäivään; *Turn sideways* palauttaa vaakanäkymän, joka on
 oletus). Se on pelkkä näkymä: koordinaatit ja kaikki raahaukset toimivat

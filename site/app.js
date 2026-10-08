@@ -112,6 +112,7 @@ async function boot() {
 
 function renderForm() {
   form.innerHTML = "";
+  const opened = savedOpenGroups();
   const sections = [
     ["prototype", schema.prototype],
     ["machining", schema.machining],
@@ -130,7 +131,9 @@ function renderForm() {
       };
       const details = document.createElement("details");
       details.className = "group";
-      if (group.title === "Body" || group.title === "Machining") details.open = true;
+      details.dataset.title = group.title;
+      details.open = opened ? opened.includes(group.title) : group.title === "Body" || group.title === "Machining";
+      details.addEventListener("toggle", saveOpenGroups);
       const summary = document.createElement("summary");
       summary.textContent = group.title;
       const count = document.createElement("span");
@@ -314,6 +317,31 @@ function applyStringLimits() {
 // "Advanced", whose summary lights up when one of them has been edited.
 // ``title`` names the fold when nothing above it does (the body shape,
 // whose single kind has no dropdown).
+// The groups opened by hand are kept in the browser, so a reload (or
+// another instrument, a loaded design) opens the same ones; without any
+// kept, Body and Machining open.
+const OPEN_GROUPS = "cncguitarwizard.openGroups";
+
+function savedOpenGroups() {
+  try {
+    const titles = JSON.parse(localStorage.getItem(OPEN_GROUPS));
+    return Array.isArray(titles) ? titles : null;
+  } catch {
+    return null;  // no storage (a private window), or nothing readable kept
+  }
+}
+
+function saveOpenGroups() {
+  // A search opens the groups it finds in; that is not kept.
+  if (form.classList.contains("filtering")) return;
+  const titles = [...form.querySelectorAll(":scope > details.group[open]")].map((group) => group.dataset.title);
+  try {
+    localStorage.setItem(OPEN_GROUPS, JSON.stringify(titles));
+  } catch {
+    // No storage: the groups open as by default next time.
+  }
+}
+
 function renderFieldList(set, fields, holder, title) {
   const advanced = [];
   for (const field of fields) {

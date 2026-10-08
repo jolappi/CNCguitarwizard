@@ -4,6 +4,9 @@
 
 ### Added
 
+- The form's groups open as they were left: the ones opened by hand are
+  kept in the browser across a reload, another instrument or a loaded
+  design.
 - Enter in *Find a setting* goes to the first setting found, its value
   selected; Escape clears the search.
 - *Shortcuts* in the header (or `?`) lists the page's keys and mouse
