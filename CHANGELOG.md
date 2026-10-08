@@ -4,6 +4,9 @@
 
 ### Added
 
+- Every toolpath plot says how deep its colours cut: a bar under the part
+  from the surface's blue (0 mm) to the deepest cut's red, its depth
+  written, drawn larger on a larger part so it reads as shown.
 - A pressed handle (the body's outline, the headstock's edges, a tuner
   hole) is picked: the arrow keys move it 0.5 mm, with Shift 5 mm,
   saying where it is; Escape lets it go.

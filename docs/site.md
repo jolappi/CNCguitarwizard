@@ -490,7 +490,8 @@ Python.
    or dark for a locking nut, a board that runs on under it reaching on
    behind it) and the toolpath plots, one at a time, chosen from a list by part
    (each program by its step, the body's top first) or stepped through
-   with the arrows beside it (`toolpath-choice`); both zoom as an
+   with the arrows beside it (`toolpath-choice`; each says how deep its
+   colours cut in a bar under the part, `cam.preview`); both zoom as an
    editor's drawing does (`zoomablePlot`, `enableZoom`). *Print*, beside
    the summary's title (or the browser's own printing once there is a
    result), prints a sheet for the workshop: the guitar's name,

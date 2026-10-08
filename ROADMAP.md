@@ -111,6 +111,7 @@
 - The recent designs, a click away
 - Handles moved with the arrow keys
 - A drawing's chips above it, not over its top
+- A depth bar on every toolpath plot
 - Index pins as wide as a main tool wider than 6 mm (an 8 mm end mill,
   8 mm dowels)
 - The neck's back carved with the ball nose alone, in one program

@@ -41,7 +41,9 @@ The command creates:
 - `Body_index_pins.nc`, `Body_top.nc`, `Body_back.nc`: GRBL G-code for the
   body, generated without FreeCAD — see [Body G-code](../cam/01_body_gcode.md);
 - `Body_index_pins.svg`, `Body_top.svg`, `Body_back.svg`: toolpath plots of
-  those programs; likewise the electronics programs
+  those programs (cuts coloured from blue at the surface to red at the
+  deepest, a bar under the part saying how deep that is: `0 mm`, the
+  deepest depth, `cut depth`, drawn larger on a larger part); likewise the electronics programs
   (`Body_top_controls.nc`, `Body_back_controls.nc`) and one
   `Cover_<name>.nc` per cavity cover or control plate, planned in the
   "Planning the cover plates" stage.

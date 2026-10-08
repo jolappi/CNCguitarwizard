@@ -271,3 +271,32 @@ def test_kosy_caps_feeds_at_ncads_fastest_and_says_so() -> None:
     assert any(line.endswith("F200.0") for line in lines)
     # The dwell counts 1/18 s.
     assert lines[lines.index("M10 O6.1") + 1] == "M30 P36"
+
+
+def test_a_preview_says_how_deep_its_colours_cut() -> None:
+    from cncguitarwizard.cam import render_setup_svg
+    from cncguitarwizard.geometry.primitives import Point2D
+
+    square = [Point2D(0, 0), Point2D(10, 0), Point2D(10, 10), Point2D(0, 10)]
+    svg = render_setup_svg(make_setup(), square, 1.0)
+
+    # The bar runs from the surface's blue to the deepest cut's red.
+    assert 'stop-color="rgb(40,60,220)"' in svg
+    assert 'stop-color="rgb(240,60,40)"' in svg
+    assert ">0 mm</text>" in svg
+    assert ">−2.0 mm</text>" in svg
+    assert ">cut depth</text>" in svg
+    assert 'text-anchor="end"' in svg
+    # Wide enough for it under a small part, and none without cuts.
+    match = re.search(r'viewBox="0 0 ([\d.]+) ([\d.]+)', svg)
+    assert match is not None and float(match.group(1)) >= 20.0 + 72.0 - 0.01
+    empty = render_setup_svg(Setup("Empty", "e", ()), square, 1.0)
+    assert "cut depth" not in empty
+    # In room of its own under the part: the plot is that much taller.
+    plain = re.search(r'viewBox="0 0 [\d.]+ ([\d.]+)', empty)
+    assert plain is not None and float(match.group(2)) == pytest.approx(
+        float(plain.group(1)) + 8.0
+    )
+    # Drawn larger on a large part, to read at the size it is shown.
+    big = [Point2D(0, 0), Point2D(400, 0), Point2D(400, 10), Point2D(0, 10)]
+    assert 'font-size="8.8"' in render_setup_svg(make_setup(), big, 1.0)
