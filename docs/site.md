@@ -278,7 +278,10 @@ Python.
    "version": 1, "name", "instrument", "prototype", "machining"}`), named
    for the guitar (*Guitar name*, beside the instrument) when it has one
    (Ctrl/Cmd+S too, in place of the browser's saving the page). **Load
-   design** (or Ctrl/Cmd+O) opens such a
+   design** (or Ctrl/Cmd+O, or the file dropped anywhere on the page: a
+   banner at the top says so while it is dragged, `drop-banner`, and any
+   other file dropped is refused rather than opened in the page's place)
+   opens such a
    file — the file chooser straight from the click (a browser opens one
    only while handling the click itself; Safari not once a dialog has been
    answered), the question whether to replace changed values once a file

@@ -235,6 +235,14 @@
     background: #fff; border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 4px 14px rgba(31, 26, 20, .14);
   }
   details.menu > .menu-items button { text-align: left; }
+  /* What a file dragged onto the page will do, at the top while it is dragged. */
+  .drop-banner {
+    position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 50;
+    max-width: calc(100vw - 32px); padding: 8px 16px; border-radius: 8px;
+    background: var(--accent); color: #fff; font-weight: 600;
+    box-shadow: 0 4px 14px rgba(31, 26, 20, .2); pointer-events: none;
+  }
+  .drop-banner[hidden] { display: none; }
   dialog.confirm { border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px; max-width: min(420px, calc(100vw - 32px)); color: var(--ink); background: #fff; }
   dialog.confirm::backdrop { background: rgba(31, 26, 20, .35); }
   dialog.confirm p { margin: 0 0 14px; }
@@ -302,6 +310,7 @@
 </style>
 </head>
 <body>
+<div id="drop-banner" class="drop-banner" hidden></div>
 <header>
   <h1>CNCguitarwizard</h1>
   <span class="motto">Measure twice. Generate once.</span>

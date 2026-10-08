@@ -4624,14 +4624,43 @@ outlineFile.addEventListener("change", () => {
   outlineFile.value = "";
   if (file) importOutline(outlineFile.dataset.part, file);
 });
-loadDesignFile.addEventListener("change", async () => {
-  const [file] = loadDesignFile.files;
-  loadDesignFile.value = "";
-  if (!file) return;
+// A design file to load (chosen, or dropped on the page): asked first
+// when settings are changed.
+async function openDesign(file) {
   if (form.querySelector(".changed") && !(await askConfirm(
     `Load ${file.name}? Every current value is replaced by the file's.`
   ))) return;
   loadDesign(file);
+}
+loadDesignFile.addEventListener("change", () => {
+  const [file] = loadDesignFile.files;
+  loadDesignFile.value = "";
+  if (file) openDesign(file);
+});
+
+// A file dragged onto the page: a design (.json) dropped anywhere is
+// loaded, and a banner says so while it is dragged. Any other file is
+// refused rather than opened by the browser in the page's place.
+const dropBanner = document.getElementById("drop-banner");
+let dropBannerTimer = null;
+
+document.addEventListener("dragover", (event) => {
+  if (!event.dataTransfer?.types.includes("Files")) return;
+  event.preventDefault();
+  dropBanner.textContent = "Drop a design (.json) to load it";
+  dropBanner.hidden = false;
+  // Dragged on, the banner stays; dragged off (or dropped), it goes.
+  clearTimeout(dropBannerTimer);
+  dropBannerTimer = setTimeout(() => { dropBanner.hidden = true; }, 200);
+});
+document.addEventListener("drop", (event) => {
+  if (!event.dataTransfer?.types.includes("Files")) return;
+  event.preventDefault();
+  dropBanner.hidden = true;
+  const [file] = event.dataTransfer.files;
+  if (!file || loadDesignButton.disabled) return;  // the page not ready yet
+  if (/\.json$/i.test(file.name)) openDesign(file);
+  else setStatus(`${file.name} is not a design: drop a .json saved with Save design`, "bad");
 });
 showAdvanced.addEventListener("change", applyAdvancedToggle);
 findSetting.addEventListener("input", applyFormFilter);

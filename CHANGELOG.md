@@ -4,6 +4,9 @@
 
 ### Added
 
+- A design (.json) dropped anywhere on the page is loaded, a banner
+  saying so while it is dragged; any other file dropped is refused
+  rather than opened by the browser in the page's place.
 - Ctrl/Cmd+S saves the design and Ctrl/Cmd+O opens one, in place of the
   browser's saving and opening a page.
 - A build that stops at a value that cannot be read offers *Go to
