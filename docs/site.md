@@ -399,7 +399,7 @@ job prints the page URL.
 
 | File | Purpose |
 | --- | --- |
-| `site/index.html` | Layout and styling; the intro heads the left column and a build's result the right one, above the editors; on a narrow screen (≤ 900 px) the intro comes first, then the buttons and instrument choice, the build's result, the editors, and the form last |
+| `site/index.html` | Layout and styling; the *Build* button on a row of its own, as wide as the column; the intro heads the left column and a build's result the right one, above the editors; on a narrow screen (≤ 900 px) the intro comes first, then the buttons and instrument choice, the build's result, the editors, and the form last |
 | `site/app.js` | Pyodide bootstrap, form generation, build, downloads, NC Viewer simulator panel |
 | `src/cncguitarwizard/webapp.py` | Schema and build glue called from the page |
 | `src/cncguitarwizard/render/svg/plan_view.py` | The plan-view SVG |

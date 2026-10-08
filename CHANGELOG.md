@@ -740,6 +740,9 @@
 
 ### Fixed
 
+- The *Build 3D and CNC files* button is no longer squeezed beside
+  *Reset*, *Undo* and *Redo* on a wide screen (77 px wide, its words on
+  four lines): it has a row of its own, as wide as the column.
 - A form group's *Advanced* fold no longer stays marked changed once
   its fields are back at their defaults.
 - A small part's toolpath plot (a cover plate, a humbucker frame) is wide

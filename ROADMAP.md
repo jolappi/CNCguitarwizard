@@ -62,6 +62,7 @@
 - A Reroll button beside the pattern's random seed
 - The editors' outlines to a CAD program and back: DXF templates
 - The body editor turned upright, the neck up, as a view
+- The Build button on a row of its own
 - Index pins as wide as a main tool wider than 6 mm (an 8 mm end mill,
   8 mm dowels)
 - The neck's back carved with the ball nose alone, in one program

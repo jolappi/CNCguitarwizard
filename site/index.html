@@ -168,6 +168,9 @@
   #headstock-editor .outline-hit { stroke-width: 4; }
   .body-editor .outline-hit:hover { stroke: var(--accent); stroke-opacity: 0.25; }
   .actions { display: flex; gap: 8px; align-items: center; margin: 10px 0 14px; }
+  .build-row { margin-bottom: 6px; }
+  .build-row #build { flex: 1; padding: 10px 16px; }
+  .build-row #build.busy { padding-left: 34px; }
   button {
     padding: 8px 16px; border-radius: 6px; border: 1px solid var(--accent);
     background: var(--accent); color: #fff; font: inherit; font-weight: 600; cursor: pointer;
@@ -245,8 +248,11 @@
         <code>python -m cncguitarwizard build-prototype001 --design my_guitar.json</code>.</p>
     </div>
     <div class="aside-top">
-    <div class="actions">
+    <!-- Build on a row of its own, as wide as the column; the rest under it. -->
+    <div class="actions build-row">
       <button id="build" disabled>Build 3D and CNC files</button>
+    </div>
+    <div class="actions">
       <button id="reset" class="secondary" disabled>Reset</button>
       <button class="secondary undo-button" type="button" disabled>Undo</button>
       <button class="secondary redo-button" type="button" disabled>Redo</button>
