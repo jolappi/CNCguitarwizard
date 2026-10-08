@@ -876,11 +876,16 @@ function saveDesign() {
 }
 
 // An editor's outline as an SVG template to draw in another program, and
-// read back from one (webapp.outline_template / import_outline).
+// read back from one (webapp.outline_template / import_outline): the
+// body's, the headstock's or the inlay marker's.
 const outlineFile = document.getElementById("outline-file");
 
+function outlineEditor(part) {
+  return { body: bodyEditor, headstock: headstockEditor, inlay: inlayEditor }[part];
+}
+
 async function exportOutline(part) {
-  const editor = part === "body" ? bodyEditor : headstockEditor;
+  const editor = outlineEditor(part);
   if (!pyodide) return;
   let payload;
   try {
@@ -910,7 +915,7 @@ async function exportOutline(part) {
 }
 
 async function importOutline(part, file) {
-  const editor = part === "body" ? bodyEditor : headstockEditor;
+  const editor = outlineEditor(part);
   if (!pyodide || !editor.layout) return;
   let payload;
   try {
@@ -940,9 +945,12 @@ async function importOutline(part, file) {
       const control = form.querySelector(`[data-set="prototype"][data-name="${name}"]`);
       if (control) setControlValue(control, value);
     }
-  } else {
+  } else if (part === "headstock") {
     headstockEditor.edges = { bass: values.headstock_bass_edge, treble: values.headstock_treble_edge };
     headstockEditor.tip = values.headstock_tip_points;
+  } else {
+    // Its corners, a drawn marker from now on (commit sets the style).
+    inlayEditor.points = values.inlay_points;
   }
   // One change to undo; the drawing then says what still does not fit,
   // after what the import made of the file.
@@ -3704,6 +3712,7 @@ const inlayEditor = {
 
   // Write the drawn shape (a drawn style from now on) and lay it out again.
   commit() {
+    this.notice = "";
     const points = this.points.map(([along, across]) => [
       Math.round(along * 10000) / 10000, Math.round(across * 10000) / 10000,
     ]);
@@ -3716,6 +3725,7 @@ const inlayEditor = {
 
   // Back to the block a drawn marker starts as.
   reset() {
+    this.notice = "";
     setControlValue(form.querySelector('[data-set="prototype"][data-name="inlay_points"]'), []);
     this.refresh();
   },
@@ -3809,7 +3819,7 @@ ncZipButton.addEventListener("click", downloadNcZip);
 // open it only while handling the click itself (Safari not after a
 // dialog has been answered), so the question comes once a file is chosen.
 loadDesignButton.addEventListener("click", () => loadDesignFile.click());
-for (const part of ["body", "headstock"]) {
+for (const part of ["body", "headstock", "inlay"]) {
   document.getElementById(`${part}-editor-export`).addEventListener("click", () => exportOutline(part));
   document.getElementById(`${part}-editor-import`).addEventListener("click", () => {
     outlineFile.dataset.part = part;

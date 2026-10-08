@@ -398,8 +398,12 @@
           the same shape fitted to its own fret space and the board's width there, as the whole board below shows.
           Editing any style's marker starts a drawn one (<code>inlay_style</code> custom, its corners in
           <code>inlay_points</code>); it keeps 1 mm from the fret slots and the board's edges, and its corners are
-          rounded 1 mm. <em>Start over</em> goes back to a block; <em>Undo</em> steps back a change, <em>Redo</em>
-          forward again. The grid is 5 mm.</p>
+          rounded 1 mm. <em>Start over</em> goes back to a block; <em>Undo</em> steps back a change,
+          <em>Redo</em> forward again. To draw the marker in another program, <em>Export SVG</em> saves it as a
+          template, 1:1 in millimetres: edit the black path in its Outline layer inside the dashed line in the locked
+          Reference layer (the fret space, its frets and the board's edges), keep the three red registration marks,
+          and <em>Import SVG</em> reads its corners back (a curve as corners within 0.05 mm of it; a corner outside the
+          dashed line is moved inside it). The grid is 5 mm.</p>
       </details>
       <details class="editor-settings">
         <summary>Settings</summary>
@@ -407,6 +411,8 @@
       </details>
       <div class="actions">
         <button id="inlay-editor-reset" class="secondary" type="button" title="Back to a block">Start over</button>
+        <button id="inlay-editor-export" class="secondary" type="button" title="Save the marker as an SVG template, 1:1 in millimetres, to edit in Inkscape, Illustrator or another drawing program">Export SVG</button>
+        <button id="inlay-editor-import" class="secondary" type="button" title="Read the marker back from an SVG template edited in another program">Import SVG</button>
         <button class="secondary undo-button" type="button" disabled>Undo</button>
         <button class="secondary redo-button" type="button" disabled>Redo</button>
       </div>

@@ -47,6 +47,9 @@ MARK_SIZE = 4.0
 CLOSE_GAP = 3.0
 """How far apart (mm) an outline's ends may be and still close."""
 
+NOTE_SIZE = 3.5
+"""The notes' letter size under the drawing, in mm."""
+
 
 @dataclass(frozen=True, slots=True)
 class TemplateFrame:
@@ -130,7 +133,12 @@ def template_svg(
     line_height = 5.0
     min_x = min(x for x, _ in corners) - margin
     min_y = min(y for _, y in corners) - margin
-    width = max(x for x, _ in corners) + margin - min_x
+    # Wide enough for the notes under a small drawing too (a sans-serif
+    # letter is about 0.55 of its size wide).
+    width = max(
+        max(x for x, _ in corners) + margin - min_x,
+        2.0 * margin + 0.55 * NOTE_SIZE * max((len(note) for note in notes), default=0),
+    )
     height = max(y for _, y in corners) + margin - min_y + line_height * len(notes)
 
     reference = []
@@ -165,7 +173,7 @@ def template_svg(
         baseline = min_y + height - margin / 2 - line_height * (len(notes) - 1 - index)
         reference.append(
             f'    <text x="{min_x + margin:.3f}" y="{baseline:.3f}" '
-            f'style="font-family:sans-serif;font-size:3.5px;fill:#555">'
+            f'style="font-family:sans-serif;font-size:{NOTE_SIZE:g}px;fill:#555">'
             f"{escape(note)}</text>"
         )
     d = (

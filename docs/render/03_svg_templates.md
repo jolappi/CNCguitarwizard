@@ -1,7 +1,7 @@
 # Outline templates for other drawing programs
 
-The body and headstock editors' *Export SVG* and *Import SVG* take an
-outline to another drawing program and back (`cncguitarwizard.drawings`,
+The body, headstock and inlay editors' *Export SVG* and *Import SVG*
+take an outline to another drawing program and back (`cncguitarwizard.drawings`,
 called by `webapp.outline_template()` and `webapp.import_outline()`).
 
 ## The template
@@ -20,13 +20,22 @@ millimetres), in two Inkscape layers that other programs read as groups:
 is, Y up (down when `mirrored`, a left-handed design as the editor shows
 it), and the marks at three model points not in a line — the body's at
 (0, 0), (100, 0) and (0, 100) from the heel end, the headstock's at the
-nut's centre, 100 mm past it and 50 mm beside it.
+nut's centre, 100 mm past it and 50 mm beside it, an inlay marker's
+15 mm toward the nut from its fret space (X from the space's nut-side
+fret) and 20 mm beside and behind that. The page is at least as wide as
+its notes (`NOTE_SIZE` letters, about 0.55 of their size wide), so they
+fit under a small drawing.
 
 The body's outline is its Catmull-Rom loop as Bézier spans
 (`closed_catmull_rom_spans`, widened for a seven- or eight-string body as
 drawn); the headstock's, `outlines.headstock_spans(plan)`: the bass edge
-from the nut, the tip, the treble edge back and the nut line. Either way
-every editor handle is a node of the path.
+from the nut, the tip, the treble edge back and the nut line; an inlay
+marker's, its corners joined by straight spans, in its first marker's
+fret space (`[along, across]` as millimetres: along the space, and the
+share of the board's half-width there). Either way every editor handle
+is a node of the path. The inlay template's reference layer holds the
+board over the fret space, its two frets, the centreline and, dashed,
+where a corner fits every marker (`custom_limits`).
 
 ## Reading it back
 
@@ -99,3 +108,12 @@ points where it strays most; the tip a Hermite curve through its nodes
 and the like (`tip_tangents`, as `HeadstockPlan.tip_outline`). An edge
 turning back toward the nut, or a tip turning back across the headstock
 (a hook), cannot be drawn and is refused.
+
+An inlay marker's corners are the outline thinned to where it turns
+(Douglas-Peucker within `INLAY_IMPORT_TOLERANCE`, 0.05 mm: a curve comes
+back as corners that close to it; the path's start too, unless it lies
+on a side), at least three (`webapp._import_inlay`). Each becomes
+`[along, across]` again and is held inside the dashed line where every
+marker fits, the import saying how many it moved; read back unchanged,
+the editor's own corners come back exactly. The marker is a drawn one
+(`inlay_style` custom) from then on.

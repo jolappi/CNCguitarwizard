@@ -261,3 +261,19 @@ def test_a_pattern_layer_is_written_and_read_back() -> None:
     (line,) = thinned_back.lines
     assert len(line) == 2
     assert read_template_pattern(_body_svg(points), BODY) is None
+
+
+def test_a_small_drawing_is_as_wide_as_its_notes() -> None:
+    import re
+
+    square = [Point2D(0, 0), Point2D(10, 0), Point2D(10, 10), Point2D(0, 10)]
+    spans = tuple((a, a, b, b) for a, b in zip(square, square[1:] + square[:1]))
+    frame = TemplateFrame((Point2D(0, 0), Point2D(10, 0), Point2D(0, 10)))
+    note = "A note far longer than the small drawing above it is wide, every word."
+    svg = template_svg("small", frame, spans, [], (note,))
+    match = re.search(r'width="([\d.]+)mm"', svg)
+    assert match is not None
+    # 15 mm each side, then 3.5 mm letters about 0.55 of their size wide.
+    assert float(match.group(1)) >= 30.0 + 0.55 * 3.5 * len(note) - 0.01
+    # The drawing itself is read back unchanged.
+    assert len(read_template_outline(svg, frame).points) >= 4

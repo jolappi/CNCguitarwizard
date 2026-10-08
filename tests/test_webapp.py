@@ -11,6 +11,7 @@ from cncguitarwizard.webapp import (
     finish_build,
     headstock_editor_layout,
     import_outline,
+    inlay_editor_layout,
     load_design,
     outline_template,
     parameter_schema,
@@ -896,6 +897,96 @@ def test_the_headstock_outline_goes_out_as_a_template_and_comes_back() -> None:
         start["bass"][-1][0] * 1.1, abs=0.02
     )
     assert "scaled it by 0.75" in values["message"]
+
+
+def _with_outline(svg: str, d: str) -> str:
+    """The template with its outline path drawn anew as ``d``."""
+    start = svg.index('<path id="cgwOutline"')
+    first = svg.index(' d="', start) + 4
+    return svg[:first] + d + svg[svg.index('"', first) :]
+
+
+@pytest.mark.parametrize(
+    "prototype",
+    [
+        {},
+        {"handedness": "left"},
+        {
+            "inlay_style": "custom",
+            "inlay_points": [[0.2, -0.5], [0.8, -0.4], [0.7, 0.6]],
+        },
+        {"scale_length": 647.7, "bass_scale_length": 686.0},
+    ],
+)
+def test_the_inlay_marker_goes_out_as_a_template_and_comes_back(
+    prototype: dict,  # type: ignore[type-arg]
+) -> None:
+    payload = {"prototype": prototype}
+    svg = outline_template(payload, "inlay")["svg"]
+    for name in (
+        "cgwReference",
+        "cgwOutline",
+        "cgwMarkA",
+        "Fret 3",
+        "Keep the corners",
+    ):
+        assert name in svg
+    back = import_outline(payload, "inlay", svg)
+    # Unchanged, the editor's own corners come back exactly, drawn.
+    layout = inlay_editor_layout(payload)
+    assert back["values"] == {"inlay_style": "custom", "inlay_points": layout["points"]}
+    assert back["message"] == (f"Imported the marker: {len(layout['points'])} corners.")
+
+
+def test_an_inlay_marker_drawn_elsewhere_comes_back_as_its_corners() -> None:
+    payload = {"prototype": {}}
+    layout = inlay_editor_layout(payload)
+    length = layout["back"] - layout["front"]
+    svg = outline_template(payload, "inlay")["svg"]
+    # A triangle drawn anew (SVG Y down: the model's -Y is +Y here), its
+    # start on a side: three corners, as shares of the fret space and the
+    # board's half-width.
+    triangle = _with_outline(svg, "M 8,10 L 24,10 L 16,-10 L 12,0 Z")
+    values = import_outline(payload, "inlay", triangle)["values"]
+    points = values["inlay_points"]
+    assert values["inlay_style"] == "custom"
+    assert len(points) == 3
+    corner = min(points, key=lambda p: (p[0], p[1]))
+    half = (
+        layout["nut_half"]
+        + (layout["final_half"] - layout["nut_half"])
+        * (layout["front"] + 8.0)
+        / layout["final_position"]
+    )
+    assert corner[0] == pytest.approx(8.0 / length, abs=1e-4)
+    assert abs(corner[1]) == pytest.approx(10.0 / half, abs=1e-4)
+    # Past the frets and the edges: held inside where every marker fits.
+    wide = import_outline(
+        payload, "inlay", _with_outline(svg, "M -5,-40 L 40,-40 L 16,40 Z")
+    )
+    low, high = layout["limits"]["along"]
+    across = layout["limits"]["across"]
+    assert all(
+        low <= along <= high and abs(side) <= across
+        for along, side in wide["values"]["inlay_points"]
+    )
+    assert "3 corners moved inside the dashed line" in wide["message"]
+    # A curve comes back as corners near it.
+    circle = _with_outline(svg, "M 10,0 A 6,6 0 1 1 22,0 A 6,6 0 1 1 10,0 Z")
+    round_points = import_outline(payload, "inlay", circle)["values"]["inlay_points"]
+    assert 12 <= len(round_points) <= 60
+    # Scaled by its program, the marks set it right.
+    scaled = triangle.replace(
+        '  <g id="cgwReference"', '  <g transform="scale(0.75)"><g id="cgwReference"'
+    ).replace("</svg>", "</g></svg>")
+    result = import_outline(payload, "inlay", scaled)
+    assert "scaled it by 0.75" in result["message"]
+    assert [v for p in result["values"]["inlay_points"] for v in p] == pytest.approx(
+        [v for p in points for v in p], abs=2e-4
+    )
+    # A sliver that thins to two corners is no marker.
+    sliver = _with_outline(svg, "M 8,0 L 20,0 L 14,0.01 Z")
+    assert "three corners" in import_outline(payload, "inlay", sliver)["error"]
 
 
 def test_an_outline_that_cannot_be_drawn_says_why() -> None:

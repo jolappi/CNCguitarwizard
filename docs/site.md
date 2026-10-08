@@ -209,7 +209,11 @@ Python.
    (`custom_limits()`: 1 mm from the frets in the shortest space and from
    the edges where the board is narrowest), and a drag stops at it; the
    panel says at which fret a shape does not fit. *Start over* empties
-   `inlay_points` (a block). `inlay_style`, `inlay_depth` and
+   `inlay_points` (a block). *Export SVG* and *Import SVG* take the marker to another
+   drawing program and back (see [Outline templates](render/03_svg_templates.md)):
+   its corners are read back, a curve as corners within 0.05 mm of it,
+   each held inside the dashed line, and the import's note stays at the
+   head of the status line until the next change. `inlay_style`, `inlay_depth` and
    `inlay_block_edge_margin` sit in its pane.
 3. **Save design** downloads every setting as one JSON file on the user's
    own computer — the instrument, the guitar's name, all `prototype` and

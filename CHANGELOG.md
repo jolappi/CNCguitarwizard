@@ -4,6 +4,13 @@
 
 ### Added
 
+- The inlay marker drawn in another program: *Export SVG* in the inlay
+  editor saves the marker as an SVG template, 1:1 in millimetres, in its
+  first fret space with the frets, the board's edges and, dashed, where
+  its corners fit every marker; *Import SVG* reads its corners back (a
+  curve as corners within 0.05 mm of it), holding each inside the dashed
+  line, as the drawn marker. A template's page is now as wide as its
+  notes under a small drawing.
 - A jig for filing the nut's string slots (`nut_jig`), cut from sheet in
   its own program `Jig_nut_slots`: a comb 3 mm thick
   (`nut_jig_thickness`) that stands on the fretboard against the nut, its

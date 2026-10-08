@@ -1372,6 +1372,15 @@ _BODY_MARKS = (Point2D(0.0, 0.0), Point2D(100.0, 0.0), Point2D(0.0, 100.0))
 _HEADSTOCK_MARKS = (Point2D(0.0, 0.0), Point2D(-100.0, 0.0), Point2D(0.0, 50.0))
 """The headstock template's registration marks, in the model frame."""
 
+_INLAY_MARKS = (Point2D(-15.0, 0.0), Point2D(-15.0, 20.0), Point2D(-35.0, 0.0))
+"""The inlay template's registration marks: X from the marker's fret
+toward the nut (its fret space starts at 0), Y across, as built
+right-handed."""
+
+INLAY_IMPORT_TOLERANCE = 0.05
+"""How near (mm) the corners read from a drawn marker keep to its line: a
+curve drawn there comes back as corners this close to it."""
+
 _REFERENCE_COLOURS = {
     "neck": "#8a6a3a",
     "pocket": "#4a7ab5",
@@ -1386,7 +1395,7 @@ _REFERENCE_COLOURS = {
 
 
 def outline_template(payload: dict[str, Any], part: str) -> dict[str, Any]:
-    """Return the body's or the headstock's outline as an SVG template.
+    """Return the body's, the headstock's or a marker's outline as an SVG template.
 
     The template (see ``drawings.template_svg``) is drawn 1:1 in
     millimetres, as the editor shows the design (mirrored for a
@@ -1394,13 +1403,15 @@ def outline_template(payload: dict[str, Any], part: str) -> dict[str, Any]:
     *Outline* layer the outline, a node at every handle; its *Reference*
     layer, locked, what the outline is drawn round — the neck, routes,
     cavities and bridge line, or the nut, tuner holes (and the edge's
-    clearance round them) and truss-rod cover — and three registration
+    clearance round them) and truss-rod cover, or the first marker's
+    fret space and where its corners fit — and three registration
     marks. ``import_outline`` reads it back.
 
     Args:
         payload: ``{"prototype": {...}}`` as for ``start_build``.
-        part: ``"body"`` (a drawn, Your design, body) or ``"headstock"``
-            (a drawn headstock).
+        part: ``"body"`` (a drawn, Your design, body), ``"headstock"``
+            (a drawn headstock) or ``"inlay"`` (the fret markers' shape,
+            drawn on the first marker as in the inlay editor).
 
     Returns:
         ``{"svg": text}`` or ``{"error": message}``.
@@ -1410,6 +1421,8 @@ def outline_template(payload: dict[str, Any], part: str) -> dict[str, Any]:
             return {"svg": _body_template(payload)}
         if part == "headstock":
             return {"svg": _headstock_template(payload)}
+        if part == "inlay":
+            return {"svg": _inlay_template(payload)}
         return {"error": f"There is no {part!r} outline."}
     except _LaidOutError as error:
         return {"error": str(error)}
@@ -1423,26 +1436,30 @@ def import_outline(payload: dict[str, Any], part: str, svg: str) -> dict[str, An
     The outline is placed by the template's registration marks and turned
     into the editor's own handles (``drawings.fit_closed_spline``,
     ``drawings.fit_headstock``), every one on the drawn line, as many as
-    keep the editor's curve within 0.25 mm of it: an outline exported and
+    keep the editor's curve within 0.25 mm of it; a marker's into its
+    corners (a curve into corners within ``INLAY_IMPORT_TOLERANCE`` of
+    it), each held where it fits every marker. An outline exported and
     read back unchanged comes back as it was.
 
     Args:
         payload: ``{"prototype": {...}}`` as for ``start_build``.
-        part: ``"body"`` or ``"headstock"``.
+        part: ``"body"``, ``"headstock"`` or ``"inlay"``.
         svg: The SVG file's text.
 
     Returns:
         ``{"values": {...}, "message": text}`` — for a body
         ``{"control_points"}`` (the ``body_shape`` field), for a headstock
         ``{"headstock_outline", "headstock_bass_edge",
-        "headstock_treble_edge", "headstock_tip_points"}`` — or
-        ``{"error": message}``.
+        "headstock_treble_edge", "headstock_tip_points"}``, for a marker
+        ``{"inlay_style", "inlay_points"}`` — or ``{"error": message}``.
     """
     try:
         if part == "body":
             return _import_body(payload, svg)
         if part == "headstock":
             return _import_headstock(payload, svg)
+        if part == "inlay":
+            return _import_inlay(payload, svg)
         return {"error": f"There is no {part!r} outline."}
     except _LaidOutError as error:
         return {"error": str(error)}
@@ -1739,6 +1756,166 @@ def _import_headstock(payload: dict[str, Any], svg: str) -> dict[str, Any]:
         },
         "message": _import_message(handles, fit.deviation, read),
     }
+
+
+def _laid_out_inlay(payload: dict[str, Any]) -> dict[str, Any]:
+    """Return the inlay editor's layout, or raise why there is none."""
+    layout = inlay_editor_layout(payload)
+    if "error" in layout:
+        raise _LaidOutError(layout["error"])
+    return layout
+
+
+def _inlay_half(layout: dict[str, Any], x: float) -> float:
+    """Return the board's half-width ``x`` mm from the nut (its taper)."""
+    nut, final = layout["nut_half"], layout["final_half"]
+    return float(nut + (final - nut) * x / layout["final_position"])
+
+
+def _inlay_mm(layout: dict[str, Any], along: float, across: float) -> Point2D:
+    """Return a marker's ``[along, across]`` corner in its template: X from
+    the fret space's nut-side fret, Y across (as built right-handed)."""
+    length = layout["back"] - layout["front"]
+    x = along * length
+    return Point2D(
+        x, layout["bass_sign"] * across * _inlay_half(layout, layout["front"] + x)
+    )
+
+
+def _inlay_share(layout: dict[str, Any], point: Point2D) -> tuple[float, float]:
+    """Return a template point as ``[along, across]`` (see ``_inlay_mm``)."""
+    length = layout["back"] - layout["front"]
+    half = _inlay_half(layout, layout["front"] + point.x)
+    return point.x / length, layout["bass_sign"] * point.y / half
+
+
+def _inlay_template(payload: dict[str, Any]) -> str:
+    layout = _laid_out_inlay(payload)
+    length = layout["back"] - layout["front"]
+    pad = 6.0
+
+    def edge(x: float, side: float) -> Point2D:
+        return Point2D(x, side * _inlay_half(layout, layout["front"] + x))
+
+    low, high = layout["limits"]["along"]
+    across = layout["limits"]["across"]
+    corners = [_inlay_mm(layout, along, side) for along, side in layout["points"]]
+    fret = layout["fret"]
+    references = [
+        ReferenceShape(
+            "Fretboard",
+            (
+                edge(-pad, -1.0),
+                edge(length + pad, -1.0),
+                edge(length + pad, 1.0),
+                edge(-pad, 1.0),
+            ),
+            colour="#8a6a3a",
+        ),
+        ReferenceShape(
+            "The nut" if fret == 1 else f"Fret {fret - 1}",
+            (edge(0.0, -1.0), edge(0.0, 1.0)),
+            closed=False,
+            colour="#999999",
+        ),
+        ReferenceShape(
+            f"Fret {fret}",
+            (edge(length, -1.0), edge(length, 1.0)),
+            closed=False,
+            colour="#999999",
+        ),
+        ReferenceShape(
+            "Centreline",
+            (Point2D(-pad, 0.0), Point2D(length + pad, 0.0)),
+            closed=False,
+            colour="#999999",
+            dashed=True,
+        ),
+        ReferenceShape(
+            "Keep the corners inside: 1 mm from the frets and the board's edges "
+            "in every marker's fret space",
+            tuple(
+                _inlay_mm(layout, along, side)
+                for along, side in (
+                    (low, -across),
+                    (high, -across),
+                    (high, across),
+                    (low, across),
+                )
+            ),
+            colour="#d9902a",
+            dashed=True,
+        ),
+    ]
+    return template_svg(
+        "CNCguitarwizard inlay marker",
+        TemplateFrame(_INLAY_MARKS, bool(layout["mirrored"])),
+        tuple((a, a, b, b) for a, b in zip(corners, corners[1:] + corners[:1])),
+        references,
+        (
+            f"CNCguitarwizard inlay marker, 1:1 in millimetres: the first marker's "
+            f"fret space (fret {fret}), the nut to the left.",
+            "Edit the black path in layer Outline: its corners are the marker's "
+            "(rounded 1 mm when cut); a curve comes back as corners.",
+            "Every marker is this shape fitted to its own fret space. Keep layer "
+            "Reference and its red marks; read it back with Import SVG.",
+        ),
+    )
+
+
+def _import_inlay(payload: dict[str, Any], svg: str) -> dict[str, Any]:
+    layout = _laid_out_inlay(payload)
+    read = read_template_outline(
+        svg, TemplateFrame(_INLAY_MARKS, bool(layout["mirrored"]))
+    )
+    corners = _polygon_corners(read.points, INLAY_IMPORT_TOLERANCE)
+    if len(corners) < 3:
+        raise CNCGuitarWizardError("A marker needs at least three corners.")
+    shown = [_inlay_mm(layout, along, side) for along, side in layout["points"]]
+    moved = 0
+    if len(corners) == len(shown) and all(
+        math.hypot(a.x - b.x, a.y - b.y) <= 0.01
+        for a, b in zip(corners, shown, strict=True)
+    ):
+        # Unchanged: the editor's own corners, exactly.
+        points = [[float(v) for v in point] for point in layout["points"]]
+    else:
+        low, high = layout["limits"]["along"]
+        limit = layout["limits"]["across"]
+        points = []
+        for corner in corners:
+            along, side = _inlay_share(layout, corner)
+            kept = (min(high, max(low, along)), min(limit, max(-limit, side)))
+            moved += kept != (along, side)
+            points.append([round(kept[0], 4), round(kept[1], 4)])
+    message = f"Imported the marker: {_count(len(points), 'corner')}"
+    if abs(read.scale - 1.0) > 0.005:
+        message += (
+            f" (its program had scaled it by {read.scale:.3g}; the registration "
+            "marks set it right)"
+        )
+    if moved:
+        message += (
+            f"; {_count(moved, 'corner')} moved inside the dashed line, to keep "
+            "1 mm from the frets and the board's edges"
+        )
+    return {
+        "values": {"inlay_style": "custom", "inlay_points": points},
+        "message": message + ".",
+    }
+
+
+def _polygon_corners(points: Sequence[Point2D], tolerance: float) -> list[Point2D]:
+    """Return a closed outline's corners: where it turns, a curve as corners
+    within ``tolerance`` of it (the start too, unless it lies on a side)."""
+    corners = list(thinned([*points, points[0]], tolerance)[:-1])
+    if len(corners) > 3:
+        a, b, c = corners[-1], corners[0], corners[1]
+        length = math.hypot(c.x - a.x, c.y - a.y)
+        off = abs((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x))
+        if length > 0.0 and off / length <= tolerance:
+            corners.pop(0)
+    return corners
 
 
 def _import_message(handles: int, deviation: float, read: ReadOutline) -> str:
