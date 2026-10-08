@@ -639,6 +639,9 @@
 
 ### Changed
 
+- An editor's status says what an import made on a line of its own,
+  above how the drawing stands, and a problem (what does not fit) in bold
+  red, rather than one long sentence.
 - A shorter build result: the downloads fold by part (closed, each
   saying how many programs), a program's toolpath plot a *Plot* link on
   its row rather than a row of its own; the summary gives the programs

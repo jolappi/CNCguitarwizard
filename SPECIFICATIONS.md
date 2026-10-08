@@ -854,6 +854,10 @@ defaults* näyttää vain oletuksesta muutetut asetukset (myös editorien
 ruutujen), päivittyen kun arvoa muutetaan tai se palautetaan; jos mitään
 ei ole muutettu, lomake kertoo sen.
 
+Editorin tilarivillä tuonnin huomautus on omalla rivillään (seuraavaan
+muutokseen asti) ja sen alla piirroksen tila; ongelma (mikä ei mahdu)
+näkyy lihavoituna punaisena.
+
 Runkoeditorin *Turn upright* näyttää piirroksen pystyssä, kaula ylöspäin
 (neljännes myötäpäivään; *Turn sideways* palauttaa vaakanäkymän, joka on
 oletus). Se on pelkkä näkymä: koordinaatit ja kaikki raahaukset toimivat

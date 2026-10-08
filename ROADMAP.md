@@ -68,6 +68,7 @@
 - The form's fields labelled in words
 - A shorter build result: downloads folded by part, programs summed up
 - Show only the settings changed from their defaults
+- Editor status lines: an import's note apart, problems in bold red
 - Index pins as wide as a main tool wider than 6 mm (an 8 mm end mill,
   8 mm dowels)
 - The neck's back carved with the ball nose alone, in one program

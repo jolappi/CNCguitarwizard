@@ -1091,6 +1091,24 @@ async function importOutline(part, file) {
   editor.draw();
 }
 
+// An editor's status: what an import made (its notice, kept until the
+// next change in the editor) on a line of its own, then how the drawing
+// stands — what does not fit in red and bold.
+function showEditorStatus(editor, text, kind) {
+  editor.status.className = "note editor-status";
+  editor.status.replaceChildren();
+  if (editor.notice) {
+    const notice = document.createElement("span");
+    notice.className = "status-notice";
+    notice.textContent = editor.notice;
+    editor.status.appendChild(notice);
+  }
+  const message = document.createElement("span");
+  message.className = `status-message ${kind || ""}`.trim();
+  message.textContent = text;
+  editor.status.appendChild(message);
+}
+
 // Put one saved value into its form control, as if typed or picked.
 function setControlValue(control, value) {
   if (control.tagName === "SELECT") {
@@ -2804,9 +2822,7 @@ const bodyEditor = {
   },
 
   setStatus(text, kind) {
-    // A notice (what an import made) stays until the next change.
-    this.status.textContent = this.notice ? `${this.notice} ${text}` : text;
-    this.status.className = `note ${kind}`;
+    showEditorStatus(this, text, kind);
   },
 };
 
@@ -3676,9 +3692,7 @@ const headstockEditor = {
   },
 
   setStatus(text, kind) {
-    // A notice (what an import made) stays until the next change.
-    this.status.textContent = this.notice ? `${this.notice} ${text}` : text;
-    this.status.className = `note ${kind}`;
+    showEditorStatus(this, text, kind);
   },
 };
 
@@ -3742,9 +3756,7 @@ const inlayEditor = {
   },
 
   setStatus(text, kind) {
-    // A notice (what an import made) stays until the next change.
-    this.status.textContent = this.notice ? `${this.notice} ${text}` : text;
-    this.status.className = `note ${kind}`;
+    showEditorStatus(this, text, kind);
   },
 
   element(name, attributes, parent) {

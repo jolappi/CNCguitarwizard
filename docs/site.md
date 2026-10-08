@@ -343,8 +343,9 @@ Python.
    The import is one step to undo; the
    editor's status says how many handles it made, how close they keep,
    and then what does not fit (a feature outside the body, a tuner hole
-   too near the edge) — the import's own note (`notice`) staying at the
-   head of the status line until the next change in the editor.
+   too near the edge) — the import's own note (`notice`) on a line of its
+   own above it until the next change in the editor, and what does not
+   fit in bold red (`showEditorStatus`, every editor's status).
 4. On **Build 3D and CNC files** runs the build in stages — `start_build()`, then
    `advance_build()` once per stage of `workflows.Prototype001Build`
    (geometry, body, neck and fretboard toolpaths, cover plates, G-code,
