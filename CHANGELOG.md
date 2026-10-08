@@ -652,6 +652,8 @@
 
 ### Changed
 
+- Each group of the form says in its title how many of its settings are
+  changed from their defaults (*Body · 3 changed*).
 - The toolpath plots are chosen from a list by part (each program by its
   step) with arrows to step through them, rather than a row of a button
   each.

@@ -129,9 +129,13 @@ function renderForm() {
         )),
       };
       const details = document.createElement("details");
+      details.className = "group";
       if (group.title === "Body" || group.title === "Machining") details.open = true;
       const summary = document.createElement("summary");
       summary.textContent = group.title;
+      const count = document.createElement("span");
+      count.className = "changed-count";
+      summary.appendChild(count);
       details.appendChild(summary);
       const holder = document.createElement("div");
       holder.className = "fields";
@@ -146,6 +150,7 @@ function renderForm() {
   headstockEditor.fillTemplates();
   inlayEditor.fillTemplates();
   syncBodyButtons();
+  countChanged();
   foldsBeforeFinding = null;
   applyFormFilter();
   setTimeout(() => headstockEditor.sync(), 0);
@@ -332,6 +337,17 @@ function renderFieldList(set, fields, holder, title) {
   details.addEventListener("change", () => flagAdvancedSummary(details));
   holder.appendChild(details);
 }
+
+// Each group of the form says how many of its settings are changed from
+// their defaults (an editor pane's too, whose rows the form keeps).
+function countChanged() {
+  for (const group of form.querySelectorAll(":scope > details.group")) {
+    const changed = group.querySelectorAll("input.changed, select.changed").length;
+    group.querySelector(":scope > summary .changed-count").textContent = changed ? ` · ${changed} changed` : "";
+  }
+}
+form.addEventListener("change", countChanged);
+form.addEventListener("input", countChanged);
 
 function flagAdvancedSummary(details) {
   const summary = details.querySelector(":scope > summary");
@@ -1460,6 +1476,7 @@ const undoHistory = {
     }
     autosave();
     markStale();
+    countChanged();
   },
 };
 guitarName.addEventListener("input", () => autosave());

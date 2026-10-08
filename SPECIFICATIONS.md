@@ -890,6 +890,10 @@ tulee huomautus, etteivät tiedostot enää ole suunnitelman omat, ja
 *Build again* -painike; kun suunnitelma on taas sama kuin rakennettaessa
 (esim. Undo), huomautus poistuu.
 
+Lomakkeen ryhmien otsikot kertovat, montako ryhmän asetusta on muutettu
+oletuksesta (*Body · 3 changed*, editorien ruutujen asetukset mukaan
+luettuina).
+
 Runkoeditorin *Turn upright* näyttää piirroksen pystyssä, kaula ylöspäin
 (neljännes myötäpäivään; *Turn sideways* palauttaa vaakanäkymän, joka on
 oletus). Se on pelkkä näkymä: koordinaatit ja kaikki raahaukset toimivat

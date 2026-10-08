@@ -25,7 +25,9 @@ Python.
    bridge, body thickness, tool and feeds…) are shown up front; the rest of
    each group sits behind an *Advanced* fold, marked `advanced` in the
    schema (`_BASIC_FIELDS`, `_BASIC_VARIANT_FIELDS` in `webapp.py`), with a
-   page-wide checkbox to open them all. A variant's fields (a drawn body,
+   page-wide checkbox to open them all. Each group's title says how many
+   of its settings are changed from their defaults (`countChanged`: *Body
+   · 3 changed*, an editor pane's included). A variant's fields (a drawn body,
    a bridge) take the instrument's own variant as their default, so a
    design loaded with its values shows nothing changed. *Find a setting…* above them
    (`applyFormFilter`) shows only the fields whose name or meaning (its
