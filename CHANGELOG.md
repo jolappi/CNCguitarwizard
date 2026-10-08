@@ -4,6 +4,7 @@
 
 ### Added
 
+- *Find a setting* marks the words found in the fields' names.
 - On a touch screen two fingers pinch an editor's drawing or a result
   plot about their middle and move it with them.
 - Dragging in the editors, a label by the pointer says how far it has

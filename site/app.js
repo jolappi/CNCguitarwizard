@@ -475,6 +475,10 @@ function applyFormFilter() {
   const filtering = words.length > 0 || changedOnly.checked;
   form.classList.toggle("filtering", filtering);
   const folds = [...form.querySelectorAll("details")];
+  for (const row of form.querySelectorAll(".field")) {
+    const label = row.querySelector("label");
+    if (label) markWords(label, words);
+  }
   if (!filtering) {
     filterEmpty.hidden = true;
     if (foldsBeforeFinding) {
@@ -506,6 +510,25 @@ function applyFormFilter() {
   filterEmpty.textContent = changedOnly.checked && !words.length
     ? "No setting is changed from its default."
     : "No setting matches.";
+}
+
+// The words searched for, marked where a field's name holds them (its own
+// text kept in data-label, so it can be put back as it was).
+function markWords(label, words) {
+  label.dataset.label ??= label.textContent;
+  const text = label.dataset.label;
+  if (!words.length) {
+    if (label.textContent !== text || label.children.length) label.textContent = text;
+    return;
+  }
+  const escaped = words.map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const parts = text.split(new RegExp(`(${escaped.join("|")})`, "gi"));
+  label.replaceChildren(...parts.map((part, index) => {
+    if (index % 2 === 0) return part;
+    const mark = document.createElement("mark");
+    mark.textContent = part;
+    return mark;
+  }));
 }
 
 function applyAdvancedToggle() {

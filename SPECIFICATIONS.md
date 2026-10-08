@@ -950,6 +950,7 @@ Undo-historia eivät muutu, ja käyttäjän oma painallus piirroksessa
 pysäyttää sen ensin. Viimeinen vaihe pyytää painamaan Buildia, ja
 rakennus päättää kierroksen.
 
+Haku korostaa löydetyt sanat kenttien nimissä.
 `/`-näppäin muualla kuin kentässä vie hakukenttään. Hakukentässä
 *Find a setting…* Enter vie ensimmäiseen löytyneeseen
 asetukseen (arvo valittuna, valmiina kirjoitettavaksi yli) ja Esc

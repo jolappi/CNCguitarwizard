@@ -49,8 +49,9 @@ Python.
    (`applyFormFilter`) shows only the fields whose name or meaning (its
    hover text) holds every word typed, underscores read as spaces — a
    field in an editor's pane too, its row in the form back while
-   searching — opening their groups and folds and leaving out the rest;
-   emptied, every fold is as open as it was. `/` anywhere but a field
+   searching — opening their groups and folds and leaving out the rest,
+   the words found marked in the fields' names (`markWords`); emptied,
+   every fold is as open as it was. `/` anywhere but a field
    goes to it (its text selected); Enter in it goes to the
    first setting found (its value selected, ready to be typed over), and
    Escape empties it. *Show only the settings
