@@ -294,7 +294,12 @@ Python.
    button is marked (*Save design •*, `markUnsaved`) while the design
    differs from the one last saved or loaded in this browser (kept there,
    `cncguitarwizard.savedDesign`, so a reload still knows it); with none
-   saved or loaded yet, once a setting is changed or the guitar named. **Load
+   saved or loaded yet, once a setting is changed or the guitar named.
+   *Recent ▾* beside it lists the last six designs saved or loaded in
+   this browser, newest first by file name (one saved again takes its old
+   place; `cncguitarwizard.recentDesigns`, `rememberDesign`): one chosen
+   is loaded as its file would be (`putDesign`), asked first when
+   settings are changed. **Load
    design** (or Ctrl/Cmd+O, or the file dropped anywhere on the page: a
    banner at the top says so while it is dragged, `drop-banner`; an SVG
    or DXF dropped on an editor's drawing is read as its outline, or the

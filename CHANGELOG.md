@@ -4,6 +4,8 @@
 
 ### Added
 
+- *Recent ▾* beside Load design lists the last six designs saved or
+  loaded in this browser; one chosen is loaded as its file would be.
 - *Full window* shows a drawing (an editor's or a result plot) over the
   whole window, every handle working; *Close* or Escape puts it back.
 - A ruler over every drawing (*Measure* in its corner, the result's

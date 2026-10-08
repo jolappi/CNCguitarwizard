@@ -1018,6 +1018,11 @@ hienosäätömitat *Advanced*-taittoon.
 eroaa viimeksi tallennetusta tai ladatusta (muistetaan selaimessa myös
 uudelleenlatauksen yli); jos mitään ei ole vielä tallennettu tai ladattu,
 merkki tulee, kun jotain asetusta on muutettu tai kitara nimetty.
+*Recent ▾* -valikko *Load design* -painikkeen vieressä luettelee kuusi
+viimeksi tässä selaimessa tallennettua tai ladattua suunnitelmaa uusin
+ensin tiedostonimen mukaan (uudelleen tallennettu vie vanhan paikkansa);
+valittu ladataan kuten sen tiedosto, ja muutettujen asetusten korvaamisesta
+kysytään ensin.
 Ctrl/Cmd+S tallentaa suunnitelman kuten *Save design* ja Ctrl/Cmd+O avaa
 tiedostovalitsimen kuten *Load design* (selaimen oman sivun tallennuksen ja
 avauksen sijaan). Suunnitelmatiedoston (.json) voi myös pudottaa

@@ -122,6 +122,7 @@ async function boot() {
     resetButton.disabled = false;
     saveDesignButton.disabled = false;
     loadDesignButton.disabled = false;
+    showRecentDesigns();
     undoHistory.start();
     // The design the page was last left with, kept in this browser (said
     // so unless it is the defaults).
@@ -1376,6 +1377,7 @@ function saveDesign() {
   setTimeout(() => URL.revokeObjectURL(link.href), 1000);
   setStatus(`Saved ${link.download}`, "ok");
   markSaved();
+  rememberDesign(design, link.download);
 }
 
 // An editor's outline as an SVG template to draw in another program, and
@@ -1610,16 +1612,78 @@ function applyDesign(design) {
 
 async function loadDesign(file) {
   clearError();
+  let design;
   try {
-    const unknown = applyDesign(JSON.parse(await file.text()));
-    setStatus(`Loaded ${file.name}`, "ok");
-    markSaved();
-    if (unknown.length) {
-      showError(`Loaded ${file.name}, but skipped settings this version does not have: ${unknown.join(", ")}.`);
-    }
+    design = JSON.parse(await file.text());
   } catch (error) {
     showError(`Cannot load ${file.name}: ${error.message}`);
+    return;
   }
+  putDesign(design, file.name);
+}
+
+// A design put on the form, from a file or Recent: said so, kept as the
+// one last saved, and first among the recent ones.
+function putDesign(design, name) {
+  clearError();
+  try {
+    const unknown = applyDesign(design);
+    setStatus(`Loaded ${name}`, "ok");
+    markSaved();
+    rememberDesign(design, name);
+    if (unknown.length) {
+      showError(`Loaded ${name}, but skipped settings this version does not have: ${unknown.join(", ")}.`);
+    }
+  } catch (error) {
+    showError(`Cannot load ${name}: ${error.message}`);
+  }
+}
+
+// The designs last saved or loaded in this browser, newest first, by
+// their file names (one saved again takes its old place's), in Recent
+// beside Load design: one chosen is loaded as its file would be.
+const RECENT_DESIGNS = "cncguitarwizard.recentDesigns";
+const RECENT_COUNT = 6;
+const recentMenu = document.getElementById("recent-designs");
+
+function recentDesigns() {
+  try {
+    const list = JSON.parse(localStorage.getItem(RECENT_DESIGNS));
+    return Array.isArray(list) ? list : [];
+  } catch {
+    return [];  // no storage, or nothing readable kept
+  }
+}
+
+function rememberDesign(design, name) {
+  const list = [{ name, design }, ...recentDesigns().filter((entry) => entry.name !== name)];
+  try {
+    localStorage.setItem(RECENT_DESIGNS, JSON.stringify(list.slice(0, RECENT_COUNT)));
+  } catch {
+    // No storage, or full: Recent stays as it was.
+  }
+  showRecentDesigns();
+}
+
+function showRecentDesigns() {
+  const list = recentDesigns();
+  recentMenu.hidden = list.length === 0;
+  recentMenu.querySelector(".menu-items").replaceChildren(...list.map(({ name, design }) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "secondary";
+    button.textContent = name;
+    const instrument = schema?.instruments?.[design.instrument]?.label ?? design.instrument;
+    const day = typeof design.saved === "string" ? ` · saved ${design.saved.slice(0, 10)}` : "";
+    button.title = `${instrument}${day}`;
+    button.addEventListener("click", async () => {
+      if (form.querySelector(".changed") && !(await askConfirm(
+        `Load ${name}? Every current value is replaced by the design's.`
+      ))) return;
+      putDesign(design, name);
+    });
+    return button;
+  }));
 }
 
 // ---------------------------------------------------------------------------
