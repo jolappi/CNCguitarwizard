@@ -879,7 +879,14 @@ Editorissa raahattaessa osoittimen vieressä näkyy mitta: rungon kahvan tai
 osan siirtymä kaulan suuntaan ja poikki (*+20.2 mm along · −10.1 mm
 across*, mikrofonilla vain kaulan suuntaan), käännön kulma ja venytyksen
 muutos; lavan reunakahvan etäisyys satulasta ja keskiviivasta sekä
-viritinreiän etäisyys satulasta ja reunasta.
+viritinreiän etäisyys satulasta ja reunasta. Painettu kahva (rungon
+ääriviivan kahva, lavan reunakahva tai viritinreikä) valitaan ja
+korostetaan: nuolinäppäimet siirtävät sitä näytön suuntiin 0,5 mm (Shift
+5 mm), myös pystyyn käännetyssä tai peilatussa piirroksessa, ja kukin
+siirto tallentuu kuten raahaus (nopeat siirrot yhtenä Undo-askeleena) ja
+näyttää mitan hetken. Viritinreikä liukuu kaulan suunnassa reunaa
+mukaillen ja poikittain lähemmäs reunaa tai siitä pois. Esc tai painallus
+taustaan poistaa valinnan.
 
 Editorien piirroksia voi zoomata: Ctrl/Cmd+rulla tai trackpadin nipistys
 zoomaa osoittimen kohdalta (enintään 20-kertaiseksi); zoomattuna taustaa

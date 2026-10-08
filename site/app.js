@@ -2007,6 +2007,60 @@ for (const type of ["pointerup", "pointercancel"]) {
   window.addEventListener(type, () => { dragReadout.hidden = true; }, true);
 }
 
+// A handle pressed in an editor (the body's outline handles, the
+// headstock's edge handles and tuner holes) is picked, and marked: the
+// arrow keys then move it 0.5 mm across the screen (Shift: 5 mm), each
+// move committed as a drag is (quick moves one Undo step) and said by it
+// for a moment. Escape, or a press on the drawing's background, lets it
+// go. find() finds its element again after a redraw (marked again there,
+// see below the tour).
+let picked = null;  // { editor, find, nudge(dx, dy) → readout text }
+
+function pickHandle(editor, find, nudge) {
+  picked?.find()?.classList.remove("picked");
+  picked = { editor, find, nudge };
+  find()?.classList.add("picked");
+}
+
+function dropPick() {
+  picked?.find()?.classList.remove("picked");
+  picked = null;
+}
+
+const NUDGE_KEYS = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+
+document.addEventListener("keydown", (event) => {
+  if (!picked) return;
+  if (event.key === "Escape") {
+    dropPick();
+    return;
+  }
+  const way = NUDGE_KEYS[event.key];
+  if (!way || event.ctrlKey || event.metaKey || event.altKey) return;
+  if (event.target.closest?.("input, select, textarea, [contenteditable]") || document.querySelector("dialog[open]")) return;
+  const element = picked.find();
+  if (!element || picked.editor.panel.classList.contains("hidden")) return;
+  event.preventDefault();
+  // The screen's direction in the drawing's model frame (turned upright,
+  // or mirrored for a left-handed build, as drawn).
+  const matrix = (picked.editor.root || picked.editor.svg).getScreenCTM().inverse();
+  const [vx, vy] = [matrix.a * way[0] + matrix.c * way[1], matrix.b * way[0] + matrix.d * way[1]];
+  const length = Math.hypot(vx, vy) || 1;
+  const step = event.shiftKey ? 5 : 0.5;
+  const text = picked.nudge((vx / length) * step, (-vy / length) * step);
+  const after = picked.find();
+  if (after) showReadoutAt(after, text);
+});
+
+// The readout by an element for a moment (a move made with the keys).
+let readoutTimer = null;
+function showReadoutAt(element, text) {
+  const box = element.getBoundingClientRect();
+  showReadout({ clientX: box.left + box.width / 2, clientY: box.top + box.height / 2 }, text);
+  clearTimeout(readoutTimer);
+  readoutTimer = setTimeout(() => { dragReadout.hidden = true; }, 1500);
+}
+
 // "+12.4 mm along · −3.0 mm across": a move in the drawing, along the neck
 // and across it.
 function moveText([along, across]) {
@@ -2436,6 +2490,17 @@ const bodyEditor = {
     return [Math.round(local.x * 10) / 10, Math.round(-local.y * 10) / 10];
   },
 
+  // A picked outline handle moved by the arrow keys: committed as a drag,
+  // and how far it is from where it was picked said as a drag's.
+  nudgePoint(index, dx, dy, from) {
+    const [x, y] = this.widen(this.points[index]);
+    this.points[index] = this.unwiden([Math.round((x + dx) * 10) / 10, Math.round((y + dy) * 10) / 10]);
+    this.commit();
+    this.draw();
+    const [nx, ny] = this.widen(this.points[index]);
+    return moveText([nx - from[0], ny - from[1]]);
+  },
+
   // A handle and the outline through it drawn where they are now, not yet
   // committed: a drag under way, or the tour showing one.
   showPoint(index, shown) {
@@ -2455,6 +2520,7 @@ const bodyEditor = {
     event.preventDefault();
     handle.classList.add("dragging");
     const from = this.widen(this.points[index]);
+    pickHandle(this, () => this.handles?.[index], (dx, dy) => this.nudgePoint(index, dx, dy, from));
     const move = (moveEvent) => {
       const shown = this.toModel(moveEvent);
       this.points[index] = this.unwiden(shown);
@@ -4435,6 +4501,7 @@ const headstockEditor = {
     handle.classList.add("dragging");
     // A pointed tip's corner drags the point, unless Shift parts them.
     this.dragPointed = index === this.edges[side].length - 1 && this.pointed();
+    pickHandle(this, () => this.edgeHandles?.[side]?.[index], (dx, dy) => this.nudgeEdge(side, index, dx, dy));
     const insets = this.holeInsets();
     const move = (moveEvent) => {
       this.place(side, index, this.toModel(moveEvent), moveEvent.shiftKey);
@@ -4499,6 +4566,7 @@ const headstockEditor = {
   startHoleDrag(event, index, node) {
     event.preventDefault();
     node.classList.add("dragging");
+    pickHandle(this, () => this.holeNodes?.[index]?.node, (dx, dy) => this.nudgeHole(index, dx, dy));
     const hole = this.layout.holes[index];
     const same = this.layout.holes.filter((other) => other.side === hole.side);
     const at = same.indexOf(hole);
@@ -4528,6 +4596,41 @@ const headstockEditor = {
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", end);
     window.addEventListener("pointercancel", end);
+  },
+
+  // A picked edge handle moved by the arrow keys, its holes along with
+  // it: committed as a drag.
+  nudgeEdge(side, index, dx, dy) {
+    const [d, h] = this.edges[side][index];
+    this.dragPointed = index === this.edges[side].length - 1 && this.pointed();
+    const insets = this.holeInsets();
+    this.place(side, index, [-d + dx, this.sign(side) * h + dy]);
+    this.followEdges(insets);
+    this.commit();
+    if (this.holesMoved(insets)) this.commitHoles();
+    this.draw();
+    const [nd, nh] = this.edges[side][index];
+    return `${nd.toFixed(1)} mm from the nut · ${nh.toFixed(1)} mm from the centreline`;
+  },
+
+  // A picked tuner hole moved by the arrow keys: along the neck it keeps
+  // its distance from its edge, as dragged; across, it moves off it or
+  // nearer. Along the neck it stays between its side's neighbours.
+  nudgeHole(index, dx, dy) {
+    const hole = this.layout.holes[index];
+    const same = this.layout.holes.filter((other) => other.side === hole.side);
+    const at = same.indexOf(hole);
+    const nearer = at > 0 ? -same[at - 1].x + 1 : 1;
+    const further = at < same.length - 1 ? -same[at + 1].x - 1 : Infinity;
+    const sign = this.sign(hole.side);
+    const edge = this.curve(hole.side);
+    const inset = edge(-hole.x) - hole.y / sign;
+    const distance = Math.min(Math.max(-hole.x - dx, nearer), further);
+    hole.x = -distance;
+    hole.y = sign * (edge(distance) - inset) + dy;
+    this.commitHoles();
+    this.draw();
+    return `${distance.toFixed(1)} mm from the nut · ${(edge(distance) - hole.y / sign).toFixed(1)} mm from the edge`;
   },
 
   // Every hole's place as tuner_hole_points takes it: (distance from the
@@ -5546,6 +5649,16 @@ document.addEventListener("keydown", (event) => {
 // so their drag starts from the drawing as it is.
 for (const editor of [bodyEditor, headstockEditor]) {
   editor.svg.addEventListener("pointerdown", stopTourDemo, true);
+}
+// A picked handle (see pickHandle) is marked again after a redraw, and let
+// go by a press on its drawing's background.
+for (const editor of [bodyEditor, headstockEditor]) {
+  new MutationObserver(() => {
+    if (picked?.editor === editor) picked.find()?.classList.add("picked");
+  }).observe(editor.svg, { childList: true, subtree: true });
+  editor.svg.addEventListener("pointerdown", (event) => {
+    if (picked?.editor === editor && !event.target.closest(".handle, .tuner-hole")) dropPick();
+  }, true);
 }
 
 showAdvanced.addEventListener("change", applyAdvancedToggle);

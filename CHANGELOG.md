@@ -4,6 +4,9 @@
 
 ### Added
 
+- A pressed handle (the body's outline, the headstock's edges, a tuner
+  hole) is picked: the arrow keys move it 0.5 mm, with Shift 5 mm,
+  saying where it is; Escape lets it go.
 - *Recent ▾* beside Load design lists the last six designs saved or
   loaded in this browser; one chosen is loaded as its file would be.
 - *Full window* shows a drawing (an editor's or a result plot) over the

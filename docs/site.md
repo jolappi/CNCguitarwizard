@@ -346,7 +346,14 @@ Python.
    −10.1 mm across*, a pickup along only), a turn its angle and a
    stretch its change; a headstock edge handle its distance from the nut
    and the centreline, a tuner hole its distance from the nut and the
-   edge.
+   edge. A handle pressed — the body's outline handles, the headstock's
+   edge handles and tuner holes — is picked and marked (`pickHandle`):
+   the arrow keys then move it 0.5 mm across the screen (Shift: 5 mm,
+   turned into the drawing's frame, so upright or mirrored too), each
+   move committed as a drag is (quick moves one Undo step) and said by it
+   for a moment; a tuner hole keeps its distance from its edge along the
+   neck, as dragged, and moves off it or nearer across. Escape, or a
+   press on the background, lets it go.
    Every editor's drawing zooms (`enableZoom`): Ctrl/Cmd+wheel, or a
    trackpad's pinch, about the pointer, up to 20 times; zoomed in, a drag
    on the background moves it and a double-click there fits the whole
