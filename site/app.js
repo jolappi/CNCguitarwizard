@@ -746,6 +746,24 @@ function markStale() {
   document.getElementById("output-stale").hidden = !builtFrom || undoHistory.current === builtFrom;
 }
 
+// The tab's title is the guitar's name, with "Building…" in front while
+// it builds; a build that ends out of sight (another tab in front) says
+// there how it went until the page is seen again.
+let titleNote = "";
+
+function syncTitle() {
+  document.title = [titleNote, guitarName.value.trim(), "CNCguitarwizard"].filter(Boolean).join(" — ");
+}
+
+function noteInTitle(note) {
+  titleNote = note;
+  syncTitle();
+}
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && !buildButton.classList.contains("busy")) noteInTitle("");
+});
+syncTitle();
+
 async function build() {
   clearError();
   let payload;
@@ -759,6 +777,7 @@ async function build() {
   buildButton.classList.add("busy");
   buildButton.textContent = "Building…";
   setStatus("Building…");
+  noteInTitle("Building…");
   const started = performance.now();
   try {
     pyodide.globals.set("payload_json", JSON.stringify(payload));
@@ -812,6 +831,8 @@ async function build() {
     buildButton.classList.remove("busy");
     buildButton.textContent = "Build 3D and CNC files";
     setTimeout(() => progress.classList.add("hidden"), 1500);
+    const built = status.className === "ok";
+    noteInTitle(document.hidden ? (built ? "✓ Built" : "✗ Build failed") : "");
   }
 }
 
@@ -1364,6 +1385,7 @@ function applyDesign(design) {
   instrumentSelect.value = design.instrument;
   instrumentSelect.dataset.current = design.instrument;
   guitarName.value = typeof design.name === "string" ? design.name : "";
+  syncTitle();
   renderForm();
   const unknown = [
     ...applyValues("prototype", design.prototype),
@@ -1540,7 +1562,10 @@ const undoHistory = {
     countChanged();
   },
 };
-guitarName.addEventListener("input", () => autosave());
+guitarName.addEventListener("input", () => {
+  autosave();
+  syncTitle();
+});
 
 // A drag writes its values when it ends; until then nothing is kept.
 window.addEventListener("pointerdown", () => { undoHistory.pointerDown = true; }, true);

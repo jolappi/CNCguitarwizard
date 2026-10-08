@@ -910,6 +910,11 @@ Kun valittu kenttä on muutettu oletuksesta, sen selityksen alla näkyy
 oletusarvo (*Default: 44*) ja *Reset to default* -painike, joka palauttaa
 oletuksen (myös editorien *Settings*-kohdissa; Undo kumoaa palautuksen).
 
+Selaimen välilehden otsikko on kitaran nimi; rakennuksen ajan sen
+edessä on *Building…*, ja jos rakennus päättyy toisen välilehden ollessa
+edessä, otsikko kertoo tuloksen (*✓ Built* tai *✗ Build failed*), kunnes
+sivu on taas näkyvissä.
+
 Runkoeditorin *Turn upright* näyttää piirroksen pystyssä, kaula ylöspäin
 (neljännes myötäpäivään; *Turn sideways* palauttaa vaakanäkymän, joka on
 oletus). Se on pelkkä näkymä: koordinaatit ja kaikki raahaukset toimivat

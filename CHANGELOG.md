@@ -4,6 +4,9 @@
 
 ### Added
 
+- The tab's title is the guitar's name, with *Building…* in front while
+  it builds; a build that ends with another tab in front says there how
+  it went (*✓ Built*, *✗ Build failed*) until the page is seen again.
 - A changed setting shows its default under it while it is selected,
   with *Reset to default*.
 - Escape closes an open *File ▾* menu.

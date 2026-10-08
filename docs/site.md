@@ -374,7 +374,10 @@ Python.
    then `finish_build()` — repainting a progress bar and a spinning Build
    button between stages, since Pyodide runs Python on the page's own
    thread. Everything lands in Pyodide's in-memory file system and comes
-   back as text.
+   back as text. The tab's title is the guitar's name (`syncTitle`),
+   *Building…* in front of it meanwhile; a build that ends while another
+   tab is in front puts *✓ Built* or *✗ Build failed* there until the
+   page is seen again (`noteInTitle`).
 5. Quick links at the top of the right-hand column, kept in view while it
    scrolls (`#jump`), go to the result (once there is one), the body,
    headstock and inlay editors (while they show) and, on a narrow screen
