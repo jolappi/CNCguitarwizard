@@ -832,6 +832,11 @@ porrastettu kansi, vatsan muotoilu) ja *New pattern* vain satunnaisen
 näkyvissä, kun piirrokset ja tulokset vierivät, joten editorien omat
 *Undo*/*Redo* näkyvät vain kapealla näytöllä.
 
+Lomakkeen yläpuolella on hakukenttä *Find a setting…*: se näyttää vain
+kentät, joiden nimessä tai selityksessä on jokainen kirjoitettu sana
+(alaviivat luetaan väleinä), myös editorien ruutuihin siirretyt, ja avaa
+niiden ryhmät ja taitot; tyhjennettynä taitot palaavat ennalleen.
+
 Runkoeditorin *Turn upright* näyttää piirroksen pystyssä, kaula ylöspäin
 (neljännes myötäpäivään; *Turn sideways* palauttaa vaakanäkymän, joka on
 oletus). Se on pelkkä näkymä: koordinaatit ja kaikki raahaukset toimivat

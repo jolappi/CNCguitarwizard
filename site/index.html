@@ -78,6 +78,12 @@
   .fields { padding: 4px 10px 8px; }
   .field { display: grid; grid-template-columns: 1fr 110px; gap: 8px; align-items: center; padding: 2px 0; }
   .field[hidden] { display: none; }
+  /* Find a setting: the fields that match show (those in an editor's
+     pane too), the rest and the folds with none of them are left out. */
+  #find-setting { width: 100%; padding: 6px 9px; border: 1px solid var(--line); border-radius: 6px; font: inherit; margin: 0 0 10px; background: #fff; }
+  #form.filtering .field:not(.match) { display: none; }
+  #form.filtering .field.mirrored.match:not([hidden]) { display: grid; }
+  #form.filtering details.no-match { display: none; }
   /* A field whose meaning shows on hover (its row's title). */
   label.explained { cursor: help; text-decoration: underline dotted #b8a888; text-underline-offset: 3px; }
   .field label { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: #3b332b; overflow-wrap: anywhere; }
@@ -307,6 +313,8 @@
       <code>MachiningParameters</code>. Hover a field's name to see what it means.
       Changed values are highlighted. Lists are edited as JSON.
       Rarely needed fields sit behind each group's <em>Advanced</em> fold.</p>
+    <input id="find-setting" type="search" placeholder="Find a setting…" autocomplete="off"
+      title="Show only the settings whose name or meaning has every word typed">
     <label class="note toggle"><input type="checkbox" id="show-advanced"> Show all advanced settings</label>
     <form id="form"></form>
     </div>

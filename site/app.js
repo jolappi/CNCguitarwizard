@@ -14,6 +14,7 @@ const progressLabel = progress.querySelector(".label");
 const output = document.getElementById("output");
 const intro = document.getElementById("intro");
 const showAdvanced = document.getElementById("show-advanced");
+const findSetting = document.getElementById("find-setting");
 const instrumentSelect = document.getElementById("instrument");
 const saveDesignButton = document.getElementById("save-design");
 const guitarName = document.getElementById("guitar-name");
@@ -135,6 +136,8 @@ function renderForm() {
   headstockEditor.fillTemplates();
   inlayEditor.fillTemplates();
   syncBodyButtons();
+  foldsBeforeFinding = null;
+  applyFormFilter();
   setTimeout(() => headstockEditor.sync(), 0);
   setTimeout(() => inlayEditor.refresh(), 0);
   undoHistory.note();
@@ -324,6 +327,42 @@ function flagAdvancedSummary(details) {
   const summary = details.querySelector(":scope > summary");
   // The fields only: the summary's own mark would keep it marked.
   summary.classList.toggle("changed", details.querySelector(":scope > .fields .changed") !== null);
+}
+
+// Find a setting: only the fields whose name or meaning holds every
+// word typed show (a field in an editor's pane too: its row in the form
+// comes back while searching), their groups and folds opened; the rest,
+// and folds with none of them, are left out. Emptied, every fold is as
+// open as it was before.
+let foldsBeforeFinding = null;
+
+function applyFormFilter() {
+  const words = findSetting.value.toLowerCase().replace(/_/g, " ").split(/\s+/).filter(Boolean);
+  const filtering = words.length > 0;
+  form.classList.toggle("filtering", filtering);
+  const folds = [...form.querySelectorAll("details")];
+  if (!filtering) {
+    if (foldsBeforeFinding) {
+      for (const [fold, open] of foldsBeforeFinding) fold.open = open;
+      foldsBeforeFinding = null;
+    }
+    return;
+  }
+  if (!foldsBeforeFinding) foldsBeforeFinding = new Map(folds.map((fold) => [fold, fold.open]));
+  for (const row of form.querySelectorAll(".field")) {
+    const control = row.querySelector("input, select");
+    const text = [
+      row.querySelector("label")?.textContent,
+      control?.dataset.name,
+      row.title,
+    ].join(" ").toLowerCase().replace(/_/g, " ");
+    row.classList.toggle("match", words.every((word) => text.includes(word)));
+  }
+  for (const fold of folds) {
+    const found = fold.querySelector(".field.match:not([hidden])") !== null;
+    fold.classList.toggle("no-match", !found);
+    fold.open = found;
+  }
 }
 
 function applyAdvancedToggle() {
@@ -4001,4 +4040,5 @@ loadDesignFile.addEventListener("change", async () => {
   loadDesign(file);
 });
 showAdvanced.addEventListener("change", applyAdvancedToggle);
+findSetting.addEventListener("input", applyFormFilter);
 boot();

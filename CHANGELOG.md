@@ -4,6 +4,9 @@
 
 ### Added
 
+- *Find a setting…* above the form: only the settings whose name or
+  meaning holds every word typed show (one in an editor's pane too),
+  their groups and folds open; emptied, the form is as it was.
 - *Turn upright* in the body editor: the drawing shown standing, the
   neck up (*Turn sideways* lays it back down, the default), a view only —
   every handle drags as before; the browser remembers the choice. The

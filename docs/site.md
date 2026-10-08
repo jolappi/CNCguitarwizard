@@ -25,7 +25,12 @@ Python.
    bridge, body thickness, tool and feeds…) are shown up front; the rest of
    each group sits behind an *Advanced* fold, marked `advanced` in the
    schema (`_BASIC_FIELDS`, `_BASIC_VARIANT_FIELDS` in `webapp.py`), with a
-   page-wide checkbox to open them all. Hovering a field's row shows what
+   page-wide checkbox to open them all. *Find a setting…* above them
+   (`applyFormFilter`) shows only the fields whose name or meaning (its
+   hover text) holds every word typed, underscores read as spaces — a
+   field in an editor's pane too, its row in the form back while
+   searching — opening their groups and folds and leaving out the rest;
+   emptied, every fold is as open as it was. Hovering a field's row shows what
    it means (its name is underlined dotted): `webapp._field_help` takes it
    from the code's own documentation — a dataclass's `Args:` entries, an
    attribute docstring, the comment block above the field (and the fields
