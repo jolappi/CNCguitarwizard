@@ -32,7 +32,8 @@ Python.
    schema (`_BASIC_FIELDS`, `_BASIC_VARIANT_FIELDS` in `webapp.py`), with a
    page-wide checkbox to open them all. Each group's title says how many
    of its settings are changed from their defaults (`countChanged`: *Body
-   · 3 changed*, an editor pane's included). The groups opened by hand
+   · 3 changed*, an editor pane's included), and *Show only the settings
+   changed* how many there are in all (`changed-total`). The groups opened by hand
    are kept in the browser (`cncguitarwizard.openGroups`; not those a
    search opens), so a reload, another instrument or a loaded design
    opens the same ones; with none kept, *Body* and *Machining* open. A variant's fields (a drawn body,

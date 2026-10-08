@@ -372,12 +372,16 @@ function renderFieldList(set, fields, holder, title) {
 }
 
 // Each group of the form says how many of its settings are changed from
-// their defaults (an editor pane's too, whose rows the form keeps).
+// their defaults (an editor pane's too, whose rows the form keeps), and
+// "Show only the settings changed" how many there are in all.
 function countChanged() {
+  let total = 0;
   for (const group of form.querySelectorAll(":scope > details.group")) {
     const changed = group.querySelectorAll("input.changed, select.changed").length;
     group.querySelector(":scope > summary .changed-count").textContent = changed ? ` · ${changed} changed` : "";
+    total += changed;
   }
+  document.getElementById("changed-total").textContent = total ? ` (${total})` : "";
 }
 form.addEventListener("change", countChanged);
 form.addEventListener("input", countChanged);

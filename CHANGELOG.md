@@ -4,6 +4,8 @@
 
 ### Added
 
+- *Show only the settings changed from their defaults* says how many
+  there are in all.
 - `/` anywhere but a field goes to *Find a setting*.
 - A value that cannot be read (not a number, broken JSON) is marked red
   once it is given, the reason under it, instead of only at the build;

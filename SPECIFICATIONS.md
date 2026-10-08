@@ -892,7 +892,8 @@ tulee huomautus, etteivät tiedostot enää ole suunnitelman omat, ja
 
 Lomakkeen ryhmien otsikot kertovat, montako ryhmän asetusta on muutettu
 oletuksesta (*Body · 3 changed*, editorien ruutujen asetukset mukaan
-luettuina).
+luettuina), ja *Show only the settings changed from their defaults*
+-valinnan perässä on muutettujen asetusten kokonaismäärä.
 
 Oikean sarakkeen yläreunassa on vieritettäessä näkyvissä pysyvä
 pikalinkkipalkki: *Result* (kun tulos on), *Body*, *Headstock*, *Inlays*
