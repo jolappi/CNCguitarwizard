@@ -2320,6 +2320,17 @@ const bodyEditor = {
     return [Math.round(local.x * 10) / 10, Math.round(-local.y * 10) / 10];
   },
 
+  // A handle and the outline through it drawn where they are now, not yet
+  // committed: a drag under way, or the tour showing one.
+  showPoint(index, shown) {
+    this.handles[index].setAttribute("cx", shown[0]);
+    this.handles[index].setAttribute("cy", -shown[1]);
+    const outline = this.pathData(this.outline());
+    this.outlinePath.setAttribute("d", outline);
+    if (this.blockClip) this.blockClip.setAttribute("d", outline);
+    this.outlineHit.setAttribute("d", outline);
+  },
+
   startDrag(event, index, handle) {
     if (event.altKey) {
       this.removePoint(index);
@@ -2330,11 +2341,7 @@ const bodyEditor = {
     const move = (moveEvent) => {
       const shown = this.toModel(moveEvent);
       this.points[index] = this.unwiden(shown);
-      handle.setAttribute("cx", shown[0]);
-      handle.setAttribute("cy", -shown[1]);
-      this.outlinePath.setAttribute("d", this.pathData(this.outline()));
-      if (this.blockClip) this.blockClip.setAttribute("d", this.pathData(this.outline()));
-      this.outlineHit.setAttribute("d", this.pathData(this.outline()));
+      this.showPoint(index, shown);
       this.check();
     };
     const end = () => {
@@ -3796,10 +3803,12 @@ const headstockEditor = {
     // The truss-rod cover over the adjuster's trough (an adjuster at the
     // headstock), with its handles.
     if (layout.truss_cover) this.drawCover(layout.truss_cover);
+    this.edgeHandles = { bass: [], treble: [] };
     for (const side of ["bass", "treble"]) {
       const sign = this.sign(side);
       this.edges[side].forEach(([d, h], index) => {
         const handle = this.element("circle", { class: "handle", cx: -d, cy: -sign * h, r: 2.2 });
+        this.edgeHandles[side].push(handle);
         handle.addEventListener("pointerdown", (event) => this.startDrag(event, side, index, handle));
         handle.addEventListener("contextmenu", (event) => { event.preventDefault(); this.removePoint(side, index); });
       });
@@ -4062,6 +4071,19 @@ const headstockEditor = {
     edge[index][1] = half;
   },
 
+  // The edges and the tip drawn as they are now, not yet committed: a
+  // drag under way, or the tour showing one.
+  showEdges() {
+    const bass = this.samples("bass"), treble = this.samples("treble");
+    this.paths.bass.setAttribute("d", this.pathData(bass));
+    this.paths.treble.setAttribute("d", this.pathData(treble));
+    this.hits.bass.setAttribute("d", this.pathData(bass));
+    this.hits.treble.setAttribute("d", this.pathData(treble));
+    const tip = this.tipSamples();
+    this.tipLine.setAttribute("d", this.pathData(tip));
+    this.tipHit.setAttribute("d", this.pathData(tip));
+  },
+
   startDrag(event, side, index, handle) {
     if (event.altKey) {
       this.removePoint(side, index);
@@ -4073,14 +4095,7 @@ const headstockEditor = {
     this.dragPointed = index === this.edges[side].length - 1 && this.pointed();
     const move = (moveEvent) => {
       this.place(side, index, this.toModel(moveEvent), moveEvent.shiftKey);
-      const bass = this.samples("bass"), treble = this.samples("treble");
-      this.paths.bass.setAttribute("d", this.pathData(bass));
-      this.paths.treble.setAttribute("d", this.pathData(treble));
-      this.hits.bass.setAttribute("d", this.pathData(bass));
-      this.hits.treble.setAttribute("d", this.pathData(treble));
-      const tip = this.tipSamples();
-      this.tipLine.setAttribute("d", this.pathData(tip));
-      this.tipHit.setAttribute("d", this.pathData(tip));
+      this.showEdges();
       const [d, h] = this.edges[side][index];
       handle.setAttribute("cx", -d);
       handle.setAttribute("cy", -this.sign(side) * h);
