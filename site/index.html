@@ -117,7 +117,7 @@
   .nc-drop { border: 2px dashed var(--line); border-radius: 6px; padding: 10px 12px; margin: 8px 0; font-size: 13px; color: var(--muted); text-align: center; }
   .nc-drop.over { border-color: var(--accent); color: var(--accent); background: #fff7ec; }
   .nc-files { margin: 0 0 8px; padding-left: 18px; font-size: 13px; }
-  #body-editor-template, #headstock-editor-template { min-width: 0; max-width: 100%; flex: 1 1 160px; }
+  #body-editor-template, #headstock-editor-template, #inlay-editor-template { min-width: 0; max-width: 100%; flex: 1 1 160px; }
   .body-editor select { padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; font: inherit; background: #fff; }
   #body-editor-status.ok, #headstock-editor-status.ok, #inlay-editor-status.ok { color: var(--ok); }
   #body-editor-status.bad, #headstock-editor-status.bad, #inlay-editor-status.bad { color: var(--bad); }
@@ -398,7 +398,8 @@
           the same shape fitted to its own fret space and the board's width there, as the whole board below shows.
           Editing any style's marker starts a drawn one (<code>inlay_style</code> custom, its corners in
           <code>inlay_points</code>); it keeps 1 mm from the fret slots and the board's edges, and its corners are
-          rounded 1 mm. <em>Start over</em> goes back to a block; <em>Undo</em> steps back a change,
+          rounded 1 mm. A style chosen in <em>Start from</em> is loaded at once (<em>Load</em> loads it again): its
+          marker, to draw on from there. <em>Start over</em> goes back to a block; <em>Undo</em> steps back a change,
           <em>Redo</em> forward again. To draw the marker in another program, <em>Export SVG</em> saves it as a
           template, 1:1 in millimetres: edit the black path in its Outline layer inside the dashed line in the locked
           Reference layer (the fret space, its frets and the board's edges), keep the three red registration marks,
@@ -410,6 +411,9 @@
         <div id="inlay-editor-options" class="editor-options"></div>
       </details>
       <div class="actions">
+        <label class="note" for="inlay-editor-template">Start from</label>
+        <select id="inlay-editor-template"></select>
+        <button id="inlay-editor-load" class="secondary" type="button" title="Load the chosen style's marker again">Load</button>
         <button id="inlay-editor-reset" class="secondary" type="button" title="Back to a block">Start over</button>
         <button id="inlay-editor-export" class="secondary" type="button" title="Save the marker as an SVG template, 1:1 in millimetres, to edit in Inkscape, Illustrator or another drawing program">Export SVG</button>
         <button id="inlay-editor-import" class="secondary" type="button" title="Read the marker back from an SVG template edited in another program">Import SVG</button>

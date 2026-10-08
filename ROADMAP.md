@@ -57,6 +57,7 @@
 - The editors' how-tos folded away until asked for
 - Every setting that changes a drawing above it in the editor, folded under Settings, the body's in two columns
 - The inlay marker drawn in another program: SVG templates out and back in
+- Start from in the inlay editor
 - Index pins as wide as a main tool wider than 6 mm (an 8 mm end mill,
   8 mm dowels)
 - The neck's back carved with the ball nose alone, in one program

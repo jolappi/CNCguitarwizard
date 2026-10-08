@@ -209,7 +209,11 @@ Python.
    (`custom_limits()`: 1 mm from the frets in the shortest space and from
    the edges where the board is narrowest), and a drag stops at it; the
    panel says at which fret a shape does not fit. *Start over* empties
-   `inlay_points` (a block). *Export SVG* and *Import SVG* take the marker to another
+   `inlay_points` (a block). *Start from* lists every marker style but a
+   drawn one (`inlay_style`'s options, by their labels): one chosen is
+   loaded at once (*Load* loads it again), its style set and a drawn
+   marker let go of (asked first), so the editor shows its marker to draw
+   on from there. *Export SVG* and *Import SVG* take the marker to another
    drawing program and back (see [Outline templates](render/03_svg_templates.md)):
    its corners are read back, a curve as corners within 0.05 mm of it,
    each held inside the dashed line, and the import's note stays at the

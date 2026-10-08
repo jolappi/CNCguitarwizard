@@ -11,6 +11,8 @@
   curve as corners within 0.05 mm of it), holding each inside the dashed
   line, as the drawn marker. A template's page is now as wide as its
   notes under a small drawing.
+- *Start from* in the inlay editor: a marker style chosen there is loaded
+  at once (*Load* loads it again), to draw on from there.
 - A jig for filing the nut's string slots (`nut_jig`), cut from sheet in
   its own program `Jig_nut_slots`: a comb 3 mm thick
   (`nut_jig_thickness`) that stands on the fretboard against the nut, its

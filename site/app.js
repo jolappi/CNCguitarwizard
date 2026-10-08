@@ -133,6 +133,7 @@ function renderForm() {
   applyStringLimits();
   mirrorEditorFields();
   headstockEditor.fillTemplates();
+  inlayEditor.fillTemplates();
   setTimeout(() => headstockEditor.sync(), 0);
   setTimeout(() => inlayEditor.refresh(), 0);
   undoHistory.note();
@@ -3729,9 +3730,57 @@ const inlayEditor = {
     setControlValue(form.querySelector('[data-set="prototype"][data-name="inlay_points"]'), []);
     this.refresh();
   },
+
+  // Start from: every marker style but a drawn one, by its form label.
+  fillTemplates() {
+    const select = document.getElementById("inlay-editor-template");
+    select.value = "";
+    this.template = null;
+    const field = schema && schema.prototype.flatMap((group) => group.fields)
+      .find((candidate) => candidate.name === "inlay_style");
+    if (select.options.length || !field) return;
+    const none = document.createElement("option");
+    none.value = "";
+    none.textContent = "Choose a marker…";
+    select.appendChild(none);
+    for (const style of field.options.filter((option) => option !== "custom")) {
+      const option = document.createElement("option");
+      option.value = style;
+      option.textContent = field.labels?.[style] ?? style;
+      select.appendChild(option);
+    }
+  },
+
+  // Load a style's marker, as soon as one is chosen in Start from (Load
+  // loads it again): the style is set and a drawn marker let go of, so the
+  // editor shows the style's own, to draw on from there. Declined (over a
+  // drawn marker), Start from goes back to what it showed.
+  async loadTemplate() {
+    const select = document.getElementById("inlay-editor-template");
+    const style = select.value;
+    if (!style) return;
+    const styleInput = form.querySelector('[data-set="prototype"][data-name="inlay_style"]');
+    const pointsInput = form.querySelector('[data-set="prototype"][data-name="inlay_points"]');
+    const label = select.selectedOptions[0].textContent;
+    if (styleInput.value === "custom" && !(await askConfirm(
+      `Start from the ${label} marker? It replaces the marker you drew.`
+    ))) {
+      select.value = this.template || "";
+      return;
+    }
+    this.notice = "";
+    setControlValue(pointsInput, []);
+    setControlValue(styleInput, style);
+    this.template = style;
+    select.value = style;
+    syncMirrors();
+    this.refresh();
+  },
 };
 
 document.getElementById("inlay-editor-reset").addEventListener("click", () => inlayEditor.reset());
+document.getElementById("inlay-editor-load").addEventListener("click", () => inlayEditor.loadTemplate());
+document.getElementById("inlay-editor-template").addEventListener("change", () => inlayEditor.loadTemplate());
 form.addEventListener("change", (event) => {
   if (event.target.dataset.name !== "inlay_points") inlayEditor.scheduleRefresh();
 });
