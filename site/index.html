@@ -234,7 +234,12 @@
   table { border-collapse: collapse; font-size: 13px; }
   td, th { text-align: left; padding: 4px 10px 4px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
   th { color: var(--muted); font-weight: 600; }
-  #files .file-group th { color: var(--ink); padding-top: 14px; }
+  #files details.file-part > summary { font-weight: 600; }
+  #files details.file-part > table { margin: 0 10px 8px; }
+  #files td.links { white-space: nowrap; }
+  #files td.links a + a { margin-left: 10px; }
+  details.summary-programs { margin-top: 8px; }
+  details.summary-programs > table { margin: 0 10px 8px; }
   #files td:nth-child(3) { white-space: nowrap; }
   #files td.step { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
   a.download { color: var(--accent); font-weight: 600; text-decoration: none; }
@@ -326,17 +331,21 @@
     <div id="output" class="hidden">
       <h2>Summary</h2>
       <table id="summary"></table>
+      <details id="summary-programs" class="summary-programs">
+        <summary>Every program: its tool, time and cutting</summary>
+        <table></table>
+      </details>
       <h2>Downloads</h2>
       <div class="actions">
         <button id="download-nc-zip" type="button"
           title="Every NC program in one ZIP, named for the guitar: a folder a part, each program numbered in running order">Download all NC files (.zip)</button>
       </div>
-      <p class="note">Each part has its own list, its programs numbered in the order to run them.
-        The <em>Simulate</em> button copies that program to the clipboard and opens
-        <a href="https://ncviewer.com" target="_blank" rel="noopener">NC Viewer</a> below: click into its
+      <p class="note">Each part opens to its programs, numbered in the order to run them; <em>Plot</em> downloads a
+        program's toolpaths drawn over its part. The <em>Simulate</em> button copies that program to the clipboard and
+        opens <a href="https://ncviewer.com" target="_blank" rel="noopener">NC Viewer</a> below: click into its
         editor, select all (Ctrl/Cmd+A), paste (Ctrl/Cmd+V) and press <em>Plot</em> to see the toolpath
         simulated.</p>
-      <table id="files"></table>
+      <div id="files"></div>
       <div id="simulator" class="simulator hidden">
         <h2>Simulator <span id="simulator-file" class="note"></span></h2>
         <p id="simulator-hint" class="note"></p>

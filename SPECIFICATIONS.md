@@ -842,6 +842,13 @@ Lomakkeen kentät on nimetty sanoin (*Pickup frame direction*, ei
 Kentän koodinimi (jota tallennetut suunnitelmat ja ohjeet käyttävät)
 näkyy hover-tekstin lopussa, ja haku löytää kummallakin.
 
+Rakennuksen tulos on lyhyempi: lataukset ovat osittain taitettuina
+(suljettuina, otsikossa ohjelmien määrä), ohjelman työratakuva on *Plot*-
+linkki sen rivillä eikä oma rivinsä, ja yhteenvedossa ohjelmat ovat
+yhdellä rivillä (määrä ja arvioitu kokonaisaika) ja kunkin työkalu ja
+aika taiton alla. Aihiolle, jolla ei ole kohdistustappeja, ei mainita
+tappien paikkoja.
+
 Runkoeditorin *Turn upright* näyttää piirroksen pystyssä, kaula ylöspäin
 (neljännes myötäpäivään; *Turn sideways* palauttaa vaakanäkymän, joka on
 oletus). Se on pelkkä näkymä: koordinaatit ja kaikki raahaukset toimivat

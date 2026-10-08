@@ -708,9 +708,9 @@ function showResult(result) {
     if (name === first || (previews.length === 1 && index === 0)) button.click();
   });
 
-  // One list per part (body, neck, fretboard, covers), each program
-  // numbered in the order it is run, its toolpath plot beneath it; the
-  // model scripts and the report come first.
+  // One fold per part, the model and report first: each program numbered
+  // in the order it is run, its toolpath plot a link on its row. The
+  // folds start closed (Download all NC files has every program).
   const files = document.getElementById("files");
   files.innerHTML = "";
   const gcode = result.report.gcode;
@@ -725,10 +725,7 @@ function showResult(result) {
     const info = programOf(name);
     groups.get(info ? info.part : "Model and report").push(name);
   }
-  const rank = (name) => {
-    const info = programOf(name);
-    return info ? info.step * 2 + (name.endsWith(".svg") ? 1 : 0) : 0;
-  };
+  const rank = (name) => programOf(name)?.step ?? 0;
   const titles = {
     Body: "Body — top face up first, then flipped onto the dowels",
     "Wing bass": "Bass wing — from its own blank, glued to the neck-through block",
@@ -741,42 +738,75 @@ function showResult(result) {
   };
   for (const [part, members] of groups) {
     if (!members.length) continue;
-    const heading = document.createElement("tr");
-    heading.className = "file-group";
-    heading.innerHTML = `<th colspan="4">${titles[part] || part}</th>`;
-    files.appendChild(heading);
-    for (const name of members.sort((a, b) => rank(a) - rank(b))) addFile(name);
+    const programCount = members.filter(isProgram).length;
+    const fold = document.createElement("details");
+    fold.className = "file-part";
+    const head = document.createElement("summary");
+    head.textContent = titles[part] || part;
+    const count = document.createElement("span");
+    count.className = "note";
+    count.textContent = programCount
+      ? ` — ${programCount} program${programCount === 1 ? "" : "s"}`
+      : ` — ${members.length} file${members.length === 1 ? "" : "s"}`;
+    head.appendChild(count);
+    fold.appendChild(head);
+    const table = document.createElement("table");
+    fold.appendChild(table);
+    files.appendChild(fold);
+    // A program's plot goes on its own row, not one of its own.
+    const plots = new Set(members.filter(isProgram).map((name) => `${stemOf(name)}.svg`));
+    for (const name of members.filter((n) => !plots.has(n)).sort((a, b) => rank(a) - rank(b))) {
+      addFile(name, table, plots.has(`${stemOf(name)}.svg`) ? `${stemOf(name)}.svg` : null);
+    }
   }
 
-  function addFile(name) {
+  function download(name, label) {
     const text = result.files[name];
-    const info = programOf(name);
-    const number = info && isProgram(name) ? `${info.step}.` : "";
     const type = name.endsWith(".svg") ? "image/svg+xml"
       : name.endsWith(".json") ? "application/json"
       : name.endsWith(".dxf") ? "application/dxf" : "text/plain";
     const url = URL.createObjectURL(new Blob([text], { type }));
     blobUrls.push(url);
+    const link = document.createElement("a");
+    link.className = "download";
+    link.href = url;
+    link.download = name;
+    link.textContent = label;
+    return link;
+  }
+
+  function addFile(name, table, plot) {
+    const text = result.files[name];
+    const info = programOf(name);
     const row = document.createElement("tr");
     row.innerHTML =
-      `<td class="step">${number}</td><td>${name}</td><td>${(text.length / 1024).toFixed(0)} kB</td>` +
-      `<td><a class="download" href="${url}" download="${name}">Download</a></td>`;
+      `<td class="step">${info && isProgram(name) ? `${info.step}.` : ""}</td><td>${name}</td>` +
+      `<td>${(text.length / 1024).toFixed(0)} kB</td><td class="links"></td>`;
+    const links = row.lastElementChild;
+    links.appendChild(download(name, "Download"));
+    if (plot) {
+      const link = download(plot, "Plot");
+      link.title = `${plot}: the toolpaths drawn over the part`;
+      links.appendChild(link);
+    }
     if (isProgram(name)) {
       const button = document.createElement("button");
       button.className = "simulate";
       button.textContent = "Simulate";
       button.title = "Copy this program to the clipboard and open NC Viewer below";
       button.addEventListener("click", () => simulate(name, text));
-      row.lastElementChild.appendChild(button);
+      links.appendChild(button);
     }
-    files.appendChild(row);
+    table.appendChild(row);
   }
 
   const summary = document.getElementById("summary");
   const report = result.report;
   const rows = [];
   for (const [part, stock] of Object.entries(report.stock)) {
-    rows.push([`${part} blank`, `${stock.length_mm} × ${stock.width_mm} × ${stock.thickness_mm} mm, pins at machine X ${stock.index_pins_machine_xy.map((p) => p[0]).join(" / ")}`]);
+    const pins = stock.index_pins_machine_xy;
+    const where = pins.length ? `, pins at machine X ${pins.map((p) => p[0]).join(" / ")}` : "";
+    rows.push([`${part} blank`, `${stock.length_mm} × ${stock.width_mm} × ${stock.thickness_mm} mm${where}`]);
     // A bought fretboard blank glued on a carrier that takes the pins.
     const carrier = stock.carrier;
     if (carrier) {
@@ -796,9 +826,17 @@ function showResult(result) {
   const programs = Object.entries(report.gcode).sort(([, a], [, b]) => (
     partRank(a.part) - partRank(b.part) || a.step - b.step
   ));
-  for (const [name, info] of programs) {
-    rows.push([`${info.step}. ${name}`, `${info.tool}: ${info.estimated_minutes} min, ${(info.cutting_length_mm / 1000).toFixed(1)} m of cutting, ${info.operations.length} operations`]);
-  }
+  // The programs in one line: how many and how long; each one's tool and
+  // time in a fold below the summary.
+  const minutes = programs.reduce((total, [, info]) => total + info.estimated_minutes, 0);
+  const hours = Math.floor(minutes / 60);
+  const time = hours ? `${hours} h ${Math.round(minutes - 60 * hours)} min` : `${Math.round(minutes)} min`;
+  rows.push(["Programs", `${programs.length}, about ${time} at the set feeds`]);
+  const perProgram = document.querySelector("#summary-programs table");
+  perProgram.innerHTML = programs.map(([name, info]) => (
+    `<tr><th>${info.step}. ${name}</th><td>${info.tool}: ${info.estimated_minutes} min, ` +
+    `${(info.cutting_length_mm / 1000).toFixed(1)} m of cutting, ${info.operations.length} operations</td></tr>`
+  )).join("");
   const rod = report.truss_rod;
   if (rod) {
     const chosen = rod.rod_length_mm === null

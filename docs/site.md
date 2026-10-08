@@ -355,18 +355,22 @@ Python.
    straight under the build button and instrument choice, an error in
    the same place, and the page scrolls to either when it arrives out of
    view, `bringIntoView`): the summary with stock size
-   (a fretboard blank's carrier on a row of its own, `fretboard_carrier_thickness`)
-   and time estimates first; then the download
+   (a fretboard blank's carrier on a row of its own, `fretboard_carrier_thickness`;
+   the index pins' places only for a blank that has them) and the
+   programs in one row — how many, about how long at the set feeds —
+   first, each program's tool, time and cutting in the fold *Every
+   program* below it (`#summary-programs`); then the download
    links for the FreeCAD script (`.py` and `.FCMacro`), every `.nc`
    program (body, electronics, neck, fretboard, the nut-slot jig and one per cover plate), the SVG plots, the DXF outlines
    (`Prototype001_plan.dxf`, `Prototype001_covers.dxf`; see [DXF](render/02_dxf.md)) and `build.json`;
    then the whole-instrument plan view (standing upright, headstock at
    the top, sized to fit the window; the nut drawn on its seat, bone white
    or dark for a locking nut, a board that runs on under it reaching on
-   behind it) and the toolpath plots. The downloads come in one list per part — the
+   behind it) and the toolpath plots. The downloads come in one fold per part, closed
+   until opened (its title says how many programs) — the
    model and report first, then body, neck, fretboard, the inlay pieces, the nut jig and covers — each
    program numbered in the order it is run (`build.json` gives it as the
-   program's `step`) with its toolpath plot beneath it. Each `.nc` row also has a *Simulate* button: it
+   program's `step`), its toolpath plot a *Plot* link on its row. Each `.nc` row also has a *Simulate* button: it
    copies that program to the clipboard and opens
    [NC Viewer](https://ncviewer.com) in a panel below, where selecting all
    in its editor (Ctrl/Cmd+A), pasting (Ctrl/Cmd+V) and pressing *Plot*

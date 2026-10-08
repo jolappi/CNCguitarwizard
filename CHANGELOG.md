@@ -636,6 +636,12 @@
 
 ### Changed
 
+- A shorter build result: the downloads fold by part (closed, each
+  saying how many programs), a program's toolpath plot a *Plot* link on
+  its row rather than a row of its own; the summary gives the programs
+  in one row (how many, about how long) with each one's tool and time in
+  a fold, and no longer says "pins at machine X" for a blank without
+  index pins.
 - The form's fields are labelled in words (*Pickup frame direction*,
   not `body_pickup_frame_direction`); a field's name in the code, saved
   designs and help shows at the end of its hover text, and *Find a
