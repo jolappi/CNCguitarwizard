@@ -89,6 +89,7 @@
 - Shift and Alt/Option arrows stepping a number field by 10 and 0.1
 - A value that cannot be read marked at once, the reason under it
 - Undo and Redo tooltips naming the fields by their labels
+- / going to Find a setting
 - Index pins as wide as a main tool wider than 6 mm (an 8 mm end mill,
   8 mm dowels)
 - The neck's back carved with the ball nose alone, in one program

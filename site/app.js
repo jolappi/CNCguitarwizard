@@ -4556,6 +4556,15 @@ findSetting.addEventListener("keydown", (event) => {
     applyFormFilter();
   }
 });
+// "/" anywhere but a field goes to Find a setting.
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "/" || event.ctrlKey || event.metaKey || event.altKey) return;
+  if (event.target.closest?.("input, select, textarea, [contenteditable]")) return;
+  if (document.querySelector("dialog[open]")) return;
+  event.preventDefault();
+  findSetting.focus();
+  findSetting.select();
+});
 changedOnly.addEventListener("change", applyFormFilter);
 // A value changed (or set back) while only the changed ones show: shown,
 // or left out, once the change is done.

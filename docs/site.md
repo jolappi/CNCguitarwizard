@@ -42,7 +42,8 @@ Python.
    hover text) holds every word typed, underscores read as spaces — a
    field in an editor's pane too, its row in the form back while
    searching — opening their groups and folds and leaving out the rest;
-   emptied, every fold is as open as it was. Enter in it goes to the
+   emptied, every fold is as open as it was. `/` anywhere but a field
+   goes to it (its text selected); Enter in it goes to the
    first setting found (its value selected, ready to be typed over), and
    Escape empties it. *Show only the settings
    changed from their defaults* keeps, of those, the ones marked changed

@@ -4,6 +4,7 @@
 
 ### Added
 
+- `/` anywhere but a field goes to *Find a setting*.
 - A value that cannot be read (not a number, broken JSON) is marked red
   once it is given, the reason under it, instead of only at the build;
   the build's message names the field by its label too.
