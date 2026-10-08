@@ -4639,28 +4639,54 @@ loadDesignFile.addEventListener("change", () => {
 });
 
 // A file dragged onto the page: a design (.json) dropped anywhere is
-// loaded, and a banner says so while it is dragged. Any other file is
-// refused rather than opened by the browser in the page's place.
+// loaded, and an SVG or DXF dropped on an editor's drawing is read as its
+// outline (as its File ▾ Import does); a banner says which while it is
+// dragged, the drawing marked. Any other file is refused rather than
+// opened by the browser in the page's place.
 const dropBanner = document.getElementById("drop-banner");
 let dropBannerTimer = null;
+const DROP_EDITORS = [
+  [bodyEditor, "body", "the body's outline"],
+  [headstockEditor, "headstock", "the headstock's outline"],
+  [inlayEditor, "inlay", "the marker"],
+];
+
+// The editor whose drawing a file is dragged over, or none.
+function dropEditor(event) {
+  return DROP_EDITORS.find(([editor]) => editor.svg?.contains(event.target)) || null;
+}
+
+function showDropHint(over) {
+  dropBanner.textContent = over ? `Drop an SVG or DXF to import it as ${over[2]}` : "Drop a design (.json) to load it";
+  dropBanner.hidden = false;
+  for (const [editor] of DROP_EDITORS) editor.svg?.classList.toggle("file-target", editor === over?.[0]);
+}
+
+function hideDropHint() {
+  dropBanner.hidden = true;
+  for (const [editor] of DROP_EDITORS) editor.svg?.classList.remove("file-target");
+}
 
 document.addEventListener("dragover", (event) => {
   if (!event.dataTransfer?.types.includes("Files")) return;
   event.preventDefault();
-  dropBanner.textContent = "Drop a design (.json) to load it";
-  dropBanner.hidden = false;
-  // Dragged on, the banner stays; dragged off (or dropped), it goes.
+  showDropHint(dropEditor(event));
+  // Dragged on, the hint stays; dragged off (or dropped), it goes.
   clearTimeout(dropBannerTimer);
-  dropBannerTimer = setTimeout(() => { dropBanner.hidden = true; }, 200);
+  dropBannerTimer = setTimeout(hideDropHint, 200);
 });
 document.addEventListener("drop", (event) => {
   if (!event.dataTransfer?.types.includes("Files")) return;
   event.preventDefault();
-  dropBanner.hidden = true;
+  hideDropHint();
   const [file] = event.dataTransfer.files;
   if (!file || loadDesignButton.disabled) return;  // the page not ready yet
+  const over = dropEditor(event);
+  const outline = /\.(svg|dxf)$/i.test(file.name);
   if (/\.json$/i.test(file.name)) openDesign(file);
-  else setStatus(`${file.name} is not a design: drop a .json saved with Save design`, "bad");
+  else if (outline && over) importOutline(over[1], file);
+  else if (outline) setStatus(`Drop ${file.name} on an editor's drawing to import it`, "bad");
+  else setStatus(`${file.name} is neither a design (.json) nor an outline (SVG, DXF)`, "bad");
 });
 showAdvanced.addEventListener("change", applyAdvancedToggle);
 findSetting.addEventListener("input", applyFormFilter);

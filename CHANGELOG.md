@@ -4,6 +4,9 @@
 
 ### Added
 
+- An SVG or DXF dropped on an editor's drawing is imported as its
+  outline (the inlay marker in the inlay editor), as *Import* does; the
+  drawing is outlined and the banner says so while it is dragged.
 - A design (.json) dropped anywhere on the page is loaded, a banner
   saying so while it is dragged; any other file dropped is refused
   rather than opened by the browser in the page's place.

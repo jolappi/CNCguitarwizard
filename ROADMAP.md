@@ -95,6 +95,7 @@
 - Go to the field a build stops at
 - Ctrl/Cmd+S and Ctrl/Cmd+O saving and loading the design
 - A design dropped on the page loaded
+- An outline dropped on an editor's drawing imported
 - Index pins as wide as a main tool wider than 6 mm (an 8 mm end mill,
   8 mm dowels)
 - The neck's back carved with the ball nose alone, in one program

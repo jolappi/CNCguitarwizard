@@ -982,6 +982,9 @@ tiedostovalitsimen kuten *Load design* (selaimen oman sivun tallennuksen ja
 avauksen sijaan). Suunnitelmatiedoston (.json) voi myös pudottaa
 sivulle: raahattaessa yläreunan palkki kertoo, mitä pudotus tekee, ja
 muu pudotettu tiedosto torjutaan (selain ei avaa sitä sivun tilalle).
+Editorin piirrokseen pudotettu SVG tai DXF tuodaan sen ääriviivaksi
+(inlay-editorissa merkiksi) kuten *Import* tekee; raahattaessa piirros
+kehystetään ja palkki kertoo, mihin tiedosto tuodaan.
 **Load design** lataa tiedoston takaisin lomakkeeseen ja editoreihin. Tiedostovalitsin
 aukeaa heti napista (Safari ei avaa sitä vahvistusdialogin jälkeen), ja
 kysymys muutettujen arvojen korvaamisesta tulee vasta, kun tiedosto on
