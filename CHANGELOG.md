@@ -646,6 +646,9 @@
 
 ### Changed
 
+- The toolpath plots are chosen from a list by part (each program by its
+  step) with arrows to step through them, rather than a row of a button
+  each.
 - An editor's status says what an import made on a line of its own,
   above how the drawing stands, and a problem (what does not fit) in bold
   red, rather than one long sentence.

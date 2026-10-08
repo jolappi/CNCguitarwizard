@@ -735,25 +735,6 @@ function showResult(result) {
 
   document.getElementById("plan").innerHTML = result.plan_view;
 
-  const tabs = document.getElementById("tabs");
-  const toolpath = document.getElementById("toolpath");
-  tabs.innerHTML = "";
-  toolpath.innerHTML = "";
-  const previews = Object.keys(result.files).filter((name) => name.endsWith(".svg"));
-  previews.forEach((name, index) => {
-    const button = document.createElement("button");
-    button.textContent = name.replace(".svg", "");
-    button.addEventListener("click", () => {
-      for (const other of tabs.children) other.classList.remove("active");
-      button.classList.add("active");
-      toolpath.innerHTML = result.files[name];
-    });
-    tabs.appendChild(button);
-    // The body's top (a neck-through's block, on the neck) is shown first.
-    const first = ["Body_top.svg", "Neck_block_top.svg", "Neck_body_top.svg"].find((n) => previews.includes(n));
-    if (name === first || (previews.length === 1 && index === 0)) button.click();
-  });
-
   // One fold per part, the model and report first: each program numbered
   // in the order it is run, its toolpath plot a link on its row. The
   // folds start closed (Download all NC files has every program).
@@ -805,6 +786,53 @@ function showResult(result) {
       addFile(name, table, plots.has(`${stemOf(name)}.svg`) ? `${stemOf(name)}.svg` : null);
     }
   }
+
+  // The toolpath plots one at a time, chosen from a list by part, each
+  // program by its step (the body's top first), or stepped through with
+  // the arrows beside it.
+  const tabs = document.getElementById("tabs");
+  const toolpath = document.getElementById("toolpath");
+  tabs.innerHTML = "";
+  toolpath.innerHTML = "";
+  const chooser = document.createElement("select");
+  chooser.id = "toolpath-choice";
+  chooser.setAttribute("aria-label", "Toolpath plot");
+  for (const [part, members] of groups) {
+    const plots = members.filter((name) => name.endsWith(".svg")).sort((a, b) => rank(a) - rank(b));
+    if (!plots.length) continue;
+    const group = document.createElement("optgroup");
+    group.label = part;
+    for (const name of plots) {
+      const option = document.createElement("option");
+      option.value = name;
+      const step = programOf(name)?.step;
+      option.textContent = `${step ? `${step}. ` : ""}${stemOf(name)}`;
+      group.appendChild(option);
+    }
+    chooser.appendChild(group);
+  }
+  const show = () => {
+    toolpath.innerHTML = result.files[chooser.value] || "";
+  };
+  chooser.addEventListener("change", show);
+  const stepper = (label, title, by) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "secondary";
+    button.textContent = label;
+    button.title = title;
+    button.addEventListener("click", () => {
+      const count = chooser.options.length;
+      if (!count) return;
+      chooser.selectedIndex = (chooser.selectedIndex + by + count) % count;
+      show();
+    });
+    return button;
+  };
+  tabs.append(stepper("‹", "The plot before", -1), chooser, stepper("›", "The next plot", 1));
+  const first = ["Body_top.svg", "Neck_block_top.svg", "Neck_body_top.svg"].find((name) => name in result.files);
+  if (first) chooser.value = first;
+  show();
 
   function download(name, label) {
     const text = result.files[name];

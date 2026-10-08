@@ -870,6 +870,10 @@ Valitun kentän selitys näkyy sen alla (lomakkeessa ja editorien
 *Settings*-kohdissa) niin kauan kuin kenttä on valittuna: myös
 kosketusnäytöllä, jossa hover-tekstiä ei ole.
 
+Työratakuvat valitaan osittain ryhmitellystä listasta (ohjelmat
+vaiheittain, oletuksena rungon yläpuoli), ja nuolilla voi selata
+seuraavaan ja edelliseen.
+
 Runkoeditorin *Turn upright* näyttää piirroksen pystyssä, kaula ylöspäin
 (neljännes myötäpäivään; *Turn sideways* palauttaa vaakanäkymän, joka on
 oletus). Se on pelkkä näkymä: koordinaatit ja kaikki raahaukset toimivat
