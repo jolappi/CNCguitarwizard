@@ -4,6 +4,11 @@
 
 ### Added
 
+- A short tour of the basic path (*Tour* in the header, and by itself on
+  the first visit): the instrument, the body, the headstock, the
+  settings and Build, each lit up in turn with *Next*; in the drawings a
+  pointer pulls a handle or slides a pickup and puts it back, showing
+  what to do without changing the design. It ends asking for Build.
 - *Print* beside the summary prints a sheet for the workshop: the
   guitar, the summary, every program and the plan view, the rest of
   the page left out (the browser's own printing too, once there is a

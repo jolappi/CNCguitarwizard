@@ -930,6 +930,17 @@ Otsikkorivin *Shortcuts*-painike (tai `?`-näppäin muualla kuin kentässä)
 avaa listan sivun pikanäppäimistä ja hiiren liikkeistä; editorien omat
 kahvatoiminnot ovat niiden *How to edit* -ohjeissa.
 
+Otsikkorivin *Tour*-painike (ja ensimmäisellä käynnillä itsestään) käy
+peruspolun läpi viidessä vaiheessa: soitin ja nimi, runko, lapa (kun sillä
+on editori), asetukset ja Build. Kukin vaihe korostaa osansa ja himmentää
+muun sivun, ja kortissa on *Next* ja *Skip tour* (myös Esc). Runko- ja
+lapavaiheessa osoitin näyttää, mitä tehdä: se vetää satunnaisen kahvan
+ulos ja takaisin tai liu'uttaa mikrofonia kaulan suuntaan ja takaisin.
+Liike vain piirretään ja palautetaan täsmälleen, joten suunnitelma ja
+Undo-historia eivät muutu, ja käyttäjän oma painallus piirroksessa
+pysäyttää sen ensin. Viimeinen vaihe pyytää painamaan Buildia, ja
+rakennus päättää kierroksen.
+
 `/`-näppäin muualla kuin kentässä vie hakukenttään. Hakukentässä
 *Find a setting…* Enter vie ensimmäiseen löytyneeseen
 asetukseen (arvo valittuna, valmiina kirjoitettavaksi yli) ja Esc

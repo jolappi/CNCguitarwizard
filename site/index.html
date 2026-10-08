@@ -243,6 +243,33 @@
     box-shadow: 0 4px 14px rgba(31, 26, 20, .2); pointer-events: none;
   }
   .drop-banner[hidden] { display: none; }
+  /* The tour (see startTour): the part it is at lit and the rest dimmed,
+     its card, and the pointer that shows what to do in a drawing. */
+  .tour-spot {
+    position: fixed; z-index: 60; border: 2px solid var(--accent); border-radius: 8px;
+    box-shadow: 0 0 0 200vmax rgba(31, 26, 20, .45); pointer-events: none;
+  }
+  .tour-card {
+    position: fixed; z-index: 61; width: min(340px, calc(100vw - 24px)); box-sizing: border-box;
+    padding: 14px 16px; background: #fff; border: 1px solid var(--line); border-radius: 10px;
+    box-shadow: 0 8px 28px rgba(31, 26, 20, .25);
+  }
+  .tour-card h3 { margin: 0 0 6px; font-size: 16px; }
+  .tour-card p { margin: 0 0 12px; font-size: 14px; line-height: 1.45; }
+  .tour-foot { display: flex; align-items: center; gap: 8px; }
+  .tour-count { margin-right: auto; color: var(--muted); font-size: 13px; }
+  .tour-foot button { padding: 5px 14px; font-size: 13px; }
+  .tour-cursor {
+    position: fixed; z-index: 62; width: 26px; height: 26px; margin: -2px 0 0 -3px;
+    pointer-events: none; transform-origin: 3px 2px; transition: transform .12s;
+    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .35));
+  }
+  .tour-cursor svg { width: 100%; height: 100%; overflow: visible; }
+  .tour-cursor path { fill: #fff; stroke: #1f1a14; stroke-width: 1.4; stroke-linejoin: round; }
+  .tour-cursor .press-ring { fill: rgba(176, 122, 74, .4); opacity: 0; transition: opacity .12s; }
+  .tour-cursor.pressed { transform: scale(.85); }
+  .tour-cursor.pressed .press-ring { opacity: 1; }
+  :is(.tour-spot, .tour-card, .tour-cursor)[hidden] { display: none; }
   /* Save design while the design is changed since it was last saved. */
   #save-design.unsaved::after { content: "•"; margin-left: 6px; }
   .body-editor svg.file-target { outline: 3px dashed var(--accent); outline-offset: -3px; }
@@ -337,6 +364,7 @@
   <span class="credit">Created by yours truly, Jouni Lappi ·
     <a href="https://github.com/jolappi/CNCguitarwizard" target="_blank" rel="noopener">GitHub</a></span>
   <span id="status">Loading Python runtime…</span>
+  <button id="start-tour" class="secondary keys-button" type="button" title="A short tour: from an instrument to its NC and 3D files">Tour</button>
   <button id="show-keys" class="secondary keys-button" type="button" title="Keyboard and mouse shortcuts (?)">Shortcuts</button>
 </header>
 <main>
@@ -373,6 +401,7 @@
       <div class="bar"><div class="fill"></div></div>
       <span class="label"></span>
     </div>
+    <div id="instrument-rows">
     <div class="instrument">
       <label for="instrument">Instrument</label>
       <select id="instrument"></select>
@@ -381,6 +410,7 @@
       <label for="guitar-name">Guitar name</label>
       <input id="guitar-name" type="text" maxlength="60" placeholder="Prototype001"
         title="Names the NC download (name.zip) and the saved design">
+    </div>
     </div>
     </div>
     <div class="aside-form">
@@ -602,6 +632,25 @@
     </div>
   </form>
 </dialog>
+<!-- The tour (Tour in the header, and once on the first visit): the part
+     it is at lit, the rest dimmed, its card beside it, and a pointer that
+     shows what to do in the drawings. -->
+<div id="tour-spot" class="tour-spot" hidden></div>
+<div id="tour-card" class="tour-card" role="dialog" aria-live="polite" hidden>
+  <h3 id="tour-title"></h3>
+  <p id="tour-text"></p>
+  <div class="tour-foot">
+    <span id="tour-count" class="tour-count"></span>
+    <button id="tour-skip" class="secondary" type="button">Skip tour</button>
+    <button id="tour-next" type="button">Next</button>
+  </div>
+</div>
+<div id="tour-cursor" class="tour-cursor" hidden>
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <circle class="press-ring" cx="3" cy="2" r="7"></circle>
+    <path d="M3 2 L3 19 L7.6 14.8 L11 22 L14.2 20.5 L10.8 13.4 L17 13.4 Z"></path>
+  </svg>
+</div>
 <!-- The page's keys and mouse moves (Shortcuts in the header, or ?). -->
 <dialog id="keys-dialog" class="confirm keys">
   <form method="dialog">

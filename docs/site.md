@@ -469,6 +469,19 @@ Python.
    field), lists the page's keys and mouse moves in a dialog
    (`keys-dialog`): building, undo and redo, zooming and moving a
    drawing, Escape; each editor's own handles stay in its *How to edit*.
+7. **Tour**, beside it, walks the basic path in five steps — the
+   instrument and its name, the body, the headstock (while it has an
+   editor), the settings, and Build (`startTour`, `TOUR_STEPS`). Each
+   step lights its part up and dims the rest (`tour-spot`), with a card
+   beside it (*Next*, *Skip tour*, Escape). In the body and headstock
+   steps a pointer shows what to do (`demoBody`, `demoHeadstock`): it
+   pulls a handle of the outline out and back, or slides a pickup along
+   the neck and back, now and then at random — drawn only, through the
+   editors' own uncommitted drawing (`showPoint`, `showEdges`) and put
+   back exactly, so nothing in the design or its Undo changes, and a
+   press of the user's own in the drawing stops it first. The last step
+   asks for Build to be pressed, and building ends the tour. It runs by
+   itself once, on the first visit (`cncguitarwizard.toured`).
 
 FreeCAD cannot run in a browser, so `.FCStd` and STEP are made locally:
 download `Prototype001_freecad.py` and run

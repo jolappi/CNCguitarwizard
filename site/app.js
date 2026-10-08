@@ -132,6 +132,14 @@ async function boot() {
     const changed = restored && undoHistory.current !== defaults;
     setStatus(`Ready — ${manifest.wheel} (build ${manifest.build || "dev"})` +
       (changed ? " · your last design is back (Reset starts afresh)" : ""), "ok");
+    // The first visit begins with the tour, once the drawings are laid out.
+    let toured = true;
+    try {
+      toured = localStorage.getItem(TOURED) !== null;
+    } catch {
+      // No storage: no tour unasked, as it could not be remembered.
+    }
+    if (!toured) setTimeout(startTour, 1200);
   } catch (error) {
     console.error(error);
     setStatus("Failed to start", "bad");
@@ -936,6 +944,7 @@ document.addEventListener("visibilitychange", () => {
 syncTitle();
 
 async function build() {
+  endTour();  // the tour ends at Build
   clearError();
   let payload;
   try {
@@ -4791,6 +4800,305 @@ document.addEventListener("drop", (event) => {
   else if (outline) setStatus(`Drop ${file.name} on an editor's drawing to import it`, "bad");
   else setStatus(`${file.name} is neither a design (.json) nor an outline (SVG, DXF)`, "bad");
 });
+// ---------------------------------------------------------------------------
+// The tour: the basic path in a few steps, from an instrument to its NC and
+// 3D files. Each step lights its part of the page up (the rest dimmed) with
+// a card beside it, Next to go on; in the drawings a pointer shows what to
+// do, moving a handle or a pickup now and then and putting it back (shown
+// only: nothing is changed, and a press of the user's own stops it). It
+// ends at Build, asking for it to be pressed. It runs once on the first
+// visit, and again from Tour in the header.
+
+const TOURED = "cncguitarwizard.toured";
+const tourSpot = document.getElementById("tour-spot");
+const tourCard = document.getElementById("tour-card");
+const tourCursor = document.getElementById("tour-cursor");
+const tourNext = document.getElementById("tour-next");
+const tourSkip = document.getElementById("tour-skip");
+
+const TOUR_STEPS = [
+  {
+    target: () => document.getElementById("instrument-rows"),
+    title: "Choose the instrument",
+    text: "A guitar, a 7- or 8-string or a bass, and its name: the files are named after it.",
+  },
+  {
+    target: () => bodyEditor.svg,
+    shown: () => !bodyEditor.panel.classList.contains("hidden"),
+    title: "Shape the body",
+    text: "Drag a round handle to shape the outline, or a pickup to move it. Start from, above the drawing, " +
+      "gives you another body to begin with.",
+    demo: (signal) => demoBody(signal),
+  },
+  {
+    target: () => headstockEditor.svg,
+    shown: () => !headstockEditor.panel.classList.contains("hidden"),
+    title: "Shape the headstock",
+    text: "The same here: drag its handles, and the tuner holes stay clear of the edge. The inlays below work " +
+      "the same way.",
+    demo: (signal) => demoHeadstock(signal),
+  },
+  {
+    target: () => findSetting,
+    title: "Fine-tune, if you like",
+    text: "Every other value is in the list below: find one by its name. The defaults make a playable guitar, " +
+      "so you can leave them as they are.",
+  },
+  {
+    target: () => buildButton,
+    title: "Build it",
+    text: "Press Build 3D and CNC files: the NC programs for your CNC, the FreeCAD script for the 3D model and " +
+      "plots of every toolpath appear, ready to download.",
+  },
+];
+
+const tour = {
+  steps: [],
+  index: -1,
+  frame: 0,
+  controller: null,   // stops the step's showing in the drawing
+  restore: null,      // puts back at once what the showing has moved
+  cursorAt: null,
+};
+
+function startTour() {
+  try {
+    localStorage.setItem(TOURED, "1");
+  } catch {
+    // No storage: the tour may come again on the next visit.
+  }
+  endTour();
+  tour.steps = TOUR_STEPS.filter((step) => !step.shown || step.shown());
+  tourSpot.hidden = false;
+  tourCard.hidden = false;
+  showTourStep(0);
+  const follow = () => {
+    placeTour();
+    tour.frame = requestAnimationFrame(follow);
+  };
+  follow();
+}
+
+function showTourStep(index) {
+  stopTourDemo();
+  tour.index = index;
+  const step = tour.steps[index];
+  const last = index === tour.steps.length - 1;
+  document.getElementById("tour-title").textContent = step.title;
+  document.getElementById("tour-text").textContent = step.text;
+  document.getElementById("tour-count").textContent = `${index + 1} / ${tour.steps.length}`;
+  tourNext.hidden = last;
+  tourSkip.textContent = last ? "Close" : "Skip tour";
+  step.target().scrollIntoView({ block: "center", behavior: "smooth" });
+  (last ? tourSkip : tourNext).focus({ preventScroll: true });
+  if (step.demo) {
+    tour.controller = new AbortController();
+    step.demo(tour.controller.signal);
+  }
+}
+
+function endTour() {
+  if (tour.index < 0) return;
+  stopTourDemo();
+  cancelAnimationFrame(tour.frame);
+  tour.index = -1;
+  tourSpot.hidden = true;
+  tourCard.hidden = true;
+}
+
+// The light on the step's part and the card beside it, every frame: the
+// page may be scrolling. The card goes under the part, else over it, else
+// at the foot of the window.
+function placeTour() {
+  const box = tour.steps[tour.index].target().getBoundingClientRect();
+  const pad = 6;
+  Object.assign(tourSpot.style, {
+    left: `${box.left - pad}px`, top: `${box.top - pad}px`,
+    width: `${box.width + 2 * pad}px`, height: `${box.height + 2 * pad}px`,
+  });
+  const width = tourCard.offsetWidth, height = tourCard.offsetHeight, margin = 12;
+  let top = box.bottom + pad + margin;
+  if (top + height > innerHeight - margin) top = box.top - pad - margin - height;
+  if (top < margin) top = innerHeight - height - margin;
+  const left = Math.min(Math.max(margin, box.left), innerWidth - width - margin);
+  Object.assign(tourCard.style, { left: `${left}px`, top: `${top}px` });
+}
+
+function stopTourDemo() {
+  tour.controller?.abort();
+  tour.controller = null;
+  tour.restore?.();
+  tour.restore = null;
+  tour.cursorAt = null;
+  tourCursor.hidden = true;
+  tourCursor.classList.remove("pressed");
+}
+
+// A frame of the showing at a time, t from 0 to 1 (eased in and out);
+// false once the step is left.
+function tourAnimate(duration, frame, signal) {
+  return new Promise((resolve) => {
+    const start = performance.now();
+    const tick = (now) => {
+      if (signal.aborted) {
+        resolve(false);
+        return;
+      }
+      const t = Math.min(1, (now - start) / duration);
+      frame(t < 0.5 ? 2 * t * t : 1 - (2 - 2 * t) ** 2 / 2);
+      if (t < 1) requestAnimationFrame(tick);
+      else resolve(true);
+    };
+    requestAnimationFrame(tick);
+  });
+}
+
+function tourPause(ms, signal) {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(!signal.aborted), ms);
+    signal.addEventListener("abort", () => {
+      clearTimeout(timer);
+      resolve(false);
+    }, { once: true });
+  });
+}
+
+function placeTourCursor([x, y]) {
+  tour.cursorAt = [x, y];
+  Object.assign(tourCursor.style, { left: `${x}px`, top: `${y}px` });
+  tourCursor.hidden = false;
+}
+
+// The middle of elements on the page.
+function centreOf(...elements) {
+  const boxes = elements.map((element) => element.getBoundingClientRect());
+  const left = Math.min(...boxes.map((b) => b.left)), right = Math.max(...boxes.map((b) => b.right));
+  const top = Math.min(...boxes.map((b) => b.top)), bottom = Math.max(...boxes.map((b) => b.bottom));
+  return [(left + right) / 2, (top + bottom) / 2];
+}
+
+// The pointer glides to a point (found each frame), from where it was or
+// from the middle of the step's part.
+function moveTourCursor(to, signal) {
+  const from = tour.cursorAt || centreOf(tour.steps[tour.index].target());
+  return tourAnimate(650, (t) => {
+    const [x, y] = to();
+    placeTourCursor([from[0] + (x - from[0]) * t, from[1] + (y - from[1]) * t]);
+  }, signal);
+}
+
+// Press, move out and back, let go: the shape of every showing.
+async function tourDrag(at, drag, signal) {
+  if (!(await moveTourCursor(at, signal))) return false;
+  tourCursor.classList.add("pressed");
+  const done = await tourAnimate(700, drag, signal)
+    && await tourPause(250, signal)
+    && await tourAnimate(700, (t) => drag(1 - t), signal);
+  tourCursor.classList.remove("pressed");
+  tour.restore?.();
+  tour.restore = null;
+  return done;
+}
+
+const pickAny = (items) => items[Math.floor(Math.random() * items.length)];
+
+// The body: a handle of the outline pulled out and back, then a pickup
+// slid along the neck and back.
+async function demoBody(signal) {
+  const editor = bodyEditor;
+  // Shown once the step has scrolled into view and the drawing is laid out.
+  do {
+    if (!(await tourPause(700, signal))) return;
+  } while (!editor.layout || !editor.handles?.length);
+  for (;;) {
+    const index = Math.floor(Math.random() * editor.points.length);
+    const original = [...editor.points[index]];
+    const start = editor.widen(original);
+    const shown = editor.points.map((point) => editor.widen(point));
+    const middle = [0, 1].map((axis) => shown.reduce((sum, point) => sum + point[axis], 0) / shown.length);
+    const away = [start[0] - middle[0], start[1] - middle[1]];
+    const length = Math.hypot(...away) || 1;
+    const out = away.map((value) => (value / length) * 14);
+    tour.restore = () => {
+      editor.points[index] = [...original];
+      editor.showPoint(index, start);
+    };
+    const handle = () => centreOf(editor.handles[index]);
+    const pulled = await tourDrag(handle, (t) => {
+      const point = [start[0] + out[0] * t, start[1] + out[1] * t];
+      editor.points[index] = editor.unwiden(point);
+      editor.showPoint(index, point);
+      placeTourCursor(handle());
+    }, signal);
+    if (!pulled || !(await tourPause(500, signal))) return;
+
+    const groups = [...new Set([...editor.svg.querySelectorAll('[data-group^="pickup:"]')].map((n) => n.dataset.group))];
+    if (groups.length) {
+      const members = [...editor.svg.querySelectorAll(`[data-group="${pickAny(groups)}"]`)];
+      const transforms = members.map((member) => member.getAttribute("transform"));
+      tour.restore = () => members.forEach((member, i) => {
+        if (transforms[i] === null) member.removeAttribute("transform");
+        else member.setAttribute("transform", transforms[i]);
+      });
+      const along = (Math.random() < 0.5 ? -1 : 1) * 22;
+      const slid = await tourDrag(() => centreOf(...members), (t) => {
+        for (const member of members) member.setAttribute("transform", `translate(${along * t} 0)`);
+        placeTourCursor(centreOf(...members));
+      }, signal);
+      if (!slid) return;
+    }
+    if (!(await tourPause(900, signal))) return;
+  }
+}
+
+// The headstock: a handle of one edge pulled out and back.
+async function demoHeadstock(signal) {
+  const editor = headstockEditor;
+  do {
+    if (!(await tourPause(700, signal))) return;
+  } while (!editor.edgeHandles);
+  for (;;) {
+    const side = pickAny(["bass", "treble"]);
+    const edge = editor.edges[side];
+    if (edge.length < 2) return;
+    const index = Math.floor(Math.random() * (edge.length - 1));  // not the tip's corner
+    const [d, h] = edge[index];
+    const sign = editor.sign(side);
+    const edges = { bass: editor.edges.bass.map((p) => [...p]), treble: editor.edges.treble.map((p) => [...p]) };
+    const tip = editor.tip.map((p) => [...p]);
+    const handle = editor.edgeHandles[side][index];
+    tour.restore = () => {
+      editor.edges.bass = edges.bass.map((p) => [...p]);
+      editor.edges.treble = edges.treble.map((p) => [...p]);
+      editor.tip = tip.map((p) => [...p]);
+      editor.showEdges();
+      handle.setAttribute("cx", -d);
+      handle.setAttribute("cy", -sign * h);
+    };
+    const pulled = await tourDrag(() => centreOf(handle), (t) => {
+      editor.place(side, index, [-d, sign * (h + 6 * t)]);
+      editor.showEdges();
+      const [nd, nh] = editor.edges[side][index];
+      handle.setAttribute("cx", -nd);
+      handle.setAttribute("cy", -sign * nh);
+      placeTourCursor(centreOf(handle));
+    }, signal);
+    if (!pulled || !(await tourPause(900, signal))) return;
+  }
+}
+
+tourNext.addEventListener("click", () => showTourStep(tour.index + 1));
+tourSkip.addEventListener("click", endTour);
+document.getElementById("start-tour").addEventListener("click", startTour);
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && tour.index >= 0 && !document.querySelector("dialog[open]")) endTour();
+});
+// A press in a drawing of the user's own stops the showing there first,
+// so their drag starts from the drawing as it is.
+for (const editor of [bodyEditor, headstockEditor]) {
+  editor.svg.addEventListener("pointerdown", stopTourDemo, true);
+}
+
 showAdvanced.addEventListener("change", applyAdvancedToggle);
 findSetting.addEventListener("input", applyFormFilter);
 // In Find a setting, Enter goes to the first setting found (its value
