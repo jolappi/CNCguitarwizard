@@ -978,6 +978,10 @@ nauhat, koot, syvyys ja reunamarginaali sekä otelaudan reunanauha. Koko
 soittimen asetukset, jotka muuttavat kaikkia kuvia (mensuuri,
 kielimäärä, kätisyys, satulan leveys), jäävät lomakkeen alkuun, ja
 hienosäätömitat *Advanced*-taittoon.
+*Save design* -painikkeessa on merkki (*Save design •*), kun suunnitelma
+eroaa viimeksi tallennetusta tai ladatusta (muistetaan selaimessa myös
+uudelleenlatauksen yli); jos mitään ei ole vielä tallennettu tai ladattu,
+merkki tulee, kun jotain asetusta on muutettu tai kitara nimetty.
 Ctrl/Cmd+S tallentaa suunnitelman kuten *Save design* ja Ctrl/Cmd+O avaa
 tiedostovalitsimen kuten *Load design* (selaimen oman sivun tallennuksen ja
 avauksen sijaan). Suunnitelmatiedoston (.json) voi myös pudottaa

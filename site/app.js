@@ -1343,6 +1343,7 @@ function saveDesign() {
   link.remove();
   setTimeout(() => URL.revokeObjectURL(link.href), 1000);
   setStatus(`Saved ${link.download}`, "ok");
+  markSaved();
 }
 
 // An editor's outline as an SVG template to draw in another program, and
@@ -1580,6 +1581,7 @@ async function loadDesign(file) {
   try {
     const unknown = applyDesign(JSON.parse(await file.text()));
     setStatus(`Loaded ${file.name}`, "ok");
+    markSaved();
     if (unknown.length) {
       showError(`Loaded ${file.name}, but skipped settings this version does not have: ${unknown.join(", ")}.`);
     }
@@ -1741,12 +1743,51 @@ const undoHistory = {
     autosave();
     markStale();
     countChanged();
+    markUnsaved();
   },
 };
 guitarName.addEventListener("input", () => {
   autosave();
   syncTitle();
+  markUnsaved();
 });
+
+// Save design is marked while the design differs from the one last saved
+// or loaded in this browser (kept there, so that a reload still knows
+// it); with none saved or loaded yet, once a setting is changed or the
+// guitar named.
+const SAVED_DESIGN = "cncguitarwizard.savedDesign";
+const saveDesignTitle = saveDesignButton.title;
+let savedDesign = null;
+try {
+  savedDesign = localStorage.getItem(SAVED_DESIGN);
+} catch {
+  // No storage: what this page saves or loads is still remembered.
+}
+
+function designKey() {
+  return `${guitarName.value.trim()}\n${undoHistory.current}`;
+}
+
+function markSaved() {
+  undoHistory.flush();  // a change still settling is part of it
+  savedDesign = designKey();
+  try {
+    localStorage.setItem(SAVED_DESIGN, savedDesign);
+  } catch {
+    // No storage: remembered until the page is left.
+  }
+  markUnsaved();
+}
+
+function markUnsaved() {
+  if (undoHistory.current === null) return;  // a field mid-edit
+  const unsaved = savedDesign === null
+    ? form.querySelector(".changed") !== null || guitarName.value.trim() !== ""
+    : designKey() !== savedDesign;
+  saveDesignButton.classList.toggle("unsaved", unsaved);
+  saveDesignButton.title = unsaved ? `${saveDesignTitle} · changed since last saved` : saveDesignTitle;
+}
 
 // A drag writes its values when it ends; until then nothing is kept.
 window.addEventListener("pointerdown", () => { undoHistory.pointerDown = true; }, true);

@@ -277,7 +277,11 @@ Python.
    headstock edges included (`{"format": "cncguitarwizard-design",
    "version": 1, "name", "instrument", "prototype", "machining"}`), named
    for the guitar (*Guitar name*, beside the instrument) when it has one
-   (Ctrl/Cmd+S too, in place of the browser's saving the page). **Load
+   (Ctrl/Cmd+S too, in place of the browser's saving the page). The
+   button is marked (*Save design •*, `markUnsaved`) while the design
+   differs from the one last saved or loaded in this browser (kept there,
+   `cncguitarwizard.savedDesign`, so a reload still knows it); with none
+   saved or loaded yet, once a setting is changed or the guitar named. **Load
    design** (or Ctrl/Cmd+O, or the file dropped anywhere on the page: a
    banner at the top says so while it is dragged, `drop-banner`; an SVG
    or DXF dropped on an editor's drawing is read as its outline, or the

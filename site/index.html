@@ -243,6 +243,8 @@
     box-shadow: 0 4px 14px rgba(31, 26, 20, .2); pointer-events: none;
   }
   .drop-banner[hidden] { display: none; }
+  /* Save design while the design is changed since it was last saved. */
+  #save-design.unsaved::after { content: "•"; margin-left: 6px; }
   .body-editor svg.file-target { outline: 3px dashed var(--accent); outline-offset: -3px; }
   dialog.confirm { border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px; max-width: min(420px, calc(100vw - 32px)); color: var(--ink); background: #fff; }
   dialog.confirm::backdrop { background: rgba(31, 26, 20, .35); }
