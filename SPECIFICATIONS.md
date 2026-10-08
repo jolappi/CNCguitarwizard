@@ -824,6 +824,14 @@ näkyvissä, kun tulos tai virhe tulee, sivu vierittää sen esiin.
 *Build 3D and CNC files* -painike on omalla, sarakkeen levyisellä
 rivillään; *Reset*, *Undo* ja *Redo* ovat sen alla.
 
+Editorien painikerivit mahtuvat yhdelle riville: SVG- ja DXF-pohjien
+vienti ja tuonti ovat *File ▾* -valikossa, runkoeditorin *Auto*-painikkeet
+näkyvät vain ominaisuuden ollessa päällä (pleksi, kyynärvarren muotoilu,
+porrastettu kansi, vatsan muotoilu) ja *New pattern* vain satunnaisen
+(ei piirretyn) kaiverruksen kanssa. Leveällä näytöllä lomakesarake pysyy
+näkyvissä, kun piirrokset ja tulokset vierivät, joten editorien omat
+*Undo*/*Redo* näkyvät vain kapealla näytöllä.
+
 Runkoeditorin *Turn upright* näyttää piirroksen pystyssä, kaula ylöspäin
 (neljännes myötäpäivään; *Turn sideways* palauttaa vaakanäkymän, joka on
 oletus). Se on pelkkä näkymä: koordinaatit ja kaikki raahaukset toimivat

@@ -247,8 +247,10 @@ Python.
    this version does not know are skipped and listed,
    and a file that is not a design is refused. Nothing is stored on a
    server.
-   **Undo** and **Redo** (beside *Reset* and in each editor's pane, or
-   Ctrl/Cmd+Z and Ctrl/Cmd+Shift+Z / Ctrl+Y) step back and forward
+   **Undo** and **Redo** (beside *Reset* — on a wide screen the form
+   column stays in view while the drawings and results scroll, so they
+   are always at hand there; on a narrow one each editor's pane has them
+   too — or Ctrl/Cmd+Z and Ctrl/Cmd+Shift+Z / Ctrl+Y) step back and forward
    through the design's changes: `undoHistory` in `app.js` keeps every
    form value (`collectValues()`, the instrument included) once a change
    has settled — a drag in an editor (kept when it ends), a template, a
@@ -258,6 +260,13 @@ Python.
    One history serves the whole page; a button's tooltip names the fields
    its step changes, and a new change clears the redo steps. In a text
    field the keys keep the browser's own undo of the typing.
+   The editors' button rows keep to one line: their templates' four
+   buttons sit in a *File ▾* menu (`details.menu`, closing once one is
+   chosen or on a click elsewhere), and the body editor's *Auto
+   pickguard*, *Auto arm contour*, *Auto steps* and *Auto belly cut*
+   show only with a pickguard, an arm contour, a stepped top or a belly
+   cut on, *New pattern* only with an engraving laid out at random (not
+   a drawn one; `syncBodyButtons`).
    **Export SVG** and **Import SVG** in the body and headstock editors
    take an outline to another drawing program (Inkscape, Illustrator,
    Affinity Designer, a CAD program) and back; **Export DXF** and

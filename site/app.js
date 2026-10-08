@@ -134,6 +134,7 @@ function renderForm() {
   mirrorEditorFields();
   headstockEditor.fillTemplates();
   inlayEditor.fillTemplates();
+  syncBodyButtons();
   setTimeout(() => headstockEditor.sync(), 0);
   setTimeout(() => inlayEditor.refresh(), 0);
   undoHistory.note();
@@ -2711,6 +2712,38 @@ const bodyEditor = {
 
 document.getElementById("body-editor-reset").addEventListener("click", () => bodyEditor.reset());
 document.getElementById("body-editor-turn").addEventListener("click", () => bodyEditor.turn(!bodyEditor.upright));
+
+// A menu (File ▾) closes once one of its buttons is chosen, or on a
+// click anywhere else.
+for (const menu of document.querySelectorAll("details.menu")) {
+  menu.addEventListener("click", (event) => {
+    if (event.target.closest(".menu-items button")) menu.open = false;
+  });
+}
+document.addEventListener("click", (event) => {
+  for (const menu of document.querySelectorAll("details.menu[open]")) {
+    if (!menu.contains(event.target)) menu.open = false;
+  }
+});
+
+// The body editor's Auto buttons only where they do something (a
+// pickguard, an arm contour, a stepped top, a belly cut on), and New
+// pattern with an engraving laid out at random (not a drawn one).
+function syncBodyButtons() {
+  const field = (name) => form.querySelector(`[data-set="prototype"][data-name="${name}"]`);
+  const on = (name) => Boolean(field(name)?.checked);
+  const positive = (name) => Number(field(name)?.value) > 0;
+  const shown = {
+    "body-editor-auto-guard": on("body_pickguard"),
+    "body-editor-auto-arm": positive("body_arm_contour_depth"),
+    "body-editor-auto-steps": on("body_stepped_top"),
+    "body-editor-auto-belly": positive("body_belly_cut_depth"),
+    "body-editor-new-pattern": on("body_engraving") && field("body_engraving_pattern")?.value !== "drawn",
+  };
+  for (const [id, visible] of Object.entries(shown)) document.getElementById(id).hidden = !visible;
+}
+form.addEventListener("change", syncBodyButtons);
+form.addEventListener("input", syncBodyButtons);
 try {
   if (localStorage.getItem("cncguitarwizard.bodyUpright") === "1") bodyEditor.turn(true);
 } catch {

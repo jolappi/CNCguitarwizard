@@ -633,6 +633,14 @@
 
 ### Changed
 
+- Tidier editor button rows, each on one line: *Export SVG*, *Import
+  SVG*, *Export DXF* and *Import DXF* in a *File ▾* menu; the body
+  editor's *Auto* buttons only with their feature on (*Auto pickguard*
+  with a pickguard, and so on), *New pattern* only with an engraving
+  laid out at random. On a wide screen the form column stays in view
+  while the drawings and results scroll, its *Build*, *Undo* and *Redo*
+  always at hand, so the editors' own *Undo* and *Redo* show only on a
+  narrow screen.
 - A *Reroll* button beside the engraving's random seed
   (`body_engraving_seed`), in the form and the body editor's *Settings*,
   lays the pattern out afresh, as *New pattern* does.
