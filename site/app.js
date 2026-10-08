@@ -3136,6 +3136,17 @@ for (const link of jumpLinks) {
 }
 syncJump();
 
+// The list of shortcuts: from the header, or ? anywhere but a field.
+const keysDialog = document.getElementById("keys-dialog");
+document.getElementById("show-keys").addEventListener("click", () => keysDialog.showModal());
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "?" || event.ctrlKey || event.metaKey || event.altKey) return;
+  if (event.target.closest?.("input, select, textarea, [contenteditable]")) return;
+  if (document.querySelector("dialog[open]")) return;
+  event.preventDefault();
+  keysDialog.showModal();
+});
+
 // A menu (File ▾) closes once one of its buttons is chosen, on a click
 // anywhere else, or on Escape (the keyboard back on its title).
 for (const menu of document.querySelectorAll("details.menu")) {

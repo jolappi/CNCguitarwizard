@@ -234,6 +234,14 @@
   dialog.confirm::backdrop { background: rgba(31, 26, 20, .35); }
   dialog.confirm p { margin: 0 0 14px; }
   dialog.confirm .buttons { display: flex; justify-content: flex-end; gap: 8px; }
+  button.keys-button { padding: 3px 10px; font-size: 12.5px; font-weight: 500; align-self: center; }
+  dialog.keys { max-width: min(540px, calc(100vw - 32px)); }
+  dialog.keys h2 { margin: 0 0 12px; font-size: 17px; }
+  dialog.keys dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 0 0 12px; font-size: 13.5px; }
+  dialog.keys dt { white-space: nowrap; }
+  dialog.keys dd { margin: 0; }
+  dialog.keys .note { color: var(--muted); font-size: 13px; }
+  kbd { padding: 1px 5px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; background: #fbf8f3; font: inherit; font-size: 12px; }
   button:disabled { opacity: .5; cursor: default; }
   button.busy { opacity: 1; background: #b07a4a; border-color: #b07a4a; padding-left: 34px; position: relative; }
   button.busy::before {
@@ -294,6 +302,7 @@
   <span class="credit">Created by yours truly, Jouni Lappi ·
     <a href="https://github.com/jolappi/CNCguitarwizard" target="_blank" rel="noopener">GitHub</a></span>
   <span id="status">Loading Python runtime…</span>
+  <button id="show-keys" class="secondary keys-button" type="button" title="Keyboard and mouse shortcuts (?)">Shortcuts</button>
 </header>
 <main>
   <aside>
@@ -550,6 +559,27 @@
     <div class="buttons">
       <button value="no" class="secondary">Cancel</button>
       <button value="yes">OK</button>
+    </div>
+  </form>
+</dialog>
+<!-- The page's keys and mouse moves (Shortcuts in the header, or ?). -->
+<dialog id="keys-dialog" class="confirm keys">
+  <form method="dialog">
+    <h2>Shortcuts</h2>
+    <dl>
+      <dt><kbd>Ctrl/Cmd</kbd>+<kbd>Enter</kbd></dt><dd>Build, from anywhere on the page</dd>
+      <dt><kbd>Ctrl/Cmd</kbd>+<kbd>Z</kbd></dt><dd>Undo (text being typed keeps the browser's own)</dd>
+      <dt><kbd>Ctrl/Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd>, <kbd>Ctrl/Cmd</kbd>+<kbd>Y</kbd></dt><dd>Redo</dd>
+      <dt><kbd>Ctrl/Cmd</kbd>+wheel, pinch</dt><dd>Zoom a drawing or a plot about the pointer</dd>
+      <dt>Drag the background</dt><dd>Move a zoomed drawing</dd>
+      <dt>Double-click</dt><dd>Fit the whole drawing again</dd>
+      <dt><kbd>Esc</kbd></dt><dd>Close a menu, or this list</dd>
+      <dt><kbd>?</kbd></dt><dd>This list</dd>
+    </dl>
+    <p class="note">Each editor's handles (Shift-drag, Alt/Option-click and the rest) are in its
+      <em>How to edit</em>.</p>
+    <div class="buttons">
+      <button value="close">Close</button>
     </div>
   </form>
 </dialog>

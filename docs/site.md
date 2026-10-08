@@ -422,6 +422,10 @@ Python.
    tools and run times. The name is made safe for a file name
    (`webapp.archive_name`: letters, digits, spaces, dots, dashes and
    underscores stay).
+6. **Shortcuts**, at the right of the header (or `?` anywhere but a
+   field), lists the page's keys and mouse moves in a dialog
+   (`keys-dialog`): building, undo and redo, zooming and moving a
+   drawing, Escape; each editor's own handles stay in its *How to edit*.
 
 FreeCAD cannot run in a browser, so `.FCStd` and STEP are made locally:
 download `Prototype001_freecad.py` and run

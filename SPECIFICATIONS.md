@@ -915,6 +915,10 @@ edessä on *Building…*, ja jos rakennus päättyy toisen välilehden ollessa
 edessä, otsikko kertoo tuloksen (*✓ Built* tai *✗ Build failed*), kunnes
 sivu on taas näkyvissä.
 
+Otsikkorivin *Shortcuts*-painike (tai `?`-näppäin muualla kuin kentässä)
+avaa listan sivun pikanäppäimistä ja hiiren liikkeistä; editorien omat
+kahvatoiminnot ovat niiden *How to edit* -ohjeissa.
+
 Runkoeditorin *Turn upright* näyttää piirroksen pystyssä, kaula ylöspäin
 (neljännes myötäpäivään; *Turn sideways* palauttaa vaakanäkymän, joka on
 oletus). Se on pelkkä näkymä: koordinaatit ja kaikki raahaukset toimivat

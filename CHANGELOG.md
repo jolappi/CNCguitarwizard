@@ -4,6 +4,8 @@
 
 ### Added
 
+- *Shortcuts* in the header (or `?`) lists the page's keys and mouse
+  moves.
 - The tab's title is the guitar's name, with *Building…* in front while
   it builds; a build that ends with another tab in front says there how
   it went (*✓ Built*, *✗ Build failed*) until the page is seen again.
