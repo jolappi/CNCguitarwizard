@@ -23,7 +23,7 @@ import textwrap
 import types
 import typing
 import zipfile
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -43,6 +43,7 @@ from .drawings import (
     fit_headstock,
     read_template_outline,
     read_template_pattern,
+    template_dxf,
     template_svg,
 )
 from .drawings.outlines import headstock_spans
@@ -1427,8 +1428,10 @@ _REFERENCE_COLOURS = {
 """The reference layer's colour for each kind of body feature."""
 
 
-def outline_template(payload: dict[str, Any], part: str) -> dict[str, Any]:
-    """Return the body's, the headstock's or a marker's outline as an SVG template.
+def outline_template(
+    payload: dict[str, Any], part: str, kind: str = "svg"
+) -> dict[str, Any]:
+    """Return the body's, the headstock's or a marker's outline as a template.
 
     The template (see ``drawings.template_svg``) is drawn 1:1 in
     millimetres, as the editor shows the design (mirrored for a
@@ -1438,24 +1441,31 @@ def outline_template(payload: dict[str, Any], part: str) -> dict[str, Any]:
     cavities and bridge line, or the nut, tuner holes (and the edge's
     clearance round them) and truss-rod cover, or the first marker's
     fret space and where its corners fit — and three registration
-    marks. ``import_outline`` reads it back.
+    marks. As DXF for a CAD program (``drawings.template_dxf``) it has the
+    same layers, the outline a polyline with a point at every handle.
+    ``import_outline`` reads either back.
 
     Args:
         payload: ``{"prototype": {...}}`` as for ``start_build``.
         part: ``"body"`` (a drawn, Your design, body), ``"headstock"``
             (a drawn headstock) or ``"inlay"`` (the fret markers' shape,
             drawn on the first marker as in the inlay editor).
+        kind: ``"svg"`` or ``"dxf"``.
 
     Returns:
-        ``{"svg": text}`` or ``{"error": message}``.
+        ``{kind: text}`` or ``{"error": message}``.
     """
+    renders = {"svg": template_svg, "dxf": template_dxf}
+    if kind not in renders:
+        return {"error": f"There is no {kind!r} template."}
+    render = renders[kind]
     try:
         if part == "body":
-            return {"svg": _body_template(payload)}
+            return {kind: _body_template(payload, render)}
         if part == "headstock":
-            return {"svg": _headstock_template(payload)}
+            return {kind: _headstock_template(payload, render)}
         if part == "inlay":
-            return {"svg": _inlay_template(payload)}
+            return {kind: _inlay_template(payload, render)}
         return {"error": f"There is no {part!r} outline."}
     except _LaidOutError as error:
         return {"error": str(error)}
@@ -1466,7 +1476,8 @@ def outline_template(payload: dict[str, Any], part: str) -> dict[str, Any]:
 def import_outline(payload: dict[str, Any], part: str, svg: str) -> dict[str, Any]:
     """Return the form values that draw an outline read from a template.
 
-    The outline is placed by the template's registration marks and turned
+    The template is an SVG or a DXF file, told apart by its text. The
+    outline is placed by the template's registration marks and turned
     into the editor's own handles (``drawings.fit_closed_spline``,
     ``drawings.fit_headstock``), every one on the drawn line, as many as
     keep the editor's curve within 0.25 mm of it; a marker's into its
@@ -1477,7 +1488,7 @@ def import_outline(payload: dict[str, Any], part: str, svg: str) -> dict[str, An
     Args:
         payload: ``{"prototype": {...}}`` as for ``start_build``.
         part: ``"body"``, ``"headstock"`` or ``"inlay"``.
-        svg: The SVG file's text.
+        svg: The SVG or DXF file's text.
 
     Returns:
         ``{"values": {...}, "message": text}`` — for a body
@@ -1516,7 +1527,9 @@ def _drawn_body(payload: dict[str, Any]) -> tuple[YourDesignShape, dict[str, Any
     return shape, layout
 
 
-def _body_template(payload: dict[str, Any]) -> str:
+def _body_template(
+    payload: dict[str, Any], render: Callable[..., str] = template_svg
+) -> str:
     shape, layout = _drawn_body(payload)
     widening = float(layout["widening"] or 0.0)
     points = [Point2D(x, y) for x, y in widen_points(shape.control_points, widening)]
@@ -1583,7 +1596,7 @@ def _body_template(payload: dict[str, Any]) -> str:
             )
             for side in (-1.0, 1.0)
         ]
-    return template_svg(
+    return render(
         "CNCguitarwizard body outline",
         TemplateFrame(_BODY_MARKS, bool(layout["mirrored"])),
         closed_catmull_rom_spans(points),
@@ -1718,7 +1731,9 @@ def _drawn_headstock(
     return parameters, layout
 
 
-def _headstock_template(payload: dict[str, Any]) -> str:
+def _headstock_template(
+    payload: dict[str, Any], render: Callable[..., str] = template_svg
+) -> str:
     parameters, layout = _drawn_headstock(payload)
     plan = parameters.headstock_plan()
     half = layout["nut_half_width"]
@@ -1779,7 +1794,7 @@ def _headstock_template(payload: dict[str, Any]) -> str:
         )
         for line in (lettering["lines"] if lettering else ())
     ]
-    return template_svg(
+    return render(
         "CNCguitarwizard headstock outline",
         TemplateFrame(_HEADSTOCK_MARKS, bool(layout["mirrored"])),
         headstock_spans(plan),
@@ -1876,7 +1891,9 @@ def _inlay_share(layout: dict[str, Any], point: Point2D) -> tuple[float, float]:
     return point.x / length, layout["bass_sign"] * point.y / half
 
 
-def _inlay_template(payload: dict[str, Any]) -> str:
+def _inlay_template(
+    payload: dict[str, Any], render: Callable[..., str] = template_svg
+) -> str:
     layout = _laid_out_inlay(payload)
     length = layout["back"] - layout["front"]
     pad = 6.0
@@ -1934,7 +1951,7 @@ def _inlay_template(payload: dict[str, Any]) -> str:
             dashed=True,
         ),
     ]
-    return template_svg(
+    return render(
         "CNCguitarwizard inlay marker",
         TemplateFrame(_INLAY_MARKS, bool(layout["mirrored"])),
         tuple((a, a, b, b) for a, b in zip(corners, corners[1:] + corners[:1])),

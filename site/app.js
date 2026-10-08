@@ -906,7 +906,7 @@ function outlineEditor(part) {
   return { body: bodyEditor, headstock: headstockEditor, inlay: inlayEditor }[part];
 }
 
-async function exportOutline(part) {
+async function exportOutline(part, kind = "svg") {
   const editor = outlineEditor(part);
   if (!pyodide) return;
   let payload;
@@ -918,22 +918,26 @@ async function exportOutline(part) {
   }
   pyodide.globals.set("payload_json", JSON.stringify(payload));
   pyodide.globals.set("outline_part", part);
+  pyodide.globals.set("outline_kind", kind);
   const result = await runPython(
     "import json\nfrom cncguitarwizard.webapp import outline_template\n" +
-    "json.dumps(outline_template(json.loads(payload_json), outline_part))"
+    "json.dumps(outline_template(json.loads(payload_json), outline_part, outline_kind))"
   );
   if (result.error) {
     editor.setStatus(`Cannot export the outline: ${result.error}`, "bad");
     return;
   }
   const link = document.createElement("a");
-  link.href = URL.createObjectURL(new Blob([result.svg], { type: "image/svg+xml" }));
-  link.download = `${fileStem(guitarName.value) || "cncguitarwizard"}-${part}-outline.svg`;
+  const type = kind === "dxf" ? "application/dxf" : "image/svg+xml";
+  link.href = URL.createObjectURL(new Blob([result[kind]], { type }));
+  link.download = `${fileStem(guitarName.value) || "cncguitarwizard"}-${part}-outline.${kind}`;
   document.body.appendChild(link);
   link.click();
   link.remove();
   setTimeout(() => URL.revokeObjectURL(link.href), 1000);
-  editor.setStatus(`Saved ${link.download}: edit the black outline, keep the red marks, then Import SVG.`, "ok");
+  editor.setStatus(kind === "dxf"
+    ? `Saved ${link.download}: edit the outline on layer cgwOutline, keep the red marks (cgwMarkA–C), then Import DXF.`
+    : `Saved ${link.download}: edit the black outline, keep the red marks, then Import SVG.`, "ok");
 }
 
 async function importOutline(part, file) {
@@ -3907,11 +3911,17 @@ ncZipButton.addEventListener("click", downloadNcZip);
 // dialog has been answered), so the question comes once a file is chosen.
 loadDesignButton.addEventListener("click", () => loadDesignFile.click());
 for (const part of ["body", "headstock", "inlay"]) {
-  document.getElementById(`${part}-editor-export`).addEventListener("click", () => exportOutline(part));
-  document.getElementById(`${part}-editor-import`).addEventListener("click", () => {
-    outlineFile.dataset.part = part;
-    outlineFile.click();
-  });
+  for (const kind of ["svg", "dxf"]) {
+    const suffix = kind === "svg" ? "" : "-dxf";
+    document.getElementById(`${part}-editor-export${suffix}`).addEventListener("click", () => exportOutline(part, kind));
+    document.getElementById(`${part}-editor-import${suffix}`).addEventListener("click", () => {
+      // Either kind is read (told apart by its text); the chooser offers
+      // the one asked for.
+      outlineFile.accept = kind === "dxf" ? ".dxf" : ".svg,image/svg+xml";
+      outlineFile.dataset.part = part;
+      outlineFile.click();
+    });
+  }
 }
 outlineFile.addEventListener("change", () => {
   const [file] = outlineFile.files;

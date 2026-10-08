@@ -4,6 +4,15 @@
 
 ### Added
 
+- The editors' outlines to a CAD program and back: *Export DXF* and
+  *Import DXF* in the body, headstock and inlay editors, as *Export SVG*
+  and *Import SVG* do for drawing programs. The DXF template (R12, 1:1 in
+  millimetres) has the SVG's layers by their ids, the outline a polyline
+  with a point at every editor handle, so read back unchanged it gives
+  the same handles. Any ASCII DXF is read without a library: lines, arcs,
+  circles, ellipses, polylines with bulges and splines (NURBS, or through
+  their fit points as CAD programs draw them), in the drawing's units,
+  pieces that meet end to end joined into one outline.
 - Engraving drawn on the headstock face in another program: the headstock
   editor's *Export SVG* template has a *Pattern* layer (and the lettering
   in its reference layer), and *Import SVG* reads its lines, shapes drawn

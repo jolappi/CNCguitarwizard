@@ -1,4 +1,4 @@
-"""An editor's outline as an SVG template, and the outline read back.
+"""An editor's outline as an SVG or DXF template, and the outline read back.
 
 The template is drawn 1:1 in millimetres in two layers: *Reference*,
 locked, with what the outline is drawn round (the neck, routes and
@@ -17,15 +17,16 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from xml.sax.saxutils import escape, quoteattr
 
-from ..geometry.primitives import BezierSpan, Point2D
+from ..geometry.primitives import BezierSpan, Point2D, flatten_span
+from ..render.dxf.document import DxfDocument
 from .bitmap import MAX_CELLS, picture_bytes, png_ink, traced_outlines
+from .dxf_reader import is_dxf, read_dxf_drawing
 from .exceptions import DrawingError
 from .svg_reader import (
     SvgImage,
     SvgShape,
     apply_matrix,
     read_svg_drawing,
-    read_svg_shapes,
 )
 
 REFERENCE_LAYER = "cgwReference"
@@ -37,6 +38,10 @@ PATTERN_LAYER = "cgwPatternLayer"
 OUTLINE_LAYER = "cgwOutlineLayer"
 OUTLINE_ID = "cgwOutline"
 """The outline path's id: read back first when it is still there."""
+
+HANDLES_LAYER = "cgwHandles"
+"""A DXF template's layer of points at the editor's handles: the
+outline's nodes, read back where it still runs through them."""
 
 MARK_IDS = ("cgwMarkA", "cgwMarkB", "cgwMarkC")
 """The registration marks' ids, in the order of ``TemplateFrame.marks``."""
@@ -224,6 +229,108 @@ def template_svg(
     )
 
 
+def template_dxf(
+    title: str,
+    frame: TemplateFrame,
+    outline: Sequence[BezierSpan],
+    references: Sequence[ReferenceShape],
+    notes: Sequence[str] = (),
+    pattern: Sequence[Sequence[Point2D]] | None = None,
+) -> str:
+    """Return the template as DXF for a CAD program, as ``template_svg``
+    draws it (the same view, mirrored or not), in millimetres, Y up.
+
+    Its layers are the SVG's: ``cgwReference`` (what the outline is drawn
+    round, and the notes), ``cgwMarkA`` to ``cgwMarkC`` (each mark a cross
+    in a circle), ``cgwPatternLayer`` (with ``pattern``) and
+    ``cgwOutline``: the outline as one closed polyline within 0.005 mm of
+    its curves, and at every node a point on ``cgwHandles`` (the editor's
+    handles, read back as its nodes). AutoCAD R12 (AC1009) ASCII.
+    """
+
+    def at(point: Point2D) -> Point2D:
+        x, y = frame.to_svg(point)
+        return Point2D(x, -y)
+
+    dxf = DxfDocument()
+    reference = dxf.layer(REFERENCE_LAYER, 8)
+    for shape in references:
+        if shape.radius > 0.0:
+            dxf.circle(at(shape.points[0]), shape.radius, reference)
+        else:
+            dxf.polyline([at(p) for p in shape.points], reference, closed=shape.closed)
+    for mark_id, mark in zip(MARK_IDS, frame.marks, strict=True):
+        layer = dxf.layer(mark_id, 1)
+        centre = at(mark)
+        for dx, dy in ((MARK_SIZE, 0.0), (0.0, MARK_SIZE)):
+            dxf.line(
+                Point2D(centre.x - dx, centre.y - dy),
+                Point2D(centre.x + dx, centre.y + dy),
+                layer,
+            )
+        dxf.circle(centre, MARK_SIZE * 0.6, layer)
+    if pattern is not None:
+        lines = dxf.layer(PATTERN_LAYER, 5)
+        for line in pattern:
+            if len(line) >= 2:
+                closed = line[0] == line[-1] and len(line) > 2
+                dxf.polyline([at(p) for p in line], lines, closed=closed)
+    points = [outline[0][0]]
+    for span in outline:
+        points += flatten_span(span, 0.005)
+    dxf.polyline([at(p) for p in points], dxf.layer(OUTLINE_ID, 7))
+    handles = dxf.layer(HANDLES_LAYER, 3)
+    for span in outline:
+        dxf.point(at(span[0]), handles)
+    corners = [at(p) for p in points] + [
+        at(p) for shape in references for p in shape.points
+    ]
+    left = min(p.x for p in corners)
+    bottom = min(p.y for p in corners) - 10.0
+    for index, note in enumerate((title, *notes)):
+        dxf.text(Point2D(left, bottom - 5.0 * index), NOTE_SIZE, note, reference)
+    return dxf.render()
+
+
+def _drawing(text: str) -> tuple[tuple[SvgShape, ...], tuple[SvgImage, ...]]:
+    """Return a drawing's shapes and pictures: an SVG's, or a DXF's (no
+    pictures), whose outline's nodes are its handles' points where it
+    has them (see ``template_dxf``).
+
+    Raises:
+        DrawingError: If it is neither.
+    """
+    if not is_dxf(text) and not text.startswith("AutoCAD Binary DXF"):
+        return read_svg_drawing(text)
+    shapes, points = read_dxf_drawing(text)
+    handles = [point for layer, point in points if layer.startswith(HANDLES_LAYER)]
+    if not handles:
+        return shapes, ()
+
+    def on_handles(shape: SvgShape) -> SvgShape:
+        if not _named(shape, OUTLINE_ID):
+            return shape
+        line = shape.subpaths[0]
+        nodes = tuple(
+            index
+            for index, p in enumerate(line)
+            if any(abs(p.x - h.x) <= 0.01 and abs(p.y - h.y) <= 0.01 for h in handles)
+        )
+        if not nodes:
+            return shape
+        return SvgShape(
+            shape.element_id,
+            shape.label,
+            shape.groups,
+            shape.hidden,
+            shape.subpaths,
+            shape.closed,
+            (nodes,),
+        )
+
+    return tuple(on_handles(shape) for shape in shapes), ()
+
+
 @dataclass(frozen=True, slots=True)
 class ReadOutline:
     """An outline read back from a template.
@@ -248,17 +355,19 @@ class ReadOutline:
 def read_template_outline(text: str, frame: TemplateFrame) -> ReadOutline:
     """Return the outline drawn in a template, in the model frame.
 
-    The outline is the path still named ``cgwOutline`` when there is one,
-    else the largest closed shape outside the reference and pattern layers
-    (an outline drawn anew); its ends may be up to ``CLOSE_GAP`` apart.
-    ``ignored`` counts the other shapes beside it (``read_template_pattern``
-    reads them into the pattern).
+    The template is an SVG or a DXF file (``template_svg``,
+    ``template_dxf``). The outline is the path still named (or on the
+    layer) ``cgwOutline`` when there is one, else the largest closed shape
+    outside the reference and pattern layers (an outline drawn anew); its
+    ends may be up to ``CLOSE_GAP`` apart. ``ignored`` counts the other
+    shapes beside it (``read_template_pattern`` reads them into the
+    pattern).
 
     Raises:
-        DrawingError: If it is not an SVG file, a registration mark is
-            missing, or there is no closed outline.
+        DrawingError: If it is neither an SVG nor a DXF file, a
+            registration mark is missing, or there is no closed outline.
     """
-    shapes = read_svg_shapes(text)
+    shapes, _ = _drawing(text)
     matrix = _affine(_mark_centres(shapes), frame.marks)
     a, b, c, d, _, _ = matrix
     scale = 1.0 / math.sqrt(abs(a * d - b * c))
@@ -372,13 +481,15 @@ def read_template_pattern(
     and thinned to within ``tolerance`` of itself (``None``: every point
     kept; a traced picture's, to within three quarters of its traced
     cells, smoothing their steps). ``None`` where there is none of these
-    and no *Pattern* layer (taken out: the pattern is left as it was).
+    and no *Pattern* layer (taken out: the pattern is left as it was). A
+    DXF template is read the same way, its layers for the SVG's; it has
+    no pictures.
 
     Raises:
-        DrawingError: If it is not an SVG file or a registration mark is
-            missing.
+        DrawingError: If it is neither an SVG nor a DXF file, or a
+            registration mark is missing.
     """
-    shapes, images = read_svg_drawing(text)
+    shapes, images = _drawing(text)
     matrix = _affine(_mark_centres(shapes), frame.marks)
     layered = [s for s in shapes if any(_in_pattern(group) for group in s.groups)]
     lines: list[tuple[Point2D, ...]] = []

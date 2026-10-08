@@ -86,6 +86,50 @@ smooths their steps. A JPEG, a picture linked from a file or an
 interlaced PNG is left out, and `untraced` says why (trace it in the
 drawing program: Inkscape's Path ▸ Trace Bitmap).
 
+## DXF for CAD programs
+
+*Export DXF* and *Import DXF* do the same for a CAD program (AutoCAD,
+Fusion, FreeCAD, LibreCAD, QCAD, Rhino). `template_dxf` takes
+`template_svg`'s arguments and writes AutoCAD R12 ASCII DXF
+(`render.dxf.DxfDocument`), 1:1 in millimetres (`$INSUNITS`), Y up, the
+view the SVG shows (mirrored for a left-handed design), on the SVG's
+layers by their ids: `cgwReference` (what the outline is drawn round,
+and the title and notes as text below it), `cgwMarkA` to `cgwMarkC`
+(each mark a cross in a circle), `cgwPatternLayer` (with a pattern) and
+`cgwOutline`: the outline as one closed polyline within 0.005 mm of its
+curves, with a point on `cgwHandles` at every node — the editor's
+handles. CAD programs have no curve that keeps them, so read back the
+outline's nodes are its vertices on those points (where it still runs
+through them, within 0.01 mm), and an outline read back unchanged gives
+the same handles as from SVG.
+
+`read_template_outline` and `read_template_pattern` read either kind,
+told apart by the text (`is_dxf`: a file that starts a `SECTION`). A
+DXF's shapes come from `read_dxf_drawing(text)` as `SvgShape`s, their
+layer their group and label, so the marks, the reference and pattern
+layers and the outline are found by the same names. It reads ASCII DXF of
+any version (a binary one is refused, asking for ASCII), in its units
+(`$INSUNITS`: inches, feet, centimetres, metres, …; none: millimetres),
+skipping layers turned off or frozen and invisible entities as hidden:
+
+| Entity | Read as |
+| --- | --- |
+| `LINE` | Its two ends |
+| `ARC`, `CIRCLE` | Flattened to within 0.05 mm; an arc whose ends are at one angle draws nothing, as CAD programs read it |
+| `ELLIPSE` | Flattened, full or its arc between its parameters |
+| `LWPOLYLINE`, `POLYLINE` | Its vertices, each bulge an arc; a spline-fit polyline's frame points left out, meshes skipped |
+| `SPLINE` | Its NURBS (de Boor, rational with weights) from its degree, knots and control points; with only fit points, the natural cubic spline through them, the parameter along the chords, as CAD programs draw it |
+| `POINT` | On its own, with its layer (the handles) |
+
+An entity drawn in a plane seen from below (extrusion −Z: an arc, a
+circle or a polyline mirrored in the CAD program) is mirrored back.
+Pieces on one layer whose ends meet (within 0.05 mm, `JOIN_GAP`) are
+joined into one line, closed where it returns to its start, since a CAD
+outline is often drawn line by line and arc by arc; the joints and
+polyline vertices are its nodes. Text, hatches, dimensions and blocks
+(`INSERT`) are left out: explode a block before saving. A DXF has no
+pictures to trace.
+
 ## Fitting the editor's handles
 
 `fit_closed_spline(outline, nodes)` gives a body's control points: the

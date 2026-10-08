@@ -1,8 +1,8 @@
 """A small DXF writer: AutoCAD R12 (AC1009) ASCII, in millimetres.
 
 R12 is the DXF almost every CAD, CAM and laser program reads. Shapes are
-closed ``POLYLINE``s (or open ones), ``CIRCLE``s, ``LINE``s and ``TEXT``,
-each on a named layer with an AutoCAD colour index.
+closed ``POLYLINE``s (or open ones), ``CIRCLE``s, ``LINE``s, ``POINT``s and
+``TEXT``, each on a named layer with an AutoCAD colour index.
 """
 
 from __future__ import annotations
@@ -58,6 +58,12 @@ class DxfDocument:
                 (30, 0.0),
                 (40, radius),
             )
+        )
+
+    def point(self, at: Point2D, layer: str) -> None:
+        """Add a point."""
+        self._entities.append(
+            _pairs((0, "POINT"), (8, layer), (10, at.x), (20, at.y), (30, 0.0))
         )
 
     def line(self, start: Point2D, end: Point2D, layer: str) -> None:

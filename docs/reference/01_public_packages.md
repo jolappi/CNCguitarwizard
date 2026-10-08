@@ -230,14 +230,16 @@ assert svg.startswith("<svg")
 
 ## `cncguitarwizard.drawings`
 
-Outlines drawn in another program: SVG templates out, drawings back in
-(see [Outline templates](../render/03_svg_templates.md)).
+Outlines drawn in another program: SVG and DXF templates out, drawings
+back in (see [Outline templates](../render/03_svg_templates.md)).
 
 | API | Purpose |
 | --- | --- |
 | `read_svg_shapes()` | Every drawn shape of an SVG file as polylines in millimetres (`SvgShape`). |
 | `template_svg()` | An outline and what it is drawn round as a 1:1 SVG template (`TemplateFrame`, `ReferenceShape`). |
-| `read_template_outline()` | The outline drawn in a template, placed by its registration marks (`ReadOutline`). |
+| `template_dxf()` | The same template as DXF for a CAD program. |
+| `read_dxf_drawing()`, `is_dxf()` | Every shape of an ASCII DXF file as polylines in millimetres (pieces joined end to end), and its points. |
+| `read_template_outline()` | The outline drawn in a template (SVG or DXF), placed by its registration marks (`ReadOutline`). |
 | `fit_closed_spline()` | A drawn body outline as the editor's control points (`BodyFit`). |
 | `fit_headstock()` | A drawn headstock outline as its edges and tip points (`HeadstockFit`). |
 | `DrawingError` | A drawing that cannot be read or fitted, saying why. |

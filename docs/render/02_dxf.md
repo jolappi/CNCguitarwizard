@@ -10,9 +10,12 @@ programs (`render.dxf`, the build's *Writing the DXF outlines* stage):
 
 Both are AutoCAD R12 (AC1009) ASCII DXF, the version almost every program
 reads, written without any library (`DxfDocument`): closed (or open)
-`POLYLINE`s, `CIRCLE`s, `LINE`s and `TEXT`, every entity on a named layer
+`POLYLINE`s, `CIRCLE`s, `LINE`s, `POINT`s and `TEXT`, every entity on a named layer
 with its own colour. `$INSUNITS` says millimetres for the programs that
 read it; pick millimetres on import otherwise.
+
+The editors' outlines go out and come back as DXF templates too (*Export
+DXF*, *Import DXF*; see [Outline templates](03_svg_templates.md#dxf-for-cad-programs)).
 
 ## The plan's layers
 

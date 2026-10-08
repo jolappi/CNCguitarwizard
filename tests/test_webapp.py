@@ -1021,6 +1021,31 @@ def test_an_inlay_marker_drawn_elsewhere_comes_back_as_its_corners() -> None:
     assert "three corners" in import_outline(payload, "inlay", sliver)["error"]
 
 
+@pytest.mark.parametrize(
+    ("part", "prototype"),
+    [
+        ("body", {}),
+        ("body", {"handedness": "left"}),
+        ("headstock", {"headstock_engraving_lines": [[[-140, -4], [-130, -4]]]}),
+        ("inlay", {}),
+    ],
+)
+def test_every_outline_goes_out_as_a_dxf_template_and_comes_back(
+    part: str,
+    prototype: dict,  # type: ignore[type-arg]
+) -> None:
+    payload = {"prototype": prototype}
+    dxf = outline_template(payload, part, "dxf")["dxf"]
+    assert dxf.startswith("  0\nSECTION") and "cgwHandles" in dxf
+    # Read back unchanged, it is what the SVG template gives back.
+    svg = outline_template(payload, part)["svg"]
+    assert (
+        import_outline(payload, part, dxf)["values"]
+        == import_outline(payload, part, svg)["values"]
+    )
+    assert "no 'pdf' template" in outline_template(payload, part, "pdf")["error"]
+
+
 def test_an_outline_that_cannot_be_drawn_says_why() -> None:
     drawn = {"prototype": {}}
     assert "error" in outline_template(drawn, "fretboard")

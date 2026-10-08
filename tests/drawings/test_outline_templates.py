@@ -12,6 +12,7 @@ from cncguitarwizard.drawings import (
     fit_headstock,
     read_template_outline,
     read_template_pattern,
+    template_dxf,
     template_svg,
 )
 from cncguitarwizard.drawings.outlines import headstock_spans
@@ -277,3 +278,58 @@ def test_a_small_drawing_is_as_wide_as_its_notes() -> None:
     assert float(match.group(1)) >= 30.0 + 0.55 * 3.5 * len(note) - 0.01
     # The drawing itself is read back unchanged.
     assert len(read_template_outline(svg, frame).points) >= 4
+
+
+@pytest.mark.parametrize("key", list(YOUR_DESIGN_TEMPLATES)[:4])
+@pytest.mark.parametrize("mirrored", [False, True])
+def test_a_body_dxf_template_read_back_unchanged_is_the_same_body(
+    key: str, mirrored: bool
+) -> None:
+    points = [Point2D(x, y) for x, y in YOUR_DESIGN_TEMPLATES[key][1].control_points]
+    frame = TemplateFrame(BODY.marks, mirrored)
+    dxf = template_dxf("body", frame, closed_catmull_rom_spans(points), [], ("note",))
+    assert "cgwOutline" in dxf and "cgwHandles" in dxf and "AC1009" in dxf
+    read = read_template_outline(dxf, frame)
+    # The handles' points are the outline's nodes: the same handles.
+    fit = fit_closed_spline(read.points, read.nodes)
+    assert [(round(p.x, 3), round(p.y, 3)) for p in fit.points] == [
+        (round(p.x, 3), round(p.y, 3)) for p in points
+    ]
+    assert read.scale == pytest.approx(1.0)
+
+
+def test_a_headstock_dxf_template_read_back_unchanged() -> None:
+    parameters = next(iter(_headstocks().values()))
+    plan = parameters.headstock_plan()
+    dxf = template_dxf("h", HEADSTOCK, headstock_spans(plan), [])
+    read = read_template_outline(dxf, HEADSTOCK)
+    fit = fit_headstock(
+        read.points, parameters.nut_width / 2, plan.bass_sign, read.nodes
+    )
+    assert _flat(fit.bass_edge) == pytest.approx(_flat(plan.bass_edge), abs=0.011)
+    assert _flat(fit.treble_edge) == pytest.approx(_flat(plan.treble_edge), abs=0.011)
+
+
+def test_an_outline_drawn_anew_in_a_cad_program_and_its_pattern() -> None:
+    from cncguitarwizard.render.dxf import DxfDocument
+
+    # The template's three marks (a circle each), a 200 x 100 mm outline
+    # drawn line by line on layer 0, and a line on the pattern layer.
+    dxf = DxfDocument()
+    for mark_id, mark in zip(("cgwMarkA", "cgwMarkB", "cgwMarkC"), BODY.marks):
+        dxf.circle(mark, 2.4, mark_id)
+    corners = [(0, -50), (200, -50), (200, 50), (0, 50)]
+    for a, b in zip(corners, corners[1:] + corners[:1]):
+        dxf.line(Point2D(*a), Point2D(*b), "0")
+    dxf.polyline([Point2D(20, 0), Point2D(60, 0)], "cgwPatternLayer", closed=False)
+    text = dxf.render()
+    read = read_template_outline(text, BODY)
+    assert sorted((round(p.x, 6), round(p.y, 6)) for p in read.points) == sorted(
+        corners
+    )
+    assert read.scale == pytest.approx(1.0)
+    pattern = read_template_pattern(text, BODY)
+    assert pattern is not None
+    assert [[(p.x, p.y) for p in line] for line in pattern.lines] == [
+        [(20.0, 0.0), (60.0, 0.0)]
+    ]

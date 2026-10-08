@@ -255,7 +255,13 @@ Python.
    field the keys keep the browser's own undo of the typing.
    **Export SVG** and **Import SVG** in the body and headstock editors
    take an outline to another drawing program (Inkscape, Illustrator,
-   Affinity Designer, a CAD program) and back. Export downloads
+   Affinity Designer, a CAD program) and back; **Export DXF** and
+   **Import DXF** in all three editors do the same for a CAD program
+   (`webapp.outline_template(payload, part, "dxf")`,
+   `<name>-<part>-outline.dxf`: the same layers by their ids, the outline
+   on `cgwOutline` with a point on `cgwHandles` at every handle; any
+   ASCII DXF is read, see [Outline templates](render/03_svg_templates.md#dxf-for-cad-programs)),
+   the file chooser offering the kind asked for. Export downloads
    `webapp.outline_template()`'s template, `<name>-body-outline.svg` or
    `<name>-headstock-outline.svg`, drawn 1:1 in millimetres as the editor
    shows the design (mirrored for a left-handed build, a seven- or
