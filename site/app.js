@@ -1907,6 +1907,26 @@ function pointInPolygon(x, y, polygon) {
   return inside;
 }
 
+// While a handle or a feature is dragged, how far (or where) it is, in a
+// small label by the pointer; gone as the pointer is let go.
+const dragReadout = document.getElementById("drag-readout");
+
+function showReadout(event, text) {
+  dragReadout.textContent = text;
+  Object.assign(dragReadout.style, { left: `${event.clientX + 14}px`, top: `${event.clientY + 18}px` });
+  dragReadout.hidden = false;
+}
+for (const type of ["pointerup", "pointercancel"]) {
+  window.addEventListener(type, () => { dragReadout.hidden = true; }, true);
+}
+
+// "+12.4 mm along · −3.0 mm across": a move in the drawing, along the neck
+// and across it.
+function moveText([along, across]) {
+  const mm = (value) => `${value < 0 ? "−" : "+"}${Math.abs(value).toFixed(1)} mm`;
+  return across === null ? `${mm(along)} along` : `${mm(along)} along · ${mm(across)} across`;
+}
+
 const bodyEditor = {
   panel: document.getElementById("body-editor"),
   svg: document.getElementById("body-editor-svg"),
@@ -2347,11 +2367,13 @@ const bodyEditor = {
     }
     event.preventDefault();
     handle.classList.add("dragging");
+    const from = this.widen(this.points[index]);
     const move = (moveEvent) => {
       const shown = this.toModel(moveEvent);
       this.points[index] = this.unwiden(shown);
       this.showPoint(index, shown);
       this.check();
+      showReadout(moveEvent, moveText([shown[0] - from[0], shown[1] - from[1]]));
     };
     const end = () => {
       window.removeEventListener("pointermove", move);
@@ -2401,6 +2423,8 @@ const bodyEditor = {
       const shown = inDrawing(moveEvent) ? delta : [x - start[0], y - start[1]];
       for (const member of members) member.setAttribute("transform", `translate(${shown[0]} ${-shown[1]})`);
       drop.classList.toggle("over", overDrop(moveEvent));
+      showReadout(moveEvent, overDrop(moveEvent) ? "Drop to make its NC file"
+        : moveText([delta[0], alongNeck ? null : delta[1]]));
     };
     const end = (endEvent) => {
       window.removeEventListener("pointermove", move);
@@ -2956,6 +2980,7 @@ const bodyEditor = {
       // a negative SVG rotation.
       for (const member of members) member.setAttribute("transform", `rotate(${-degrees} ${cx} ${-cy})`);
       this.setStatus(`Turning ${this.groupLabel(group)} ${Math.round(degrees * 10) / 10}°`, "");
+      showReadout(moveEvent, `${(Math.round(degrees * 10) / 10).toFixed(1)}°`);
     };
     const end = () => {
       window.removeEventListener("pointermove", move);
@@ -3032,6 +3057,7 @@ const bodyEditor = {
       handle.setAttribute("y", -(ey + ay * moved) - 3);
       const change = end === 1 ? moved : -moved;
       this.setStatus(`Control cavity ${change >= 0 ? "+" : ""}${change} mm ${what}`, "");
+      showReadout(moveEvent, `${change >= 0 ? "+" : "−"}${Math.abs(change).toFixed(1)} mm ${what}`);
     };
     const finish = () => {
       window.removeEventListener("pointermove", move);
@@ -4118,6 +4144,7 @@ const headstockEditor = {
       handle.setAttribute("cx", -d);
       handle.setAttribute("cy", -this.sign(side) * h);
       this.check();
+      showReadout(moveEvent, `${d.toFixed(1)} mm from the nut · ${h.toFixed(1)} mm from the centreline`);
     };
     const end = () => {
       window.removeEventListener("pointermove", move);
@@ -4187,6 +4214,8 @@ const headstockEditor = {
       hole.y = moveEvent.shiftKey ? y : sign * (edge(distance) - inset);
       this.showHole(index);
       this.check();
+      const fromEdge = edge(distance) - hole.y / sign;
+      showReadout(moveEvent, `${distance.toFixed(1)} mm from the nut · ${fromEdge.toFixed(1)} mm from the edge`);
     };
     const end = () => {
       window.removeEventListener("pointermove", move);

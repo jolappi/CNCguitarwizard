@@ -245,6 +245,13 @@
     box-shadow: 0 4px 14px rgba(31, 26, 20, .2); pointer-events: none;
   }
   .drop-banner[hidden] { display: none; }
+  /* How far a drag has moved, by the pointer (see showReadout). */
+  .drag-readout {
+    position: fixed; z-index: 55; padding: 3px 8px; border-radius: 6px; pointer-events: none;
+    background: rgba(31, 26, 20, .86); color: #fff; font-size: 12px; font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .drag-readout[hidden] { display: none; }
   /* The tour (see startTour): the part it is at lit and the rest dimmed,
      its card, and the pointer that shows what to do in a drawing. */
   .tour-spot {
@@ -360,6 +367,7 @@
 </head>
 <body>
 <div id="drop-banner" class="drop-banner" hidden></div>
+<div id="drag-readout" class="drag-readout" hidden></div>
 <header>
   <h1>CNCguitarwizard</h1>
   <span class="motto">Measure twice. Generate once.</span>

@@ -334,6 +334,13 @@ Python.
    its step changes as the form labels them (*Undo: Thickness*, *Undo:
    Bridge · Baseplate length*), and a new change clears the redo steps. In a text
    field the keys keep the browser's own undo of the typing.
+   While a handle or a feature is dragged, a label by the pointer says
+   how far it has moved or where it is (`showReadout`): a body handle or
+   feature its move along the neck and across it (*+20.2 mm along ·
+   −10.1 mm across*, a pickup along only), a turn its angle and a
+   stretch its change; a headstock edge handle its distance from the nut
+   and the centreline, a tuner hole its distance from the nut and the
+   edge.
    Every editor's drawing zooms (`enableZoom`): Ctrl/Cmd+wheel, or a
    trackpad's pinch, about the pointer, up to 20 times; zoomed in, a drag
    on the background moves it and a double-click there fits the whole

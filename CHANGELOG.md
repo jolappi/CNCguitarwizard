@@ -4,6 +4,10 @@
 
 ### Added
 
+- Dragging in the editors, a label by the pointer says how far it has
+  moved or where it is: a body handle or feature along the neck and
+  across it, a turn's angle, a headstock edge handle's or tuner hole's
+  distance from the nut and the centreline or edge.
 - Tuner holes move in the headstock editor: a dragged hole slides along
   its edge, kept as far from it as it was, so the tuner's key stays out
   past the edge (Shift-drag moves it anywhere), and a dragged edge takes

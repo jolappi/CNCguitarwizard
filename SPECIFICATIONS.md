@@ -875,6 +875,12 @@ Työratakuvat valitaan osittain ryhmitellystä listasta (ohjelmat
 vaiheittain, oletuksena rungon yläpuoli), ja nuolilla voi selata
 seuraavaan ja edelliseen.
 
+Editorissa raahattaessa osoittimen vieressä näkyy mitta: rungon kahvan tai
+osan siirtymä kaulan suuntaan ja poikki (*+20.2 mm along · −10.1 mm
+across*, mikrofonilla vain kaulan suuntaan), käännön kulma ja venytyksen
+muutos; lavan reunakahvan etäisyys satulasta ja keskiviivasta sekä
+viritinreiän etäisyys satulasta ja reunasta.
+
 Editorien piirroksia voi zoomata: Ctrl/Cmd+rulla tai trackpadin nipistys
 zoomaa osoittimen kohdalta (enintään 20-kertaiseksi); zoomattuna taustaa
 raahaamalla piirros siirtyy, ja tuplaklikkaus taustaan tai kulman
