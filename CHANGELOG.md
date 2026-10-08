@@ -603,6 +603,8 @@
 
 ### Changed
 
+- The editors' long how-tos are folded away under *How to edit the
+  design*, *the headstock* and *the inlays*, closed until clicked.
 - The build's result shows first, as soon as it is done: at the top of
   the right-hand column on a wide screen, straight under the build button
   on a narrow one, above the editors — the summary first, then the

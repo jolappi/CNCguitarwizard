@@ -820,6 +820,10 @@ build-painikkeiden ja soittimen valinnan alla, editorien yläpuolella.
 Ensin yhteenveto (aihiot, ohjelmat aika-arvioineen), sitten lataukset,
 tasokuva ja työradat; virhe näkyy samassa kohdassa. Jos kohta ei ole
 näkyvissä, kun tulos tai virhe tulee, sivu vierittää sen esiin.
+
+Editorien pitkät ohjetekstit on supistettu otsikoiden *How to edit the
+design*, *How to edit the headstock* ja *How to edit the inlays* alle, ja
+ne aukeavat vasta otsikkoa klikkaamalla.
 **Load design** lataa tiedoston takaisin lomakkeeseen ja editoreihin. Tiedostovalitsin
 aukeaa heti napista (Safari ei avaa sitä vahvistusdialogin jälkeen), ja
 kysymys muutettujen arvojen korvaamisesta tulee vasta, kun tiedosto on
