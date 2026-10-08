@@ -4,6 +4,10 @@
 
 ### Added
 
+- A ruler over every drawing (*Measure* in its corner, the result's
+  plots too): drag its ends, which snap to handles and holes (Shift
+  keeps it level or upright), or its line; its length and how far it
+  runs each way are written at its middle.
 - *Find a setting* marks the words found in the fields' names.
 - On a touch screen two fingers pinch an editor's drawing or a result
   plot about their middle and move it with them.

@@ -106,6 +106,7 @@
 - A measurement by the pointer while dragging in the editors
 - Two-finger pinch zoom on touch screens
 - The searched words marked in the fields' names
+- A ruler to drag over the drawings
 - Index pins as wide as a main tool wider than 6 mm (an 8 mm end mill,
   8 mm dowels)
 - The neck's back carved with the ball nose alone, in one program

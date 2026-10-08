@@ -887,7 +887,14 @@ raahaamalla piirros siirtyy, ja tuplaklikkaus taustaan tai kulman
 zoomauspainike (*2.7× · Fit*, myös tuloksen kuvissa) näyttää koko
 piirroksen. Kosketusnäytöllä kaksi sormea taustalla zoomaa nipistämällä
 sormien keskikohdan ympäri ja siirtää kuvaa sormien mukana (tuloksen
-kuvissa yksi sormi vierittää sivua kuten ennen). Zoom säilyy uudelleenpiirrossa, tavallinen rulla vierittää
+kuvissa yksi sormi vierittää sivua kuten ennen). Piirroksen toisen
+yläkulman *Measure* tuo mittatikun näkyvän alueen keskelle (myös
+tuloksen kuviin, jotka ovat millimetreinä): päitä raahataan, ja ne
+napsahtavat 8 px:n päässä olevan kahvan tai reiän keskelle (Alt ei
+napsauta, Shift pitää tikun vaaka- tai pystysuorana); viivasta vetämällä
+koko tikku siirtyy. Pituus ja vaaka- ja pystysuuntainen osuus näkyvät
+tikun keskellä (*30.1 mm · ↔ 30.0 · ↕ 3.0*), ja tikku pysyy piirroksen
+päällä uudelleenpiirroissa, kunnes *Measure* poistaa sen. Zoom säilyy uudelleenpiirrossa, tavallinen rulla vierittää
 sivua, ja kaikki kahvat toimivat kuten ennen.
 
 Varianttikenttien (piirretty runko, talla) oletuksina pidetään soittimen

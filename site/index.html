@@ -315,6 +315,14 @@
   /* A zoomable drawing, with the chip that fits it again while zoomed. */
   .zoom-frame { position: relative; }
   .zoom-chip { position: absolute; top: 8px; right: 8px; padding: 2px 9px; font-size: 12px; font-weight: 500; }
+  .measure-chip { position: absolute; top: 8px; left: 8px; padding: 2px 9px; font-size: 12px; font-weight: 500; }
+  .measure-chip[aria-pressed="true"] { background: var(--accent); color: #fff; }
+  /* The ruler (see enableRuler): sized by the script for the zoom. */
+  .ruler-line { stroke: #1f1a14; stroke-width: 1.5px; vector-effect: non-scaling-stroke; pointer-events: none; }
+  .ruler-hit { stroke: transparent; cursor: move; }
+  .ruler-end { fill: #fff; stroke: var(--accent); cursor: grab; }
+  .ruler-label { fill: #1f1a14; stroke: #fff; paint-order: stroke; font-family: inherit; font-weight: 600;
+    font-variant-numeric: tabular-nums; pointer-events: none; }
   .preview svg { display: block; max-width: 100%; height: auto; touch-action: pan-x pan-y; }
   /* The plan view stands upright: keep the whole instrument in view. */
   #plan svg { width: auto; max-height: 85vh; margin: 0 auto; }
@@ -677,6 +685,8 @@
       <dt><kbd>Ctrl/Cmd</kbd>+wheel, pinch</dt><dd>Zoom a drawing or a plot about the pointer</dd>
       <dt>Drag the background</dt><dd>Move a zoomed drawing</dd>
       <dt>Double-click</dt><dd>Fit the whole drawing again</dd>
+      <dt><em>Measure</em>, then drag</dt><dd>A ruler over a drawing: its ends snap to handles and holes
+        (<kbd>Alt/Option</kbd> not), <kbd>Shift</kbd> keeps it level or upright</dd>
       <dt><kbd>Shift</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd>, <kbd>Alt/Option</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd></dt><dd>Step a number field by 10, by 0.1</dd>
       <dt><kbd>/</kbd></dt><dd>Go to <em>Find a setting</em></dd>
       <dt><kbd>Enter</kbd> in <em>Find a setting</em></dt><dd>Go to the first setting found</dd>

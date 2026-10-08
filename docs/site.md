@@ -350,7 +350,15 @@ Python.
    too). On a touch screen two fingers on the background pinch it about
    their middle and move it with them, the point under their middle kept
    under it (a finger on a handle or feature is left to it; a plot keeps
-   one-finger scrolling of the page, `touch-action: pan-x pan-y`); the
+   one-finger scrolling of the page, `touch-action: pan-x pan-y`).
+   *Measure*, in each drawing's other top corner (the result's plots
+   too, all drawn in millimetres), lays a ruler across the middle of
+   what is in view (`enableRuler`): drag either end — it snaps to the
+   middle of a handle or hole within 8 px, Alt-drag not, and Shift keeps
+   it level or upright — or its line to move it whole; its length and
+   how far it runs across and up the screen are written at its middle
+   (*30.1 mm · ↔ 30.0 · ↕ 3.0*), sized for the zoom, and it stays on top
+   through every redraw until *Measure* takes it off. The
    zoom outlasts a redraw (`begin`), the plain wheel
    scrolls the page as ever, and every handle works as before.
    The editors' button rows keep to one line: their templates' four

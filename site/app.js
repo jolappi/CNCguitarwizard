@@ -3369,7 +3369,7 @@ document.getElementById("body-editor-turn").addEventListener("click", () => body
 // outlasts a redraw (see begin).
 const ZOOM_TARGETS = ".handle, .frame-handle, .guard-handle, .step-handle, .contour-handle, " +
   ".stretch-handle, .movable, .outline-hit, .inlay-handle, .inlay-hit, .lettering-hit, " +
-  ".cover-handle, .cover-stretch, .tuner-hole";
+  ".cover-handle, .cover-stretch, .tuner-hole, .ruler-end, .ruler-hit";
 
 function enableZoom(editor) {
   const svg = editor.svg;
@@ -3392,6 +3392,7 @@ function enableZoom(editor) {
     editor.showZoom();
   };
   chip.addEventListener("click", fit);
+  enableRuler(svg, frame);
   const setBox = (x, y, width, height) => {
     const [, , baseWidth] = editor.baseBox;
     const scale = baseWidth / width;
@@ -3490,6 +3491,137 @@ function enableZoom(editor) {
     fit();
   });
 }
+// A ruler over a drawing (an editor's, or a result plot: all drawn in
+// millimetres), shown with the Measure chip in its top corner: drag either
+// end — it snaps to the middle of a handle or hole near it, Alt-drag not,
+// and Shift keeps it level or upright — or its line to move it whole. Its
+// length, and how far it runs each way, are written at its middle. It
+// lies over the drawing in the drawing's own units, put back on top
+// whenever the drawing is redrawn and sized for the zoom.
+const RULER_SNAP = 8;  // pixels
+
+function enableRuler(svg, frame) {
+  const chip = document.createElement("button");
+  chip.type = "button";
+  chip.className = "secondary measure-chip";
+  chip.textContent = "Measure";
+  chip.title = "A ruler to drag over the drawing: drag its ends (they snap to handles and holes; Alt-drag not, " +
+    "Shift keeps it level or upright) or its line";
+  chip.setAttribute("aria-pressed", "false");
+  frame.append(chip);
+  const ns = "http://www.w3.org/2000/svg";
+  const group = document.createElementNS(ns, "g");
+  group.setAttribute("class", "ruler");
+  const make = (name, attributes) => {
+    const node = document.createElementNS(ns, name);
+    for (const [key, value] of Object.entries(attributes)) node.setAttribute(key, value);
+    group.append(node);
+    return node;
+  };
+  const hit = make("line", { class: "ruler-hit" });
+  const line = make("line", { class: "ruler-line" });
+  const ends = [make("circle", { class: "ruler-end" }), make("circle", { class: "ruler-end" })];
+  const label = make("text", { class: "ruler-label", "text-anchor": "middle" });
+  let ruler = null;  // its two ends, in the drawing's units
+
+  const toDrawing = (clientX, clientY) => {
+    const point = svg.createSVGPoint();
+    point.x = clientX;
+    point.y = clientY;
+    const at = point.matrixTransform(svg.getScreenCTM().inverse());
+    return [at.x, at.y];
+  };
+  const draw = () => {
+    const ctm = svg.getScreenCTM();
+    if (!ruler || !ctm) return;
+    if (svg.lastElementChild !== group) svg.append(group);
+    const unit = 1 / ctm.a;  // a screen pixel in the drawing's units
+    const [[ax, ay], [bx, by]] = ruler;
+    for (const node of [hit, line]) {
+      Object.entries({ x1: ax, y1: ay, x2: bx, y2: by }).forEach(([key, value]) => node.setAttribute(key, value));
+    }
+    hit.setAttribute("stroke-width", 12 * unit);
+    ruler.forEach(([x, y], index) => {
+      Object.entries({ cx: x, cy: y, r: 5 * unit, "stroke-width": 1.5 * unit })
+        .forEach(([key, value]) => ends[index].setAttribute(key, value));
+    });
+    const length = Math.hypot(bx - ax, by - ay);
+    // The label beside the line's middle, on the side away from it.
+    const [nx, ny] = length ? [-(by - ay) / length, (bx - ax) / length] : [0, -1];
+    const side = ny > 0 ? -1 : 1;
+    label.setAttribute("x", (ax + bx) / 2 + nx * 14 * unit * side);
+    label.setAttribute("y", (ay + by) / 2 + ny * 14 * unit * side + 4 * unit);
+    label.setAttribute("font-size", 12 * unit);
+    label.setAttribute("stroke-width", 3 * unit);
+    label.textContent = `${length.toFixed(1)} mm · ↔ ${Math.abs(bx - ax).toFixed(1)} · ↕ ${Math.abs(by - ay).toFixed(1)}`;
+  };
+  const show = (on) => {
+    if (on) {
+      // Across the middle of what is in view, level.
+      const box = svg.viewBox.baseVal;
+      const [cx, cy] = [box.x + box.width / 2, box.y + box.height / 2];
+      ruler = [[cx - box.width * 0.3, cy], [cx + box.width * 0.3, cy]];
+      draw();
+    } else {
+      ruler = null;
+      group.remove();
+    }
+    chip.setAttribute("aria-pressed", String(on));
+  };
+  chip.addEventListener("click", () => show(!ruler));
+
+  // An end near the middle of a handle or a hole (on the screen) goes to it.
+  const snap = (clientX, clientY) => {
+    let best = null;
+    for (const circle of svg.querySelectorAll("circle:not(.ruler-end)")) {
+      const box = circle.getBoundingClientRect();
+      if (!box.width) continue;
+      const gap = Math.hypot(box.left + box.width / 2 - clientX, box.top + box.height / 2 - clientY);
+      if (gap < RULER_SNAP && (!best || gap < best.gap)) best = { gap, box };
+    }
+    return best ? toDrawing(best.box.left + best.box.width / 2, best.box.top + best.box.height / 2) : null;
+  };
+  const drag = (event, move) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const follow = (moveEvent) => {
+      if (moveEvent.pointerId !== event.pointerId) return;
+      move(moveEvent);
+      draw();
+    };
+    const end = (endEvent) => {
+      if (endEvent.pointerId !== event.pointerId) return;
+      window.removeEventListener("pointermove", follow);
+      window.removeEventListener("pointerup", end);
+      window.removeEventListener("pointercancel", end);
+    };
+    window.addEventListener("pointermove", follow);
+    window.addEventListener("pointerup", end);
+    window.addEventListener("pointercancel", end);
+  };
+  ends.forEach((node, index) => node.addEventListener("pointerdown", (event) => drag(event, (moveEvent) => {
+    let point = (!moveEvent.altKey && !moveEvent.shiftKey && snap(moveEvent.clientX, moveEvent.clientY))
+      || toDrawing(moveEvent.clientX, moveEvent.clientY);
+    if (moveEvent.shiftKey) {
+      const other = ruler[1 - index];
+      point = Math.abs(point[0] - other[0]) >= Math.abs(point[1] - other[1])
+        ? [point[0], other[1]] : [other[0], point[1]];
+    }
+    ruler[index] = point;
+  })));
+  hit.addEventListener("pointerdown", (event) => {
+    const start = toDrawing(event.clientX, event.clientY);
+    const from = ruler.map((end) => [...end]);
+    drag(event, (moveEvent) => {
+      const [x, y] = toDrawing(moveEvent.clientX, moveEvent.clientY);
+      ruler = from.map(([ex, ey]) => [ex + x - start[0], ey + y - start[1]]);
+    });
+  });
+  // Back on top after a redraw, and sized again for a zoom or a resize.
+  new MutationObserver(draw).observe(svg, { childList: true, attributes: true, attributeFilter: ["viewBox"] });
+  new ResizeObserver(draw).observe(svg);
+}
+
 // A plot (the plan view, a toolpath plot) zooms as an editor's drawing
 // does: its own view box is the whole of it.
 function zoomablePlot(holder) {
