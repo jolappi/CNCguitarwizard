@@ -1406,6 +1406,15 @@ document.addEventListener("click", (event) => {
   if (event.target.closest(".undo-button")) undoHistory.undoStep();
   else if (event.target.closest(".redo-button")) undoHistory.redoStep();
 });
+// Ctrl/Cmd+Enter builds, from anywhere on the page (a field being typed
+// in too: its value is read as it stands).
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" || !(event.ctrlKey || event.metaKey) || event.altKey) return;
+  if (buildButton.disabled || document.querySelector("dialog[open]")) return;
+  event.preventDefault();
+  build();
+});
+
 document.addEventListener("keydown", (event) => {
   if (!(event.ctrlKey || event.metaKey) || event.altKey || !schema) return;
   const key = event.key.toLowerCase();

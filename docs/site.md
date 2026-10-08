@@ -351,7 +351,8 @@ Python.
    too near the edge) — the import's own note (`notice`) on a line of its
    own above it until the next change in the editor, and what does not
    fit in bold red (`showEditorStatus`, every editor's status).
-4. On **Build 3D and CNC files** runs the build in stages — `start_build()`, then
+4. On **Build 3D and CNC files** (or Ctrl/Cmd+Enter anywhere on the page,
+   a field being typed in too) runs the build in stages — `start_build()`, then
    `advance_build()` once per stage of `workflows.Prototype001Build`
    (geometry, body, neck and fretboard toolpaths, cover plates, G-code,
    FreeCAD script),

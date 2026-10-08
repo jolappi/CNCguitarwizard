@@ -4,6 +4,7 @@
 
 ### Added
 
+- Ctrl/Cmd+Enter builds, from anywhere on the page.
 - The design is kept in the browser: every change (and the guitar's
   name) is saved there, and the page puts it back when it is loaded
   again, so a reload or a closed tab loses nothing. *Reset* starts
