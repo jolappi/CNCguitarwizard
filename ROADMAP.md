@@ -71,6 +71,7 @@
 - Editor status lines: an import's note apart, problems in bold red
 - The design kept in the browser and put back on loading
 - Ctrl/Cmd+Enter builds
+- A field's meaning under it while it is selected
 - Index pins as wide as a main tool wider than 6 mm (an 8 mm end mill,
   8 mm dowels)
 - The neck's back carved with the ball nose alone, in one program

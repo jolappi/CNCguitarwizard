@@ -78,6 +78,9 @@
   .fields { padding: 4px 10px 8px; }
   .field { display: grid; grid-template-columns: 1fr 110px; gap: 8px; align-items: center; padding: 2px 0; }
   .field[hidden] { display: none; }
+  /* A field's meaning under it while it is being set. */
+  .field-hint { margin: 2px 0 8px; padding: 6px 9px; background: #fff6ec; border-left: 3px solid var(--accent); border-radius: 4px; font-size: 12px; color: #3b332b; white-space: pre-line; }
+  .editor-options .field-hint { grid-column: 1 / -1; margin: 0 0 4px; }
   /* Find a setting: the fields that match show (those in an editor's
      pane too), the rest and the folds with none of them are left out. */
   #find-setting { width: 100%; padding: 6px 9px; border: 1px solid var(--line); border-radius: 6px; font: inherit; margin: 0 0 10px; background: #fff; }
@@ -318,7 +321,7 @@
     </div>
     <div class="aside-form">
     <p class="note">Every value below is a field of <code>Prototype001Parameters</code> or
-      <code>MachiningParameters</code>. Hover a field's name to see what it means.
+      <code>MachiningParameters</code>. Hover a field's name, or select the field, to see what it means.
       Changed values are highlighted. Lists are edited as JSON.
       Rarely needed fields sit behind each group's <em>Advanced</em> fold.</p>
     <input id="find-setting" type="search" placeholder="Find a setting…" autocomplete="off"

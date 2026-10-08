@@ -37,7 +37,10 @@ Python.
    words (`fieldLabel`: `body_pickup_frame_direction` reads *Pickup frame
    direction*, the body's own fields dropping their `body_`), its name in
    the code, the saved designs and the help in brackets at the end of its
-   hover text. Hovering a field's row shows what
+   hover text. While a field is selected its meaning shows under it too
+   (`fieldHint`, the same text: for a touch screen, and help too long to
+   hover over), in the form or an editor's *Settings*, gone when the
+   focus leaves the fields. Hovering a field's row shows what
    it means (its name is underlined dotted): `webapp._field_help` takes it
    from the code's own documentation — a dataclass's `Args:` entries, an
    attribute docstring, the comment block above the field (and the fields

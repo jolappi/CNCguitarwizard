@@ -4,6 +4,8 @@
 
 ### Added
 
+- A field's meaning shows under it while it is selected, in the form or
+  an editor's *Settings*: on a touch screen too, where nothing hovers.
 - Ctrl/Cmd+Enter builds, from anywhere on the page.
 - The design is kept in the browser: every change (and the guitar's
   name) is saved there, and the page puts it back when it is loaded

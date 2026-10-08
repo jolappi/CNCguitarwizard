@@ -866,6 +866,10 @@ välilehti ei hukkaa mitään; *Reset* aloittaa alusta.
 Ctrl/Cmd+Enter käynnistää rakennuksen mistä kohtaa sivua tahansa (myös
 kenttää kirjoitettaessa).
 
+Valitun kentän selitys näkyy sen alla (lomakkeessa ja editorien
+*Settings*-kohdissa) niin kauan kuin kenttä on valittuna: myös
+kosketusnäytöllä, jossa hover-tekstiä ei ole.
+
 Runkoeditorin *Turn upright* näyttää piirroksen pystyssä, kaula ylöspäin
 (neljännes myötäpäivään; *Turn sideways* palauttaa vaakanäkymän, joka on
 oletus). Se on pelkkä näkymä: koordinaatit ja kaikki raahaukset toimivat

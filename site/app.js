@@ -463,6 +463,32 @@ function explain(row, field) {
   row.querySelector("label")?.classList.add("explained");
 }
 
+// A field's meaning shown under it while it is being set (its hover
+// text: for a touch screen, and help too long to hover over), in the form
+// or an editor's Settings; gone when the focus leaves the fields.
+const fieldHint = document.createElement("p");
+fieldHint.className = "field-hint";
+const FIELD_CONTROLS = "#form input, #form select, .editor-options input, .editor-options select";
+
+document.addEventListener("focusin", (event) => {
+  const control = event.target;
+  if (!(control instanceof Element) || !control.matches(FIELD_CONTROLS)) return;
+  const inEditor = control.closest(".editor-options");
+  const text = inEditor ? control.title : control.closest(".field")?.title;
+  if (!text) {
+    fieldHint.remove();
+    return;
+  }
+  fieldHint.textContent = text;
+  if (inEditor) (control.closest(".with-button") || control).after(fieldHint);
+  else control.closest(".field").after(fieldHint);
+});
+document.addEventListener("focusout", () => {
+  setTimeout(() => {
+    if (!document.activeElement?.matches(FIELD_CONTROLS)) fieldHint.remove();
+  }, 0);
+});
+
 // A field's name in words: "body_pickup_frame_direction" reads "Pickup
 // frame direction" (the body's own fields drop their "body_"); its name
 // in the code, saved designs and help stays on hover and finds it too.
