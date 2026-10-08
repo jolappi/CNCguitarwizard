@@ -83,6 +83,7 @@
 - A changed setting's default and Reset to default under it
 - The guitar's name and the build's state in the tab's title
 - A list of the shortcuts
+- Enter and Escape in Find a setting
 - Index pins as wide as a main tool wider than 6 mm (an 8 mm end mill,
   8 mm dowels)
 - The neck's back carved with the ball nose alone, in one program

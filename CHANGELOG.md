@@ -4,6 +4,8 @@
 
 ### Added
 
+- Enter in *Find a setting* goes to the first setting found, its value
+  selected; Escape clears the search.
 - *Shortcuts* in the header (or `?`) lists the page's keys and mouse
   moves.
 - The tab's title is the guitar's name, with *Building…* in front while

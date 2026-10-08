@@ -4442,6 +4442,22 @@ loadDesignFile.addEventListener("change", async () => {
 });
 showAdvanced.addEventListener("change", applyAdvancedToggle);
 findSetting.addEventListener("input", applyFormFilter);
+// In Find a setting, Enter goes to the first setting found (its value
+// selected, ready to be typed over) and Escape clears the search.
+findSetting.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    const first = [...form.querySelectorAll(".field.match")].find((row) => row.offsetParent !== null);
+    const control = first?.querySelector("input, select");
+    if (!control) return;
+    event.preventDefault();
+    control.focus();
+    if (control.tagName === "INPUT") control.select();
+  } else if (event.key === "Escape" && findSetting.value) {
+    event.preventDefault();
+    findSetting.value = "";
+    applyFormFilter();
+  }
+});
 changedOnly.addEventListener("change", applyFormFilter);
 // A value changed (or set back) while only the changed ones show: shown,
 // or left out, once the change is done.

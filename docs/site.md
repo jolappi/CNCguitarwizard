@@ -34,7 +34,9 @@ Python.
    hover text) holds every word typed, underscores read as spaces — a
    field in an editor's pane too, its row in the form back while
    searching — opening their groups and folds and leaving out the rest;
-   emptied, every fold is as open as it was. *Show only the settings
+   emptied, every fold is as open as it was. Enter in it goes to the
+   first setting found (its value selected, ready to be typed over), and
+   Escape empties it. *Show only the settings
    changed from their defaults* keeps, of those, the ones marked changed
    (an editor pane's too), refreshed as a value is changed or set back;
    when none is left the form says so (`filter-empty`). Each field is labelled in
