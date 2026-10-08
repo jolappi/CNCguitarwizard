@@ -4,6 +4,9 @@
 
 ### Added
 
+- A build that stops at a value that cannot be read offers *Go to
+  Thickness*: the field's group opened (or its editor's *Settings*) and
+  the field selected.
 - A group of the form with changes has *Reset 3 to defaults* at its top:
   after asking, its changed settings go back to their defaults, as one
   Undo step.

@@ -942,7 +942,9 @@ punaiseksi heti kun se annetaan (Enter tai kentästä poistuminen), ei
 kesken kirjoittamisen, ja syy näkyy kentän selitteessä; merkintä
 poistuu heti kun arvo on taas luettava. Editorin kopiokenttä välittää
 lomakkeelle vain luettavan arvon, ja rakennuksen virheviesti nimeää
-kentän (*Thickness (body_thickness): Needs a number*).
+kentän (*Thickness (body_thickness): Needs a number*); viestin *Go to
+Thickness* -painike avaa kentän ryhmän (tai editorin *Settings*-kohdan,
+kun kenttä on siellä) ja valitsee kentän.
 
 Runkoeditorin *Turn upright* näyttää piirroksen pystyssä, kaula ylöspäin
 (neljännes myötäpäivään; *Turn sideways* palauttaa vaakanäkymän, joka on

@@ -45,10 +45,39 @@ function setStatus(text, kind) {
   status.className = kind || "";
 }
 
-function showError(message) {
+// An error above the result; one about a field (a value that cannot be
+// read) has a button that goes to it.
+function showError(message, field = null) {
   errorBox.textContent = message;
+  if (field) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "secondary";
+    button.textContent = `Go to ${fieldLabel(field.dataset.name)}`;
+    button.addEventListener("click", () => goToField(field));
+    errorBox.append("\n", button);
+  }
   errorBox.classList.remove("hidden");
   bringIntoView(errorBox);
+}
+
+// Show a form field and select it: its group and folds opened (a search
+// that leaves it out cleared), or its copy in an editor's Settings while
+// that editor is shown.
+function goToField(field) {
+  const row = field.closest(".field");
+  let control = field;
+  if (row.classList.contains("mirrored") && mirrors.has(field)) {
+    syncMirrors();  // the copy shows the field's value and mark
+    control = mirrors.get(field);
+  } else if (form.classList.contains("filtering") && !row.classList.contains("match")) {
+    findSetting.value = "";
+    changedOnly.checked = false;
+    applyFormFilter();
+  }
+  for (let fold = control.closest("details"); fold; fold = fold.parentElement.closest("details")) fold.open = true;
+  control.focus();
+  if (control.tagName === "INPUT") control.select();
 }
 
 // The build's result and errors sit first in the right-hand column (under
@@ -814,6 +843,14 @@ function readValue(input) {
   return JSON.parse(input.value);
 }
 
+// A value that cannot be read, with the field it is in.
+class FieldError extends Error {
+  constructor(message, field) {
+    super(message);
+    this.field = field;
+  }
+}
+
 // Why a field's value cannot be read, or null when it can.
 function valueProblem(input) {
   let value;
@@ -848,7 +885,7 @@ function collectValues() {
   }
   for (const input of form.querySelectorAll("input")) {
     const problem = valueProblem(input);
-    if (problem) throw new Error(`${fieldLabel(input.dataset.name)} (${input.dataset.name}): ${problem}`);
+    if (problem) throw new FieldError(`${fieldLabel(input.dataset.name)} (${input.dataset.name}): ${problem}`, input);
     assign(input.dataset.set, input.dataset.name, readValue(input));
   }
   return payload;
@@ -904,7 +941,10 @@ async function build() {
   try {
     payload = collectValues();
   } catch (error) {
-    showError(error.message);
+    // Built before the value was given (Ctrl/Cmd+Enter while typing): it
+    // is marked now.
+    error.field?.classList.add("invalid");
+    showError(error.message, error.field);
     return;
   }
   buildButton.disabled = true;

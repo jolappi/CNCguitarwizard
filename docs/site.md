@@ -26,7 +26,10 @@ Python.
    still being typed, the reason in its hint (`valueProblem`), and the mark
    goes as soon as it reads again; an editor's copy passes only a value
    that reads on to its form field, and Build names the field it stops
-   at (*Thickness (body_thickness): Needs a number*). The few fields a builder normally touches (scale, fret count,
+   at (*Thickness (body_thickness): Needs a number*), marks it, and
+   offers *Go to Thickness* (`FieldError`, `goToField`: its group and
+   folds opened, a search that leaves it out cleared, or its copy in an
+   editor's *Settings* while that editor is shown; then selected). The few fields a builder normally touches (scale, fret count,
    bridge, body thickness, tool and feeds…) are shown up front; the rest of
    each group sits behind an *Advanced* fold, marked `advanced` in the
    schema (`_BASIC_FIELDS`, `_BASIC_VARIANT_FIELDS` in `webapp.py`), with a
