@@ -4,6 +4,8 @@
 
 ### Added
 
+- *Full window* shows a drawing (an editor's or a result plot) over the
+  whole window, every handle working; *Close* or Escape puts it back.
 - A ruler over every drawing (*Measure* in its corner, the result's
   plots too): drag its ends, which snap to handles and holes (Shift
   keeps it level or upright), or its line; its length and how far it

@@ -315,8 +315,14 @@
   /* A zoomable drawing, with the chip that fits it again while zoomed. */
   .zoom-frame { position: relative; }
   .zoom-chip { position: absolute; top: 8px; right: 8px; padding: 2px 9px; font-size: 12px; font-weight: 500; }
-  .measure-chip { position: absolute; top: 8px; left: 8px; padding: 2px 9px; font-size: 12px; font-weight: 500; }
-  .measure-chip[aria-pressed="true"] { background: var(--accent); color: #fff; }
+  .frame-tools { position: absolute; top: 8px; left: 8px; display: flex; gap: 6px; }
+  .frame-tools button { padding: 2px 9px; font-size: 12px; font-weight: 500; }
+  .frame-tools button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+  /* A drawing over the whole window (Full window), under the page's
+     banners, readout and tour. */
+  .zoom-frame.full { position: fixed; inset: 0; z-index: 40; box-sizing: border-box; padding: 42px 8px 8px; background: #fff; }
+  .zoom-frame.full > svg { width: 100%; height: 100%; max-height: none !important; border: 0; }
+  body.drawing-full { overflow: hidden; }
   /* The ruler (see enableRuler): sized by the script for the zoom. */
   .ruler-line { stroke: #1f1a14; stroke-width: 1.5px; vector-effect: non-scaling-stroke; pointer-events: none; }
   .ruler-hit { stroke: transparent; cursor: move; }
@@ -690,7 +696,7 @@
       <dt><kbd>Shift</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd>, <kbd>Alt/Option</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd></dt><dd>Step a number field by 10, by 0.1</dd>
       <dt><kbd>/</kbd></dt><dd>Go to <em>Find a setting</em></dd>
       <dt><kbd>Enter</kbd> in <em>Find a setting</em></dt><dd>Go to the first setting found</dd>
-      <dt><kbd>Esc</kbd></dt><dd>Close a menu, or this list; clear <em>Find a setting</em></dd>
+      <dt><kbd>Esc</kbd></dt><dd>Close a menu, this list or a drawing's <em>Full window</em>; clear <em>Find a setting</em></dd>
       <dt><kbd>?</kbd></dt><dd>This list</dd>
     </dl>
     <p class="note">Each editor's handles (Shift-drag, Alt/Option-click and the rest) are in its

@@ -3381,7 +3381,27 @@ function enableZoom(editor) {
   chip.className = "secondary zoom-chip";
   chip.title = "Fit the whole drawing again (or double-click it)";
   chip.hidden = true;
-  frame.append(svg, chip);
+  // The other top corner's tools: Measure (see enableRuler) and Full
+  // window, the drawing over the whole page as big as the window lets it
+  // (Escape, or the chip again, puts it back).
+  const tools = document.createElement("div");
+  tools.className = "frame-tools";
+  frame.append(svg, chip, tools);
+  const full = document.createElement("button");
+  full.type = "button";
+  full.className = "secondary";
+  full.setAttribute("aria-pressed", "false");
+  const setFull = (on) => {
+    frame.classList.toggle("full", on);
+    document.body.classList.toggle("drawing-full", document.querySelector(".zoom-frame.full") !== null);
+    full.textContent = on ? "Close" : "Full window";
+    full.title = on ? "Back to the page (Escape)" : "The drawing over the whole window (Escape comes back)";
+    full.setAttribute("aria-pressed", String(on));
+  };
+  setFull(false);
+  frame.closeFull = () => setFull(false);
+  full.addEventListener("click", () => setFull(!frame.classList.contains("full")));
+  tools.append(full);
   editor.showZoom = () => {
     chip.hidden = !editor.zoom;
     if (editor.zoom) chip.textContent = `${editor.zoom.scale.toFixed(1)}× · Fit`;
@@ -3392,7 +3412,7 @@ function enableZoom(editor) {
     editor.showZoom();
   };
   chip.addEventListener("click", fit);
-  enableRuler(svg, frame);
+  enableRuler(svg, tools);
   const setBox = (x, y, width, height) => {
     const [, , baseWidth] = editor.baseBox;
     const scale = baseWidth / width;
@@ -3500,15 +3520,15 @@ function enableZoom(editor) {
 // whenever the drawing is redrawn and sized for the zoom.
 const RULER_SNAP = 8;  // pixels
 
-function enableRuler(svg, frame) {
+function enableRuler(svg, tools) {
   const chip = document.createElement("button");
   chip.type = "button";
-  chip.className = "secondary measure-chip";
+  chip.className = "secondary";
   chip.textContent = "Measure";
   chip.title = "A ruler to drag over the drawing: drag its ends (they snap to handles and holes; Alt-drag not, " +
     "Shift keeps it level or upright) or its line";
   chip.setAttribute("aria-pressed", "false");
-  frame.append(chip);
+  tools.prepend(chip);
   const ns = "http://www.w3.org/2000/svg";
   const group = document.createElementNS(ns, "g");
   group.setAttribute("class", "ruler");
@@ -3621,6 +3641,11 @@ function enableRuler(svg, frame) {
   new MutationObserver(draw).observe(svg, { childList: true, attributes: true, attributeFilter: ["viewBox"] });
   new ResizeObserver(draw).observe(svg);
 }
+
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") return;
+  for (const frame of document.querySelectorAll(".zoom-frame.full")) frame.closeFull();
+});
 
 // A plot (the plan view, a toolpath plot) zooms as an editor's drawing
 // does: its own view box is the whole of it.
