@@ -26,6 +26,7 @@ IDENTITY: Matrix = (1.0, 0.0, 0.0, 1.0, 0.0, 0.0)
 
 SVG_NS = "http://www.w3.org/2000/svg"
 INKSCAPE_LABEL = "{http://www.inkscape.org/namespaces/inkscape}label"
+XLINK_HREF = "{http://www.w3.org/1999/xlink}href"
 
 MM_PER_UNIT = {
     "": 25.4 / 96.0,
@@ -100,6 +101,30 @@ class SvgShape:
         return tuple(name for name in (self.element_id, self.label) if name)
 
 
+@dataclass(frozen=True, slots=True)
+class SvgImage:
+    """A picture placed in the drawing (``<image>``).
+
+    Attributes:
+        element_id: Its ``id`` ("" for none).
+        groups: The ids and labels of the groups (layers) it sits in.
+        hidden: Whether it, or a group it sits in, is not displayed.
+        matrix: Its user units to the document's millimetres.
+        box: Its ``x``, ``y``, ``width`` and ``height``, in user units.
+        stretched: Whether it fills its box (``preserveAspectRatio``
+            "none"); else it is fitted in, centred.
+        href: Its ``href``: a ``data:`` URI, or a file's name.
+    """
+
+    element_id: str
+    groups: tuple[str, ...]
+    hidden: bool
+    matrix: Matrix
+    box: tuple[float, float, float, float]
+    stretched: bool
+    href: str
+
+
 def read_svg_shapes(text: str, tolerance: float = 0.05) -> tuple[SvgShape, ...]:
     """Return every drawn shape in an SVG document, in millimetres.
 
@@ -111,6 +136,17 @@ def read_svg_shapes(text: str, tolerance: float = 0.05) -> tuple[SvgShape, ...]:
     Raises:
         DrawingError: If the text is not an SVG document.
     """
+    return read_svg_drawing(text, tolerance)[0]
+
+
+def read_svg_drawing(
+    text: str, tolerance: float = 0.05
+) -> tuple[tuple[SvgShape, ...], tuple[SvgImage, ...]]:
+    """Return an SVG document's shapes (``read_svg_shapes``) and pictures.
+
+    Raises:
+        DrawingError: If the text is not an SVG document.
+    """
     try:
         root = ElementTree.fromstring(text)
     except ElementTree.ParseError as error:
@@ -118,8 +154,9 @@ def read_svg_shapes(text: str, tolerance: float = 0.05) -> tuple[SvgShape, ...]:
     if _local(root.tag) != "svg":
         raise DrawingError("This is not an SVG file (its root is not <svg>).")
     shapes: list[SvgShape] = []
-    _walk(root, _document_matrix(root), (), False, tolerance, shapes, top=True)
-    return tuple(shapes)
+    images: list[SvgImage] = []
+    _walk(root, _document_matrix(root), (), False, tolerance, shapes, images, top=True)
+    return tuple(shapes), tuple(images)
 
 
 def _document_matrix(root: ElementTree.Element) -> Matrix:
@@ -192,16 +229,35 @@ def _walk(
     hidden: bool,
     tolerance: float,
     shapes: list[SvgShape],
+    images: list[SvgImage],
     top: bool = False,
 ) -> None:
     tag = _local(element.tag)
-    if tag in SKIPPED:
+    if tag in SKIPPED and tag != "image":
         return
     hidden = hidden or _hidden(element)
     if not top:
         matrix = _multiply(matrix, _parse_transform(element.get("transform", "")))
     element_id = element.get("id", "")
     label = element.get(INKSCAPE_LABEL) or element.get("data-name") or ""
+    if tag == "image":
+        images.append(
+            SvgImage(
+                element_id,
+                groups,
+                hidden,
+                matrix,
+                (
+                    _attribute_number(element, "x"),
+                    _attribute_number(element, "y"),
+                    _attribute_number(element, "width"),
+                    _attribute_number(element, "height"),
+                ),
+                element.get("preserveAspectRatio", "").strip().startswith("none"),
+                (element.get(XLINK_HREF) or element.get("href") or "").strip(),
+            )
+        )
+        return
     if tag in ("svg", "g", "a", "switch") or top:
         names = tuple(name for name in (element_id, label) if name)
         for child in element:
@@ -212,6 +268,7 @@ def _walk(
                 hidden,
                 tolerance,
                 shapes,
+                images,
             )
         return
     pieces = _element_pieces(tag, element)
@@ -648,6 +705,11 @@ def _multiply(m: Matrix, n: Matrix) -> Matrix:
         a * e2 + c * f2 + e,
         b * e2 + d * f2 + f,
     )
+
+
+def apply_matrix(matrix: Matrix, point: Point2D) -> Point2D:
+    """Return a point mapped by an SVG matrix."""
+    return _apply(matrix, point)
 
 
 def _apply(matrix: Matrix, point: Point2D) -> Point2D:

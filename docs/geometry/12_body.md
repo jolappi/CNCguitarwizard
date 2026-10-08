@@ -984,6 +984,7 @@ are the scroll's own):
 | `crackle` | The cells of a random Voronoi pattern, as crazed lacquer, about the spacing across, each shared edge engraved once |
 | `camo` | Woodland camouflage as a relief, not lines: closed shapes cleared flat to four levels (see *Camo relief*, below) |
 | `pinstripe` | One stripe round the body `PINSTRIPE_INSET` (0.5 mm) inside the margin, following the edge as a painted pinstripe does (Jackson RR, ESP LTD Alexi Hexed), broken where a cavity, the bridge, the pickguard or a contour is in its way and where a horn narrows past twice the margin; neither the seed nor the spacing changes it — set its distance from the edge with `body_engraving_margin` and its width with `body_engraving_depth` (the V-bit's groove is about 1.15 × the depth wide) |
+| `drawn` | Lines drawn in another program: the body editor's *Export SVG* template carries the pattern there is in its *Pattern* layer, and *Import SVG* reads that layer's lines back into `body_engraving_lines` (X from the heel end, as drawn, thinned to within 0.05 mm) when they were changed. Each is taken a millimetre at a time and cut back like any pattern; a line ending where it began stays closed; pieces under 3 mm are left out. Mirrored for a left-handed build; with no lines the build says so |
 
 ### Camo relief
 

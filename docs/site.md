@@ -240,7 +240,9 @@ Python.
    the layer *Reference*, locked, what it is drawn round — the neck,
    pocket, routes, cavities, jack, centreline and bridge line, or the
    neck, nut, tuner holes (dashed, the edge's clearance round them),
-   centreline and truss-rod cover — and three red registration marks.
+   centreline and truss-rod cover — and three red registration marks; a
+   body's template also has a layer *Pattern* with the engraving there is
+   (none, or the pattern's lines) to draw on.
    Import reads a file chosen from the click (`outline-file`) with
    `webapp.import_outline()`: `drawings.read_svg_shapes` reads any SVG
    (paths with every command, arcs included, rects, circles, ellipses,
@@ -265,10 +267,22 @@ Python.
    closest; corners meeting make a pointed tip, and a tip that turns back
    across the headstock (a hook) is refused, as is a file without its
    marks or a closed outline. An outline exported and read back unchanged
-   comes back exactly as it was. The import is one step to undo; the
+   comes back exactly as it was. A body's pattern — its *Pattern* layer,
+   any shape drawn beside the outline outside it, and any picture pasted
+   in (a PNG kept in the file, its dark shapes traced into outlines) —
+   where it was changed (read with every point and compared with the
+   engraving there was), becomes the drawn engraving
+   (`body_engraving_pattern` "drawn", `body_engraving_lines`, thinned to
+   within 0.05 mm, `body_engraving` on), set in the form as if chosen
+   there; emptied, it switches the engraving off; taken out of the file,
+   or left as it was, it leaves the engraving alone; the message counts
+   the shapes beside the outline and the pictures traced, and says why a
+   picture was left out (a JPEG, a linked file). The import is one
+   step to undo; the
    editor's status says how many handles it made, how close they keep,
    and then what does not fit (a feature outside the body, a tuner hole
-   too near the edge).
+   too near the edge) — the import's own note (`notice`) staying at the
+   head of the status line until the next change in the editor.
 4. On **Build 3D and CNC files** runs the build in stages — `start_build()`, then
    `advance_build()` once per stage of `workflows.Prototype001Build`
    (geometry, body, neck and fretboard toolpaths, cover plates, G-code,

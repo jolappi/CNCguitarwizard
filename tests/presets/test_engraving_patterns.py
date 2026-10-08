@@ -228,6 +228,10 @@ def test_a_relief_must_be_cut_from_its_parent_down() -> None:
         Engraving((), 2.0, (EngravedPocket(square[:2], 1.0),))
 
 
+DRAWN = (((60.0, -60.0), (200.0, -60.0)), ((60.0, 60.0), (120.0, 90.0), (200.0, 60.0)))
+"""Two lines drawn on the default body, clear of its pickups."""
+
+
 def test_the_body_takes_any_pattern() -> None:
     for pattern in ENGRAVING_PATTERNS:
         body = (
@@ -235,6 +239,7 @@ def test_the_body_takes_any_pattern() -> None:
                 Prototype001Parameters(),
                 body_engraving=True,
                 body_engraving_pattern=pattern,
+                body_engraving_lines=DRAWN if pattern == "drawn" else (),
             )
             .build()
             .body
@@ -243,6 +248,45 @@ def test_the_body_takes_any_pattern() -> None:
         # Lines, or a relief's shapes.
         assert bool(body.engraving.lines) != bool(body.engraving.pockets)
         assert bool(body.engraving.pockets) == (pattern == "camo")
+
+
+def test_drawn_lines_are_cut_back_where_the_top_may_not_be_engraved() -> None:
+    # One straight line across the square keep-out: cut in two at it (a
+    # millimetre at a time, not only at its ends), its clearance kept.
+    across = (Point2D(-120.0, 0.0), Point2D(120.0, 0.0))
+    circle = [
+        Point2D(
+            100.0 + 20.0 * math.cos(k * math.pi / 8), 20.0 * math.sin(k * math.pi / 8)
+        )
+        for k in range(16)
+    ]
+    ring = (*circle, circle[0])
+    lines = pattern_lines("drawn", AREA, 1, 50.0, drawn=(across, ring))
+    pieces = [line for line in lines if all(abs(p.y) < 1e-9 for p in line)]
+    assert len(pieces) == 2
+    assert max(p.x for p in pieces[0]) <= -30.0 - 4.0 + 1e-6
+    assert min(p.x for p in pieces[1]) >= 30.0 + 4.0 - 1e-6
+    # A closed ring, wholly in the area, stays one closed line.
+    (closed,) = [line for line in lines if line not in pieces]
+    assert closed[0] == closed[-1]
+    assert pattern_lines("drawn", AREA, 1, 50.0) == ()
+
+
+def test_a_drawn_pattern_needs_its_lines_and_is_mirrored_left_handed() -> None:
+    drawn = replace(
+        Prototype001Parameters(),
+        body_engraving=True,
+        body_engraving_pattern="drawn",
+        body_engraving_lines=DRAWN,
+    )
+    right = drawn.body_layout().engraving
+    left = replace(drawn, handedness="left").body_layout().engraving
+    assert right is not None and left is not None
+    assert [[(p.x, -p.y) for p in line] for line in right.lines] == [
+        [(p.x, p.y) for p in line] for line in left.lines
+    ]
+    with pytest.raises(BodyGeometryError, match="drawn engraving has no lines"):
+        replace(drawn, body_engraving_lines=()).body_layout()
 
 
 def test_the_web_form_offers_the_patterns() -> None:

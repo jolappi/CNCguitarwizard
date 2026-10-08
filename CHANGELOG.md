@@ -4,6 +4,16 @@
 
 ### Added
 
+- Surface patterns drawn in another program: the body editor's *Export
+  SVG* template has a *Pattern* layer with the engraving there is, and
+  *Import SVG* reads its lines back, where they were changed, as the new
+  `drawn` engraving pattern (`body_engraving_lines`), engraved with the
+  V-bit and cut back like any pattern to where the top may be engraved;
+  an emptied layer takes the engraving off. Shapes drawn beside the
+  outline outside the layer count as the pattern too, and a picture
+  pasted in (a PNG kept in the file) has its dark shapes traced into
+  outlines without any library; a JPEG or a linked picture is left out,
+  the import saying why.
 - Humbucker frames (`body_pickup_frame`): a frame round every humbucker,
   cut from plastic sheet in its own cover program — a plain `ring` (a
   rounded rectangle like a pickup mounting ring), or `horns` or `hook`,

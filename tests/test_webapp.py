@@ -919,3 +919,24 @@ def test_an_outline_that_cannot_be_drawn_says_why() -> None:
         "cgwMarkC is missing"
         in import_outline(drawn, "body", svg.replace("cgwMarkC", "x"))["error"]
     )
+
+
+def test_the_body_template_carries_the_engraving_to_draw_on() -> None:
+    payload = {"prototype": {"body_engraving": True, "body_engraving_pattern": "flame"}}
+    svg = outline_template(payload, "body")["svg"]
+    # Read back unchanged, the pattern is left as it is (laid out at random).
+    assert set(import_outline(payload, "body", svg)["values"]) == {"control_points"}
+    # A line taken out: the rest is the top's drawn engraving from now on.
+    start = svg.index('<g id="cgwPatternLayer"')
+    first = svg.index("<path", start)
+    end = svg.index("/>", first) + 2
+    result = import_outline(payload, "body", svg[:first] + svg[end:])
+    values = result["values"]
+    assert values["body_engraving"] is True
+    assert values["body_engraving_pattern"] == "drawn"
+    assert len(values["body_engraving_lines"]) == svg.count("<path", start) - 2
+    assert "lines to engrave" in result["message"]
+    # Every line taken out: no engraving.
+    layer_end = svg.index("</g>", start)
+    cleared = svg[: svg.index("\n", start) + 1] + svg[layer_end:]
+    assert import_outline(payload, "body", cleared)["values"]["body_engraving"] is False

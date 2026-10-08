@@ -23,6 +23,7 @@ import textwrap
 import types
 import typing
 import zipfile
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
@@ -41,9 +42,11 @@ from .drawings import (
     fit_closed_spline,
     fit_headstock,
     read_template_outline,
+    read_template_pattern,
     template_svg,
 )
 from .drawings.outlines import headstock_spans
+from .drawings.template import thinned
 from .exceptions import CNCGuitarWizardError
 from .field_help import FIELD_HELP
 from .geometry.body import (
@@ -147,6 +150,7 @@ _CHOICE_LABELS: dict[str, dict[str, str]] = {
         "crackle": "Crackle (random cells)",
         "camo": "Camo (woodland relief, four levels)",
         "pinstripe": "Pinstripe (round the edge, Jackson RR / Alexi Hexed)",
+        "drawn": "Drawn (lines from the body editor's Import SVG)",
     },
     "truss_rod_cover_style": {
         "bell": "Gibson bell (3 screws)",
@@ -1532,28 +1536,90 @@ def _body_template(payload: dict[str, Any]) -> str:
         references,
         (
             "CNCguitarwizard body outline, 1:1 in millimetres. Edit the black "
-            "path in layer Outline (or draw a new closed one there).",
+            "path in layer Outline (or draw a new closed one there); draw lines "
+            "to engrave into the top in layer Pattern.",
             "Keep layer Reference and its three red registration marks; read it "
             "back with Import SVG in the body editor.",
         ),
+        pattern=_engraving_view(layout),
+    )
+
+
+def _engraving_view(layout: dict[str, Any]) -> tuple[tuple[Point2D, ...], ...]:
+    """Return the body editor layout's engraving lines (empty for none)."""
+    return tuple(
+        tuple(Point2D(x, y) for x, y in line) for line in layout["engraving"] or ()
     )
 
 
 def _import_body(payload: dict[str, Any], svg: str) -> dict[str, Any]:
     _, layout = _drawn_body(payload)
     widening = float(layout["widening"] or 0.0)
-    read = read_template_outline(
-        svg, TemplateFrame(_BODY_MARKS, bool(layout["mirrored"]))
-    )
+    frame = TemplateFrame(_BODY_MARKS, bool(layout["mirrored"]))
+    read = read_template_outline(svg, frame)
     fit = fit_closed_spline(read.points, read.nodes)
     points = [
         [round(point.x, 2), round(narrow_y(point.y, widening), 2)]
         for point in fit.points
     ]
-    return {
-        "values": {"control_points": points},
-        "message": _import_message(len(points), fit.deviation, read),
-    }
+    values: dict[str, Any] = {"control_points": points}
+    message = _import_message(len(points), fit.deviation, read)
+    # The pattern (its layer, shapes drawn beside the outline, pictures
+    # traced), where it was changed: the top's engraving drawn from now on,
+    # or none when it was all taken out.
+    pattern = read_template_pattern(svg, frame, tolerance=None)
+    if pattern is not None:
+        notes = [
+            *(
+                [f"{_count(pattern.beside, 'shape')} drawn beside the outline"]
+                if pattern.beside
+                else []
+            ),
+            *(
+                [f"{_count(pattern.pictures, 'picture')} traced"]
+                if pattern.pictures
+                else []
+            ),
+            *(f"a picture left out: {reason}" for reason in pattern.untraced),
+        ]
+        said = f" ({'; '.join(notes)})" if notes else ""
+        if not _same_lines(pattern.lines, _engraving_view(layout)):
+            lines = [thinned(line, 0.05) for line in pattern.lines]
+            if lines:
+                values.update(
+                    body_engraving=True,
+                    body_engraving_pattern="drawn",
+                    body_engraving_lines=[
+                        [[round(p.x, 2), round(p.y, 2)] for p in line] for line in lines
+                    ],
+                )
+                message = (
+                    message[:-1]
+                    + f"; and its pattern, {_count(len(lines), 'line')} to engrave"
+                    + said
+                    + "."
+                )
+            else:
+                values["body_engraving"] = False
+                message = message[:-1] + f"; its pattern was taken out{said}."
+        elif said:
+            message = message[:-1] + said + "."
+    return {"values": values, "message": message}
+
+
+def _same_lines(
+    read: Sequence[Sequence[Point2D]], shown: Sequence[Sequence[Point2D]]
+) -> bool:
+    """Return whether lines read back are those the template was given: as
+    many, each through the same points (within 0.01 mm)."""
+    return len(read) == len(shown) and all(
+        len(line) == len(original)
+        and all(
+            abs(p.x - q.x) <= 0.01 and abs(p.y - q.y) <= 0.01
+            for p, q in zip(line, original, strict=True)
+        )
+        for line, original in zip(read, shown, strict=True)
+    )
 
 
 def _drawn_headstock(
@@ -1684,12 +1750,12 @@ def _import_message(handles: int, deviation: float, read: ReadOutline) -> str:
             f" (its program had scaled it by {read.scale:.3g}; the registration "
             "marks set it right)"
         )
-    if read.ignored:
-        message += (
-            f"; {read.ignored} other closed shape"
-            f"{'s' if read.ignored > 1 else ''} left out (the largest is read)"
-        )
     return message + "."
+
+
+def _count(number: int, thing: str) -> str:
+    """Return ``3 lines``, ``1 line``."""
+    return f"{number} {thing}{'' if number == 1 else 's'}"
 
 
 def _group_title(group: str) -> str:

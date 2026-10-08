@@ -907,8 +907,9 @@ class Prototype001Parameters:
     body_bridge_frame_points: tuple[tuple[float, float], ...] = ()
     # A decorative pattern engraved into the top (see presets.engraving):
     # body_engraving puts it on, body_engraving_pattern picks it (Design by
-    # Jone's scrolls, EVH stripes, flame, ripples, crackle, woodland camo or
-    # a pinstripe round the edge), laid out at
+    # Jone's scrolls, EVH stripes, flame, ripples, crackle, woodland camo, a
+    # pinstripe round the edge, or lines drawn in another program, "drawn"),
+    # laid out at
     # random from body_engraving_seed (the same seed, the same pattern),
     # body_engraving_spacing setting its scale (the scroll copies about that
     # far apart, as in the drawing), cut
@@ -947,6 +948,12 @@ class Prototype001Parameters:
     body_engraving_spacing: float = 50.0
     body_engraving_margin: float = 10.0
     body_engraving_clearance: float = 4.0
+    # body_engraving_lines: the "drawn" pattern's lines, drawn in another
+    # program in the body editor's SVG template (its Pattern layer) and read
+    # back with Import SVG: each (X from the heel end, Y) points, as drawn
+    # (right-handed), cut back like any pattern to where the top may be
+    # engraved.
+    body_engraving_lines: tuple[tuple[tuple[float, float], ...], ...] = ()
     body_battery_box: bool = False
     body_battery_count: int = 1
     body_battery_cavity_length: float = 56.0
@@ -3189,6 +3196,7 @@ class Prototype001Parameters:
             (lambda point: lowered.drop_at(point.x, point.y))
             if lowered is not None
             else None,
+            heel_end,
         )
         return BodyLayout(
             heel_end,
@@ -3954,16 +3962,35 @@ class Prototype001Parameters:
         keep_out: list[tuple[Point2D, ...]],
         holes: list[tuple[Point2D, float]],
         level: Callable[[Point2D], float] | None = None,
+        heel_end: float = 0.0,
     ) -> Engraving | None:
         """Return the top's decorative engraving, or ``None`` without one.
 
         The pattern (``presets.engraving``) is laid out from
         ``body_engraving_seed`` over the top ``body_engraving_margin`` in
         from the edge, clear of ``keep_out`` and ``holes``; a relief
-        (camo) only where ``level``, the top's drop, is level.
+        (camo) only where ``level``, the top's drop, is level. A drawn
+        pattern is ``body_engraving_lines``, placed from ``heel_end`` and
+        mirrored for a left-handed build.
+
+        Raises:
+            BodyGeometryError: For a drawn pattern with no lines.
         """
         if not self.body_engraving:
             return None
+        drawn: tuple[tuple[Point2D, ...], ...] = ()
+        if self.body_engraving_pattern == "drawn":
+            if not self.body_engraving_lines:
+                raise BodyGeometryError(
+                    "The drawn engraving has no lines: draw them in the body "
+                    "editor's SVG template (Export SVG, its Pattern layer) and "
+                    "read it back with Import SVG."
+                )
+            mirror = -1.0 if self.left_handed else 1.0
+            drawn = tuple(
+                tuple(Point2D(heel_end + x, mirror * y) for x, y in line)
+                for line in self.body_engraving_lines
+            )
         area = EngravingArea(
             outline,
             self.body_engraving_margin,
@@ -3979,7 +4006,7 @@ class Prototype001Parameters:
             self.body_engraving_spacing,
         )
         return Engraving(
-            pattern_lines(*layout),
+            pattern_lines(*layout, drawn=drawn),
             self.body_engraving_depth,
             pattern_pockets(*layout, self.body_engraving_depth),
         )

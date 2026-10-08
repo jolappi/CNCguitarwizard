@@ -426,9 +426,11 @@ FIELD_HELP: dict[str, str] = {
     "body_engraving_pattern": (
         "The engraved pattern: Design by Jone's scrolls, EVH style stripes, "
         "flame, ripples, crackle, a woodland camo relief (closed shapes "
-        "cleared to four levels down to body_engraving_depth), or a pinstripe "
+        "cleared to four levels down to body_engraving_depth), a pinstripe "
         "round the body just inside the margin (as on a Jackson RR or an ESP "
-        "LTD Alexi Hexed)."
+        "LTD Alexi Hexed), or lines drawn in another program (drawn: in the "
+        "body editor's Export SVG template, its Pattern layer, read back with "
+        "Import SVG)."
     ),
     "body_engraving_seed": (
         "Lays the pattern out anew: each number gives a different layout."

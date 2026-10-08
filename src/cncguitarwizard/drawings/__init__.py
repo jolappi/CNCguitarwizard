@@ -8,6 +8,7 @@ from .template import (
     ReferenceShape,
     TemplateFrame,
     read_template_outline,
+    read_template_pattern,
     template_svg,
 )
 
@@ -23,5 +24,6 @@ __all__ = [
     "fit_headstock",
     "read_svg_shapes",
     "read_template_outline",
+    "read_template_pattern",
     "template_svg",
 ]

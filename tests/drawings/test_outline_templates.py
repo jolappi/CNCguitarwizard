@@ -11,6 +11,7 @@ from cncguitarwizard.drawings import (
     fit_closed_spline,
     fit_headstock,
     read_template_outline,
+    read_template_pattern,
     template_svg,
 )
 from cncguitarwizard.drawings.outlines import headstock_spans
@@ -105,8 +106,12 @@ def test_an_outline_drawn_anew_is_the_largest_closed_shape() -> None:
         '    <circle cx="200" cy="0" r="40"/><path d="M0 0 H5"/>\n  </g>\n</svg>',
     )
     read = read_template_outline(svg, BODY)
-    assert read.ignored == 1
+    # The circle and the line beside it are no outline (they are read
+    # into the pattern).
+    assert read.ignored == 2
     assert max(p.x for p in read.points) == pytest.approx(450, abs=0.1)
+    beside = read_template_pattern(svg, BODY)
+    assert beside is not None and beside.beside == 2 and len(beside.lines) == 2
 
 
 def test_a_template_without_its_marks_or_an_outline_is_refused() -> None:
@@ -222,3 +227,37 @@ def test_a_pointed_headstock_and_a_hooked_tip() -> None:
     with pytest.raises(DrawingError, match="does not reach past the nut"):
         fit_headstock([Point2D(0, -21), Point2D(-10, 0), Point2D(0, 21)], 21.0, -1.0)
     assert math.isfinite(fit.deviation)
+
+
+def test_a_pattern_layer_is_written_and_read_back() -> None:
+    points = [Point2D(x, y) for x, y in ((0, -50), (300, -150), (450, 0), (300, 150))]
+    pattern = (
+        (Point2D(50, 0), Point2D(150, 20), Point2D(250, 0)),
+        (Point2D(100, -60), Point2D(140, -60), Point2D(140, -20), Point2D(100, -60)),
+    )
+    svg = template_svg("body", BODY, closed_catmull_rom_spans(points), [], (), pattern)
+    assert 'inkscape:label="Pattern"' in svg
+    # Moved and scaled as another program saves it: read back in place.
+    for drawing in (svg, _wrapped(svg, "translate(10 -5) scale(0.75)")):
+        read_back = read_template_pattern(drawing, BODY, tolerance=None)
+        assert read_back is not None and len(read_back.lines) == 2
+        for line, original in zip(read_back.lines, pattern, strict=True):
+            assert [(round(p.x, 3), round(p.y, 3)) for p in line] == [
+                (p.x, p.y) for p in original
+            ]
+    # The pattern's shapes are never taken for the outline, however big.
+    big = svg.replace(
+        '<g id="cgwPatternLayer" inkscape:groupmode="layer" inkscape:label="Pattern">',
+        '<g id="cgwPatternLayer" inkscape:groupmode="layer" inkscape:label="Pattern">'
+        '<rect x="-100" y="-300" width="700" height="600"/>',
+    ).replace('id="cgwOutline" ', "")
+    read = read_template_outline(big, BODY)
+    assert max(p.x for p in read.points) == pytest.approx(450, abs=0.5)
+    # Straight lines are thinned to their ends; no layer, no pattern.
+    straight = (tuple(Point2D(x, 0.0) for x in range(0, 101, 10)),)
+    thin = template_svg("b", BODY, closed_catmull_rom_spans(points), [], (), straight)
+    thinned_back = read_template_pattern(thin, BODY)
+    assert thinned_back is not None
+    (line,) = thinned_back.lines
+    assert len(line) == 2
+    assert read_template_pattern(_body_svg(points), BODY) is None

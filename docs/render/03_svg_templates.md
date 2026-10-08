@@ -13,6 +13,7 @@ millimetres), in two Inkscape layers that other programs read as groups:
 | Layer | What it holds |
 | --- | --- |
 | *Reference* (`cgwReference`, locked) | What the outline is drawn round (`ReferenceShape`s: polygons, lines and circles, each titled), the notes, and three red registration marks `cgwMarkA`, `cgwMarkB`, `cgwMarkC` |
+| *Pattern* (`cgwPatternLayer`, a body's) | The lines engraved into the top, one path each: the pattern there is, to draw on |
 | *Outline* (`cgwOutlineLayer`) | The outline, one closed path `cgwOutline` of cubic Bézier spans |
 
 `TemplateFrame(marks, mirrored)` places the model on the page: X as it
@@ -44,9 +45,37 @@ centres) and maps the drawing onto the model with the affine map that
 takes them home, so the program may have scaled, moved or flipped the
 whole drawing; `ReadOutline.scale` says by how much it was scaled. The
 outline is the path still named `cgwOutline`, else the largest closed
-shape outside the reference layer (its ends up to 3 mm apart); other
+shape outside the reference and pattern layers (its ends up to 3 mm
+apart); other
 closed shapes are counted in `ignored`. A missing mark, or no closed
 outline, is a `DrawingError` saying what to keep or draw.
+
+`read_template_pattern(text, frame)` reads a body's pattern
+(`ReadPattern`): every visible shape in the *Pattern* layer, every shape
+drawn beside the outline outside it (in the Outline layer, say:
+`beside`, counted), and every picture outside the reference layer, its
+dark shapes traced (`pictures`); each piece a line in the model frame (a
+closed one ending where it began), placed by the marks and thinned
+(`thinned`, Douglas-Peucker) to within 0.05 mm, or every point kept
+(`tolerance=None`). `None` where there is none of these and no such
+layer.
+
+## Pictures
+
+A picture pasted into the template (`<image>`, kept in the file as a
+`data:` URI) is traced without any library (`drawings.bitmap`): the PNG
+is decoded (every colour type, 1 to 16 bits, every row filter, not
+interlaced), a pixel is ink where it is darker than half and at least
+half opaque (`INK_LEVEL`), a picture bigger than `MAX_CELLS` (480) along
+its longer side is read in square blocks, a block ink where half of it
+is, and the ink's cell edges are followed into closed loops — round a
+dark shape, or round a hole in one, two shapes touching at a corner kept
+apart — each straight run one segment. The loops are placed by the
+picture's box (stretched to it, or fitted in and centred) and its
+transforms, then thinned to three quarters of a traced cell, which
+smooths their steps. A JPEG, a picture linked from a file or an
+interlaced PNG is left out, and `untraced` says why (trace it in the
+drawing program: Inkscape's Path ▸ Trace Bitmap).
 
 ## Fitting the editor's handles
 

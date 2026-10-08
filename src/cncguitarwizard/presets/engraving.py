@@ -18,7 +18,9 @@ the top may be engraved (``EngravingArea``):
   sometimes inside a larger, deeper (``pattern_pockets``);
 * ``pinstripe``, a stripe round the body ``PINSTRIPE_INSET`` inside the
   engraving's margin, following the edge as a painted pinstripe does
-  (Jackson RR, ESP LTD Alexi Hexed), broken where something is in its way.
+  (Jackson RR, ESP LTD Alexi Hexed), broken where something is in its way;
+* ``drawn``, lines drawn in another program and read back from the body
+  editor's SVG template (``drawn_lines``), cut back the same way.
 
 The scroll pattern is Design by Jone's surface design (``pintakuviodesignbyjone``):
 one motif of five arcs — a broad swirl, a curl and a small tip rolling
@@ -44,7 +46,14 @@ from ..geometry.body.engraving import EngravedPocket
 from ..geometry.primitives import Point2D
 
 EngravingPattern = Literal[
-    "scroll", "evh_stripes", "flame", "ripples", "crackle", "camo", "pinstripe"
+    "scroll",
+    "evh_stripes",
+    "flame",
+    "ripples",
+    "crackle",
+    "camo",
+    "pinstripe",
+    "drawn",
 ]
 
 ENGRAVING_PATTERNS: tuple[str, ...] = (
@@ -55,6 +64,7 @@ ENGRAVING_PATTERNS: tuple[str, ...] = (
     "crackle",
     "camo",
     "pinstripe",
+    "drawn",
 )
 """Every pattern, in the order the form offers them."""
 
@@ -518,7 +528,11 @@ def _length(points: Sequence[Point2D]) -> float:
 
 
 def pattern_lines(
-    pattern: str, area: EngravingArea, seed: int, spacing: float
+    pattern: str,
+    area: EngravingArea,
+    seed: int,
+    spacing: float,
+    drawn: Sequence[Sequence[Point2D]] = (),
 ) -> tuple[tuple[Point2D, ...], ...]:
     """Return ``pattern``'s lines over ``area``, laid out from ``seed``.
 
@@ -527,13 +541,16 @@ def pattern_lines(
     it between flame lines, a ripple group per its square, a crackle cell
     about its size (the pinstripe takes neither it nor the seed). Pieces
     shorter than ``MIN_PATTERN_LINE`` are left out. A relief pattern
-    (``RELIEF_PATTERNS``) has no lines: see ``pattern_pockets``.
+    (``RELIEF_PATTERNS``) has no lines: see ``pattern_pockets``. The
+    ``drawn`` pattern is the ``drawn`` lines (``drawn_lines``).
 
     Raises:
         ValueError: For an unknown pattern.
     """
     if pattern == "scroll":
         return engraving_lines(area, seed, spacing)
+    if pattern == "drawn":
+        return drawn_lines(drawn, area)
     if pattern not in ENGRAVING_PATTERNS:
         raise ValueError(
             f"Unknown engraving pattern {pattern!r}; use one of "
@@ -562,6 +579,32 @@ def pattern_lines(
         for piece in _pieces(_opened(line, allows), allows)
         if _length(piece) >= MIN_PATTERN_LINE
     )
+
+
+def drawn_lines(
+    lines: Sequence[Sequence[Point2D]], area: EngravingArea
+) -> tuple[tuple[Point2D, ...], ...]:
+    """Return lines drawn elsewhere, cut back to where the top may be engraved.
+
+    Each is first taken every ``ARC_STEP`` along it (a long straight
+    stretch is cut where it crosses a cavity, not only at its ends); a
+    line ending where it began is closed. Pieces shorter than ``MIN_LINE``
+    are left out.
+    """
+    allows = area.allows()
+    pieces: list[tuple[Point2D, ...]] = []
+    for line in lines:
+        if len(line) < 2:
+            continue
+        dense = [line[0]]
+        for a, b in zip(line, line[1:]):
+            steps = max(1, math.ceil(math.hypot(b.x - a.x, b.y - a.y) / ARC_STEP))
+            dense += [
+                Point2D(a.x + (b.x - a.x) * k / steps, a.y + (b.y - a.y) * k / steps)
+                for k in range(1, steps + 1)
+            ]
+        pieces += _pieces(_opened(dense, allows), allows)
+    return tuple(pieces)
 
 
 def _opened(line: list[Point2D], allows: AreaTest) -> list[Point2D]:

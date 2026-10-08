@@ -278,7 +278,10 @@
         program, <em>Export SVG</em> saves it as a template, 1:1 in millimetres: edit the black path in
         its Outline layer (or draw a new closed one there) round the locked Reference layer's neck,
         routes and cavities, keep the three red registration marks, and <em>Import SVG</em> reads it back
-        as handles on the drawn line (within 0.25 mm of it; <em>Undo</em> takes it back). The grid is 50 mm.</p>
+        as handles on the drawn line (within 0.25 mm of it; <em>Undo</em> takes it back). Lines drawn
+        in its Pattern layer (the engraving there is comes with it), shapes drawn beside the outline and
+        pictures pasted in (a PNG kept in the file: its dark shapes are traced) are read back as the
+        engraved pattern, <code>body_engraving_pattern</code> drawn; empty the layer to take the engraving off. The grid is 50 mm.</p>
       <div id="body-editor-options" class="editor-options"></div>
       <div id="body-editor-nc" class="nc-drop" title="Drop a feature here">Create NC file — drag a feature
         here to cut it on its own, zeroed at its centre (with its cover)</div>

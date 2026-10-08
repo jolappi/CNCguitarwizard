@@ -887,15 +887,22 @@ async function importOutline(part, file) {
   const values = result.values;
   if (part === "body") {
     bodyEditor.points = values.control_points;
+    // A pattern drawn in the template's Pattern layer: the engraving's
+    // fields (drawn lines, or none), set as if chosen in the form.
+    for (const [name, value] of Object.entries(values)) {
+      if (name === "control_points") continue;
+      const control = form.querySelector(`[data-set="prototype"][data-name="${name}"]`);
+      if (control) setControlValue(control, value);
+    }
   } else {
     headstockEditor.edges = { bass: values.headstock_bass_edge, treble: values.headstock_treble_edge };
     headstockEditor.tip = values.headstock_tip_points;
   }
-  // One change to undo; the drawing then says what still does not fit.
+  // One change to undo; the drawing then says what still does not fit,
+  // after what the import made of the file.
   editor.commit();
+  editor.notice = result.message;
   editor.draw();
-  const kind = editor.status.classList.contains("bad") ? "bad" : "ok";
-  editor.setStatus(`${result.message} ${editor.status.textContent}`.trim(), kind);
 }
 
 // Put one saved value into its form control, as if typed or picked.
@@ -2187,6 +2194,7 @@ const bodyEditor = {
 
   setField(input, value) {
     if (!input) return;
+    this.notice = "";
     input.value = input.dataset.type === "json" ? JSON.stringify(value) : String(value);
     markChanged(input);
     const fold = input.closest("details.advanced");
@@ -2527,6 +2535,7 @@ const bodyEditor = {
   },
 
   commit() {
+    this.notice = "";
     this.input.value = JSON.stringify(this.points);
     markChanged(this.input);
     const fold = this.input.closest("details.advanced");
@@ -2585,7 +2594,8 @@ const bodyEditor = {
   },
 
   setStatus(text, kind) {
-    this.status.textContent = text;
+    // A notice (what an import made) stays until the next change.
+    this.status.textContent = this.notice ? `${this.notice} ${text}` : text;
     this.status.className = `note ${kind}`;
   },
 };
@@ -3353,6 +3363,7 @@ const headstockEditor = {
   },
 
   commit() {
+    this.notice = "";
     const { bass, treble, tip } = this.inputs();
     bodyEditor.setField(bass, this.edges.bass);
     bodyEditor.setField(treble, this.edges.treble);
@@ -3405,7 +3416,8 @@ const headstockEditor = {
   },
 
   setStatus(text, kind) {
-    this.status.textContent = text;
+    // A notice (what an import made) stays until the next change.
+    this.status.textContent = this.notice ? `${this.notice} ${text}` : text;
     this.status.className = `note ${kind}`;
   },
 };
@@ -3470,7 +3482,8 @@ const inlayEditor = {
   },
 
   setStatus(text, kind) {
-    this.status.textContent = text;
+    // A notice (what an import made) stays until the next change.
+    this.status.textContent = this.notice ? `${this.notice} ${text}` : text;
     this.status.className = `note ${kind}`;
   },
 
