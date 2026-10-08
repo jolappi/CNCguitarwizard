@@ -856,7 +856,8 @@ class FreeCADScriptExporter:
     def _render_headstock_lettering(
         headstock: HeadstockSolid | None, lettering: Engraving | None
     ) -> str:
-        """Return the headstock's lettering drawn as lines on its face.
+        """Return the headstock's engraving (its lettering, lines drawn there)
+        drawn as lines on its face.
 
         Drawn, not cut: the grooves are left to the engraving program.
         """
@@ -869,7 +870,7 @@ class FreeCADScriptExporter:
             ]
             for line in lettering.lines
         ]
-        label = f"Headstock lettering ({lettering.depth:g} mm deep, drawn only)"
+        label = f"Headstock engraving ({lettering.depth:g} mm deep, drawn only)"
         return (
             "# The headstock's lettering, drawn on its face.\n"
             f"HEADSTOCK_LETTERING = {lines!r}\n"

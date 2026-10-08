@@ -13,7 +13,7 @@ millimetres), in two Inkscape layers that other programs read as groups:
 | Layer | What it holds |
 | --- | --- |
 | *Reference* (`cgwReference`, locked) | What the outline is drawn round (`ReferenceShape`s: polygons, lines and circles, each titled), the notes, and three red registration marks `cgwMarkA`, `cgwMarkB`, `cgwMarkC` |
-| *Pattern* (`cgwPatternLayer`, a body's) | The lines engraved into the top, one path each: the pattern there is, to draw on |
+| *Pattern* (`cgwPatternLayer`, a body's and a headstock's) | The lines engraved into the top or the headstock face, one path each: the pattern there is (a headstock's drawn lines), to draw on |
 | *Outline* (`cgwOutlineLayer`) | The outline, one closed path `cgwOutline` of cubic Bézier spans |
 
 `TemplateFrame(marks, mirrored)` places the model on the page: X as it
@@ -59,7 +59,7 @@ apart); other
 closed shapes are counted in `ignored`. A missing mark, or no closed
 outline, is a `DrawingError` saying what to keep or draw.
 
-`read_template_pattern(text, frame)` reads a body's pattern
+`read_template_pattern(text, frame)` reads a body's or a headstock's pattern
 (`ReadPattern`): every visible shape in the *Pattern* layer, every shape
 drawn beside the outline outside it (in the Outline layer, say:
 `beside`, counted), and every picture outside the reference layer, its

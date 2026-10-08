@@ -190,3 +190,33 @@ def test_a_pasted_picture_becomes_the_body_engraving() -> None:
     (square,) = values["body_engraving_lines"]
     assert len(square) == 5
     assert "1 picture traced" in result["message"]
+
+
+def test_a_picture_pasted_on_the_headstock_is_engraved_there() -> None:
+    from cncguitarwizard.webapp import (
+        headstock_editor_layout,
+        import_outline,
+        outline_template,
+    )
+
+    payload = {"prototype": {}}
+    svg = outline_template(payload, "headstock")["svg"]
+    data = base64.b64encode(_png(_square_rows(0), 0)).decode()
+    # A 16 mm picture near the tip (model X -140 to -124, Y -8 to 8),
+    # pasted into the Outline layer.
+    picture = (
+        f'<image x="-140" y="-8" width="16" height="16" preserveAspectRatio="none" '
+        f'xlink:href="data:image/png;base64,{data}" '
+        'xmlns:xlink="http://www.w3.org/1999/xlink"/>'
+    )
+    layer = '<g id="cgwOutlineLayer"'
+    end = svg.index("</g>", svg.index(layer))
+    result = import_outline(payload, "headstock", svg[:end] + picture + svg[end:])
+    (square,) = result["values"]["headstock_engraving_lines"]
+    xs = [x for x, _ in square]
+    ys = [y for _, y in square]
+    assert (min(xs), max(xs), min(ys), max(ys)) == pytest.approx((-136, -128, -4, 4))
+    assert "1 picture traced" in result["message"]
+    values = {**payload["prototype"], **result["values"]}
+    layout = headstock_editor_layout({"prototype": values})
+    assert layout["engraving"]["problem"] is None

@@ -263,9 +263,10 @@ Python.
    the layer *Reference*, locked, what it is drawn round — the neck,
    pocket, routes, cavities, jack, centreline and bridge line, or the
    neck, nut, tuner holes (dashed, the edge's clearance round them),
-   centreline and truss-rod cover — and three red registration marks; a
-   body's template also has a layer *Pattern* with the engraving there is
-   (none, or the pattern's lines) to draw on.
+   centreline, truss-rod cover and lettering — and three red registration
+   marks; a body's and a headstock's template also have a layer *Pattern*
+   with the engraving there is (none, the pattern's lines, or the lines
+   drawn on the headstock face) to draw on.
    Import reads a file chosen from the click (`outline-file`) with
    `webapp.import_outline()`: `drawings.read_svg_shapes` reads any SVG
    (paths with every command, arcs included, rects, circles, ellipses,
@@ -300,8 +301,12 @@ Python.
    there; emptied, it switches the engraving off; taken out of the file,
    or left as it was, it leaves the engraving alone; the message counts
    the shapes beside the outline and the pictures traced, and says why a
-   picture was left out (a JPEG, a linked file). The import is one
-   step to undo; the
+   picture was left out (a JPEG, a linked file). A headstock's is read
+   the same way into the lines engraved on its face
+   (`headstock_engraving_lines`, engraved with the lettering as deep as
+   `headstock_engraving_depth`; emptied, none), and the headstock editor
+   draws them in blue, saying when they run where the lettering may not.
+   The import is one step to undo; the
    editor's status says how many handles it made, how close they keep,
    and then what does not fit (a feature outside the body, a tuner hole
    too near the edge) — the import's own note (`notice`) staying at the

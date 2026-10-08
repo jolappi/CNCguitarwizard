@@ -4,6 +4,14 @@
 
 ### Added
 
+- Engraving drawn on the headstock face in another program: the headstock
+  editor's *Export SVG* template has a *Pattern* layer (and the lettering
+  in its reference layer), and *Import SVG* reads its lines, shapes drawn
+  beside the outline and pictures pasted in (their dark shapes traced) as
+  `headstock_engraving_lines`, engraved with the lettering in
+  `Headstock_engraving`, `headstock_engraving_depth` (1 mm) deep, kept
+  clear of what the lettering keeps clear of, and drawn in blue in the
+  editor.
 - The inlay marker drawn in another program: *Export SVG* in the inlay
   editor saves the marker as an SVG template, 1:1 in millimetres, in its
   first fret space with the frets, the board's edges and, dashed, where

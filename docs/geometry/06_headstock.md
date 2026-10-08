@@ -385,6 +385,18 @@ shows why it does not fit. It is cut `headstock_engraving_depth` (1 mm)
 deep into the finished face in `Headstock_engraving.nc`, and drawn as
 lines on the face in the FreeCAD model (`HeadstockLettering`).
 
+Lines drawn on the face in another program join it
+(`headstock_engraving_lines`): read back from the headstock editor's SVG
+template — its *Pattern* layer, shapes drawn beside the outline and
+pictures pasted in, their dark shapes traced (see
+[Outline templates](../render/03_svg_templates.md)) — as `(X, Y)` points
+in the drawn, right-handed frame, mirrored with a left-handed build
+(`headstock_drawn_lines`). They are engraved with the lettering in the
+same program, as deep (`headstock_engraving_depth`, 1 mm), and must keep
+clear of what it keeps clear of, checked every half millimetre along
+them (`headstock_drawn_engraving_problem`); the headstock editor draws
+them in blue and says when they do not.
+
 ## Headless
 
 `Prototype001Parameters.headless` (the `headless_guitar` and

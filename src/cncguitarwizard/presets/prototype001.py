@@ -1241,6 +1241,14 @@ class Prototype001Parameters:
     headstock_engraving_y: float = 0.0
     headstock_engraving_angle: float = 90.0
     headstock_engraving_depth: float = 1.0
+    # headstock_engraving_lines: lines drawn on the headstock face in
+    # another program, read back from the headstock editor's SVG template
+    # (its Pattern layer, shapes drawn beside the outline, pictures pasted
+    # in and traced): each (X from the nut, Y) points in the drawn,
+    # right-handed frame (mirrored with a left-handed build), engraved
+    # headstock_engraving_depth deep with the V-bit as the lettering is and
+    # kept clear of the same.
+    headstock_engraving_lines: tuple[tuple[tuple[float, float], ...], ...] = ()
     tuner_station_distances: tuple[float, ...] = (55.0, 85.0, 110.0)
     tuner_side_offsets: tuple[float, ...] = (15.0, 12.0, 10.0)
     tuner_inline_first_distance: float = 50.0
@@ -3840,7 +3848,8 @@ class Prototype001Parameters:
                 cover.
         """
         text = self.headstock_engraving_text.strip()
-        if not text:
+        drawn = self.headstock_drawn_lines()
+        if not text and not drawn:
             return None
         depth = self.headstock_engraving_depth
         if not math.isfinite(depth) or not 0.0 < depth < headstock.thickness / 2.0:
@@ -3848,25 +3857,89 @@ class Prototype001Parameters:
                 "headstock_engraving_depth must be positive and under half the "
                 "headstock's thickness."
             )
-        try:
-            lines = text_lines(
-                text,
-                self.headstock_engraving_height,
-                self.headstock_engraving_centre(headstock),
-                self.headstock_engraving_direction(),
-                self.headstock_engraving_font,
+        lines: Sequence[tuple[Point2D, ...]] = ()
+        if text:
+            try:
+                lines = text_lines(
+                    text,
+                    self.headstock_engraving_height,
+                    self.headstock_engraving_centre(headstock),
+                    self.headstock_engraving_direction(),
+                    self.headstock_engraving_font,
+                )
+            except GeometryException as error:
+                raise NeckGeometryError(str(error)) from error
+            problem = self._lettering_problem(
+                lines, headstock, tuner_layout, truss_rod_channel
             )
-        except GeometryException as error:
-            raise NeckGeometryError(str(error)) from error
-        problem = self._lettering_problem(
-            lines, headstock, tuner_layout, truss_rod_channel
+            if problem is not None:
+                raise NeckGeometryError(
+                    f"The headstock lettering {problem}: move it "
+                    "(headstock_engraving_x / _y), turn it or make it smaller."
+                )
+        problem = self.headstock_drawn_engraving_problem(
+            headstock, tuner_layout, truss_rod_channel
         )
         if problem is not None:
-            raise NeckGeometryError(
-                f"The headstock lettering {problem}: move it "
-                "(headstock_engraving_x / _y), turn it or make it smaller."
-            )
-        return Engraving(lines, depth)
+            raise NeckGeometryError(problem)
+        return Engraving((*lines, *drawn), depth)
+
+    def headstock_drawn_lines(self) -> tuple[tuple[Point2D, ...], ...]:
+        """Return the lines drawn on the headstock face as built: mirrored
+        with a left-handed build (``headstock_engraving_lines``).
+
+        Raises:
+            NeckGeometryError: For a point that is not two finite numbers.
+        """
+        flip = -1.0 if self.left_handed else 1.0
+        lines = []
+        for line in self.headstock_engraving_lines:
+            if not all(
+                len(point) == 2 and all(math.isfinite(value) for value in point)
+                for point in line
+            ):
+                raise NeckGeometryError(
+                    "headstock_engraving_lines must be lines of (X, Y) points."
+                )
+            if len(line) >= 2:
+                lines.append(tuple(Point2D(x, flip * y) for x, y in line))
+        return tuple(lines)
+
+    def headstock_drawn_engraving_problem(
+        self,
+        headstock: HeadstockSolid,
+        tuner_layout: TunerLayout,
+        truss_rod_channel: TrussRodChannel,
+    ) -> str | None:
+        """Return why the lines drawn on the headstock face cannot be cut,
+        or ``None``: they keep clear of what the lettering keeps clear of
+        (see ``_lettering_problem``), checked every half millimetre along
+        them (a long straight line may cross a hole between its ends)."""
+        drawn = self.headstock_drawn_lines()
+        if not drawn:
+            return None
+        dense = []
+        for line in drawn:
+            points = [line[0]]
+            for a, b in zip(line, line[1:]):
+                steps = max(1, math.ceil(math.hypot(b.x - a.x, b.y - a.y) / 0.5))
+                points += [
+                    Point2D(
+                        a.x + (b.x - a.x) * step / steps,
+                        a.y + (b.y - a.y) * step / steps,
+                    )
+                    for step in range(1, steps + 1)
+                ]
+            dense.append(tuple(points))
+        problem = self._lettering_problem(
+            dense, headstock, tuner_layout, truss_rod_channel
+        )
+        if problem is None:
+            return None
+        return (
+            f"The headstock's drawn engraving {problem}: draw it clear of it in "
+            "the headstock editor's SVG template (Export SVG, then Import SVG)."
+        )
 
     def _under_carve(
         self, rear: RearCavity | None, drop: Callable[[Cavity], float]

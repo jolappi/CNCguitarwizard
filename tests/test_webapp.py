@@ -899,6 +899,38 @@ def test_the_headstock_outline_goes_out_as_a_template_and_comes_back() -> None:
     assert "scaled it by 0.75" in values["message"]
 
 
+def test_the_headstock_template_carries_its_engraving_to_draw_on() -> None:
+    cross = [[[-140.0, -4.0], [-130.0, -4.0], [-130.0, 4.0], [-140.0, 4.0]]]
+    payload = {
+        "prototype": {
+            "headstock_engraving_lines": cross,
+            "headstock_engraving_text": "J",
+        }
+    }
+    svg = outline_template(payload, "headstock")["svg"]
+    assert (
+        'id="cgwPatternLayer"' in svg and "Lettering (headstock_engraving_text)" in svg
+    )
+    # Read back unchanged, the engraving is left as it is.
+    assert (
+        "headstock_engraving_lines"
+        not in import_outline(payload, "headstock", svg)["values"]
+    )
+    # A line drawn in the layer: the lines drawn from now on.
+    start = svg.index('<g id="cgwPatternLayer"')
+    end = svg.index("</g>", start)
+    added = svg[:end] + '<path d="M -135,10 L -135,-10"/>' + svg[end:]
+    result = import_outline(payload, "headstock", added)
+    lines = result["values"]["headstock_engraving_lines"]
+    assert len(lines) == 2 and lines[1] == [[-135.0, -10.0], [-135.0, 10.0]]
+    assert "its engraving, 2 lines" in result["message"]
+    # Every line taken out: none.
+    cleared = svg[: svg.index("\n", start) + 1] + svg[end:]
+    taken = import_outline(payload, "headstock", cleared)
+    assert taken["values"]["headstock_engraving_lines"] == []
+    assert "its engraving was taken out" in taken["message"]
+
+
 def _with_outline(svg: str, d: str) -> str:
     """The template with its outline path drawn anew as ``d``."""
     start = svg.index('<path id="cgwOutline"')

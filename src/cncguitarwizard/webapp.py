@@ -1149,7 +1149,9 @@ def headstock_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         edges, sampled halfway to the shoulder, at the shoulder, at seven
         points along the taper and at the tip (ten handles a side);
         ``holes`` is a list of ``{"side", "x", "y", "r"}``; ``lettering``
-        the headstock's lettering (see ``_headstock_lettering``), or ``None``.
+        the headstock's lettering (see ``_headstock_lettering``), or ``None``;
+        ``engraving`` the lines drawn on its face (see
+        ``_headstock_drawn_engraving``), or ``None``.
     """
     try:
         built = Prototype001Parameters(**_coerce(payload.get("prototype", {})))
@@ -1170,6 +1172,7 @@ def headstock_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         # A locking nut wider than the neck is refused here too.
         nut = _nut_drawing(parameters)
         lettering = _headstock_lettering(built)
+        engraving = _headstock_drawn_engraving(built)
         truss_cover = _truss_cover_drawing(parameters)
     except (CNCGuitarWizardError, TypeError, ValueError) as error:
         return {"error": f"{type(error).__name__}: {error}"}
@@ -1186,6 +1189,7 @@ def headstock_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
     }
     return {
         "lettering": lettering,
+        "engraving": engraving,
         "truss_cover": truss_cover,
         "nut": nut,
         "mirrored": built.left_handed,
@@ -1359,6 +1363,35 @@ def _headstock_lettering(parameters: Prototype001Parameters) -> dict[str, Any] |
     }
 
 
+def _headstock_drawn_engraving(
+    parameters: Prototype001Parameters,
+) -> dict[str, Any] | None:
+    """Return the lines drawn on the headstock face for its editor, or ``None``.
+
+    ``{"lines", "problem"}``: the lines as drawn (``headstock_engraving_lines``,
+    the editor's frame) and why they cannot be cut, or ``None`` (an outline
+    that cannot be laid out says so itself).
+    """
+    lines = [
+        [[x, y] for x, y in line]
+        for line in parameters.headstock_engraving_lines
+        if len(line) >= 2
+    ]
+    if not lines:
+        return None
+    problem: str | None = None
+    try:
+        plan, tuners = parameters.headstock_design()
+        problem = parameters.headstock_drawn_engraving_problem(
+            parameters.headstock_solid(plan),
+            tuners,
+            parameters.truss_rod(parameters.neck_outline()),
+        )
+    except CNCGuitarWizardError:
+        pass
+    return {"lines": lines, "problem": problem}
+
+
 _ACTIVE_BUILD: Prototype001Build | None = None
 
 
@@ -1448,9 +1481,11 @@ def import_outline(payload: dict[str, Any], part: str, svg: str) -> dict[str, An
 
     Returns:
         ``{"values": {...}, "message": text}`` — for a body
-        ``{"control_points"}`` (the ``body_shape`` field), for a headstock
-        ``{"headstock_outline", "headstock_bass_edge",
-        "headstock_treble_edge", "headstock_tip_points"}``, for a marker
+        ``{"control_points"}`` (the ``body_shape`` field) and its drawn
+        engraving where it changed, for a headstock ``{"headstock_outline",
+        "headstock_bass_edge", "headstock_treble_edge",
+        "headstock_tip_points"}`` and ``"headstock_engraving_lines"`` where
+        the lines drawn on its face changed, for a marker
         ``{"inlay_style", "inlay_points"}`` — or ``{"error": message}``.
     """
     try:
@@ -1583,47 +1618,65 @@ def _import_body(payload: dict[str, Any], svg: str) -> dict[str, Any]:
     ]
     values: dict[str, Any] = {"control_points": points}
     message = _import_message(len(points), fit.deviation, read)
-    # The pattern (its layer, shapes drawn beside the outline, pictures
-    # traced), where it was changed: the top's engraving drawn from now on,
-    # or none when it was all taken out.
-    pattern = read_template_pattern(svg, frame, tolerance=None)
-    if pattern is not None:
-        notes = [
-            *(
-                [f"{_count(pattern.beside, 'shape')} drawn beside the outline"]
-                if pattern.beside
-                else []
-            ),
-            *(
-                [f"{_count(pattern.pictures, 'picture')} traced"]
-                if pattern.pictures
-                else []
-            ),
-            *(f"a picture left out: {reason}" for reason in pattern.untraced),
-        ]
-        said = f" ({'; '.join(notes)})" if notes else ""
-        if not _same_lines(pattern.lines, _engraving_view(layout)):
-            lines = [thinned(line, 0.05) for line in pattern.lines]
-            if lines:
-                values.update(
-                    body_engraving=True,
-                    body_engraving_pattern="drawn",
-                    body_engraving_lines=[
-                        [[round(p.x, 2), round(p.y, 2)] for p in line] for line in lines
-                    ],
-                )
-                message = (
-                    message[:-1]
-                    + f"; and its pattern, {_count(len(lines), 'line')} to engrave"
-                    + said
-                    + "."
-                )
-            else:
-                values["body_engraving"] = False
-                message = message[:-1] + f"; its pattern was taken out{said}."
-        elif said:
-            message = message[:-1] + said + "."
+    # The pattern, where it was changed: the top's engraving drawn from now
+    # on, or none when it was all taken out.
+    lines, said = _read_pattern(svg, frame, _engraving_view(layout))
+    if lines:
+        values.update(
+            body_engraving=True,
+            body_engraving_pattern="drawn",
+            body_engraving_lines=lines,
+        )
+        message = (
+            message[:-1]
+            + f"; and its pattern, {_count(len(lines), 'line')} to engrave"
+            + said
+            + "."
+        )
+    elif lines is not None:
+        values["body_engraving"] = False
+        message = message[:-1] + f"; its pattern was taken out{said}."
+    elif said:
+        message = message[:-1] + said + "."
     return {"values": values, "message": message}
+
+
+def _read_pattern(
+    svg: str, frame: TemplateFrame, shown: Sequence[Sequence[Point2D]]
+) -> tuple[list[list[list[float]]] | None, str]:
+    """Return a template's pattern where it was changed, and what was read.
+
+    The pattern is every line in its *Pattern* layer, every shape drawn
+    beside the outline and every picture traced
+    (``read_template_pattern``). Returns its lines thinned to within
+    0.05 mm, as ``[x, y]`` points — ``None`` where there is none to read or
+    it is the one the template was given (``shown``), empty where it was
+    all taken out — and a note of the shapes beside the outline and the
+    pictures traced or left out (``" (...)"``, or ``""`` for none).
+    """
+    pattern = read_template_pattern(svg, frame, tolerance=None)
+    if pattern is None:
+        return None, ""
+    notes = [
+        *(
+            [f"{_count(pattern.beside, 'shape')} drawn beside the outline"]
+            if pattern.beside
+            else []
+        ),
+        *(
+            [f"{_count(pattern.pictures, 'picture')} traced"]
+            if pattern.pictures
+            else []
+        ),
+        *(f"a picture left out: {reason}" for reason in pattern.untraced),
+    ]
+    said = f" ({'; '.join(notes)})" if notes else ""
+    if _same_lines(pattern.lines, shown):
+        return None, said
+    return [
+        [[round(p.x, 2), round(p.y, 2)] for p in thinned(line, 0.05)]
+        for line in pattern.lines
+    ], said
 
 
 def _same_lines(
@@ -1716,6 +1769,16 @@ def _headstock_template(payload: dict[str, Any]) -> str:
                 colour="#9a5bb5",
             )
         )
+    lettering = layout["lettering"]
+    references += [
+        ReferenceShape(
+            "Lettering (headstock_engraving_text)",
+            tuple(Point2D(x, y) for x, y in line),
+            closed=False,
+            colour="#1f6fb2",
+        )
+        for line in (lettering["lines"] if lettering else ())
+    ]
     return template_svg(
         "CNCguitarwizard headstock outline",
         TemplateFrame(_HEADSTOCK_MARKS, bool(layout["mirrored"])),
@@ -1725,17 +1788,30 @@ def _headstock_template(payload: dict[str, Any]) -> str:
             "CNCguitarwizard headstock outline, 1:1 in millimetres. Edit the "
             "black path in layer Outline: from the nut on one side round the "
             "tip to the nut on the other.",
+            "Draw what is engraved on the face in layer Pattern (or beside the "
+            "outline, or paste a picture: its dark shapes are traced).",
             "Keep layer Reference and its three red registration marks; read it "
             "back with Import SVG in the headstock editor.",
         ),
+        pattern=_headstock_engraving_view(parameters),
+    )
+
+
+def _headstock_engraving_view(
+    parameters: Prototype001Parameters,
+) -> tuple[tuple[Point2D, ...], ...]:
+    """Return the lines drawn on the headstock face, as drawn (none: empty)."""
+    return tuple(
+        tuple(Point2D(x, y) for x, y in line)
+        for line in parameters.headstock_engraving_lines
+        if len(line) >= 2
     )
 
 
 def _import_headstock(payload: dict[str, Any], svg: str) -> dict[str, Any]:
     parameters, layout = _drawn_headstock(payload)
-    read = read_template_outline(
-        svg, TemplateFrame(_HEADSTOCK_MARKS, bool(layout["mirrored"]))
-    )
+    frame = TemplateFrame(_HEADSTOCK_MARKS, bool(layout["mirrored"]))
+    read = read_template_outline(svg, frame)
     fit = fit_headstock(
         read.points, layout["nut_half_width"], layout["bass_sign"], read.nodes
     )
@@ -1747,15 +1823,26 @@ def _import_headstock(payload: dict[str, Any], svg: str) -> dict[str, Any]:
         headstock_tip_points=fit.tip_points,
     ).headstock_plan()
     handles = len(fit.bass_edge) + len(fit.treble_edge) + len(fit.tip_points)
-    return {
-        "values": {
-            "headstock_outline": "drawn",
-            "headstock_bass_edge": [list(point) for point in fit.bass_edge],
-            "headstock_treble_edge": [list(point) for point in fit.treble_edge],
-            "headstock_tip_points": [list(point) for point in fit.tip_points],
-        },
-        "message": _import_message(handles, fit.deviation, read),
+    values: dict[str, Any] = {
+        "headstock_outline": "drawn",
+        "headstock_bass_edge": [list(point) for point in fit.bass_edge],
+        "headstock_treble_edge": [list(point) for point in fit.treble_edge],
+        "headstock_tip_points": [list(point) for point in fit.tip_points],
     }
+    message = _import_message(handles, fit.deviation, read)
+    # What is engraved on the face, where it was changed: the lines drawn
+    # from now on (engraved as the lettering is), or none.
+    lines, said = _read_pattern(svg, frame, _headstock_engraving_view(parameters))
+    if lines is not None:
+        values["headstock_engraving_lines"] = lines
+        message = message[:-1] + (
+            f"; and its engraving, {_count(len(lines), 'line')}{said}."
+            if lines
+            else f"; its engraving was taken out{said}."
+        )
+    elif said:
+        message = message[:-1] + said + "."
+    return {"values": values, "message": message}
 
 
 def _laid_out_inlay(payload: dict[str, Any]) -> dict[str, Any]:

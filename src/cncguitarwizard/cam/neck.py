@@ -229,7 +229,8 @@ def _lettering_setup(
     after: str,
     reference_points: tuple[tuple[float, float], ...],
 ) -> Setup | None:
-    """Return the V-bit program for the headstock's lettering, or ``None``.
+    """Return the V-bit program for what is engraved on the headstock face
+    (its lettering, lines drawn there), or ``None``.
 
     It follows the finished face (``face_depth``: its Z at a model point),
     so it runs right after ``after`` mills it, before the blank is turned.
@@ -240,14 +241,14 @@ def _lettering_setup(
     tool = engraving_tool(flat, lettering.depth)
     return Setup(
         "Headstock_engraving",
-        f"Headstock face - lettering {lettering.depth:g} mm deep with a V-bit",
+        f"Headstock face - engraving {lettering.depth:g} mm deep with a V-bit",
         (
             engraving_path(
                 lettering,
                 frame.point,
                 tool,
                 lambda point: face_depth(point.x, point.y),
-                "Headstock lettering",
+                "Headstock engraving",
             ),
         ),
         (

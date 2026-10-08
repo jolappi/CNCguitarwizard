@@ -138,3 +138,65 @@ def test_the_headstock_takes_a_script_or_gothic_name() -> None:
         ).build()
         assert geometry.headstock_engraving is not None
         assert geometry.headstock_engraving.lines
+
+
+CROSS = (
+    ((-140.0, -4.0), (-130.0, -4.0), (-130.0, 4.0), (-140.0, 4.0), (-140.0, -4.0)),
+    ((-138.0, 0.0), (-132.0, 0.0)),
+)
+"""Lines drawn on the face at its tip, as read back from an SVG template."""
+
+
+def test_lines_drawn_on_the_face_are_engraved_with_the_lettering() -> None:
+    parameters = replace(
+        Prototype001Parameters(),
+        headstock_engraving_text="Jone",
+        headstock_engraving_lines=CROSS,
+    )
+    engraving = parameters.build().headstock_engraving
+    assert engraving is not None and engraving.depth == 1.0
+    lettering = replace(parameters, headstock_engraving_lines=()).build()
+    assert lettering.headstock_engraving is not None
+    letters = len(lettering.headstock_engraving.lines)
+    # The lettering's strokes, then the drawn lines as drawn.
+    assert len(engraving.lines) == letters + 2
+    assert [(p.x, p.y) for p in engraving.lines[letters]] == list(CROSS[0])
+    # Drawn lines alone are engraved too, as deep as headstock_engraving_depth.
+    alone = replace(
+        Prototype001Parameters(),
+        headstock_engraving_lines=CROSS,
+        headstock_engraving_depth=1.5,
+    ).build()
+    assert alone.headstock_engraving is not None
+    assert alone.headstock_engraving.depth == 1.5
+    assert len(alone.headstock_engraving.lines) == 2
+    # A left-handed build engraves them mirrored, as its headstock is.
+    left = replace(
+        Prototype001Parameters(), headstock_engraving_lines=CROSS, handedness="left"
+    ).build()
+    assert left.headstock_engraving is not None
+    assert [p.y for p in left.headstock_engraving.lines[0]] == [-y for _, y in CROSS[0]]
+    plan = plan_neck_machining(alone, NeckMachiningParameters())
+    (setup,) = [s for s in plan.setups if s.name == "Headstock_engraving"]
+    assert setup.description.startswith("Headstock face - engraving 1.5 mm deep")
+
+
+def test_lines_drawn_into_a_tuner_hole_say_so() -> None:
+    hole = (((-60.0, 10.0), (-50.0, 20.0)),)
+    parameters = replace(Prototype001Parameters(), headstock_engraving_lines=hole)
+    with pytest.raises(NeckGeometryError, match="drawn engraving runs into a tuner"):
+        parameters.build()
+    editor = headstock_editor_layout(
+        {"prototype": {"headstock_engraving_lines": [list(map(list, hole[0]))]}}
+    )
+    assert editor["engraving"]["lines"] == [[[-60.0, 10.0], [-50.0, 20.0]]]
+    assert "Export SVG" in editor["engraving"]["problem"]
+    fine = headstock_editor_layout(
+        {"prototype": {"headstock_engraving_lines": [list(map(list, CROSS[0]))]}}
+    )
+    assert fine["engraving"]["problem"] is None
+    assert headstock_editor_layout({"prototype": {}})["engraving"] is None
+    with pytest.raises(NeckGeometryError, match="lines of"):
+        replace(
+            Prototype001Parameters(), headstock_engraving_lines=(((1.0,),),)
+        ).build()

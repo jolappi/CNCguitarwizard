@@ -949,6 +949,11 @@ async function importOutline(part, file) {
   } else if (part === "headstock") {
     headstockEditor.edges = { bass: values.headstock_bass_edge, treble: values.headstock_treble_edge };
     headstockEditor.tip = values.headstock_tip_points;
+    // Lines drawn on the face (or none), set as if typed in the form.
+    if (values.headstock_engraving_lines) {
+      setControlValue(form.querySelector('[data-set="prototype"][data-name="headstock_engraving_lines"]'),
+        values.headstock_engraving_lines);
+    }
   } else {
     // Its corners, a drawn marker from now on (commit sets the style).
     inlayEditor.points = values.inlay_points;
@@ -3003,6 +3008,16 @@ const headstockEditor = {
       }
       this.element("title", {}, group).textContent = "The headstock lettering — drag it to move it";
     }
+    // Lines drawn on the face in another program (Import SVG), engraved
+    // as the lettering is.
+    if (layout.engraving) {
+      const group = this.element("g", { class: "drawn-engraving" });
+      for (const line of layout.engraving.lines) {
+        this.element("path", { class: "lettering-line", d: this.pathData(line) }, group);
+      }
+      this.element("title", {}, group).textContent =
+        "Engraved on the face, drawn in another program — Export SVG to change it";
+    }
     this.check();
   },
 
@@ -3465,6 +3480,8 @@ const headstockEditor = {
       this.setStatus(`${problem[0].toUpperCase()}${problem.slice(1)}.`, "bad");
     } else if (this.layout.lettering?.problem) {
       this.setStatus(this.layout.lettering.problem, "bad");
+    } else if (this.layout.engraving?.problem) {
+      this.setStatus(this.layout.engraving.problem, "bad");
     } else {
       this.setStatus(`Every tuner hole is at least ${limit} mm from the edge.`, "ok");
     }
