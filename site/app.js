@@ -1621,8 +1621,9 @@ const undoHistory = {
     this.update();
   },
 
-  // The fields a kept step differs from the values now in (a variant's
-  // own fields by name), for the buttons' tooltips.
+  // The fields a kept step differs from the values now in, named as the
+  // form labels them (a variant's own fields after it: "Bridge · String
+  // spacing"), for the buttons' tooltips.
   changes(json) {
     const kept = JSON.parse(json), now = JSON.parse(this.current);
     const names = [];
@@ -1632,10 +1633,10 @@ const undoHistory = {
         if (JSON.stringify(a) === JSON.stringify(b)) continue;
         if (a && b && typeof a === "object" && a.kind !== undefined && a.kind === b.kind) {
           for (const sub of Object.keys(a)) {
-            if (JSON.stringify(a[sub]) !== JSON.stringify(b[sub])) names.push(`${name}.${sub}`);
+            if (JSON.stringify(a[sub]) !== JSON.stringify(b[sub])) names.push(`${fieldLabel(name)} · ${fieldLabel(sub)}`);
           }
         } else {
-          names.push(name);
+          names.push(fieldLabel(name));
         }
       }
     }

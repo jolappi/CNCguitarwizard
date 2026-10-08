@@ -299,7 +299,8 @@ Python.
    a loaded design — up to 100 steps, and puts back only the values that
    differ (another instrument's form drawn first), redrawing the editors.
    One history serves the whole page; a button's tooltip names the fields
-   its step changes, and a new change clears the redo steps. In a text
+   its step changes as the form labels them (*Undo: Thickness*, *Undo:
+   Bridge · Baseplate length*), and a new change clears the redo steps. In a text
    field the keys keep the browser's own undo of the typing.
    Every editor's drawing zooms (`enableZoom`): Ctrl/Cmd+wheel, or a
    trackpad's pinch, about the pointer, up to 20 times; zoomed in, a drag

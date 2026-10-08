@@ -674,6 +674,9 @@
 
 ### Changed
 
+- Undo's and Redo's tooltips name the fields as the form labels them
+  (*Undo: Thickness*, *Undo: Bridge · Baseplate length*), not by their
+  names in the code.
 - Each group of the form says in its title how many of its settings are
   changed from their defaults (*Body · 3 changed*).
 - The toolpath plots are chosen from a list by part (each program by its

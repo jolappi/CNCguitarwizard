@@ -987,7 +987,8 @@ Ctrl/Cmd+Z ja Ctrl/Cmd+Shift+Z / Ctrl+Y) kumoavat ja palauttavat
 suunnitelman muutoksia: editorin raahaus (kun se päättyy), pohja tai
 poisto, lomakkeen kentän muutos, Reset, soittimen vaihto ja ladattu
 suunnitelma ovat kukin yksi askel, enintään 100 askelta. Historia on koko
-sivulle yhteinen; napin vihje kertoo, mitä kenttiä askel muuttaa, ja uusi
+sivulle yhteinen; napin vihje kertoo lomakkeen nimillä, mitä kenttiä askel
+muuttaa (*Undo: Thickness*, *Undo: Bridge · Baseplate length*), ja uusi
 muutos tyhjentää palautettavat askeleet. Tekstikentässä näppäimet kumoavat
 selaimen tapaan kirjoitusta.
 Tallennettu suunnitelma rakennetaan paikallisesti komennolla
