@@ -763,6 +763,7 @@ function showResult(result) {
   output.classList.remove("hidden");
 
   document.getElementById("plan").innerHTML = result.plan_view;
+  zoomablePlot(document.getElementById("plan"));
 
   // One fold per part, the model and report first: each program numbered
   // in the order it is run, its toolpath plot a link on its row. The
@@ -842,6 +843,7 @@ function showResult(result) {
   }
   const show = () => {
     toolpath.innerHTML = result.files[chooser.value] || "";
+    zoomablePlot(toolpath);
   };
   chooser.addEventListener("change", show);
   const stepper = (label, title, by) => {
@@ -3027,6 +3029,15 @@ function enableZoom(editor) {
     svg.setAttribute("viewBox", editor.baseBox.join(" "));
   });
 }
+// A plot (the plan view, a toolpath plot) zooms as an editor's drawing
+// does: its own view box is the whole of it.
+function zoomablePlot(holder) {
+  const svg = holder.querySelector("svg");
+  const baseBox = svg?.getAttribute("viewBox")?.trim().split(/[\s,]+/).map(Number);
+  if (!baseBox || baseBox.length !== 4 || !(baseBox[2] > 0)) return;
+  enableZoom({ svg, baseBox, zoom: null });
+}
+
 // The quick links, each only while its panel shows (a result once one is
 // built, the headstock editor while there is a headstock to draw, …).
 const jumpLinks = [...document.querySelectorAll("#jump a[data-panel]")];

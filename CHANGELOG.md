@@ -4,6 +4,8 @@
 
 ### Added
 
+- The plan view and the toolpath plots zoom as the editors do:
+  Ctrl/Cmd+wheel or a pinch, a drag to move, a double-click to fit.
 - Quick links at the top of the right-hand column, kept in view while it
   scrolls: *Result*, *Body*, *Headstock*, *Inlays* and, on a narrow
   screen where the form comes last, *Settings*.

@@ -899,6 +899,10 @@ pikalinkkipalkki: *Result* (kun tulos on), *Body*, *Headstock*, *Inlays*
 (kun editori näkyy) ja kapealla näytöllä *Settings*, koska lomake on
 silloin sivun lopussa.
 
+Tuloksen tasokuvaa ja työratakuvia voi zoomata samoin kuin editorien
+piirroksia: Ctrl/Cmd+rulla tai nipistys, raahaus siirtää ja tuplaklikkaus
+näyttää koko kuvan.
+
 Runkoeditorin *Turn upright* näyttää piirroksen pystyssä, kaula ylöspäin
 (neljännes myötäpäivään; *Turn sideways* palauttaa vaakanäkymän, joka on
 oletus). Se on pelkkä näkymä: koordinaatit ja kaikki raahaukset toimivat

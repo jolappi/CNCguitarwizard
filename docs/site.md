@@ -397,7 +397,8 @@ Python.
    or dark for a locking nut, a board that runs on under it reaching on
    behind it) and the toolpath plots, one at a time, chosen from a list by part
    (each program by its step, the body's top first) or stepped through
-   with the arrows beside it (`toolpath-choice`). The downloads come in one fold per part, closed
+   with the arrows beside it (`toolpath-choice`); both zoom as an
+   editor's drawing does (`zoomablePlot`, `enableZoom`). The downloads come in one fold per part, closed
    until opened (its title says how many programs) — the
    model and report first, then body, neck, fretboard, the inlay pieces, the nut jig and covers — each
    program numbered in the order it is run (`build.json` gives it as the
