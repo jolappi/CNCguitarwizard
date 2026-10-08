@@ -1767,6 +1767,18 @@ document.addEventListener("keydown", (event) => {
   build();
 });
 
+// Ctrl/Cmd+S saves the design and Ctrl/Cmd+O opens one, as Save design
+// and Load design do, in place of the browser's own saving and opening.
+document.addEventListener("keydown", (event) => {
+  if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey) return;
+  const key = event.key.toLowerCase();
+  if (key !== "s" && key !== "o") return;
+  event.preventDefault();
+  if (document.querySelector("dialog[open]")) return;
+  if (key === "s" && !saveDesignButton.disabled) saveDesign();
+  if (key === "o" && !loadDesignButton.disabled) loadDesignFile.click();
+});
+
 document.addEventListener("keydown", (event) => {
   if (!(event.ctrlKey || event.metaKey) || event.altKey || !schema) return;
   const key = event.key.toLowerCase();

@@ -977,6 +977,9 @@ nauhat, koot, syvyys ja reunamarginaali sekä otelaudan reunanauha. Koko
 soittimen asetukset, jotka muuttavat kaikkia kuvia (mensuuri,
 kielimäärä, kätisyys, satulan leveys), jäävät lomakkeen alkuun, ja
 hienosäätömitat *Advanced*-taittoon.
+Ctrl/Cmd+S tallentaa suunnitelman kuten *Save design* ja Ctrl/Cmd+O avaa
+tiedostovalitsimen kuten *Load design* (selaimen oman sivun tallennuksen ja
+avauksen sijaan).
 **Load design** lataa tiedoston takaisin lomakkeeseen ja editoreihin. Tiedostovalitsin
 aukeaa heti napista (Safari ei avaa sitä vahvistusdialogin jälkeen), ja
 kysymys muutettujen arvojen korvaamisesta tulee vasta, kun tiedosto on

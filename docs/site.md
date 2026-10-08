@@ -276,7 +276,9 @@ Python.
    `machining` values, the drawn body's `control_points` and the drawn
    headstock edges included (`{"format": "cncguitarwizard-design",
    "version": 1, "name", "instrument", "prototype", "machining"}`), named
-   for the guitar (*Guitar name*, beside the instrument) when it has one. **Load design** opens such a
+   for the guitar (*Guitar name*, beside the instrument) when it has one
+   (Ctrl/Cmd+S too, in place of the browser's saving the page). **Load
+   design** (or Ctrl/Cmd+O) opens such a
    file — the file chooser straight from the click (a browser opens one
    only while handling the click itself; Safari not once a dialog has been
    answered), the question whether to replace changed values once a file

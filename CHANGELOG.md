@@ -4,6 +4,8 @@
 
 ### Added
 
+- Ctrl/Cmd+S saves the design and Ctrl/Cmd+O opens one, in place of the
+  browser's saving and opening a page.
 - A build that stops at a value that cannot be read offers *Go to
   Thickness*: the field's group opened (or its editor's *Settings*) and
   the field selected.
