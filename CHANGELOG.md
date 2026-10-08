@@ -707,6 +707,8 @@
 
 ### Fixed
 
+- A form group's *Advanced* fold no longer stays marked changed once
+  its fields are back at their defaults.
 - A small part's toolpath plot (a cover plate, a humbucker frame) is wide
   enough for its title: the lines over the part are no longer cut off at
   the plot's edge.

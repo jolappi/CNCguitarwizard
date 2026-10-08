@@ -320,7 +320,8 @@ function renderFieldList(set, fields, holder, title) {
 
 function flagAdvancedSummary(details) {
   const summary = details.querySelector(":scope > summary");
-  summary.classList.toggle("changed", details.querySelector(".changed") !== null);
+  // The fields only: the summary's own mark would keep it marked.
+  summary.classList.toggle("changed", details.querySelector(":scope > .fields .changed") !== null);
 }
 
 function applyAdvancedToggle() {
