@@ -865,6 +865,8 @@
 
 ### Fixed
 
+- A drawing's *Measure*, *Full window* and zoom chips sit in a strip of
+  their own above it, no longer over its top (a toolpath plot's title).
 - A body thickness (`body_thickness`) of zero or less no longer stops the
   build at the first neck bolt ("Neck bolt 1 hole diameter and depth must
   be finite and positive."), whose hole depth comes from the thickness:

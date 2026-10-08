@@ -363,6 +363,8 @@ Python.
    their middle and move it with them, the point under their middle kept
    under it (a finger on a handle or feature is left to it; a plot keeps
    one-finger scrolling of the page, `touch-action: pan-x pan-y`).
+   The chips sit in a strip of their own above the drawing, so none
+   covers its top (a toolpath plot's title).
    *Full window*, beside *Measure* in each drawing's other top corner,
    shows the drawing over the whole page as big as the window lets it,
    every handle working as before (`zoom-frame.full`); *Close* or Escape

@@ -894,7 +894,9 @@ raahaamalla piirros siirtyy, ja tuplaklikkaus taustaan tai kulman
 zoomauspainike (*2.7× · Fit*, myös tuloksen kuvissa) näyttää koko
 piirroksen. Kosketusnäytöllä kaksi sormea taustalla zoomaa nipistämällä
 sormien keskikohdan ympäri ja siirtää kuvaa sormien mukana (tuloksen
-kuvissa yksi sormi vierittää sivua kuten ennen). *Full window* näyttää
+kuvissa yksi sormi vierittää sivua kuten ennen). Piirroksen kulmapainikkeet ovat omalla kaistallaan
+piirroksen yläpuolella, joten ne eivät peitä sen yläreunaa (työratakuvan
+otsikkoa). *Full window* näyttää
 piirroksen koko selainikkunan kokoisena kahvoineen (*Close* tai Esc
 palauttaa sivun). Piirroksen toisen
 yläkulman *Measure* tuo mittatikun näkyvän alueen keskelle (myös
