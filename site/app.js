@@ -216,15 +216,17 @@ function mirrorEditorFields() {
         label.title = copy.title = row.title;
         label.classList.add("explained");
       }
-      const pass = () => {
-        let value;
-        try {
-          value = copy.type === "checkbox" ? copy.checked : copy.tagName === "SELECT" ? copy.value : readValue(copy);
-        } catch {
-          return;  // a list (JSON) still being typed
+      // Only a value that reads is passed on; one that does not is
+      // marked as the form's own fields are (see markChanged).
+      const pass = (event) => {
+        if (copy.tagName === "INPUT") {
+          if (valueProblem(copy)) {
+            if (event.type === "change") copy.classList.add("invalid");
+            return;
+          }
+          copy.classList.remove("invalid");
         }
-        if (typeof value === "number" && Number.isNaN(value)) return;  // still being typed
-        setControlValue(original, value);
+        setControlValue(original, copy.tagName === "SELECT" ? copy.value : readValue(copy));
       };
       copy.addEventListener("change", pass);
       if (copy.tagName !== "SELECT") copy.addEventListener("input", pass);
@@ -250,7 +252,10 @@ function showMirroredRows() {
 function syncMirrors() {
   for (const [original, copy] of mirrors) {
     if (copy.type === "checkbox") copy.checked = original.checked;
-    else if (document.activeElement !== copy) copy.value = original.value;
+    else if (document.activeElement !== copy) {
+      copy.value = original.value;
+      copy.classList.toggle("invalid", original.classList.contains("invalid"));
+    }
     if (copy.tagName === "SELECT") {
       // Kinds hidden for the string count are hidden here too.
       [...copy.options].forEach((option, index) => {
@@ -469,6 +474,7 @@ function renderField(set, field) {
     if (field.type === "optional_float") input.placeholder = "auto";
   }
   input.addEventListener("input", () => markChanged(input));
+  input.addEventListener("change", () => input.classList.toggle("invalid", valueProblem(input) !== null));
   row.appendChild(label);
   // A random seed (body_engraving_seed) can be rerolled where it is.
   row.appendChild(field.name.endsWith("_seed") ? withReroll(input, input) : input);
@@ -524,6 +530,12 @@ function showFieldHint(control) {
     return;
   }
   fieldHint.replaceChildren(text);
+  if (control.classList.contains("invalid")) {
+    const line = document.createElement("span");
+    line.className = "hint-problem";
+    line.textContent = valueProblem(control);
+    fieldHint.append(line);
+  }
   if (control.classList.contains("changed")) fieldHint.append(defaultLine(control));
   if (inEditor) (control.closest(".with-button") || control).after(fieldHint);
   else control.closest(".field").after(fieldHint);
@@ -742,7 +754,13 @@ function renderVariantField(set, field) {
   return holder;
 }
 
+// A field changed from its default is marked. One whose value cannot be
+// read (not a number, broken JSON) is marked invalid once it is given (a
+// change: Enter, or leaving it), not while it is still being typed, and
+// keeps its changed mark until it reads again.
 function markChanged(input) {
+  if (valueProblem(input)) return;
+  input.classList.remove("invalid");
   const current = JSON.stringify(readValue(input));
   input.classList.toggle("changed", current !== input.dataset.default);
 }
@@ -757,6 +775,18 @@ function readValue(input) {
   }
   if (type === "str") return input.value;
   return JSON.parse(input.value);
+}
+
+// Why a field's value cannot be read, or null when it can.
+function valueProblem(input) {
+  let value;
+  try {
+    value = readValue(input);
+  } catch (error) {
+    return `Not valid JSON (${error.message})`;
+  }
+  if (typeof value !== "number" || !Number.isNaN(value)) return null;
+  return input.validity.badInput || input.value.trim() !== "" ? "Not a number" : "Needs a number";
 }
 
 function collectValues() {
@@ -780,16 +810,9 @@ function collectValues() {
     assign(select.dataset.set, select.dataset.name, select.value);
   }
   for (const input of form.querySelectorAll("input")) {
-    let value;
-    try {
-      value = readValue(input);
-    } catch (error) {
-      throw new Error(`${input.dataset.name}: not valid JSON (${error.message})`);
-    }
-    if (typeof value === "number" && Number.isNaN(value)) {
-      throw new Error(`${input.dataset.name}: not a number`);
-    }
-    assign(input.dataset.set, input.dataset.name, value);
+    const problem = valueProblem(input);
+    if (problem) throw new Error(`${fieldLabel(input.dataset.name)} (${input.dataset.name}): ${problem}`);
+    assign(input.dataset.set, input.dataset.name, readValue(input));
   }
   return payload;
 }

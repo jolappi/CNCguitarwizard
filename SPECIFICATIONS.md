@@ -932,6 +932,13 @@ eikä muuta kentän arvoa, jota selain muuten askeltaisi huomaamatta.
 Numerokentän nuolinäppäimet askeltavat 1, Shiftin kanssa 10 ja
 Alt/Optionin kanssa 0,1 (kokonaislukukenttä 1).
 
+Arvo, jota ei voi lukea (ei luku, rikkinäinen JSON), merkitään
+punaiseksi heti kun se annetaan (Enter tai kentästä poistuminen), ei
+kesken kirjoittamisen, ja syy näkyy kentän selitteessä; merkintä
+poistuu heti kun arvo on taas luettava. Editorin kopiokenttä välittää
+lomakkeelle vain luettavan arvon, ja rakennuksen virheviesti nimeää
+kentän (*Thickness (body_thickness): Needs a number*).
+
 Runkoeditorin *Turn upright* näyttää piirroksen pystyssä, kaula ylöspäin
 (neljännes myötäpäivään; *Turn sideways* palauttaa vaakanäkymän, joka on
 oletus). Se on pelkkä näkymä: koordinaatit ja kaikki raahaukset toimivat

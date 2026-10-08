@@ -21,7 +21,12 @@ Python.
    `cncguitarwizard.webapp.parameter_schema()` for every field of
    `Prototype001Parameters` and `MachiningParameters` and draws a grouped
    form from it. Changed values are highlighted; tuple fields are edited as
-   JSON. The few fields a builder normally touches (scale, fret count,
+   JSON. A value that cannot be read (not a number, broken JSON) is marked
+   red once it is given — Enter, or leaving the field — not while it is
+   still being typed, the reason in its hint (`valueProblem`), and the mark
+   goes as soon as it reads again; an editor's copy passes only a value
+   that reads on to its form field, and Build names the field it stops
+   at (*Thickness (body_thickness): Needs a number*). The few fields a builder normally touches (scale, fret count,
    bridge, body thickness, tool and feeds…) are shown up front; the rest of
    each group sits behind an *Advanced* fold, marked `advanced` in the
    schema (`_BASIC_FIELDS`, `_BASIC_VARIANT_FIELDS` in `webapp.py`), with a

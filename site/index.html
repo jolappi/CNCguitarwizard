@@ -99,6 +99,7 @@
   .editor-options .field-hint { grid-column: 1 / -1; margin: 0 0 4px; }
   .field-hint .hint-default { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 6px; color: var(--muted); white-space: normal; overflow-wrap: anywhere; }
   .field-hint .hint-default button { padding: 2px 8px; font-size: 11.5px; }
+  .field-hint .hint-problem { display: block; margin-top: 6px; color: var(--bad); font-weight: 600; white-space: normal; }
   /* Find a setting: the fields that match show (those in an editor's
      pane too), the rest and the folds with none of them are left out. */
   details.group > summary .changed-count { color: var(--accent); font-weight: 500; font-size: 13px; }
@@ -113,6 +114,7 @@
     width: 100%; padding: 3px 6px; border: 1px solid var(--line); border-radius: 4px; font: inherit; font-size: 12.5px;
   }
   .field input.changed, .field select.changed { border-color: var(--accent); background: #fff6ec; }
+  .field input.invalid, .editor-options input.invalid { border-color: var(--bad); background: #fff2f2; }
   /* A seed's input with its Reroll button. */
   .with-button { display: flex; gap: 4px; min-width: 0; }
   .with-button input { flex: 1 1 auto; min-width: 0; width: 100%; }
