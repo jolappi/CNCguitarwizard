@@ -70,6 +70,10 @@
   }
   section.results { padding: 16px 22px 40px; overflow-x: hidden; }
   #output > h2:first-child { margin-top: 0; }
+  /* The result of a design since changed: said above it. */
+  .stale { margin: 0 0 12px; padding: 8px 12px; background: #fff3cd; border: 1px solid #e3c463; border-radius: 6px; }
+  .stale button { margin-left: 8px; padding: 4px 12px; }
+  .stale:not([hidden]) + h2 { margin-top: 0; }
   /* The result ends where the editors begin. */
   #output { margin-bottom: 22px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
   #error { margin-bottom: 16px; }
@@ -338,6 +342,8 @@
          column, or straight under the build button on a narrow screen. -->
     <div id="error" class="error hidden"></div>
     <div id="output" class="hidden">
+      <p id="output-stale" class="stale" hidden>The design has changed since this build, so these files are
+        not its own. <button id="rebuild" class="secondary" type="button" title="Ctrl/Cmd+Enter">Build again</button></p>
       <h2>Summary</h2>
       <table id="summary"></table>
       <details id="summary-programs" class="summary-programs">

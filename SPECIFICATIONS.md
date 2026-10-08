@@ -885,6 +885,11 @@ omaa varianttia (Design by Jone -rungon ääriviiva ja sijoittelut, 5-kielisen
 basson hardtail), joten ladattu tai palautettu suunnitelma ei näytä niitä
 muutettuina, kun ne ovat soittimen omat.
 
+Kun suunnitelmaa muutetaan rakennuksen jälkeen, tuloksen yläpuolelle
+tulee huomautus, etteivät tiedostot enää ole suunnitelman omat, ja
+*Build again* -painike; kun suunnitelma on taas sama kuin rakennettaessa
+(esim. Undo), huomautus poistuu.
+
 Runkoeditorin *Turn upright* näyttää piirroksen pystyssä, kaula ylöspäin
 (neljännes myötäpäivään; *Turn sideways* palauttaa vaakanäkymän, joka on
 oletus). Se on pelkkä näkymä: koordinaatit ja kaikki raahaukset toimivat

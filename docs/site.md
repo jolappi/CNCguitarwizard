@@ -374,7 +374,10 @@ Python.
    thing in the right-hand column, above the editors; on a narrow screen
    straight under the build button and instrument choice, an error in
    the same place, and the page scrolls to either when it arrives out of
-   view, `bringIntoView`): the summary with stock size
+   view, `bringIntoView`; once the design changes after a build, a note
+   above the result says its files are no longer the design's, with
+   *Build again*: `builtFrom`, `markStale`, until the design is as built
+   again): the summary with stock size
    (a fretboard blank's carrier on a row of its own, `fretboard_carrier_thickness`;
    the index pins' places only for a blank that has them) and the
    programs in one row — how many, about how long at the set feeds —

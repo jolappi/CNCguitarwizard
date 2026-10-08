@@ -663,6 +663,14 @@ async function runPython(code) {
   return JSON.parse(await pyodide.runPythonAsync(code));
 }
 
+// The values the result on the page was built from: when the design has
+// changed since, the result says so, with a button to build again.
+let builtFrom = null;
+
+function markStale() {
+  document.getElementById("output-stale").hidden = !builtFrom || undoHistory.current === builtFrom;
+}
+
 async function build() {
   clearError();
   let payload;
@@ -715,6 +723,8 @@ async function build() {
       return;
     }
     showResult(result);
+    builtFrom = JSON.stringify(payload);
+    markStale();
     bringIntoView(output);
     const seconds = ((performance.now() - started) / 1000).toFixed(1);
     setStatus(`Built in ${seconds} s`, "ok");
@@ -1449,6 +1459,7 @@ const undoHistory = {
       button.title = redone ? `Redo: ${redone} (Ctrl/Cmd+Shift+Z)` : "Nothing to redo";
     }
     autosave();
+    markStale();
   },
 };
 guitarName.addEventListener("input", () => autosave());
@@ -4249,6 +4260,7 @@ instrumentSelect.addEventListener("change", async () => {
 });
 
 buildButton.addEventListener("click", build);
+document.getElementById("rebuild").addEventListener("click", build);
 resetButton.addEventListener("click", reset);
 saveDesignButton.addEventListener("click", saveDesign);
 ncZipButton.addEventListener("click", downloadNcZip);

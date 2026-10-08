@@ -4,6 +4,9 @@
 
 ### Added
 
+- A build's result says so once the design has changed since (and the
+  files are no longer its own), with *Build again*; back as built (an
+  undo, say), the note goes.
 - Zoom in the editors: Ctrl/Cmd+wheel or a trackpad's pinch zooms a
   drawing about the pointer; zoomed in, dragging its background moves it
   and a double-click fits it again.
