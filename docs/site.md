@@ -321,7 +321,9 @@ Python.
    Every editor's drawing zooms (`enableZoom`): Ctrl/Cmd+wheel, or a
    trackpad's pinch, about the pointer, up to 20 times; zoomed in, a drag
    on the background moves it and a double-click there fits the whole
-   drawing again; the zoom outlasts a redraw (`begin`), the plain wheel
+   drawing again, as does the chip in its corner that says how far it is
+   zoomed (*2.7× · Fit*, `showZoom`: a touch screen's way back; a plot's
+   too); the zoom outlasts a redraw (`begin`), the plain wheel
    scrolls the page as ever, and every handle works as before.
    The editors' button rows keep to one line: their templates' four
    buttons sit in a *File ▾* menu (`details.menu`, closing once one is

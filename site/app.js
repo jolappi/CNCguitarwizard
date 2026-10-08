@@ -1962,6 +1962,7 @@ const bodyEditor = {
         this.baseBox[2] / zoom.scale, this.baseBox[3] / zoom.scale]
       : this.baseBox;
     this.svg.setAttribute("viewBox", box.join(" "));
+    this.showZoom?.();  // a zoom let go of (a turn) lets its chip go too
   },
 
   // Upright or sideways (the default), as last chosen in this browser.
@@ -3254,20 +3255,42 @@ document.getElementById("body-editor-turn").addEventListener("click", () => body
 
 // Zoom an editor's drawing: Ctrl/Cmd + wheel, or a trackpad's pinch, about
 // the pointer (up to 20 times); zoomed in, dragging its background moves
-// it, and a double-click on the background fits the whole drawing again.
-// The plain wheel scrolls the page as ever. The zoom (scale and centre in
-// the drawing's view box) outlasts a redraw (see begin).
+// it, and a double-click on the background, or the chip in its corner
+// that says how far it is zoomed, fits the whole drawing again (the chip
+// a touch screen's way back). The plain wheel scrolls the page as ever.
+// The zoom (scale and centre in the drawing's view box) outlasts a redraw
+// (see begin).
 const ZOOM_TARGETS = ".handle, .frame-handle, .guard-handle, .step-handle, .contour-handle, " +
   ".stretch-handle, .movable, .outline-hit, .inlay-handle, .inlay-hit, .lettering-hit, " +
   ".cover-handle, .cover-stretch";
 
 function enableZoom(editor) {
   const svg = editor.svg;
+  const frame = document.createElement("div");
+  frame.className = "zoom-frame";
+  svg.before(frame);
+  const chip = document.createElement("button");
+  chip.type = "button";
+  chip.className = "secondary zoom-chip";
+  chip.title = "Fit the whole drawing again (or double-click it)";
+  chip.hidden = true;
+  frame.append(svg, chip);
+  editor.showZoom = () => {
+    chip.hidden = !editor.zoom;
+    if (editor.zoom) chip.textContent = `${editor.zoom.scale.toFixed(1)}× · Fit`;
+  };
+  const fit = () => {
+    editor.zoom = null;
+    svg.setAttribute("viewBox", editor.baseBox.join(" "));
+    editor.showZoom();
+  };
+  chip.addEventListener("click", fit);
   const setBox = (x, y, width, height) => {
     const [, , baseWidth] = editor.baseBox;
     const scale = baseWidth / width;
     editor.zoom = scale <= 1.0001 ? null : { scale, cx: x + width / 2, cy: y + height / 2 };
     svg.setAttribute("viewBox", (editor.zoom ? [x, y, width, height] : editor.baseBox).join(" "));
+    editor.showZoom();
   };
   svg.addEventListener("wheel", (event) => {
     if (!(event.ctrlKey || event.metaKey) || !editor.baseBox) return;
@@ -3302,8 +3325,7 @@ function enableZoom(editor) {
   });
   svg.addEventListener("dblclick", (event) => {
     if (!editor.zoom || event.target.closest(ZOOM_TARGETS)) return;
-    editor.zoom = null;
-    svg.setAttribute("viewBox", editor.baseBox.join(" "));
+    fit();
   });
 }
 // A plot (the plan view, a toolpath plot) zooms as an editor's drawing

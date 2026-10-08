@@ -4,6 +4,8 @@
 
 ### Added
 
+- A zoomed drawing or plot has a chip in its corner that says how far it
+  is zoomed and fits it again (*2.7× · Fit*): a touch screen's way back.
 - An SVG or DXF dropped on an editor's drawing is imported as its
   outline (the inlay marker in the inlay editor), as *Import* does; the
   drawing is outlined and the banner says so while it is dragged.

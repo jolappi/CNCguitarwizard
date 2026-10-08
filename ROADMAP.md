@@ -98,6 +98,7 @@
 - An outline dropped on an editor's drawing imported
 - A body too thin named by its thickness, not by a neck bolt, pocket or
   cavity cut from it
+- A zoomed drawing's chip that fits it again
 - Index pins as wide as a main tool wider than 6 mm (an 8 mm end mill,
   8 mm dowels)
 - The neck's back carved with the ball nose alone, in one program
