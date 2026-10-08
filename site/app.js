@@ -206,7 +206,7 @@ function mirrorEditorFields() {
       };
       copy.addEventListener("change", pass);
       if (copy.tagName !== "SELECT") copy.addEventListener("input", pass);
-      holder.append(label, copy);
+      holder.append(label, name.endsWith("_seed") ? withReroll(copy, original) : copy);
       mirrors.set(original, copy);
     }
     const summary = holder.closest("details.editor-settings")?.querySelector(":scope > summary");
@@ -366,9 +366,30 @@ function renderField(set, field) {
   }
   input.addEventListener("input", () => markChanged(input));
   row.appendChild(label);
-  row.appendChild(input);
+  // A random seed (body_engraving_seed) can be rerolled where it is.
+  row.appendChild(field.name.endsWith("_seed") ? withReroll(input, input) : input);
   explain(row, field);
   return row;
+}
+
+// A new random seed (the pattern laid out afresh), as if typed.
+function rerollSeed(input) {
+  setControlValue(input, Math.floor(Math.random() * 100000) + 1);
+}
+
+// A seed's input with a Reroll button beside it, which rerolls the
+// form's own field (``original``; the input itself, or its editor copy's).
+function withReroll(input, original) {
+  const holder = document.createElement("span");
+  holder.className = "with-button";
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "secondary reroll";
+  button.textContent = "Reroll";
+  button.title = "A new random seed: the pattern laid out afresh";
+  button.addEventListener("click", () => rerollSeed(original));
+  holder.append(input, button);
+  return holder;
 }
 
 // What the field means, from Python (webapp._field_help), shown on hover
@@ -2669,7 +2690,7 @@ document.getElementById("body-editor-auto-belly").addEventListener("click", () =
 // A new engraving pattern: another seed (turning the engraving on).
 document.getElementById("body-editor-new-pattern").addEventListener("click", () => {
   setControlValue(bodyEditor.field("prototype", "body_engraving"), true);
-  setControlValue(bodyEditor.field("prototype", "body_engraving_seed"), Math.floor(Math.random() * 100000) + 1);
+  rerollSeed(bodyEditor.field("prototype", "body_engraving_seed"));
 });
 // ---------------------------------------------------------------------------
 // Headstock editor: drag the two edges of a "drawn" headstock over the

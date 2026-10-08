@@ -59,6 +59,7 @@
 - The inlay marker drawn in another program: SVG templates out and back in
 - Start from in the inlay editor
 - Engraving drawn on the headstock face in another program, pictures traced
+- A Reroll button beside the pattern's random seed
 - Index pins as wide as a main tool wider than 6 mm (an 8 mm end mill,
   8 mm dowels)
 - The neck's back carved with the ball nose alone, in one program

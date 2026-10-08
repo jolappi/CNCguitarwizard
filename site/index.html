@@ -77,6 +77,10 @@
     width: 100%; padding: 3px 6px; border: 1px solid var(--line); border-radius: 4px; font: inherit; font-size: 12.5px;
   }
   .field input.changed, .field select.changed { border-color: var(--accent); background: #fff6ec; }
+  /* A seed's input with its Reroll button. */
+  .with-button { display: flex; gap: 4px; min-width: 0; }
+  .with-button input { flex: 1 1 auto; min-width: 0; width: 100%; }
+  button.reroll { padding: 2px 6px; font-size: 11px; font-weight: 500; }
   .field select { width: 100%; padding: 3px 4px; border: 1px solid var(--line); border-radius: 4px; font: inherit; font-size: 12.5px; background: #fff; }
   .variant .field:first-child { grid-template-columns: 1fr 180px; }
   .variant .subfields { margin: 2px 0 6px 12px; padding-left: 8px; border-left: 2px solid var(--line); }

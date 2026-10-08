@@ -620,6 +620,9 @@
 
 ### Changed
 
+- A *Reroll* button beside the engraving's random seed
+  (`body_engraving_seed`), in the form and the body editor's *Settings*,
+  lays the pattern out afresh, as *New pattern* does.
 - Every setting that changes an editor's drawing sits above it, folded
   under *Settings* (closed until clicked; marked when one is changed): the body
   editor adds the neck's joint, each position's pickup and its place,

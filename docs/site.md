@@ -134,7 +134,9 @@ Python.
    empties them again. The belly cut's line works the same, in blue, with
    `body_belly_cut_depth`, `belly_cut_points` and *Auto belly cut*. With `body_engraving` on (beside the editor too, with
    `body_engraving_seed`) the decorative engraving is drawn in blue lines,
-   and *New pattern* sets a new random seed. Dragging the guard by its edge moves all its points together (a click
+   and *New pattern* sets a new random seed (turning the engraving on);
+   *Reroll* beside `body_engraving_seed` (in the form and the editor's
+   *Settings*, `withReroll`) sets one too. Dragging the guard by its edge moves all its points together (a click
    without a drag still adds one), or onto *Create NC file* makes its
    programs: its screw spots in the body zeroed on the guard, and
    `Cover_pickguard`.
