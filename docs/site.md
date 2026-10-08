@@ -100,11 +100,13 @@ Python.
    it). Choosing the controls in the pickguard (`body_controls`
    "pickguard") ticks `body_pickguard`; a drawn guard that does not cover
    them gives way to the automatic one, and the status line says so.
-   With `body_pickup_frame` set (horns or hook, beside the editor with
-   `body_pickup_frame_direction`), every humbucker's frame is drawn dark
-   over it — its opening, screws and the holes over the height screws cut
-   out — with small round yellow handles at its points (`frames` in the
-   layout): dragging one writes that pickup's own
+   With `body_pickup_frame` set (ring, horns or hook, beside the editor
+   with `body_pickup_frame_direction`), every humbucker's frame is drawn
+   dark over it — its opening, screws and the holes over the height screws
+   cut out — with small round yellow handles at its points (`frames` in
+   the layout), drawn over everything else so they drag beside the neck
+   and the body's edge too; a frame cut back to fit (`adjusted`) is named
+   in the status line. Dragging one writes that pickup's own
    `body_<position>_frame_points` (the handle taken back into the frame's
    own frame with the layout's `origin`, `along`, `across` and `stretch`),
    a click on its edge adds a point and Alt/Option- or right-click

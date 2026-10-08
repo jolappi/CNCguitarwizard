@@ -377,12 +377,13 @@ lähimpään sopivaan paikkaan (enintään 40 mm) ja tarvittaessa kääntyvät
 (enintään 30°, esim. Jackson RR:n siipeä pitkin). Ne mahtuvat pleksin alle
 kaikilla pohjilla.
 
-Humbuckerin kehys (`body_pickup_frame`, oletuksena pois) on koriste-
-levy jokaisen humbuckerin ympärillä, leikattuna levystä
+Humbuckerin kehys (`body_pickup_frame`, oletuksena pois) on levy
+jokaisen humbuckerin ympärillä, leikattuna levystä
 (`body_pickup_frame_thickness` 2,5 mm) omana `Cover_<asema>_pickup_frame.nc`-
-ohjelmanaan: `horns` (päissä sarvet kaulaa kohti, tallan puoli pyöreä)
-tai `hook` (bassopää koukulla, diskanttipäässä pitkä sarvi). Molemmat on
-jäljitetty rakentajan piirroksesta (`humbframes.dxf`): viivat olivat
+ohjelmanaan: `ring` (tavallinen pyöristetty suorakaide 49 × 106 mm,
+kulmat 6 mm, kuten mikkirengas), `horns` (päissä sarvet kaulaa kohti,
+tallan puoli pyöreä) tai `hook` (bassopää koukulla, diskanttipäässä pitkä
+sarvi). Kaksi jälkimmäistä on jäljitetty rakentajan piirroksesta (`humbframes.dxf`): viivat olivat
 kynänvetoja, joten niiden ulkoreuna on otettu, ja piirros on skaalattu
 niin, että sen kolo on humbuckerin, 70,5 mm kielten poikki (sarvikehys
 57 × 163 mm, koukkukehys 57 × 146 mm). Kolo ei ole piirroksen vaan mikin
@@ -394,15 +395,27 @@ pisteidensä kautta (kuten runko), ja jokaisella mikillä on oma
 mukana, levenee 7- ja 8-kielisen mikin mukana ja peilautuu
 vasenkätisessä. `body_pickup_frame_direction`: `auto` (oletus) sarvet
 kaulaa kohti, käännettynä ympäri jos vain niin mahtuu; `neck` tai
-`bridge`. Kiinnitys kahdella ruuvilla mikin korvakkeiden ulkopuolella
-mikin pitkällä akselilla, kohdassa jossa kehystä on 4 mm joka puolella
-(muuten lähimpänä akselia, koukkukehyksen bassopäässä akselin vieressä):
+`bridge`. Kiinnitys neljällä ruuvilla, kaksi kummankin mikin korvakkeen
+ulkopuolella, kaulan suunnassa niin kaukana toisistaan kuin kehys antaa
+(vähintään 8 mm) ja kehystä 4 mm joka puolella (renkaassa kulmissa,
+±20 mm kaulan suunnassa ja 48 mm poikki):
 3,2 mm reiät kehyksessä ja esiporaukset runkoon (`Body_top_small_holes`),
 ja kaksi 6,5 mm reikää mikin korkeusruuvien kohdalla säätöä varten.
-Kehyksen on oltava rungon päällä irti kaulasta, tallasta, muista
-mikeistä ja kehyksistä, päällä olevista kontrolleista ja kaularaudan
-säätölovesta; runkoeditori piirtää sopimattoman kehyksen punaisella
-syyn kera, ja build hylkää sen. Runkoeditorissa kehyksen pisteitä
+Kehyksen on oltava rungon tasaisella pinnalla (2 mm reunasta, tai 1 mm
+pyöristyksen ohi), ulotuttava 1 mm aukon ohi joka puolella ja oltava irti
+kaulasta (kaulataskusta; läpikaulassa otelaudan päähän asti), tallasta,
+muista mikeistä ja kehyksistä, päällä olevista kontrolleista ja
+kaularaudan säätölovesta. Tyylin kehys, joka ei mahdu kumminkaan päin,
+sovitetaan automaattisesti: pisteet tihennetään 6 mm:n väleihin, este-
+alueelle (1 mm marginaali) tai rungon reunan yli osuvat pisteet siirretään
+lähintä tietä ulos (tai kohti aukkoa), väliin lisätään pisteitä missä
+käyrä vielä osuu, ja muualla muoto säilyy; kaulamikin kehys lovetaan
+näin kaularaudan säätöloven ja leikkauksen ympäri kaikilla pohjilla.
+Piirrettyä kehystä ei sovita; runkoeditori piirtää sopimattoman kehyksen
+punaisella syyn kera (esim. 7-kielisen hardtail-tallan edessä ei ole
+tilaa), ja build hylkää sen. Kehyksen pisteet piirretään runkoeditorissa
+muiden kahvojen päälle, joten niitä voi raahata kaulan ja reunan
+vieressäkin. Runkoeditorissa kehyksen pisteitä
 raahataan (reunaa klikkaamalla lisätään piste, Alt/oikea klikkaus
 poistaa), ja tyylin vaihto palauttaa tyylin oman muodon.
 

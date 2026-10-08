@@ -382,10 +382,12 @@ FIELD_HELP: dict[str, str] = {
         "tail past the bridge) or superstrat (close round the pickups)."
     ),
     "body_pickup_frame": (
-        "A decorative frame round every humbucker, cut from plastic sheet in "
-        "its own program: horns or hook (traced from the builder's drawing), "
-        "its opening the pickup's own, held by two screws past the pickup's "
-        "ears, with holes to reach the pickup's height screws. Drag its "
+        "A frame round every humbucker, cut from plastic sheet in its own "
+        "program: a plain ring, or horns or hook (traced from the builder's "
+        "drawing), its opening the pickup's own, held by four screws, two "
+        "past each of the pickup's ears, with holes to reach the pickup's "
+        "height screws. One "
+        "that does not fit is cut back round what is in its way; drag its "
         "points in the body editor to shape each pickup's frame."
     ),
     "body_pickup_frame_direction": (

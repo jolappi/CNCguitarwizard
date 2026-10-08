@@ -1483,6 +1483,7 @@ const bodyEditor = {
     // (body_<position>_frame_points), click its edge to add a point.
     this.frameHandles = (layout.frames || []).map((frame) => frame.handles.map((p) => [...p]));
     this.framePaths = [];
+    this.frameHandleNodes = [];
     (layout.frames || []).forEach((frame, frameIndex) => {
       const path = this.element("path", {
         d: this.frameData(frameIndex), "fill-rule": "evenodd",
@@ -1496,6 +1497,7 @@ const bodyEditor = {
         `The ${frame.position} pickup's frame${frame.turned ? " (turned round)" : ""} — click its edge to add a point`;
       this.frameHandles[frameIndex].forEach((point, index) => {
         const handle = this.element("circle", { class: "frame-handle", cx: point[0], cy: -point[1], r: 1.6 });
+        this.frameHandleNodes.push(handle);
         this.element("title", {}, handle).textContent =
           `${frame.position[0].toUpperCase()}${frame.position.slice(1)} pickup frame point — drag to shape it, Alt-click or right-click to remove it`;
         handle.addEventListener("pointerdown", (event) => {
@@ -1603,6 +1605,9 @@ const bodyEditor = {
     // The steps' handles go on top of everything: beside the neck pocket
     // they sit over its bolts and over each other's lines.
     for (const handle of this.stepHandles) handle.parentNode.appendChild(handle);
+    // A frame's points too: near the neck and the body's edge they sit
+    // over the outline's click strip and its handles.
+    for (const handle of this.frameHandleNodes) handle.parentNode.appendChild(handle);
     this.check();
     this.showTemplate();
   },
@@ -2551,6 +2556,13 @@ const bodyEditor = {
       ? " The jack's bore misses the control cavity: Shift-drag the jack to turn it toward it."
       : "";
     const frameProblem = (this.layout.frames || []).find((frame) => frame.problem);
+    const cutBack = (this.layout.frames || []).filter((frame) => frame.adjusted && !frame.problem)
+      .map((frame) => frame.position);
+    const frameNote = cutBack.length === 1
+      ? ` The ${cutBack[0]} pickup's frame was cut back to fit; drag its points to change it.`
+      : cutBack.length
+        ? ` The ${cutBack.join(" and ")} pickups' frames were cut back to fit; drag their points to change them.`
+        : "";
     if (outside.size) {
       this.setStatus(`Outside the outline: ${[...outside].join(", ")}.${jackNote}`, "bad");
     } else if (frameProblem) {
@@ -2560,7 +2572,7 @@ const bodyEditor = {
     } else if (this.guardGaveWay()) {
       this.setStatus("Every feature fits inside the outline. The drawn pickguard does not cover the controls mounted in it, so the automatic one is used.", "ok");
     } else {
-      this.setStatus("Every feature fits inside the outline.", "ok");
+      this.setStatus(`Every feature fits inside the outline.${frameNote}`, "ok");
     }
   },
 

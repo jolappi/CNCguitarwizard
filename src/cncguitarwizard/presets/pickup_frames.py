@@ -1,13 +1,15 @@
 """Humbucker frames: decorative plates round each humbucker, cut from sheet.
 
-Two styles traced from the builder's drawing (``humbframes.dxf``):
-``horns``, a frame whose ends sweep into a horn either side toward the
-neck, its bridge side round; and ``hook``, its bass end cut in to a hook
-and its treble end sweeping into one long horn toward the neck. The
-drawing's lines were pen strokes (their outer edge is traced) and its
-size arbitrary: it is scaled so its opening is the humbucker's, 70.5 mm
-across the strings, and the opening itself is cut to the pickup's own
-(``pickups.pickup_openings``, the pickguard's), not as drawn.
+A plain ``ring``, a rounded rectangle round the route like a pickup
+mounting ring; and two styles traced from the builder's drawing
+(``humbframes.dxf``): ``horns``, a frame whose ends sweep into a horn
+either side toward the neck, its bridge side round; and ``hook``, its
+bass end cut in to a hook and its treble end sweeping into one long horn
+toward the neck. The drawing's lines were pen strokes (their outer edge
+is traced) and its size arbitrary: it is scaled so its opening is the
+humbucker's, 70.5 mm across the strings, and the opening itself is cut
+to the pickup's own (``pickups.pickup_openings``, the pickguard's), not
+as drawn.
 
 A frame's outline is a closed Catmull-Rom loop through its points, given
 in the frame's own frame: ``a`` along the neck toward the bridge, ``c``
@@ -16,8 +18,10 @@ on the origin, the horns toward the neck (negative ``a``). Every
 humbucker gets one, turned with the pickup, opened across the strings
 with its route for seven and eight strings, mirrored for a left-handed
 build and, where it does not fit with its horns toward the neck (or
-when asked), turned round. Two screws hold it, on the pickup's long
-axis past the ears; it has holes over the pickup's height screws, to
+when asked), turned round; a style's frame that does not fit either way
+is cut back where it must be (``fitted_frame``). It must reach a little
+past the pickup's opening all round. Four screws hold it, two past each
+of the pickup's ears; it has holes over the pickup's height screws, to
 reach them through it.
 """
 
@@ -34,10 +38,10 @@ from ._omarunko_outline import OMARUNKO_PICKUP_ROUTE_LOCAL_POINTS
 from .body_shapes import narrow_y, widen_y
 from .controls import SCREW_CLEARANCE, SCREW_SPOT_DEPTH, SCREW_SPOT_DIAMETER
 
-PickupFrameStyle = Literal["none", "horns", "hook"]
-"""A humbucker frame's style: none, or one of the traced frames."""
+PickupFrameStyle = Literal["none", "ring", "horns", "hook"]
+"""A humbucker frame's style: none, a plain ring or a traced frame."""
 
-PICKUP_FRAME_STYLES: tuple[str, ...] = ("none", "horns", "hook")
+PICKUP_FRAME_STYLES: tuple[str, ...] = ("none", "ring", "horns", "hook")
 
 FrameDirection = Literal["auto", "neck", "bridge"]
 """Which way a frame's horns point: ``auto`` toward the neck, turned round
@@ -58,6 +62,18 @@ EAR_REACH = max(abs(y) for _, y in OMARUNKO_PICKUP_ROUTE_LOCAL_POINTS)
 """How far the humbucker's route, its ears, reaches either side (mm)."""
 
 # fmt: off
+RING_POINTS: tuple[tuple[float, float], ...] = (
+    (24.5, 47.0), (22.74, 51.24), (18.5, 53.0), (16.5, 53.0),
+    (10.5, 53.0), (-10.5, 53.0), (-16.5, 53.0), (-18.5, 53.0),
+    (-22.74, 51.24), (-24.5, 47.0), (-24.5, 45.0), (-24.5, 39.0),
+    (-24.5, -39.0), (-24.5, -45.0), (-24.5, -47.0), (-22.74, -51.24),
+    (-18.5, -53.0), (-16.5, -53.0), (-10.5, -53.0), (10.5, -53.0),
+    (16.5, -53.0), (18.5, -53.0), (22.74, -51.24), (24.5, -47.0),
+    (24.5, -45.0), (24.5, -39.0), (24.5, 39.0), (24.5, 45.0),
+)
+"""The plain ring's handles: a rounded rectangle 49 x 106 mm (corners
+6 mm), round the route and its ears with room past them for the screws."""
+
 HORNS_POINTS: tuple[tuple[float, float], ...] = (
     (-27.9, -79.54), (-24.93, -79.39), (-21.21, -78.96), (-14.55, -77.86),
     (-7.98, -76.38), (-1.52, -74.43), (10.13, -69.32), (15.8, -65.67),
@@ -101,6 +117,7 @@ HOOK_POINTS: tuple[tuple[float, float], ...] = (
 # fmt: on
 
 FRAME_POINTS: dict[str, tuple[tuple[float, float], ...]] = {
+    "ring": RING_POINTS,
     "horns": HORNS_POINTS,
     "hook": HOOK_POINTS,
 }
@@ -178,13 +195,13 @@ def frame_placing(
 
 
 def frame_outline(
-    points: Sequence[tuple[float, float]], placing: FramePlacing
+    points: Sequence[tuple[float, float]],
+    placing: FramePlacing,
+    samples: int = FRAME_SAMPLES_PER_SEGMENT,
 ) -> tuple[Point2D, ...]:
     """Return a frame's outline in the model through its points."""
     return tuple(
-        closed_catmull_rom(
-            [placing.to_model(a, c) for a, c in points], FRAME_SAMPLES_PER_SEGMENT
-        )
+        closed_catmull_rom([placing.to_model(a, c) for a, c in points], samples)
     )
 
 
@@ -202,6 +219,8 @@ class PickupFrame:
             screws' holes and the holes over the pickup's height screws.
         screw_spots: The pilots for its screws, drilled into the top.
         problem: Why it does not fit, or ``None``.
+        adjusted: Whether the style's shape was cut back to fit (see
+            ``fitted_frame``).
     """
 
     position: str
@@ -211,6 +230,7 @@ class PickupFrame:
     plate: CoverPlate
     screw_spots: tuple[DrilledHole, ...]
     problem: str | None = None
+    adjusted: bool = False
 
 
 def pickup_frame(
@@ -225,9 +245,9 @@ def pickup_frame(
 ) -> PickupFrame:
     """Return the frame through ``points`` on its pickup, not yet checked.
 
-    Its two screws sit past the pickup's ears, on its long axis where the
-    frame has ``FRAME_SCREW_ROOM`` all round them there, else as near it
-    as it has (see ``_screw_spot``); with no room, ``problem`` says so.
+    Its four screws sit two past each of the pickup's ears, as far apart
+    along the neck as the frame lets them with ``FRAME_SCREW_ROOM`` of it
+    all round (see ``_screw_pair``); with no room, ``problem`` says so.
     """
     label = position.capitalize()
     outline = frame_outline(points, placing)
@@ -235,16 +255,20 @@ def pickup_frame(
     problem = None
     screws: list[Point2D] = []
     ear = EAR_REACH + placing.stretch / 2.0
+    region = KeptRegion(
+        [Point2D(a, c) for a, c in local], FRAME_SCREW_ROOM, inside=True
+    )
     for side, sign in (("bass", -1.0), ("treble", 1.0)):
-        spot = _screw_spot(local, sign, ear)
-        if spot is None:
+        pair = _screw_pair(local, region, sign, ear)
+        if pair is None:
             problem = problem or (
-                f"The {position} pickup's frame leaves no room for its screw past "
-                f"the pickup's {side} ear: it needs {FRAME_SCREW_ROOM:g} mm of frame "
-                "all round it there; widen it."
+                f"The {position} pickup's frame leaves no room for its two screws "
+                f"past the pickup's {side} ear: they need "
+                f"{SCREW_PAIR_SPACING:g} mm between them along the neck and "
+                f"{FRAME_SCREW_ROOM:g} mm of frame all round; widen it there."
             )
             continue
-        screws.append(placing.from_axes(*spot))
+        screws += [placing.from_axes(*spot) for spot in pair]
     plate = CoverPlate(
         f"{label} pickup frame",
         "top",
@@ -282,79 +306,417 @@ def pickup_frame(
     return PickupFrame(position, tuple(points), placing, turned, plate, spots, problem)
 
 
-SCREW_SEARCH = 20
-"""How far (mm) either side of the pickup's long axis a frame screw is
-looked for, when there is no room on it."""
+SCREW_PAIR_SPACING = 8.0
+"""The least (mm) a frame's two screws past one ear lie apart."""
 
 
-def _screw_spot(
-    local: Sequence[tuple[float, float]], sign: float, ear: float
-) -> tuple[float, float] | None:
-    """Return where a frame screw goes on one side, or ``None``.
+def _screw_pair(
+    local: Sequence[tuple[float, float]],
+    region: KeptRegion,
+    sign: float,
+    ear: float,
+) -> tuple[tuple[float, float], tuple[float, float]] | None:
+    """Return where a frame's two screws past one ear go, or ``None``.
 
-    Past the pickup's ear (``ear`` across, toward ``sign``) with
-    ``FRAME_SCREW_ROOM`` of frame all round, as near the pickup's long
-    axis as there is room — on it where the frame allows — in the middle
-    of the stretch of the line out from the ear that has it.
+    Past the pickup's ear (``ear`` across, toward ``sign``), each with
+    ``FRAME_SCREW_ROOM`` of frame all round (``region``, the frame in its
+    own axes): looked for in millimetre steps across the frame, at the
+    distance from the ear where the frame leaves the longest stretch
+    along the neck (the middle one of those within a millimetre of it),
+    at that stretch's two ends, as far apart as it lets them, at least
+    ``SCREW_PAIR_SPACING``.
     """
-    polygon = [Point2D(a, c) for a, c in local]
     reach = max(sign * c for _, c in local)
-    for step in range(SCREW_SEARCH + 1):
-        best: tuple[float, tuple[float, float]] | None = None
-        for a in (0.0,) if step == 0 else (float(step), -float(step)):
-            # The stretch of the line out from the ear with room all round.
-            room: list[float] = []
-            c = ear + FRAME_SCREW_ROOM
-            while c < reach:
-                point = Point2D(a, sign * c)
-                if (
-                    point_in_polygon(point, polygon)
-                    and _distance_to_outline(point, polygon) >= FRAME_SCREW_ROOM
-                ):
-                    room.append(c)
-                elif room:
-                    break
-                c += 0.5
-            if room and (best is None or room[-1] - room[0] > best[0]):
-                best = (room[-1] - room[0], (a, sign * (room[0] + room[-1]) / 2.0))
-        if best is not None:
-            return best[1]
-    return None
-
-
-def _distance_to_outline(point: Point2D, polygon: Sequence[Point2D]) -> float:
-    best = math.inf
-    for a, b in zip(polygon, (*polygon[1:], polygon[0])):
-        dx, dy = b.x - a.x, b.y - a.y
-        squared = dx * dx + dy * dy
-        t = 0.0
-        if squared > 0.0:
-            t = ((point.x - a.x) * dx + (point.y - a.y) * dy) / squared
-            t = max(0.0, min(1.0, t))
-        best = min(best, math.hypot(point.x - a.x - t * dx, point.y - a.y - t * dy))
-    return best
+    low = math.floor(min(a for a, _ in local))
+    high = math.ceil(max(a for a, _ in local))
+    rows: list[tuple[float, float, float, float]] = []
+    c = ear + FRAME_SCREW_ROOM
+    while c < reach:
+        best: tuple[float, float, float] | None = None
+        start: float | None = None
+        for step in range(int(high - low) + 2):
+            a = low + step
+            usable = a <= high and not region.breaks(Point2D(a, sign * c))
+            if usable and start is None:
+                start = a
+            elif not usable and start is not None:
+                run = (a - 1.0 - start, start, a - 1.0)
+                if best is None or run[0] > best[0]:
+                    best = run
+                start = None
+        if best is not None and best[0] >= SCREW_PAIR_SPACING:
+            rows.append((best[0], c, best[1], best[2]))
+        c += 1.0
+    if not rows:
+        return None
+    widest = max(row[0] for row in rows)
+    near = [row for row in rows if row[0] >= widest - 1.0]
+    _, c, first, last = near[len(near) // 2]
+    return (first, sign * c), (last, sign * c)
 
 
 def frame_problem(
     frame: PickupFrame,
-    body_outline: Sequence[Point2D],
+    body: KeptRegion,
     obstacles: Sequence[tuple[str, Sequence[Point2D]]],
+    cover: Sequence[Point2D] = (),
 ) -> str | None:
     """Return why a frame does not fit, or ``None``.
 
-    It must lie on the body, clear of every one of ``obstacles`` (named
-    outlines: the neck, the bridge, other pickups' routes and frames, the
-    controls on the top), with room for its screws.
+    It must lie on the body's flat top (``body``: inside its outline, its
+    margin in from the edge), reach ``FRAME_MIN_BORDER`` past the
+    pickup's opening all round (``cover``: the opening grown by it), keep
+    clear of every one of ``obstacles`` (named outlines: the neck, the
+    bridge, other pickups' routes and frames, the controls on the top) and
+    have room for its screws.
     """
     if frame.problem:
         return frame.problem
-    outline = frame.plate.outline
-    if not all(point_in_polygon(point, body_outline) for point in outline):
-        return f"The {frame.position} pickup's frame runs off the body."
+    return outline_problem(frame.position, frame.plate.outline, body, obstacles, cover)
+
+
+def outline_problem(
+    position: str,
+    outline: Sequence[Point2D],
+    body: KeptRegion,
+    obstacles: Sequence[tuple[str, Sequence[Point2D]]],
+    cover: Sequence[Point2D] = (),
+) -> str | None:
+    """Return why a frame's ``outline`` does not fit, or ``None`` (see
+    ``frame_problem``; its screws are not looked at)."""
+    if any(body.breaks(point) for point in outline):
+        return (
+            f"The {position} pickup's frame runs off the body's flat top (it "
+            f"keeps {body.margin:g} mm in from the edge)."
+        )
+    if cover:
+        frame = PolygonBands(outline)
+        if not all(frame.contains(point) for point in cover):
+            return (
+                f"The {position} pickup's frame does not reach "
+                f"{FRAME_MIN_BORDER:g} mm past its opening all round."
+            )
     for name, polygon in obstacles:
         if polygons_overlap(outline, polygon):
-            return f"The {frame.position} pickup's frame runs into {name}."
+            return f"The {position} pickup's frame runs into {name}."
     return None
+
+
+FRAME_EDGE_MARGIN = 2.0
+"""How far (mm) a frame keeps in from the body's edge, at least (past a
+roundover, it keeps to the flat top)."""
+
+FRAME_CLEARANCE = 1.0
+"""How far (mm) a fitted frame keeps from what it must not cover."""
+
+FRAME_MIN_BORDER = 1.0
+"""How far (mm) a frame reaches past the pickup's opening, at least."""
+
+FIT_SPACING = 6.0
+"""The most (mm) a fitted frame's points lie apart before it is fitted."""
+
+FIT_BACK_OFF = 0.5
+"""How far (mm) past a margin a fitted frame's moved point stops (its loop
+bows a little past its points)."""
+
+
+class KeptRegion:
+    """A polygon a frame keeps inside, or out of, by a margin.
+
+    The body's flat top (``inside``: in its outline, the margin in from
+    the edge) or an obstacle and the clearance round it. Edges are looked
+    up by band, so a point is tested against those near it only.
+    """
+
+    __slots__ = (
+        "_box",
+        "_count",
+        "_edge_bands",
+        "_height",
+        "_min_y",
+        "bands",
+        "edges",
+        "inside",
+        "margin",
+        "polygon",
+    )
+
+    def __init__(
+        self, polygon: Sequence[Point2D], margin: float, *, inside: bool
+    ) -> None:
+        self.polygon = tuple(polygon)
+        self.margin = margin
+        self.inside = inside
+        self.bands = PolygonBands(self.polygon)
+        self.edges = tuple(zip(self.polygon, (*self.polygon[1:], self.polygon[0])))
+        xs = [p.x for p in self.polygon]
+        ys = [p.y for p in self.polygon]
+        # Its bounding box grown by the margin: past it, nothing is near.
+        self._box = (
+            min(xs) - margin,
+            max(xs) + margin,
+            min(ys) - margin,
+            max(ys) + margin,
+        )
+        self._min_y = min(ys) - margin
+        self._count = 64
+        self._height = (max(ys) + margin - self._min_y) / self._count or 1.0
+        self._edge_bands: list[list[tuple[float, float, float, float]]] = [
+            [] for _ in range(self._count)
+        ]
+        for a, b in self.edges:
+            low = self._band(min(a.y, b.y) - margin)
+            high = self._band(max(a.y, b.y) + margin)
+            for index in range(low, high + 1):
+                self._edge_bands[index].append((a.x, a.y, b.x, b.y))
+
+    def _band(self, y: float) -> int:
+        return min(self._count - 1, max(0, int((y - self._min_y) / self._height)))
+
+    def breaks(self, point: Point2D) -> bool:
+        """Return whether a frame may not be at ``point``: on the wrong side
+        of the edge, or within the margin of it."""
+        x, y = point.x, point.y
+        min_x, max_x, min_y, max_y = self._box
+        if not (min_x <= x <= max_x and min_y <= y <= max_y):
+            return self.inside
+        if self.bands.contains(point) != self.inside:
+            return True
+        reach = self.margin * self.margin
+        for ax, ay, bx, by in self._edge_bands[self._band(y)]:
+            dx, dy = bx - ax, by - ay
+            squared = dx * dx + dy * dy
+            t = 0.0
+            if squared > 0.0:
+                t = ((x - ax) * dx + (y - ay) * dy) / squared
+                t = 0.0 if t < 0.0 else 1.0 if t > 1.0 else t
+            ex, ey = ax + t * dx - x, ay + t * dy - y
+            if ex * ex + ey * ey < reach:
+                return True
+        return False
+
+    def way_out(self, point: Point2D) -> Point2D:
+        """Return the nearest place a frame may be: past the nearest edge
+        on the kept side, its margin and ``FIT_BACK_OFF`` from it."""
+        best, nearest = math.inf, point
+        for a, b in self.edges:
+            candidate = _nearest_on(point, a, b)
+            distance = math.hypot(candidate.x - point.x, candidate.y - point.y)
+            if distance < best:
+                best, nearest = distance, candidate
+        if best < 1e-9:
+            return point
+        # From the edge toward the point, or on through the edge from it.
+        sign = 1.0 if self.bands.contains(point) == self.inside else -1.0
+        reach = self.margin + FIT_BACK_OFF
+        return Point2D(
+            nearest.x + sign * (point.x - nearest.x) / best * reach,
+            nearest.y + sign * (point.y - nearest.y) / best * reach,
+        )
+
+
+def frame_zones(
+    obstacles: Sequence[tuple[str, Sequence[Point2D]]],
+) -> list[KeptRegion]:
+    """Return what a fitted frame keeps ``FRAME_CLEARANCE`` out of: each of
+    ``obstacles`` (a point or a line, round it)."""
+    zones = []
+    for _, polygon in obstacles:
+        if len(polygon) >= 3:
+            zones.append(KeptRegion(polygon, FRAME_CLEARANCE, inside=False))
+        else:
+            zones += [
+                KeptRegion(_circle(point, 0.5), FRAME_CLEARANCE, inside=False)
+                for point in polygon
+            ]
+    return zones
+
+
+def fitted_frame(
+    points: Sequence[tuple[float, float]],
+    placing: FramePlacing,
+    body: KeptRegion,
+    zones: Sequence[KeptRegion],
+) -> tuple[tuple[float, float], ...]:
+    """Return a frame's points moved where needed to fit.
+
+    Its points are first spread along its own loop no more than
+    ``FIT_SPACING`` apart (so a point moved does not swing a long span
+    past its neighbours). Every point off the ``body``'s flat top or in
+    one of the ``zones`` is moved the nearest way out — or, where that
+    leaves it in something else, pulled in toward the pickup's opening
+    until it is clear — ``FIT_BACK_OFF`` past the margin; where the loop
+    between two points still strays, a point is added there (the middle
+    of the stretch) and moved too, a few rounds over, and points doubling
+    back are dropped. Elsewhere the frame keeps its shape, and it always
+    stays round its opening.
+    """
+    origin = placing.origin
+
+    def allowed(point: Point2D) -> bool:
+        return not body.breaks(point) and not any(zone.breaks(point) for zone in zones)
+
+    def pulled(point: Point2D) -> Point2D:
+        if allowed(point):
+            return point
+        moved = point
+        for _ in range(3):
+            if body.breaks(moved):
+                moved = body.way_out(moved)
+            for zone in zones:
+                if zone.breaks(moved):
+                    moved = zone.way_out(moved)
+        if allowed(moved):
+            return moved
+        # Else in toward the opening, which is always clear.
+        dx, dy = point.x - origin.x, point.y - origin.y
+        length = math.hypot(dx, dy)
+        if length < 1e-9:
+            return point
+
+        def at(t: float) -> Point2D:
+            return Point2D(origin.x + dx * t, origin.y + dy * t)
+
+        steps = max(1, math.ceil(length / 0.5))
+        low, high = 0.0, 1.0
+        for step in range(1, steps + 1):
+            if not allowed(at(step / steps)):
+                high = step / steps
+                break
+            low = step / steps
+        for _ in range(6):
+            middle = (low + high) / 2.0
+            if allowed(at(middle)):
+                low = middle
+            else:
+                high = middle
+        return at(max(0.0, low - FIT_BACK_OFF / length))
+
+    drawn = [placing.to_model(a, c) for a, c in points]
+    loop = closed_catmull_rom(drawn, FRAME_SAMPLES_PER_SEGMENT)
+    even: list[Point2D] = []
+    for index, point in enumerate(drawn):
+        even.append(point)
+        after = drawn[(index + 1) % len(drawn)]
+        extra = min(
+            FRAME_SAMPLES_PER_SEGMENT - 1,
+            math.ceil(math.hypot(after.x - point.x, after.y - point.y) / FIT_SPACING)
+            - 1,
+        )
+        for step in range(1, extra + 1):
+            offset = round(step * FRAME_SAMPLES_PER_SEGMENT / (extra + 1))
+            even.append(loop[index * FRAME_SAMPLES_PER_SEGMENT + offset])
+    model = [pulled(point) for point in even]
+    # Checked twice as finely as the outline is drawn, so no stretch of it
+    # between two of its points cuts a corner.
+    check = 2 * FRAME_SAMPLES_PER_SEGMENT
+    for _ in range(12):
+        loop = closed_catmull_rom(model, check)
+        stray: dict[int, list[Point2D]] = {}
+        for index, sample in enumerate(loop):
+            if index % check and not allowed(sample):
+                stray.setdefault(index // check, []).append(sample)
+        added = False
+        # The middle of each span's stray stretch, the deepest into it.
+        for span in sorted(stray, reverse=True):
+            samples = stray[span]
+            point = pulled(samples[len(samples) // 2])
+            neighbours = (model[span], model[(span + 1) % len(model)])
+            if all(math.hypot(point.x - n.x, point.y - n.y) > 0.3 for n in neighbours):
+                model.insert(span + 1, point)
+                added = True
+        if not added:
+            break
+        model = _tidied(model)
+    return tuple(
+        (round(a, 2), round(c, 2))
+        for a, c in (placing.to_frame(point) for point in model)
+    )
+
+
+def _tidied(model: list[Point2D]) -> list[Point2D]:
+    """Return a loop's points without those doubling back on their way
+    (turning by more than 135°) or within 0.5 mm of the one before."""
+    model = list(model)
+    changed = True
+    while changed and len(model) > 4:
+        changed = False
+        for index, point in enumerate(model):
+            before, after = model[index - 1], model[(index + 1) % len(model)]
+            ax, ay = point.x - before.x, point.y - before.y
+            bx, by = after.x - point.x, after.y - point.y
+            first, second = math.hypot(ax, ay), math.hypot(bx, by)
+            if first < 0.5 or (
+                second > 1e-9 and ax * bx + ay * by < -0.7 * first * second
+            ):
+                del model[index]
+                changed = True
+                break
+    return model
+
+
+def _nearest_on(point: Point2D, a: Point2D, b: Point2D) -> Point2D:
+    dx, dy = b.x - a.x, b.y - a.y
+    squared = dx * dx + dy * dy
+    t = 0.0
+    if squared > 0.0:
+        t = max(0.0, min(1.0, ((point.x - a.x) * dx + (point.y - a.y) * dy) / squared))
+    return Point2D(a.x + t * dx, a.y + t * dy)
+
+
+def _circle(centre: Point2D, radius: float) -> tuple[Point2D, ...]:
+    return tuple(
+        Point2D(
+            centre.x + radius * math.cos(math.pi * k / 8.0),
+            centre.y + radius * math.sin(math.pi * k / 8.0),
+        )
+        for k in range(16)
+    )
+
+
+def outline_area(outline: Sequence[Point2D]) -> float:
+    """Return the area a closed outline holds."""
+    return abs(
+        sum(a.x * b.y - b.x * a.y for a, b in zip(outline, (*outline[1:], outline[0])))
+        / 2.0
+    )
+
+
+class PolygonBands:
+    """A polygon split into horizontal bands, to tell fast what is inside.
+
+    Each band keeps the edges that reach into it, so a point is tested
+    against those alone (the even-odd rule, as ``point_in_polygon``).
+    """
+
+    __slots__ = ("bands", "count", "height", "max_y", "min_y")
+
+    def __init__(self, polygon: Sequence[Point2D], count: int = 64) -> None:
+        ys = [p.y for p in polygon]
+        self.min_y, self.max_y = min(ys), max(ys)
+        self.count = count
+        self.height = (self.max_y - self.min_y) / count or 1.0
+        self.bands: list[list[tuple[Point2D, Point2D]]] = [[] for _ in range(count)]
+        for a, b in zip(polygon, (*polygon[1:], polygon[0])):
+            low = self._band(min(a.y, b.y))
+            high = self._band(max(a.y, b.y))
+            for index in range(low, high + 1):
+                self.bands[index].append((a, b))
+
+    def _band(self, y: float) -> int:
+        return min(self.count - 1, max(0, int((y - self.min_y) / self.height)))
+
+    def contains(self, point: Point2D) -> bool:
+        """Return whether ``point`` lies inside the polygon."""
+        if not self.min_y <= point.y <= self.max_y:
+            return False
+        inside = False
+        for a, b in self.bands[self._band(point.y)]:
+            if (a.y > point.y) != (b.y > point.y):
+                x = a.x + (point.y - a.y) * (b.x - a.x) / (b.y - a.y)
+                if point.x < x:
+                    inside = not inside
+        return inside
 
 
 def polygons_overlap(a: Sequence[Point2D], b: Sequence[Point2D]) -> bool:

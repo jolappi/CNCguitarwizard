@@ -179,6 +179,7 @@ _CHOICE_LABELS: dict[str, dict[str, str]] = {
     },
     "body_pickup_frame": {
         "none": "None",
+        "ring": "Plain ring (a rounded rectangle round the route)",
         "horns": "Horns (a horn either end toward the neck, round toward the bridge)",
         "hook": "Hook (a hooked bass end, a long horn on the treble side)",
     },
@@ -665,7 +666,7 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         ``arm_contour`` and ``belly_cut`` ``{"points", "automatic"}`` — the
         lines where they start (see ``_contour_line``) — or ``None``;
         ``frames`` each humbucker frame's ``{"position", "field", "turned",
-        "problem", "points", "handles", "origin", "along", "across",
+        "adjusted", "problem", "points", "handles", "origin", "along", "across",
         "stretch", "openings", "holes"}`` — its points in its own frame (as
         its ``field`` holds them) and as handles in the editor's frame, the
         frame's origin and the directions of its own axes there (a handle
@@ -876,6 +877,7 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
                 "position": frame.position,
                 "field": f"body_{frame.position}_frame_points",
                 "turned": frame.turned,
+                "adjusted": frame.adjusted,
                 "problem": frame.problem,
                 "points": [list(point) for point in frame.points],
                 "handles": local(

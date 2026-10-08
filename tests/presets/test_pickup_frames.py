@@ -14,11 +14,14 @@ from cncguitarwizard.presets._omarunko_outline import (
     OMARUNKO_PICKUP_ROUTE_LOCAL_POINTS,
 )
 from cncguitarwizard.presets.pickup_frames import (
+    EAR_REACH,
     FRAME_POINTS,
     FRAME_SCREW_ROOM,
     HEIGHT_SCREW_ACCESS,
+    SCREW_PAIR_SPACING,
     frame_outline,
     frame_placing,
+    polygons_overlap,
 )
 from cncguitarwizard.webapp import body_editor_layout, parameter_schema
 
@@ -28,6 +31,20 @@ BRIDGE_ONLY = replace(HORNS, body_pickups="H")
 
 def _frames(parameters: Prototype001Parameters):  # type: ignore[no-untyped-def]
     return {frame.position: frame for frame in parameters.body_layout().pickup_frames}
+
+
+def test_the_plain_ring_is_a_rounded_rectangle_round_the_route() -> None:
+    outline = frame_outline(
+        FRAME_POINTS["ring"], frame_placing(0.0, -1.0, 0.0, 0.0, False)
+    )
+    along = [p.x for p in outline]
+    across = [p.y for p in outline]
+    assert max(along) - min(along) == pytest.approx(49.0, abs=0.3)
+    assert max(across) - min(across) == pytest.approx(106.0, abs=0.3)
+    assert all(
+        point_in_polygon(Point2D(x, y), outline)
+        for x, y in OMARUNKO_PICKUP_ROUTE_LOCAL_POINTS
+    )
 
 
 @pytest.mark.parametrize("style", ["horns", "hook"])
@@ -66,19 +83,50 @@ def test_a_frame_turns_mirrors_and_opens_with_its_pickup() -> None:
     assert seven.to_frame(Point2D(100.0, 54.5)) == pytest.approx((0.0, 50.0))
 
 
-def test_auto_turns_a_frame_that_only_fits_turned_round() -> None:
+def test_a_frame_is_turned_round_or_cut_back_to_fit() -> None:
     frames = _frames(HORNS)
     # On the default body the bridge frame's treble horn runs off the body
-    # toward the neck, so it is turned; the neck frame fits neither way.
-    assert frames["bridge"].turned and frames["bridge"].problem is None
-    assert frames["neck"].problem == "The neck pickup's frame runs off the body."
-    with pytest.raises(BodyGeometryError, match="neck pickup's frame runs off"):
-        HORNS.build()
+    # toward the neck, so it is turned round, as drawn otherwise; the neck
+    # frame fits neither way, so it is cut back round what is in its way.
+    bridge, neck = frames["bridge"], frames["neck"]
+    assert bridge.turned and not bridge.adjusted and bridge.problem is None
+    assert bridge.points == FRAME_POINTS["horns"]
+    assert neck.adjusted and neck.problem is None
+    geometry = HORNS.build()
+    assert [c.name for c in geometry.covers if "frame" in c.name] == [
+        "Neck pickup frame",
+        "Bridge pickup frame",
+    ]
     toward_neck = _frames(replace(HORNS, body_pickup_frame_direction="neck"))
-    assert not toward_neck["bridge"].turned
-    assert "runs off the body" in str(toward_neck["bridge"].problem)
+    assert not toward_neck["bridge"].turned and toward_neck["bridge"].adjusted
     toward_bridge = _frames(replace(HORNS, body_pickup_frame_direction="bridge"))
     assert toward_bridge["neck"].turned and toward_bridge["bridge"].turned
+
+
+@pytest.mark.parametrize("style", ["ring", "horns", "hook"])
+def test_a_cut_back_frame_keeps_clear_of_the_truss_rod_access(style: str) -> None:
+    parameters = replace(HORNS, body_pickup_frame=style)
+    layout = parameters.body_layout()
+    neck = {frame.position: frame for frame in layout.pickup_frames}["neck"]
+    assert neck.adjusted and neck.problem is None
+    access = layout.truss_rod_access
+    assert access is not None
+    assert not polygons_overlap(neck.plate.outline, access.outline)
+    # Still round its opening, a millimetre past it all round.
+    (opening,) = neck.plate.slots
+    assert all(point_in_polygon(p, neck.plate.outline) for p in opening.outline)
+
+
+def test_a_frame_with_no_room_says_why() -> None:
+    # A seven-string's hardtail sits right behind the bridge pickup: no
+    # frame fits between them, cut back or not.
+    seven = replace(
+        Prototype001Parameters.for_instrument("seven_string_guitar"),
+        body_pickup_frame="ring",
+    )
+    assert _frames(seven)["bridge"].problem == (
+        "The bridge pickup's frame runs into the bridge."
+    )
 
 
 def test_a_frame_is_cut_from_sheet_and_screwed_past_the_ears() -> None:
@@ -93,14 +141,15 @@ def test_a_frame_is_cut_from_sheet_and_screwed_past_the_ears() -> None:
     access = [h for h in frame.holes if "height screw" in h.name]
     screws = [h for h in frame.holes if h.name.startswith("Screw")]
     assert [h.diameter for h in access] == [HEIGHT_SCREW_ACCESS] * 2
-    assert len(screws) == 2
-    # On the pickup's long axis, past its ears, with frame all round.
-    centre = sum(xs) / 4.0
-    for screw in screws:
-        assert screw.center_x == pytest.approx(centre, abs=0.01)
-        assert abs(screw.center_y) > 43.0 + FRAME_SCREW_ROOM
+    # Four screws, two past each ear, apart along the neck.
+    assert len(screws) == 4
+    for side in (-1.0, 1.0):
+        pair = [s for s in screws if s.center_y * side > 0]
+        assert len(pair) == 2
+        assert all(abs(s.center_y) >= EAR_REACH + FRAME_SCREW_ROOM for s in pair)
+        assert abs(pair[0].center_x - pair[1].center_x) >= SCREW_PAIR_SPACING
     spots = [h for h in geometry.body.control_top_marks if "frame screw" in h.name]
-    assert len(spots) == 2
+    assert len(spots) == 4
     (setup,) = [
         s
         for s in plan_cover_machining(geometry.covers, MachiningParameters()).setups
@@ -109,14 +158,22 @@ def test_a_frame_is_cut_from_sheet_and_screwed_past_the_ears() -> None:
     assert "Body_top_small_holes" in " ".join(setup.notes)
 
 
-def test_the_hook_frame_screws_off_the_axis_where_its_hook_leaves_no_room() -> None:
-    frames = _frames(replace(BRIDGE_ONLY, body_pickup_frame="hook"))
-    frame = frames["bridge"]
+@pytest.mark.parametrize(
+    ("style", "pairs"),
+    [
+        # The ring's in its corners; the hook's bass pair beside its hook.
+        ("ring", {-1.0: (-20.0, 20.0), 1.0: (-20.0, 20.0)}),
+        ("hook", {-1.0: (11.0, 24.0), 1.0: (-8.0, 23.0)}),
+    ],
+)
+def test_the_screws_go_as_far_apart_as_the_frame_lets_them(
+    style: str, pairs: dict[float, tuple[float, float]]
+) -> None:
+    frame = _frames(replace(BRIDGE_ONLY, body_pickup_frame=style))["bridge"]
     spots = [frame.placing.to_axes(s.center) for s in frame.screw_spots]
-    (bass,) = [spot for spot in spots if spot[1] < 0]
-    (treble,) = [spot for spot in spots if spot[1] > 0]
-    assert treble[0] == pytest.approx(0.0, abs=1e-6)
-    assert bass[0] != pytest.approx(0.0, abs=1.0)
+    for side, (first, last) in pairs.items():
+        along = sorted(a for a, c in spots if c * side > 0)
+        assert along == pytest.approx([first, last], abs=1.0)
 
 
 def test_each_pickup_has_its_own_drawn_frame() -> None:
@@ -125,8 +182,10 @@ def test_each_pickup_has_its_own_drawn_frame() -> None:
     frames = _frames(drawn)
     assert frames["neck"].points == shrunk
     assert frames["bridge"].points == FRAME_POINTS["horns"]
-    # Too small for its screws past the ears now.
-    assert "no room for its screw" in str(frames["neck"].problem)
+    # Too small for its screws past the ears now; a drawn frame is never
+    # cut back, only told why it does not fit.
+    assert "no room for its two screws" in str(frames["neck"].problem)
+    assert not frames["neck"].adjusted
     with pytest.raises(BodyGeometryError, match="at least four points"):
         replace(HORNS, body_bridge_frame_points=((0, 0), (1, 1), (0, 2))).body_layout()
 
@@ -159,6 +218,6 @@ def test_the_editor_draws_each_frame_and_the_form_offers_the_styles() -> None:
         for group in parameter_schema()["prototype"]
         for field in group["fields"]
     }
-    assert fields["body_pickup_frame"]["options"] == ["none", "horns", "hook"]
+    assert fields["body_pickup_frame"]["options"] == ["none", "ring", "horns", "hook"]
     assert fields["body_pickup_frame"]["advanced"] is False
     assert fields["body_neck_frame_points"]["type"] == "json"

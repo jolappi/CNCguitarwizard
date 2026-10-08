@@ -118,13 +118,20 @@ from .pickguard import (
 )
 from .pickguard import automatic_points as automatic_pickguard_points
 from .pickup_frames import (
+    FRAME_EDGE_MARGIN,
+    FRAME_MIN_BORDER,
     FRAME_POINTS,
     PICKUP_FRAME_STYLES,
     FrameDirection,
+    FramePlacing,
+    KeptRegion,
     PickupFrame,
     PickupFrameStyle,
+    fitted_frame,
     frame_placing,
     frame_problem,
+    frame_zones,
+    outline_area,
     pickup_frame,
 )
 from .pickups import (
@@ -882,8 +889,8 @@ class Prototype001Parameters:
     # a decorative frame round every humbucker, "horns" or "hook" (traced
     # from the builder's drawing), cut from body_pickup_frame_thickness
     # sheet in its own cover program, its opening the pickup's own. It is
-    # held by two screws on the pickup's long axis past its ears, with
-    # holes to reach the pickup's height screws through it.
+    # held by four screws, two past each of the pickup's ears, with holes
+    # to reach the pickup's height screws through it.
     # body_pickup_frame_direction points its horns toward the neck
     # ("neck"), the bridge ("bridge"), or toward the neck where they fit
     # and else the bridge ("auto"). body_neck_frame_points,
@@ -3030,7 +3037,19 @@ class Prototype001Parameters:
             ],
             body_outline.points,
             [
-                ("the neck", outline.boundary),
+                # Over the body the neck is its pocket's; a neck run through
+                # is flush with the top but under its fretboard.
+                (
+                    "the neck",
+                    tuple(
+                        p
+                        for p in outline.boundary
+                        if p.x
+                        <= outline.last_fret_position + self.fretboard_end_extension
+                    )
+                    if self.neck_runs_through
+                    else neck_pocket.outline,
+                ),
                 *(("the bridge", area) for area in bridge_areas),
                 *(
                     (f"the {cavity.name.lower()}", cavity.outline)
@@ -3977,10 +3996,15 @@ class Prototype001Parameters:
         is its own drawing (``body_<position>_frame_points``) or the style's,
         laid out with its horns toward the neck or turned round
         (``body_pickup_frame_direction``; "auto" turns one round only where
-        it does not fit and turned it does). It must keep clear of
-        ``obstacles``, the other pickups' routes and the frames before it;
-        one that does not fit carries its ``problem`` (the body editor
-        draws it to be mended; the build refuses it).
+        it does not fit and turned it does). It must lie on the body's flat
+        top (``FRAME_EDGE_MARGIN`` in, or past the top edge's roundover),
+        reach ``FRAME_MIN_BORDER`` past its opening and keep clear of
+        ``obstacles``, the other pickups' routes and the frames before it.
+        A style's frame that fits neither way is cut back where it must be
+        (``fitted_frame``), the way that keeps the most of it; one that
+        still does not fit, or a drawn one that does not, carries its
+        ``problem`` (the body editor draws it to be mended; the build
+        refuses it).
 
         Raises:
             BodyGeometryError: For an unknown style or a drawn frame of
@@ -3999,6 +4023,18 @@ class Prototype001Parameters:
         }
         strings = self.string_count
         bass_sign = self.bass_sign
+        stretch = pickup_stretch("humbucker", strings)
+        body = KeptRegion(
+            body_outline,
+            max(FRAME_EDGE_MARGIN, self.body_top_edge_radius + 1.0),
+            inside=True,
+        )
+        # Every frame keeps out of these; each also out of the other
+        # pickups' routes and the frames before it.
+        common = frame_zones(obstacles)
+        directions = {"neck": (False,), "bridge": (True,), "auto": (False, True)}[
+            self.body_pickup_frame_direction
+        ]
         frames: list[PickupFrame] = []
         for position, kind, centre_x, angle, route in pickups:
             if kind != "humbucker" or route is None:
@@ -4023,6 +4059,7 @@ class Prototype001Parameters:
             (opening,) = pickup_openings(
                 "humbucker", centre_x, bass_sign, angle, strings
             )
+            cover = offset_polygon(opening, FRAME_MIN_BORDER, inward=False)
             screws = pickup_screws(
                 "humbucker",
                 centre_x,
@@ -4032,31 +4069,65 @@ class Prototype001Parameters:
                 string_count=strings,
             )
 
-            def made(turned: bool) -> PickupFrame:
+            def placing(turned: bool, centre_x: float = centre_x) -> FramePlacing:
+                return frame_placing(centre_x, bass_sign, angle, stretch, turned)
+
+            def made(
+                shape: Sequence[tuple[float, float]],
+                turned: bool,
+                adjusted: bool = False,
+                position: str = position,
+            ) -> PickupFrame:
                 frame = pickup_frame(
                     position,
-                    points,
-                    frame_placing(
-                        centre_x,
-                        bass_sign,
-                        angle,
-                        pickup_stretch("humbucker", strings),
-                        turned,
-                    ),
+                    shape,
+                    placing(turned),
                     turned,
                     thickness=self.body_pickup_frame_thickness,
                     opening=opening,
                     height_screws=screws,
                 )
                 return replace(
-                    frame, problem=frame_problem(frame, body_outline, others)
+                    frame,
+                    problem=frame_problem(frame, body, others, cover),
+                    adjusted=adjusted,
                 )
 
-            frame = made(self.body_pickup_frame_direction == "bridge")
-            if self.body_pickup_frame_direction == "auto" and frame.problem:
-                turned = made(True)
-                if turned.problem is None:
-                    frame = turned
+            tried = [made(points, turned) for turned in directions[:1]]
+            if tried[0].problem and len(directions) > 1:
+                tried.append(made(points, True))
+            frame = next((f for f in tried if f.problem is None), tried[0])
+            if frame.problem and not drawn[position]:
+                near = placing(False).origin
+                zones = [
+                    zone
+                    for zone in (
+                        *common,
+                        *frame_zones(others[len(obstacles) :]),
+                    )
+                    if _near(zone.polygon, near, FRAME_REACH)
+                ]
+                fitted = [
+                    made(
+                        fitted_frame(points, placing(turned), body, zones),
+                        turned,
+                        adjusted=True,
+                    )
+                    for turned in directions
+                ]
+                fitting = [f for f in fitted if f.problem is None]
+                # The way that keeps the most of it; else shown as cut back.
+                frame = (
+                    max(
+                        fitting,
+                        key=lambda f: (
+                            round(outline_area(f.plate.outline)),
+                            not f.turned,
+                        ),
+                    )
+                    if fitting
+                    else fitted[0]
+                )
             frames.append(frame)
         return tuple(frames)
 
@@ -5741,6 +5812,22 @@ def _reach_between(outline: tuple[Point2D, ...], low: float, high: float) -> flo
             t = (y - start.y) / (end.y - start.y)
             reach = max(reach, start.x + t * (end.x - start.x))
     return reach
+
+
+FRAME_REACH = 130.0
+"""How far (mm) from its pickup a frame can reach: what lies further is
+not looked at when it is fitted."""
+
+
+def _near(polygon: Sequence[Point2D], centre: Point2D, reach: float) -> bool:
+    """Return whether a polygon's bounding box comes within ``reach`` of
+    ``centre`` along both axes."""
+    xs = [p.x for p in polygon]
+    ys = [p.y for p in polygon]
+    return (
+        min(xs) - reach <= centre.x <= max(xs) + reach
+        and min(ys) - reach <= centre.y <= max(ys) + reach
+    )
 
 
 def _circle_points(centre: Point2D, radius: float) -> tuple[Point2D, ...]:

@@ -560,12 +560,14 @@ clearance holes, and for the Tele plate its pot holes and switch slot.
 
 ### Humbucker frames
 
-`body_pickup_frame` puts a decorative frame round every humbucker
+`body_pickup_frame` puts a frame round every humbucker
 (`presets.pickup_frames`), cut from `body_pickup_frame_thickness` (2.5 mm)
-sheet in its own cover program (`Cover_<position>_pickup_frame.nc`):
-`horns`, its ends sweeping into a horn either side toward the neck and
-its bridge side round, or `hook`, its bass end cut in to a hook and its
-treble end sweeping into one long horn. Both are traced from the
+sheet in its own cover program (`Cover_<position>_pickup_frame.nc`): a
+plain `ring`, a rounded rectangle 49 × 106 mm (corners 6 mm, 28 points)
+round the route and its ears with room past them for the screws, like a
+pickup mounting ring; `horns`, its ends sweeping into a horn either side
+toward the neck and its bridge side round; or `hook`, its bass end cut in
+to a hook and its treble end sweeping into one long horn. These two are traced from the
 builder's drawing (`humbframes.dxf`): its lines were pen strokes, so
 their outer edge is taken, and its size arbitrary, so it is scaled for
 its opening to be the humbucker's, 70.5 mm across the strings — 57 ×
@@ -587,21 +589,38 @@ the neck, toward the bridge (the frame turned round), or — `auto`, the
 default — toward the neck where it fits and turned round where only that
 fits.
 
-It is held by two screws past the pickup's ears (`EAR_REACH`, the
-route's reach across), in the middle of the stretch of the pickup's long
-axis that has `FRAME_SCREW_ROOM` (4 mm) of frame all round — or, where
-the frame leaves none on the axis (the hook's bass end), as near it as
-there is, up to 20 mm along the neck either side: 3.2 mm holes in the
-frame and their pilots in the top (`Body_top_small_holes`). Two 6.5 mm
-holes over the pickup's height screws reach them through it.
+It is held by four screws, two past each of the pickup's ears
+(`EAR_REACH`, the route's reach across), each with `FRAME_SCREW_ROOM`
+(4 mm) of frame all round: looked for in millimetre steps across the
+frame, at the distance from the ear where the frame leaves the longest
+stretch along the neck (the middle one of those within a millimetre of
+it), at that stretch's two ends, as far apart as it lets them and at
+least `SCREW_PAIR_SPACING` (8 mm) — on the ring its corners, ±20 mm
+along the neck and 48 mm across: 3.2 mm holes in the frame and their
+pilots in the top (`Body_top_small_holes`). Two 6.5 mm holes over the
+pickup's height screws reach them through it.
 
-A frame must lie on the body clear of the neck, the bridge (its routes,
-plate and holes), the other pickups' routes and frames, the controls on
-the top and the truss rod's access: the body editor draws one that does
-not, outlined in red with the reason, to be mended, and the build
-refuses it. On the default body the bridge frame fits turned round and
-the neck frame fits neither way (its horns reach past the cutaway's
-edge), so it is to be drawn smaller there.
+A frame must lie on the body's flat top (`FRAME_EDGE_MARGIN`, 2 mm, in
+from the edge, or 1 mm past a top roundover), reach `FRAME_MIN_BORDER`
+(1 mm) past the pickup's opening all round, and keep clear of the neck
+(its pocket; a neck run through, as far as its fretboard), the bridge
+(its routes, plate and holes), the other pickups' routes and frames, the
+controls on the top and the truss rod's access. A style's frame that
+fits neither way (as drawn, then turned round) is cut back to fit
+(`fitted_frame`, the frame `adjusted`), the way that keeps the most of
+it: its points spread no more than 6 mm apart along its own loop, every
+point off the flat top or within `FRAME_CLEARANCE` (1 mm) of what is in
+its way is moved the nearest way out — or, where that leaves it in
+something else, pulled in toward the opening, which is always clear —
+0.5 mm past the margin; where the loop still strays between two points,
+one is added there and moved too, and points doubling back are dropped.
+Elsewhere the frame keeps its shape. On the default body the bridge frame
+fits turned round and the neck frame is cut back round the truss rod's
+access notch and the cutaway, as on every template body. A drawn frame
+is never cut back; one that does not fit, or a style's that cannot be
+made to (a seven-string's hardtail right behind its bridge pickup), is
+drawn in red in the body editor with the reason, to be mended, and the
+build refuses it.
 
 ### Battery box
 
