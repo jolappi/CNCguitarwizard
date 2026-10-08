@@ -142,6 +142,7 @@ function renderForm() {
       details.appendChild(summary);
       const holder = document.createElement("div");
       holder.className = "fields";
+      holder.appendChild(groupResetRow(details));
       renderFieldList(set, group.fields, holder);
       details.appendChild(holder);
       form.appendChild(details);
@@ -372,19 +373,51 @@ function renderFieldList(set, fields, holder, title) {
 }
 
 // Each group of the form says how many of its settings are changed from
-// their defaults (an editor pane's too, whose rows the form keeps), and
-// "Show only the settings changed" how many there are in all.
+// their defaults (an editor pane's too, whose rows the form keeps), with
+// a button to put them back, and "Show only the settings changed" how
+// many there are in all.
 function countChanged() {
   let total = 0;
   for (const group of form.querySelectorAll(":scope > details.group")) {
     const changed = group.querySelectorAll("input.changed, select.changed").length;
     group.querySelector(":scope > summary .changed-count").textContent = changed ? ` · ${changed} changed` : "";
+    const resetRow = group.querySelector(".group-reset");
+    resetRow.hidden = changed === 0;
+    resetRow.firstChild.textContent = `Reset ${changed} to default${changed === 1 ? "" : "s"}`;
     total += changed;
   }
   document.getElementById("changed-total").textContent = total ? ` (${total})` : "";
 }
 form.addEventListener("change", countChanged);
 form.addEventListener("input", countChanged);
+
+// The row at the top of a group with its Reset button (see countChanged).
+function groupResetRow(group) {
+  const row = document.createElement("div");
+  row.className = "group-reset";
+  row.hidden = true;
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "secondary";
+  button.title = "Put this group's changed settings back to their defaults (Undo takes them back)";
+  button.addEventListener("click", () => resetGroup(group));
+  row.appendChild(button);
+  return row;
+}
+
+// A group's changed settings (and any that cannot be read) back to their
+// defaults, after asking; Undo takes them back as one step. A variant's
+// kind goes first, which puts its own fields back with it.
+async function resetGroup(group) {
+  const count = group.querySelectorAll("input.changed, select.changed").length;
+  const which = count === 1 ? "the changed setting" : `the ${count} changed settings`;
+  if (!(await askConfirm(`Put ${which} of ${group.dataset.title} back to their defaults?`))) return;
+  for (const select of group.querySelectorAll("select.kind.changed")) setControlValue(select, defaultValue(select));
+  for (const control of group.querySelectorAll("input.changed, select.changed, input.invalid")) {
+    setControlValue(control, defaultValue(control));
+  }
+  redrawEditors();
+}
 
 function flagAdvancedSummary(details) {
   const summary = details.querySelector(":scope > summary");
@@ -1525,6 +1558,17 @@ async function loadDesign(file) {
 
 const HISTORY_LIMIT = 100;
 
+// Values put in from outside the editors (an undo, a group's reset): the
+// editors redraw from the form.
+function redrawEditors() {
+  applyStringLimits();
+  syncMirrors();
+  headstockEditor.sync();
+  inlayEditor.scheduleRefresh();
+  bodyEditor.reloadPoints();
+  bodyEditor.scheduleRefresh();
+}
+
 const undoHistory = {
   undo: [],       // the values before each change (JSON), the latest last
   redo: [],
@@ -1611,12 +1655,7 @@ const undoHistory = {
       ));
       applyValues("prototype", differing("prototype", prototype));
       applyValues("machining", differing("machining", target.machining));
-      applyStringLimits();
-      syncMirrors();
-      headstockEditor.sync();
-      inlayEditor.scheduleRefresh();
-      bodyEditor.reloadPoints();
-      bodyEditor.scheduleRefresh();
+      redrawEditors();
     } finally {
       this.restoring = false;
       clearTimeout(this.timer);

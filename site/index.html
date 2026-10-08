@@ -103,6 +103,9 @@
   /* Find a setting: the fields that match show (those in an editor's
      pane too), the rest and the folds with none of them are left out. */
   details.group > summary .changed-count { color: var(--accent); font-weight: 500; font-size: 13px; }
+  .group-reset { display: flex; justify-content: flex-end; margin: 0 0 6px; }
+  .group-reset[hidden] { display: none; }
+  .group-reset button { padding: 3px 10px; font-size: 12px; font-weight: 500; }
   #find-setting { width: 100%; padding: 6px 9px; border: 1px solid var(--line); border-radius: 6px; font: inherit; margin: 0 0 10px; background: #fff; }
   #form.filtering .field:not(.match) { display: none; }
   #form.filtering .field.mirrored.match:not([hidden]) { display: grid; }

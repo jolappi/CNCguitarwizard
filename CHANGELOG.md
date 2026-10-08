@@ -4,6 +4,9 @@
 
 ### Added
 
+- A group of the form with changes has *Reset 3 to defaults* at its top:
+  after asking, its changed settings go back to their defaults, as one
+  Undo step.
 - *Show only the settings changed from their defaults* says how many
   there are in all.
 - `/` anywhere but a field goes to *Find a setting*.
