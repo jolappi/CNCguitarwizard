@@ -1332,6 +1332,7 @@ const bodyEditor = {
   points: [],       // [[x, y], ...] relative to the heel end
   layout: null,     // Python's fixed features
   outlinePath: null,
+  upright: false,   // the drawing shown upright, the neck up (a view only)
   handles: [],
   refreshTimer: null,
   loaded: null,     // the template last loaded on this form
@@ -1406,13 +1407,36 @@ const bodyEditor = {
   // Start a drawing: everything goes into one group, turned over (Y
   // mirrored) for a left-handed build, so the design, kept as drawn
   // (right-handed), shows as it is built; toModel reads points back
-  // through the same group. The view box frames the model's Y range.
+  // through the same group. The view box frames the model's Y range. The
+  // body editor may show it upright (this.upright: turned a quarter
+  // clockwise, the neck up), a view only: the other editors share this
+  // and stay as they are.
   begin(mirrored, minX, minY, maxX, maxY) {
     this.svg.innerHTML = "";
     this.root = null;
-    this.root = this.element("g", mirrored ? { transform: "scale(1,-1)" } : {});
+    const transform = `${this.upright ? "rotate(90) " : ""}${mirrored ? "scale(1,-1)" : ""}`.trim();
+    this.root = this.element("g", transform ? { transform } : {});
     const top = mirrored ? minY : -maxY;
-    this.svg.setAttribute("viewBox", `${minX} ${top} ${maxX - minX} ${maxY - minY}`);
+    const width = maxX - minX, height = maxY - minY;
+    this.svg.setAttribute("viewBox", this.upright
+      ? `${-(top + height)} ${minX} ${height} ${width}`
+      : `${minX} ${top} ${width} ${height}`);
+  },
+
+  // Upright or sideways (the default), as last chosen in this browser.
+  turn(upright) {
+    this.upright = upright;
+    try {
+      localStorage.setItem("cncguitarwizard.bodyUpright", upright ? "1" : "0");
+    } catch {
+      // No storage (a private window): the view is only for now.
+    }
+    const button = document.getElementById("body-editor-turn");
+    button.textContent = upright ? "Turn sideways" : "Turn upright";
+    button.title = upright
+      ? "Lay the drawing on its side, the neck to the left (the view only)"
+      : "Turn the drawing upright, the neck up (the view only)";
+    if (this.layout) this.draw();
   },
 
   pathData(points) {
@@ -2686,6 +2710,12 @@ const bodyEditor = {
 };
 
 document.getElementById("body-editor-reset").addEventListener("click", () => bodyEditor.reset());
+document.getElementById("body-editor-turn").addEventListener("click", () => bodyEditor.turn(!bodyEditor.upright));
+try {
+  if (localStorage.getItem("cncguitarwizard.bodyUpright") === "1") bodyEditor.turn(true);
+} catch {
+  // No storage: sideways, as by default.
+}
 document.getElementById("body-editor-template").addEventListener("change", () => bodyEditor.reset());
 document.getElementById("body-editor-auto-guard").addEventListener("click", () => bodyEditor.autoGuard());
 document.getElementById("body-editor-auto-steps").addEventListener("click", () => bodyEditor.autoSteps());

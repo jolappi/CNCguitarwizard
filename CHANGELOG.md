@@ -4,6 +4,10 @@
 
 ### Added
 
+- *Turn upright* in the body editor: the drawing shown standing, the
+  neck up (*Turn sideways* lays it back down, the default), a view only —
+  every handle drags as before; the browser remembers the choice. The
+  headstock and inlay editors stay as they are.
 - The editors' outlines to a CAD program and back: *Export DXF* and
   *Import DXF* in the body, headstock and inlay editors, as *Export SVG*
   and *Import SVG* do for drawing programs. The DXF template (R12, 1:1 in

@@ -335,7 +335,7 @@
           as handles on the drawn line (within 0.25 mm of it; <em>Undo</em> takes it back). Lines drawn
           in its Pattern layer (the engraving there is comes with it), shapes drawn beside the outline and
           pictures pasted in (a PNG kept in the file: its dark shapes are traced) are read back as the
-          engraved pattern, <code>body_engraving_pattern</code> drawn; empty the layer to take the engraving off. <em>Export DXF</em> and <em>Import DXF</em> do the same for a CAD program: the outline on layer <code>cgwOutline</code> (a point on <code>cgwHandles</code> at every handle), what it is drawn round on <code>cgwReference</code>, the marks on <code>cgwMarkA</code>–<code>C</code>, the engraving on <code>cgwPatternLayer</code>; any ASCII DXF is read (lines, arcs, circles, ellipses, polylines and splines, joined end to end). The grid is 50 mm.</p>
+          engraved pattern, <code>body_engraving_pattern</code> drawn; empty the layer to take the engraving off. <em>Export DXF</em> and <em>Import DXF</em> do the same for a CAD program: the outline on layer <code>cgwOutline</code> (a point on <code>cgwHandles</code> at every handle), what it is drawn round on <code>cgwReference</code>, the marks on <code>cgwMarkA</code>–<code>C</code>, the engraving on <code>cgwPatternLayer</code>; any ASCII DXF is read (lines, arcs, circles, ellipses, polylines and splines, joined end to end). <em>Turn upright</em> shows the drawing standing, the neck up (the view only: everything drags as before); <em>Turn sideways</em> lays it back down. The grid is 50 mm.</p>
       </details>
       <details class="editor-settings">
         <summary>Settings</summary>
@@ -348,6 +348,7 @@
         <label class="note" for="body-editor-template">Start from</label>
         <select id="body-editor-template"></select>
         <button id="body-editor-reset" class="secondary" type="button">Load</button>
+        <button id="body-editor-turn" class="secondary" type="button" title="Turn the drawing upright, the neck up (the view only)">Turn upright</button>
         <button id="body-editor-auto-guard" class="secondary" type="button" title="Back to the automatic pickguard">Auto pickguard</button>
         <button id="body-editor-auto-arm" class="secondary" type="button" title="Back to the automatic arm contour">Auto arm contour</button>
         <button id="body-editor-auto-steps" class="secondary" type="button" title="Back to the steps body_top_step_insets in from the edge">Auto steps</button>

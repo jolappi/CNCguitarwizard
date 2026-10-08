@@ -821,6 +821,12 @@ Ensin yhteenveto (aihiot, ohjelmat aika-arvioineen), sitten lataukset,
 tasokuva ja työradat; virhe näkyy samassa kohdassa. Jos kohta ei ole
 näkyvissä, kun tulos tai virhe tulee, sivu vierittää sen esiin.
 
+Runkoeditorin *Turn upright* näyttää piirroksen pystyssä, kaula ylöspäin
+(neljännes myötäpäivään; *Turn sideways* palauttaa vaakanäkymän, joka on
+oletus). Se on pelkkä näkymä: koordinaatit ja kaikki raahaukset toimivat
+kuten ennen, valinta muistetaan selaimessa, ja lapa- ja inlay-editori
+pysyvät vaakatasossa.
+
 Kaiverruskuvion satunnaissiemenen (`body_engraving_seed`) vieressä on
 *Reroll*-painike sekä lomakkeessa että runkoeditorin *Settings*-kohdassa:
 se arpoo uuden siemenen, ja kuvio piirtyy uudelleen (kuten *New

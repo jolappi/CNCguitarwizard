@@ -77,7 +77,12 @@ Python.
    the body is always drawn, starting from the Design by Jone template on
    a guitar and the Jazz Bass style one on a bass (a saved design that
    names the traced `design_by_jone` body loads as that template). A
-   drawing panel above the results edits it: the outline's control points
+   drawing panel above the results edits it (*Turn upright* shows it
+   standing, the neck up, turned a quarter clockwise — a view only, the
+   drawing's frame and every drag as before; *Turn sideways* lays it back
+   down, the default; the choice is kept in the browser,
+   `cncguitarwizard.bodyUpright`, and the headstock and inlay editors stay
+   as they are): the outline's control points
    are handles to drag (click the outline to add one, Alt-click or
    right-click to remove one; *Start from* shows the template the drawing
    is ("Your own drawing" once its outline has been changed); choosing
