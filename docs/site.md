@@ -33,15 +33,28 @@ Python.
    included), else the first block in the class that names it, cut to the
    sentences that do — with `field_help.FIELD_HELP` first: plain words for
    the settings shown up front and those the code leaves unexplained.
-   Every field has one. The settings that shape an
-   editor's drawing sit in that editor's own pane instead
-   (`EDITOR_FIELDS` in `app.js`): the pickup layout, bridge (its kind;
-   its own sizes stay in the form), controls, pickup selector, jack,
-   pickguard, arm contour and battery box in the body editor, the tuner layout
-   (`headstock_style`) and the nut's style (`nut_style`: on the shelf, in
-   a slot, behind a zero fret) in the headstock editor, which draws the
-   nut too, and the markers' style, depth and edge margin in the inlay
-   editor. Each editor's long how-to sits folded under its *How to
+   Every field has one. The settings that change an
+   editor's drawing sit above it in that editor's own pane instead,
+   folded under *Settings (N)* (`details.editor-settings`, closed until
+   clicked; it reads *· changed* when one of them is) (`EDITOR_FIELDS`
+   in `app.js`), but the instrument-wide ones that
+   change every drawing (scale, string count, handedness, nut and heel
+   widths), which stay at the head of the form, and the fine sizes
+   behind each group's *Advanced* fold: in the body editor the neck's
+   joint, the pickup layout, each position's pickup and place and
+   whether they follow a fan, the bridge (its kind; its own sizes stay in
+   the form) and whether it follows a fan, controls, pickup selector,
+   jack, pickguard, humbucker frames, arm contour and belly cut, carved
+   and stepped top, engraving, battery box and the neck bolts' side —
+   in two columns on a wide screen (1200 px and up); in the headstock
+   editor the tuner layout (`headstock_style`) and its bass side, the
+   headstock's length, the tuner holes' size, the nut's style
+   (`nut_style`: on the shelf, in a slot, behind a zero fret) and a
+   locking nut, which it draws too, the lettering, and the truss rod's
+   adjustment, spoke wheel and cover; in the inlay editor the markers'
+   style, frets, sizes, depth and edge margin and the fretboard's
+   binding. A list (the marker frets) is passed on once it reads as JSON.
+   Each editor's long how-to sits folded under its *How to
    edit …* line (`details.editor-help`: the design, the headstock, the
    inlays), closed until clicked. Each is a copy of the
    form's field, whose row in the form is hidden while the pane is shown

@@ -142,10 +142,30 @@ function renderForm() {
 // each is a copy of the form's field, which stays the one that is saved,
 // loaded and built (its row in the form is hidden while the pane is shown).
 // A change on either side is passed to the other.
+// Every setting that changes an editor's drawing sits above it (its row in
+// the form hidden meanwhile), but the instrument-wide ones (scale, strings,
+// handedness, nut width) that change every drawing, and the fine sizes
+// behind each group's Advanced fold.
 const EDITOR_FIELDS = {
-  "body-editor-options": ["body_pickups", "body_bridge", "body_controls", "body_switch", "body_jack", "body_pickguard", "body_pickguard_style", "body_pickup_frame", "body_pickup_frame_direction", "body_arm_contour_depth", "body_belly_cut_depth", "body_carved_top", "body_carve_depth", "body_stepped_top", "body_engraving", "body_engraving_pattern", "body_engraving_seed", "body_battery_box", "body_battery_count"],
-  "headstock-editor-options": ["headstock_style", "nut_style", "headstock_engraving_text", "headstock_engraving_font", "headstock_engraving_height", "headstock_engraving_angle", "truss_rod_adjustment", "truss_rod_cover_style", "truss_rod_cover_length", "truss_rod_cover_width"],
-  "inlay-editor-options": ["inlay_style", "inlay_depth", "inlay_block_edge_margin"],
+  "body-editor-options": [
+    "neck_joint", "body_pickups", "body_neck_pickup", "body_middle_pickup", "body_bridge_pickup",
+    "body_neck_pickup_offset", "body_middle_pickup_offset", "body_bridge_pickup_offset", "body_pickups_follow_fan",
+    "body_bridge", "body_bridge_follows_fan", "body_controls", "body_switch", "body_jack",
+    "body_pickguard", "body_pickguard_style", "body_pickup_frame", "body_pickup_frame_direction",
+    "body_arm_contour_depth", "body_belly_cut_depth", "body_carved_top", "body_carve_depth", "body_stepped_top",
+    "body_engraving", "body_engraving_pattern", "body_engraving_seed", "body_battery_box", "body_battery_count",
+    "body_neck_bolts_outward",
+  ],
+  "headstock-editor-options": [
+    "headstock_style", "headstock_bass_side", "headstock_length", "tuner_hole_diameter", "nut_style", "locking_nut",
+    "headstock_engraving_text", "headstock_engraving_font", "headstock_engraving_height", "headstock_engraving_angle",
+    "truss_rod_adjustment", "truss_rod_spoke_wheel", "truss_rod_cover_style", "truss_rod_cover_length",
+    "truss_rod_cover_width",
+  ],
+  "inlay-editor-options": [
+    "inlay_style", "inlay_single_marker_frets", "inlay_double_marker_frets", "inlay_dot_diameter",
+    "inlay_block_length_fraction", "inlay_block_edge_margin", "inlay_depth", "fretboard_binding_width",
+  ],
 };
 const mirrors = new Map();
 
@@ -174,7 +194,12 @@ function mirrorEditorFields() {
         label.classList.add("explained");
       }
       const pass = () => {
-        const value = copy.type === "checkbox" ? copy.checked : copy.tagName === "SELECT" ? copy.value : readValue(copy);
+        let value;
+        try {
+          value = copy.type === "checkbox" ? copy.checked : copy.tagName === "SELECT" ? copy.value : readValue(copy);
+        } catch {
+          return;  // a list (JSON) still being typed
+        }
         if (typeof value === "number" && Number.isNaN(value)) return;  // still being typed
         setControlValue(original, value);
       };
@@ -183,6 +208,8 @@ function mirrorEditorFields() {
       holder.append(label, copy);
       mirrors.set(original, copy);
     }
+    const summary = holder.closest("details.editor-settings")?.querySelector(":scope > summary");
+    if (summary) summary.textContent = `Settings (${holder.querySelectorAll("label").length})`;
   }
   syncMirrors();
   showMirroredRows();
@@ -209,6 +236,11 @@ function syncMirrors() {
       });
     }
     copy.classList.toggle("changed", original.classList.contains("changed"));
+  }
+  // A folded Settings shows that something in it is changed.
+  for (const details of document.querySelectorAll("details.editor-settings")) {
+    details.querySelector(":scope > summary").classList.toggle(
+      "changed", details.querySelector(".editor-options .changed") !== null);
   }
 }
 

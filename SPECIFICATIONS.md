@@ -824,6 +824,23 @@ näkyvissä, kun tulos tai virhe tulee, sivu vierittää sen esiin.
 Editorien pitkät ohjetekstit on supistettu otsikoiden *How to edit the
 design*, *How to edit the headstock* ja *How to edit the inlays* alle, ja
 ne aukeavat vasta otsikkoa klikkaamalla.
+
+Jokainen asetus, joka muuttaa editorin kuvaa, on kuvan yläpuolella
+editorin omassa ruudussa otsikon *Settings (N)* alla, oletuksena
+supistettuna (otsikossa lukee *· changed*, kun jokin niistä on muutettu;
+lomakkeen rivi piilossa sillä aikaa):
+runkoeditorissa kaulan liitos, mikkien asettelu, kunkin aseman mikki ja
+paikka sekä viuhkan seuraaminen, talla ja sen viuhkan seuraaminen,
+kontrollit, valitsin, jakki, pleksi, humbuckerin kehykset, kyynärvarren
+ja vatsan muotoilut, kaareva ja porrastettu kansi, kaiverrus, akkukotelo
+ja kaulapulttien suunta (leveällä, vähintään 1200 px näytöllä kahdessa
+sarakkeessa); lapaeditorissa virittimien asettelu ja bassopuoli, lavan
+pituus, viritinreiät, satulan tyyli ja lukkosatula, kaiverrusteksti sekä
+kaularaudan säätö, kehrä ja kansi; inlay-editorissa merkkien tyyli,
+nauhat, koot, syvyys ja reunamarginaali sekä otelaudan reunanauha. Koko
+soittimen asetukset, jotka muuttavat kaikkia kuvia (mensuuri,
+kielimäärä, kätisyys, satulan leveys), jäävät lomakkeen alkuun, ja
+hienosäätömitat *Advanced*-taittoon.
 **Load design** lataa tiedoston takaisin lomakkeeseen ja editoreihin. Tiedostovalitsin
 aukeaa heti napista (Safari ei avaa sitä vahvistusdialogin jälkeen), ja
 kysymys muutettujen arvojen korvaamisesta tulee vasta, kun tiedosto on

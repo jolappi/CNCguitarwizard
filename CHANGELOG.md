@@ -603,6 +603,15 @@
 
 ### Changed
 
+- Every setting that changes an editor's drawing sits above it, folded
+  under *Settings* (closed until clicked; marked when one is changed): the body
+  editor adds the neck's joint, each position's pickup and its place,
+  following a fan and the neck bolts' side; the headstock editor the bass
+  side, length, tuner holes, a locking nut and the spoke wheel; the inlay
+  editor the marker frets, the dots' and blocks' sizes and the binding.
+  The instrument-wide settings (scale, strings, handedness, nut width)
+  stay at the head of the form. On a wide screen the body editor's
+  settings are in two columns.
 - The editors' long how-tos are folded away under *How to edit the
   design*, *the headstock* and *the inlays*, closed until clicked.
 - The build's result shows first, as soon as it is done: at the top of
