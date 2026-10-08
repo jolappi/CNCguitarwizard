@@ -4,6 +4,8 @@
 
 ### Added
 
+- An editor over the whole window keeps its status line (at its foot)
+  and *Undo* and *Redo*.
 - Every toolpath plot says how deep its colours cut: a bar under the part
   from the surface's blue (0 mm) to the deepest cut's red, its depth
   written, drawn larger on a larger part so it reads as shown.

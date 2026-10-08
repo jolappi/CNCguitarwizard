@@ -3532,6 +3532,29 @@ function enableZoom(editor) {
   frame.closeFull = () => setFull(false);
   full.addEventListener("click", () => setFull(!frame.classList.contains("full")));
   tools.append(full);
+  // An editor over the whole window keeps its status line (copied in, at
+  // its foot, as it changes) and Undo and Redo (the page's own buttons
+  // are out of sight then; these work and are kept as theirs are).
+  if (editor.status) {
+    for (const [kind, label] of [["undo", "Undo"], ["redo", "Redo"]]) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `secondary ${kind}-button full-only`;
+      button.textContent = label;
+      button.disabled = true;
+      tools.append(button);
+    }
+    const said = document.createElement("p");
+    frame.append(said);
+    const copy = () => {
+      said.className = `full-status ${editor.status.className}`;
+      said.replaceChildren(...[...editor.status.childNodes].map((node) => node.cloneNode(true)));
+    };
+    new MutationObserver(copy).observe(editor.status, {
+      childList: true, subtree: true, characterData: true, attributes: true,
+    });
+    copy();
+  }
   editor.showZoom = () => {
     chip.hidden = !editor.zoom;
     if (editor.zoom) chip.textContent = `${editor.zoom.scale.toFixed(1)}× · Fit`;

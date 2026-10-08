@@ -897,7 +897,9 @@ sormien keskikohdan ympäri ja siirtää kuvaa sormien mukana (tuloksen
 kuvissa yksi sormi vierittää sivua kuten ennen). Piirroksen kulmapainikkeet ovat omalla kaistallaan
 piirroksen yläpuolella, joten ne eivät peitä sen yläreunaa (työratakuvan
 otsikkoa). *Full window* näyttää
-piirroksen koko selainikkunan kokoisena kahvoineen (*Close* tai Esc
+piirroksen koko selainikkunan kokoisena kahvoineen; editorin tilarivi
+näkyy silloin alareunassa (päivittyen samalla tavalla) ja *Undo*- ja
+*Redo*-painikkeet *Close*-painikkeen vieressä (*Close* tai Esc
 palauttaa sivun). Piirroksen toisen
 yläkulman *Measure* tuo mittatikun näkyvän alueen keskelle (myös
 tuloksen kuviin, jotka ovat millimetreinä): päitä raahataan, ja ne

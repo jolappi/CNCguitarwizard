@@ -367,8 +367,10 @@ Python.
    covers its top (a toolpath plot's title).
    *Full window*, beside *Measure* in each drawing's other top corner,
    shows the drawing over the whole page as big as the window lets it,
-   every handle working as before (`zoom-frame.full`); *Close* or Escape
-   puts it back.
+   every handle working as before (`zoom-frame.full`); an editor keeps
+   its status line there, at the foot (copied in as it changes:
+   `full-status`), and *Undo* and *Redo* beside *Close*; *Close* or
+   Escape puts it back.
    *Measure*, in each drawing's other top corner (the result's plots
    too, all drawn in millimetres), lays a ruler across the middle of
    what is in view (`enableRuler`): drag either end — it snaps to the
