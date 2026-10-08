@@ -25,7 +25,9 @@ Python.
    bridge, body thickness, tool and feeds…) are shown up front; the rest of
    each group sits behind an *Advanced* fold, marked `advanced` in the
    schema (`_BASIC_FIELDS`, `_BASIC_VARIANT_FIELDS` in `webapp.py`), with a
-   page-wide checkbox to open them all. *Find a setting…* above them
+   page-wide checkbox to open them all. A variant's fields (a drawn body,
+   a bridge) take the instrument's own variant as their default, so a
+   design loaded with its values shows nothing changed. *Find a setting…* above them
    (`applyFormFilter`) shows only the fields whose name or meaning (its
    hover text) holds every word typed, underscores read as spaces — a
    field in an editor's pane too, its row in the form back while

@@ -573,11 +573,14 @@ function renderVariantField(set, field) {
 
   const renderSubfields = (kind, values) => {
     sub.innerHTML = "";
-    const subfields = field.variants[kind].fields.map((subfield) => (
-      values && subfield.name in values
-        ? { ...subfield, default: subfield.default, value: values[subfield.name] }
-        : subfield
-    ));
+    // The instrument's own variant is its fields' default (a drawn body's
+    // template outline and placements, a five-string bass's hardtail), so
+    // a design loaded with those values shows nothing changed.
+    const baseline = kind === field.default.kind ? field.default : {};
+    const subfields = field.variants[kind].fields.map((subfield) => {
+      const own = subfield.name in baseline ? { ...subfield, default: baseline[subfield.name] } : subfield;
+      return values && subfield.name in values ? { ...own, value: values[subfield.name] } : own;
+    });
     renderFieldList(set + "." + field.name, subfields, sub, row.hidden ? field.name : undefined);
     select.classList.toggle("changed", kind !== field.default.kind);
     if (field.name === "body_shape") bodyEditor.sync(kind, sub);

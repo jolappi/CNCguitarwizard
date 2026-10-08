@@ -780,6 +780,11 @@
 
 ### Fixed
 
+- A loaded design (and the one the page puts back) no longer shows the
+  drawn body's outline and placements, or another instrument's own bridge
+  (a five-string bass's hardtail), as changed when they are as the
+  instrument has them: the instrument's own variant is now its fields'
+  default.
 - The *Build 3D and CNC files* button is no longer squeezed beside
   *Reset*, *Undo* and *Redo* on a wide screen (77 px wide, its words on
   four lines): it has a row of its own, as wide as the column.

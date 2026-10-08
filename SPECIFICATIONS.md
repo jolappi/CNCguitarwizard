@@ -880,6 +880,11 @@ raahaamalla piirros siirtyy, ja tuplaklikkaus taustaan näyttää koko
 piirroksen. Zoom säilyy uudelleenpiirrossa, tavallinen rulla vierittää
 sivua, ja kaikki kahvat toimivat kuten ennen.
 
+Varianttikenttien (piirretty runko, talla) oletuksina pidetään soittimen
+omaa varianttia (Design by Jone -rungon ääriviiva ja sijoittelut, 5-kielisen
+basson hardtail), joten ladattu tai palautettu suunnitelma ei näytä niitä
+muutettuina, kun ne ovat soittimen omat.
+
 Runkoeditorin *Turn upright* näyttää piirroksen pystyssä, kaula ylöspäin
 (neljännes myötäpäivään; *Turn sideways* palauttaa vaakanäkymän, joka on
 oletus). Se on pelkkä näkymä: koordinaatit ja kaikki raahaukset toimivat
