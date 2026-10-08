@@ -30,7 +30,11 @@ Python.
    hover text) holds every word typed, underscores read as spaces — a
    field in an editor's pane too, its row in the form back while
    searching — opening their groups and folds and leaving out the rest;
-   emptied, every fold is as open as it was. Hovering a field's row shows what
+   emptied, every fold is as open as it was. Each field is labelled in
+   words (`fieldLabel`: `body_pickup_frame_direction` reads *Pickup frame
+   direction*, the body's own fields dropping their `body_`), its name in
+   the code, the saved designs and the help in brackets at the end of its
+   hover text. Hovering a field's row shows what
    it means (its name is underlined dotted): `webapp._field_help` takes it
    from the code's own documentation — a dataclass's `Args:` entries, an
    attribute docstring, the comment block above the field (and the fields

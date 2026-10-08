@@ -636,6 +636,10 @@
 
 ### Changed
 
+- The form's fields are labelled in words (*Pickup frame direction*,
+  not `body_pickup_frame_direction`); a field's name in the code, saved
+  designs and help shows at the end of its hover text, and *Find a
+  setting* finds it by either.
 - Tidier editor button rows, each on one line: *Export SVG*, *Import
   SVG*, *Export DXF* and *Import DXF* in a *File ▾* menu; the body
   editor's *Auto* buttons only with their feature on (*Auto pickguard*

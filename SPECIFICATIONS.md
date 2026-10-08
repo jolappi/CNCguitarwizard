@@ -837,6 +837,11 @@ kentät, joiden nimessä tai selityksessä on jokainen kirjoitettu sana
 (alaviivat luetaan väleinä), myös editorien ruutuihin siirretyt, ja avaa
 niiden ryhmät ja taitot; tyhjennettynä taitot palaavat ennalleen.
 
+Lomakkeen kentät on nimetty sanoin (*Pickup frame direction*, ei
+`body_pickup_frame_direction`; rungon kentistä etuliite `body_` pois).
+Kentän koodinimi (jota tallennetut suunnitelmat ja ohjeet käyttävät)
+näkyy hover-tekstin lopussa, ja haku löytää kummallakin.
+
 Runkoeditorin *Turn upright* näyttää piirroksen pystyssä, kaula ylöspäin
 (neljännes myötäpäivään; *Turn sideways* palauttaa vaakanäkymän, joka on
 oletus). Se on pelkkä näkymä: koordinaatit ja kaikki raahaukset toimivat

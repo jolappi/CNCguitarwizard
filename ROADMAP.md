@@ -65,6 +65,7 @@
 - The Build button on a row of its own
 - Editor button rows on one line: a File menu, Auto buttons where they apply, the form column in view
 - Find a setting: the form filtered by name and meaning
+- The form's fields labelled in words
 - Index pins as wide as a main tool wider than 6 mm (an 8 mm end mill,
   8 mm dowels)
 - The neck's back carved with the ball nose alone, in one program

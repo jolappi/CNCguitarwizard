@@ -191,7 +191,7 @@ function mirrorEditorFields() {
       delete copy.dataset.set;
       delete copy.dataset.name;
       const label = document.createElement("label");
-      label.textContent = name;
+      label.textContent = fieldLabel(name);
       label.htmlFor = copy.id;
       // The form row's explanation goes with it.
       if (row.title) {
@@ -311,7 +311,7 @@ function renderFieldList(set, fields, holder, title) {
   details.open = showAdvanced.checked;
   const summary = document.createElement("summary");
   summary.textContent = title
-    ? `${title} — Advanced (${advanced.length})`
+    ? `${fieldLabel(title)} — Advanced (${advanced.length})`
     : `Advanced (${advanced.length})`;
   details.appendChild(summary);
   const inner = document.createElement("div");
@@ -377,7 +377,7 @@ function renderField(set, field) {
   const row = document.createElement("div");
   row.className = "field";
   const label = document.createElement("label");
-  label.textContent = field.name;
+  label.textContent = fieldLabel(field.name);
   label.htmlFor = set + "." + field.name;
   const input = document.createElement("input");
   input.id = set + "." + field.name;
@@ -435,16 +435,27 @@ function withReroll(input, original) {
 // What the field means, from Python (webapp._field_help), shown on hover
 // over its row; its name is marked as explained.
 function explain(row, field) {
-  if (!field.help) return;
-  row.title = field.help;
+  if (!field.help) {
+    row.title = field.name;
+    return;
+  }
+  row.title = `${field.help}\n\n(${field.name})`;
   row.querySelector("label")?.classList.add("explained");
+}
+
+// A field's name in words: "body_pickup_frame_direction" reads "Pickup
+// frame direction" (the body's own fields drop their "body_"); its name
+// in the code, saved designs and help stays on hover and finds it too.
+function fieldLabel(name) {
+  const words = name.replace(/^body_/, "").replace(/_/g, " ");
+  return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
 function renderChoiceField(set, field) {
   const row = document.createElement("div");
   row.className = "field";
   const label = document.createElement("label");
-  label.textContent = field.name;
+  label.textContent = fieldLabel(field.name);
   label.htmlFor = set + "." + field.name;
   const select = document.createElement("select");
   select.id = label.htmlFor;
@@ -492,7 +503,7 @@ function renderVariantField(set, field) {
   const row = document.createElement("div");
   row.className = "field";
   const label = document.createElement("label");
-  label.textContent = field.name;
+  label.textContent = fieldLabel(field.name);
   label.htmlFor = set + "." + field.name + ".kind";
   const select = document.createElement("select");
   select.id = label.htmlFor;
