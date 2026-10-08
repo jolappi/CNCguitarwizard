@@ -4,6 +4,19 @@
 
 ### Added
 
+- A jig for filing the nut's string slots (`nut_jig`), cut from sheet in
+  its own program `Jig_nut_slots`: a comb 3 mm thick
+  (`nut_jig_thickness`) that stands on the fretboard against the nut, its
+  underside on the radius and a leg at each end hugging the board's
+  edge, with a slot at every string's place on the nut as wide as the
+  string (`nut_jig_gauges`, a usual set by default: .010-.046 on a
+  guitar, .045-.105 on a bass) plus `nut_jig_slot_play`, down to the
+  frets' height. The string's nut file run through its slot starts the
+  nut's slot where the string goes. Laid out along a slanted or fanned
+  nut's face too; refused with a locking nut or a zero fret. One cutter
+  cuts it, `nut_jig_tool_diameter` (0.6 mm, the fret-slot cutter's size)
+  at the fret-slot speed: the notes name the slots it is too wide for.
+  The FreeCAD model shows it standing against the nut (`NutSlotJig`).
 - Surface patterns drawn in another program: the body editor's *Export
   SVG* template has a *Pattern* layer with the engraving there is, and
   *Import SVG* reads its lines back, where they were changed, as the new

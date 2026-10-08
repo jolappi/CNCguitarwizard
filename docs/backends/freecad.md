@@ -68,6 +68,14 @@ STEP file exports both solids together, without applying a boolean union.
 This makes the joint at the shared `Z = 0` plane easy to inspect before later
 manufacturing operations are introduced.
 
+With `nut_jig` on, the nut-slot filing jig is an object of its own,
+`NutSlotJig` (*Nut-slot filing jig*): its outline, slots cut in, drawn on
+the nut's face (`NutSlotJig.placed`, on the board's crown, leaning with a
+slanted or fanned nut) and extruded its thickness toward the bridge
+(`NutSlotJig.toward_bridge`), so it stands where it is used, tilting with
+the neck. It is a tool, not part of the instrument: the STEP file leaves
+it out.
+
 The fretboard's nut-end corners can receive the same symmetric rounding as
 the two-dimensional outline. The generated FreeCAD script selects the two
 vertical nut-corner edges immediately after lofting the fretboard and applies

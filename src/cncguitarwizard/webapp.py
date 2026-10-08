@@ -269,6 +269,8 @@ _BASIC_FIELDS: frozenset[str] = frozenset(
         "body_battery_count",
         "locking_nut",
         "nut_style",
+        "nut_jig",
+        "nut_jig_gauges",
         "body_pickups_follow_fan",
         "body_bridge_follows_fan",
         "body_top_edge_radius",
@@ -1903,6 +1905,7 @@ _PART_ORDER = (
     "Neck",
     "Fretboard",
     "Inlays",
+    "Nut jig",
     "Covers",
 )
 """The parts in the order they are made (an unknown part goes last)."""

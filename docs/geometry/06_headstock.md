@@ -209,6 +209,54 @@ the fretboard (a shelf of `MIN_BOARD_SHELF`, 1 mm, at least): a taller
 nut (the seven- and eight-string ones on a 6 mm board) is refused with
 the remedy — a thicker board, taller frets, or no locking nut.
 
+### Nut-slot filing jig
+
+`nut_jig` adds a guide for filing the nut's string slots
+(`geometry.neck.nut_jig`, `Prototype001Parameters.nut_slot_jig`,
+`Prototype001Geometry.nut_jig`), cut from sheet in its own program
+`Jig_nut_slots` (see [Nut-slot jig](../cam/02_neck_and_fretboard_gcode.md#nut-slot-jig-jig_nut_slotsnc)).
+It is a comb `nut_jig_thickness` (3 mm) thick that stands on the
+fretboard with one face flat against the nut's front face. Seen from the
+bridge (the jig's own frame: X along the nut's face from the centerline,
+the bass side positive on either hand, Y up from the board's crown):
+
+- its underside follows the fretboard's radius between the board's
+  edges, and a leg at each end, `NUT_JIG_LEG_WIDTH` (4 mm) wide, reaches
+  `NUT_JIG_LEG_DEPTH` (3 mm) down past an edge and hugs it,
+  `NUT_JIG_EDGE_CLEARANCE` (0.05 mm) off, so the jig sits on the neck's
+  centre; a square `NUT_JIG_CORNER_RELIEF` (1.5 mm) is cut away where
+  each leg meets the underside, so the board's edge sits in it rather
+  than on the round the cutter leaves there;
+- its top runs round the radius `nut_jig_height` (5 mm, about the nut
+  blank's height) above the board;
+- from the top a slot comes down at every string's place on the nut,
+  each as wide as its string and `nut_jig_slot_play` (0.05 mm), to the
+  frets' height (`fret_height`, at least 0.5 mm, `NUT_JIG_MIN_FLOOR`): a
+  nut slot is never filed lower than the frets' tops, and the file,
+  sloping up from the nut toward the bridge, is higher still where it
+  passes through the jig. Slots are vertical; the file's slope toward the
+  headstock and its turn toward each tuner post are the filer's.
+
+The strings' gauges (`nut_jig_gauges`) are one per string, in inches
+(0.010) or thousandths (10), in any order: the thickest goes to the
+bass-most string. Empty takes a usual set (`default_gauges`): .010-.046
+on a six-string guitar, .010-.059 on a seven, .010-.074 on an eight;
+from a 740 mm scale (`BASS_SCALE`) a bass's .045-.105 on four strings,
+.045-.130 on five, .032-.130 on six. Other string counts need gauges.
+
+The strings stand `nut_string_spacing` apart on the nut, and the jig is
+laid out along the nut's face, which leans with slanted or fanned frets
+(`fret_skew.at(0)`): along a face leaning by `lean`, each string's place
+and the board's edges lie `hypot(1, lean)` further from the centerline,
+and each leg clears its edge across the jig's thickness (the board
+widening toward the bridge and, on a shelf nut, its rounded nut-end
+corners, `fretboard_nut_corner_radius`). It is refused with a locking
+nut (no slots to file) and a zero fret (which stands where the jig
+would), and when the slots would leave less than 1 mm of guide
+(`nut_jig_height` too low) or reach within 0.5 mm of the board's edge.
+The FreeCAD model shows it standing against the nut (object `NutSlotJig`,
+see [FreeCAD](../backends/freecad.md#neck-assembly)).
+
 The headstock editor's own pane offers the nut's style (`nut_style`)
 beside the tuner layout, and draws the nut: a plain one on its shelf, a
 slotted or zero-fret nut with the board running on behind the nut line,

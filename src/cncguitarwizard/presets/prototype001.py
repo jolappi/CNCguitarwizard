@@ -71,6 +71,12 @@ from ..geometry.neck import (
     TunerHole,
     TunerLayout,
 )
+from ..geometry.neck.nut_jig import (
+    NutSlotJig,
+    default_gauges,
+    nut_slot_jig,
+    resolved_gauges,
+)
 from ..geometry.neck.reinforcement import CLEARANCE as CARBON_ROD_CLEARANCE
 from ..geometry.neck.reinforcement import CarbonRods
 from ..geometry.primitives import (
@@ -460,6 +466,8 @@ class Prototype001Geometry:
     """The carbon fibre bars beside the truss rod, or ``None``."""
     set_neck: bool = False
     """Whether the neck is glued into its pocket (no bolts)."""
+    nut_jig: NutSlotJig | None = None
+    """The nut-slot filing jig, cut from sheet, or ``None``."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -1275,6 +1283,25 @@ class Prototype001Parameters:
     nut_slot_depth: float = 3.0
     nut_slot_lip: float = 3.0
     nut_slot_taper: float = 3.0
+    # nut_jig adds a jig for filing the nut's string slots (see
+    # geometry.neck.nut_jig), its own program Jig_nut_slots: a comb cut
+    # from nut_jig_thickness sheet (its length along the neck) with the
+    # machining form's nut_jig_tool_diameter cutter. It stands on the
+    # fretboard against the nut's face, its underside on the radius, its
+    # legs hugging the board's edges, its top nut_jig_height above the
+    # board. From the top a slot comes down at every string's place on
+    # the nut to the frets' height, each as wide as its string
+    # (nut_jig_gauges: one per string, in inches or thousandths, in any
+    # order, the thickest to the bass; empty takes a usual set,
+    # .010-.046 on a six-string guitar, .045-.105 on a four-string bass)
+    # plus nut_jig_slot_play, so the file for it slides through and
+    # starts the nut's slot where its string goes. For a nut on the nut
+    # line ("shelf" or "slot"), not a zero fret's or a locking nut.
+    nut_jig: bool = False
+    nut_jig_thickness: float = 3.0
+    nut_jig_height: float = 5.0
+    nut_jig_gauges: tuple[float, ...] = ()
+    nut_jig_slot_play: float = 0.05
     # A Floyd Rose locking nut screwed down from the top (see
     # geometry.neck.locking_nut): "auto" takes the Floyd Rose Original R2
     # with a Floyd Rose bridge (the 7- or 8-string nut on a seven- or
@@ -2591,6 +2618,16 @@ class Prototype001Parameters:
             recessed=False,
         )
 
+    @property
+    def locking_nut_kind(self) -> str:
+        """Return the locking nut fitted, ``"auto"`` resolved: "none" for a
+        plain nut, else its kind ("r2" with a Floyd Rose bridge)."""
+        if self.locking_nut != "auto":
+            return self.locking_nut
+        if isinstance(self.body_bridge, FloydRoseSpec):
+            return FLOYD_ROSE_NUTS.get(self.string_count, "r2")
+        return "none"
+
     def locking_nut_placed(self) -> LockingNut | None:
         """Return the nut placed on the fretboard, or ``None`` for a plain nut.
 
@@ -2602,13 +2639,7 @@ class Prototype001Parameters:
             NeckGeometryError: When the nut does not fit the neck (see
                 ``LockingNut``).
         """
-        kind = self.locking_nut
-        if kind == "auto":
-            kind = (
-                FLOYD_ROSE_NUTS.get(self.string_count, "r2")
-                if isinstance(self.body_bridge, FloydRoseSpec)
-                else "none"
-            )
+        kind = self.locking_nut_kind
         if kind == "none":
             if self.nut_style not in ("shelf", "slot", "zero_fret"):
                 raise NeckGeometryError(
@@ -2645,6 +2676,67 @@ class Prototype001Parameters:
             screw_diameter=self.locking_nut_screw_diameter,
             screw_depth=self.locking_nut_screw_depth,
             set_back=self.zero_fret_gap if self.nut_style == "zero_fret" else 0.0,
+        )
+
+    def nut_slot_jig(self) -> NutSlotJig | None:
+        """Return the nut-slot filing jig, or ``None`` without ``nut_jig``.
+
+        Laid out along the nut's face, which leans with a slanted or fanned
+        nut: each string at its place on the nut, the legs outside the
+        board's edges across the jig's thickness (where a shelf nut's board
+        ends in rounded corners, round them).
+
+        Raises:
+            NeckGeometryError: With a locking nut or a zero fret, or when the
+                jig cannot be made (see ``nut_slot_jig``).
+        """
+        if not self.nut_jig:
+            return None
+        if self.locking_nut_kind != "none":
+            raise NeckGeometryError(
+                "A locking nut has no string slots to file: turn nut_jig off."
+            )
+        if self.nut_style == "zero_fret":
+            raise NeckGeometryError(
+                "The nut-slot jig stands against the nut's face, where the zero "
+                "fret is: turn nut_jig off with a zero fret."
+            )
+        gauges = (
+            resolved_gauges(self.nut_jig_gauges, self.string_count)
+            if self.nut_jig_gauges
+            else default_gauges(self.string_count, self.centre_scale)
+        )
+        # In a bass-positive frame u, the nut's face is x = lean * u; a point
+        # s along it and t toward the bridge lies at u = (s - t * lean) / k.
+        lean = self.fret_skew.at(0.0) * self.bass_sign
+        k = math.hypot(1.0, lean)
+        final = self.centre_scale * (1.0 - math.pow(2.0, -self.fret_count / 12.0))
+        taper = (self.final_fret_width - self.nut_width) / 2.0 / final
+        corner = self.fretboard_nut_corner_radius if self.nut_style == "shelf" else 0.0
+
+        def half_width(t: float) -> float:
+            inset = corner - math.sqrt(t * (2.0 * corner - t)) if t < corner else 0.0
+            return self.nut_width / 2.0 + taper * t - inset
+
+        thickness = self.nut_jig_thickness
+        bass = max(k * half_width(t) + t * lean for t in (0.0, thickness))
+        treble = min(-k * half_width(t) + t * lean for t in (0.0, thickness))
+        middle = (self.string_count + 1) / 2.0
+        return nut_slot_jig(
+            radius=self.fretboard_radius,
+            edges=(treble, bass),
+            strings=[
+                (middle - string) * self.nut_string_spacing * k
+                for string in range(1, self.string_count + 1)
+            ],
+            gauges=gauges,
+            play=self.nut_jig_slot_play,
+            thickness=thickness,
+            height=self.nut_jig_height,
+            floor=self.fret_height,
+            lean=lean,
+            bass_sign=self.bass_sign,
+            crown=self.fretboard_thickness,
         )
 
     def nut_seat_length(self) -> float:
@@ -5293,6 +5385,7 @@ class Prototype001Parameters:
             through_parts,
             carbon_rods,
             self.neck_joint == "set",
+            self.nut_slot_jig(),
         )
 
 

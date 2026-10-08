@@ -45,6 +45,9 @@ The command creates:
   (`Body_top_controls.nc`, `Body_back_controls.nc`) and one
   `Cover_<name>.nc` per cavity cover or control plate, planned in the
   "Planning the cover plates" stage.
+- `Jig_nut_slots.nc` and its plot with `nut_jig` on: the nut-slot filing
+  jig, cut from sheet, planned with the fretboard (part `Nut jig`) — see
+  [Neck and fretboard G-code](../cam/02_neck_and_fretboard_gcode.md#nut-slot-jig-jig_nut_slotsnc).
 
 The build locates `freecadcmd` automatically, including the standard macOS
 application location. An explicit executable can be selected with:

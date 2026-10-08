@@ -104,6 +104,31 @@ FIELD_HELP: dict[str, str] = {
         "Rose bridge (the 7- or 8-string nut on a seven- or eight-string) and "
         "a plain nut otherwise."
     ),
+    "nut_jig": (
+        "Adds a guide for filing the nut's string slots, cut from 3 mm sheet "
+        "(program Jig_nut_slots): a comb that stands on the fretboard against "
+        "the nut, with a slot as wide as each string where that string goes. "
+        "Run each string's nut file through its slot to start the nut's slot "
+        "in the right place, then finish it by hand."
+    ),
+    "nut_jig_thickness": (
+        "The nut jig's sheet thickness, in mm: its length along the neck. No "
+        "thicker than its cutter (nut_jig_tool_diameter) reaches through: 3 mm "
+        "for the 0.6 mm fret-slot cutter, about 1.5 mm for a 0.3 mm one."
+    ),
+    "nut_jig_height": (
+        "How high the nut jig's top stands above the fretboard, in mm: about "
+        "the nut blank's own height. Its slots come down to the frets' height."
+    ),
+    "nut_jig_slot_play": (
+        "How much wider than its string each of the nut jig's slots is, in "
+        "mm, so the string's nut file slides through without wandering."
+    ),
+    "nut_jig_gauges": (
+        "The strings' gauges for the jig's slots, one per string, in inches "
+        "or thousandths ([10, 13, 17, 26, 36, 46]), in any order. Empty: a "
+        "usual set (.010-.046 on a guitar, .045-.105 on a bass)."
+    ),
     "truss_rod_adjustment": (
         "Where the truss rod (the steel rod that sets the neck's bow) is "
         "adjusted: at the heel, or at the headstock behind the nut."

@@ -11,6 +11,7 @@ from .headstock import (
     TunerLayout,
 )
 from .locking_nut import LOCKING_NUT_SPECS, LockingNut, LockingNutSpec
+from .nut_jig import NutJigSlot, NutSlotJig
 from .outline import NeckOutline
 from .reinforcement import CarbonRods
 from .side_profile import (
@@ -36,6 +37,8 @@ __all__ = [
     "NeckProfileStation",
     "NeckProfileStations",
     "NeckSideProfile",
+    "NutJigSlot",
+    "NutSlotJig",
     "Side",
     "TunerHole",
     "TunerLayout",

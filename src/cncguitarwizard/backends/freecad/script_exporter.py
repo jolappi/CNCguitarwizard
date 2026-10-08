@@ -24,6 +24,7 @@ from ...geometry.neck import (
     HeadstockSolid,
     LockingNut,
     NeckBackSurface,
+    NutSlotJig,
     TrussRodChannel,
     TunerLayout,
 )
@@ -153,6 +154,7 @@ class FreeCADScriptExporter:
             body=geometry.body,
             neck_through=geometry.neck_through,
             carbon_rods=geometry.carbon_rods,
+            nut_jig=geometry.nut_jig,
             fretboard_binding_width=geometry.fretboard_binding_width,
             headstock_engraving=geometry.headstock_engraving,
             neck_tilt=geometry.neck_tilt,
@@ -220,6 +222,7 @@ class FreeCADScriptExporter:
         body_object_name: str = "Body",
         neck_through: NeckThrough | None = None,
         carbon_rods: CarbonRods | None = None,
+        nut_jig: NutSlotJig | None = None,
         fretboard_binding_width: float = 0.0,
         headstock_engraving: Engraving | None = None,
         neck_tilt: tuple[float, float, float] = (0.0, 0.0, 0.0),
@@ -823,6 +826,7 @@ class FreeCADScriptExporter:
             f"{binding_source}"
             f"{headstock_source}"
             f"{locking_nut_screw_source}"
+            f"{self._render_nut_jig(nut_jig)}"
             f"{self._render_neck_tilt(neck_tilt)}"
             f"{body_source}"
             "document.recompute()\n"
@@ -2867,6 +2871,30 @@ class FreeCADScriptExporter:
             "    neck_shape.cut(carbon_rod_channels).removeSplitter(),\n"
             '    "carbon rod channels",\n'
             ")\n"
+        )
+
+    @staticmethod
+    def _render_nut_jig(jig: NutSlotJig | None) -> str:
+        """Return the nut-slot filing jig standing against the nut's face,
+        an object of its own (a tool, not in the STEP model)."""
+        if jig is None:
+            return ""
+        corners = ", ".join(
+            f"App.Vector({x!r}, {y!r}, {z!r})"
+            for x, y, z in (jig.placed(point) for point in jig.outline)
+        )
+        dx, dy = jig.toward_bridge
+        return (
+            "# The nut-slot filing jig, standing against the nut's face.\n"
+            f"nut_jig_corners = [{corners}]\n"
+            "nut_jig_feature = document.addObject(\n"
+            '    "Part::Feature", "NutSlotJig"\n'
+            ")\n"
+            "nut_jig_feature.Shape = Part.Face(\n"
+            "    Part.makePolygon(nut_jig_corners + nut_jig_corners[:1])\n"
+            f").extrude(App.Vector({dx * jig.thickness!r}, "
+            f"{dy * jig.thickness!r}, 0.0))\n"
+            "nut_jig_feature.Label = 'Nut-slot filing jig'\n"
         )
 
     @staticmethod

@@ -112,6 +112,12 @@ class MachiningParameters:
             slot and the inlay pieces cut from sheet.
         inlay_step_down: The most the inlay cutter goes down per pass, in
             mm (0.2 by default, so it does not snap).
+        nut_jig_tool_diameter: The cutter the nut-slot jig (nut_jig) is
+            cut with, in mm: 0.6 by default, the fret-slot cutter's
+            size, at the fret-slot speed and step-down. A slot narrower than
+            it comes out its width; a cutter no wider than the thinnest
+            string's slot (0.3 mm for a .010) cuts every slot its own width,
+            in a sheet no thicker than it reaches through. Under 1.4 mm.
         carve_tool_diameter: The flat end mill roughing a carved top;
             ``0`` uses the main tool. A bigger one roughs the arch far
             quicker (the time goes with the wood over its width).
@@ -175,6 +181,7 @@ class MachiningParameters:
     fret_slot_step_down: float = 0.2
     inlay_spindle_speed: float = 30000.0
     inlay_step_down: float = 0.2
+    nut_jig_tool_diameter: float = 0.6
     carve_tool_diameter: float = 0.0
     carve_finish: bool = False
     fretboard_blank_length: float | None = None
@@ -205,6 +212,7 @@ class MachiningParameters:
             "fret_slot_step_down": self.fret_slot_step_down,
             "inlay_spindle_speed": self.inlay_spindle_speed,
             "inlay_step_down": self.inlay_step_down,
+            "nut_jig_tool_diameter": self.nut_jig_tool_diameter,
             "fretboard_blank_thickness": self.fretboard_blank_thickness,
         }
         for name, value in (

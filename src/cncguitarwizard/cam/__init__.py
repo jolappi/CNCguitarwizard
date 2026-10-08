@@ -25,6 +25,7 @@ from .neck import (
     neck_plan_polygon,
     plan_neck_machining,
 )
+from .nut_jig import NutJigMachiningPlan, nut_jig_tool, plan_nut_jig_machining
 from .operations import depth_levels, drill, pocket, profile
 from .parameters import POST_PROCESSOR_LABELS, MachiningParameters
 from .planar import clear_intervals, disc_fits, offset_polygon
@@ -55,6 +56,7 @@ __all__ = [
     "Move",
     "NeckMachiningParameters",
     "NeckMachiningPlan",
+    "NutJigMachiningPlan",
     "OffsetGrid",
     "PathBuilder",
     "SampledSurface",
@@ -73,6 +75,7 @@ __all__ = [
     "fretboard_outline_polygon",
     "inlay_fit_outline",
     "neck_plan_polygon",
+    "nut_jig_tool",
     "offset_polygon",
     "offset_sampled_surface",
     "plan_cover_machining",
@@ -82,6 +85,7 @@ __all__ = [
     "plan_fretboard_machining",
     "plan_inlay_machining",
     "plan_neck_machining",
+    "plan_nut_jig_machining",
     "pocket",
     "profile",
     "raster_finish",

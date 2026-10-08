@@ -23,11 +23,14 @@ from ..cam import (
     MachiningParameters,
     NeckMachiningParameters,
     NeckMachiningPlan,
+    NutJigMachiningPlan,
+    nut_jig_tool,
     plan_body_machining,
     plan_cover_machining,
     plan_fretboard_machining,
     plan_inlay_machining,
     plan_neck_machining,
+    plan_nut_jig_machining,
     render_setup_svg,
 )
 from ..geometry.body import body_part
@@ -99,7 +102,8 @@ class Prototype001Build:
                 | NeckMachiningPlan
                 | FretboardMachiningPlan
                 | InlayMachiningPlan
-                | CoverMachiningPlan,
+                | CoverMachiningPlan
+                | NutJigMachiningPlan,
             ]
         ] = []
         self._gcode_paths: list[Path] = []
@@ -233,6 +237,13 @@ class Prototype001Build:
         inlays = plan_inlay_machining(self.geometry.inlay_layout, fretboard)
         if inlays is not None:
             self._plans.append(("Inlays", inlays))
+        # The nut-slot jig, cut from sheet with the fret-slot cutter's kind.
+        jig = plan_nut_jig_machining(
+            self.geometry.nut_jig,
+            nut_jig_tool(fretboard.slot, self.machining.nut_jig_tool_diameter),
+        )
+        if jig is not None:
+            self._plans.append(("Nut jig", jig))
 
     def _plan_covers(self) -> None:
         assert self.geometry is not None

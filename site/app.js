@@ -600,7 +600,7 @@ function showResult(result) {
   const stemOf = (name) => name.replace(/\.(nc|knc|svg)$/, "");
   const programOf = (name) => (/\.(nc|knc|svg)$/.test(name) ? gcode[stemOf(name)] : undefined);
   // build.json lists the programs alphabetically: order by part, then step.
-  const partOrder = ["Model and report", "Body", "Wing bass", "Wing treble", "Neck", "Fretboard", "Inlays", "Covers"];
+  const partOrder = ["Model and report", "Body", "Wing bass", "Wing treble", "Neck", "Fretboard", "Inlays", "Nut jig", "Covers"];
   const groups = new Map(partOrder.map((part) => [part, []]));
   for (const info of Object.values(gcode)) if (!groups.has(info.part)) groups.set(info.part, []);
   for (const name of Object.keys(result.files)) {
@@ -618,6 +618,7 @@ function showResult(result) {
     Neck: "Neck",
     Fretboard: "Fretboard",
     Inlays: "Inlays — the marker pieces, cut from sheet to fit the pockets",
+    "Nut jig": "Nut jig — a comb for filing the nut's slots, cut from sheet",
     Covers: "Covers — cut from sheet, in any order",
   };
   for (const [part, members] of groups) {

@@ -51,6 +51,7 @@
 - Body and headstock outlines drawn in another program: SVG templates out
   and back in
 - Surface patterns drawn in another program, through the body's SVG template
+- A jig for filing the nut's string slots, cut from sheet
 - Toolpath plots wide enough for their titles over a small part
 - Index pins as wide as a main tool wider than 6 mm (an 8 mm end mill,
   8 mm dowels)

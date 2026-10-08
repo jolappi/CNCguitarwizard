@@ -17,6 +17,7 @@ sample that grid.
 | 6 mm ball nose | neck back finish, fretboard radius | same feeds, `tool_tip="ball"` |
 | 1 mm end mill | inlay pockets, a slotted nut's slot, the inlay pieces | `inlay_spindle_speed` (30 000 rpm), F300, plunge F100, at most `inlay_step_down` (0.2 mm) per pass, so it does not snap — both set in the machining form |
 | 0.6 mm fret-slot cutter | fret slots | `fret_slot_spindle_speed` (30 000 rpm), F300, plunge F100, at most `fret_slot_step_down` (0.2 mm) per pass, so the thin cutter does not snap — both set in the machining form |
+| `nut_jig_tool_diameter` (0.6 mm) cutter | the nut-slot jig, slots and outline | the fret-slot cutter's speed, feeds and step-down |
 
 Every program states its tool in the header. The machine has no tool
 changer, so after each change the operator re-touches Z on the blank top;
@@ -212,6 +213,34 @@ into its pocket. Glue the pieces in and level them with the radius.
 With slanted or fanned frets (`fret_slant_angle`, `bass_scale_length`)
 each slot runs along its own line, still following the radius, and the
 outline's nut end and far end lean with the first and last frets.
+
+## Nut-slot jig (`Jig_nut_slots.nc`)
+
+With `nut_jig` on, the guide for filing the nut's string slots (see
+[the headstock's nut](../geometry/06_headstock.md#nut-slot-filing-jig))
+gets a sheet program of its own (`plan_nut_jig_machining`, part
+`Nut jig`). The jig stands on edge on the neck, so it is cut lying flat
+as it stands seen from the bridge: the sheet's thickness
+(`nut_jig_thickness`, 3 mm) is its length along the neck, X runs along
+the nut's face with the bass end at +X, Y up from the fretboard, and the
+work zero is the centre of the jig, Z at the sheet top. The sheet is
+taped down on double-sided tape (the jig has no tabs).
+
+One cutter does it all: `nut_jig_tool_diameter` (0.6 mm by default, the
+fret-slot cutter's size) at the fret-slot cutter's speed, feeds and
+step-down (`nut_jig_tool`), through the sheet and
+`through_overshoot` (0.5 mm) on. Each string's slot comes first, while the
+sheet holds the jig: lines along the slot, up and down a pass at a time,
+the cutter's round end on the slot's floor and the top end running 1 mm
+past the jig's top (`SLOT_RUN_OUT`). A slot no wider than the cutter is
+one line, so it comes out the cutter's width; a wider one has a line on
+each wall and as many between as keep the steps across under 0.8 of the
+cutter (`SLOT_STEP_OVER`). Then the outline, legs and underside included.
+The program's notes list each slot's width as cut and name the slots the
+cutter is too wide for, with the cutter that would cut each its own width
+(0.3 mm for a .010 string); a cutter that small reaches through only a
+thin sheet (about 1.5 mm). A cutter at least 1.4 mm wide is refused: it
+cannot cut the 1.5 mm corners the board's edges sit in.
 
 ## Checks
 
