@@ -73,6 +73,7 @@
 - Ctrl/Cmd+Enter builds
 - A field's meaning under it while it is selected
 - The toolpath plots chosen from a list by part
+- Zoom in the editors
 - Index pins as wide as a main tool wider than 6 mm (an 8 mm end mill,
   8 mm dowels)
 - The neck's back carved with the ball nose alone, in one program

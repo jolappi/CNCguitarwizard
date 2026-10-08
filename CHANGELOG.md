@@ -4,6 +4,9 @@
 
 ### Added
 
+- Zoom in the editors: Ctrl/Cmd+wheel or a trackpad's pinch zooms a
+  drawing about the pointer; zoomed in, dragging its background moves it
+  and a double-click fits it again.
 - A field's meaning shows under it while it is selected, in the form or
   an editor's *Settings*: on a touch screen too, where nothing hovers.
 - Ctrl/Cmd+Enter builds, from anywhere on the page.

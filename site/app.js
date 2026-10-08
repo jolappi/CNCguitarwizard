@@ -1642,14 +1642,22 @@ const bodyEditor = {
     this.root = this.element("g", transform ? { transform } : {});
     const top = mirrored ? minY : -maxY;
     const width = maxX - minX, height = maxY - minY;
-    this.svg.setAttribute("viewBox", this.upright
-      ? `${-(top + height)} ${minX} ${height} ${width}`
-      : `${minX} ${top} ${width} ${height}`);
+    this.baseBox = this.upright
+      ? [-(top + height), minX, height, width]
+      : [minX, top, width, height];
+    // Zoomed in (see enableZoom), the same part of the drawing stays in view.
+    const zoom = this.zoom;
+    const box = zoom
+      ? [zoom.cx - this.baseBox[2] / zoom.scale / 2, zoom.cy - this.baseBox[3] / zoom.scale / 2,
+        this.baseBox[2] / zoom.scale, this.baseBox[3] / zoom.scale]
+      : this.baseBox;
+    this.svg.setAttribute("viewBox", box.join(" "));
   },
 
   // Upright or sideways (the default), as last chosen in this browser.
   turn(upright) {
     this.upright = upright;
+    this.zoom = null;
     try {
       localStorage.setItem("cncguitarwizard.bodyUpright", upright ? "1" : "0");
     } catch {
@@ -2934,6 +2942,60 @@ const bodyEditor = {
 document.getElementById("body-editor-reset").addEventListener("click", () => bodyEditor.reset());
 document.getElementById("body-editor-turn").addEventListener("click", () => bodyEditor.turn(!bodyEditor.upright));
 
+// Zoom an editor's drawing: Ctrl/Cmd + wheel, or a trackpad's pinch, about
+// the pointer (up to 20 times); zoomed in, dragging its background moves
+// it, and a double-click on the background fits the whole drawing again.
+// The plain wheel scrolls the page as ever. The zoom (scale and centre in
+// the drawing's view box) outlasts a redraw (see begin).
+const ZOOM_TARGETS = ".handle, .frame-handle, .guard-handle, .step-handle, .contour-handle, " +
+  ".stretch-handle, .movable, .outline-hit, .inlay-handle, .inlay-hit, .lettering-hit, " +
+  ".cover-handle, .cover-stretch";
+
+function enableZoom(editor) {
+  const svg = editor.svg;
+  const setBox = (x, y, width, height) => {
+    const [, , baseWidth] = editor.baseBox;
+    const scale = baseWidth / width;
+    editor.zoom = scale <= 1.0001 ? null : { scale, cx: x + width / 2, cy: y + height / 2 };
+    svg.setAttribute("viewBox", (editor.zoom ? [x, y, width, height] : editor.baseBox).join(" "));
+  };
+  svg.addEventListener("wheel", (event) => {
+    if (!(event.ctrlKey || event.metaKey) || !editor.baseBox) return;
+    event.preventDefault();
+    const [, , baseWidth, baseHeight] = editor.baseBox;
+    const box = svg.viewBox.baseVal;
+    const point = svg.createSVGPoint();
+    point.x = event.clientX;
+    point.y = event.clientY;
+    const at = point.matrixTransform(svg.getScreenCTM().inverse());
+    const scale = Math.min(20, Math.max(1, (baseWidth / box.width) * Math.exp(-event.deltaY * 0.002)));
+    const width = baseWidth / scale, height = baseHeight / scale;
+    // The point under the pointer stays where it is.
+    setBox(at.x - (at.x - box.x) * width / box.width, at.y - (at.y - box.y) * height / box.height, width, height);
+  }, { passive: false });
+  svg.addEventListener("pointerdown", (event) => {
+    if (!editor.zoom || event.button !== 0 || event.target.closest(ZOOM_TARGETS)) return;
+    const start = [event.clientX, event.clientY];
+    const box = svg.viewBox.baseVal;
+    const from = [box.x, box.y, box.width, box.height];
+    const ratio = svg.getScreenCTM().a;
+    const move = (moveEvent) => {
+      setBox(from[0] - (moveEvent.clientX - start[0]) / ratio, from[1] - (moveEvent.clientY - start[1]) / ratio,
+        from[2], from[3]);
+    };
+    const end = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", end);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", end);
+  });
+  svg.addEventListener("dblclick", (event) => {
+    if (!editor.zoom || event.target.closest(ZOOM_TARGETS)) return;
+    editor.zoom = null;
+    svg.setAttribute("viewBox", editor.baseBox.join(" "));
+  });
+}
 // A menu (File ▾) closes once one of its buttons is chosen, or on a
 // click anywhere else.
 for (const menu of document.querySelectorAll("details.menu")) {
@@ -4101,6 +4163,7 @@ const inlayEditor = {
 };
 
 document.getElementById("inlay-editor-reset").addEventListener("click", () => inlayEditor.reset());
+for (const editor of [bodyEditor, headstockEditor, inlayEditor]) enableZoom(editor);
 document.getElementById("inlay-editor-load").addEventListener("click", () => inlayEditor.loadTemplate());
 document.getElementById("inlay-editor-template").addEventListener("change", () => inlayEditor.loadTemplate());
 form.addEventListener("change", (event) => {

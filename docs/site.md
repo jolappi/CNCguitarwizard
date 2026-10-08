@@ -280,6 +280,11 @@ Python.
    One history serves the whole page; a button's tooltip names the fields
    its step changes, and a new change clears the redo steps. In a text
    field the keys keep the browser's own undo of the typing.
+   Every editor's drawing zooms (`enableZoom`): Ctrl/Cmd+wheel, or a
+   trackpad's pinch, about the pointer, up to 20 times; zoomed in, a drag
+   on the background moves it and a double-click there fits the whole
+   drawing again; the zoom outlasts a redraw (`begin`), the plain wheel
+   scrolls the page as ever, and every handle works as before.
    The editors' button rows keep to one line: their templates' four
    buttons sit in a *File ▾* menu (`details.menu`, closing once one is
    chosen or on a click elsewhere), and the body editor's *Auto

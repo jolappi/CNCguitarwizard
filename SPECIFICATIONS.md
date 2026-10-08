@@ -874,6 +874,12 @@ Työratakuvat valitaan osittain ryhmitellystä listasta (ohjelmat
 vaiheittain, oletuksena rungon yläpuoli), ja nuolilla voi selata
 seuraavaan ja edelliseen.
 
+Editorien piirroksia voi zoomata: Ctrl/Cmd+rulla tai trackpadin nipistys
+zoomaa osoittimen kohdalta (enintään 20-kertaiseksi); zoomattuna taustaa
+raahaamalla piirros siirtyy, ja tuplaklikkaus taustaan näyttää koko
+piirroksen. Zoom säilyy uudelleenpiirrossa, tavallinen rulla vierittää
+sivua, ja kaikki kahvat toimivat kuten ennen.
+
 Runkoeditorin *Turn upright* näyttää piirroksen pystyssä, kaula ylöspäin
 (neljännes myötäpäivään; *Turn sideways* palauttaa vaakanäkymän, joka on
 oletus). Se on pelkkä näkymä: koordinaatit ja kaikki raahaukset toimivat
