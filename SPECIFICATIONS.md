@@ -849,6 +849,11 @@ yhdellä rivillä (määrä ja arvioitu kokonaisaika) ja kunkin työkalu ja
 aika taiton alla. Aihiolle, jolla ei ole kohdistustappeja, ei mainita
 tappien paikkoja.
 
+Haun alla oleva valinta *Show only the settings changed from their
+defaults* näyttää vain oletuksesta muutetut asetukset (myös editorien
+ruutujen), päivittyen kun arvoa muutetaan tai se palautetaan; jos mitään
+ei ole muutettu, lomake kertoo sen.
+
 Runkoeditorin *Turn upright* näyttää piirroksen pystyssä, kaula ylöspäin
 (neljännes myötäpäivään; *Turn sideways* palauttaa vaakanäkymän, joka on
 oletus). Se on pelkkä näkymä: koordinaatit ja kaikki raahaukset toimivat

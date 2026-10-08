@@ -4,6 +4,9 @@
 
 ### Added
 
+- *Show only the settings changed from their defaults* under the form's
+  search: what has been set, at a glance (an editor pane's settings too),
+  or a note that nothing is changed.
 - *Find a setting…* above the form: only the settings whose name or
   meaning holds every word typed show (one in an editor's pane too),
   their groups and folds open; emptied, the form is as it was.

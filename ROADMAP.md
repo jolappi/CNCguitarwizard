@@ -67,6 +67,7 @@
 - Find a setting: the form filtered by name and meaning
 - The form's fields labelled in words
 - A shorter build result: downloads folded by part, programs summed up
+- Show only the settings changed from their defaults
 - Index pins as wide as a main tool wider than 6 mm (an 8 mm end mill,
   8 mm dowels)
 - The neck's back carved with the ball nose alone, in one program

@@ -30,7 +30,10 @@ Python.
    hover text) holds every word typed, underscores read as spaces — a
    field in an editor's pane too, its row in the form back while
    searching — opening their groups and folds and leaving out the rest;
-   emptied, every fold is as open as it was. Each field is labelled in
+   emptied, every fold is as open as it was. *Show only the settings
+   changed from their defaults* keeps, of those, the ones marked changed
+   (an editor pane's too), refreshed as a value is changed or set back;
+   when none is left the form says so (`filter-empty`). Each field is labelled in
    words (`fieldLabel`: `body_pickup_frame_direction` reads *Pickup frame
    direction*, the body's own fields dropping their `body_`), its name in
    the code, the saved designs and the help in brackets at the end of its

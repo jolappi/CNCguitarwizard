@@ -15,6 +15,8 @@ const output = document.getElementById("output");
 const intro = document.getElementById("intro");
 const showAdvanced = document.getElementById("show-advanced");
 const findSetting = document.getElementById("find-setting");
+const changedOnly = document.getElementById("changed-only");
+const filterEmpty = document.getElementById("filter-empty");
 const instrumentSelect = document.getElementById("instrument");
 const saveDesignButton = document.getElementById("save-design");
 const guitarName = document.getElementById("guitar-name");
@@ -332,16 +334,18 @@ function flagAdvancedSummary(details) {
 // Find a setting: only the fields whose name or meaning holds every
 // word typed show (a field in an editor's pane too: its row in the form
 // comes back while searching), their groups and folds opened; the rest,
-// and folds with none of them, are left out. Emptied, every fold is as
-// open as it was before.
+// and folds with none of them, are left out. "Show only the settings
+// changed" keeps, of those, the ones changed from their defaults. Both
+// off, every fold is as open as it was before.
 let foldsBeforeFinding = null;
 
 function applyFormFilter() {
   const words = findSetting.value.toLowerCase().replace(/_/g, " ").split(/\s+/).filter(Boolean);
-  const filtering = words.length > 0;
+  const filtering = words.length > 0 || changedOnly.checked;
   form.classList.toggle("filtering", filtering);
   const folds = [...form.querySelectorAll("details")];
   if (!filtering) {
+    filterEmpty.hidden = true;
     if (foldsBeforeFinding) {
       for (const [fold, open] of foldsBeforeFinding) fold.open = open;
       foldsBeforeFinding = null;
@@ -349,6 +353,7 @@ function applyFormFilter() {
     return;
   }
   if (!foldsBeforeFinding) foldsBeforeFinding = new Map(folds.map((fold) => [fold, fold.open]));
+  let matches = 0;
   for (const row of form.querySelectorAll(".field")) {
     const control = row.querySelector("input, select");
     const text = [
@@ -356,13 +361,20 @@ function applyFormFilter() {
       control?.dataset.name,
       row.title,
     ].join(" ").toLowerCase().replace(/_/g, " ");
-    row.classList.toggle("match", words.every((word) => text.includes(word)));
+    const match = words.every((word) => text.includes(word))
+      && (!changedOnly.checked || row.querySelector(".changed") !== null);
+    row.classList.toggle("match", match);
+    if (match && !row.hidden) matches += 1;
   }
   for (const fold of folds) {
     const found = fold.querySelector(".field.match:not([hidden])") !== null;
     fold.classList.toggle("no-match", !found);
     fold.open = found;
   }
+  filterEmpty.hidden = matches > 0;
+  filterEmpty.textContent = changedOnly.checked && !words.length
+    ? "No setting is changed from its default."
+    : "No setting matches.";
 }
 
 function applyAdvancedToggle() {
@@ -4090,4 +4102,10 @@ loadDesignFile.addEventListener("change", async () => {
 });
 showAdvanced.addEventListener("change", applyAdvancedToggle);
 findSetting.addEventListener("input", applyFormFilter);
+changedOnly.addEventListener("change", applyFormFilter);
+// A value changed (or set back) while only the changed ones show: shown,
+// or left out, once the change is done.
+form.addEventListener("change", () => {
+  if (changedOnly.checked) applyFormFilter();
+});
 boot();
