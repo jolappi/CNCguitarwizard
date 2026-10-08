@@ -885,7 +885,9 @@ Editorien piirroksia voi zoomata: Ctrl/Cmd+rulla tai trackpadin nipistys
 zoomaa osoittimen kohdalta (enintään 20-kertaiseksi); zoomattuna taustaa
 raahaamalla piirros siirtyy, ja tuplaklikkaus taustaan tai kulman
 zoomauspainike (*2.7× · Fit*, myös tuloksen kuvissa) näyttää koko
-piirroksen. Zoom säilyy uudelleenpiirrossa, tavallinen rulla vierittää
+piirroksen. Kosketusnäytöllä kaksi sormea taustalla zoomaa nipistämällä
+sormien keskikohdan ympäri ja siirtää kuvaa sormien mukana (tuloksen
+kuvissa yksi sormi vierittää sivua kuten ennen). Zoom säilyy uudelleenpiirrossa, tavallinen rulla vierittää
 sivua, ja kaikki kahvat toimivat kuten ennen.
 
 Varianttikenttien (piirretty runko, talla) oletuksina pidetään soittimen

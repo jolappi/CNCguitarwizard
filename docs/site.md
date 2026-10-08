@@ -346,7 +346,11 @@ Python.
    on the background moves it and a double-click there fits the whole
    drawing again, as does the chip in its corner that says how far it is
    zoomed (*2.7× · Fit*, `showZoom`: a touch screen's way back; a plot's
-   too); the zoom outlasts a redraw (`begin`), the plain wheel
+   too). On a touch screen two fingers on the background pinch it about
+   their middle and move it with them, the point under their middle kept
+   under it (a finger on a handle or feature is left to it; a plot keeps
+   one-finger scrolling of the page, `touch-action: pan-x pan-y`); the
+   zoom outlasts a redraw (`begin`), the plain wheel
    scrolls the page as ever, and every handle works as before.
    The editors' button rows keep to one line: their templates' four
    buttons sit in a *File ▾* menu (`details.menu`, closing once one is

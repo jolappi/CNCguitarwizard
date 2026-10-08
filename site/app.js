@@ -3340,9 +3340,10 @@ document.getElementById("body-editor-turn").addEventListener("click", () => body
 // the pointer (up to 20 times); zoomed in, dragging its background moves
 // it, and a double-click on the background, or the chip in its corner
 // that says how far it is zoomed, fits the whole drawing again (the chip
-// a touch screen's way back). The plain wheel scrolls the page as ever.
-// The zoom (scale and centre in the drawing's view box) outlasts a redraw
-// (see begin).
+// a touch screen's way back). On a touch screen two fingers pinch it
+// about their middle and move it with them. The plain wheel scrolls the
+// page as ever. The zoom (scale and centre in the drawing's view box)
+// outlasts a redraw (see begin).
 const ZOOM_TARGETS = ".handle, .frame-handle, .guard-handle, .step-handle, .contour-handle, " +
   ".stretch-handle, .movable, .outline-hit, .inlay-handle, .inlay-hit, .lettering-hit, " +
   ".cover-handle, .cover-stretch, .tuner-hole";
@@ -3389,22 +3390,77 @@ function enableZoom(editor) {
     // The point under the pointer stays where it is.
     setBox(at.x - (at.x - box.x) * width / box.width, at.y - (at.y - box.y) * height / box.height, width, height);
   }, { passive: false });
+  // Two fingers down on the drawing's background (not a handle's or a
+  // feature's): a pinch, the drawing's point under their middle kept
+  // under it. Listened to on the window only while a finger is down.
+  const fingers = new Map();  // pointerId → [clientX, clientY]
+  let pinch = null;
+  const [first, second] = [() => [...fingers.values()][0], () => [...fingers.values()][1]];
+  const middle = () => [(first()[0] + second()[0]) / 2, (first()[1] + second()[1]) / 2];
+  const spread = () => Math.hypot(first()[0] - second()[0], first()[1] - second()[1]) || 1;
+  const pinchMove = (event) => {
+    if (!fingers.has(event.pointerId)) return;
+    fingers.set(event.pointerId, [event.clientX, event.clientY]);
+    if (!pinch || fingers.size !== 2) return;
+    const [, , baseWidth, baseHeight] = editor.baseBox;
+    const scale = Math.min(20, Math.max(1, (baseWidth / pinch.width) * (spread() / pinch.spread)));
+    const width = baseWidth / scale, height = baseHeight / scale;
+    const rect = svg.getBoundingClientRect();
+    const [mx, my] = middle();
+    setBox(pinch.at[0] - (mx - rect.left) * width / rect.width,
+      pinch.at[1] - (my - rect.top) * height / rect.height, width, height);
+  };
+  const pinchEnd = (event) => {
+    fingers.delete(event.pointerId);
+    if (fingers.size < 2) pinch = null;
+    if (fingers.size) return;
+    window.removeEventListener("pointermove", pinchMove);
+    window.removeEventListener("pointerup", pinchEnd);
+    window.removeEventListener("pointercancel", pinchEnd);
+  };
+  svg.addEventListener("pointerdown", (event) => {
+    if (event.pointerType !== "touch" || !editor.baseBox || event.target.closest(ZOOM_TARGETS)) return;
+    if (!fingers.size) {
+      window.addEventListener("pointermove", pinchMove);
+      window.addEventListener("pointerup", pinchEnd);
+      window.addEventListener("pointercancel", pinchEnd);
+    }
+    fingers.set(event.pointerId, [event.clientX, event.clientY]);
+    if (fingers.size !== 2) return;
+    const box = svg.viewBox.baseVal;
+    const rect = svg.getBoundingClientRect();
+    const [mx, my] = middle();
+    pinch = {
+      spread: spread(),
+      width: box.width,
+      at: [box.x + (mx - rect.left) * box.width / rect.width, box.y + (my - rect.top) * box.height / rect.height],
+    };
+  });
+  // Zoomed in, one pointer dragging the background moves the drawing; a
+  // second finger turns it into a pinch for good.
   svg.addEventListener("pointerdown", (event) => {
     if (!editor.zoom || event.button !== 0 || event.target.closest(ZOOM_TARGETS)) return;
     const start = [event.clientX, event.clientY];
     const box = svg.viewBox.baseVal;
     const from = [box.x, box.y, box.width, box.height];
     const ratio = svg.getScreenCTM().a;
+    let pinched = false;
     const move = (moveEvent) => {
+      if (moveEvent.pointerId !== event.pointerId) return;
+      pinched ||= fingers.size > 1;
+      if (pinched) return;
       setBox(from[0] - (moveEvent.clientX - start[0]) / ratio, from[1] - (moveEvent.clientY - start[1]) / ratio,
         from[2], from[3]);
     };
-    const end = () => {
+    const end = (endEvent) => {
+      if (endEvent.pointerId !== event.pointerId) return;
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", end);
+      window.removeEventListener("pointercancel", end);
     };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", end);
+    window.addEventListener("pointercancel", end);
   });
   svg.addEventListener("dblclick", (event) => {
     if (!editor.zoom || event.target.closest(ZOOM_TARGETS)) return;

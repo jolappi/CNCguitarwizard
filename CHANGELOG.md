@@ -4,6 +4,8 @@
 
 ### Added
 
+- On a touch screen two fingers pinch an editor's drawing or a result
+  plot about their middle and move it with them.
 - Dragging in the editors, a label by the pointer says how far it has
   moved or where it is: a body handle or feature along the neck and
   across it, a turn's angle, a headstock edge handle's or tuner hole's

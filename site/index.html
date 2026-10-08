@@ -314,7 +314,7 @@
   /* A zoomable drawing, with the chip that fits it again while zoomed. */
   .zoom-frame { position: relative; }
   .zoom-chip { position: absolute; top: 8px; right: 8px; padding: 2px 9px; font-size: 12px; font-weight: 500; }
-  .preview svg { display: block; max-width: 100%; height: auto; }
+  .preview svg { display: block; max-width: 100%; height: auto; touch-action: pan-x pan-y; }
   /* The plan view stands upright: keep the whole instrument in view. */
   #plan svg { width: auto; max-height: 85vh; margin: 0 auto; }
   .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0; }
