@@ -622,6 +622,22 @@ document.addEventListener("focusin", (event) => {
   }
 });
 
+// In a number field the arrow keys step by 1 as ever, by 10 with Shift
+// and by 0.1 with Alt/Option (a whole-number field by 1).
+document.addEventListener("keydown", (event) => {
+  const control = event.target;
+  if (!(control instanceof HTMLInputElement) || control.type !== "number") return;
+  if (!(event.key === "ArrowUp" || event.key === "ArrowDown") || !(event.shiftKey || event.altKey)) return;
+  if (event.ctrlKey || event.metaKey) return;
+  const value = parseFloat(control.value);
+  if (Number.isNaN(value)) return;
+  const whole = control.dataset.type === "int";
+  const step = event.shiftKey ? 10 : whole ? 1 : 0.1;
+  event.preventDefault();
+  // Rounded, so that 0.1 steps add up to 44.3, not 44.300000000000004.
+  setControlValue(control, parseFloat((value + (event.key === "ArrowUp" ? step : -step)).toFixed(6)));
+});
+
 // A field's name in words: "body_pickup_frame_direction" reads "Pickup
 // frame direction" (the body's own fields drop their "body_"); its name
 // in the code, saved designs and help stays on hover and finds it too.

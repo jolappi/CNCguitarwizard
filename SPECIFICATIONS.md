@@ -929,6 +929,8 @@ ei muisteta); ilman muistettua tilaa auki ovat *Body* ja *Machining*.
 
 Hiiren rulla valitun numerokentän päällä vierittää sivua (tai saraketta)
 eikä muuta kentän arvoa, jota selain muuten askeltaisi huomaamatta.
+Numerokentän nuolinäppäimet askeltavat 1, Shiftin kanssa 10 ja
+Alt/Optionin kanssa 0,1 (kokonaislukukenttä 1).
 
 Runkoeditorin *Turn upright* näyttää piirroksen pystyssä, kaula ylöspäin
 (neljännes myötäpäivään; *Turn sideways* palauttaa vaakanäkymän, joka on

@@ -4,6 +4,7 @@
 
 ### Added
 
+- In a number field Shift+arrow steps by 10 and Alt/Option+arrow by 0.1.
 - The form's groups open as they were left: the ones opened by hand are
   kept in the browser across a reload, another instrument or a loaded
   design.

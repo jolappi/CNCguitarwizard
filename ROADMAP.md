@@ -86,6 +86,7 @@
 - Enter and Escape in Find a setting
 - The form's open groups kept across reloads
 - The wheel scrolling past a selected number field, not changing it
+- Shift and Alt/Option arrows stepping a number field by 10 and 0.1
 - Index pins as wide as a main tool wider than 6 mm (an 8 mm end mill,
   8 mm dowels)
 - The neck's back carved with the ball nose alone, in one program
