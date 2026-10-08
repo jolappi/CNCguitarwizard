@@ -31,7 +31,18 @@ def render_setup_svg(
         tool_diameter = setup.tool.tool_diameter
     min_x, min_y, max_x, max_y = polygon_bounds(outline)
     margin = 20.0
-    width = max_x - min_x + 2.0 * margin
+    band_note = (
+        f"Shaded bands show the {tool_diameter:g} mm tool width; thin lines are "
+        "the tool centre."
+        if tool_diameter
+        else ""
+    )
+    # Wide enough for the title lines over a small part (a sans-serif
+    # letter is about 0.55 of its size wide).
+    width = max(
+        max_x - min_x + 2.0 * margin,
+        margin + 0.55 * max(6.0 * len(setup.description), 4.5 * len(band_note)),
+    )
     height = max_y - min_y + 2.0 * margin
     deepest = min((path.deepest_z() for path in setup.toolpaths), default=-1.0)
     deepest = min(deepest, -1e-6)
@@ -62,12 +73,10 @@ def render_setup_svg(
         f'<text x="{margin:.1f}" y="{margin * 0.6:.1f}" font-size="6" '
         f'font-family="sans-serif">{_escape(setup.description)}</text>',
     ]
-    if tool_diameter:
+    if band_note:
         parts.append(
             f'<text x="{margin:.1f}" y="{margin * 0.6 + 7:.1f}" font-size="4.5" '
-            'font-family="sans-serif" fill="#555">Shaded bands show the '
-            f"{tool_diameter:g} mm tool width; thin lines are the tool centre."
-            "</text>"
+            f'font-family="sans-serif" fill="#555">{band_note}</text>'
         )
     for path in setup.toolpaths:
         rapids: list[str] = []

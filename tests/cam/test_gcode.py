@@ -133,6 +133,25 @@ def test_preview_draws_each_cut_as_a_tool_wide_band() -> None:
     assert 'stroke-width="6.00"' not in render_setup_svg(setup, square)
 
 
+def test_a_small_parts_preview_is_wide_enough_for_its_title() -> None:
+    import re
+
+    from cncguitarwizard.cam import render_setup_svg
+    from cncguitarwizard.geometry.primitives import Point2D
+
+    square = [Point2D(0, 0), Point2D(10, 0), Point2D(10, 10), Point2D(0, 10)]
+    title = "A long title for a part ten millimetres across, cut from sheet"
+    svg = render_setup_svg(Setup("Small", title, ()), square, 1.0)
+    match = re.search(r'viewBox="0 0 ([\d.]+) ', svg)
+    assert match is not None
+    # 20 mm in, then 6 mm letters about 0.55 of their size wide; the part
+    # itself would take only 50 mm.
+    assert float(match.group(1)) >= 20.0 + 0.55 * 6.0 * len(title) - 0.01
+    big = [Point2D(0, 0), Point2D(400, 0), Point2D(400, 10), Point2D(0, 10)]
+    svg = render_setup_svg(Setup("Big", title, ()), big, 1.0)
+    assert 'viewBox="0 0 440.00 ' in svg
+
+
 def test_writer_names_a_setups_own_work_zero() -> None:
     setup = make_setup()
     own_zero = Setup(

@@ -678,6 +678,9 @@
 
 ### Fixed
 
+- A small part's toolpath plot (a cover plate, a humbucker frame) is wide
+  enough for its title: the lines over the part are no longer cut off at
+  the plot's edge.
 - A main tool wider than 6 mm (`tool_diameter`) no longer stops the
   build at the index pins ("Index pin 1 (6.0 mm) is smaller than the
   8.0 mm tool"): `index_pin_diameter` is empty by default, 6 mm dowels
