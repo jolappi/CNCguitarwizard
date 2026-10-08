@@ -813,6 +813,13 @@ tiedosto nimetään sen mukaan. Rakennuksen jälkeen **Download all NC files
 osaa kohden ja ohjelmat numeroituina ajojärjestykseen
 (`Neck/02_Neck_top.nc`) sekä `README.txt`, jossa ohjelmat työkaluineen ja
 aika-arvioineen.
+
+Rakennuksen tulos näkyy heti valmistuttuaan ensimmäisenä: leveällä
+näytöllä oikean sarakkeen ylälaidassa, kapealla (≤ 900 px) suoraan
+build-painikkeiden ja soittimen valinnan alla, editorien yläpuolella.
+Ensin yhteenveto (aihiot, ohjelmat aika-arvioineen), sitten lataukset,
+tasokuva ja työradat; virhe näkyy samassa kohdassa. Jos kohta ei ole
+näkyvissä, kun tulos tai virhe tulee, sivu vierittää sen esiin.
 **Load design** lataa tiedoston takaisin lomakkeeseen ja editoreihin. Tiedostovalitsin
 aukeaa heti napista (Safari ei avaa sitä vahvistusdialogin jälkeen), ja
 kysymys muutettujen arvojen korvaamisesta tulee vasta, kun tiedosto on

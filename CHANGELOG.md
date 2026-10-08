@@ -603,6 +603,11 @@
 
 ### Changed
 
+- The build's result shows first, as soon as it is done: at the top of
+  the right-hand column on a wide screen, straight under the build button
+  on a narrow one, above the editors — the summary first, then the
+  downloads, the plan view and the toolpaths. An error shows there too,
+  and the page scrolls to either when it arrives out of view.
 - `nut_string_spacing` and `bridge_string_spacing` explain themselves in
   plain words on hover (the gap between neighbouring strings at the nut
   or bridge), instead of the tuner rows' note they were named in.

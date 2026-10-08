@@ -61,6 +61,10 @@
     max-height: calc(100vh - 54px);
   }
   section.results { padding: 16px 22px 40px; overflow-x: hidden; }
+  #output > h2:first-child { margin-top: 0; }
+  /* The result ends where the editors begin. */
+  #output { margin-bottom: 22px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+  #error { margin-bottom: 16px; }
   details { border: 1px solid var(--line); border-radius: 6px; margin: 0 0 8px; background: #fff; }
   summary { cursor: pointer; padding: 7px 10px; font-weight: 600; }
   .fields { padding: 4px 10px 8px; }
@@ -261,6 +265,34 @@
     </div>
   </aside>
   <section class="results">
+    <!-- The build's result comes first: at the top of the right-hand
+         column, or straight under the build button on a narrow screen. -->
+    <div id="error" class="error hidden"></div>
+    <div id="output" class="hidden">
+      <h2>Summary</h2>
+      <table id="summary"></table>
+      <h2>Downloads</h2>
+      <div class="actions">
+        <button id="download-nc-zip" type="button"
+          title="Every NC program in one ZIP, named for the guitar: a folder a part, each program numbered in running order">Download all NC files (.zip)</button>
+      </div>
+      <p class="note">Each part has its own list, its programs numbered in the order to run them.
+        The <em>Simulate</em> button copies that program to the clipboard and opens
+        <a href="https://ncviewer.com" target="_blank" rel="noopener">NC Viewer</a> below: click into its
+        editor, select all (Ctrl/Cmd+A), paste (Ctrl/Cmd+V) and press <em>Plot</em> to see the toolpath
+        simulated.</p>
+      <table id="files"></table>
+      <div id="simulator" class="simulator hidden">
+        <h2>Simulator <span id="simulator-file" class="note"></span></h2>
+        <p id="simulator-hint" class="note"></p>
+        <iframe id="simulator-frame" title="NC Viewer G-code simulator" allow="clipboard-read; clipboard-write"></iframe>
+      </div>
+      <h2>Plan view</h2>
+      <div id="plan" class="preview"></div>
+      <h2>Toolpaths</h2>
+      <div id="tabs" class="tabs"></div>
+      <div id="toolpath" class="preview"></div>
+    </div>
     <div id="body-editor" class="body-editor hidden">
       <h2>Your design <span id="body-editor-size" class="note"></span></h2>
       <p class="note">Drag the round handles to shape the body. Click the outline to add a
@@ -347,32 +379,6 @@
       <p id="inlay-editor-status" class="note"></p>
       <svg id="inlay-editor-svg" xmlns="http://www.w3.org/2000/svg"></svg>
       <svg id="inlay-editor-board" xmlns="http://www.w3.org/2000/svg"></svg>
-    </div>
-    <div id="error" class="error hidden"></div>
-    <div id="output" class="hidden">
-      <h2>Plan view</h2>
-      <div id="plan" class="preview"></div>
-      <h2>Toolpaths</h2>
-      <div id="tabs" class="tabs"></div>
-      <div id="toolpath" class="preview"></div>
-      <h2>Downloads</h2>
-      <div class="actions">
-        <button id="download-nc-zip" type="button"
-          title="Every NC program in one ZIP, named for the guitar: a folder a part, each program numbered in running order">Download all NC files (.zip)</button>
-      </div>
-      <p class="note">Each part has its own list, its programs numbered in the order to run them.
-        The <em>Simulate</em> button copies that program to the clipboard and opens
-        <a href="https://ncviewer.com" target="_blank" rel="noopener">NC Viewer</a> below: click into its
-        editor, select all (Ctrl/Cmd+A), paste (Ctrl/Cmd+V) and press <em>Plot</em> to see the toolpath
-        simulated.</p>
-      <table id="files"></table>
-      <div id="simulator" class="simulator hidden">
-        <h2>Simulator <span id="simulator-file" class="note"></span></h2>
-        <p id="simulator-hint" class="note"></p>
-        <iframe id="simulator-frame" title="NC Viewer G-code simulator" allow="clipboard-read; clipboard-write"></iframe>
-      </div>
-      <h2>Summary</h2>
-      <table id="summary"></table>
     </div>
   </section>
 </main>

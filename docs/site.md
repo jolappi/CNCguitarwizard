@@ -291,15 +291,20 @@ Python.
    button between stages, since Pyodide runs Python on the page's own
    thread. Everything lands in Pyodide's in-memory file system and comes
    back as text.
-5. Shows the whole-instrument plan view (standing upright, headstock at
-   the top, sized to fit the window; the nut drawn on its seat, bone white
-   or dark for a locking nut, a board that runs on under it reaching on
-   behind it), the three toolpath plots, download
+5. Shows the result first, as soon as it is done (`#output`, the first
+   thing in the right-hand column, above the editors; on a narrow screen
+   straight under the build button and instrument choice, an error in
+   the same place, and the page scrolls to either when it arrives out of
+   view, `bringIntoView`): the summary with stock size
+   (a fretboard blank's carrier on a row of its own, `fretboard_carrier_thickness`)
+   and time estimates first; then the download
    links for the FreeCAD script (`.py` and `.FCMacro`), every `.nc`
    program (body, electronics, neck, fretboard, the nut-slot jig and one per cover plate), the SVG plots, the DXF outlines
-   (`Prototype001_plan.dxf`, `Prototype001_covers.dxf`; see [DXF](render/02_dxf.md)) and `build.json`, and a summary with stock size
-   (a fretboard blank's carrier on a row of its own, `fretboard_carrier_thickness`)
-   and time estimates. The downloads come in one list per part — the
+   (`Prototype001_plan.dxf`, `Prototype001_covers.dxf`; see [DXF](render/02_dxf.md)) and `build.json`;
+   then the whole-instrument plan view (standing upright, headstock at
+   the top, sized to fit the window; the nut drawn on its seat, bone white
+   or dark for a locking nut, a board that runs on under it reaching on
+   behind it) and the toolpath plots. The downloads come in one list per part — the
    model and report first, then body, neck, fretboard, the inlay pieces, the nut jig and covers — each
    program numbered in the order it is run (`build.json` gives it as the
    program's `step`) with its toolpath plot beneath it. Each `.nc` row also has a *Simulate* button: it
@@ -353,7 +358,7 @@ job prints the page URL.
 
 | File | Purpose |
 | --- | --- |
-| `site/index.html` | Layout and styling; the intro heads the left column, and on a narrow screen (≤ 900 px) the intro comes first, then the buttons and instrument choice, the editors and the results, and the form last |
+| `site/index.html` | Layout and styling; the intro heads the left column and a build's result the right one, above the editors; on a narrow screen (≤ 900 px) the intro comes first, then the buttons and instrument choice, the build's result, the editors, and the form last |
 | `site/app.js` | Pyodide bootstrap, form generation, build, downloads, NC Viewer simulator panel |
 | `src/cncguitarwizard/webapp.py` | Schema and build glue called from the page |
 | `src/cncguitarwizard/render/svg/plan_view.py` | The plan-view SVG |

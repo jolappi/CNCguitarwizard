@@ -45,6 +45,17 @@ function setStatus(text, kind) {
 function showError(message) {
   errorBox.textContent = message;
   errorBox.classList.remove("hidden");
+  bringIntoView(errorBox);
+}
+
+// The build's result and errors sit first in the right-hand column (under
+// the build button on a narrow screen): scroll one there if it arrives out
+// of view.
+function bringIntoView(element) {
+  const top = element.getBoundingClientRect().top;
+  if (top < 0 || top > window.innerHeight - 120) {
+    element.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 }
 
 function clearError() {
@@ -549,6 +560,7 @@ async function build() {
       return;
     }
     showResult(result);
+    bringIntoView(output);
     const seconds = ((performance.now() - started) / 1000).toFixed(1);
     setStatus(`Built in ${seconds} s`, "ok");
   } catch (error) {
