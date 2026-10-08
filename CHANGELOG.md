@@ -4,6 +4,8 @@
 
 ### Added
 
+- Every part of the plan view says what it is under the pointer (*Neck
+  pocket*, *Tuner hole, bass 1*, *Control cavity (back)*).
 - An editor over the whole window keeps its status line (at its foot)
   and *Undo* and *Redo*.
 - Every toolpath plot says how deep its colours cut: a bar under the part

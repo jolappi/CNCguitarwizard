@@ -488,7 +488,9 @@ Python.
    program (body, electronics, neck, fretboard, the nut-slot jig and one per cover plate), the SVG plots, the DXF outlines
    (`Prototype001_plan.dxf`, `Prototype001_covers.dxf`; see [DXF](render/02_dxf.md)) and `build.json`;
    then the whole-instrument plan view (standing upright, headstock at
-   the top, sized to fit the window; the nut drawn on its seat, bone white
+   the top, sized to fit the window; each part named under the pointer,
+   `<title>` from `render_plan_view_svg`: *Neck pocket*, *Tuner hole,
+   bass 1*, *Control cavity (back)*; the nut drawn on its seat, bone white
    or dark for a locking nut, a board that runs on under it reaching on
    behind it) and the toolpath plots, one at a time, chosen from a list by part
    (each program by its step, the body's top first) or stepped through

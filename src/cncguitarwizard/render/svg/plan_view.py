@@ -23,7 +23,8 @@ def render_plan_view_svg(geometry: Prototype001Geometry) -> str:
     seat: bone white, or dark for a locking nut; a fretboard that runs on
     under the nut (a slotted nut's, an R2 locking nut's) reaches under it
     and on behind it, a line marking where a slotted nut's board starts
-    sloping down to its end.
+    sloping down to its end. Each part carries its name (``<title>``), so
+    a browser shows what it is under the pointer.
     """
     body = geometry.body
     points: list[Point2D] = list(body.outline.points)
@@ -42,20 +43,26 @@ def render_plan_view_svg(geometry: Prototype001Geometry) -> str:
         # negative X) goes to the top and +Y to the right.
         return f"{y - min_y:.2f}", f"{x - min_x:.2f}"
 
-    def path(polygon: Iterable[Point2D], style: str) -> str:
+    def path(polygon: Iterable[Point2D], style: str, title: str = "") -> str:
         data = " ".join(
             f"{'M' if index == 0 else 'L'}{','.join(screen(point.x, point.y))}"
             for index, point in enumerate(polygon)
         )
-        return f'<path d="{data} Z" {style}/>'
+        return _element("path", f'd="{data} Z" {style}', title)
 
-    def circle(x: float, y: float, radius: float, style: str) -> str:
+    def circle(x: float, y: float, radius: float, style: str, title: str = "") -> str:
         cx, cy = screen(x, y)
-        return f'<circle cx="{cx}" cy="{cy}" r="{radius:.2f}" {style}/>'
+        return _element(
+            "circle", f'cx="{cx}" cy="{cy}" r="{radius:.2f}" {style}', title
+        )
 
-    def line(x1: float, y1: float, x2: float, y2: float, style: str) -> str:
+    def line(
+        x1: float, y1: float, x2: float, y2: float, style: str, title: str = ""
+    ) -> str:
         (ax, ay), (bx, by) = screen(x1, y1), screen(x2, y2)
-        return f'<line x1="{ax}" y1="{ay}" x2="{bx}" y2="{by}" {style}/>'
+        return _element(
+            "line", f'x1="{ax}" y1="{ay}" x2="{bx}" y2="{by}" {style}', title
+        )
 
     wood = 'fill="#f1e4c8" stroke="#6b4a1f" stroke-width="0.8"'
     fretboard = 'fill="#3b2a1a" stroke="#1f150c" stroke-width="0.5"'
@@ -74,7 +81,7 @@ def render_plan_view_svg(geometry: Prototype001Geometry) -> str:
             f'viewBox="0 0 {width:.2f} {height:.2f}" '
             f'width="{width * 1.2:.0f}" height="{height * 1.2:.0f}">'
         ),
-        path(body.outline.points, wood),
+        path(body.outline.points, wood, "Body"),
         # A neck-through's block runs on from the neck, a shade darker; its
         # long sides are the glue lines to the wings.
         *(
@@ -82,22 +89,24 @@ def render_plan_view_svg(geometry: Prototype001Geometry) -> str:
                 path(
                     geometry.neck_through.block.outline,
                     'fill="#e2cc9f" stroke="#6b4a1f" stroke-width="0.6"',
+                    "Neck-through block",
                 ),
             )
             if geometry.neck_through is not None and not geometry.neck_through.one_piece
             else ()
         ),
-        path(geometry.headstock.plan.boundary, wood),
-        path(geometry.neck_outline.boundary, wood),
+        path(geometry.headstock.plan.boundary, wood, "Headstock"),
+        path(geometry.neck_outline.boundary, wood, "Neck"),
     ]
-    parts.append(path(_fretboard_polygon(geometry), fretboard))
+    parts.append(path(_fretboard_polygon(geometry), fretboard, "Fretboard"))
     nut = geometry.locking_nut
     nut_look = (
         'fill="#3c3c3c" stroke="#111" stroke-width="0.5"'
         if nut is not None and nut.is_locking
         else 'fill="#efe8d6" stroke="#8a7a5a" stroke-width="0.5"'
     )
-    parts.append(path(_nut_polygon(geometry), nut_look))
+    nut_name = "Locking nut" if nut is not None and nut.is_locking else "Nut"
+    parts.append(path(_nut_polygon(geometry), nut_look, nut_name))
     if nut is not None and not nut.is_locking and nut.spec.taper > 0.0:
         # Where the board behind a slotted nut starts sloping down.
         back = nut.spec.set_back + nut.spec.depth + nut.spec.lip
@@ -115,7 +124,7 @@ def render_plan_view_svg(geometry: Prototype001Geometry) -> str:
     for slot in (*((zero,) if zero is not None else ()), *geometry.fret_layout.slots):
         parts.append(line(slot.start.x, slot.start.y, slot.end.x, slot.end.y, fret))
     for marker in geometry.inlay_layout.markers:
-        parts.append(path(marker.outline, inlay))
+        parts.append(path(marker.outline, inlay, f"Inlay, fret {marker.fret_number}"))
     # Carbon fibre bars under the fretboard, dashed.
     if geometry.carbon_rods is not None:
         for channel in geometry.carbon_rods.channels():
@@ -124,14 +133,23 @@ def render_plan_view_svg(geometry: Prototype001Geometry) -> str:
                     channel,
                     'fill="none" stroke="#9a9a9a" stroke-width="0.5" '
                     'stroke-dasharray="3,2"',
+                    "Carbon fibre rod",
                 )
             )
     for tuner in geometry.tuner_layout.holes:
-        parts.append(circle(tuner.center.x, tuner.center.y, tuner.diameter / 2.0, hole))
+        parts.append(
+            circle(
+                tuner.center.x,
+                tuner.center.y,
+                tuner.diameter / 2.0,
+                hole,
+                f"Tuner hole, {tuner.side} {tuner.index}",
+            )
+        )
     # A headstock-adjusted truss rod's trough shows in the headstock face.
     truss = geometry.truss_rod_channel
     if truss.adjustment_side == "nut" and truss.adjuster_boundary:
-        parts.append(path(truss.adjuster_boundary, pocket))
+        parts.append(path(truss.adjuster_boundary, pocket, "Truss rod adjuster trough"))
 
     # A carved top's plateau, dashed: the top falls outside it.
     if body.carved_top is not None:
@@ -140,13 +158,18 @@ def render_plan_view_svg(geometry: Prototype001Geometry) -> str:
                 body.carved_top.plateau,
                 'fill="none" stroke="#8a6a3a" stroke-width="0.6" '
                 'stroke-dasharray="5,3"',
+                "Carved top's plateau",
             )
         )
     # A stepped top's step walls, solid: each band outside one a step lower.
     if body.stepped_top is not None:
         for boundary in body.stepped_top.boundaries:
             parts.append(
-                path(boundary, 'fill="none" stroke="#6a4a8a" stroke-width="0.6"')
+                path(
+                    boundary,
+                    'fill="none" stroke="#6a4a8a" stroke-width="0.6"',
+                    "Stepped top's step",
+                )
             )
     # Arm contour (top) and belly cut (back), under the cavities.
     for contour in body.contours:
@@ -156,19 +179,31 @@ def render_plan_view_svg(geometry: Prototype001Geometry) -> str:
             else 'fill="#9aa9d6" fill-opacity="0.35" stroke="#34457a" '
             'stroke-width="0.4" stroke-dasharray="3,2"'
         )
-        parts.append(path(contour.region(), look))
+        parts.append(path(contour.region(), look, contour.name))
     for cavity in body.top_cavities:
-        parts.append(path(cavity.outline, pocket))
+        parts.append(path(cavity.outline, pocket, cavity.name))
     for rear_cavity in body.rear_cavities:
-        parts.append(path(rear_cavity.cover_recess.outline, rear))
+        parts.append(
+            path(
+                rear_cavity.cover_recess.outline,
+                rear,
+                f"{rear_cavity.cover_recess.name} (back)",
+            )
+        )
         for rear_pocket in rear_cavity.pockets:
-            parts.append(path(rear_pocket.outline, rear))
+            parts.append(path(rear_pocket.outline, rear, f"{rear_pocket.name} (back)"))
     pivot_radius = body.bridge_mounting.pivot_hole_diameter / 2.0
     for pivot in body.bridge_mounting.pivot_holes:
-        parts.append(circle(pivot.x, pivot.y, pivot_radius, hole))
+        parts.append(circle(pivot.x, pivot.y, pivot_radius, hole, "Bridge pivot hole"))
     for drilled in (*body.holes, *body.control_top_marks):
         parts.append(
-            circle(drilled.center_x, drilled.center_y, drilled.diameter / 2.0, hole)
+            circle(
+                drilled.center_x,
+                drilled.center_y,
+                drilled.diameter / 2.0,
+                hole,
+                drilled.name,
+            )
         )
     rear_hole = (
         'fill="#fff" fill-opacity="0.6" stroke="#5a3a8a" stroke-width="0.5" '
@@ -177,12 +212,18 @@ def render_plan_view_svg(geometry: Prototype001Geometry) -> str:
     for drilled in (*body.rear_holes, *body.control_back_marks):
         parts.append(
             circle(
-                drilled.center_x, drilled.center_y, drilled.diameter / 2.0, rear_hole
+                drilled.center_x,
+                drilled.center_y,
+                drilled.diameter / 2.0,
+                rear_hole,
+                f"{drilled.name} (back)",
             )
         )
     jack = body.jack_hole
     if jack is not None:
-        parts.append(circle(jack.start_x, jack.start_y, jack.diameter / 2.0, hole))
+        parts.append(
+            circle(jack.start_x, jack.start_y, jack.diameter / 2.0, hole, "Output jack")
+        )
     # The holes drilled sideways by hand into a cavity's wall (a tremolo
     # claw's screws), dashed.
     for side in body.side_holes:
@@ -194,6 +235,7 @@ def render_plan_view_svg(geometry: Prototype001Geometry) -> str:
                 side.end.y,
                 f'stroke="#7d3c98" stroke-width="{side.diameter:g}" '
                 'stroke-opacity="0.45" stroke-dasharray="2,1.5"',
+                side.name,
             )
         )
     # The wire holes drilled by hand, dashed from cavity to cavity.
@@ -206,6 +248,7 @@ def render_plan_view_svg(geometry: Prototype001Geometry) -> str:
                 wire.end.y,
                 f'stroke="#c0392b" stroke-width="{wire.diameter:g}" '
                 'stroke-opacity="0.45" stroke-dasharray="3,2"',
+                wire.name,
             )
         )
     parts.append(
@@ -219,6 +262,17 @@ def render_plan_view_svg(geometry: Prototype001Geometry) -> str:
     )
     parts.append("</svg>")
     return "\n".join(parts)
+
+
+def _element(tag: str, attributes: str, title: str) -> str:
+    """Return an SVG element, its name (if any) as its tooltip."""
+    if not title:
+        return f"<{tag} {attributes}/>"
+    return f"<{tag} {attributes}><title>{_escape(title)}</title></{tag}>"
+
+
+def _escape(text: str) -> str:
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
 def _fretboard_polygon(geometry: Prototype001Geometry) -> Sequence[Point2D]:

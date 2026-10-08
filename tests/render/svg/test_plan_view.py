@@ -1,5 +1,6 @@
 """Tests for the whole-instrument plan view."""
 
+import re
 from dataclasses import replace
 
 from cncguitarwizard.geometry.body import FloydRoseSpec
@@ -42,3 +43,25 @@ def test_plan_view_draws_the_nut_and_the_board_under_a_slotted_one() -> None:
     assert plain.count(slope) == 0 and floyd.count(slope) == 0
     assert slotted.count(slope) == 1
     assert plain.count("<line") + 1 == slotted.count("<line")
+
+
+def test_every_part_of_the_plan_view_says_what_it_is() -> None:
+    svg = render_plan_view_svg(Prototype001Parameters().build())
+
+    names = re.findall(r"<title>([^<]*)</title>", svg)
+    for name in (
+        "Body",
+        "Headstock",
+        "Neck",
+        "Fretboard",
+        "Nut",
+        "Inlay, fret 3",
+        "Tuner hole, bass 1",
+        "Neck pocket",
+        "Control cavity (back)",
+        "Output jack",
+    ):
+        assert name in names
+    # Every drawn part but the frets and the centreline carries a name.
+    shapes = svg.count("<path") + svg.count("<circle")
+    assert len(names) == shapes + svg.count("<line") - 24 - 1

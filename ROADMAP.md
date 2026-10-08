@@ -113,6 +113,7 @@
 - A drawing's chips above it, not over its top
 - A depth bar on every toolpath plot
 - An editor's status and Undo in its full window
+- The plan view's parts named under the pointer
 - Index pins as wide as a main tool wider than 6 mm (an 8 mm end mill,
   8 mm dowels)
 - The neck's back carved with the ball nose alone, in one program
