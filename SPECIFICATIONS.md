@@ -926,6 +926,9 @@ otsikkona, yhteenveto, kaikki ohjelmat auki ja tasokuva sekä huomautus,
 jos suunnitelma on muuttunut rakennuksen jälkeen; lomake, editorit,
 lataukset ja työratakuvat jätetään pois.
 
+Avoimen ryhmän otsikko pysyy näkyvissä yläreunassa, kun sen kenttiä
+vieritetään (leveällä näytöllä lomakkeen oman sarakkeen yläreunassa).
+
 Lomakkeen ryhmien otsikot kertovat, montako ryhmän asetusta on muutettu
 oletuksesta (*Body · 3 changed*, editorien ruutujen asetukset mukaan
 luettuina), ja *Show only the settings changed from their defaults*

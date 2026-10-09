@@ -33,7 +33,9 @@ Python.
    bridge, body thickness, tool and feeds…) are shown up front; the rest of
    each group sits behind an *Advanced* fold, marked `advanced` in the
    schema (`_BASIC_FIELDS`, `_BASIC_VARIANT_FIELDS` in `webapp.py`), with a
-   page-wide checkbox to open them all. Each group's title says how many
+   page-wide checkbox to open them all. An open group's title stays in
+   sight at the top while its fields scroll by (sticky, in the form's own
+   column on a wide screen). Each group's title says how many
    of its settings are changed from their defaults (`countChanged`: *Body
    · 3 changed*, an editor pane's included), and *Show only the settings
    changed* how many there are in all (`changed-total`). A group with

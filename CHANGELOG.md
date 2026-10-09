@@ -4,6 +4,7 @@
 
 ### Added
 
+- An open group's title stays in sight while its fields scroll by.
 - Each program in *Every program* has *Plot*: its toolpath plot shown
   below and brought into sight.
 - A toolpath plot says which toolpath a cut belongs to under the pointer

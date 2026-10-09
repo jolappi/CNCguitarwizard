@@ -103,6 +103,16 @@
   /* Find a setting: the fields that match show (those in an editor's
      pane too), the rest and the folds with none of them are left out. */
   details.group > summary .changed-count { color: var(--accent); font-weight: 500; font-size: 13px; }
+  /* An open group's title stays in sight while its fields scroll by. */
+  details.group[open] > summary {
+    position: sticky; top: 0; z-index: 2; background: #fff; border-radius: 6px 6px 0 0;
+    border-bottom: 1px solid var(--line);
+  }
+  /* In the form's own column (a wide screen), right up to its top edge,
+     over its padding. */
+  @media (min-width: 901px) {
+    aside details.group[open] > summary { top: -14px; }
+  }
   .group-reset { display: flex; justify-content: flex-end; margin: 0 0 6px; }
   .group-reset[hidden] { display: none; }
   .group-reset button { padding: 3px 10px; font-size: 12px; font-weight: 500; }
