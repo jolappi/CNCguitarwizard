@@ -483,7 +483,8 @@ Python.
    the index pins' places only for a blank that has them) and the
    programs in one row — how many, about how long at the set feeds —
    first, each program's tool, time and cutting in the fold *Every
-   program* below it (`#summary-programs`); then the download
+   program* below it (`#summary-programs`), each row's *Plot* showing its
+   toolpath plot below and bringing it into sight; then the download
    links for the FreeCAD script (`.py` and `.FCMacro`), every `.nc`
    program (body, electronics, neck, fretboard, the nut-slot jig and one per cover plate), the SVG plots, the DXF outlines
    (`Prototype001_plan.dxf`, `Prototype001_covers.dxf`; see [DXF](render/02_dxf.md)) and `build.json`;

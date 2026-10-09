@@ -1225,9 +1225,14 @@ function showResult(result) {
   const time = hours ? `${hours} h ${Math.round(minutes - 60 * hours)} min` : `${Math.round(minutes)} min`;
   rows.push(["Programs", `${programs.length}, about ${time} at the set feeds`]);
   const perProgram = document.querySelector("#summary-programs table");
+  // Each with a Plot button that shows its toolpath plot below.
   perProgram.innerHTML = programs.map(([name, info]) => (
     `<tr><th>${info.step}. ${name}</th><td>${info.tool}: ${info.estimated_minutes} min, ` +
-    `${(info.cutting_length_mm / 1000).toFixed(1)} m of cutting, ${info.operations.length} operations</td></tr>`
+    `${(info.cutting_length_mm / 1000).toFixed(1)} m of cutting, ${info.operations.length} operations` +
+    (`${name}.svg` in result.files
+      ? ` <button type="button" class="secondary plot-link" data-plot="${name}.svg" title="Show its toolpaths below">Plot</button>`
+      : "") +
+    "</td></tr>"
   )).join("");
   const rod = report.truss_rod;
   if (rod) {
@@ -1242,6 +1247,17 @@ function showResult(result) {
   rows.push(["Version", report.version]);
   summary.innerHTML = rows.map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join("");
 }
+
+// A program's Plot in Every program shows its plot in the toolpath view
+// and brings it into sight.
+document.querySelector("#summary-programs table").addEventListener("click", (event) => {
+  const button = event.target.closest(".plot-link");
+  const chooser = document.getElementById("toolpath-choice");
+  if (!button || !chooser) return;
+  chooser.value = button.dataset.plot;
+  chooser.dispatchEvent(new Event("change"));
+  document.getElementById("tabs").scrollIntoView({ behavior: "smooth", block: "start" });
+});
 
 // NC Viewer (ncviewer.com) has no URL or postMessage way to receive a
 // program, so the button copies it to the clipboard and opens the viewer
