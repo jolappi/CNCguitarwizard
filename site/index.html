@@ -193,6 +193,7 @@
   /* A handle picked for the arrow keys (see pickHandle). */
   .body-editor .handle.picked { fill: var(--accent); stroke: #1f1a14; }
   .body-editor .tuner-hole.picked { fill: #f3e2cf; stroke: #1f1a14; stroke-width: 0.9; }
+  .body-editor .movable.picked { stroke: #1f1a14; stroke-width: 1.2; }
   .body-editor .movable { cursor: move; }
   .body-editor .stretch-handle { fill: #fff; stroke: #5a3a8a; stroke-width: 0.8; cursor: ew-resize; }
   .body-editor .stretch-handle.across { cursor: ns-resize; }
@@ -723,7 +724,7 @@
       <dt><kbd>Shift</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd>, <kbd>Alt/Option</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd></dt><dd>Step a number field by 10, by 0.1</dd>
       <dt><kbd>/</kbd></dt><dd>Go to <em>Find a setting</em></dd>
       <dt><kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd> (a handle pressed)</dt><dd>Move the body's or headstock's handle,
-        or a tuner hole, 0.5 mm (with <kbd>Shift</kbd> 5 mm); <kbd>Esc</kbd> lets it go</dd>
+        a body feature (a pickup along the neck) or a tuner hole 0.5 mm (with <kbd>Shift</kbd> 5 mm); <kbd>Esc</kbd> lets it go</dd>
       <dt><kbd>Enter</kbd> in <em>Find a setting</em></dt><dd>Go to the first setting found</dd>
       <dt><kbd>Esc</kbd></dt><dd>Close a menu, this list or a drawing's <em>Full window</em>; clear <em>Find a setting</em></dd>
       <dt><kbd>?</kbd></dt><dd>This list</dd>

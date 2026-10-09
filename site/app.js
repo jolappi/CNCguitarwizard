@@ -2023,8 +2023,8 @@ for (const type of ["pointerup", "pointercancel"]) {
   window.addEventListener(type, () => { dragReadout.hidden = true; }, true);
 }
 
-// A handle pressed in an editor (the body's outline handles, the
-// headstock's edge handles and tuner holes) is picked, and marked: the
+// A handle pressed in an editor (the body's outline handles and features,
+// the headstock's edge handles and tuner holes) is picked, and marked: the
 // arrow keys then move it 0.5 mm across the screen (Shift: 5 mm), each
 // move committed as a drag is (quick moves one Undo step) and said by it
 // for a moment. Escape, or a press on the drawing's background, lets it
@@ -2065,7 +2065,7 @@ document.addEventListener("keydown", (event) => {
   const step = event.shiftKey ? 5 : 0.5;
   const text = picked.nudge((vx / length) * step, (-vy / length) * step);
   const after = picked.find();
-  if (after) showReadoutAt(after, text);
+  if (after && text) showReadoutAt(after, text);
 });
 
 // The readout by an element for a moment (a move made with the keys).
@@ -2506,6 +2506,20 @@ const bodyEditor = {
     return [Math.round(local.x * 10) / 10, Math.round(-local.y * 10) / 10];
   },
 
+  // A picked feature moved by the arrow keys, as if dropped there (a
+  // pickup along the neck only), the features laid out again; how far it
+  // is from where it was picked said as a drag's.
+  nudgeFeature(group, dx, dy, moved) {
+    const alongNeck = group.startsWith("pickup:");
+    const step = [dx, alongNeck ? 0 : dy];
+    if (!step[0] && !step[1]) return null;
+    this.applyMove(group, step);
+    this.refresh();
+    moved[0] += step[0];
+    moved[1] += step[1];
+    return moveText([moved[0], alongNeck ? null : moved[1]]);
+  },
+
   // A picked outline handle moved by the arrow keys: committed as a drag,
   // and how far it is from where it was picked said as a drag's.
   nudgePoint(index, dx, dy, from) {
@@ -2565,6 +2579,9 @@ const bodyEditor = {
   startMove(event, group, node) {
     event.preventDefault();
     event.stopPropagation();
+    const moved = [0, 0];
+    pickHandle(this, () => this.svg.querySelector(`[data-group="${group}"]`),
+      (dx, dy) => this.nudgeFeature(group, dx, dy, moved));
     if (event.shiftKey && this.turnable(group)) {
       this.startTurn(event, group);
       return;

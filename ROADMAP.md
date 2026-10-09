@@ -117,6 +117,7 @@
 - A toolpath plot's toolpaths named under the pointer
 - A program's plot from its row in Every program
 - The form's group titles kept in sight
+- Body features moved with the arrow keys
 - Index pins as wide as a main tool wider than 6 mm (an 8 mm end mill,
   8 mm dowels)
 - The neck's back carved with the ball nose alone, in one program

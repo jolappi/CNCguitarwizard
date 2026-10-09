@@ -4,6 +4,9 @@
 
 ### Added
 
+- A pressed body feature (a pickup, the control cavity, the jack) is
+  picked too: the arrow keys move it as a drop would, a pickup along the
+  neck only.
 - An open group's title stays in sight while its fields scroll by.
 - Each program in *Every program* has *Plot*: its toolpath plot shown
   below and brought into sight.

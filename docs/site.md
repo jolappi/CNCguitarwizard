@@ -348,8 +348,10 @@ Python.
    −10.1 mm across*, a pickup along only), a turn its angle and a
    stretch its change; a headstock edge handle its distance from the nut
    and the centreline, a tuner hole its distance from the nut and the
-   edge. A handle pressed — the body's outline handles, the headstock's
-   edge handles and tuner holes — is picked and marked (`pickHandle`):
+   edge. A handle pressed — the body's outline handles and features, the
+   headstock's edge handles and tuner holes — is picked and marked
+   (`pickHandle`; a feature moves as if dropped there, `nudgeFeature`, a
+   pickup along the neck only):
    the arrow keys then move it 0.5 mm across the screen (Shift: 5 mm,
    turned into the drawing's frame, so upright or mirrored too), each
    move committed as a drag is (quick moves one Undo step) and said by it

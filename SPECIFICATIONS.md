@@ -886,7 +886,10 @@ korostetaan: nuolinäppäimet siirtävät sitä näytön suuntiin 0,5 mm (Shift
 siirto tallentuu kuten raahaus (nopeat siirrot yhtenä Undo-askeleena) ja
 näyttää mitan hetken. Viritinreikä liukuu kaulan suunnassa reunaa
 mukaillen ja poikittain lähemmäs reunaa tai siitä pois. Esc tai painallus
-taustaan poistaa valinnan.
+taustaan poistaa valinnan. Myös rungon osan (mikrofoni, ohjauskolo,
+jakki, paristokotelo) voi valita painamalla ja siirtää nuolilla kuten
+pudottamalla; mikrofoni liikkuu vain kaulan suuntaan, ja ohjauskolo vie
+potentiometrit mukanaan.
 
 Editorien piirroksia voi zoomata: Ctrl/Cmd+rulla tai trackpadin nipistys
 zoomaa osoittimen kohdalta (enintään 20-kertaiseksi); zoomattuna taustaa
