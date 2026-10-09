@@ -741,6 +741,8 @@
 
 ### Changed
 
+- The credit in the web app's header and footer links Jouni Lappi's name
+  to LS Guitars (jouni.lappi.hopto.org/lsguitars).
 - Undo's and Redo's tooltips name the fields as the form labels them
   (*Undo: Thickness*, *Undo: Bridge · Baseplate length*), not by their
   names in the code.
