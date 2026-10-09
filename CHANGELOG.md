@@ -4,6 +4,8 @@
 
 ### Added
 
+- *Build* floats in the corner while the page's own Build is scrolled
+  out of sight, showing *Building…* as it does.
 - The toolpath view says the shown program's tool, time, cutting and
   operations under its chooser, with *Simulate* for it beside the
   arrows; one operation is no longer written *1 operations*.

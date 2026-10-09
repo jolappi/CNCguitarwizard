@@ -865,7 +865,10 @@ kertoo sen, jos se ei ole oletukset), joten uudelleenlataus tai suljettu
 välilehti ei hukkaa mitään; *Reset* aloittaa alusta.
 
 Ctrl/Cmd+Enter käynnistää rakennuksen mistä kohtaa sivua tahansa (myös
-kenttää kirjoitettaessa).
+kenttää kirjoitettaessa). Kun varsinainen *Build*-painike on vieritetty
+näkyvistä (kapealla näytöllä sivu, leveällä lomakesarake), oikeaan
+alakulmaan tulee kelluva *Build*, joka näyttää rakennuksen aikana
+*Building…* kuten varsinainenkin.
 
 Valitun kentän selitys näkyy sen alla (lomakkeessa ja editorien
 *Settings*-kohdissa) niin kauan kuin kenttä on valittuna: myös

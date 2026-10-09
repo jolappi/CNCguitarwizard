@@ -3859,6 +3859,22 @@ function zoomablePlot(holder) {
   enableZoom({ svg, baseBox, zoom: null });
 }
 
+// Build floats in the corner while the page's own is out of sight (the
+// page scrolled on below it on a narrow screen, the form's column on a
+// wide one), and does as it does: unusable until the page is ready,
+// "Building…" while it builds.
+const buildFloat = document.getElementById("build-float");
+new IntersectionObserver(([entry]) => {
+  buildFloat.hidden = entry.isIntersecting;
+}).observe(buildButton);
+new MutationObserver(() => {
+  const busy = buildButton.classList.contains("busy");
+  buildFloat.disabled = buildButton.disabled;
+  buildFloat.classList.toggle("busy", busy);
+  buildFloat.textContent = busy ? "Building…" : "Build";
+}).observe(buildButton, { attributes: true, attributeFilter: ["disabled", "class"] });
+buildFloat.addEventListener("click", build);
+
 // A built result prints as a sheet for the workshop (the Print button, or
 // the browser's own printing): the guitar's name, instrument and the day
 // at its head, every program unfolded; the page's CSS leaves the rest out.

@@ -317,6 +317,14 @@
     animation: spin .8s linear infinite;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
+  /* Build in the corner while the page's own Build is out of sight (see
+     the script); after button.busy, which would make it relative. */
+  button.build-float {
+    position: fixed; right: 16px; bottom: 16px; z-index: 30; padding: 10px 20px; border-radius: 22px;
+    box-shadow: 0 4px 14px rgba(31, 26, 20, .28);
+  }
+  button.build-float.busy { padding-left: 38px; }
+  button.build-float[hidden] { display: none; }
   .progress { margin: -4px 0 12px; }
   .progress .bar { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
   .progress .fill { height: 100%; width: 0; background: var(--accent); transition: width .25s ease; }
@@ -408,6 +416,8 @@
 <body>
 <div id="drop-banner" class="drop-banner" hidden></div>
 <div id="drag-readout" class="drag-readout" hidden></div>
+<button id="build-float" class="build-float" type="button" disabled hidden
+  title="Build the FreeCAD script, the G-code and their plots (Ctrl/Cmd+Enter)">Build</button>
 <header>
   <h1>CNCguitarwizard</h1>
   <span class="motto">Measure twice. Generate once.</span>

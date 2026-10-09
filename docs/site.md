@@ -460,7 +460,10 @@ Python.
    own above it until the next change in the editor, and what does not
    fit in bold red (`showEditorStatus`, every editor's status).
 4. On **Build 3D and CNC files** (or Ctrl/Cmd+Enter anywhere on the page,
-   a field being typed in too) runs the build in stages — `start_build()`, then
+   a field being typed in too, or *Build* floating in the corner while
+   the page's own is out of sight — scrolled past on a narrow screen, in
+   the form's column on a wide one — and showing *Building…* as it does,
+   `build-float`) runs the build in stages — `start_build()`, then
    `advance_build()` once per stage of `workflows.Prototype001Build`
    (geometry, body, neck and fretboard toolpaths, cover plates, G-code,
    FreeCAD script),

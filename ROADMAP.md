@@ -119,6 +119,7 @@
 - The form's group titles kept in sight
 - Body features moved with the arrow keys
 - The shown program's details and Simulate in the toolpath view
+- Build floating in the corner while the page's own is out of sight
 - Index pins as wide as a main tool wider than 6 mm (an 8 mm end mill,
   8 mm dowels)
 - The neck's back carved with the ball nose alone, in one program
