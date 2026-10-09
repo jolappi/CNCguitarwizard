@@ -499,7 +499,9 @@ Python.
    or dark for a locking nut, a board that runs on under it reaching on
    behind it) and the toolpath plots, one at a time, chosen from a list by part
    (each program by its step, the body's top first) or stepped through
-   with the arrows beside it (`toolpath-choice`; each says how deep its
+   with the arrows beside it (`toolpath-choice`; the shown program's
+   tool, time, cutting and operations under them, and *Simulate* for it,
+   opening NC Viewer under the plot; each says how deep its
    colours cut in a bar under the part, and which toolpath a cut is under
    the pointer, `cam.preview`); both zoom as an
    editor's drawing does (`zoomablePlot`, `enableZoom`). *Print*, beside

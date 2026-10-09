@@ -1106,7 +1106,8 @@ function showResult(result) {
 
   // The toolpath plots one at a time, chosen from a list by part, each
   // program by its step (the body's top first), or stepped through with
-  // the arrows beside it.
+  // the arrows beside it; under them the shown program's tool, time and
+  // cutting, and Simulate for it.
   const tabs = document.getElementById("tabs");
   const toolpath = document.getElementById("toolpath");
   tabs.innerHTML = "";
@@ -1128,9 +1129,25 @@ function showResult(result) {
     }
     chooser.appendChild(group);
   }
+  const simulateShown = document.createElement("button");
+  simulateShown.type = "button";
+  simulateShown.className = "secondary";
+  simulateShown.textContent = "Simulate";
+  simulateShown.title = "Copy this program to the clipboard and open NC Viewer under the plot";
+  const about = document.createElement("span");
+  about.className = "note toolpath-about";
   const show = () => {
     toolpath.innerHTML = result.files[chooser.value] || "";
     zoomablePlot(toolpath);
+    const stem = stemOf(chooser.value);
+    const info = gcode[stem];
+    const program = [".nc", ".knc"].map((ext) => stem + ext).find((name) => name in result.files);
+    about.textContent = info
+      ? `${info.tool}: ${info.estimated_minutes} min, ${(info.cutting_length_mm / 1000).toFixed(1)} m of cutting, ` +
+        `${info.operations.length} operation${info.operations.length === 1 ? "" : "s"}`
+      : "";
+    simulateShown.hidden = !program;
+    simulateShown.onclick = () => simulate(program, result.files[program], toolpath);
   };
   chooser.addEventListener("change", show);
   const stepper = (label, title, by) => {
@@ -1147,7 +1164,7 @@ function showResult(result) {
     });
     return button;
   };
-  tabs.append(stepper("‹", "The plot before", -1), chooser, stepper("›", "The next plot", 1));
+  tabs.append(stepper("‹", "The plot before", -1), chooser, stepper("›", "The next plot", 1), simulateShown, about);
   const first = ["Body_top.svg", "Neck_block_top.svg", "Neck_body_top.svg"].find((name) => name in result.files);
   if (first) chooser.value = first;
   show();
@@ -1228,7 +1245,7 @@ function showResult(result) {
   // Each with a Plot button that shows its toolpath plot below.
   perProgram.innerHTML = programs.map(([name, info]) => (
     `<tr><th>${info.step}. ${name}</th><td>${info.tool}: ${info.estimated_minutes} min, ` +
-    `${(info.cutting_length_mm / 1000).toFixed(1)} m of cutting, ${info.operations.length} operations` +
+    `${(info.cutting_length_mm / 1000).toFixed(1)} m of cutting, ${info.operations.length} operation${info.operations.length === 1 ? "" : "s"}` +
     (`${name}.svg` in result.files
       ? ` <button type="button" class="secondary plot-link" data-plot="${name}.svg" title="Show its toolpaths below">Plot</button>`
       : "") +

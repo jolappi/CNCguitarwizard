@@ -4,6 +4,9 @@
 
 ### Added
 
+- The toolpath view says the shown program's tool, time, cutting and
+  operations under its chooser, with *Simulate* for it beside the
+  arrows; one operation is no longer written *1 operations*.
 - A pressed body feature (a pickup, the control cavity, the jack) is
   picked too: the arrow keys move it as a drop would, a pickup along the
   neck only.
