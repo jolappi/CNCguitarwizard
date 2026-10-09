@@ -2329,11 +2329,15 @@ def _describe_fields(
     for field in dataclasses.fields(cls):
         if not field.init:
             continue
-        default = (
-            field.default
-            if field.default is not dataclasses.MISSING
-            else field.default_factory()  # type: ignore[misc]
-        )
+        # Its default, or the one its factory makes (a field with neither,
+        # none in a parameter set, would show empty).
+        default: Any
+        if field.default is not dataclasses.MISSING:
+            default = field.default
+        elif callable(field.default_factory):
+            default = field.default_factory()
+        else:
+            default = None
         entry: dict[str, Any] = {
             "name": field.name,
             "type": _form_type(hints[field.name]),

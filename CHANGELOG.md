@@ -879,6 +879,9 @@
 
 ### Fixed
 
+- The type check passes with mypy 2.4 again: the web app's form reads a
+  field's default factory only once it is known to be callable, not
+  through a `type: ignore` the newer mypy refuses.
 - A drawing's *Measure*, *Full window* and zoom chips sit in a strip of
   their own above it, no longer over its top (a toolpath plot's title).
 - A body thickness (`body_thickness`) of zero or less no longer stops the

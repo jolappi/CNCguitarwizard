@@ -1088,3 +1088,19 @@ def test_the_body_template_carries_the_engraving_to_draw_on() -> None:
     layer_end = svg.index("</g>", start)
     cleared = svg[: svg.index("\n", start) + 1] + svg[layer_end:]
     assert import_outline(payload, "body", cleared)["values"]["body_engraving"] is False
+
+
+def test_a_field_made_by_a_factory_shows_the_default_it_makes() -> None:
+    # Regression: the form read a factory's default through a type-check
+    # ignore that mypy 2.4 refuses; it is now called once known callable.
+    from dataclasses import dataclass, field
+
+    from cncguitarwizard.webapp import _describe_fields
+
+    @dataclass(frozen=True, slots=True)
+    class Made:
+        offsets: tuple[float, ...] = field(default_factory=lambda: (1.0, 2.0))
+        depth: float = 3.0
+
+    described = {entry["name"]: entry["default"] for entry in _describe_fields(Made)}
+    assert described == {"offsets": [1.0, 2.0], "depth": 3.0}
