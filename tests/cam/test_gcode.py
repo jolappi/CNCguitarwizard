@@ -300,3 +300,24 @@ def test_a_preview_says_how_deep_its_colours_cut() -> None:
     # Drawn larger on a large part, to read at the size it is shown.
     big = [Point2D(0, 0), Point2D(400, 0), Point2D(400, 10), Point2D(0, 10)]
     assert 'font-size="8.8"' in render_setup_svg(make_setup(), big, 1.0)
+
+
+def test_a_preview_names_each_toolpath_under_the_pointer() -> None:
+    import xml.dom.minidom
+
+    from cncguitarwizard.cam import render_setup_svg
+    from cncguitarwizard.geometry.primitives import Point2D
+
+    square = [Point2D(0, 0), Point2D(10, 0), Point2D(10, 10), Point2D(0, 10)]
+    setup = make_setup()
+    two = replace(
+        setup, toolpaths=(*setup.toolpaths, replace(setup.toolpaths[0], name="A & B"))
+    )
+    svg = render_setup_svg(two, square, 1.0)
+
+    groups = xml.dom.minidom.parseString(svg).getElementsByTagName("g")
+    names = [group.getElementsByTagName("title")[0].firstChild.data for group in groups]
+    assert names == ["Square", "A & B"]
+    # Every cut and rapid of a toolpath lies in its group.
+    for group in groups:
+        assert group.getElementsByTagName("path")

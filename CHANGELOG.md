@@ -4,6 +4,8 @@
 
 ### Added
 
+- A toolpath plot says which toolpath a cut belongs to under the pointer
+  (*Truss-rod channel*, *Tuner bass 1 centre mark*).
 - Every part of the plan view says what it is under the pointer (*Neck
   pocket*, *Tuner hole, bass 1*, *Control cavity (back)*).
 - An editor over the whole window keeps its status line (at its foot)

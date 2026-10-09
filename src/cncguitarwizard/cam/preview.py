@@ -18,9 +18,11 @@ def render_setup_svg(
     """Return an SVG of every move in ``setup`` over the part outline.
 
     Rapids are dashed grey, cuts are coloured from blue (shallow) to red
-    (deep), a bar under the part saying how deep the red is. Consecutive
-    moves at one depth are joined into a single path element, so even a
-    long program stays a small file. The outline is
+    (deep), a bar under the part saying how deep the red is. Each toolpath's
+    moves are a group named for it (``<title>``), so a browser says which
+    toolpath a cut belongs to under the pointer. Consecutive moves at one
+    depth are joined into a single path element, so even a long program
+    stays a small file. The outline is
     drawn in the setup's own machine frame, so a flipped setup shows the
     mirrored part. When ``tool_diameter`` is given (or the setup carries
     its own tool), every cut is also drawn as a translucent band that
@@ -88,6 +90,7 @@ def render_setup_svg(
         bar_top = height - margin * 0.5 - 3.0 * legend_scale
         parts.extend(_depth_legend(margin, bar_top, legend_scale, colour, deepest))
     for path in setup.toolpaths:
+        parts.append(f"<g><title>{_escape(path.name)}</title>")
         rapids: list[str] = []
         run: list[str] = []
         run_z: float | None = None
@@ -128,6 +131,7 @@ def render_setup_svg(
                 f'<path d="{" ".join(rapids)}" fill="none" stroke="#999" '
                 'stroke-width="0.3" stroke-dasharray="1.5,1"/>'
             )
+        parts.append("</g>")
     parts.append(
         f'<circle cx="{sx(0.0)}" cy="{sy(0.0)}" r="2" fill="none" '
         'stroke="#000" stroke-width="0.5"/>'
