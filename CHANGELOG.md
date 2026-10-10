@@ -915,6 +915,10 @@
 
 ### Fixed
 
+- The body editor no longer stays empty when a design's neck bolts have
+  no room (after a reload, or a design loaded): it draws them where they
+  are asked to go, to be dragged where they fit, and says why in red; the
+  build still refuses them.
 - The type check passes with mypy 2.4 again: the web app's form reads a
   field's default factory only once it is known to be callable, not
   through a `type: ignore` the newer mypy refuses.

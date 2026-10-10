@@ -168,6 +168,11 @@ Python.
    it). Choosing the controls in the pickguard (`body_controls`
    "pickguard") ticks `body_pickguard`; a drawn guard that does not cover
    them gives way to the automatic one, and the status line says so.
+   Neck bolts with no room where they are asked to go (one dragged past
+   the cutaway, or a saved design's) are drawn there anyway, not moved
+   out, and the status line says why in red (`problems` from
+   `body_editor_layout`), so they can be dragged where they fit; the
+   build refuses them meanwhile.
    With `body_pickup_frame` set (ring, horns or hook, beside the editor
    with `body_pickup_frame_direction`), every humbucker's frame is drawn
    dark over it — its opening, screws and the holes over the height screws

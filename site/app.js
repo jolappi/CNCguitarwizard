@@ -3517,8 +3517,9 @@ const bodyEditor = {
       : cutBack.length
         ? ` The ${cutBack.join(" and ")} pickups' frames were cut back to fit; drag their points to change them.`
         : "";
-    // What the build refuses that is drawn anyway (a heel relief's corner
-    // line drawn as the U), first: it says what to change.
+    // What the build refuses that is drawn anyway (neck bolts with no room
+    // where they are asked to go, a heel relief's corner line drawn as the
+    // U), first: it says what to change.
     const problems = this.layout.problems || [];
     const outsideNote = outside.size ? ` Outside the outline: ${[...outside].join(", ")}.` : "";
     if (problems.length) {

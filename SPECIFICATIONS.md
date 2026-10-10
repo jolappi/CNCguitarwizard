@@ -269,7 +269,11 @@ reunan väliin 1 mm puuta. Holkki saa ulottua kaulataskun ohi, mutta sen on
 oltava rungossa. Kaularaudan kanavaan tai mutterin taskuun jää vähintään
 3 mm ja holkkien väliin 1 mm. Design by Jone -rungossa diskanttipuolen pultit
 ovat syvän cutawayn takia kannan pään lähellä (x = −24 ja −6). Piirtoeditorissa
-pultteja voi raahata kaulan suunnassa.
+pultteja voi raahata kaulan suunnassa. Jos pultille ei ole tilaa siellä,
+mihin se on pyydetty (raahattu cutawayn ohi tai tallennettu niin),
+editori piirtää sen silti sinne siirtämättä ja kertoo syyn punaisella,
+jotta sen voi raahata paikkaan, johon se mahtuu; rakennus hylkää sen
+sillä välin.
 
 ## Kontrollit ja kannet
 

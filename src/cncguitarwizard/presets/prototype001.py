@@ -538,7 +538,8 @@ class BodyLayout:
             the programs' notes, or none.
         problems: What the build refuses that the body editor draws anyway
             (a heel relief's corner line that falls outside the body, drawn
-            as the U), each saying why.
+            as the U; neck bolts with no room, drawn where they are asked
+            to go), each saying why.
     """
 
     heel_end: float
@@ -2246,26 +2247,7 @@ class Prototype001Parameters:
                 "must leave material beneath its floor in the "
                 f"{self.body_thickness:g} mm thick body."
             )
-        if plate_bolts is not None:
-            centres = list(plate_bolts)
-        elif self.built_body_shape.neck_bolts:
-            centres = [(heel_end + x, y) for x, y in self.built_body_shape.neck_bolts]
-        else:
-            offset = (
-                self.body_neck_bolt_hole_diameter / 2.0
-                + self.body_neck_bolt_end_wall
-                + self.body_neck_bolt_spacing_x / 2.0
-                if self.body_neck_bolt_center_offset is None
-                else self.body_neck_bolt_center_offset
-            )
-            centre_x = heel_end - offset
-            centres = [
-                (
-                    centre_x + sx * self.body_neck_bolt_spacing_x / 2.0,
-                    sy * self.body_neck_bolt_spacing_y / 2.0,
-                )
-                for sx, sy in ((-1.0, -1.0), (1.0, -1.0), (-1.0, 1.0), (1.0, 1.0))
-            ]
+        centres = self._neck_bolt_centres(heel_end, plate_bolts)
         radius = self.body_neck_bolt_hole_diameter / 2.0
         wall = self.body_neck_bolt_edge_wall
         ferrule_reach = self.body_neck_ferrule_diameter / 2.0 + NECK_FERRULE_BODY_WALL
@@ -2442,6 +2424,79 @@ class Prototype001Parameters:
                     bolt_depth,
                 )
             )
+        return tuple(holes)
+
+    def _neck_bolt_centres(
+        self,
+        heel_end: float,
+        plate_bolts: tuple[tuple[float, float], ...] | None,
+    ) -> list[tuple[float, float]]:
+        """Return where the neck bolts are asked to go, before they are moved.
+
+        A neck plate's holes (``plate_bolts``), else the body shape's own
+        ``neck_bolts``, else the default rectangle (see
+        ``_neck_bolt_holes``).
+        """
+        if plate_bolts is not None:
+            return list(plate_bolts)
+        if self.built_body_shape.neck_bolts:
+            return [(heel_end + x, y) for x, y in self.built_body_shape.neck_bolts]
+        offset = (
+            self.body_neck_bolt_hole_diameter / 2.0
+            + self.body_neck_bolt_end_wall
+            + self.body_neck_bolt_spacing_x / 2.0
+            if self.body_neck_bolt_center_offset is None
+            else self.body_neck_bolt_center_offset
+        )
+        centre_x = heel_end - offset
+        return [
+            (
+                centre_x + sx * self.body_neck_bolt_spacing_x / 2.0,
+                sy * self.body_neck_bolt_spacing_y / 2.0,
+            )
+            for sx, sy in ((-1.0, -1.0), (1.0, -1.0), (-1.0, 1.0), (1.0, 1.0))
+        ]
+
+    def _unplaced_neck_bolts(
+        self,
+        heel_end: float,
+        pocket: TracedCavity,
+        plate_bolts: tuple[tuple[float, float], ...] | None,
+    ) -> tuple[DrilledHole, ...]:
+        """Return the neck bolts where they are asked to go, unchecked.
+
+        For the body editor when they do not fit (``_neck_bolt_holes``
+        refuses them): each where it is placed, not moved out, with its
+        ferrule (but on a plate) and hole, so it can be seen and dragged.
+        None if their sizes cannot make a hole at all.
+        """
+        holes: list[DrilledHole] = []
+        depth = max(self.body_thickness - pocket.depth, 1.0)
+        try:
+            for index, (x, y) in enumerate(
+                self._neck_bolt_centres(heel_end, plate_bolts), start=1
+            ):
+                if plate_bolts is None:
+                    holes.append(
+                        DrilledHole(
+                            f"Neck bolt {index} ferrule",
+                            x,
+                            y,
+                            self.body_neck_ferrule_diameter,
+                            self.body_neck_ferrule_depth,
+                        )
+                    )
+                holes.append(
+                    DrilledHole(
+                        f"Neck bolt {index} hole",
+                        x,
+                        y,
+                        self.body_neck_bolt_hole_diameter,
+                        depth,
+                    )
+                )
+        except BodyGeometryError:
+            return ()
         return tuple(holes)
 
     @staticmethod
@@ -3271,17 +3326,22 @@ class Prototype001Parameters:
         # neck-through body has no pocket (its outline stays as where the
         # neck passes, for the keep-outs).
         problems = [relief_problem] if relief_problem else []
-        neck_bolts = (
-            self._neck_bolt_holes(
-                outline,
-                heel_end,
-                neck_pocket,
-                heel_relief,
-                neck_plate[1] if neck_plate is not None else None,
-            )
-            if self.neck_joint == "bolt_on"
-            else ()
-        )
+        neck_bolts: tuple[DrilledHole, ...] = ()
+        if self.neck_joint == "bolt_on":
+            plate_bolts = neck_plate[1] if neck_plate is not None else None
+            try:
+                neck_bolts = self._neck_bolt_holes(
+                    outline, heel_end, neck_pocket, heel_relief, plate_bolts
+                )
+            except BodyGeometryError as error:
+                if check_steps:
+                    raise
+                # The body editor draws them where they are asked to go, to
+                # be dragged where they fit, and says why they do not.
+                neck_bolts = self._unplaced_neck_bolts(
+                    heel_end, neck_pocket, plate_bolts
+                )
+                problems.append(str(error))
         if heel_relief is not None:
             heel_relief = replace(
                 heel_relief, carries=tuple(hole.name for hole in neck_bolts)

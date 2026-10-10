@@ -680,7 +680,7 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         lines where they start (see ``_contour_line``) — or ``None``, and
         ``heel_relief`` the same; ``problems`` what the build refuses that is
         drawn anyway (``BodyLayout.problems``: a heel relief's corner line
-        drawn as the U);
+        drawn as the U, neck bolts with no room where they are asked to go);
         ``frames`` each humbucker frame's ``{"position", "field", "turned",
         "adjusted", "problem", "points", "handles", "origin", "along", "across",
         "stretch", "openings", "holes"}`` — its points in its own frame (as

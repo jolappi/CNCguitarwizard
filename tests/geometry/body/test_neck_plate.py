@@ -308,3 +308,36 @@ def test_the_body_editor_draws_the_u_for_a_corner_line_that_does_not_fit() -> No
             }
         )
         assert corner["problems"] == []
+
+
+def test_the_body_editor_draws_neck_bolts_with_no_room_where_they_are_asked() -> None:
+    # A bolt dragged out past the treble cutaway: the build refuses it, but
+    # the editor still draws every bolt (where asked, not moved out) to be
+    # dragged back, and says why.
+    drawn = Prototype001Parameters().built_body_shape
+    bolts = ((-40.0, -20.0), (-5.5, -20.0), (-64.6, 15.0), (-5.5, 18.0))
+    prototype = {
+        "body_shape": {
+            "kind": "your_design",
+            **{
+                name: value
+                for name, value in body_editor_layout({"prototype": {}})["templates"][
+                    "design_by_jone"
+                ]["shape"].items()
+                if name != "kind"
+            },
+            "neck_bolts": [list(bolt) for bolt in bolts],
+        }
+    }
+    with pytest.raises(BodyGeometryError, match="Neck bolt 3 .* has no room"):
+        replace(
+            Prototype001Parameters(), body_shape=replace(drawn, neck_bolts=bolts)
+        ).build()
+    layout = body_editor_layout({"prototype": prototype})
+
+    assert "error" not in layout
+    (problem,) = layout["problems"]
+    assert "Neck bolt 3" in problem and "has no room" in problem
+    circles = {c["name"]: c for c in layout["circles"]}
+    assert circles["Neck bolt 3 hole"]["x"] == pytest.approx(-64.6)
+    assert circles["Neck bolt 3 hole"]["group"] == "bolt:2"
