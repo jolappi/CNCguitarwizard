@@ -97,8 +97,10 @@ def test_a_drawn_heel_relief_line_is_straight_between_corners() -> None:
     )
     (relief,) = [c for c in parameters.build().body.contours if c.name == "Heel relief"]
     heel_end = parameters.body_layout().heel_end
-    # Between the two corners the line stands at x = heel end + 10.
-    across = [p for p in relief.inner_edge() if abs(p.y) < 25.0]
+    # Between the two corners the line stands at x = heel end + 10 (on the
+    # treble side: the relief stops at the centreline).
+    treble = -parameters.bass_sign
+    across = [p for p in relief.inner_edge() if 1e-9 < p.y * treble < 25.0]
     assert across
     assert all(p.x == pytest.approx(heel_end + 10.0, abs=1e-6) for p in across)
 

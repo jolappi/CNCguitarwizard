@@ -134,3 +134,45 @@ def test_the_tilted_bolts_are_modelled_and_drawn() -> None:
     ast.parse(source)
     assert source.count("neck bolt 1 hole cut") == 1
     assert "Neck bolt 1 hole" in render_plan_view_svg(geometry)
+
+
+@pytest.mark.parametrize("handedness", ["right", "left"])
+def test_a_plate_tilts_toward_the_treble_corner_on_a_corner_bevel(
+    handedness: str,
+) -> None:
+    parameters = tilt(
+        body_neck_plate="asymmetric",
+        body_heel_relief_line="corner",
+        handedness=handedness,
+    )
+    body = parameters.build().body
+    relief = bevel_of(parameters)
+    treble = -parameters.bass_sign
+    heel_end = parameters.body_layout().heel_end
+
+    # Sloping toward the treble corner (toward the nut and the treble side),
+    # laid out round the heel so it takes the whole plate, on its slope.
+    assert relief.plane_axis == pytest.approx(
+        (-math.sqrt(0.5), treble * math.sqrt(0.5))
+    )
+    deep, face = relief.plane
+    for point in body.neck_plate:
+        assert point_in_polygon(point, relief.region())
+        assert (relief.along_plane(point) - deep) * (face - deep) >= 0.0
+    # Its bolts lean toward the heel end and the bass side as they go in;
+    # the plate sits that far toward the treble side, so they come out in
+    # the pocket either side of the centreline, the tail pair the end wall
+    # and radius short of the heel end.
+    holes = [hole for hole in body.side_holes if hole.name.startswith("Neck bolt")]
+    assert len(holes) == 4
+    for hole in holes:
+        assert hole.end.x > hole.start.x
+        assert (hole.end.y - hole.start.y) * treble < 0.0
+    exits = sorted(hole.end.y * treble for hole in holes)
+    assert exits[0] == pytest.approx(-exits[-1], abs=0.2)
+    assert max(hole.end.x for hole in holes) == pytest.approx(heel_end - 5.5)
+    plan = plan_body_machining(body, MachiningParameters())
+    assert plan.back_small_holes is not None
+    note = plan.back_small_holes.notes[-1]
+    assert "toward the treble corner" in note
+    assert "toward the heel end and the bass side" in note

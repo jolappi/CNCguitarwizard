@@ -580,26 +580,44 @@ def _stretch_between(
 ) -> list[Point2D]:
     """Return the outline stretch between ``line``'s ends, from the first.
 
-    The ends are taken onto the nearest outline points; of the two ways
-    round between them, the one whose middle is nearer the line's middle.
+    The ends are taken onto the outline where it passes nearest them (on
+    a side, not only at a corner, so a line ending on the centreline has
+    its relief end there too); of the two ways round between them, the
+    one whose middle is nearer the line's middle.
     """
     points = list(outline)
     count = len(points)
 
-    def nearest(p: Point2D) -> int:
-        return min(range(count), key=lambda i: math.dist(_xy(points[i]), _xy(p)))
+    def nearest(p: Point2D) -> tuple[int, Point2D]:
+        # The side from points[i] to the next that passes nearest, and the
+        # point on it.
+        best: tuple[float, int, Point2D] = (math.inf, 0, points[0])
+        for i in range(count):
+            a, b = points[i], points[(i + 1) % count]
+            t, _ = _along(a, b, p)
+            t = min(1.0, max(0.0, t))
+            foot = Point2D(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t)
+            distance = math.dist(_xy(foot), _xy(p))
+            if distance < best[0]:
+                best = (distance, i, foot)
+        return best[1], best[2]
 
-    first, last = nearest(line[0]), nearest(line[-1])
+    (first, start), (last, end) = nearest(line[0]), nearest(line[-1])
     middle = line[len(line) // 2]
-    forward, backward = (last - first) % count, (first - last) % count
-    way_forward = points[(first + forward // 2) % count]
-    way_back = points[(last + backward // 2) % count]
-    if math.dist(_xy(way_forward), _xy(middle)) <= math.dist(
-        _xy(way_back), _xy(middle)
-    ):
-        stretch = [points[(first + k) % count] for k in range(forward + 1)]
-    else:
-        stretch = [points[(last + k) % count] for k in range(backward + 1)][::-1]
+    forward = [
+        start,
+        *(points[(first + k) % count] for k in range(1, (last - first) % count + 1)),
+        end,
+    ]
+    backward = [
+        start,
+        *(points[(first - k) % count] for k in range((first - last) % count)),
+        end,
+    ]
+    stretch = min(
+        (forward, backward),
+        key=lambda way: math.dist(_xy(way[len(way) // 2]), _xy(middle)),
+    )
     if len(stretch) < 3:
         raise BodyGeometryError(f"{name} line's ends are too close together.")
     return stretch

@@ -128,6 +128,7 @@
 - An epoxy tray over the top, walled round the neck pocket, the pickups and every opening
 - Sharp corners and straight spans in every drawing tool, and polygons rounded through a corner
 - A new version of the web app shows on a plain reload, never a cached page
+- The heel relief always on the treble side
 - Index pins as wide as a main tool wider than 6 mm (an 8 mm end mill,
   8 mm dowels)
 - The neck's back carved with the ball nose alone, in one program

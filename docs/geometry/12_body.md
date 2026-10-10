@@ -807,6 +807,21 @@ curve), else a U round the heel: from the centreline
 sides that far out from the neck pocket, each to where it first leaves
 the body (the cutaway's or the horn's edge beside the neck).
 
+The relief is always on the treble side, where the hand reaches round
+the heel to the top frets: whatever the line (drawn or automatic), its
+last run on the treble side of the centreline is kept, and from where it
+comes over the centreline the line runs on along it to the body's edge
+at the neck end (`_treble_side`), so the relief stops at the
+centreline — a smooth ramp down to nothing there for a contour, a wall
+for a notch or a bevel. Only a neck plate tilted on a bevel takes it
+across the neck, to `NECK_PLATE_RELIEF_GAP` (2 mm) past the
+plate's bass edge, so the plate sits wholly on the slope; the plate
+tilts along the neck or toward the treble corner, never toward the bass
+side. A line wholly on the bass
+side is refused. The line's ends are taken onto the outline exactly
+where it passes nearest them (on a side, not only at a corner), so the
+relief ends on the centreline, not a sliver past it.
+
 That U is `body_heel_relief_line` `"around"` (the default). With
 `"pocket"` the line is by the neck pocket instead: its outline offset
 `body_heel_relief_reach` outward all round, the corners rounded about
@@ -814,9 +829,9 @@ the pocket's, along its sides and round its tail end, each end where it
 first leaves the body. With
 `"corner"` the automatic line is straight instead, slanting at 45 degrees
 toward the heel end on the treble side and crossing the centreline
-`body_heel_relief_reach` behind the body's edge at the neck end, from
-edge to edge: the relief is the heel's treble corner of the back beyond
-it, as on Fender's contoured heel. A neck plate needs the flat back, so
+`body_heel_relief_reach` behind the body's edge at the neck end, then
+along the centreline to the edge: the relief is the heel's treble corner
+of the back beyond it, as on Fender's contoured heel. A neck plate needs the flat back, so
 beside one the line runs further out if need be, `NECK_PLATE_RELIEF_GAP`
 (2 mm) clear of the plate's treble corner toward the nut (the clipped one
 of an asymmetric plate). A bevel there is a flat slope across the corner
@@ -830,16 +845,25 @@ refuses it (a drawn line is used as it is).
 
 A `"bevel"` is flat, so a plate can sit on it — Ibanez's Tilt Joint (their
 AANJ is a thinned, rounded heel with sunk ferrules: a contour here). It
-is a plane sloping across the neck (`HeelRelief` profile `"plane"`), its
+is a plane sloping along the neck (`HeelRelief` profile `"plane"`), its
 full depth where the centreline leaves the body ahead of the heel and at
-the face at its line's furthest point behind the heel end; it falls
+the face at its line's furthest point behind the heel end, on the
+treble side (with a tilted plate, across the neck to just past the
+plate); it falls
 about 4 degrees on the default bodies (6 mm over 70 to 90 mm). Elsewhere
 along its line it ends in a wall, as a notch does. Under ferrules it is
 cut like a contour, the ferrules sunk into it. A plate on it tilts with
 it, so its bolts go in square to it, leaning toward the heel end as they
 go in: the plate is placed where its tail pair comes out in the pocket
 `body_neck_bolt_end_wall` short of the heel end, and must sit wholly on
-the bevel's slope (inside its line, behind the edge's full depth). A
+the bevel's slope (inside its line, short of its full depth). With
+`body_heel_relief_line` `"corner"` the plate tilts toward the treble
+corner instead, Ibanez style: the bevel is laid out round the heel (the
+U, so it takes the plate) but slopes toward the corner (`plane_axis` out
+across it), and the bolts lean toward the heel end and the bass side as
+they go in (`_bevel_lean`); the plate is set that far toward the treble
+side, so they come out in the pocket either side of the centreline, as
+the neck's edge wall is measured there. A
 router cannot drill slanting holes, so `Body_back_small_holes` marks each
 bolt's centre on the bevel (*Neck bolt N centre mark*, the bolt hole's
 diameter, `NECK_BOLT_MARK_DEPTH` (1 mm) into it) and its notes say how to

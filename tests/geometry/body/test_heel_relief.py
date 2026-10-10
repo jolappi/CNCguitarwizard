@@ -13,7 +13,10 @@ from cncguitarwizard.geometry.exceptions import BodyGeometryError
 from cncguitarwizard.geometry.primitives import Point2D, point_in_polygon
 from cncguitarwizard.presets import Prototype001Parameters
 from cncguitarwizard.presets.body_shapes import YOUR_DESIGN_TEMPLATES
-from cncguitarwizard.presets.prototype001 import NECK_BOLT_MIN_WOOD
+from cncguitarwizard.presets.prototype001 import (
+    NECK_BOLT_MIN_WOOD,
+    NECK_PLATE_RELIEF_GAP,
+)
 from cncguitarwizard.webapp import body_editor_layout
 
 
@@ -213,7 +216,9 @@ def distance_to(point: Point2D, polygon: tuple[Point2D, ...]) -> float:
 
 
 @pytest.mark.parametrize("kind", ["contour", "notch", "bevel"])
-def test_a_line_by_the_pocket_keeps_the_reach_from_it_all_round(kind: str) -> None:
+def test_a_line_by_the_pocket_keeps_the_reach_from_it_on_the_treble_side(
+    kind: str,
+) -> None:
     parameters = replace(
         Prototype001Parameters(),
         body_heel_relief=kind,
@@ -224,13 +229,18 @@ def test_a_line_by_the_pocket_keeps_the_reach_from_it_all_round(kind: str) -> No
     assert isinstance(relief, HeelRelief)
     pocket = body.neck_pocket
     assert pocket is not None
+    treble = -parameters.bass_sign
 
     for point in relief.line:
-        assert distance_to(point, pocket.outline) == pytest.approx(15.0, abs=0.3)
-    # Round its tail end, out to the body's edge on both sides.
+        if point.y * treble > 1e-6:
+            assert distance_to(point, pocket.outline) == pytest.approx(15.0, abs=0.3)
+        else:
+            # The rest along the centreline to the body's edge.
+            assert point.y == pytest.approx(0.0, abs=1e-9)
+    # Round its tail end, out to the body's edge on the treble side.
     heel_end = max(p.x for p in pocket.outline)
     assert max(p.x for p in relief.line) == pytest.approx(heel_end + 15.0, abs=0.1)
-    assert relief.line[0].y * relief.line[-1].y < 0.0
+    assert relief.line[0].y == 0.0 and relief.line[-1].y * treble > 0.0
     if kind == "bevel":
         # Sloping along the neck, as round the heel.
         assert relief.plane_axis == (1.0, 0.0)
@@ -246,3 +256,57 @@ def test_a_plate_tilts_on_a_bevel_by_the_pocket() -> None:
     )
     holes = parameters.build().body.side_holes
     assert len([hole for hole in holes if hole.name.startswith("Neck bolt")]) == 4
+
+
+@pytest.mark.parametrize("handedness", ["right", "left"])
+@pytest.mark.parametrize("line", ["around", "pocket", "corner"])
+@pytest.mark.parametrize("kind", ["contour", "notch", "bevel"])
+@pytest.mark.parametrize("template", ["stratocaster", "jackson_rr"])
+def test_the_relief_is_always_on_the_treble_side(
+    template: str, kind: str, line: str, handedness: str
+) -> None:
+    parameters = replace(
+        Prototype001Parameters(),
+        body_shape=YOUR_DESIGN_TEMPLATES[template][1],
+        handedness=handedness,
+        body_heel_relief=kind,
+        body_heel_relief_line=line,
+    )
+    (relief,) = [c for c in parameters.build().body.contours if c.name == "Heel relief"]
+    assert isinstance(relief, HeelRelief)
+    treble = -parameters.bass_sign
+
+    # Edge and line alike: nothing past the centreline on the bass side.
+    assert min(p.y * treble for p in (*relief.edge, *relief.line)) >= -1e-9
+    assert relief.depth_at(Point2D(relief.line[-1].x, -treble * 5.0)) == 0.0
+
+
+def test_a_tilted_plate_takes_the_bevel_across_the_neck_and_no_further() -> None:
+    parameters = replace(
+        Prototype001Parameters(),
+        body_shape=YOUR_DESIGN_TEMPLATES["stratocaster"][1],
+        body_neck_plate="plate",
+        body_heel_relief="bevel",
+    )
+    body = parameters.build().body
+    (relief,) = [c for c in body.contours if c.name == "Heel relief"]
+    assert isinstance(relief, HeelRelief)
+    treble = -parameters.bass_sign
+
+    # Under the plate on the bass side, the gap past its edge, and no more.
+    reach = parameters.body_neck_plate_width / 2.0 + NECK_PLATE_RELIEF_GAP
+    assert -min(p.y * treble for p in (*relief.edge, *relief.line)) == pytest.approx(
+        reach
+    )
+    assert all(point_in_polygon(p, relief.region()) for p in body.neck_plate)
+
+
+def test_a_line_wholly_on_the_bass_side_is_refused() -> None:
+    parameters = replace(Prototype001Parameters(), body_heel_relief="contour")
+    bass = parameters.bass_sign
+    shape = replace(
+        parameters.body_shape,
+        heel_relief_points=((-30.0, bass * 60.0), (10.0, bass * 20.0)),
+    )
+    with pytest.raises(BodyGeometryError, match="wholly on the bass side"):
+        replace(parameters, body_shape=shape).build()

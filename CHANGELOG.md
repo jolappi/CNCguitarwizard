@@ -805,6 +805,17 @@
 
 ### Changed
 
+- The heel relief is always on the treble side, where the hand reaches
+  round the heel: every line, drawn or automatic, stops at the centreline
+  and runs on along it to the body's edge, so nothing is cut on the bass
+  side. Only a neck plate tilted on a bevel takes the bevel across the
+  neck, 2 mm past the plate's bass edge. With the corner line the plate
+  tilts toward the treble corner, Ibanez style: its bolts lean toward
+  the heel end and the bass side, and the plate sits that far toward the
+  treble side so they come out either side of the centreline. The
+  relief's ends are taken onto the outline exactly, not to its nearest
+  corner.
+
 - The credit in the web app's header and footer links Jouni Lappi's name
   to LS Guitars (jouni.lappi.hopto.org/lsguitars).
 - Undo's and Redo's tooltips name the fields as the form labels them

@@ -689,7 +689,17 @@ jonka seinämä on viivalla. Viivan voi piirtää runkoeditorissa
 U-muoto kantapään ympäri `body_heel_relief_reach` (15 mm) kantapään pään
 takaa ja yhtä kauas kaulataskun sivuilta, kummankin pään ollessa siellä,
 missä viiva ensin lähtee rungosta. *Auto heel relief* palauttaa
-automaattisen. Muotoilu on viivoitettu pinta reunan ja viivan välillä,
+automaattisen. Muotoilu on aina diskanttipuolella, jossa käsi kiertää
+kantapään ympäri ylimmille nauhoille: viivasta (piirretystä tai
+automaattisesta) säilyy sen viimeinen diskanttipuolen osa, ja siitä,
+missä se ylittää keskilinjan, viiva jatkuu keskilinjaa pitkin rungon
+kaulanpuoleiseen reunaan, joten muotoilu päättyy keskilinjaan
+(loivennus ohenee siinä olemattomiin, lovessa ja viisteessä on seinämä).
+Vain viisteellä kallistettu kaulalevy vie viisteen kaulan poikki, 2 mm
+levyn bassoreunan ohi, jotta levy istuu kokonaan viisteellä; levy
+kallistuu kaulan suuntaan tai diskanttikulmaa kohti, ei koskaan
+bassopuolelle. Kokonaan bassopuolelle
+piirretty viiva hylätään. Muotoilu on viivoitettu pinta reunan ja viivan välillä,
 joten sarvien välinen kovera reuna leikkautuu siististi. Kaulapulttien
 hylsyt upotetaan `body_neck_ferrule_depth` muotoilun pintaan, ja
 taskun yläpuolelle on jäätävä vähintään 5 mm puuta; liian syvä muotoilu
@@ -718,13 +728,14 @@ diskanttipuolen kulma, jonka
 45 asteen suora viiva rajaa: viiva leikkaa keskilinjan
 `body_heel_relief_reach` rungon kaulanpuoleisen reunan takana, ja levyn
 vieressä se kulkee tarvittaessa kauempana, 2 mm levyn kulman ohi.
-Kulmaviisteessä tasainen pinta viettää kulman poikki, eikä levy kallistu.
+Kulmaviisteessä tasainen pinta viettää kulman poikki; kaulalevyn kanssa
+levy kallistuu Ibanezin tapaan kulmaa kohti (ks. viiste alla).
 Levyn valinta ei itse vaihda viivaa: levyn päälle osuva muotoilu
 piirretään sellaisenaan ja hylätään vasta rakennettaessa. Jos kulmaviiva
 jää rungon ulkopuolelle (levyn kulman takana ei ole runkoa),
 runkoeditori piirtää sillä välin U:n ja kertoo syyn punaisella, ja
-rakennus hylkää sen. Viiste (`"bevel"`) on tasainen kalteva pinta kaulan
-poikki: se on täysisyvä siellä, missä keskilinja lähtee rungosta kaulan
+rakennus hylkää sen. Viiste (`"bevel"`) on kaulan suuntaan viettävä
+tasainen pinta diskanttipuolella: se on täysisyvä siellä, missä keskilinja lähtee rungosta kaulan
 puolella, ja nousee pintaan viivansa kauimmassa kohdassa kantapään
 takana; muualla viivalla on seinämä kuten lovessa. Hylsyt upotetaan
 siihen kuten loivennukseen. Kaulalevy voi istua viisteellä kallistettuna
@@ -733,7 +744,13 @@ upotetuin hylsyin, eli loivennus): levyn pultit menevät kohtisuoraan
 viistettä vastaan ja kallistuvat kantapään päätä kohti, joten levy
 sijoitetaan niin, että kantapään puoleiset pultit tulevat taskuun
 `body_neck_bolt_end_wall` ennen kantapään päätä, ja levyn on oltava
-kokonaan viisteen kaltevalla osalla. CNC poraa viisteeseen vain
+kokonaan viisteen kaltevalla osalla. Corner-linjalla levy kallistuu
+diskanttipuolen kulmaa kohti (Ibanezin tapaan): viiste rajataan U:lla
+kantapään ympäri, jotta levy mahtuu sille, mutta se viettää kulmaa
+kohti, ja pultit kallistuvat kantapään päätä ja bassopuolta kohti
+mennessään sisään. Levy siirretään sen verran diskanttipuolelle, että
+pultit tulevat taskuun keskilinjan molemmin puolin, ja kaulan reunan
+seinämä mitataan siellä. CNC poraa viisteeseen vain
 keskityspisteet (1 mm syviä), ja `Body_back_small_holes`-ohjelman
 muistiinpanot kertovat, miten reiät porataan käsin viisteen kulmassa
 (kiila porapöydälle); vinot reiät mallinnetaan FreeCADiin.

@@ -113,14 +113,16 @@ def test_a_corner_heel_relief_slants_past_the_plate(kind: str, relief: str) -> N
     treble = -parameters.bass_sign
 
     assert not outlines_overlap(body.neck_plate, heel_relief.region())
-    # Its line runs at 45 degrees, the gap out from the plate's corner.
+    # Its line runs at 45 degrees on the treble side, the gap out from the
+    # plate's corner (and on along the centreline to the edge).
     out = (-math.sqrt(0.5), treble * math.sqrt(0.5))
     corner = max(body.neck_plate, key=lambda p: p.x * out[0] + p.y * out[1])
     reach = corner.x * out[0] + corner.y * out[1]
     for point in heel_relief.inner_edge():
-        assert point.x * out[0] + point.y * out[1] == pytest.approx(
-            reach + NECK_PLATE_RELIEF_GAP
-        )
+        if point.y * treble > 1e-9:
+            assert point.x * out[0] + point.y * out[1] == pytest.approx(
+                reach + NECK_PLATE_RELIEF_GAP
+            )
     # The back is cut away beyond it.
     beyond = NECK_PLATE_RELIEF_GAP + 2.0
     assert (
@@ -171,8 +173,15 @@ def test_a_corner_heel_relief_cuts_the_treble_corner_without_a_plate(
     assert isinstance(heel_relief, HeelRelief)
     treble = -parameters.bass_sign
     out = (-math.sqrt(0.5), treble * math.sqrt(0.5))
-    across = [p.x * out[0] + p.y * out[1] for p in heel_relief.inner_edge()]
+    # Straight on the treble side; from where it meets the centreline, on
+    # along it to the body's edge.
+    across = [
+        p.x * out[0] + p.y * out[1]
+        for p in heel_relief.inner_edge()
+        if p.y * treble > 1e-9
+    ]
     assert max(across) - min(across) == pytest.approx(0.0, abs=1e-6)
+    assert all(p.y * treble >= -1e-9 for p in heel_relief.inner_edge())
     # Where the centreline leaves the body ahead of the heel end.
     edge = parameters.body_layout().heel_end
     while point_in_polygon(Point2D(edge, 0.0), body.outline.points):
@@ -187,20 +196,6 @@ def test_a_corner_heel_relief_cuts_the_treble_corner_without_a_plate(
         # A flat slope across the corner, at the face along its line.
         assert heel_relief.plane_axis == pytest.approx(out)
         assert heel_relief.plane[1] == pytest.approx(min(across))
-
-
-def test_a_plate_beside_a_corner_bevel_stays_flat() -> None:
-    parameters = strat(
-        body_neck_plate="asymmetric",
-        body_heel_relief="bevel",
-        body_heel_relief_line="corner",
-    )
-    body = parameters.build().body
-
-    assert not any(hole.name.startswith("Neck bolt") for hole in body.side_holes)
-    assert {
-        hole.name for hole in body.rear_holes if hole.name.startswith("Neck bolt")
-    } == {f"Neck bolt {n} hole" for n in range(1, 5)}
 
 
 def test_a_drawn_heel_relief_over_the_plate_is_refused() -> None:
