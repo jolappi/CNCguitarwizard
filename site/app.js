@@ -131,8 +131,9 @@ async function boot() {
     autosaveReady = true;
     undoHistory.start();
     const changed = restored && undoHistory.current !== defaults;
+    const repaired = changed ? await repairDesign() : [];
     setStatus(`Ready — ${manifest.wheel} (build ${manifest.build || "dev"})` +
-      (changed ? " · your last design is back (Reset starts afresh)" : ""), "ok");
+      (changed ? " · your last design is back (Reset starts afresh)" : "") + repairNote(repaired), "ok");
     // The first visit begins with the tour, once the drawings are laid out.
     let toured = true;
     try {
@@ -1655,13 +1656,63 @@ async function loadDesign(file) {
   putDesign(design, file.name);
 }
 
+// A design put back in the page (the last one, on loading) or loaded
+// never stays in error: whatever would make an editor show red (an
+// error, a neck bolt with no room, a feature outside the outline) is put
+// back to its default — a field whose value does not read first, then
+// the changed settings that cause it, found by trying them
+// (webapp.repair_design). Returns the names of the settings put back;
+// Undo takes them back.
+async function repairDesign() {
+  const names = [];
+  for (let tries = 0; tries < 50; tries++) {
+    try {
+      collectValues();
+      break;
+    } catch (error) {
+      if (!(error instanceof FieldError) || !error.field) return names;
+      setControlValue(error.field, defaultValue(error.field));
+      names.push(error.field.dataset.name);
+    }
+  }
+  const controls = [...form.querySelectorAll(".changed")].filter((control) =>
+    control.matches("select.kind")
+      ? control.closest(".variant").dataset.set.startsWith("prototype")
+      : (control.dataset.set || "").startsWith("prototype") && control.dataset.name);
+  const changes = controls.map((control) => {
+    if (!control.matches("select.kind")) {
+      return { set: control.dataset.set, name: control.dataset.name, default: defaultValue(control) };
+    }
+    const variant = control.closest(".variant");
+    return { set: variant.dataset.set, name: variant.dataset.name, default: defaultValue(control), kind: true };
+  });
+  pyodide.globals.set("payload_json", JSON.stringify(collectValues()));
+  pyodide.globals.set("changes_json", JSON.stringify(changes));
+  const result = await runPython(
+    "import json\nfrom cncguitarwizard.webapp import repair_design\n" +
+    "json.dumps(repair_design(json.loads(payload_json), json.loads(changes_json)))"
+  );
+  for (const index of result.reset) {
+    setControlValue(controls[index], changes[index].default);
+    names.push(changes[index].name);
+  }
+  return names;
+}
+
+// What repairDesign put back, for the status line.
+function repairNote(names) {
+  return names.length
+    ? ` · put back to default, as it showed an error: ${names.map(fieldLabel).join(", ")} (Undo takes it back)`
+    : "";
+}
+
 // A design put on the form, from a file or Recent: said so, kept as the
 // one last saved, and first among the recent ones.
-function putDesign(design, name) {
+async function putDesign(design, name) {
   clearError();
   try {
     const unknown = applyDesign(design);
-    setStatus(`Loaded ${name}`, "ok");
+    setStatus(`Loaded ${name}${repairNote(await repairDesign())}`, "ok");
     markSaved();
     rememberDesign(design, name);
     if (unknown.length) {

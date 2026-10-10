@@ -273,7 +273,14 @@ pultteja voi raahata kaulan suunnassa. Jos pultille ei ole tilaa siellä,
 mihin se on pyydetty (raahattu cutawayn ohi tai tallennettu niin),
 editori piirtää sen silti sinne siirtämättä ja kertoo syyn punaisella,
 jotta sen voi raahata paikkaan, johon se mahtuu; rakennus hylkää sen
-sillä välin.
+sillä välin. Sivua ladattaessa palautettu tai tiedostosta ladattu
+suunnitelma ei kuitenkaan koskaan jää virhetilaan: kaikki, mikä näkyisi
+editoreissa punaisena (virhe, pultti ilman tilaa, ääriviivan ulkopuolelle
+jäävä osa), palautetaan oletukseen. Ensin palautetaan kenttä, jonka arvoa
+ei voi lukea, sitten muutetuista asetuksista ne, jotka ongelman
+aiheuttavat (haetaan kokeilemalla, todennäköisimmät ensin, ja turhat
+palautukset perutaan). Tilarivi nimeää palautetut asetukset, ja Undo
+perii ne.
 
 ## Kontrollit ja kannet
 

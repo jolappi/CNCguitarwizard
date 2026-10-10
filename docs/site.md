@@ -348,6 +348,17 @@ Python.
    the page is loaded again (`restoreLastDesign`, upgraded as a loaded
    design is; the status says so unless it is the defaults); *Reset*
    starts afresh, and a design that cannot be put back is passed over.
+   A design put back or loaded never stays in error (`repairDesign`):
+   whatever would make an editor show red — an error, a problem its
+   layout reports (a neck bolt with no room, a frame or lettering that
+   does not fit), a feature outside the outline (`webapp.design_problems`)
+   — is put back to its default. A field whose value does not read goes
+   first; then `webapp.repair_design` tries the settings changed from
+   their defaults (those the commonest problems come from first,
+   `REPAIR_FIRST`): one at a time, keeping each that leaves fewer
+   problems, then more together until none are left, and last gives back
+   the design's own value where its default was not needed. The status
+   line names what was put back, and Undo takes it back.
    **Undo** and **Redo** (beside *Reset* — on a wide screen the form
    column stays in view while the drawings and results scroll, so they
    are always at hand there; on a narrow one each editor's pane has them

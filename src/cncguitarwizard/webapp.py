@@ -622,6 +622,134 @@ def _editor_group(name: str) -> str | None:
     return None
 
 
+REPAIR_FIRST = (
+    "neck_bolts",
+    "body_heel_relief_line",
+    "heel_relief_points",
+    "body_neck_plate",
+)
+"""The settings ``repair_design`` tries first: those the editors' commonest
+problems come from (a neck bolt with no room, a heel relief line or a neck
+plate that does not fit)."""
+
+
+def design_problems(payload: dict[str, Any]) -> list[str]:
+    """Return what the body, headstock and inlay editors would show in red.
+
+    Each editor's error and every problem its layout reports (a neck bolt
+    with no room, a humbucker frame or lettering that does not fit), and
+    each of the body's features that falls outside its outline.
+
+    Args:
+        payload: ``{"prototype": {...}}`` as for ``start_build``.
+
+    Returns:
+        The messages, in the editors' order; empty when all is well.
+    """
+    found: list[str] = []
+
+    def collect(value: Any) -> None:
+        if isinstance(value, dict):
+            for key, item in value.items():
+                if key in ("error", "problem") and isinstance(item, str) and item:
+                    found.append(item)
+                elif key == "problems" and isinstance(item, list):
+                    found.extend(str(problem) for problem in item if problem)
+                else:
+                    collect(item)
+        elif isinstance(value, list):
+            for item in value:
+                collect(item)
+
+    body = body_editor_layout(payload)
+    collect(body)
+    found.extend(
+        f"{name} falls outside the outline." for name in body.get("outside", [])
+    )
+    collect(headstock_editor_layout(payload))
+    collect(inlay_editor_layout(payload))
+    return found
+
+
+def repair_design(
+    payload: dict[str, Any], changes: list[dict[str, Any]]
+) -> dict[str, Any]:
+    """Return which changed settings to put back so no editor shows red.
+
+    A design put back in the page (or loaded) must not stay in error. The
+    settings it changed from their defaults are tried at their defaults,
+    those the commonest problems come from first (``REPAIR_FIRST``): one
+    at a time, keeping each that leaves fewer problems; then, if some are
+    left, more together in turn until none are (the defaults themselves
+    show none); and last, any of those put back for nothing get the
+    design's own value again.
+
+    Args:
+        payload: ``{"prototype": {...}}`` as for ``start_build``.
+        changes: The changed settings as the form holds them, each
+            ``{"set", "name", "default"}`` (``set`` ``"prototype"`` or a
+            variant's, ``"prototype.body_shape"``; a variant's own kind with
+            ``"kind": true``, its whole variant put back).
+
+    Returns:
+        ``{"problems", "reset", "remaining"}``: what was wrong, the indices
+        into ``changes`` to put back (in order) and what is still wrong.
+    """
+
+    def applied(indices: list[int]) -> dict[str, Any]:
+        result = payload
+        for index in indices:
+            result = _with_default(result, changes[index])
+        return result
+
+    problems = design_problems(payload)
+    remaining = problems
+    reset: list[int] = []
+    order = sorted(
+        range(len(changes)),
+        key=lambda index: changes[index]["name"] not in REPAIR_FIRST,
+    )
+    # One at a time, whichever leaves fewer problems.
+    while remaining:
+        for index in order:
+            if index in reset:
+                continue
+            left = design_problems(applied([*reset, index]))
+            if len(left) < len(remaining):
+                reset.append(index)
+                remaining = left
+                break
+        else:
+            break
+    # More together, in turn, until none are left.
+    for index in order:
+        if not remaining:
+            break
+        if index not in reset:
+            reset.append(index)
+            remaining = design_problems(applied(reset))
+    # The design's own value again where its default was not needed.
+    if not remaining:
+        for index in reversed(list(reset)):
+            without = [other for other in reset if other != index]
+            if not design_problems(applied(without)):
+                reset = without
+    return {"problems": problems, "reset": reset, "remaining": remaining}
+
+
+def _with_default(payload: dict[str, Any], change: dict[str, Any]) -> dict[str, Any]:
+    """Return a copy of ``payload`` with one setting at its default."""
+    copy: dict[str, Any] = json.loads(json.dumps(payload))
+    target = copy
+    for part in str(change["set"]).split("."):
+        target = target.setdefault(part, {})
+    if change.get("kind"):
+        target[change["name"]] = {"kind": change["default"]}
+    else:
+        target[change["name"]] = change["default"]
+    return copy
+
+
 def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
     """Describe the body features for the web app's outline editor.
 
@@ -678,7 +806,9 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         and its holes — or ``None``;
         ``arm_contour`` and ``belly_cut`` ``{"points", "automatic"}`` — the
         lines where they start (see ``_contour_line``) — or ``None``, and
-        ``heel_relief`` the same; ``problems`` what the build refuses that is
+        ``heel_relief`` the same; ``outside`` the names of the features
+        that fall outside the outline (as the editor checks it); ``problems``
+        what the build refuses that is
         drawn anyway (``BodyLayout.problems``: a heel relief's corner line
         drawn as the U, neck bolts with no room where they are asked to go);
         ``frames`` each humbucker frame's ``{"position", "field", "turned",
@@ -768,7 +898,7 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         polygons.append(polygon(cover.name, "cover", cover.outline))
         for pocket in rear.pockets:
             polygons.append(polygon(pocket.name, "rear", pocket.outline))
-    circles = [
+    circles: list[dict[str, Any]] = [
         {
             "name": hole.name,
             "group": _editor_group(hole.name),
@@ -843,6 +973,25 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         *((controls.control_cavity.cavity.outline,) if controls.control_cavity else ()),
         *(top.outline for top in controls.top_cavities if top.name == "Control cavity"),
     ]
+    # The features outside the outline, as the editor finds them: contours
+    # follow the outline, and the pocket may open onto the horn gap (only
+    # its tail wall must be in wood).
+    body = [Point2D(x, y) for x, y in local(layout.outline.points)]
+    outside = {
+        polygon["name"]
+        for polygon in polygons
+        if polygon["role"] not in ("neck", "plateau")
+        and not polygon["role"].startswith("contour")
+        and any(
+            not point_in_polygon(Point2D(x, y), body)
+            for x, y in polygon["points"]
+            if polygon["role"] != "pocket" or x > -1.0
+        )
+    } | {
+        circle["name"]
+        for circle in circles
+        if not point_in_polygon(Point2D(circle["x"], circle["y"]), body)
+    }
     return {
         "heel_end": round(heel_end, 2),
         "mirrored": built.left_handed,
@@ -865,6 +1014,7 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         },
         "polygons": polygons,
         "circles": circles,
+        "outside": sorted(outside),
         "jack": _jack_view(layout.jack_hole, heel_end, control_outlines),
         "control": control,
         "pickups": {

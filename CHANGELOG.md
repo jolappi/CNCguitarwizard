@@ -915,6 +915,11 @@
 
 ### Fixed
 
+- A design put back on loading the page, or loaded from a file, never
+  stays in error: whatever would make an editor show red (an error, a
+  neck bolt with no room, a feature outside the outline) is put back to
+  its default, the settings that cause it found by trying the changed
+  ones, and the status line names them (Undo takes it back).
 - The body editor no longer stays empty when a design's neck bolts have
   no room (after a reload, or a design loaded): it draws them where they
   are asked to go, to be dragged where they fit, and says why in red; the
