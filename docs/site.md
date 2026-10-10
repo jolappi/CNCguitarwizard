@@ -185,7 +185,10 @@ Python.
    round handles: dragging one writes `arm_contour_points`, a click on the
    line adds one, Alt- or right-click removes one, and *Auto arm contour*
    empties them again. The belly cut's line works the same, in blue, with
-   `body_belly_cut_depth`, `belly_cut_points` and *Auto belly cut*. With `body_engraving` on (beside the editor too, with
+   `body_belly_cut_depth`, `belly_cut_points` and *Auto belly cut*, and the
+   heel relief's on the back where the neck joins, in plum, with
+   `body_heel_relief` (a contour or a notch, beside the editor with its
+   depth), `heel_relief_points` and *Auto heel relief*. With `body_engraving` on (beside the editor too, with
    `body_engraving_seed`) the decorative engraving is drawn in blue lines,
    and *New pattern* sets a new random seed (turning the engraving on);
    *Reroll* beside `body_engraving_seed` (in the form and the editor's

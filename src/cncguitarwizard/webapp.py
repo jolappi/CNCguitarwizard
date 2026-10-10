@@ -915,6 +915,9 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         "belly_cut": _contour_line(
             parameters, layout.contours, local, "Belly cut", "belly_cut_points"
         ),
+        "heel_relief": _contour_line(
+            parameters, layout.contours, local, "Heel relief", "heel_relief_points"
+        ),
         "engraving": (
             [local(line) for line in layout.engraving.lines]
             if layout.engraving is not None

@@ -1,4 +1,4 @@
-"""Edge finishes: roundovers, binding channels and arm / belly contours.
+"""Edge finishes: roundovers, binding channels, arm / belly contours and heel reliefs.
 
 Everything here is optional; a body with none of it keeps the square
 edges and flat faces of the slab.
@@ -12,7 +12,7 @@ from dataclasses import dataclass, replace
 from typing import Literal
 
 from ..exceptions import BodyGeometryError
-from ..primitives import Point2D
+from ..primitives import Point2D, point_in_polygon
 
 
 @dataclass(frozen=True, slots=True)
@@ -60,6 +60,9 @@ class EdgeProfile:
 
 CONTOUR_SAMPLE_SPACING = 4.0
 """Spacing of the edge samples a contour is described by, in mm."""
+
+CONTOUR_WASTE = 10.0
+"""How far past the edge (into the waste) a contour's layers reach, in mm."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -306,11 +309,23 @@ class ContourCut:
         reach = self.reach(s)
         if reach <= 0.0:
             return 0.0
-        fade = reach / self.width
         if inward >= reach:
             return 0.0
+        fade = reach / self.width
         ramp = self.depth * fade * (1.0 - inward / reach)
         return min(ramp, self.depth * fade * 1.5)
+
+    def machining_depth(self, point: Point2D, slot: float) -> float:
+        """Return the depth a cutter takes at ``point``.
+
+        On the body, the bevel's; past the edge the ramp runs on through
+        the outline's slot (``slot`` wide), where the cutter finishes the
+        edge from, and no further.
+        """
+        s, inward = self.locate(point)
+        if inward < -slot:
+            return 0.0
+        return self.depth_from(s, inward)
 
     def max_depth(self, outline: Sequence[Point2D]) -> float:
         """Return the deepest the bevel goes on the body (at its edge)."""
@@ -326,6 +341,316 @@ class ContourCut:
     def region(self, outline: Sequence[Point2D] = ()) -> tuple[Point2D, ...]:
         """Return the bevelled area: the edge stretch and the bevel's inner edge."""
         return (*self.edge, *reversed(self.inner_edge()))
+
+    def level_region(self, level: float) -> tuple[Point2D, ...]:
+        """Return the area where the bevel is deeper than ``level``.
+
+        Bounded inside the body by where the ramp passes that depth and
+        outside it by a line ``CONTOUR_WASTE`` past the edge, so a terrace
+        cut down to ``level`` clears the edge too.
+        """
+        inner: list[Point2D] = []
+        outer: list[Point2D] = []
+        for point, normal, arc in zip(self.edge, self.normals, self.arc, strict=True):
+            edge_depth = self.depth * self.fade(arc)
+            if edge_depth <= level:
+                continue
+            reach = self.reach(arc) * (1.0 - level / edge_depth)
+            inner.append(
+                Point2D(point.x + normal.x * reach, point.y + normal.y * reach)
+            )
+            outer.append(
+                Point2D(
+                    point.x - normal.x * CONTOUR_WASTE,
+                    point.y - normal.y * CONTOUR_WASTE,
+                )
+            )
+        return (*inner, *reversed(outer))
+
+
+HEEL_RELIEF_RULINGS = 72
+"""How many rulings (edge point to line point) a heel relief is drawn by."""
+
+
+@dataclass(frozen=True, slots=True)
+class HeelRelief:
+    """A relief cut into the back where the neck's heel meets the body.
+
+    It runs from ``edge`` (the body's edge at the neck end) in to ``line``
+    (where it starts on the face). Its surface is ruled: both are sampled
+    evenly along their lengths, the same number of points each, and the
+    samples are joined in order, so a concave edge (between a body's
+    horns) gives no crossing rulings. Along each ruling a ``"ramp"`` (a
+    contour) rises from ``depth`` at the edge to the face at the line; a
+    ``"flat"`` profile (a notch) is ``depth`` deep all the way in, a wall
+    at the line; a ``"plane"`` (a bevel for a neck plate to sit on) is a
+    flat slope across the neck, ``depth`` deep at ``plane[0]`` along X and
+    at the face at ``plane[1]``, never deeper than ``depth``.
+
+    Args:
+        name: Its name, e.g. ``"Heel relief"``.
+        edge: The edge stretch it runs from, ``HEEL_RELIEF_RULINGS`` evenly
+            spaced points.
+        line: Where it starts on the face, as many points, from the end
+            nearer ``edge[0]``.
+        depth: How deep it is at its deepest.
+        profile: ``"ramp"``, ``"flat"`` or ``"plane"``.
+        plane: For a ``"plane"``: the X where it is ``depth`` deep and the
+            X where it meets the face.
+        carries: The holes drilled from its surface (their depths, from
+            the face, take it in): they may start on it.
+        face: Always the back.
+
+    Raises:
+        BodyGeometryError: For a depth that is not finite and positive,
+            mismatched samples, or a plane whose two X are the same.
+    """
+
+    name: str
+    edge: tuple[Point2D, ...]
+    line: tuple[Point2D, ...]
+    depth: float
+    profile: Literal["ramp", "flat", "plane"] = "ramp"
+    plane: tuple[float, float] = (0.0, 0.0)
+    carries: tuple[str, ...] = ()
+    face: Literal["back"] = "back"
+
+    def __post_init__(self) -> None:
+        """Reject a relief that cannot be cut."""
+        if not math.isfinite(self.depth) or self.depth <= 0.0:
+            raise BodyGeometryError(f"{self.name} depth must be positive.")
+        if len(self.edge) != len(self.line) or len(self.edge) < 2:
+            raise BodyGeometryError(
+                f"{self.name} needs matching edge and line samples."
+            )
+        if self.profile == "plane" and math.isclose(self.plane[0], self.plane[1]):
+            raise BodyGeometryError(f"{self.name}'s slope needs a length.")
+
+    @classmethod
+    def between(
+        cls,
+        name: str,
+        outline: Sequence[Point2D],
+        line: Sequence[Point2D],
+        depth: float,
+        profile: Literal["ramp", "flat", "plane"] = "ramp",
+        plane: tuple[float, float] = (0.0, 0.0),
+    ) -> HeelRelief:
+        """Return a relief from the edge in to ``line``.
+
+        The line's ends are taken onto the outline; the relief runs from
+        the stretch of edge between them (the way round nearer the line's
+        middle).
+
+        Raises:
+            BodyGeometryError: For a line of fewer than two points or with
+                its ends too close together on the edge.
+        """
+        if len(line) < 2:
+            raise BodyGeometryError(f"{name} line needs at least two points.")
+        stretch = _stretch_between(name, outline, line)
+        return cls(
+            name,
+            _resample(stretch, HEEL_RELIEF_RULINGS),
+            _resample(line, HEEL_RELIEF_RULINGS),
+            depth,
+            profile,
+            plane,
+        )
+
+    def _profile_depth(self, t: float, point: Point2D) -> float:
+        """Return the depth ``t`` of the way along a ruling, at ``point``."""
+        if self.profile == "flat":
+            return self.depth
+        if self.profile == "plane":
+            deep, face = self.plane
+            fraction = (face - point.x) / (face - deep)
+            return self.depth * min(1.0, max(0.0, fraction))
+        return self.depth * (1.0 - t)
+
+    def _locate(self, point: Point2D) -> float | None:
+        """Return how far along the rulings ``point`` lies (0 at the edge,
+        1 at the line), or ``None`` outside the relief."""
+        for k in range(len(self.edge) - 1):
+            quad = (self.edge[k], self.edge[k + 1], self.line[k + 1], self.line[k])
+            if not _in_box(point, quad) or not point_in_polygon(point, quad):
+                continue
+            t0, d0 = _along(self.edge[k], self.line[k], point)
+            t1, d1 = _along(self.edge[k + 1], self.line[k + 1], point)
+            t = t0 if d0 + d1 <= 1e-12 else (t0 * d1 + t1 * d0) / (d0 + d1)
+            return min(1.0, max(0.0, t))
+        return None
+
+    def depth_at(self, point: Point2D) -> float:
+        """Return the relief's depth below the back face at ``point``."""
+        t = self._locate(point)
+        return 0.0 if t is None else self._profile_depth(t, point)
+
+    def machining_depth(self, point: Point2D, slot: float) -> float:
+        """Return the depth a cutter takes at ``point``.
+
+        On the relief, its depth; past the edge, in the outline's slot
+        (``slot`` wide, where the cutter finishes the edge from), the
+        depth at the nearest edge point, and nothing further out.
+        """
+        t = self._locate(point)
+        if t is not None:
+            return self._profile_depth(t, point)
+        nearest, distance, outside = _nearest_on(self.edge, point, self._clockwise)
+        if distance > slot or not outside:
+            return 0.0
+        return self._profile_depth(0.0, nearest)
+
+    @property
+    def _clockwise(self) -> bool:
+        region = self.region()
+        area = sum(
+            a.x * b.y - b.x * a.y
+            for a, b in zip(region, (*region[1:], region[0]), strict=True)
+        )
+        return area < 0.0
+
+    def max_depth(self, outline: Sequence[Point2D]) -> float:
+        """Return the deepest the relief goes."""
+        return self.depth
+
+    def inner_edge(self) -> tuple[Point2D, ...]:
+        """Return where the relief meets the face (its line)."""
+        return self.line
+
+    def region(self, outline: Sequence[Point2D] = ()) -> tuple[Point2D, ...]:
+        """Return the relieved area: the edge stretch and the line."""
+        return (*self.edge, *reversed(self.line))
+
+    def level_region(self, level: float) -> tuple[Point2D, ...]:
+        """Return the area where the relief is deeper than ``level``.
+
+        Along each ruling, from ``CONTOUR_WASTE`` past the edge (into the
+        waste) in to where it passes that depth (the wall, for a flat
+        profile); rulings no deeper than ``level`` at the edge are left
+        out.
+        """
+        inner: list[Point2D] = []
+        outer: list[Point2D] = []
+        clockwise = self._clockwise
+        for k, (e, start) in enumerate(zip(self.edge, self.line, strict=True)):
+            if self._profile_depth(0.0, e) <= level:
+                continue
+            if self.profile == "flat":
+                t = 1.0
+            elif self.profile == "plane":
+                deep, face = self.plane
+                x = face - (level / self.depth) * (face - deep)
+                t = 1.0 if math.isclose(start.x, e.x) else (x - e.x) / (start.x - e.x)
+                t = min(1.0, max(0.0, t))
+            else:
+                t = 1.0 - level / self.depth
+            inner.append(Point2D(e.x + (start.x - e.x) * t, e.y + (start.y - e.y) * t))
+            out = _outward(self.edge, k, clockwise)
+            outer.append(
+                Point2D(e.x + out.x * CONTOUR_WASTE, e.y + out.y * CONTOUR_WASTE)
+            )
+        return (*inner, *reversed(outer))
+
+
+Contour = ContourCut | HeelRelief
+"""A bevel or relief cut into a face: an arm contour, a belly cut, a heel relief."""
+
+
+def _stretch_between(
+    name: str, outline: Sequence[Point2D], line: Sequence[Point2D]
+) -> list[Point2D]:
+    """Return the outline stretch between ``line``'s ends, from the first.
+
+    The ends are taken onto the nearest outline points; of the two ways
+    round between them, the one whose middle is nearer the line's middle.
+    """
+    points = list(outline)
+    count = len(points)
+
+    def nearest(p: Point2D) -> int:
+        return min(range(count), key=lambda i: math.dist(_xy(points[i]), _xy(p)))
+
+    first, last = nearest(line[0]), nearest(line[-1])
+    middle = line[len(line) // 2]
+    forward, backward = (last - first) % count, (first - last) % count
+    way_forward = points[(first + forward // 2) % count]
+    way_back = points[(last + backward // 2) % count]
+    if math.dist(_xy(way_forward), _xy(middle)) <= math.dist(
+        _xy(way_back), _xy(middle)
+    ):
+        stretch = [points[(first + k) % count] for k in range(forward + 1)]
+    else:
+        stretch = [points[(last + k) % count] for k in range(backward + 1)][::-1]
+    if len(stretch) < 3:
+        raise BodyGeometryError(f"{name} line's ends are too close together.")
+    return stretch
+
+
+def _resample(points: Sequence[Point2D], count: int) -> tuple[Point2D, ...]:
+    """Return ``count`` points evenly spaced along the polyline ``points``."""
+    lengths = [0.0]
+    for a, b in zip(points, points[1:], strict=False):
+        lengths.append(lengths[-1] + math.dist(_xy(a), _xy(b)))
+    total = lengths[-1]
+    out: list[Point2D] = []
+    index = 0
+    for k in range(count):
+        target = total * k / (count - 1)
+        while index < len(points) - 2 and lengths[index + 1] < target:
+            index += 1
+        a, b = points[index], points[index + 1]
+        span = lengths[index + 1] - lengths[index]
+        t = 0.0 if span <= 0.0 else (target - lengths[index]) / span
+        out.append(Point2D(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t))
+    return tuple(out)
+
+
+def _in_box(point: Point2D, polygon: Sequence[Point2D]) -> bool:
+    xs = [p.x for p in polygon]
+    ys = [p.y for p in polygon]
+    return min(xs) <= point.x <= max(xs) and min(ys) <= point.y <= max(ys)
+
+
+def _along(a: Point2D, b: Point2D, point: Point2D) -> tuple[float, float]:
+    """Return how far along ``a``→``b`` ``point`` projects, and its distance off it."""
+    ex, ey = b.x - a.x, b.y - a.y
+    size = ex * ex + ey * ey
+    if size <= 0.0:
+        return 0.0, math.dist(_xy(a), _xy(point))
+    wx, wy = point.x - a.x, point.y - a.y
+    return (wx * ex + wy * ey) / size, abs(wx * ey - wy * ex) / math.sqrt(size)
+
+
+def _outward(edge: Sequence[Point2D], k: int, clockwise: bool) -> Point2D:
+    """Return the unit normal at ``edge[k]`` pointing away from the relief."""
+    a = edge[max(0, k - 1)]
+    b = edge[min(len(edge) - 1, k + 1)]
+    tx, ty = b.x - a.x, b.y - a.y
+    size = math.hypot(tx, ty) or 1.0
+    # The relief lies left of the edge's direction when it runs counter-
+    # clockwise round it (edge forward, line back).
+    nx, ny = (ty / size, -tx / size) if not clockwise else (-ty / size, tx / size)
+    return Point2D(nx, ny)
+
+
+def _nearest_on(
+    edge: Sequence[Point2D], point: Point2D, clockwise: bool
+) -> tuple[Point2D, float, bool]:
+    """Return the nearest point on the polyline ``edge``, its distance, and
+    whether ``point`` lies on the side away from the relief."""
+    best = (edge[0], math.inf, False)
+    for k in range(len(edge) - 1):
+        a, b = edge[k], edge[k + 1]
+        t, _ = _along(a, b, point)
+        t = min(1.0, max(0.0, t))
+        c = Point2D(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t)
+        distance = math.dist(_xy(c), _xy(point))
+        if distance < best[1]:
+            cross = (b.x - a.x) * (point.y - a.y) - (b.y - a.y) * (point.x - a.x)
+            outside = cross < 0.0 if not clockwise else cross > 0.0
+            best = (c, distance, outside)
+    return best
 
 
 def _xy(point: Point2D) -> tuple[float, float]:

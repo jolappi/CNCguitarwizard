@@ -68,7 +68,7 @@ Three programs are written, in running order:
 | `Body_top_relief.nc` | Top up, on the dowels (only with the `camo` engraving) | The camo relief's shapes, each cleared flat to its level (0.5, 1, 1.5 or 2 mm at the default depth) with a flat end mill (`relief_tool_diameter`, 3 mm) in `engraving_step_down` passes, one inside another on from that one's floor; run it before a top roundover |
 | `Body_top_engraving.nc` | Top up, on the dowels (only with `body_engraving`) | The decorative engraving with a V-bit (`engraving_tool_angle`, 60°), each line in `engraving_step_down` (1 mm) passes back and forth to `body_engraving_depth` (2 mm), the nearest line next; run it before a top roundover, while the top is flat |
 | `Body_back_small_holes.nc` | Back up, on the dowels | The neck-bolt holes (narrower than the main tool) with the `small_hole_tool_diameter` drill, from each ferrule's floor into the neck pocket, and the cover-screw spots on the recess ledges |
-| `Body_back_edges.nc` | Back up, on the dowels (only with a belly cut or back roundover) | The belly cut and the back roundover, with the ball nose |
+| `Body_back_edges.nc` | Back up, on the dowels (only with a belly cut, a heel relief or back roundover) | The belly cut, the heel relief and the back roundover, with the ball nose |
 | `Cover_<name>.nc` | A sheet on a spoilboard | One program per cover plate (below) |
 
 The electronics are in their own programs so the body can be cut with or
@@ -86,11 +86,14 @@ All optional and off by default (`cam.body_edges`):
   every 1.5 mm and pushed along smoothed normals; where a sample would come
   too close to a pointed horn or a tight cutaway the pass lifts over it.
   Inside an arm contour or belly cut the passes follow the bevel down.
-- **Arm contour / belly cut**: the bevel's depth map is sampled on a 1 mm
-  grid over its area plus the outline's slot, offset for the ball
-  (drop-cutter), roughed in step-down layers and finished with passes 1 mm
-  apart that run only where the surface is below the face; the waste past
-  the slot is left alone.
+- **Arm contour / belly cut / heel relief**: the bevel's depth map is
+  sampled on a 1 mm grid over its area plus the outline's slot, offset for
+  the ball (drop-cutter), roughed in step-down layers and finished with
+  passes 1 mm apart that run only where the surface is below the face; the
+  waste past the slot is left alone. A heel relief's notch comes out flat
+  with a wall rounded at its foot by the ball; the neck-bolt ferrules
+  drilled under a relief are that much deeper from the back face, so they
+  come out right whichever program runs first.
 - **Binding channel** (`body_top_binding_width` / `_depth`, and the back's):
   a profile with the main end mill, `binding_width` inside the outline,
   after the outline pass of the same face.

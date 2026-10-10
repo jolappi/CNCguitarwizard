@@ -214,7 +214,7 @@ const EDITOR_FIELDS = {
     "body_neck_pickup_offset", "body_middle_pickup_offset", "body_bridge_pickup_offset", "body_pickups_follow_fan",
     "body_bridge", "body_bridge_follows_fan", "body_controls", "body_switch", "body_jack",
     "body_pickguard", "body_pickguard_style", "body_pickup_frame", "body_pickup_frame_direction",
-    "body_arm_contour_depth", "body_belly_cut_depth", "body_carved_top", "body_carve_depth", "body_stepped_top",
+    "body_arm_contour_depth", "body_belly_cut_depth", "body_heel_relief", "body_heel_relief_depth", "body_carved_top", "body_carve_depth", "body_stepped_top",
     "body_engraving", "body_engraving_pattern", "body_engraving_seed", "body_battery_box", "body_battery_count",
     "body_neck_bolts_outward",
   ],
@@ -2016,6 +2016,7 @@ function openCatmullRom(points, samples) {
 const CONTOUR_LINES = [
   { key: "arm", layout: "arm_contour", field: "arm_contour_points", label: "arm contour" },
   { key: "belly", layout: "belly_cut", field: "belly_cut_points", label: "belly cut" },
+  { key: "heel", layout: "heel_relief", field: "heel_relief_points", label: "heel relief" },
 ];
 
 function pointInPolygon(x, y, polygon) {
@@ -2453,9 +2454,9 @@ const bodyEditor = {
       this.element("path", { class: "engraving", d: this.openPath(line) });
     }
 
-    // The lines where the arm contour and the belly cut start, with
-    // round handles at their control points; dragging one draws it
-    // (arm_contour_points / belly_cut_points).
+    // The lines where the arm contour, the belly cut and the heel relief
+    // start, with round handles at their control points; dragging one
+    // draws it (arm_contour_points / belly_cut_points / heel_relief_points).
     this.contourLines = {};
     for (const spec of CONTOUR_LINES) {
       const data = layout[spec.layout];
@@ -3947,7 +3948,7 @@ document.addEventListener("keydown", (event) => {
 });
 
 // The body editor's Auto buttons only where they do something (a
-// pickguard, an arm contour, a stepped top, a belly cut on), and New
+// pickguard, an arm contour, a stepped top, a belly cut, a heel relief on), and New
 // pattern with an engraving laid out at random (not a drawn one).
 function syncBodyButtons() {
   const field = (name) => form.querySelector(`[data-set="prototype"][data-name="${name}"]`);
@@ -3958,6 +3959,7 @@ function syncBodyButtons() {
     "body-editor-auto-arm": positive("body_arm_contour_depth"),
     "body-editor-auto-steps": on("body_stepped_top"),
     "body-editor-auto-belly": positive("body_belly_cut_depth"),
+    "body-editor-auto-heel": (field("body_heel_relief")?.value ?? "none") !== "none",
     "body-editor-new-pattern": on("body_engraving") && field("body_engraving_pattern")?.value !== "drawn",
   };
   for (const [id, visible] of Object.entries(shown)) document.getElementById(id).hidden = !visible;
@@ -3974,6 +3976,7 @@ document.getElementById("body-editor-auto-guard").addEventListener("click", () =
 document.getElementById("body-editor-auto-steps").addEventListener("click", () => bodyEditor.autoSteps());
 document.getElementById("body-editor-auto-arm").addEventListener("click", () => bodyEditor.autoContour("arm"));
 document.getElementById("body-editor-auto-belly").addEventListener("click", () => bodyEditor.autoContour("belly"));
+document.getElementById("body-editor-auto-heel").addEventListener("click", () => bodyEditor.autoContour("heel"));
 // A new engraving pattern: another seed (turning the engraving on).
 document.getElementById("body-editor-new-pattern").addEventListener("click", () => {
   setControlValue(bodyEditor.field("prototype", "body_engraving"), true);

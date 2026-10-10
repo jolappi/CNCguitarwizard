@@ -332,7 +332,8 @@ pocket, and 1 mm between ferrules, or the build says which one to move.
 The Design by Jone body's deep treble cutaway leaves room for ferrules
 only near the heel end on that side, so its treble pair sits at x = -24
 and -6 (y about 10 and 19). In the body editor the bolts can be dragged
-along the neck like the cavities.
+along the neck like the cavities. Under a heel relief each ferrule sinks
+its depth into the relief's surface (see Heel relief).
 
 ## Controls and cover plates
 
@@ -724,6 +725,7 @@ Optional, and off by default (`geometry.body.edges`):
 | `body_top_binding_width` / `_depth`, `body_back_binding_width` / `_depth` | A binding channel (rabbet) instead of a roundover; the default depth is 6 mm |
 | `body_arm_contour_depth`, `_width`, `_length`, `_position` | A Strat-style arm contour on the top of the bass-side rear bout |
 | `body_belly_cut_depth`, `_width`, `_length`, `_position` | A belly cut on the back of the bass-side upper bout |
+| `body_heel_relief`, `_depth`, `_reach` | A heel relief on the back where the neck joins: `"contour"` or `"notch"` |
 
 A `ContourCut` follows `length` of the outline (resampled every 4 mm)
 centred on its deepest point. Across the edge it is a straight ramp from
@@ -750,6 +752,42 @@ at least); *Auto arm contour* empties the points again. The belly cut's
 line is drawn the same way: `belly_cut_points` (seen from the top, as the
 outline is) with `body_belly_cut_depth`, in blue on the editor, *Auto
 belly cut* emptying them.
+
+### Heel relief
+
+`body_heel_relief` cuts the back away where the neck's heel meets the
+body, so the hand reaches the top frets: a `"contour"` is a smooth bevel,
+`body_heel_relief_depth` (6 mm) deep at the body's edge at the neck end
+and rising to the face at a line; a `"notch"` is a flat step that deep, a
+wall at the line. The line is the shape's `heel_relief_points` when drawn
+(X from the heel end, its ends on the body's edge, an open Catmull-Rom
+curve), else a U round the heel: from the centreline
+`body_heel_relief_reach` (15 mm) behind the heel end, forward along both
+sides that far out from the neck pocket, each to where it first leaves
+the body (the cutaway's or the horn's edge beside the neck).
+
+The edge between the bevels at a body's neck end is concave (between its
+horns), where an arm contour's normals would cross, so a `HeelRelief` is
+a ruled surface instead: the edge stretch between the line's ends (the
+way round nearer the line's middle) and the line are each resampled to
+`HEEL_RELIEF_RULINGS` (72) points along their lengths and joined in
+order. Along each ruling a contour ramps from the edge's depth to the
+face, a notch stays flat to its wall. Its depth anywhere is found by the
+ruling quad a point lies in (`depth_at`); past the edge, in the outline's
+slot, the edge's depth runs on so the ball finishes the edge
+(`machining_depth`); its FreeCAD layers are the rulings cut where they
+pass each depth, with 10 mm of waste past the edge (`level_region`). A
+neck-through or one-piece body has no heel to relieve.
+
+The neck bolts are drilled from the relief: a ferrule sinks
+`body_neck_ferrule_depth` into its surface (its counterbore, from the
+back face, that much deeper; `carries` names them, so `BodySolid` lets
+them start on it), and must still leave `NECK_BOLT_MIN_WOOD` (5 mm) over
+the neck pocket for the bolt to pull on — a deep relief behind a thin
+heel says which bolt. In the body editor the relief's line is drawn in
+plum with round handles, worked as the contours' are (*Auto heel relief*
+goes back to the U), and `body_heel_relief` and its depth sit in the
+editor's *Settings*.
 
 `BodySolid` checks that each edge finish reaches less than half the
 thickness less 2 mm; that a roundover lowers the rim of a cavity near the

@@ -10,7 +10,7 @@ from ..exceptions import BodyGeometryError
 from ..primitives import Point2D, nudge_inward, point_in_polygon
 from .bridges import SideHole
 from .carve import CarvedTop
-from .edges import ContourCut, EdgeProfile
+from .edges import Contour, EdgeProfile, HeelRelief
 from .engraving import Engraving
 from .hardware import BridgeMounting, Cavity, DrilledHole, JackHole, RearCavity
 from .outline import BodyOutline, TracedOutline
@@ -168,7 +168,7 @@ class BodySolid:
     control_top_marks: tuple[DrilledHole, ...] = ()
     top_edge: EdgeProfile = field(default_factory=EdgeProfile)
     back_edge: EdgeProfile = field(default_factory=EdgeProfile)
-    contours: tuple[ContourCut, ...] = ()
+    contours: tuple[Contour, ...] = ()
     truss_rod_access: Cavity | None = None
     engraving: Engraving | None = None
     carved_top: CarvedTop | None = None
@@ -521,8 +521,19 @@ class BodySolid:
                 if any(contour.depth_at(p) > 0.0 for p in cavity.outline):
                     raise BodyGeometryError(f"{contour.name} cuts into {cavity.name}.")
             for hole in holes:
-                if contour.depth_at(hole.center) > 0.0:
-                    raise BodyGeometryError(f"{contour.name} cuts into {hole.name}.")
+                bevel = contour.depth_at(hole.center)
+                if bevel <= 0.0:
+                    continue
+                # A hole drilled from the bevel's surface (its depth takes
+                # the bevel in) may start on it, if it still reaches into
+                # the wood below.
+                if (
+                    isinstance(contour, HeelRelief)
+                    and hole.name in contour.carries
+                    and hole.depth > bevel
+                ):
+                    continue
+                raise BodyGeometryError(f"{contour.name} cuts into {hole.name}.")
             # A cavity routed from the other face must keep 3 mm of wood
             # under the bevel.
             for cavity in other_face:

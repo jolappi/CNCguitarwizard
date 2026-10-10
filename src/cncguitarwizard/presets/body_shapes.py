@@ -120,6 +120,9 @@ class DesignByJoneShape:
         belly_cut_points: The same for a drawn belly cut on the back (seen
             from the top, as the outline is), used with
             ``Prototype001Parameters.body_belly_cut_depth``.
+        heel_relief_points: The same for a drawn heel relief on the back,
+            where the neck joins (used with
+            ``Prototype001Parameters.body_heel_relief``).
         step_points: A drawn stepped top's step lines (used with
             ``Prototype001Parameters.body_stepped_top``): one closed
             polygon of points (X from the heel end, Y) per step, joined by
@@ -158,6 +161,7 @@ class DesignByJoneShape:
     pickguard_points: tuple[tuple[float, float], ...] = ()
     arm_contour_points: tuple[tuple[float, float], ...] = ()
     belly_cut_points: tuple[tuple[float, float], ...] = ()
+    heel_relief_points: tuple[tuple[float, float], ...] = ()
     step_points: tuple[tuple[tuple[float, float], ...], ...] = ()
     # Whether the traced outline and almond cavity (constants drawn
     # right-handed) are mirrored: set by mirrored_shape, with every other
@@ -302,6 +306,9 @@ class YourDesignShape:
         belly_cut_points: The same for a drawn belly cut on the back (seen
             from the top, as the outline is), used with
             ``Prototype001Parameters.body_belly_cut_depth``.
+        heel_relief_points: The same for a drawn heel relief on the back,
+            where the neck joins (used with
+            ``Prototype001Parameters.body_heel_relief``).
         step_points: A drawn stepped top's step lines (used with
             ``Prototype001Parameters.body_stepped_top``): one closed
             polygon of points (X from the heel end, Y) per step, joined by
@@ -338,6 +345,7 @@ class YourDesignShape:
     pickguard_points: tuple[tuple[float, float], ...] = ()
     arm_contour_points: tuple[tuple[float, float], ...] = ()
     belly_cut_points: tuple[tuple[float, float], ...] = ()
+    heel_relief_points: tuple[tuple[float, float], ...] = ()
     step_points: tuple[tuple[tuple[float, float], ...], ...] = ()
     # Whether the traced outline and almond cavity (constants drawn
     # right-handed) are mirrored: set by mirrored_shape, with every other
@@ -439,6 +447,7 @@ def mirrored_shape(shape: BodyShapeSpec) -> BodyShapeSpec:
         pickguard_points=_side(shape.pickguard_points, True),
         arm_contour_points=flipped(shape.arm_contour_points),
         belly_cut_points=flipped(shape.belly_cut_points),
+        heel_relief_points=flipped(shape.heel_relief_points),
         step_points=tuple(_side(polygon, True) for polygon in shape.step_points),
         mirrored=not shape.mirrored,
     )
@@ -473,6 +482,7 @@ def widened_shape(shape: BodyShapeSpec, widening: float) -> BodyShapeSpec:
         pickguard_points=widen_points(shape.pickguard_points, widening),
         arm_contour_points=widen_points(shape.arm_contour_points, widening),
         belly_cut_points=widen_points(shape.belly_cut_points, widening),
+        heel_relief_points=widen_points(shape.heel_relief_points, widening),
         step_points=tuple(
             widen_points(polygon, widening) for polygon in shape.step_points
         ),

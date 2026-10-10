@@ -22,7 +22,7 @@ from .bridges import (
 )
 from .carve import CarvedTop, plateau_round
 from .covers import CoverPlate, cover_screw_points
-from .edges import ContourCut, EdgeProfile
+from .edges import Contour, ContourCut, EdgeProfile, HeelRelief
 from .engraving import EngravedPocket, Engraving
 from .hardware import (
     BridgeMounting,
@@ -59,11 +59,13 @@ __all__ = [
     "BridgeMounting",
     "BridgeSpec",
     "Cavity",
+    "Contour",
     "ContourCut",
     "CoverPlate",
     "CircularCavity",
     "DrilledHole",
     "EdgeProfile",
+    "HeelRelief",
     "EngravedPocket",
     "Engraving",
     "FloydRoseSpec",

@@ -4,6 +4,15 @@
 
 ### Added
 
+- A heel relief on the back where the neck joins the body
+  (`body_heel_relief`): a smooth contour or a flat notch,
+  `body_heel_relief_depth` deep at the edge, running in to a line drawn
+  in the body editor (plum, *Auto heel relief*: a U round the heel
+  `body_heel_relief_reach` behind it). It is a ruled surface, so the
+  concave neck end between the horns cuts cleanly; it is machined with
+  the ball nose in `Body_back_edges` and modelled in FreeCAD, and the
+  neck-bolt ferrules sink into its surface (5 mm of wood kept over the
+  pocket).
 - *Build* floats in the corner while the page's own Build is scrolled
   out of sight, showing *Building…* as it does.
 - The toolpath view says the shown program's tool, time, cutting and

@@ -13,7 +13,6 @@ from ...geometry.body import (
     BodySolid,
     CarvedTop,
     Cavity,
-    ContourCut,
     Engraving,
     NeckThrough,
 )
@@ -3445,7 +3444,7 @@ def _body_edge_lines(
         layers = max(2, math.ceil(contour.depth / EDGE_LAYER))
         for index in range(1, layers + 1):
             level = contour.depth * index / layers
-            region = _contour_level(contour, level - contour.depth / layers / 2.0)
+            region = contour.level_region(level - contour.depth / layers / 2.0)
             if len(region) < 3:
                 continue
             if contour.face == "top":
@@ -3461,23 +3460,3 @@ def _body_edge_lines(
         ")\n"
     )
     return lines
-
-
-def _contour_level(contour: ContourCut, level: float) -> tuple[Point2D, ...]:
-    """Return the area where ``contour`` is deeper than ``level``.
-
-    Bounded by the ramp's contour line inside the body and a line 10 mm
-    past the edge (into the waste) outside it.
-    """
-    inner: list[Point2D] = []
-    outer: list[Point2D] = []
-    for point, normal, arc in zip(
-        contour.edge, contour.normals, contour.arc, strict=True
-    ):
-        edge_depth = contour.depth * contour.fade(arc)
-        if edge_depth <= level:
-            continue
-        reach = contour.reach(arc) * (1.0 - level / edge_depth)
-        inner.append(Point2D(point.x + normal.x * reach, point.y + normal.y * reach))
-        outer.append(Point2D(point.x - normal.x * 10.0, point.y - normal.y * 10.0))
-    return (*inner, *reversed(outer))

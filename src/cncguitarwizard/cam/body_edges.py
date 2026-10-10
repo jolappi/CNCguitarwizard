@@ -13,7 +13,7 @@ import math
 from collections.abc import Callable, Sequence
 from dataclasses import replace
 
-from ..geometry.body import ContourCut, EdgeProfile
+from ..geometry.body import Contour, EdgeProfile
 from ..geometry.primitives import Point2D
 from .operations import profile
 from .parameters import MachiningParameters
@@ -36,7 +36,7 @@ def ball_tool(parameters: MachiningParameters) -> MachiningParameters:
 
 
 def contour_paths(
-    contour: ContourCut,
+    contour: Contour,
     to_model: ToModel,
     tool: MachiningParameters,
     floor: float = math.inf,
@@ -56,10 +56,7 @@ def contour_paths(
     slot = tool.tool_diameter + 0.5
 
     def height(x: float, y: float) -> float:
-        s, inward = contour.locate(to_model(Point2D(x, y)))
-        if inward < -slot:
-            return 0.0
-        return -min(contour.depth_from(s, inward), floor)
+        return -min(contour.machining_depth(to_model(Point2D(x, y)), slot), floor)
 
     region = [_to_machine(point, to_model) for point in contour.region()]
     min_x, min_y, max_x, max_y = polygon_bounds(region)

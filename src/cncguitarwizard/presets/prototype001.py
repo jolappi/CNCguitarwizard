@@ -17,6 +17,7 @@ from ..geometry.body import (
     BridgeSpec,
     CarvedTop,
     Cavity,
+    Contour,
     ContourCut,
     CoverPlate,
     DrilledHole,
@@ -25,6 +26,7 @@ from ..geometry.body import (
     FloydRoseSpec,
     HardtailSpec,
     HeadlessBridgeSpec,
+    HeelRelief,
     JackHole,
     KahlerBridgeSpec,
     RearCavity,
@@ -194,6 +196,10 @@ MAX_FRET_SLANT_ANGLE = 10.0
 NECK_FERRULE_BODY_WALL = 1.0
 """Least wood, in mm, between a neck-bolt ferrule and the body's edge, and
 between two ferrules."""
+
+NECK_BOLT_MIN_WOOD = 5.0
+"""Least wood, in mm, a neck-bolt ferrule's counterbore (sunk into a heel
+relief's surface) leaves over the neck pocket for the bolt to pull on."""
 
 SWITCH_SHAFT_HOLE_DIAMETERS: dict[str, float] = {
     "toggle": 12.7,
@@ -538,7 +544,7 @@ class BodyLayout:
     controls: ControlFeatures = field(default_factory=ControlFeatures)
     top_edge: EdgeProfile = field(default_factory=EdgeProfile)
     back_edge: EdgeProfile = field(default_factory=EdgeProfile)
-    contours: tuple[ContourCut, ...] = ()
+    contours: tuple[Contour, ...] = ()
     truss_rod_access: TracedCavity | None = None
     pickguard: Pickguard | None = None
     bridge_footprint: tuple[Point2D, ...] = ()
@@ -851,6 +857,20 @@ class Prototype001Parameters:
     body_belly_cut_width: float = 70.0
     body_belly_cut_length: float = 260.0
     body_belly_cut_position: float | None = None
+    # A heel relief (body_heel_relief) cuts the back away where the neck's
+    # heel meets the body, so the hand reaches the top frets: "contour" a
+    # smooth bevel from the body's edge at the neck end, where it is
+    # body_heel_relief_depth deep, up to the face where it starts; "notch"
+    # a flat step that deep, a wall where it starts. It starts
+    # body_heel_relief_reach behind the heel end on the centreline and
+    # curves forward to the edge beside the neck pocket either side (or
+    # along the body shape's heel_relief_points, drawn in the body
+    # editor). The neck bolts are drilled from it: their ferrules sink
+    # body_neck_ferrule_depth into its surface. A neck-through or one-piece
+    # body has no heel to relieve.
+    body_heel_relief: Literal["none", "contour", "notch"] = "none"
+    body_heel_relief_depth: float = 6.0
+    body_heel_relief_reach: float = 15.0
     # Rear-routed electronics cavities are cut up from the back face to
     # within body_rear_cavity_top_wall of the top so the pot and switch
     # bushings can pass through, and closed by a cover plate seated in a
@@ -1997,9 +2017,17 @@ class Prototype001Parameters:
         return tuple(centres)
 
     def _neck_bolt_holes(
-        self, outline: NeckOutline, heel_end: float, pocket: TracedCavity
+        self,
+        outline: NeckOutline,
+        heel_end: float,
+        pocket: TracedCavity,
+        heel_relief: HeelRelief | None = None,
     ) -> tuple[DrilledHole, ...]:
         """Return the neck bolts' ferrule counterbores and bolt holes.
+
+        Their depths are from the back face: a ferrule under a heel relief
+        sinks ``body_neck_ferrule_depth`` into the relief's surface, so its
+        counterbore is that much deeper from the face.
 
         Each bolt keeps its place along the neck (the body shape's
         ``neck_bolts`` or the default rectangle) and, with
@@ -2016,7 +2044,9 @@ class Prototype001Parameters:
                 as deep as the body, a bolt leaves less than
                 the edge wall to the neck's edge or less than 3 mm of wood to
                 the truss-rod channel or its nut pocket, a ferrule leaves the
-                body, or two ferrules overlap.
+                body, two ferrules overlap, or a ferrule under the heel
+                relief leaves less than ``NECK_BOLT_MIN_WOOD`` over the
+                pocket.
         """
         sizes = (
             self.body_neck_bolt_spacing_x,
@@ -2161,13 +2191,23 @@ class Prototype001Parameters:
         bolt_depth = self.body_thickness - pocket.depth
         holes: list[DrilledHole] = []
         for index, (x, y) in enumerate(placed, start=1):
+            relief = heel_relief.depth_at(Point2D(x, y)) if heel_relief else 0.0
+            ferrule_depth = relief + self.body_neck_ferrule_depth
+            wood = bolt_depth - ferrule_depth
+            if wood < NECK_BOLT_MIN_WOOD:
+                raise BodyGeometryError(
+                    f"Under the {relief:.1f} mm heel relief neck bolt {index}'s "
+                    f"ferrule leaves {wood:.1f} mm of wood over the neck pocket; "
+                    f"keep at least {NECK_BOLT_MIN_WOOD:g} mm (a shallower "
+                    "body_heel_relief_depth or body_neck_ferrule_depth)."
+                )
             holes.append(
                 DrilledHole(
                     f"Neck bolt {index} ferrule",
                     x,
                     y,
                     self.body_neck_ferrule_diameter,
-                    self.body_neck_ferrule_depth,
+                    ferrule_depth,
                 )
             )
             holes.append(
@@ -2907,14 +2947,22 @@ class Prototype001Parameters:
             self.heel_thickness,
             floor_slope=math.tan(math.radians(self.neck_angle_degrees)),
         )
+        # The heel relief first: the neck bolts are drilled from it.
+        heel_relief = self._heel_relief(
+            shape, body_outline.points, heel_end, neck_pocket
+        )
         # Only a bolt-on neck has bolts: a set neck is glued, and a
         # neck-through body has no pocket (its outline stays as where the
         # neck passes, for the keep-outs).
         neck_bolts = (
-            self._neck_bolt_holes(outline, heel_end, neck_pocket)
+            self._neck_bolt_holes(outline, heel_end, neck_pocket, heel_relief)
             if self.neck_joint == "bolt_on"
             else ()
         )
+        if heel_relief is not None:
+            heel_relief = replace(
+                heel_relief, carries=tuple(hole.name for hole in neck_bolts)
+            )
         truss_rod = self.truss_rod(outline)
         truss_rod_access = (
             TracedCavity(
@@ -3266,7 +3314,10 @@ class Prototype001Parameters:
                     covers=tuple(frame.plate for frame in frames),
                 )
             )
-        contours = self._contours(shape, body_outline.points, heel_end, bass_sign)
+        contours = (
+            *self._contours(shape, body_outline.points, heel_end, bass_sign),
+            *((heel_relief,) if heel_relief is not None else ()),
+        )
         carve_pickups = [
             p.outline for p in (neck_pickup, middle_pickup, bridge_pickup) if p
         ]
@@ -3497,7 +3548,7 @@ class Prototype001Parameters:
         top_holes: tuple[DrilledHole, ...],
         back_holes: tuple[DrilledHole, ...],
         jack: JackHole | None,
-        contours: tuple[ContourCut, ...],
+        contours: tuple[Contour, ...],
         lowered: CarvedTop | SteppedTop | None,
         guard: Pickguard | None,
     ) -> Wiring:
@@ -4053,7 +4104,7 @@ class Prototype001Parameters:
         outline: tuple[Point2D, ...],
         pocket: tuple[Point2D, ...],
         level: list[tuple[Point2D, ...]],
-        contours: tuple[ContourCut, ...],
+        contours: tuple[Contour, ...],
         guard: Pickguard | None,
     ) -> SteppedTop | None:
         """Return the top in levels, or ``None`` (see ``body_stepped_top``).
@@ -4149,7 +4200,7 @@ class Prototype001Parameters:
         flat: list[tuple[Point2D, ...]],
         pickups: list[tuple[Point2D, ...]],
         bridge: list[tuple[Point2D, ...]],
-        contours: tuple[ContourCut, ...],
+        contours: tuple[Contour, ...],
     ) -> CarvedTop | None:
         """Return the arched top, or ``None`` for a flat one.
 
@@ -5089,6 +5140,74 @@ class Prototype001Parameters:
                 if fits(moved):
                     return moved
         return controls
+
+    def _heel_relief(
+        self,
+        shape: BodyShapeSpec,
+        outline: tuple[Point2D, ...],
+        heel_end: float,
+        pocket: TracedCavity,
+    ) -> HeelRelief | None:
+        """Return the heel relief (``body_heel_relief``), or ``None``.
+
+        It runs in from the body's edge at the neck end to a line: the
+        shape's ``heel_relief_points`` when drawn, else a U round the heel,
+        from the centreline ``body_heel_relief_reach`` behind the heel end
+        forward along both sides that far out from the neck pocket, each
+        to where it first leaves the body (the cutaway's or the horn's
+        edge beside the neck). A ``"notch"`` is a flat step, a
+        ``"contour"`` a ramp.
+
+        Raises:
+            BodyGeometryError: For a neck-through or one-piece body, a depth
+                or reach that is not finite and positive, or a line that
+                does not run inside the body.
+        """
+        if self.body_heel_relief == "none":
+            return None
+        if self.neck_runs_through:
+            raise BodyGeometryError(
+                "A neck-through or one-piece body has no heel to relieve; set "
+                "body_heel_relief to none."
+            )
+        for label, value in (
+            ("depth", self.body_heel_relief_depth),
+            ("reach", self.body_heel_relief_reach),
+        ):
+            if not math.isfinite(value) or value <= 0.0:
+                raise BodyGeometryError(f"Heel relief {label} must be positive.")
+        if shape.heel_relief_points:
+            drawn = [Point2D(heel_end + x, y) for x, y in shape.heel_relief_points]
+        else:
+            reach = self.body_heel_relief_reach
+            side = max(abs(point.y) for point in pocket.outline) + reach
+
+            def leaves(y: float) -> float:
+                # Walking toward the nut along y from behind the heel, the
+                # first point out of the body.
+                x = heel_end + reach * 0.75
+                while x > heel_end - 400.0 and point_in_polygon(Point2D(x, y), outline):
+                    x -= 1.0
+                return x
+
+            ends = {sign: leaves(sign * side) for sign in (1.0, -1.0)}
+            drawn = [
+                Point2D(ends[1.0], side),
+                *((Point2D(heel_end, side),) if ends[1.0] < heel_end else ()),
+                Point2D(heel_end + reach * 0.75, side * 0.7),
+                Point2D(heel_end + reach, 0.0),
+                Point2D(heel_end + reach * 0.75, -side * 0.7),
+                *((Point2D(heel_end, -side),) if ends[-1.0] < heel_end else ()),
+                Point2D(ends[-1.0], -side),
+            ]
+        line = open_catmull_rom(drawn, CONTOUR_LINE_SAMPLES)
+        return HeelRelief.between(
+            "Heel relief",
+            outline,
+            line,
+            self.body_heel_relief_depth,
+            "flat" if self.body_heel_relief == "notch" else "ramp",
+        )
 
     def _contours(
         self,

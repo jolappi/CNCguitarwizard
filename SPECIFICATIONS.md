@@ -646,7 +646,22 @@ viivaan asti ja on syvin siellä, missä viiva on kauimpana reunasta.
 *Auto arm contour* palauttaa automaattisen. Mahaviisteen alkuviivan voi
 piirtää samalla tavalla (`belly_cut_points`, sininen viiva, katsottuna
 päältä kuten ääriviiva), kun `body_belly_cut_depth` on päällä; *Auto belly
-cut* palauttaa automaattisen. Viisteet ja pyöristykset
+cut* palauttaa automaattisen. Kantapään muotoilu (`body_heel_relief`)
+tehdään taakse kohtaan, jossa kaula liittyy runkoon, jotta käsi ylettyy
+ylimmille nauhoille: loivennus (`"contour"`) on sileä viiste, joka on
+rungon kaulanpuoleisella reunalla `body_heel_relief_depth` (6 mm) syvä ja
+nousee pintaan viivalla; lovi (`"notch"`) on yhtä syvä tasainen porras,
+jonka seinämä on viivalla. Viivan voi piirtää runkoeditorissa
+(`heel_relief_points`, luumunvärinen viiva kahvoineen); muuten se on
+U-muoto kantapään ympäri `body_heel_relief_reach` (15 mm) kantapään pään
+takaa ja yhtä kauas kaulataskun sivuilta, kummankin pään ollessa siellä,
+missä viiva ensin lähtee rungosta. *Auto heel relief* palauttaa
+automaattisen. Muotoilu on viivoitettu pinta reunan ja viivan välillä,
+joten sarvien välinen kovera reuna leikkautuu siististi. Kaulapulttien
+hylsyt upotetaan `body_neck_ferrule_depth` muotoilun pintaan, ja
+taskun yläpuolelle on jäätävä vähintään 5 mm puuta; liian syvä muotoilu
+nimeää pultin. Läpikaula- ja yksipalarungossa kantapäätä ei ole.
+Viisteet ja pyöristykset
 ajetaan ball nose -terällä omissa ohjelmissaan (`Body_top_edges.nc`,
 `Body_back_edges.nc`), reunanauhan ura pääterällä ääriviivan jälkeen.
 FreeCAD-mallissa ne ovat 1 mm porrastuksina.
