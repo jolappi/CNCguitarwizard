@@ -2026,17 +2026,8 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 function closedCatmullRom(points, samples) {
   const out = [];
   const n = points.length;
-  const blend = (a, b, c, d, t) => 0.5 * (
-    2 * b + (c - a) * t + (2 * a - 5 * b + 4 * c - d) * t * t
-    + (3 * b - a - 3 * c + d) * t * t * t
-  );
   for (let i = 0; i < n; i++) {
-    const p0 = points[(i - 1 + n) % n], p1 = points[i];
-    const p2 = points[(i + 1) % n], p3 = points[(i + 2) % n];
-    for (let s = 0; s < samples; s++) {
-      const t = s / samples;
-      out.push([blend(p0[0], p1[0], p2[0], p3[0], t), blend(p0[1], p1[1], p2[1], p3[1], t)]);
-    }
+    splineSegment(points[(i - 1 + n) % n], points[i], points[(i + 1) % n], points[(i + 2) % n], samples, out);
   }
   return out;
 }
@@ -2046,20 +2037,127 @@ function closedCatmullRom(points, samples) {
 function openCatmullRom(points, samples) {
   const out = [];
   const n = points.length;
-  const blend = (a, b, c, d, t) => 0.5 * (
-    2 * b + (c - a) * t + (2 * a - 5 * b + 4 * c - d) * t * t
-    + (3 * b - a - 3 * c + d) * t * t * t
-  );
   for (let i = 0; i < n - 1; i++) {
-    const p0 = points[Math.max(i - 1, 0)], p1 = points[i];
-    const p2 = points[i + 1], p3 = points[Math.min(i + 2, n - 1)];
+    splineSegment(points[Math.max(i - 1, 0)], points[i], points[i + 1], points[Math.min(i + 2, n - 1)], samples, out);
+  }
+  out.push([points[n - 1][0], points[n - 1][1]]);
+  return out;
+}
+
+// A drawn point may be a sharp corner, marked as its third item: the
+// curve leaves it toward its next point and comes in toward it from its
+// previous one, so it runs straight between two corners
+// (geometry.primitives.spline.CORNER).
+const CORNER = "corner";
+const isCorner = (point) => point[2] === CORNER;
+// A drawn polygon is the other way round: straight between its points,
+// but rounded through a point marked round (spline.ROUND).
+const ROUND = "round";
+const isRound = (point) => point[2] === ROUND;
+// A drawn point put at [x, y], its mark kept.
+const movedPoint = (point, [x, y]) => (point.length === 3 ? [x, y, point[2]] : [x, y]);
+// A drawn point made a sharp corner, or round again.
+const toggledCorner = (point) => (isCorner(point) ? [point[0], point[1]] : [point[0], point[1], CORNER]);
+// A drawn polygon's point made round, or a corner again.
+const toggledRound = (point) => (isRound(point) ? [point[0], point[1]] : [point[0], point[1], ROUND]);
+// A drawn point to a tenth of a mm, its mark kept.
+const roundedPoint = (point) => movedPoint(point, [Math.round(point[0] * 10) / 10, Math.round(point[1] * 10) / 10]);
+
+// Whether a pointer has moved far enough from its press to be a drag
+// (a double-click's jitter is not).
+const stirred = (press, now) => Math.hypot(now.clientX - press.clientX, now.clientY - press.clientY) > 2;
+
+// The span of a drawn line nearest [x, y], as the index of its first
+// point, from the line's samples (samples a span): for a closed outline
+// it may be the last, back to the first.
+function nearestSpan(samples, perSpan, x, y) {
+  let best = 0, bestDistance = Infinity;
+  samples.forEach(([sx, sy], i) => {
+    const distance = (sx - x) ** 2 + (sy - y) ** 2;
+    if (distance < bestDistance) { bestDistance = distance; best = i; }
+  });
+  return Math.floor(best / perSpan);
+}
+
+// A drawn line's span from points[index] to the next made straight (both
+// ends sharp corners), or curved again if it already is.
+function toggledSpan(points, index) {
+  const next = (index + 1) % points.length;
+  const straight = isCorner(points[index]) && isCorner(points[next]);
+  const set = (point) => (straight ? [point[0], point[1]] : [point[0], point[1], CORNER]);
+  const result = [...points];
+  result[index] = set(points[index]);
+  result[next] = set(points[next]);
+  return result;
+}
+
+// A drawn polygon's side from points[index] to the next made curved (both
+// ends round), or straight again if either end is round.
+function toggledRoundSpan(points, index) {
+  const next = (index + 1) % points.length;
+  const curved = isRound(points[index]) || isRound(points[next]);
+  const set = (point) => (curved ? [point[0], point[1]] : [point[0], point[1], ROUND]);
+  const result = [...points];
+  result[index] = set(points[index]);
+  result[next] = set(points[next]);
+  return result;
+}
+
+// A drawn polygon as drawn: its points, straight between them, but
+// rounded through those marked round (a closed Catmull-Rom loop with
+// every other point a corner, its straight sides kept as their ends), as
+// Python's spline.drawn_polygon.
+function drawnPolygon(points, samples = 8) {
+  if (!points.some(isRound)) return points.map(([x, y]) => [x, y]);
+  const loop = closedCatmullRom(points.map(([x, y, mark]) => (mark === ROUND ? [x, y] : [x, y, CORNER])), samples);
+  const kept = [];
+  points.forEach((point, index) => {
+    const side = loop.slice(index * samples, (index + 1) * samples);
+    const straight = !isRound(point) && !isRound(points[(index + 1) % points.length]);
+    kept.push(...(straight ? side.slice(0, 1) : side));
+  });
+  return kept;
+}
+
+// The side of a polygon nearest [x, y], as the index of its first point.
+function nearestSide(points, x, y) {
+  let best = 0, bestDistance = Infinity;
+  points.forEach(([ax, ay], i) => {
+    const [bx, by] = points[(i + 1) % points.length];
+    const dx = bx - ax, dy = by - ay;
+    const t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy || 1)));
+    const distance = (ax + t * dx - x) ** 2 + (ay + t * dy - y) ** 2;
+    if (distance < bestDistance) { bestDistance = distance; best = i; }
+  });
+  return best;
+}
+
+// One segment's samples from p1 toward p2 (p2 left out): the plain
+// Catmull-Rom blend, or with a sharp end a Hermite cubic whose tangent
+// there is half its own chord (as geometry.primitives.spline._segment).
+function splineSegment(p0, p1, p2, p3, samples, out) {
+  const sharpStart = isCorner(p1), sharpEnd = isCorner(p2);
+  if (!sharpStart && !sharpEnd) {
+    const blend = (a, b, c, d, t) => 0.5 * (
+      2 * b + (c - a) * t + (2 * a - 5 * b + 4 * c - d) * t * t
+      + (3 * b - a - 3 * c + d) * t * t * t
+    );
     for (let s = 0; s < samples; s++) {
       const t = s / samples;
       out.push([blend(p0[0], p1[0], p2[0], p3[0], t), blend(p0[1], p1[1], p2[1], p3[1], t)]);
     }
+    return;
   }
-  out.push(points[n - 1]);
-  return out;
+  const start = sharpStart ? [p2[0] - p1[0], p2[1] - p1[1]] : [p2[0] - p0[0], p2[1] - p0[1]];
+  const end = sharpEnd ? [p2[0] - p1[0], p2[1] - p1[1]] : [p3[0] - p1[0], p3[1] - p1[1]];
+  for (let s = 0; s < samples; s++) {
+    const t = s / samples, t2 = t * t, t3 = t2 * t;
+    const h00 = 2 * t3 - 3 * t2 + 1, h10 = t3 - 2 * t2 + t, h01 = -2 * t3 + 3 * t2, h11 = t3 - t2;
+    out.push([
+      h00 * p1[0] + h10 * start[0] / 2 + h01 * p2[0] + h11 * end[0] / 2,
+      h00 * p1[1] + h10 * start[1] / 2 + h01 * p2[1] + h11 * end[1] / 2,
+    ]);
+  }
 }
 
 // The contour lines drawn in the body editor: where the arm contour (on
@@ -2285,14 +2383,16 @@ const bodyEditor = {
   // A seven- or eight-string body opens along the centreline: each half
   // of the drawing moves out by half the widening, as in Python. The
   // stored control points stay those of the six-string drawing.
-  widen([x, y]) {
+  widen(point) {
+    const [x, y] = point;
     const half = (this.layout.widening || 0) / 2;
-    return [x, y > 0 ? y + half : y < 0 ? y - half : y];
+    return movedPoint(point, [x, y > 0 ? y + half : y < 0 ? y - half : y]);
   },
 
-  unwiden([x, y]) {
+  unwiden(point) {
+    const [x, y] = point;
     const half = (this.layout.widening || 0) / 2;
-    return [x, y > half ? y - half : y < -half ? y + half : 0];
+    return movedPoint(point, [x, y > half ? y - half : y < -half ? y + half : 0]);
   },
 
   outline() {
@@ -2421,16 +2521,31 @@ const bodyEditor = {
       // makes its programs; a click without a drag adds a point.
       this.guardHit.addEventListener("pointerdown", (event) => this.startGuardMove(event));
       this.guardHit.addEventListener("click", (event) => {
-        if (event.detail <= 1 && !this.guardMoved) this.addGuardPoint(event);
+        if (this.guardMoved) return;
+        if (event.shiftKey) {
+          const [x, y] = this.toModel(event);
+          this.guardPoints = toggledSpan(this.guardPoints, nearestSpan(closedCatmullRom(this.guardPoints, 8), 8, x, y));
+          this.commitGuard();
+          return;
+        }
+        if (event.detail <= 1) this.addGuardPoint(event);
       });
       this.element("title", {}, this.guardHit).textContent =
-        "Click the pickguard's edge to add a point, drag it to move the guard (or onto Create NC file)";
+        "Click the pickguard's edge to add a point, Shift-click it to make the span straight (or curved again), drag it to move the guard (or onto Create NC file)";
       this.guardPoints.forEach((point, index) => {
-        const handle = this.element("rect", { class: "guard-handle", x: point[0] - 2.5, y: -point[1] - 2.5, width: 5, height: 5 });
-        this.element("title", {}, handle).textContent = "Pickguard point — drag to shape the guard, Alt-click or right-click to remove it";
+        const handle = this.element("rect", {
+          class: isCorner(point) ? "guard-handle corner" : "guard-handle", x: point[0] - 2.5, y: -point[1] - 2.5, width: 5, height: 5,
+        });
+        this.element("title", {}, handle).textContent =
+          "Pickguard point — drag to shape the guard, double-click to make it a sharp corner (or round again), Alt-click or right-click to remove it";
         handle.addEventListener("pointerdown", (event) => {
           if (event.altKey) { this.removeGuardPoint(index); return; }
           this.startGuardDrag(event, index, handle);
+        });
+        handle.addEventListener("dblclick", (event) => {
+          event.preventDefault();
+          this.guardPoints[index] = toggledCorner(this.guardPoints[index]);
+          this.commitGuard();
         });
         handle.addEventListener("contextmenu", (event) => { event.preventDefault(); this.removeGuardPoint(index); });
       });
@@ -2438,7 +2553,9 @@ const bodyEditor = {
 
     // The humbucker frames over the pickups, each with round handles at
     // its points; dragging one draws that pickup's frame
-    // (body_<position>_frame_points), click its edge to add a point.
+    // (body_<position>_frame_points), click its edge to add a point,
+    // double-click a handle for a sharp corner, Shift-click the edge for a
+    // straight span.
     this.frameHandles = (layout.frames || []).map((frame) => frame.handles.map((p) => [...p]));
     this.framePaths = [];
     this.frameHandleNodes = [];
@@ -2450,44 +2567,74 @@ const bodyEditor = {
       });
       this.framePaths.push(path);
       const hit = this.element("path", { class: "outline-hit", d: this.pathData(closedCatmullRom(this.frameHandles[frameIndex], 8)) });
-      hit.addEventListener("click", (event) => this.addFramePoint(event, frameIndex));
+      hit.addEventListener("click", (event) => {
+        if (event.shiftKey) {
+          const [x, y] = this.toModel(event);
+          const handles = this.frameHandles[frameIndex];
+          this.frameHandles[frameIndex] = toggledSpan(handles, nearestSpan(closedCatmullRom(handles, 8), 8, x, y));
+          this.commitFrame(frameIndex);
+          return;
+        }
+        this.addFramePoint(event, frameIndex);
+      });
       this.element("title", {}, hit).textContent =
-        `The ${frame.position} pickup's frame${frame.turned ? " (turned round)" : ""} — click its edge to add a point`;
+        `The ${frame.position} pickup's frame${frame.turned ? " (turned round)" : ""} — click its edge to add a point, Shift-click it to make the span straight (or curved again)`;
       this.frameHandles[frameIndex].forEach((point, index) => {
-        const handle = this.element("circle", { class: "frame-handle", cx: point[0], cy: -point[1], r: 1.6 });
+        const handle = this.element("circle", { class: isCorner(point) ? "frame-handle corner" : "frame-handle", cx: point[0], cy: -point[1], r: 1.6 });
         this.frameHandleNodes.push(handle);
         this.element("title", {}, handle).textContent =
-          `${frame.position[0].toUpperCase()}${frame.position.slice(1)} pickup frame point — drag to shape it, Alt-click or right-click to remove it`;
+          `${frame.position[0].toUpperCase()}${frame.position.slice(1)} pickup frame point — drag to shape it, double-click to make it a sharp corner (or round again), Alt-click or right-click to remove it`;
         handle.addEventListener("pointerdown", (event) => {
           if (event.altKey) { this.removeFramePoint(frameIndex, index); return; }
           this.startFrameDrag(event, frameIndex, index, handle);
+        });
+        handle.addEventListener("dblclick", (event) => {
+          event.preventDefault();
+          this.frameHandles[frameIndex][index] = toggledCorner(this.frameHandles[frameIndex][index]);
+          this.commitFrame(frameIndex);
         });
         handle.addEventListener("contextmenu", (event) => { event.preventDefault(); this.removeFramePoint(frameIndex, index); });
       });
     });
 
-    // A stepped top's lines, straight between their points, with diamond
-    // handles; dragging one draws the steps (step_points).
+    // A stepped top's lines, straight between their points (rounded
+    // through a round one), with diamond handles (round ones circles);
+    // dragging one draws the steps (step_points).
     this.stepPoints = layout.steps ? layout.steps.points.map((line) => line.map((p) => [...p])) : null;
     this.stepPaths = [];
     this.stepHandles = [];
     (this.stepPoints || []).forEach((line, lineIndex) => {
       this.stepPaths.push(this.element("path", {
-        class: "step-line", d: this.pathData(line),
+        class: "step-line", d: this.pathData(drawnPolygon(line)),
         "stroke-dasharray": layout.steps.automatic ? "4,2" : "none",
       }));
-      const hit = this.element("path", { class: "outline-hit", d: this.pathData(line) });
-      hit.addEventListener("click", (event) => this.addStepPoint(event, lineIndex));
-      this.element("title", {}, hit).textContent = `Click step ${lineIndex + 1}'s line to add a point`;
+      const hit = this.element("path", { class: "outline-hit", d: this.pathData(drawnPolygon(line)) });
+      hit.addEventListener("click", (event) => {
+        if (event.shiftKey) {
+          const [x, y] = this.toModel(event);
+          this.stepPoints[lineIndex] = toggledRoundSpan(line, nearestSide(line, x, y));
+          this.commitSteps();
+          return;
+        }
+        this.addStepPoint(event, lineIndex);
+      });
+      this.element("title", {}, hit).textContent =
+        `Click step ${lineIndex + 1}'s line to add a point, Shift-click it to make the side curved (or straight again)`;
       line.forEach((point, index) => {
         const handle = this.element("rect", {
-          class: "step-handle", x: point[0] - 2, y: -point[1] - 2, width: 4, height: 4,
-          transform: `rotate(45 ${point[0]} ${-point[1]})`,
+          class: isRound(point) ? "step-handle round" : "step-handle", x: point[0] - 2, y: -point[1] - 2, width: 4, height: 4,
+          rx: isRound(point) ? 2 : 0, transform: `rotate(45 ${point[0]} ${-point[1]})`,
         });
-        this.element("title", {}, handle).textContent = `Step ${lineIndex + 1} point — drag to shape the step, Alt-click or right-click to remove it`;
+        this.element("title", {}, handle).textContent =
+          `Step ${lineIndex + 1} point — drag to shape the step, double-click to round the line through it (or make it a corner again), Alt-click or right-click to remove it`;
         handle.addEventListener("pointerdown", (event) => {
           if (event.altKey) { this.removeStepPoint(lineIndex, index); return; }
           this.startStepDrag(event, lineIndex, index, handle);
+        });
+        handle.addEventListener("dblclick", (event) => {
+          event.preventDefault();
+          this.stepPoints[lineIndex][index] = toggledRound(this.stepPoints[lineIndex][index]);
+          this.commitSteps();
         });
         handle.addEventListener("contextmenu", (event) => { event.preventDefault(); this.removeStepPoint(lineIndex, index); });
         this.stepHandles.push(handle);
@@ -2524,16 +2671,31 @@ const bodyEditor = {
       });
       line.hit = this.element("path", { class: "outline-hit", d });
       line.hit.addEventListener("click", (event) => {
+        if (event.shiftKey) {
+          const [x, y] = this.toModel(event);
+          const span = Math.min(nearestSpan(openCatmullRom(line.points, 8), 8, x, y), line.points.length - 2);
+          line.points = toggledSpan(line.points, span);
+          this.commitContour(spec.key);
+          return;
+        }
         if (event.detail <= 1) this.addContourPoint(spec.key, event);
       });
-      this.element("title", {}, line.hit).textContent = `Click the ${spec.label}'s line to add a point`;
+      this.element("title", {}, line.hit).textContent =
+        `Click the ${spec.label}'s line to add a point, Shift-click it to make the span straight (or curved again)`;
       line.handles = line.points.map((point, index) => {
-        const handle = this.element("circle", { class: `contour-handle ${spec.key}`, cx: point[0], cy: -point[1], r: 2.4 });
+        const handle = this.element("circle", {
+          class: `contour-handle ${spec.key}${isCorner(point) ? " corner" : ""}`, cx: point[0], cy: -point[1], r: 2.4,
+        });
         this.element("title", {}, handle).textContent =
-          `Where the ${spec.label} starts — drag to move, Alt-click or right-click to remove; the ends sit on the body's edge`;
+          `Where the ${spec.label} starts — drag to move, double-click to make it a sharp corner (or round again), Alt-click or right-click to remove; the ends sit on the body's edge`;
         handle.addEventListener("pointerdown", (event) => {
           if (event.altKey) { this.removeContourPoint(spec.key, index); return; }
           this.startContourDrag(event, spec.key, index, handle);
+        });
+        handle.addEventListener("dblclick", (event) => {
+          event.preventDefault();
+          line.points[index] = toggledCorner(line.points[index]);
+          this.commitContour(spec.key);
         });
         handle.addEventListener("contextmenu", (event) => { event.preventDefault(); this.removeContourPoint(spec.key, index); });
         return handle;
@@ -2544,14 +2706,30 @@ const bodyEditor = {
     // adds a handle there (the body inside it is left alone).
     this.outlineHit = this.element("path", { class: "outline-hit", d: this.pathData(this.outline()) });
     this.outlineHit.addEventListener("click", (event) => {
+      if (event.shiftKey) {
+        const [x, y] = this.toModel(event);
+        this.points = toggledSpan(this.points, nearestSpan(this.outline(), this.layout.samples_per_segment, x, y));
+        this.commit();
+        this.draw();
+        return;
+      }
       if (event.detail <= 1) this.addPoint(event);
     });
-    this.element("title", {}, this.outlineHit).textContent = "Click the outline to add a handle";
+    this.element("title", {}, this.outlineHit).textContent =
+      "Click the outline to add a handle, Shift-click it to make the span straight (or curved again)";
 
     this.handles = this.points.map((point, index) => {
       const [hx, hy] = this.widen(point);
-      const handle = this.element("circle", { class: "handle", cx: hx, cy: -hy, r: 4 });
+      const handle = this.element("circle", { class: isCorner(point) ? "handle corner" : "handle", cx: hx, cy: -hy, r: 4 });
+      this.element("title", {}, handle).textContent =
+        "Drag to move, double-click to make it a sharp corner (or round again), Alt-click or right-click to remove";
       handle.addEventListener("pointerdown", (event) => this.startDrag(event, index, handle));
+      handle.addEventListener("dblclick", (event) => {
+        event.preventDefault();
+        this.points[index] = toggledCorner(this.points[index]);
+        this.commit();
+        this.draw();
+      });
       handle.addEventListener("contextmenu", (event) => { event.preventDefault(); this.removePoint(index); });
       return handle;
     });
@@ -2596,7 +2774,7 @@ const bodyEditor = {
   // and how far it is from where it was picked said as a drag's.
   nudgePoint(index, dx, dy, from) {
     const [x, y] = this.widen(this.points[index]);
-    this.points[index] = this.unwiden([Math.round((x + dx) * 10) / 10, Math.round((y + dy) * 10) / 10]);
+    this.points[index] = this.unwiden(movedPoint(this.points[index], [Math.round((x + dx) * 10) / 10, Math.round((y + dy) * 10) / 10]));
     this.commit();
     this.draw();
     const [nx, ny] = this.widen(this.points[index]);
@@ -2623,9 +2801,14 @@ const bodyEditor = {
     handle.classList.add("dragging");
     const from = this.widen(this.points[index]);
     pickHandle(this, () => this.handles?.[index], (dx, dy) => this.nudgePoint(index, dx, dy, from));
+    // A press that does not move commits nothing, so a double-click lands
+    // on the same handle.
+    let moved = false;
     const move = (moveEvent) => {
+      moved ||= stirred(event, moveEvent);
+      if (!moved) return;
       const shown = this.toModel(moveEvent);
-      this.points[index] = this.unwiden(shown);
+      this.points[index] = movedPoint(this.points[index], this.unwiden(shown));
       this.showPoint(index, shown);
       this.check();
       showReadout(moveEvent, moveText([shown[0] - from[0], shown[1] - from[1]]));
@@ -2635,6 +2818,7 @@ const bodyEditor = {
       window.removeEventListener("pointerup", end);
       window.removeEventListener("pointercancel", end);
       handle.classList.remove("dragging");
+      if (!moved) return;
       this.commit();
       this.draw();
     };
@@ -2732,9 +2916,12 @@ const bodyEditor = {
     event.preventDefault();
     event.stopPropagation();
     handle.classList.add("dragging");
+    let moved = false;
     const move = (moveEvent) => {
+      moved ||= stirred(event, moveEvent);
+      if (!moved) return;
       const [x, y] = this.toModel(moveEvent);
-      this.guardPoints[index] = [x, y];
+      this.guardPoints[index] = movedPoint(this.guardPoints[index], [x, y]);
       handle.setAttribute("x", x - 2.5);
       handle.setAttribute("y", -y - 2.5);
       this.guardPath.setAttribute("d", this.guardData());
@@ -2746,7 +2933,7 @@ const bodyEditor = {
       window.removeEventListener("pointercancel", end);
       handle.classList.remove("dragging");
       // Stored like the body's points, before the body's widening.
-      this.commitGuard();
+      if (moved) this.commitGuard();
     };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", end);
@@ -2810,9 +2997,12 @@ const bodyEditor = {
     event.stopPropagation();
     const line = this.contourLines[key];
     handle.classList.add("dragging");
+    let moved = false;
     const move = (moveEvent) => {
+      moved ||= stirred(event, moveEvent);
+      if (!moved) return;
       const [x, y] = this.toModel(moveEvent);
-      line.points[index] = [x, y];
+      line.points[index] = movedPoint(line.points[index], [x, y]);
       handle.setAttribute("cx", x);
       handle.setAttribute("cy", -y);
       const d = this.openPath(openCatmullRom(line.points, 8));
@@ -2824,7 +3014,7 @@ const bodyEditor = {
       window.removeEventListener("pointerup", end);
       window.removeEventListener("pointercancel", end);
       handle.classList.remove("dragging");
-      this.commitContour(key);
+      if (moved) this.commitContour(key);
     };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", end);
@@ -2835,7 +3025,7 @@ const bodyEditor = {
   // the body out again.
   commitContour(key) {
     const line = this.contourLines[key];
-    const points = line.points.map((p) => this.unwiden(p).map((v) => Math.round(v * 10) / 10));
+    const points = line.points.map((p) => roundedPoint(this.unwiden(p)));
     this.setField(this.field("prototype.body_shape", line.spec.field), points);
     this.refresh();
   },
@@ -2910,9 +3100,12 @@ const bodyEditor = {
     event.preventDefault();
     event.stopPropagation();
     handle.classList.add("dragging");
+    let moved = false;
     const move = (moveEvent) => {
+      moved ||= stirred(event, moveEvent);
+      if (!moved) return;
       const point = this.toModel(moveEvent);
-      this.frameHandles[frameIndex][index] = point;
+      this.frameHandles[frameIndex][index] = movedPoint(this.frameHandles[frameIndex][index], point);
       handle.setAttribute("cx", point[0]);
       handle.setAttribute("cy", -point[1]);
       this.framePaths[frameIndex].setAttribute("d", this.frameData(frameIndex));
@@ -2922,17 +3115,19 @@ const bodyEditor = {
       window.removeEventListener("pointerup", end);
       window.removeEventListener("pointercancel", end);
       handle.classList.remove("dragging");
-      this.commitFrame(frameIndex);
+      // A press that did not move commits nothing, so a double-click lands.
+      if (moved) this.commitFrame(frameIndex);
     };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", end);
     window.addEventListener("pointercancel", end);
   },
 
-  // Write the frame's points (drawn from now on) and lay the body out again.
+  // Write the frame's points (drawn from now on, its corners kept) and lay
+  // the body out again.
   commitFrame(frameIndex) {
     const frame = this.layout.frames[frameIndex];
-    const points = this.frameHandles[frameIndex].map((p) => this.toFrame(frameIndex, p));
+    const points = this.frameHandles[frameIndex].map((p) => movedPoint(p, this.toFrame(frameIndex, p)));
     this.setField(this.field("prototype", frame.field), points);
     this.refresh();
   },
@@ -2962,7 +3157,7 @@ const bodyEditor = {
 
   // Write the guard's points (drawn from now on) and lay the body out again.
   commitGuard() {
-    const points = this.guardPoints.map((p) => this.unwiden(p).map((v) => Math.round(v * 10) / 10));
+    const points = this.guardPoints.map((p) => roundedPoint(this.unwiden(p)));
     this.setField(this.field("prototype.body_shape", "pickguard_points"), points);
     this.refresh();
   },
@@ -3002,20 +3197,24 @@ const bodyEditor = {
     // A handle left from before the last redraw no longer has its point.
     if (!this.stepPoints || index >= this.stepPoints[lineIndex].length) return;
     handle.classList.add("dragging");
+    // A press that does not move commits nothing, so a double-click lands.
+    let moved = false;
     const move = (moveEvent) => {
+      moved ||= stirred(event, moveEvent);
+      if (!moved) return;
       const [x, y] = this.toModel(moveEvent);
-      this.stepPoints[lineIndex][index] = [x, y];
+      this.stepPoints[lineIndex][index] = movedPoint(this.stepPoints[lineIndex][index], [x, y]);
       handle.setAttribute("x", x - 2);
       handle.setAttribute("y", -y - 2);
       handle.setAttribute("transform", `rotate(45 ${x} ${-y})`);
-      this.stepPaths[lineIndex].setAttribute("d", this.pathData(this.stepPoints[lineIndex]));
+      this.stepPaths[lineIndex].setAttribute("d", this.pathData(drawnPolygon(this.stepPoints[lineIndex])));
     };
     const end = () => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", end);
       window.removeEventListener("pointercancel", end);
       handle.classList.remove("dragging");
-      this.commitSteps();
+      if (moved) this.commitSteps();
     };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", end);
@@ -3023,28 +3222,20 @@ const bodyEditor = {
   },
 
   // Write every step's points (stored like the body's, before its
-  // widening) and lay the body out again.
+  // widening, their marks kept) and lay the body out again.
   commitSteps() {
     const lines = this.stepPoints.map((line) => line
       .filter((p) => Array.isArray(p))
-      .map((p) => this.unwiden(p).map((v) => Math.round(v * 10) / 10)));
+      .map((p) => roundedPoint(this.unwiden(p))));
     this.setField(this.field("prototype.body_shape", "step_points"), lines);
     this.refresh();
   },
 
-  // A click on a step's line adds a point on its nearest straight span.
+  // A click on a step's line adds a point on its nearest side.
   addStepPoint(event, lineIndex) {
     const [x, y] = this.toModel(event);
     const line = this.stepPoints[lineIndex];
-    let best = 0, bestDistance = Infinity;
-    line.forEach(([ax, ay], i) => {
-      const [bx, by] = line[(i + 1) % line.length];
-      const dx = bx - ax, dy = by - ay;
-      const t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy || 1)));
-      const distance = (ax + t * dx - x) ** 2 + (ay + t * dy - y) ** 2;
-      if (distance < bestDistance) { bestDistance = distance; best = i; }
-    });
-    line.splice(best + 1, 0, [x, y]);
+    line.splice(nearestSide(line, x, y) + 1, 0, [x, y]);
     this.commitSteps();
   },
 
@@ -4065,6 +4256,14 @@ function smoothCurve(points) {
     slopes.push((points[i + 1][1] - points[i - 1][1]) / (points[i + 1][0] - points[i - 1][0]));
   }
   slopes.push((points[n - 1][1] - points[n - 2][1]) / (points[n - 1][0] - points[n - 2][0]));
+  // A corner takes on each side its own side's secant (slopes leave each
+  // point, arriving reach it), as geometry.primitives.SmoothCurve.
+  const arriving = [...slopes];
+  points.forEach((point, i) => {
+    if (!isCorner(point)) return;
+    if (i > 0) arriving[i] = (point[1] - points[i - 1][1]) / (point[0] - points[i - 1][0]);
+    if (i < n - 1) slopes[i] = (points[i + 1][1] - point[1]) / (points[i + 1][0] - point[0]);
+  });
   return (x) => {
     if (x <= points[0][0]) return points[0][1];
     if (x >= points[n - 1][0]) return points[n - 1][1];
@@ -4073,7 +4272,7 @@ function smoothCurve(points) {
     const [x0, y0] = points[i], [x1, y1] = points[i + 1];
     const w = x1 - x0, t = (x - x0) / w, t2 = t * t, t3 = t2 * t;
     return (2 * t3 - 3 * t2 + 1) * y0 + (t3 - 2 * t2 + t) * w * slopes[i]
-      + (-2 * t3 + 3 * t2) * y1 + (t3 - t2) * w * slopes[i + 1];
+      + (-2 * t3 + 3 * t2) * y1 + (t3 - t2) * w * arriving[i + 1];
   };
 }
 
@@ -4211,22 +4410,35 @@ const headstockEditor = {
     return [-this.length(), (low + high) / 2];
   },
 
+  // The side lying toward +Y (1) or -Y (-1).
+  sideOfY(ySign) {
+    return ySign * this.layout.bass_sign > 0 ? "bass" : "treble";
+  },
+
   // Model Y of the +Y (1) or -Y (-1) edge at a distance from the nut.
   edgeY(distance, ySign) {
-    const side = ySign * this.layout.bass_sign > 0 ? "bass" : "treble";
-    return ySign * this.curve(side)(distance);
+    return ySign * this.curve(this.sideOfY(ySign))(distance);
+  },
+
+  // The tip's nodes as drawn, from its -Y corner to its +Y corner: the
+  // two edges' last points (the tip corners) and the tip points between.
+  tipNodes() {
+    const [low, high] = [-1, 1].map((ySign) => this.edges[this.sideOfY(ySign)].at(-1));
+    return [low, ...this.tip, high];
   },
 
   // The tip as model points from its -Y corner to its +Y corner, as
   // Python's HeadstockPlan.tip_outline: straight without tip points,
   // else a Catmull-Rom curve through them leaving each corner along its
-  // edge.
+  // edge, sharp at a node marked a corner (its tangent each way half its
+  // own span's chord, as tip_tangents).
   tipOutline() {
     const length = this.length();
     if (this.pointed()) return [this.tipPoint(), this.tipPoint()];
     const low = [-length, this.edgeY(length, -1)], high = [-length, this.edgeY(length, 1)];
     if (!this.tip.length) return [low, high];
     const points = [low, ...this.tip.map(([past, y]) => [-(length + past), y]), high];
+    const sharp = this.tipNodes().map(isCorner);
     const step = Math.min(0.5, length / 10);
     const direction = (ySign) => {
       const slope = (this.edgeY(length, ySign) - this.edgeY(length - step, ySign)) / step;
@@ -4234,22 +4446,27 @@ const headstockEditor = {
       return [-1 / norm, slope / norm];
     };
     const n = points.length;
-    const tangents = points.map((point, i) => {
+    const leaving = [], arriving = [];
+    points.forEach((point, i) => {
+      const before = points[Math.max(i - 1, 0)], after = points[Math.min(i + 1, n - 1)];
+      let smooth;
       if (i === 0) {
-        const chord = Math.hypot(points[1][0] - point[0], points[1][1] - point[1]);
+        const chord = Math.hypot(after[0] - point[0], after[1] - point[1]);
         const [dx, dy] = direction(-1);
-        return [dx * chord, dy * chord];
-      }
-      if (i === n - 1) {
-        const chord = Math.hypot(points[n - 2][0] - point[0], points[n - 2][1] - point[1]);
+        smooth = [dx * chord, dy * chord];
+      } else if (i === n - 1) {
+        const chord = Math.hypot(before[0] - point[0], before[1] - point[1]);
         const [dx, dy] = direction(1);
-        return [-dx * chord, -dy * chord];
+        smooth = [-dx * chord, -dy * chord];
+      } else {
+        smooth = [(after[0] - before[0]) / 2, (after[1] - before[1]) / 2];
       }
-      return [(points[i + 1][0] - points[i - 1][0]) / 2, (points[i + 1][1] - points[i - 1][1]) / 2];
+      leaving.push(sharp[i] ? [(after[0] - point[0]) / 2, (after[1] - point[1]) / 2] : smooth);
+      arriving.push(sharp[i] ? [(point[0] - before[0]) / 2, (point[1] - before[1]) / 2] : smooth);
     });
     const samples = [points[0]];
     for (let i = 0; i < n - 1; i++) {
-      const [p0, p1, m0, m1] = [points[i], points[i + 1], tangents[i], tangents[i + 1]];
+      const [p0, p1, m0, m1] = [points[i], points[i + 1], leaving[i], arriving[i + 1]];
       for (let k = 1; k <= 16; k++) {
         const t = k / 16, t2 = t * t, t3 = t2 * t;
         const h00 = 2 * t3 - 3 * t2 + 1, h10 = t3 - 2 * t2 + t, h01 = -2 * t3 + 3 * t2, h11 = t3 - t2;
@@ -4341,9 +4558,14 @@ const headstockEditor = {
       // A wide, invisible stroke over the edge: one click adds a handle.
       const hit = this.element("path", { class: "outline-hit", d: this.pathData(points), "stroke-width": 4 });
       hit.addEventListener("click", (event) => {
+        if (event.shiftKey) {
+          this.straightenEdge(event, side);
+          return;
+        }
         if (event.detail <= 1) this.addPoint(event, side);
       });
-      this.element("title", {}, hit).textContent = "Click the edge to add a handle";
+      this.element("title", {}, hit).textContent =
+        "Click the edge to add a handle, Shift-click it to make the span straight (or curved again)";
       this.hits = { ...this.hits, [side]: hit };
     }
     this.tipLine = this.element("path", {
@@ -4353,9 +4575,14 @@ const headstockEditor = {
     // One click on the tip adds a point that shapes it.
     this.tipHit = this.element("path", { class: "outline-hit", d: this.pathData(tip), "stroke-width": 4 });
     this.tipHit.addEventListener("click", (event) => {
+      if (event.shiftKey) {
+        this.straightenTip(event);
+        return;
+      }
       if (event.detail <= 1) this.addTipPoint(event);
     });
-    this.element("title", {}, this.tipHit).textContent = "Click the tip to add a handle";
+    this.element("title", {}, this.tipHit).textContent =
+      "Click the tip to add a handle, Shift-click it to make the span straight (or curved again)";
     // The tuner holes, each with the edge's clearance round it (dashed):
     // drag one to move it.
     this.holeNodes = layout.holes.map((hole, index) => {
@@ -4372,16 +4599,34 @@ const headstockEditor = {
     this.edgeHandles = { bass: [], treble: [] };
     for (const side of ["bass", "treble"]) {
       const sign = this.sign(side);
-      this.edges[side].forEach(([d, h], index) => {
-        const handle = this.element("circle", { class: "handle", cx: -d, cy: -sign * h, r: 2.2 });
+      this.edges[side].forEach((point, index) => {
+        const [d, h] = point;
+        const handle = this.element("circle", { class: isCorner(point) ? "handle corner" : "handle", cx: -d, cy: -sign * h, r: 2.2 });
+        this.element("title", {}, handle).textContent =
+          "Drag to shape the edge, double-click to make it a sharp corner (or round again), Alt-click or right-click to remove";
         this.edgeHandles[side].push(handle);
         handle.addEventListener("pointerdown", (event) => this.startDrag(event, side, index, handle));
+        handle.addEventListener("dblclick", (event) => {
+          event.preventDefault();
+          this.edges[side][index] = toggledCorner(this.edges[side][index]);
+          this.commit();
+          this.draw();
+        });
         handle.addEventListener("contextmenu", (event) => { event.preventDefault(); this.removePoint(side, index); });
       });
     }
-    this.tip.forEach(([past, y], index) => {
-      const handle = this.element("circle", { class: "handle", cx: -(this.length() + past), cy: -y, r: 2.2 });
+    this.tip.forEach((point, index) => {
+      const [past, y] = point;
+      const handle = this.element("circle", { class: isCorner(point) ? "handle corner" : "handle", cx: -(this.length() + past), cy: -y, r: 2.2 });
+      this.element("title", {}, handle).textContent =
+        "Drag to shape the tip, double-click to make it a sharp corner (or round again), Alt-click or right-click to remove";
       handle.addEventListener("pointerdown", (event) => this.startTipDrag(event, index, handle));
+      handle.addEventListener("dblclick", (event) => {
+        event.preventDefault();
+        this.tip[index] = toggledCorner(this.tip[index]);
+        this.commit();
+        this.draw();
+      });
       handle.addEventListener("contextmenu", (event) => { event.preventDefault(); this.removeTipPoint(index); });
     });
     // The lettering, in blue as the body's engraving; drag it to move it.
@@ -4409,31 +4654,49 @@ const headstockEditor = {
 
   // The truss-rod cover: its trough dashed, the plate and its screws;
   // square handles on its corners (drag one to draw your own cover,
-  // Alt/Option-click or right-click one to remove it, click its edge to
-  // add one) and round ones past its far end and its widest side to make
-  // it longer or wider.
+  // double-click one to curve the outline through it, Alt/Option-click or
+  // right-click one to remove it, click its edge to add one, Shift-click
+  // it to curve a side) and round ones past its far end and its widest
+  // side to make it longer or wider.
   drawCover(cover) {
     const group = this.element("g", { class: "truss-cover" });
     this.element("path", { class: "cover-trough", d: this.pathData(cover.trough) + " Z" }, group);
     this.coverPath = this.element("path", { class: "cover-body", d: this.pathData(cover.outline) + " Z" }, group);
     const hit = this.element("path", { class: "outline-hit", d: this.pathData(cover.outline) + " Z", "stroke-width": 3 }, group);
     hit.addEventListener("click", (event) => {
+      if (event.shiftKey) {
+        const corners = cover.corners.map((c) => [...c]);
+        const [x, y] = this.toModel(event);
+        this.commitCover(toggledRoundSpan(corners, nearestSide(corners.map((c) => this.coverPoint(c)), x, y)));
+        return;
+      }
       if (event.detail <= 1) this.addCoverCorner(event);
     });
-    this.element("title", {}, hit).textContent = "The truss-rod cover — click its edge to add a corner";
+    this.element("title", {}, hit).textContent =
+      "The truss-rod cover — click its edge to add a corner, Shift-click it to make the side curved (or straight again)";
     for (const [x, y] of cover.screws) {
       this.element("circle", { cx: x, cy: -y, r: cover.screw_radius, fill: "#fff", stroke: "#222", "stroke-width": 0.3, "pointer-events": "none" }, group);
     }
     cover.corners.forEach((corner, index) => {
       const [x, y] = this.coverPoint(corner);
-      const handle = this.element("rect", { class: "cover-handle", x: x - 1.1, y: -y - 1.1, width: 2.2, height: 2.2 }, group);
-      this.element("title", {}, handle).textContent = "A corner of the cover — drag it to draw your own cover, Alt/Option-click or right-click to remove it";
+      const handle = this.element("rect", {
+        class: isRound(corner) ? "cover-handle round" : "cover-handle", x: x - 1.1, y: -y - 1.1, width: 2.2, height: 2.2,
+        rx: isRound(corner) ? 1.1 : 0,
+      }, group);
+      this.element("title", {}, handle).textContent =
+        "A corner of the cover — drag it to draw your own cover, double-click to curve the outline through it (or make it a corner again), Alt/Option-click or right-click to remove it";
       handle.addEventListener("pointerdown", (event) => {
         if (event.altKey) {
           this.removeCoverCorner(index);
           return;
         }
         this.startCoverDrag(event, index, handle);
+      });
+      handle.addEventListener("dblclick", (event) => {
+        event.preventDefault();
+        const corners = cover.corners.map((c) => [...c]);
+        corners[index] = toggledRound(corners[index]);
+        this.commitCover(corners);
       });
       handle.addEventListener("contextmenu", (event) => {
         event.preventDefault();
@@ -4476,13 +4739,15 @@ const headstockEditor = {
     let moved = false;
     const preview = this.element("path", { class: "cover-preview" });
     const move = (moveEvent) => {
+      // A double-click's jitter is not a drag.
+      moved ||= stirred(event, moveEvent);
+      if (!moved) return;
       const [x, y] = this.toModel(moveEvent);
-      corners[index] = this.coverUnit([x0 + x - start[0], y0 + y - start[1]]);
+      corners[index] = movedPoint(corners[index], this.coverUnit([x0 + x - start[0], y0 + y - start[1]]));
       const [hx, hy] = this.coverPoint(corners[index]);
       handle.setAttribute("x", hx - 1.1);
       handle.setAttribute("y", -hy - 1.1);
-      preview.setAttribute("d", this.pathData(corners.map((c) => this.coverPoint(c))) + " Z");
-      moved = true;
+      preview.setAttribute("d", this.pathData(drawnPolygon(corners.map((c) => movedPoint(c, this.coverPoint(c))))) + " Z");
     };
     const end = () => {
       window.removeEventListener("pointermove", move);
@@ -4500,16 +4765,8 @@ const headstockEditor = {
   addCoverCorner(event) {
     const corners = this.layout.truss_cover.corners.map((c) => [...c]);
     const [x, y] = this.toModel(event);
-    const points = corners.map((c) => this.coverPoint(c));
-    let best = 0, bestDistance = Infinity;
-    points.forEach(([ax, ay], i) => {
-      const [bx, by] = points[(i + 1) % points.length];
-      const dx = bx - ax, dy = by - ay;
-      const t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy || 1)));
-      const distance = (ax + t * dx - x) ** 2 + (ay + t * dy - y) ** 2;
-      if (distance < bestDistance) { bestDistance = distance; best = i; }
-    });
-    corners.splice(best + 1, 0, this.coverUnit([x, y]));
+    const side = nearestSide(corners.map((c) => this.coverPoint(c)), x, y);
+    corners.splice(side + 1, 0, this.coverUnit([x, y]));
     this.commitCover(corners);
   },
 
@@ -4520,12 +4777,12 @@ const headstockEditor = {
     this.commitCover(corners);
   },
 
-  // Write a drawn (custom) cover: its corners, the screws where they
-  // were, and the size it was drawn at.
+  // Write a drawn (custom) cover: its corners (round ones marked), the
+  // screws where they were, and the size it was drawn at.
   commitCover(corners) {
     const cover = this.layout.truss_cover;
     const field = (name) => form.querySelector(`[data-set='prototype'][data-name='${name}']`);
-    const unit = (point) => point.map((v) => Math.round(v * 10000) / 10000);
+    const unit = (point) => movedPoint(point, [0, 1].map((i) => Math.round(point[i] * 10000) / 10000));
     setControlValue(field("truss_rod_cover_length"), cover.length);
     setControlValue(field("truss_rod_cover_width"), cover.width);
     setControlValue(field("truss_rod_cover_screws"), cover.screw_points.map(unit));
@@ -4661,7 +4918,12 @@ const headstockEditor = {
     this.dragPointed = index === this.edges[side].length - 1 && this.pointed();
     pickHandle(this, () => this.edgeHandles?.[side]?.[index], (dx, dy) => this.nudgeEdge(side, index, dx, dy));
     const insets = this.holeInsets();
+    // A press that does not move commits nothing, so a double-click lands
+    // on the same handle.
+    let moved = false;
     const move = (moveEvent) => {
+      moved ||= stirred(event, moveEvent);
+      if (!moved) return;
       this.place(side, index, this.toModel(moveEvent), moveEvent.shiftKey);
       this.showEdges();
       this.followEdges(insets);
@@ -4675,6 +4937,8 @@ const headstockEditor = {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", end);
       window.removeEventListener("pointercancel", end);
+      handle.classList.remove("dragging");
+      if (!moved) return;
       this.commit();
       if (this.holesMoved(insets)) this.commitHoles();
       this.draw();
@@ -4800,6 +5064,21 @@ const headstockEditor = {
     ));
   },
 
+  // The edge's span nearest a Shift-click made straight (both its ends
+  // sharp corners), or curved again; the span from the nut stays curved,
+  // the nut's own point not drawn.
+  straightenEdge(event, side) {
+    const distance = -this.toModel(event)[0];
+    const edge = this.edges[side];
+    const index = edge.findIndex(([d]) => d > distance);
+    if (index < 1) return;
+    const straightened = toggledSpan(edge, index - 1);
+    edge[index - 1] = straightened[index - 1];
+    edge[index] = straightened[index];
+    this.commit();
+    this.draw();
+  },
+
   addPoint(event, side) {
     const [x, y] = this.toModel(event);
     const distance = Math.round(-x * 10) / 10;
@@ -4817,7 +5096,7 @@ const headstockEditor = {
     const below = index > 0 ? this.tip[index - 1][1] : low;
     const above = index + 1 < this.tip.length ? this.tip[index + 1][1] : high;
     const clampedY = Math.min(Math.max(y, below + 0.5), above - 0.5);
-    this.tip[index] = [Math.round((-x - this.length()) * 10) / 10, Math.round(clampedY * 10) / 10];
+    this.tip[index] = movedPoint(this.tip[index], [Math.round((-x - this.length()) * 10) / 10, Math.round(clampedY * 10) / 10]);
   },
 
   startTipDrag(event, index, handle) {
@@ -4827,7 +5106,12 @@ const headstockEditor = {
     }
     event.preventDefault();
     handle.classList.add("dragging");
+    // A press that does not move commits nothing, so a double-click lands
+    // on the same handle.
+    let moved = false;
     const move = (moveEvent) => {
+      moved ||= stirred(event, moveEvent);
+      if (!moved) return;
       this.placeTip(index, this.toModel(moveEvent));
       const tip = this.tipSamples();
       this.tipLine.setAttribute("d", this.pathData(tip));
@@ -4841,12 +5125,31 @@ const headstockEditor = {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", end);
       window.removeEventListener("pointercancel", end);
+      handle.classList.remove("dragging");
+      if (!moved) return;
       this.commit();
       this.draw();
     };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", end);
     window.addEventListener("pointercancel", end);
+  },
+
+  // The tip's span nearest a Shift-click made straight (both its ends
+  // sharp: a tip point, or a tip corner by its edge's last point), or
+  // curved again. A straight cut has none to straighten.
+  straightenTip(event) {
+    if (!this.tip.length || this.pointed()) return;
+    const [x, y] = this.toModel(event);
+    // The outline's samples after its first point, 16 a span.
+    const span = nearestSpan(this.tipOutline().slice(1), 16, x, y);
+    const nodes = toggledSpan(this.tipNodes(), span);
+    const [low, high] = [-1, 1].map((ySign) => this.edges[this.sideOfY(ySign)]);
+    low[low.length - 1] = nodes[0];
+    high[high.length - 1] = nodes[nodes.length - 1];
+    this.tip = nodes.slice(1, -1);
+    this.commit();
+    this.draw();
   },
 
   addTipPoint(event) {
@@ -5190,19 +5493,37 @@ const inlayEditor = {
       d: this.pathData([[lo, -across], [hi, -across], [hi, across], [lo, across]].map((p) => this.toBoard(p))),
       fill: "none", stroke: "#e8c27a", "stroke-width": 0.2, "stroke-dasharray": "0.8,0.6",
     });
+    // Straight between the corners, curving through a round one (drawn
+    // in the marker's own frame, as Python's InlayLayout draws it).
+    const outline = drawnPolygon(this.points).map((p) => this.toBoard(p));
     const shape = this.points.map((p) => this.toBoard(p));
     this.shapePath = this.element("path", {
-      d: this.pathData(shape), fill: "#f4efe2", stroke: "#1f6fb2", "stroke-width": 0.3, "stroke-linejoin": "round",
+      d: this.pathData(outline), fill: "#f4efe2", stroke: "#1f6fb2", "stroke-width": 0.3, "stroke-linejoin": "round",
     });
-    const hit = this.element("path", { class: "inlay-hit", d: this.pathData(shape) });
-    hit.addEventListener("click", (event) => this.addPoint(event));
-    this.element("title", {}, hit).textContent = "Click a side to add a corner";
+    const hit = this.element("path", { class: "inlay-hit", d: this.pathData(outline) });
+    hit.addEventListener("click", (event) => {
+      if (event.shiftKey) {
+        const [x, y] = this.toModel(event);
+        this.points = toggledRoundSpan(this.points, nearestSide(shape, x, y));
+        this.commit();
+        return;
+      }
+      this.addPoint(event);
+    });
+    this.element("title", {}, hit).textContent = "Click a side to add a corner, Shift-click it to make it curved (or straight again)";
     this.handles = shape.map(([x, y], index) => {
-      const handle = this.element("circle", { class: "inlay-handle", cx: x, cy: -y, r: shape.length > 12 ? 0.55 : 0.9 });
-      this.element("title", {}, handle).textContent = "Marker corner — drag to shape it, Alt-click or right-click to remove it";
+      const round = isRound(this.points[index]);
+      const handle = this.element("circle", { class: round ? "inlay-handle round" : "inlay-handle", cx: x, cy: -y, r: shape.length > 12 ? 0.55 : 0.9 });
+      this.element("title", {}, handle).textContent =
+        "Marker corner — drag to shape it, double-click to curve the outline through it (or make it a corner again), Alt-click or right-click to remove it";
       handle.addEventListener("pointerdown", (event) => {
         if (event.altKey) { this.removePoint(index); return; }
         this.startDrag(event, index, handle);
+      });
+      handle.addEventListener("dblclick", (event) => {
+        event.preventDefault();
+        this.points[index] = toggledRound(this.points[index]);
+        this.commit();
       });
       handle.addEventListener("contextmenu", (event) => { event.preventDefault(); this.removePoint(index); });
       return handle;
@@ -5243,19 +5564,23 @@ const inlayEditor = {
     event.stopPropagation();
     if (index >= this.points.length) return;
     handle.classList.add("dragging");
+    // A press that does not move commits nothing, so a double-click lands.
+    let moved = false;
     const move = (moveEvent) => {
-      this.points[index] = this.kept(this.fromBoard(this.toModel(moveEvent)));
+      moved ||= stirred(event, moveEvent);
+      if (!moved) return;
+      this.points[index] = movedPoint(this.points[index], this.kept(this.fromBoard(this.toModel(moveEvent))));
       const [x, y] = this.toBoard(this.points[index]);
       handle.setAttribute("cx", x);
       handle.setAttribute("cy", -y);
-      this.shapePath.setAttribute("d", this.pathData(this.points.map((p) => this.toBoard(p))));
+      this.shapePath.setAttribute("d", this.pathData(drawnPolygon(this.points).map((p) => this.toBoard(p))));
     };
     const end = () => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", end);
       window.removeEventListener("pointercancel", end);
       handle.classList.remove("dragging");
-      this.commit();
+      if (moved) this.commit();
     };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", end);
@@ -5271,16 +5596,7 @@ const inlayEditor = {
   // A click on a side adds a corner on the nearest side.
   addPoint(event) {
     const [x, y] = this.kept(this.fromBoard(this.toModel(event)));
-    const points = this.points;
-    let best = 0, bestDistance = Infinity;
-    points.forEach(([ax, ay], i) => {
-      const [bx, by] = points[(i + 1) % points.length];
-      const dx = bx - ax, dy = by - ay;
-      const t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy || 1)));
-      const distance = (ax + t * dx - x) ** 2 + (ay + t * dy - y) ** 2;
-      if (distance < bestDistance) { bestDistance = distance; best = i; }
-    });
-    points.splice(best + 1, 0, [x, y]);
+    this.points.splice(nearestSide(this.points, x, y) + 1, 0, [x, y]);
     this.commit();
   },
 
@@ -5294,12 +5610,13 @@ const inlayEditor = {
     this.commit();
   },
 
-  // Write the drawn shape (a drawn style from now on) and lay it out again.
+  // Write the drawn shape (a drawn style from now on, its round corners
+  // marked) and lay it out again.
   commit() {
     this.notice = "";
-    const points = this.points.map(([along, across]) => [
-      Math.round(along * 10000) / 10000, Math.round(across * 10000) / 10000,
-    ]);
+    const points = this.points.map((point) => movedPoint(point, [
+      Math.round(point[0] * 10000) / 10000, Math.round(point[1] * 10000) / 10000,
+    ]));
     setControlValue(form.querySelector('[data-set="prototype"][data-name="inlay_points"]'), points);
     const style = form.querySelector('[data-set="prototype"][data-name="inlay_style"]');
     if (style && style.value !== "custom") setControlValue(style, "custom");

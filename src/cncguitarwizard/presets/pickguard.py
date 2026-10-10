@@ -153,12 +153,15 @@ class Pickguard:
         screw_spots: The body's shallow spots under its screws.
         control_points: The points its outline runs through, model frame.
         automatic: Whether the points were laid out automatically.
+        corners: Which control points are sharp corners (drawn so); empty
+            for none.
     """
 
     plate: CoverPlate
     screw_spots: tuple[DrilledHole, ...]
     control_points: tuple[Point2D, ...]
     automatic: bool
+    corners: tuple[bool, ...] = ()
 
 
 def automatic_points(
@@ -642,9 +645,14 @@ def _eased(x: float, start: float, stop: float) -> float:
     return t * t * (3.0 - 2.0 * t)
 
 
-def guard_outline(control_points: Sequence[Point2D]) -> tuple[Point2D, ...]:
-    """Return the guard's outline through its control points (a closed spline)."""
-    return tuple(closed_catmull_rom(control_points, SAMPLES_PER_SEGMENT))
+def guard_outline(
+    control_points: Sequence[Point2D], corners: Sequence[bool] = ()
+) -> tuple[Point2D, ...]:
+    """Return the guard's outline through its control points (a closed spline).
+
+    Sharp at the ``corners``, straight between two.
+    """
+    return tuple(closed_catmull_rom(control_points, SAMPLES_PER_SEGMENT, corners))
 
 
 def pickguard(
@@ -658,8 +666,11 @@ def pickguard(
     screw_clearance: float,
     screw_spot_diameter: float,
     screw_spot_depth: float,
+    corners: Sequence[bool] = (),
 ) -> Pickguard:
     """Return the guard through ``control_points`` with its openings.
+
+    Sharp at the ``corners`` (one mark a point; empty for none).
 
     ``holes`` and ``slots`` under the guard go through it (pots, the
     selector's bushing, a blade switch's slot); so do the
@@ -668,7 +679,7 @@ def pickguard(
     It is not checked against the body here (the body editor draws a
     guard still being moved): see ``check_on_body``.
     """
-    outline = guard_outline(control_points)
+    outline = guard_outline(control_points, corners)
     openings: list[Cavity] = [
         TracedCavity(name, opening, thickness)
         for name, opening in pickup_openings
@@ -707,7 +718,7 @@ def pickguard(
         )
         for index, p in enumerate(screws, start=1)
     )
-    return Pickguard(plate, spots, tuple(control_points), automatic)
+    return Pickguard(plate, spots, tuple(control_points), automatic, tuple(corners))
 
 
 def clear_of_bridge(

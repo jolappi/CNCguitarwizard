@@ -9,7 +9,14 @@ from itertools import combinations
 from typing import Literal
 
 from ..exceptions import GeometryException, HeadstockGeometryError
-from ..primitives import Line2D, Point2D, Point3D, SmoothCurve
+from ..primitives import (
+    DrawnPoint,
+    Line2D,
+    Point2D,
+    Point3D,
+    SmoothCurve,
+    drawn_points,
+)
 
 Side = Literal["bass", "treble"]
 """Which physical side of the centerline a feature is on.
@@ -61,7 +68,8 @@ class HeadstockPlan:
             half-width)`` points ending at the tip (``distance ==
             length``), or ``None`` for the tapered shape above. The edge
             is a ``SmoothCurve`` from the nut's half-width through them,
-            rounding through its points (it may swing past them).
+            rounding through its points (it may swing past them), or sharp
+            at a point marked ``"corner"`` (straight between two).
         treble_edge: The same for the treble side; give both or neither.
         tip_points: Points shaping a drawn headstock's tip between the two
             edges' tip corners: ``(how far past the tip line, y)``, with
@@ -69,7 +77,9 @@ class HeadstockPlan:
             then a rounded curve (Catmull–Rom) from corner to corner
             through them, leaving each corner along its edge, so a round
             Stratocaster-like end meets its sides without a corner; empty,
-            it is the straight cut ``tip_line``. A negative distance
+            it is the straight cut ``tip_line``. A tip point marked
+            ``"corner"`` is sharp, and so is a tip corner whose edge's last
+            point is marked: the tip runs straight between two. A negative distance
             notches the tip. Drawn edges that end less than
             ``TIP_POINT_WIDTH`` apart meet in a point instead (``pointed``,
             a Jackson style point): no tip line and no tip points, the
@@ -91,9 +101,9 @@ class HeadstockPlan:
     shoulder_shift: float = 0.0
     tip_shift: float = 0.0
     bass_sign: float = 1.0
-    bass_edge: tuple[tuple[float, float], ...] | None = None
-    treble_edge: tuple[tuple[float, float], ...] | None = None
-    tip_points: tuple[tuple[float, float], ...] = ()
+    bass_edge: tuple[DrawnPoint, ...] | None = None
+    treble_edge: tuple[DrawnPoint, ...] | None = None
+    tip_points: tuple[DrawnPoint, ...] = ()
     nut_line: Line2D = field(init=False)
     shoulder_line: Line2D = field(init=False)
     tip_line: Line2D = field(init=False)
@@ -233,17 +243,26 @@ class HeadstockPlan:
             (self.edge_y(self.length, 1.0) + self.edge_y(self.length, -1.0)) / 2.0,
         )
 
-    def _edge_curve(self, side: Side) -> SmoothCurve:
+    def edge_curve(self, side: Side) -> SmoothCurve:
+        """Return a drawn edge's curve, half-width by distance from the nut."""
         edge = self.bass_edge if side == "bass" else self.treble_edge
         assert edge is not None
-        return SmoothCurve(((0.0, self.nut_width / 2.0), *edge))
+        return self._smooth_edge(edge)
+
+    def _smooth_edge(self, edge: tuple[DrawnPoint, ...]) -> SmoothCurve:
+        """Return a drawn edge's curve from the nut's half-width through it."""
+        points, corners = drawn_points(edge)
+        return SmoothCurve(
+            ((0.0, self.nut_width / 2.0), *((p.x, p.y) for p in points)),
+            (False, *corners),
+        )
 
     def _drawn_distances(self) -> tuple[float, ...]:
         """Sample the drawn edges every 2.5 mm and at every control point."""
         assert self.bass_edge is not None and self.treble_edge is not None
         steps = max(2, math.ceil(self.length / 2.5))
         samples = {self.length * index / steps for index in range(steps + 1)}
-        samples.update(d for d, _ in (*self.bass_edge, *self.treble_edge))
+        samples.update(point[0] for point in (*self.bass_edge, *self.treble_edge))
         return tuple(sorted(samples))
 
     def _validate_drawn(self) -> None:
@@ -260,7 +279,7 @@ class HeadstockPlan:
                     f"{self.length:g} mm from the nut."
                 )
             try:
-                SmoothCurve(((0.0, self.nut_width / 2.0), *edge))
+                self._smooth_edge(edge)
             except GeometryException as error:
                 raise HeadstockGeometryError(
                     f"The drawn {side} edge must run from the nut to the tip "
@@ -301,8 +320,12 @@ class HeadstockPlan:
             )
         low = -self.half_width_at_y(self.length, -1.0)
         high = self.half_width_at_y(self.length, 1.0)
+        try:
+            points, _ = drawn_points(self.tip_points)
+        except GeometryException as error:
+            raise HeadstockGeometryError(f"Headstock tip points: {error}") from error
         previous = low
-        for past, y in self.tip_points:
+        for past, y in ((point.x, point.y) for point in points):
             if not (math.isfinite(past) and math.isfinite(y)):
                 raise HeadstockGeometryError("Headstock tip points must be finite.")
             if not previous < y < high:
@@ -321,45 +344,56 @@ class HeadstockPlan:
 
     def tip_curve(
         self,
-    ) -> tuple[tuple[Point2D, ...], tuple[tuple[float, float], ...]]:
+    ) -> tuple[tuple[Point2D, ...], Tangents, Tangents]:
         """Return the tip's nodes, -Y corner to +Y corner, and tangents.
 
         The corners and the tip points between them, with the cubic
-        Hermite tangent at each (see ``tip_tangents``); just the corners,
-        and no tangents, for a straight cut. Not for a pointed tip.
+        Hermite tangents leaving and arriving at each (see
+        ``tip_tangents``); just the corners, and no tangents, for a
+        straight cut. Not for a pointed tip.
         """
         low = Point2D(-self.length, self.edge_y(self.length, -1.0))
         high = Point2D(-self.length, self.edge_y(self.length, 1.0))
         if not self.tip_points:
-            return (low, high), ()
+            return (low, high), (), ()
+        drawn, marks = drawn_points(self.tip_points)
         points = (
             low,
-            *(Point2D(-(self.length + past), y) for past, y in self.tip_points),
+            *(Point2D(-(self.length + point.x), point.y) for point in drawn),
             high,
         )
-        return points, tip_tangents(
+        leaving, arriving = tip_tangents(
             points,
             tip_direction(lambda d: self.edge_y(d, -1.0), self.length),
             tip_direction(lambda d: self.edge_y(d, 1.0), self.length),
+            (self._sharp_tip_corner(-1.0), *marks, self._sharp_tip_corner(1.0)),
         )
+        return points, leaving, arriving
+
+    def _sharp_tip_corner(self, y_sign: float) -> bool:
+        """Return whether the +Y (``1.0``) or -Y tip corner is sharp: its
+        edge's last point marked ``"corner"``."""
+        edge = self.bass_edge if self.side_of_y(y_sign) == "bass" else self.treble_edge
+        return edge is not None and len(edge[-1]) == 3
 
     def tip_outline(self) -> tuple[Point2D, ...]:
         """Return the tip from its -Y corner to its +Y corner.
 
         A straight cut without tip points; otherwise a Catmull–Rom curve
         through them, leaving and reaching each corner along that side's
-        edge (its tangent as long as the span's chord).
+        edge (its tangent as long as the span's chord), sharp where marked
+        (see ``tip_tangents``).
         """
         if self.pointed:
             return (self.tip_point, self.tip_point)
-        points, tangents = self.tip_curve()
+        points, leaving, arriving = self.tip_curve()
         if len(points) == 2:
             return points
         samples = [points[0]]
         count = self.TIP_SAMPLES_PER_SEGMENT
         for index in range(len(points) - 1):
             p0, p1 = points[index], points[index + 1]
-            (m0x, m0y), (m1x, m1y) = tangents[index], tangents[index + 1]
+            (m0x, m0y), (m1x, m1y) = leaving[index], arriving[index + 1]
             for step in range(1, count + 1):
                 t = step / count
                 t2, t3 = t * t, t * t * t
@@ -420,7 +454,7 @@ class HeadstockPlan:
         Negative when that edge has crossed the centerline.
         """
         if self.is_drawn:
-            return self._edge_curve(side).value_at(distance)
+            return self.edge_curve(side).value_at(distance)
         if distance <= self.shoulder_distance:
             fraction = distance / self.shoulder_distance
             blend = self._smoothstep(fraction)
@@ -486,34 +520,54 @@ def tip_direction(
     return (-1.0 / norm, slope / norm)
 
 
+Tangents = tuple[tuple[float, float], ...]
+"""A curve's cubic Hermite tangent at each of its nodes."""
+
+
 def tip_tangents(
     points: Sequence[Point2D],
     low_direction: tuple[float, float],
     high_direction: tuple[float, float],
-) -> tuple[tuple[float, float], ...]:
-    """Return a shaped tip's cubic Hermite tangents at its nodes.
+    corners: Sequence[bool] = (),
+) -> tuple[Tangents, Tangents]:
+    """Return a shaped tip's cubic Hermite tangents leaving and arriving
+    at its nodes.
 
     ``points`` run from the -Y corner through the tip points to the +Y
     corner. The curve leaves the first corner along its edge's
     ``low_direction`` and reaches the last against ``high_direction``,
     each tangent as long as its span's chord; between, each node's tangent
-    is half the chord between its neighbours (Catmull–Rom).
+    is half the chord between its neighbours (Catmull–Rom), the same
+    arriving as leaving. At a sharp node (``corners``, one a node; empty
+    for none) each is half its own span's chord instead, as a drawn
+    spline's corner has it (``spline.CORNER``), so the tip runs straight
+    between two.
     """
-    tangents: list[tuple[float, float]] = []
+    sharp = tuple(corners) or (False,) * len(points)
+    leaving: list[tuple[float, float]] = []
+    arriving: list[tuple[float, float]] = []
+    last = len(points) - 1
     for index, point in enumerate(points):
+        before = points[max(index - 1, 0)]
+        after = points[min(index + 1, last)]
         if index == 0:
-            chord = math.hypot(points[1].x - point.x, points[1].y - point.y)
+            chord = math.hypot(after.x - point.x, after.y - point.y)
             dx, dy = low_direction
-            tangents.append((dx * chord, dy * chord))
-        elif index == len(points) - 1:
-            chord = math.hypot(points[-2].x - point.x, points[-2].y - point.y)
+            smooth = (dx * chord, dy * chord)
+        elif index == last:
+            chord = math.hypot(before.x - point.x, before.y - point.y)
             dx, dy = high_direction
             # Arriving: the edge's own direction, back toward the nut.
-            tangents.append((-dx * chord, -dy * chord))
+            smooth = (-dx * chord, -dy * chord)
         else:
-            before, after = points[index - 1], points[index + 1]
-            tangents.append(((after.x - before.x) / 2.0, (after.y - before.y) / 2.0))
-    return tuple(tangents)
+            smooth = ((after.x - before.x) / 2.0, (after.y - before.y) / 2.0)
+        if sharp[index]:
+            leaving.append(((after.x - point.x) / 2.0, (after.y - point.y) / 2.0))
+            arriving.append(((point.x - before.x) / 2.0, (point.y - before.y) / 2.0))
+        else:
+            leaving.append(smooth)
+            arriving.append(smooth)
+    return tuple(leaving), tuple(arriving)
 
 
 @dataclass(frozen=True, slots=True)

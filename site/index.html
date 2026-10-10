@@ -191,9 +191,12 @@
   #inlay-editor-board { margin-top: 0.5rem; max-height: 120px; }
   #inlay-editor .inlay-handle { fill: #fff; stroke: #1f6fb2; stroke-width: 0.25; cursor: grab; }
   #inlay-editor .inlay-handle:hover, #inlay-editor .inlay-handle.dragging { fill: #1f6fb2; }
+  #inlay-editor .inlay-handle.round { fill: #cfe3f5; }
   #inlay-editor .inlay-hit { fill: none; stroke: transparent; stroke-width: 1.5; pointer-events: stroke; cursor: copy; }
   #inlay-editor .inlay-hit:hover { stroke: var(--accent); stroke-opacity: 0.25; }
   .body-editor .handle { fill: #fff; stroke: var(--accent); stroke-width: 0.8; cursor: grab; }
+  /* A drawn point made a sharp corner: filled (double-click a handle). */
+  .body-editor .handle.corner, .body-editor .guard-handle.corner, .body-editor .contour-handle.corner { fill: #333; }
   .body-editor .handle:hover, .body-editor .handle.dragging { fill: var(--accent); }
   .body-editor .tuner-hole { fill: #fff; stroke: #222; stroke-width: 0.4; cursor: grab; }
   .body-editor .tuner-hole:hover, .body-editor .tuner-hole.dragging { fill: #f3e2cf; stroke: var(--accent); stroke-width: 0.8; }
@@ -208,15 +211,18 @@
   .body-editor .guard-handle:hover, .body-editor .guard-handle.dragging { fill: #333; }
   .body-editor .frame-handle { fill: #e8c25a; stroke: #000; stroke-width: 0.4; cursor: grab; }
   .body-editor .frame-handle:hover, .body-editor .frame-handle.dragging { fill: #fff; }
+  .body-editor .frame-handle.corner { fill: #333; stroke: #e8c25a; }
   .body-editor .step-line { fill: none; stroke: #6a4a8a; stroke-width: 0.9; pointer-events: none; }
   .body-editor .step-handle { fill: #fff; stroke: #6a4a8a; stroke-width: 0.8; cursor: grab; }
   .body-editor .step-handle:hover, .body-editor .step-handle.dragging { fill: #6a4a8a; }
+  .body-editor .step-handle.round { fill: #d9cce6; }
   #headstock-editor .lettering-line { fill: none; stroke: #1f6fb2; stroke-width: 0.9; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
   #headstock-editor .lettering-hit { fill: none; stroke: transparent; stroke-width: 5; pointer-events: stroke; cursor: move; }
   #headstock-editor .cover-trough { fill: none; stroke: #8a4b1e; stroke-width: 0.3; stroke-dasharray: 1.5,1; pointer-events: none; }
   #headstock-editor .cover-body { fill: #2b2b2b; fill-opacity: 0.55; stroke: #111; stroke-width: 0.4; pointer-events: none; }
   #headstock-editor .cover-handle { fill: #fff; stroke: #1f6fb2; stroke-width: 0.3; cursor: grab; }
   #headstock-editor .cover-handle:hover { fill: #1f6fb2; }
+  #headstock-editor .cover-handle.round { fill: #cfe3f5; }
   #headstock-editor .cover-stretch { fill: #1f6fb2; stroke: #fff; stroke-width: 0.3; }
   #headstock-editor .cover-stretch.length { cursor: ew-resize; }
   #headstock-editor .cover-stretch.width { cursor: ns-resize; }
@@ -555,7 +561,11 @@
       <details class="editor-help">
         <summary>How to edit the design</summary>
         <p class="note">Drag the round handles to shape the body. Click the outline to add a
-          handle there; Alt/Option-click or right-click a handle to remove it. A template chosen in <em>Start from</em> is loaded at once
+          handle there; Alt/Option-click or right-click a handle to remove it. Double-click a handle to make it a
+          sharp corner (drawn dark; again, round again), and Shift-click a line to make the span nearest the click
+          straight (again, curved again) — so on the outline, the pickguard, a pickup frame and the contour lines.
+          A stepped top's lines are straight instead: double-click one of their handles to round the line through
+          it, Shift-click a side to curve it. A template chosen in <em>Start from</em> is loaded at once
           (<em>Load</em> loads it again) — Design by Jone, or a Les Paul, Stratocaster, Jackson RR, Alexi Hexed, Mockingbird, Telecaster, SG, Explorer, Flying V or Jazz Bass style mockup — with its own cavity
           placements; what the template before it set and you have not changed since goes back to its default. Drag the control cavity
           (its pots come along), a single pot, the switch cavity, the battery box, a neck bolt (dashed,
@@ -612,6 +622,10 @@
       <details class="editor-help">
         <summary>How to edit the headstock</summary>
         <p class="note">Drag the handles to shape the two edges; drag a tip handle to change the length.
+          Double-click a handle to make it a sharp corner (again, round again), Shift-click an edge or the tip to make
+          the span nearest the click straight (again, curved again); the tip corners are the edges' last handles. A drawn
+          truss-rod cover is straight between its corners instead: double-click one to round the cover through it,
+          Shift-click a side to curve it.
           Click an edge to add a handle there, or the tip to shape it with one (drag it out for a round
           nose, in for a notch); Alt/Option-click or right-click a handle to remove
           it. For a sharp point (Jackson style) drag one tip corner onto the other: within 3 mm they
@@ -654,7 +668,9 @@
       <details class="editor-help">
         <summary>How to edit the inlays</summary>
         <p class="note">The first fret marker's space on the board, the nut to the left: drag a corner to shape the
-          marker, click a side to add a corner, Alt/Option-click or right-click one to remove it. Every other marker is
+          marker, click a side to add a corner, Alt/Option-click or right-click one to remove it. Double-click a corner
+          to round the marker through it (filled pale; again, a corner again), Shift-click a side to curve it (again,
+          straight again). Every other marker is
           the same shape fitted to its own fret space and the board's width there, as the whole board below shows.
           Editing any style's marker starts a drawn one (<code>inlay_style</code> custom, its corners in
           <code>inlay_points</code>); it keeps 1 mm from the fret slots and the board's edges, and its corners are

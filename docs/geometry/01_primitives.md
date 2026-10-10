@@ -170,6 +170,32 @@ outline = closed_catmull_rom(square, samples_per_segment=4)
 assert outline[0::4] == square
 ```
 
+`open_catmull_rom` is the same curve from the first point to the last,
+not joined back. Either takes `corners`, one mark a point: a sharp corner
+leaves toward its next point and comes in from the one before (its
+tangent each way half its own segment's chord), so the curve runs
+straight between two. A drawn point carries the mark as a third item,
+`(x, y, "corner")` (`CORNER`); `drawn_points(points)` returns the points
+and their marks and refuses anything else, and `moved(point, x, y)` puts
+a drawn point elsewhere with its mark kept. Without marks the curve is
+exactly as before.
+
+```python
+from cncguitarwizard.geometry.primitives import CORNER, drawn_points
+
+points, corners = drawn_points(((0, 0), (10, 0, CORNER), (10, 10, CORNER), (0, 10)))
+outline = closed_catmull_rom(points, 8, corners)
+assert all(p.x == 10.0 for p in outline[8:17])  # straight between the corners
+```
+
+A drawn polygon is the other way round: straight between its points,
+but rounded through one marked `(x, y, "round")` (`ROUND`, read with
+`drawn_points(points, ROUND)`). `drawn_polygon(points, rounds)` is the
+closed loop through them with every other point a corner, its straight
+sides kept as their two ends, and with no point round the points
+themselves: a stepped top's drawn lines, a drawn truss-rod cover and a
+drawn inlay marker.
+
 ## Monotone curves
 
 `MonotoneCurve(points)` is a smooth `y(x)` through points with increasing
@@ -184,13 +210,21 @@ edge = MonotoneCurve(((0.0, 21.0), (45.0, 33.0), (150.0, 20.0)))
 assert edge.value_at(45.0) == 33.0
 ```
 
+`SmoothCurve(points, corners=())` rounds through its points instead (each
+one's slope its neighbours' chord), as a drawn headstock edge does; at a
+point marked a corner it takes each side's own chord (`slopes` leaving a
+point, `slopes_in` arriving), so it runs straight between two.
+
 ## Bézier spans
 
 The smooth curves are cubics, so each converts exactly to cubic Bézier
 spans, as an SVG path draws them, with a node at every control point:
-`closed_catmull_rom_spans(points)` (one span a point of the closed loop),
-`smooth_curve_spans(curve)` (a `SmoothCurve` y(x), a span between its
-points) and `hermite_spans(points, tangents)` (a headstock's shaped tip).
+`closed_catmull_rom_spans(points, corners=())` (one span a point of the
+closed loop, sharp at its corners), `smooth_curve_spans(curve)` (a
+`SmoothCurve` y(x), a span between its points) and `hermite_spans(points,
+tangents, arriving=())` (a headstock's shaped tip; `arriving` the
+tangents arriving at each point where they differ from those leaving it,
+at a sharp tip point).
 `bezier_point(span, t)` evaluates a span and `flatten_span(span,
 tolerance)` turns it into points never further than `tolerance` from it.
 

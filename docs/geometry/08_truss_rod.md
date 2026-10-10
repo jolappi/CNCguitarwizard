@@ -111,7 +111,8 @@ outline.
   6 mm past its sides) with three screws; or `custom`, drawn in the web
   app's headstock editor (`truss_rod_cover_points`,
   `truss_rod_cover_screws`: corners and screws as along 0 to 1 and across
-  -1 to 1, rounded 1.5 mm). `truss_rod_cover_length` / `_width` size any
+  -1 to 1, rounded 1.5 mm; the outline curves through a corner marked
+  `"round"`, `drawn_polygon`). `truss_rod_cover_length` / `_width` size any
   of them. The cover must cover the trough with 1 mm to spare (but at
   its nut end, which runs on under the shelf), keep each 3.2 mm screw
   hole in 1 mm of wood clear of the trough and of its own edge, and keep

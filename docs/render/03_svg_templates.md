@@ -28,9 +28,11 @@ fit under a small drawing.
 
 The body's outline is its Catmull-Rom loop as Bézier spans
 (`closed_catmull_rom_spans`, widened for a seven- or eight-string body as
-drawn); the headstock's, `outlines.headstock_spans(plan)`: the bass edge
-from the nut, the tip, the treble edge back and the nut line; an inlay
-marker's, its corners joined by straight spans, in its first marker's
+drawn, straight between its sharp corners); the headstock's,
+`outlines.headstock_spans(plan)`: the bass edge from the nut, the tip
+(sharp where it is drawn so), the treble edge back and the nut line; an
+inlay marker's, its corners joined by straight spans (curving through a
+round one as it is cut, `webapp._inlay_outline`), in its first marker's
 fret space (`[along, across]` as millimetres: along the space, and the
 share of the board's half-width there). Either way every editor handle
 is a node of the path. The inlay template's reference layer holds the
@@ -158,6 +160,7 @@ An inlay marker's corners are the outline thinned to where it turns
 back as corners that close to it; the path's start too, unless it lies
 on a side), at least three (`webapp._import_inlay`). Each becomes
 `[along, across]` again and is held inside the dashed line where every
-marker fits, the import saying how many it moved; read back unchanged,
-the editor's own corners come back exactly. The marker is a drawn one
+marker fits, the import saying how many it moved; read back unchanged
+(the same corners as the editor's own marker reads back as), the
+editor's own corners come back exactly, round ones still marked. The marker is a drawn one
 (`inlay_style` custom) from then on.

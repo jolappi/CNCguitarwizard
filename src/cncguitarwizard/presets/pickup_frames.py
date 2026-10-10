@@ -11,7 +11,8 @@ humbucker's, 70.5 mm across the strings, and the opening itself is cut
 to the pickup's own (``pickups.pickup_openings``, the pickguard's), not
 as drawn.
 
-A frame's outline is a closed Catmull-Rom loop through its points, given
+A frame's outline is a closed Catmull-Rom loop through its points (a
+point marked ``"corner"`` sharp, see ``closed_catmull_rom``), given
 in the frame's own frame: ``a`` along the neck toward the bridge, ``c``
 across it, the bass side negative, in millimetres, the opening centred
 on the origin, the horns toward the neck (negative ``a``). Every
@@ -33,7 +34,13 @@ from dataclasses import dataclass
 from typing import Literal
 
 from ..geometry.body import CoverPlate, DrilledHole, TracedCavity
-from ..geometry.primitives import Point2D, closed_catmull_rom, point_in_polygon
+from ..geometry.primitives import (
+    DrawnPoint,
+    Point2D,
+    closed_catmull_rom,
+    drawn_points,
+    point_in_polygon,
+)
 from ._omarunko_outline import OMARUNKO_PICKUP_ROUTE_LOCAL_POINTS
 from .body_shapes import narrow_y, widen_y
 from .controls import SCREW_CLEARANCE, SCREW_SPOT_DEPTH, SCREW_SPOT_DIAMETER
@@ -195,13 +202,20 @@ def frame_placing(
 
 
 def frame_outline(
-    points: Sequence[tuple[float, float]],
+    points: Sequence[DrawnPoint],
     placing: FramePlacing,
     samples: int = FRAME_SAMPLES_PER_SEGMENT,
 ) -> tuple[Point2D, ...]:
-    """Return a frame's outline in the model through its points."""
+    """Return a frame's outline in the model through its points.
+
+    Raises:
+        GeometryException: For a point that is not a drawn point.
+    """
+    local, corners = drawn_points(points)
     return tuple(
-        closed_catmull_rom([placing.to_model(a, c) for a, c in points], samples)
+        closed_catmull_rom(
+            [placing.to_model(p.x, p.y) for p in local], samples, corners
+        )
     )
 
 
@@ -212,7 +226,7 @@ class PickupFrame:
     Attributes:
         position: ``"neck"``, ``"middle"`` or ``"bridge"``.
         points: Its handles in its own frame (as ``body_<position>_frame_points``
-            holds them).
+            holds them, a sharp corner marked).
         placing: Where its own frame lies.
         turned: Whether it is turned round, its horns toward the bridge.
         plate: The frame as a sheet plate on the top: its opening, its two
@@ -224,7 +238,7 @@ class PickupFrame:
     """
 
     position: str
-    points: tuple[tuple[float, float], ...]
+    points: tuple[DrawnPoint, ...]
     placing: FramePlacing
     turned: bool
     plate: CoverPlate
@@ -235,7 +249,7 @@ class PickupFrame:
 
 def pickup_frame(
     position: str,
-    points: Sequence[tuple[float, float]],
+    points: Sequence[DrawnPoint],
     placing: FramePlacing,
     turned: bool,
     *,

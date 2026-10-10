@@ -313,6 +313,28 @@ Python.
    and what it stands for; a change writes them all to `inlay_runes`.
    *Random runes* picks one for every fret at random, no two the same
    (24 runes to choose from), and writes them there too.
+   In every editor a drawn line can be made straight and a sharp drawing
+   round. The curved lines — the body's outline, the pickguard, the
+   humbucker frames, the arm contour, belly cut and heel relief lines and
+   the headstock's edges and tip — round through their handles: a
+   double-click on a handle makes it a sharp corner (drawn dark; again,
+   round again), and a Shift-click on the line makes the span nearest the
+   click straight, both its ends corners (again, curved again). A corner
+   is stored as its point with a third item, `[x, y, "corner"]`
+   (`spline.CORNER`): the curve leaves it toward the next point and comes
+   in from the one before, so it runs straight between two
+   (`closedCatmullRom`, `openCatmullRom` and `smoothCurve` as Python's
+   `closed_catmull_rom`, `open_catmull_rom` and `SmoothCurve`). A tip
+   corner is the edge's last handle, so a corner there makes the tip
+   leave its edge sharp. The polygons — a stepped top's lines, a drawn
+   truss-rod cover and a drawn inlay marker — are the other way round,
+   straight between their corners: a double-click on a corner rounds the
+   line through it (`[x, y, "round"]`, `spline.ROUND`: drawn as a circle,
+   or filled pale), and a Shift-click on a side curves it, both its ends
+   round (again, straight again; `drawnPolygon` as Python's
+   `drawn_polygon`). A drag keeps a point's mark, and a press that does
+   not move commits nothing (`stirred`), so a double-click lands on the
+   handle it was made on.
 3. **Save design** downloads every setting as one JSON file on the user's
    own computer — the instrument, the guitar's name, all `prototype` and
    `machining` values, the drawn body's `control_points` and the drawn

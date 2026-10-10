@@ -61,6 +61,8 @@ edge is a `SmoothCurve` from the nut's half-width through its points: it
 leaves the nut parallel to the neck and rounds through its points (each
 one's slope is its neighbours' chord), swinging past them into round
 bulges and hollows as a hand-drawn Stratocaster or Schecter outline does.
+A point marked `(distance, half-width, "corner")` is a sharp corner: the
+edge runs straight between two (see [Primitives](01_primitives.md)).
 Without tip points the tip is a straight cut at `distance == length`, the
 last point's distance, so the FreeCAD headstock loft, the CAM outline and the
 plan view take a drawn headstock exactly as a fitted one
@@ -70,7 +72,12 @@ plan view take a drawn headstock exactly as a fitted one
 tip line, y)` points across it from −Y to +Y, strictly between the two
 edges' tip corners. The tip is then a Catmull–Rom curve from corner to
 corner through them (`HeadstockPlan.tip_outline`), leaving each corner
-along its edge so a round end meets its sides without a corner; points
+along its edge so a round end meets its sides without a corner. A tip
+point marked `"corner"` is sharp, and so is a tip corner whose edge's
+last point is marked: there the curve leaves straight toward the next
+node and comes in from the one before (`tip_tangents` gives each node's
+tangents leaving and arriving, half its own span's chord at a sharp
+one), so the tip runs straight between two. Points
 past the tip line make a pointed or round end, one short of it a notch,
 and `HeadstockPlan.reach` is how far the headstock then reaches. Tuner
 holes keep their clearance to the tip measured straight to its curve

@@ -17,8 +17,14 @@ from collections.abc import Mapping
 from dataclasses import dataclass, fields, replace
 from typing import Any, Literal
 
-from ..geometry.exceptions import BodyGeometryError
-from ..geometry.primitives import Point2D, closed_catmull_rom
+from ..geometry.exceptions import BodyGeometryError, GeometryException
+from ..geometry.primitives import (
+    DrawnPoint,
+    Point2D,
+    closed_catmull_rom,
+    drawn_points,
+    moved,
+)
 from ._omarunko_outline import (
     OMARUNKO_CONTROL_CAVITY_POINTS,
     OMARUNKO_CONTROL_COVER_POINTS,
@@ -63,6 +69,29 @@ def widen_points(
     if widening == 0.0:
         return points
     return tuple((x, widen_y(y, widening)) for x, y in points)
+
+
+def widen_drawn(
+    points: tuple[DrawnPoint, ...], widening: float
+) -> tuple[DrawnPoint, ...]:
+    """Return drawn ``points`` widened as ``widen_points``, marks kept."""
+    if widening == 0.0:
+        return points
+    return tuple(moved(p, p[0], widen_y(p[1], widening)) for p in points)
+
+
+def flipped_drawn(points: tuple[DrawnPoint, ...]) -> tuple[DrawnPoint, ...]:
+    """Return drawn ``points`` mirrored across the centreline, marks kept."""
+    return tuple(moved(p, p[0], -p[1]) for p in points)
+
+
+def _side_drawn(
+    points: tuple[DrawnPoint, ...], mirrored: bool
+) -> tuple[DrawnPoint, ...]:
+    """Return a drawn outline, mirrored (order reversed) if asked, as ``_side``."""
+    if not mirrored:
+        return points
+    return tuple(reversed(flipped_drawn(points)))
 
 
 def _translated(
@@ -126,9 +155,10 @@ class DesignByJoneShape:
         step_points: A drawn stepped top's step lines (used with
             ``Prototype001Parameters.body_stepped_top``): one closed
             polygon of points (X from the heel end, Y) per step, joined by
-            straight lines, the outermost first, each inside the one
-            before; empty for steps the ``body_top_step_insets`` in from
-            the edge.
+            straight lines but rounded through a point marked ``"round"``
+            (``spline.drawn_polygon``), the outermost first, each inside
+            the one before; empty for steps the ``body_top_step_insets`` in
+            from the edge.
     """
 
     kind: Literal["design_by_jone"] = "design_by_jone"
@@ -158,11 +188,11 @@ class DesignByJoneShape:
     control_angle_degrees: float = 0.0
     control_stretch: float = 0.0
     control_stretch_across: float = 0.0
-    pickguard_points: tuple[tuple[float, float], ...] = ()
-    arm_contour_points: tuple[tuple[float, float], ...] = ()
-    belly_cut_points: tuple[tuple[float, float], ...] = ()
-    heel_relief_points: tuple[tuple[float, float], ...] = ()
-    step_points: tuple[tuple[tuple[float, float], ...], ...] = ()
+    pickguard_points: tuple[DrawnPoint, ...] = ()
+    arm_contour_points: tuple[DrawnPoint, ...] = ()
+    belly_cut_points: tuple[DrawnPoint, ...] = ()
+    heel_relief_points: tuple[DrawnPoint, ...] = ()
+    step_points: tuple[tuple[DrawnPoint, ...], ...] = ()
     # Whether the traced outline and almond cavity (constants drawn
     # right-handed) are mirrored: set by mirrored_shape, with every other
     # field mirrored there.
@@ -312,16 +342,17 @@ class YourDesignShape:
         step_points: A drawn stepped top's step lines (used with
             ``Prototype001Parameters.body_stepped_top``): one closed
             polygon of points (X from the heel end, Y) per step, joined by
-            straight lines, the outermost first, each inside the one
-            before; empty for steps the ``body_top_step_insets`` in from
-            the edge.
+            straight lines but rounded through a point marked ``"round"``
+            (``spline.drawn_polygon``), the outermost first, each inside
+            the one before; empty for steps the ``body_top_step_insets`` in
+            from the edge.
 
     Raises:
         BodyGeometryError: For fewer than four or non-finite control points.
     """
 
     kind: Literal["your_design"] = "your_design"
-    control_points: tuple[tuple[float, float], ...] = YOUR_DESIGN_START_POINTS
+    control_points: tuple[DrawnPoint, ...] = YOUR_DESIGN_START_POINTS
     switch_cavity_offset: float = 95.0
     switch_cavity_y: float = 80.0
     switch_cavity_diameter: float = 43.972
@@ -342,11 +373,11 @@ class YourDesignShape:
     control_angle_degrees: float = 0.0
     control_stretch: float = 0.0
     control_stretch_across: float = 0.0
-    pickguard_points: tuple[tuple[float, float], ...] = ()
-    arm_contour_points: tuple[tuple[float, float], ...] = ()
-    belly_cut_points: tuple[tuple[float, float], ...] = ()
-    heel_relief_points: tuple[tuple[float, float], ...] = ()
-    step_points: tuple[tuple[tuple[float, float], ...], ...] = ()
+    pickguard_points: tuple[DrawnPoint, ...] = ()
+    arm_contour_points: tuple[DrawnPoint, ...] = ()
+    belly_cut_points: tuple[DrawnPoint, ...] = ()
+    heel_relief_points: tuple[DrawnPoint, ...] = ()
+    step_points: tuple[tuple[DrawnPoint, ...], ...] = ()
     # Whether the traced outline and almond cavity (constants drawn
     # right-handed) are mirrored: set by mirrored_shape, with every other
     # field mirrored there.
@@ -358,10 +389,14 @@ class YourDesignShape:
             raise BodyGeometryError(
                 "Your design needs at least four outline control points."
             )
-        if not all(
-            len(point) == 2 and all(math.isfinite(value) for value in point)
-            for point in self.control_points
-        ):
+        try:
+            points, _ = drawn_points(self.control_points)
+        except GeometryException as error:
+            raise BodyGeometryError(
+                "Your design's control points must be finite (x, y) pairs, or "
+                f'(x, y, "corner") for a sharp corner: {error}'
+            ) from error
+        if not all(math.isfinite(p.x) and math.isfinite(p.y) for p in points):
             raise BodyGeometryError(
                 "Your design's control points must be finite (x, y) pairs."
             )
@@ -372,11 +407,14 @@ class YourDesignShape:
         """Return the spline outline placed relative to ``heel_end``.
 
         ``widening`` moves the control points out from the centreline
-        before the spline is drawn (see ``widen_points``).
+        before the spline is drawn (see ``widen_points``); a point marked
+        ``"corner"`` is sharp, the outline straight between two.
         """
+        points, corners = drawn_points(widen_drawn(self.control_points, widening))
         return closed_catmull_rom(
-            _translated(widen_points(self.control_points, widening), heel_end, 0.0),
+            tuple(Point2D(p.x + heel_end, p.y) for p in points),
             OUTLINE_SAMPLES_PER_SEGMENT,
+            corners,
         )
 
     def control_cavity_points(self, heel_end: float) -> tuple[Point2D, ...]:
@@ -444,16 +482,16 @@ def mirrored_shape(shape: BodyShapeSpec) -> BodyShapeSpec:
         battery_y=-shape.battery_y,
         battery_angle_degrees=-shape.battery_angle_degrees,
         control_angle_degrees=-shape.control_angle_degrees,
-        pickguard_points=_side(shape.pickguard_points, True),
-        arm_contour_points=flipped(shape.arm_contour_points),
-        belly_cut_points=flipped(shape.belly_cut_points),
-        heel_relief_points=flipped(shape.heel_relief_points),
-        step_points=tuple(_side(polygon, True) for polygon in shape.step_points),
+        pickguard_points=_side_drawn(shape.pickguard_points, True),
+        arm_contour_points=flipped_drawn(shape.arm_contour_points),
+        belly_cut_points=flipped_drawn(shape.belly_cut_points),
+        heel_relief_points=flipped_drawn(shape.heel_relief_points),
+        step_points=tuple(_side_drawn(polygon, True) for polygon in shape.step_points),
         mirrored=not shape.mirrored,
     )
     if isinstance(mirrored, YourDesignShape):
         mirrored = replace(
-            mirrored, control_points=_side(mirrored.control_points, True)
+            mirrored, control_points=_side_drawn(mirrored.control_points, True)
         )
     return mirrored
 
@@ -479,12 +517,12 @@ def widened_shape(shape: BodyShapeSpec, widening: float) -> BodyShapeSpec:
         jack_y=widen_y(shape.jack_y, widening),
         battery_y=widen_y(shape.battery_y, widening),
         control_shift=(shift_x, moved_almond - almond_y),
-        pickguard_points=widen_points(shape.pickguard_points, widening),
-        arm_contour_points=widen_points(shape.arm_contour_points, widening),
-        belly_cut_points=widen_points(shape.belly_cut_points, widening),
-        heel_relief_points=widen_points(shape.heel_relief_points, widening),
+        pickguard_points=widen_drawn(shape.pickguard_points, widening),
+        arm_contour_points=widen_drawn(shape.arm_contour_points, widening),
+        belly_cut_points=widen_drawn(shape.belly_cut_points, widening),
+        heel_relief_points=widen_drawn(shape.heel_relief_points, widening),
         step_points=tuple(
-            widen_points(polygon, widening) for polygon in shape.step_points
+            widen_drawn(polygon, widening) for polygon in shape.step_points
         ),
     )
 

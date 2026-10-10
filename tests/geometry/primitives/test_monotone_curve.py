@@ -64,3 +64,13 @@ def test_a_smooth_curve_rounds_through_a_peak() -> None:
 def test_a_smooth_curve_needs_increasing_x() -> None:
     with pytest.raises(GeometryException):
         SmoothCurve(((0.0, 1.0), (0.0, 2.0)))
+
+
+def test_a_smooth_curve_runs_straight_between_two_corners() -> None:
+    points = ((0.0, 10.0), (20.0, 14.0), (40.0, 18.0), (60.0, 8.0))
+    curve = SmoothCurve(points, (False, True, True, False))
+
+    for x in (22.0, 30.0, 38.0):
+        assert curve.value_at(x) == pytest.approx(14.0 + (x - 20.0) * 0.2)
+    with pytest.raises(GeometryException, match="one corner mark"):
+        SmoothCurve(points, (True,))

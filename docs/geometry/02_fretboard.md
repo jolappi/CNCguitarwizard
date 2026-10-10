@@ -157,7 +157,10 @@ dots gets the sheet program for its pieces (`Fretboard_inlay_pieces.nc`).
 
 The `custom` style's shape is drawn once, on the first marker's fret
 space, as corners (`inlay_points`, `InlayLayout.custom_points`) joined by
-straight lines and rounded 1 mm: `[along, across]`, `along` 0 at the fret
+straight lines and rounded 1 mm — but curving through a corner marked
+`[along, across, "round"]` (`drawn_polygon`, its sides there sampled,
+`CUSTOM_ROUND_SAMPLES`), every point of the curve kept clear as the
+corners are: `[along, across]`, `along` 0 at the fret
 toward the nut and 1 at the marker's own fret, `across` the share of the
 board's half-width there, toward the bass edge (−1 the treble edge, +1
 the bass edge). Every listed fret gets one marker, that shape fitted to

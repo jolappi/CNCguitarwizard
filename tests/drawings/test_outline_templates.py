@@ -53,6 +53,13 @@ def test_the_curves_are_exact_bezier_spans() -> None:
             expected = sampled[index * 4 + step]
             got = bezier_point(span, step / 4)
             assert (got.x, got.y) == pytest.approx((expected.x, expected.y))
+    corners = (False, True, True, False)
+    sampled = closed_catmull_rom(points, 4, corners)
+    for index, span in enumerate(closed_catmull_rom_spans(points, corners)):
+        for step in range(4):
+            expected = sampled[index * 4 + step]
+            got = bezier_point(span, step / 4)
+            assert (got.x, got.y) == pytest.approx((expected.x, expected.y))
     curve = SmoothCurve(((0, 21), (40, 30), (150, 24)))
     for span in smooth_curve_spans(curve):
         for t in (0.25, 0.5, 0.75):

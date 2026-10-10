@@ -126,6 +126,7 @@
 - The heel relief's line chosen: round the heel, by the pocket or across the treble corner
 - Rune, Iommi cross and iron cross fret markers
 - An epoxy tray over the top, walled round the neck pocket, the pickups and every opening
+- Sharp corners and straight spans in every drawing tool, and polygons rounded through a corner
 - Index pins as wide as a main tool wider than 6 mm (an 8 mm end mill,
   8 mm dowels)
 - The neck's back carved with the ball nose alone, in one program

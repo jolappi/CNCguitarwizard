@@ -60,11 +60,23 @@ from .geometry.body import (
 )
 from .geometry.exceptions import GeometryException
 from .geometry.fret import FretCalculator
-from .geometry.fretboard.inlay_layout import DEFAULT_CUSTOM_POINTS, custom_limits
+from .geometry.fretboard.inlay_layout import (
+    CUSTOM_ROUND_SAMPLES,
+    DEFAULT_CUSTOM_POINTS,
+    custom_limits,
+)
 from .geometry.fretboard.runes import DEFAULT_RUNES, RUNES
 from .geometry.lettering import text_lines
 from .geometry.neck import LOCKING_NUT_SPECS, TunerLayout
-from .geometry.primitives import Point2D, closed_catmull_rom_spans, point_in_polygon
+from .geometry.primitives import (
+    CORNER,
+    ROUND,
+    Point2D,
+    closed_catmull_rom_spans,
+    drawn_points,
+    drawn_polygon,
+    point_in_polygon,
+)
 from .presets import Prototype001Parameters
 from .presets.body_shapes import (
     BODY_SHAPE_KINDS,
@@ -75,10 +87,11 @@ from .presets.body_shapes import (
     YourDesignShape,
     body_shape_from_dict,
     narrow_y,
-    widen_points,
+    widen_drawn,
     widened_shape,
 )
 from .presets.controls import CONTROL_LABELS, SCREW_CLEARANCE
+from .presets.pickup_frames import PickupFrame
 from .presets.pickups import PICKUP_CONFIGURATIONS
 from .presets.prototype001 import (
     BODY_TEMPLATE_VALUES,
@@ -1047,7 +1060,9 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         "steps": _steps_view(parameters, layout, local),
         "pickguard": (
             {
-                "points": local(layout.pickguard.control_points),
+                "points": _marked(
+                    local(layout.pickguard.control_points), layout.pickguard.corners
+                ),
                 "automatic": layout.pickguard.automatic,
                 "openings": [
                     local(slot.outline) for slot in layout.pickguard.plate.slots
@@ -1072,9 +1087,7 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
                 "adjusted": frame.adjusted,
                 "problem": frame.problem,
                 "points": [list(point) for point in frame.points],
-                "handles": local(
-                    [frame.placing.to_model(a, c) for a, c in frame.points]
-                ),
+                "handles": _frame_handles(frame, local),
                 "origin": [
                     round(frame.placing.origin.x - heel_end, 3),
                     round(frame.placing.origin.y, 3),
@@ -1167,6 +1180,25 @@ STEP_HANDLE_TOLERANCE = 1.5
 lines, in mm: the fewer handles the editor shows it with."""
 
 
+def _marked(points: list[list[float]], corners: Sequence[bool]) -> list[list[Any]]:
+    """Return a drawing's editor points, its sharp corners marked as drawn
+    (see ``spline.CORNER``); ``corners`` empty for none."""
+    return [
+        [*point, CORNER] if sharp else point
+        for point, sharp in zip(points, corners or (False,) * len(points), strict=True)
+    ]
+
+
+def _frame_handles(
+    frame: PickupFrame, local: Callable[[Sequence[Point2D]], list[list[float]]]
+) -> list[list[Any]]:
+    """Return a pickup frame's handles in the editor, its corners marked."""
+    points, corners = drawn_points(frame.points)
+    return _marked(
+        local([frame.placing.to_model(point.x, point.y) for point in points]), corners
+    )
+
+
 def _steps_view(
     parameters: Prototype001Parameters, layout: Any, local: Any
 ) -> dict[str, Any] | None:
@@ -1174,19 +1206,25 @@ def _steps_view(
 
     ``{"points", "automatic"}``: each step's points (straight lines
     between them, the outermost first) — the shape's drawn
-    ``step_points`` as widened, or the automatic steps simplified to
-    handles within ``STEP_HANDLE_TOLERANCE``.
+    ``step_points`` as widened, a point rounded through marked as drawn,
+    or the automatic steps simplified to handles within
+    ``STEP_HANDLE_TOLERANCE``.
     """
     steps = layout.stepped_top
     if steps is None:
         return None
-    drawn = bool(parameters.built_body_shape.step_points)
+    shape = widened_shape(parameters.body_shape, parameters.body_widening_amount())
+    if shape.step_points:
+        return {
+            "points": [[list(point) for point in line] for line in shape.step_points],
+            "automatic": False,
+        }
     return {
         "points": [
-            local(boundary if drawn else simplified(boundary, STEP_HANDLE_TOLERANCE))
+            local(simplified(boundary, STEP_HANDLE_TOLERANCE))
             for boundary in steps.boundaries
         ],
-        "automatic": not drawn,
+        "automatic": True,
     }
 
 
@@ -1213,7 +1251,7 @@ def _contour_line(
     shape = widened_shape(parameters.body_shape, parameters.body_widening_amount())
     drawn = getattr(shape, field)
     if drawn:
-        return {"points": [[x, y] for x, y in drawn], "automatic": False}
+        return {"points": [list(point) for point in drawn], "automatic": False}
     inner = contour.inner_edge()
     picks = [
         round(k * (len(inner) - 1) / (CONTOUR_HANDLES - 1))
@@ -1273,10 +1311,11 @@ def inlay_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
     final = positions[surface.fret_count]
     problem: str | None = None
     markers: list[list[list[float]]] = []
-    points: list[list[float]] = [
-        [float(value) for value in point]
+    # As drawn, a round corner marked (see InlayLayout.custom_points).
+    points: list[list[Any]] = [
+        [float(point[0]), float(point[1]), *point[2:]]
         for point in parameters.inlay_points
-        if len(point) == 2
+        if len(point) in (2, 3)
     ]
     try:
         layout = parameters.inlay_design(surface)
@@ -1284,7 +1323,7 @@ def inlay_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
             [[round(p.x, 2), round(p.y, 2)] for p in marker.outline]
             for marker in layout.markers
         ]
-        points = [[along, across] for along, across in layout.editable_points()]
+        points = [list(point) for point in layout.editable_points()]
     except (CNCGuitarWizardError, TypeError, ValueError) as error:
         problem = str(error)
     if not points:
@@ -1426,9 +1465,10 @@ def _truss_cover_drawing(parameters: Prototype001Parameters) -> dict[str, Any] |
     "width", "style", "corners", "screw_points", "problem"}``: the cover's
     outline and screw centres and the trough under it (model frame, as
     drawn); its nut end's X, its size and style; its corners and screws as
-    ``truss_rod_cover_points`` / ``_screws`` would hold them, for the
-    editor to move one or add one (a drawn, ``custom``, cover from then
-    on); and why it does not fit, or ``None``. Drawn even where it does
+    ``truss_rod_cover_points`` / ``_screws`` would hold them (a drawn
+    cover's own, its round corners marked), for the editor to move one or
+    add one (a drawn, ``custom``, cover from then on); and why it does not
+    fit, or ``None``. Drawn even where it does
     not fit, so it can be mended. ``None`` where there is no cover (a heel
     adjuster, say).
     """
@@ -1448,7 +1488,11 @@ def _truss_cover_drawing(parameters: Prototype001Parameters) -> dict[str, Any] |
         parameters.truss_rod_cover_points,
         parameters.truss_rod_cover_screws,
     )
-    corners, screw_points = editable_cover_points(shape, length, width)
+    editable, screw_points = editable_cover_points(shape, length, width)
+    # A drawn cover's corners as drawn: a round one marked, not the curve
+    # through it.
+    drawn = parameters.truss_rod_cover_style == "custom"
+    corners = (parameters.truss_rod_cover_points or editable) if drawn else editable
     try:
         plan, tuners = parameters.headstock_design()
         problem = parameters.truss_rod_cover_problem(channel, plan, tuners)
@@ -1740,7 +1784,7 @@ def _body_template(
 ) -> str:
     shape, layout = _drawn_body(payload)
     widening = float(layout["widening"] or 0.0)
-    points = [Point2D(x, y) for x, y in widen_points(shape.control_points, widening)]
+    points, corners = drawn_points(widen_drawn(shape.control_points, widening))
     xs = [point.x for point in points]
     ys = [abs(point.y) for point in points]
     references = [
@@ -1807,7 +1851,7 @@ def _body_template(
     return render(
         "CNCguitarwizard body outline",
         TemplateFrame(_BODY_MARKS, bool(layout["mirrored"])),
-        closed_catmull_rom_spans(points),
+        closed_catmull_rom_spans(points, corners),
         references,
         (
             "CNCguitarwizard body outline, 1:1 in millimetres. Edit the black "
@@ -2099,6 +2143,16 @@ def _inlay_share(layout: dict[str, Any], point: Point2D) -> tuple[float, float]:
     return point.x / length, layout["bass_sign"] * point.y / half
 
 
+def _inlay_outline(layout: dict[str, Any]) -> list[Point2D]:
+    """Return the editor's marker in mm: straight between its corners, but
+    curving through a round one (see ``InlayLayout.custom_points``)."""
+    shape, rounds = drawn_points([tuple(point) for point in layout["points"]], ROUND)
+    return [
+        _inlay_mm(layout, point.x, point.y)
+        for point in drawn_polygon(shape, rounds, CUSTOM_ROUND_SAMPLES)
+    ]
+
+
 def _inlay_template(
     payload: dict[str, Any], render: Callable[..., str] = template_svg
 ) -> str:
@@ -2111,7 +2165,7 @@ def _inlay_template(
 
     low, high = layout["limits"]["along"]
     across = layout["limits"]["across"]
-    corners = [_inlay_mm(layout, along, side) for along, side in layout["points"]]
+    corners = _inlay_outline(layout)
     fret = layout["fret"]
     references = [
         ReferenceShape(
@@ -2183,14 +2237,16 @@ def _import_inlay(payload: dict[str, Any], svg: str) -> dict[str, Any]:
     corners = _polygon_corners(read.points, INLAY_IMPORT_TOLERANCE)
     if len(corners) < 3:
         raise CNCGuitarWizardError("A marker needs at least three corners.")
-    shown = [_inlay_mm(layout, along, side) for along, side in layout["points"]]
+    # As the editor's own marker would read back.
+    shown = _polygon_corners(_inlay_outline(layout), INLAY_IMPORT_TOLERANCE)
     moved = 0
+    points: list[list[Any]]
     if len(corners) == len(shown) and all(
         math.hypot(a.x - b.x, a.y - b.y) <= 0.01
         for a, b in zip(corners, shown, strict=True)
     ):
-        # Unchanged: the editor's own corners, exactly.
-        points = [[float(v) for v in point] for point in layout["points"]]
+        # Unchanged: the editor's own corners, exactly, round ones marked.
+        points = [[float(p[0]), float(p[1]), *p[2:]] for p in layout["points"]]
     else:
         low, high = layout["limits"]["along"]
         limit = layout["limits"]["across"]

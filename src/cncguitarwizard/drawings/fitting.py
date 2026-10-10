@@ -572,7 +572,7 @@ def _fit_tip(
         nodes = (low, *chosen, high)
         curve = [nodes[0]]
         if chosen:
-            for span in hermite_spans(nodes, tip_tangents(nodes, *directions)):
+            for span in hermite_spans(nodes, *tip_tangents(nodes, *directions)):
                 curve.extend(flatten_span(span, 0.02))
         else:
             curve.append(high)

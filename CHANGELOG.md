@@ -4,6 +4,16 @@
 
 ### Added
 
+- Sharp corners and straight spans in every drawing tool: double-click a
+  handle of a curved line (the body's outline, the pickguard, a
+  humbucker frame, the contour lines, the headstock's edges and tip) to
+  make it a sharp corner, or Shift-click the line to make the span
+  straight; a polygon (a stepped top's lines, a drawn truss-rod cover, a
+  drawn inlay) is rounded the same way, through a corner or along a
+  side. A point carries its mark, `[x, y, "corner"]` or `[x, y,
+  "round"]`, so the build, the templates and the editors draw the same
+  line.
+
 - An epoxy tray over the top (`body_epoxy_tray_depth`): the top routed
   that deep inside a rim of wood at the edge (`body_epoxy_tray_rim`,
   4 mm), round a wall left standing round every route and hole in it

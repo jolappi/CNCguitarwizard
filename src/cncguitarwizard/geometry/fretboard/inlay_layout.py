@@ -26,9 +26,16 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import Literal
 
-from ..exceptions import FretboardGeometryError
+from ..exceptions import FretboardGeometryError, GeometryException
 from ..fret import FretCalculator
-from ..primitives import Point2D, rounded_polygon_points
+from ..primitives import (
+    ROUND,
+    DrawnPoint,
+    Point2D,
+    drawn_points,
+    drawn_polygon,
+    rounded_polygon_points,
+)
 from .barbed_wire_2 import (
     BARBED_WIRE_2_ALONG,
     BARBED_WIRE_2_EDITOR_OUTLINE,
@@ -112,6 +119,9 @@ DEFAULT_CUSTOM_POINTS: tuple[tuple[float, float], ...] = (
 CUSTOM_CLEARANCE = 1.0
 """Wood a drawn marker keeps from the fret slots either side of it and from
 the board's edges, in mm."""
+
+CUSTOM_ROUND_SAMPLES = 8
+"""Points along each side of a drawn marker that meets a round corner."""
 
 BARBED_WIRE_2_SPAN = 0.8
 """How much of the board's width a ``barbed_wire_2`` knot spans."""
@@ -202,8 +212,9 @@ class InlayLayout:
             top toward the bass edge (read from the front, the guitar
             played).
         custom_points: The ``custom`` marker's corners, straight lines
-            between them (rounded by ``block_corner_radius``), as
-            ``(along, across)``: ``along`` 0 at the fret toward the nut and
+            between them (rounded by ``block_corner_radius``; curving
+            through one marked ``"round"``, ``(along, across, "round")``),
+            as ``(along, across)``: ``along`` 0 at the fret toward the nut and
             1 at the marker's own fret, ``across`` the share of the board's
             half-width there, toward the bass edge (-1 the treble edge, +1
             the bass edge). Each marker's fret space and the board's width
@@ -230,7 +241,7 @@ class InlayLayout:
     block_edge_margin: float = 5.0
     block_corner_radius: float = 1.0
     bass_sign: float = -1.0
-    custom_points: tuple[tuple[float, float], ...] = ()
+    custom_points: tuple[DrawnPoint, ...] = ()
     runes: tuple[str, ...] = ()
     markers: tuple[InlayMarker, ...] = field(init=False)
 
@@ -501,13 +512,18 @@ class InlayLayout:
             FretboardGeometryError: If it reaches within
                 ``CUSTOM_CLEARANCE`` of a fret slot or the board's edge.
         """
-        points = self.custom_points or DEFAULT_CUSTOM_POINTS
+        # The shape as drawn (curving through its round corners), then
+        # fitted to the fret space: its sharp corners rounded off.
+        drawn, rounds = drawn_points(self.custom_points or DEFAULT_CUSTOM_POINTS, ROUND)
+        sharp = {p for p, rounded in zip(drawn, rounds, strict=True) if not rounded}
+        shape = drawn_polygon(drawn, rounds, CUSTOM_ROUND_SAMPLES)
+        radii = [self.block_corner_radius if p in sharp else 0.0 for p in shape]
         corners = [
             Point2D(
-                front + along * (back - front),
-                self.bass_sign * across * half_width_at(front + along * (back - front)),
+                front + p.x * (back - front),
+                self.bass_sign * p.y * half_width_at(front + p.x * (back - front)),
             )
-            for along, across in points
+            for p in shape
         ]
         if any(
             p.x - front < CUSTOM_CLEARANCE
@@ -522,14 +538,14 @@ class InlayLayout:
             )
         if _signed_area(corners) < 0.0:
             corners.reverse()
-        return rounded_polygon_points(
-            corners, [self.block_corner_radius] * len(corners), samples_per_corner=6
-        )
+            radii.reverse()
+        return rounded_polygon_points(corners, radii, samples_per_corner=6)
 
-    def editable_points(self) -> tuple[tuple[float, float], ...]:
+    def editable_points(self) -> tuple[DrawnPoint, ...]:
         """Return the first marker's shape as ``custom_points`` would hold it.
 
-        The drawn shape itself, or what this style makes at the first
+        The drawn shape itself (its round corners marked), or what this
+        style makes at the first
         marker fret, its corners before rounding — barbed wire's, a dot as
         twelve points, the first of a split block's pieces — held inside
         ``custom_limits``, so an inlay editor can start from any style.
@@ -1005,23 +1021,21 @@ def custom_limits(
     )
 
 
-def _check_custom(points: tuple[tuple[float, float], ...]) -> None:
+def _check_custom(points: tuple[DrawnPoint, ...]) -> None:
     """Refuse a drawn marker that cannot be cut: too few points, numbers
     outside its fret space or the board, or sides that cross."""
     if len(points) < 3:
         raise FretboardGeometryError("A drawn inlay needs at least three points.")
-    if not all(
-        len(point) == 2
-        and all(isinstance(v, (int, float)) and math.isfinite(v) for v in point)
-        and 0.0 < point[0] < 1.0
-        and -1.0 < point[1] < 1.0
-        for point in points
-    ):
-        raise FretboardGeometryError(
-            "A drawn inlay's points must lie between its frets (along 0 to 1) "
-            "and inside the board (across -1 to 1)."
-        )
-    corners = [Point2D(along, across) for along, across in points]
+    outside = FretboardGeometryError(
+        "A drawn inlay's points must lie between its frets (along 0 to 1) "
+        'and inside the board (across -1 to 1), each two numbers (or two and "round").'
+    )
+    try:
+        corners, _ = drawn_points(points, ROUND)
+    except GeometryException as error:
+        raise outside from error
+    if not all(0.0 < p.x < 1.0 and -1.0 < p.y < 1.0 for p in corners):
+        raise outside
     count = len(corners)
 
     def turn(a: Point2D, b: Point2D, c: Point2D) -> float:

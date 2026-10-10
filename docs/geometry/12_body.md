@@ -110,7 +110,7 @@ The web form always edits a drawn body; Python takes either:
 
 | Spec | `kind` | Outline |
 | --- | --- | --- |
-| `YourDesignShape` (default) | `your_design` | A body the user draws: a closed Catmull-Rom spline (`geometry.primitives.closed_catmull_rom`, 8 samples per segment) through `control_points`, edited by dragging in the web app. The guitar's default is the Design by Jone template (`GUITAR_BODY`), the bass's the Jazz Bass style one (`BASS_BODY`); the bare class starts as a Stratocaster-inspired offset double cutaway (`YOUR_DESIGN_START_POINTS`) |
+| `YourDesignShape` (default) | `your_design` | A body the user draws: a closed Catmull-Rom spline (`geometry.primitives.closed_catmull_rom`, 8 samples per segment) through `control_points` (a point `(x, y, "corner")` a sharp corner, the outline straight between two), edited by dragging in the web app. The guitar's default is the Design by Jone template (`GUITAR_BODY`), the bass's the Jazz Bass style one (`BASS_BODY`); the bare class starts as a Stratocaster-inspired offset double cutaway (`YOUR_DESIGN_START_POINTS`) |
 | `DesignByJoneShape` | `design_by_jone` | The user's own body traced from `assets/reference/omarunko.dxf` |
 
 A shape carries the outline and the placements that belong to it — the
@@ -526,7 +526,9 @@ the automatic guard, made round the controls (the body editor says so).
 
 The shape's `pickguard_points` (dragged in the body editor,
 where a click on its edge adds a point and Alt-click or right-click
-removes one; its openings and holes are drawn cut out of it) replace it. It gets a rectangular opening for every pickup of the
+removes one; its openings and holes are drawn cut out of it; a point
+marked `"corner"` is sharp, kept so when the guard is stepped round the
+bridge or the truss rod's wheel) replace it. It gets a rectangular opening for every pickup of the
 chosen pickup layout — the pickup's own size, as a ring-less guard's are
 (`presets.pickups.pickup_openings`; a Precision gets one per coil) — a hole for every pot and the selector's bushing
 under it, and screws round its edge (4.5 mm in, about 60 mm apart, clear
@@ -615,7 +617,7 @@ drawing's but the pickup's own, the pickguard's (`pickup_openings`,
 70.5 × 39 mm, longer for seven and eight strings).
 
 A frame's outline is a closed Catmull-Rom loop through its points, like a
-drawn body, given in its own frame — along the neck toward the bridge
+drawn body (sharp at a point marked `"corner"`), given in its own frame — along the neck toward the bridge
 and across it, the bass side negative, from the opening's centre, horns
 toward the neck — and each pickup has its own:
 `body_neck_frame_points`, `body_middle_frame_points` and
@@ -778,7 +780,8 @@ arm contour and 70 × 260 mm for the belly cut.
 Where the arm contour starts on the top can be drawn instead: the
 shape's `arm_contour_points` are an open line's control points (X from
 the heel end), its ends on the body's edge, drawn as an open Catmull-Rom
-curve (`open_catmull_rom`). `ContourCut.along_line` takes the line's ends
+curve (`open_catmull_rom`; sharp at a point marked `"corner"`, straight
+between two, as the belly cut's and the heel relief's lines are). `ContourCut.along_line` takes the line's ends
 onto the outline, runs the bevel along the stretch of edge between them
 and, at each edge sample, in along the inward normal to the line
 (`reaches`); its depth at the edge is `body_arm_contour_depth` where the
@@ -1021,7 +1024,7 @@ lies `body_top_step_height` (1.5 mm) lower than the band inside it.
 The boundaries are drawn (the shape's `step_points`: one closed line of
 points per step, X from the heel end, the outermost first, straight lines
 between the points, so a step can run straight across where the edge
-curves), or, left empty, the outline taken in by each of
+curves; rounded through a point marked `"round"`, `drawn_polygon`), or, left empty, the outline taken in by each of
 `body_top_step_insets` (12 and 40 mm): the band from 40 to 12 mm in 1.5 mm
 down, the outermost 12 mm 3 mm down. Taken in from the edge, a boundary
 follows the wings and horns as far as they are wide; where a horn is

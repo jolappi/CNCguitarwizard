@@ -20,12 +20,9 @@ def headstock_spans(plan: HeadstockPlan) -> tuple[BezierSpan, ...]:
     the nut, and the nut line back to the start; in the model frame.
     """
     assert plan.bass_edge is not None and plan.treble_edge is not None
-    half = plan.nut_width / 2.0
 
-    def edge(
-        points: tuple[tuple[float, float], ...], y_sign: float
-    ) -> list[BezierSpan]:
-        spans = smooth_curve_spans(SmoothCurve(((0.0, half), *points)))
+    def edge(curve: SmoothCurve, y_sign: float) -> list[BezierSpan]:
+        spans = smooth_curve_spans(curve)
         return [
             (
                 Point2D(-a.x, y_sign * a.y),
@@ -36,15 +33,15 @@ def headstock_spans(plan: HeadstockPlan) -> tuple[BezierSpan, ...]:
             for a, b, c, d in spans
         ]
 
-    bass = edge(plan.bass_edge, plan.bass_sign)
-    treble = edge(plan.treble_edge, -plan.bass_sign)
+    bass = edge(plan.edge_curve("bass"), plan.bass_sign)
+    treble = edge(plan.edge_curve("treble"), -plan.bass_sign)
     if plan.pointed:
         tip: list[BezierSpan] = []
     else:
-        points, tangents = plan.tip_curve()
+        points, leaving, arriving = plan.tip_curve()
         tip = (
-            list(hermite_spans(points, tangents))
-            if tangents
+            list(hermite_spans(points, leaving, arriving))
+            if leaving
             else [(points[0], points[0], points[1], points[1])]
         )
         # The tip runs -Y to +Y; the outline goes bass corner first.

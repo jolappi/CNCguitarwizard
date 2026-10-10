@@ -83,8 +83,13 @@ from ..geometry.neck.nut_jig import (
 from ..geometry.neck.reinforcement import CLEARANCE as CARBON_ROD_CLEARANCE
 from ..geometry.neck.reinforcement import CarbonRods
 from ..geometry.primitives import (
+    ROUND,
+    DrawnPoint,
     Point2D,
     Point3D,
+    drawn_points,
+    drawn_polygon,
+    moved,
     open_catmull_rom,
     point_in_polygon,
     rounded_polygon_points,
@@ -328,6 +333,9 @@ STEP_EDGE_SLACK = 3.0
 """How near the body's edge drawn step lines may cross, in mm: where they
 converge on the edge (the sliver between them is cut with the outer
 band)."""
+
+STEP_ROUND_SAMPLES = 8
+"""Points along each side of a drawn step line that meets a round point."""
 
 STEP_OUTLINE_TOLERANCE = 0.05
 """How far a stepped top's boundaries may stray from the outline's own
@@ -736,7 +744,8 @@ class Prototype001Parameters:
     # spacing long, inlay_block_edge_margin from each edge): Gibson
     # blocks, Les Paul trapezoids, Jackson sharktooth, parallelograms,
     # diamonds or Gibson split blocks (see geometry.fretboard.inlay_layout);
-    # or "custom", inlay_points' own shape: its corners as (along, across),
+    # or "custom", inlay_points' own shape: its corners as (along, across)
+    # (or (along, across, "round") for one the outline curves through),
     # along 0 at the fret toward the nut and 1 at the marker's fret, across
     # the share of the board's half-width toward the bass edge (-1 the
     # treble edge, +1 the bass edge), drawn on the first marker in the web
@@ -757,7 +766,7 @@ class Prototype001Parameters:
     inlay_dot_diameter: float = 6.0
     inlay_block_length_fraction: float = 0.6
     inlay_block_edge_margin: float = 5.0
-    inlay_points: tuple[tuple[float, float], ...] = ()
+    inlay_points: tuple[DrawnPoint, ...] = ()
     inlay_runes: tuple[str, ...] = ()
     # Solid body (right-handed, as drawn): outline, pickup routes, bridge baseplate
     # cutout, and the rear control and switch cavities (each with its
@@ -989,14 +998,14 @@ class Prototype001Parameters:
     # body_middle_frame_points and body_bridge_frame_points are a frame
     # drawn in the body editor, each pickup's own: its handles as (along
     # the neck toward the bridge, across toward the treble side) from its
-    # opening's centre, as the style draws it (horns toward the neck);
-    # empty, the style's own.
+    # opening's centre, as the style draws it (horns toward the neck), a
+    # point (a, c, "corner") a sharp corner; empty, the style's own.
     body_pickup_frame: PickupFrameStyle = "none"
     body_pickup_frame_direction: FrameDirection = "auto"
     body_pickup_frame_thickness: float = 2.5
-    body_neck_frame_points: tuple[tuple[float, float], ...] = ()
-    body_middle_frame_points: tuple[tuple[float, float], ...] = ()
-    body_bridge_frame_points: tuple[tuple[float, float], ...] = ()
+    body_neck_frame_points: tuple[DrawnPoint, ...] = ()
+    body_middle_frame_points: tuple[DrawnPoint, ...] = ()
+    body_bridge_frame_points: tuple[DrawnPoint, ...] = ()
     # A decorative pattern engraved into the top (see presets.engraving):
     # body_engraving puts it on, body_engraving_pattern picks it (Design by
     # Jone's scrolls, EVH stripes, flame, ripples, crackle, woodland camo, a
@@ -1202,13 +1211,14 @@ class Prototype001Parameters:
     truss_rod_cover_length: float | None = None
     truss_rod_cover_width: float | None = None
     # truss_rod_cover_points and truss_rod_cover_screws: a custom cover's
-    # corners (straight lines between them, rounded 1.5 mm) and screw
-    # centres, as (along, across): along 0 at its nut end and 1 at its far
-    # end, across the share of its half-width (-1 to 1, toward the treble
-    # side of a right-handed neck), so truss_rod_cover_length and _width
-    # still size it. The headstock editor writes both when a corner of any
-    # style's cover is moved.
-    truss_rod_cover_points: tuple[tuple[float, float], ...] = ()
+    # corners (straight lines between them, rounded 1.5 mm, but curving
+    # through a corner (along, across, "round")) and screw centres, as
+    # (along, across): along 0 at its nut end and 1 at its far end, across
+    # the share of its half-width (-1 to 1, toward the treble side of a
+    # right-handed neck), so truss_rod_cover_length and _width still size
+    # it. The headstock editor writes both when a corner of any style's
+    # cover is moved.
+    truss_rod_cover_points: tuple[DrawnPoint, ...] = ()
     truss_rod_cover_screws: tuple[tuple[float, float], ...] = ()
     # truss_rod_spoke_wheel: an adjuster with a spoke wheel ("auto": at the
     # heel yes, at the headstock no). At the heel the wheel turns past the
@@ -1308,11 +1318,11 @@ class Prototype001Parameters:
     # the fitted outline, so the default "drawn" with no edges drawn yet
     # is the fitted outline (and the web app's headstock editor is open).
     headstock_outline: Literal["fitted", "drawn"] = "drawn"
-    headstock_bass_edge: tuple[tuple[float, float], ...] = ()
-    headstock_treble_edge: tuple[tuple[float, float], ...] = ()
+    headstock_bass_edge: tuple[DrawnPoint, ...] = ()
+    headstock_treble_edge: tuple[DrawnPoint, ...] = ()
     # Points shaping a drawn headstock's tip, (how far past the tip line,
     # y), across the tip from -Y to +Y; empty, the tip is a straight cut.
-    headstock_tip_points: tuple[tuple[float, float], ...] = ()
+    headstock_tip_points: tuple[DrawnPoint, ...] = ()
     # headstock_angle tilts the face back from the nut (0 for a flat,
     # Fender-style headstock). headstock_face_drop sets the face that far
     # below the glue face at the nut; empty, a flat headstock is set down
@@ -4414,14 +4424,18 @@ class Prototype001Parameters:
             return 180.0 - self.headstock_engraving_angle
         return self.headstock_engraving_angle
 
-    def built_tip_points(self) -> tuple[tuple[float, float], ...]:
+    def built_tip_points(self) -> tuple[DrawnPoint, ...]:
         """Return ``headstock_tip_points`` as built, mirrored when left-handed.
 
-        Still ordered from -Y to +Y, as ``HeadstockPlan`` wants them.
+        Still ordered from -Y to +Y, as ``HeadstockPlan`` wants them, their
+        corners kept.
         """
         if not self.left_handed:
             return self.headstock_tip_points
-        return tuple((past, -y) for past, y in reversed(self.headstock_tip_points))
+        return tuple(
+            moved(point, point[0], -point[1])
+            for point in reversed(self.headstock_tip_points)
+        )
 
     def _lettering_problem(
         self,
@@ -4638,23 +4652,28 @@ class Prototype001Parameters:
                 "body_pickguard or body_stepped_top."
             )
         if shape.step_points:
+            lines: list[tuple[tuple[Point2D, ...], tuple[bool, ...]]] = []
             for index, polygon in enumerate(shape.step_points, start=1):
-                if not all(
-                    isinstance(point, (tuple, list))
-                    and len(point) == 2
-                    and all(
-                        isinstance(v, (int, float)) and math.isfinite(v) for v in point
-                    )
-                    for point in polygon
-                ):
-                    raise BodyGeometryError(
-                        f"The stepped top's step {index} has a point that is not "
-                        "two numbers: redraw it, or use Auto steps."
-                    )
-            # Drawn: straight lines between the shape's points.
+                problem = (
+                    f"The stepped top's step {index} has a point that is not two "
+                    'numbers (or two and "round"): redraw it, or use Auto steps.'
+                )
+                try:
+                    points, rounds = drawn_points(polygon, ROUND)
+                except GeometryException as error:
+                    raise BodyGeometryError(problem) from error
+                if not all(math.isfinite(p.x) and math.isfinite(p.y) for p in points):
+                    raise BodyGeometryError(problem)
+                lines.append((points, rounds))
+            # Drawn: straight lines between the shape's points, rounded
+            # through those marked round.
             boundaries = tuple(
-                tuple(Point2D(heel_end + x, y) for x, y in polygon)
-                for polygon in shape.step_points
+                drawn_polygon(
+                    [Point2D(heel_end + p.x, p.y) for p in points],
+                    rounds,
+                    STEP_ROUND_SAMPLES,
+                )
+                for points, rounds in lines
             )
             where = "drawn"
         else:
@@ -4838,7 +4857,7 @@ class Prototype001Parameters:
 
         Raises:
             BodyGeometryError: For an unknown style or a drawn frame of
-                fewer than four points.
+                fewer than four points, or one not drawn points.
         """
         if self.body_pickup_frame == "none":
             return ()
@@ -4869,11 +4888,18 @@ class Prototype001Parameters:
         for position, kind, centre_x, angle, route in pickups:
             if kind != "humbucker" or route is None:
                 continue
-            points = drawn[position] or FRAME_POINTS[self.body_pickup_frame]
+            style = FRAME_POINTS[self.body_pickup_frame]
+            points = drawn[position] or style
             if len(points) < 4:
                 raise BodyGeometryError(
                     f"The {position} pickup's frame needs at least four points."
                 )
+            try:
+                drawn_points(points)
+            except GeometryException as error:
+                raise BodyGeometryError(
+                    f"The {position} pickup's frame: {error}"
+                ) from error
             others = [
                 *obstacles,
                 *(
@@ -4903,7 +4929,7 @@ class Prototype001Parameters:
                 return frame_placing(centre_x, bass_sign, angle, stretch, turned)
 
             def made(
-                shape: Sequence[tuple[float, float]],
+                shape: Sequence[DrawnPoint],
                 turned: bool,
                 adjusted: bool = False,
                 position: str = position,
@@ -4939,7 +4965,7 @@ class Prototype001Parameters:
                 ]
                 fitted = [
                     made(
-                        fitted_frame(points, placing(turned), body, zones),
+                        fitted_frame(style, placing(turned), body, zones),
                         turned,
                         adjusted=True,
                     )
@@ -4990,10 +5016,15 @@ class Prototype001Parameters:
             return None
         cavities = [c for c in controls.top_cavities if c.name == "Control cavity"]
 
-        def guard_from(points: Sequence[Point2D], automatic: bool) -> Pickguard:
+        def guard_from(
+            points: Sequence[Point2D],
+            automatic: bool,
+            corners: Sequence[bool] = (),
+        ) -> Pickguard:
             return pickguard(
                 points,
                 automatic=automatic,
+                corners=corners,
                 thickness=self.body_pickguard_thickness,
                 pickup_openings=openings,
                 holes=[*controls.holes, *controls.guard_holes],
@@ -5006,27 +5037,33 @@ class Prototype001Parameters:
 
         # Either way the truss rod's spoke wheel stays uncovered.
         if shape.pickguard_points:
-            # Drawn for one bridge; stepped round whichever is fitted.
+            # Drawn for one bridge; stepped round whichever is fitted. A
+            # point kept where it was keeps its corner; the steps round
+            # are rounded.
+            points, marks = drawn_points(shape.pickguard_points)
+            placed = [Point2D(heel_end + p.x, p.y) for p in points]
+            sharp = {p for p, mark in zip(placed, marks, strict=True) if mark}
             drawn = clear_of_truss_rod(
                 clear_of_bridge(
-                    [Point2D(heel_end + x, y) for x, y in shape.pickguard_points],
+                    placed,
                     bridge_areas,
                     [route.outline for route in pickups],
                 ),
                 truss_rod_access,
             )
+            corners = [p in sharp for p in drawn] if sharp else []
             # Controls mounted in it must be under it; a guard drawn for
             # other controls (a template's) gives way to the automatic one,
             # made round them.
             if not in_guard:
-                return guard_from(drawn, automatic=False)
-            covering = guard_outline(drawn)
+                return guard_from(drawn, automatic=False, corners=corners)
+            covering = guard_outline(drawn, corners)
             if all(
                 point_in_polygon(p, covering)
                 for cavity in cavities
                 for p in cavity.outline
             ):
-                return guard_from(drawn, automatic=False)
+                return guard_from(drawn, automatic=False, corners=corners)
         automatic = automatic_pickguard_points(
             outline,
             heel_end,
@@ -5094,7 +5131,7 @@ class Prototype001Parameters:
             bass_sign=self.bass_sign,
             # (Checked by the layout: a pair of numbers each.)
             custom_points=tuple(
-                cast(tuple[float, float], tuple(point)) for point in self.inlay_points
+                cast(DrawnPoint, tuple(point)) for point in self.inlay_points
             ),
             runes=tuple(self.inlay_runes),
         )
@@ -5699,8 +5736,10 @@ class Prototype001Parameters:
                 raise BodyGeometryError(f"Heel relief {label} must be positive.")
         problem = ""
         drawn: list[Point2D] = []
+        corners: tuple[bool, ...] = ()
         if shape.heel_relief_points:
-            drawn = [Point2D(heel_end + x, y) for x, y in shape.heel_relief_points]
+            points, corners = drawn_points(shape.heel_relief_points)
+            drawn = [Point2D(heel_end + p.x, p.y) for p in points]
         elif self.body_heel_relief_line == "corner":
             drawn, problem = self._corner_relief_line(outline, plate, heel_end)
             if problem and check:
@@ -5729,7 +5768,7 @@ class Prototype001Parameters:
                 *((Point2D(heel_end, -side),) if ends[-1.0] < heel_end else ()),
                 Point2D(ends[-1.0], -side),
             ]
-        line = open_catmull_rom(drawn, CONTOUR_LINE_SAMPLES)
+        line = open_catmull_rom(drawn, CONTOUR_LINE_SAMPLES, corners)
         if self.body_heel_relief != "bevel":
             return (
                 HeelRelief.between(
@@ -5938,8 +5977,11 @@ class Prototype001Parameters:
         ):
             if depth <= 0.0 or not points:
                 continue
+            drawn, corners = drawn_points(points)
             line = open_catmull_rom(
-                [Point2D(heel_end + x, y) for x, y in points], CONTOUR_LINE_SAMPLES
+                [Point2D(heel_end + p.x, p.y) for p in drawn],
+                CONTOUR_LINE_SAMPLES,
+                corners,
             )
             contours.append(
                 ContourCut.along_line(name, face, outline, line, depth)  # type: ignore[arg-type]

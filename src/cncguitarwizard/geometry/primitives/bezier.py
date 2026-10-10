@@ -20,30 +20,40 @@ BezierSpan = tuple[Point2D, Point2D, Point2D, Point2D]
 
 def closed_catmull_rom_spans(
     control_points: Sequence[Point2D],
+    corners: Sequence[bool] = (),
 ) -> tuple[BezierSpan, ...]:
     """Return ``closed_catmull_rom``'s loop as one Bézier span a point.
 
-    Span ``i`` runs from control point ``i`` to the next, its tangents a
-    third of the chords between the neighbours, as the uniform
-    Catmull-Rom cubic has them.
+    Span ``i`` runs from control point ``i`` to the next, its control
+    points a sixth of the chord between each end's neighbours in from its
+    ends, as the uniform Catmull-Rom cubic has them; at a sharp corner
+    (``corners``), a sixth of its own chord, so a span between two corners
+    is straight.
 
     Raises:
-        GeometryException: For fewer than three control points.
+        GeometryException: For fewer than three control points, or corner
+            marks that are not one a point.
     """
     count = len(control_points)
     if count < 3:
         raise GeometryException("A closed spline needs at least three control points.")
+    if corners and len(corners) != count:
+        raise GeometryException("A spline needs one corner mark a control point.")
+    sharp = tuple(corners) or (False,) * count
     spans: list[BezierSpan] = []
     for index in range(count):
+        following = (index + 1) % count
         p0 = control_points[index - 1]
         p1 = control_points[index]
-        p2 = control_points[(index + 1) % count]
+        p2 = control_points[following]
         p3 = control_points[(index + 2) % count]
+        start = p1 if sharp[index] else p0
+        end = p2 if sharp[following] else p3
         spans.append(
             (
                 p1,
-                Point2D(p1.x + (p2.x - p0.x) / 6.0, p1.y + (p2.y - p0.y) / 6.0),
-                Point2D(p2.x - (p3.x - p1.x) / 6.0, p2.y - (p3.y - p1.y) / 6.0),
+                Point2D(p1.x + (p2.x - start.x) / 6.0, p1.y + (p2.y - start.y) / 6.0),
+                Point2D(p2.x - (end.x - p1.x) / 6.0, p2.y - (end.y - p1.y) / 6.0),
                 p2,
             )
         )
@@ -64,7 +74,7 @@ def smooth_curve_spans(curve: SmoothCurve) -> tuple[BezierSpan, ...]:
             (
                 Point2D(x0, y0),
                 Point2D(x0 + third, y0 + curve.slopes[index] * third),
-                Point2D(x1 - third, y1 - curve.slopes[index + 1] * third),
+                Point2D(x1 - third, y1 - curve.slopes_in[index + 1] * third),
                 Point2D(x1, y1),
             )
         )
@@ -72,17 +82,21 @@ def smooth_curve_spans(curve: SmoothCurve) -> tuple[BezierSpan, ...]:
 
 
 def hermite_spans(
-    points: Sequence[Point2D], tangents: Sequence[tuple[float, float]]
+    points: Sequence[Point2D],
+    tangents: Sequence[tuple[float, float]],
+    arriving: Sequence[tuple[float, float]] = (),
 ) -> tuple[BezierSpan, ...]:
     """Return the cubic Hermite curve through ``points`` as Bézier spans.
 
-    ``tangents[i]`` is the curve's derivative at ``points[i]`` per unit
-    of its span's parameter, as ``HeadstockPlan.tip_outline`` uses them.
+    ``tangents[i]`` is the curve's derivative leaving ``points[i]`` per
+    unit of its span's parameter, as ``HeadstockPlan.tip_outline`` uses
+    them, and ``arriving[i]`` arriving there (the same, if empty).
     """
+    arriving = arriving or tangents
     spans: list[BezierSpan] = []
     for index in range(len(points) - 1):
         p0, p1 = points[index], points[index + 1]
-        (m0x, m0y), (m1x, m1y) = tangents[index], tangents[index + 1]
+        (m0x, m0y), (m1x, m1y) = tangents[index], arriving[index + 1]
         spans.append(
             (
                 p0,

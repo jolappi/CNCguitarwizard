@@ -4,7 +4,8 @@ Each style is drawn in the cover's own frame: ``u`` from its nut end (0)
 toward the headstock tip, ``v`` across, both in millimetres, positive
 toward the treble side of a right-handed neck. Its corners are joined by
 straight lines and rounded with their radii. The styles are mockups of
-the familiar shapes, not the makers' own plates.
+the familiar shapes, not the makers' own plates. A drawn (``custom``)
+cover curves through a corner drawn round (``spline.drawn_polygon``).
 """
 
 from __future__ import annotations
@@ -12,6 +13,15 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 from typing import Literal
+
+from ..geometry.exceptions import GeometryException
+from ..geometry.primitives import (
+    ROUND,
+    DrawnPoint,
+    Point2D,
+    drawn_points,
+    drawn_polygon,
+)
 
 TrussRodCoverStyle = Literal["bell", "ibanez", "prs", "rectangle", "custom"]
 
@@ -35,6 +45,9 @@ the trough instead)."""
 
 CUSTOM_COVER_RADIUS = 1.5
 """A drawn cover's corner rounding, in mm."""
+
+CUSTOM_COVER_ROUND_SAMPLES = 8
+"""Points along each side of a drawn cover that meets a round corner."""
 
 BELL_TOP = 0.55
 """A bell's round top's width, as a share of its foot's."""
@@ -79,7 +92,7 @@ def truss_rod_cover_shape(
     style: str,
     length: float,
     width: float,
-    points: tuple[tuple[float, float], ...] = (),
+    points: tuple[DrawnPoint, ...] = (),
     screws: tuple[tuple[float, float], ...] = (),
 ) -> TrussRodCoverShape:
     """Return a cover style's shape at a size.
@@ -90,7 +103,8 @@ def truss_rod_cover_shape(
         width: Its width across the neck, in mm.
         points: A ``custom`` cover's corners as ``(along, across)``:
             ``along`` 0 at its nut end and 1 at its far end, ``across``
-            the share of its half-width (-1 to 1).
+            the share of its half-width (-1 to 1); ``(along, across,
+            "round")`` for one the outline curves through.
         screws: A ``custom`` cover's screw centres, likewise.
 
     Returns:
@@ -161,8 +175,14 @@ def truss_rod_cover_shape(
             (length - 4.0, 0.0),
         )
     else:
-        corners = tuple((u * length, v * half) for u, v in points)
-        radii = (CUSTOM_COVER_RADIUS,) * len(corners)
+        # Straight between the drawn corners, each rounded off, but curving
+        # through a corner drawn round.
+        drawn, rounds = drawn_points(points, ROUND)
+        placed = [Point2D(p.x * length, p.y * half) for p in drawn]
+        sharp = {p for p, rounded in zip(placed, rounds, strict=True) if not rounded}
+        outline = drawn_polygon(placed, rounds, CUSTOM_COVER_ROUND_SAMPLES)
+        corners = tuple((p.x, p.y) for p in outline)
+        radii = tuple(CUSTOM_COVER_RADIUS if p in sharp else 0.0 for p in outline)
         screw_points = tuple((u * length, v * half) for u, v in screws)
     return TrussRodCoverShape(corners, radii, screw_points)
 
@@ -186,7 +206,7 @@ def editable_cover_points(
 
 
 def check_custom_cover(
-    points: tuple[tuple[float, float], ...],
+    points: tuple[DrawnPoint, ...],
     screws: tuple[tuple[float, float], ...],
 ) -> str | None:
     """Return why a drawn cover cannot be cut, or ``None`` if it can."""
@@ -194,7 +214,11 @@ def check_custom_cover(
         return "a drawn truss-rod cover needs at least three corners"
     if not screws:
         return "a drawn truss-rod cover needs at least one screw"
-    for u, v in (*points, *screws):
+    try:
+        corners, _ = drawn_points(points, ROUND)
+    except GeometryException:
+        return 'a drawn truss-rod cover\'s corners are two numbers, or two and "round"'
+    for u, v in (*((p.x, p.y) for p in corners), *screws):
         if not (math.isfinite(u) and math.isfinite(v)):
             return "a drawn truss-rod cover's points must be finite"
     return None

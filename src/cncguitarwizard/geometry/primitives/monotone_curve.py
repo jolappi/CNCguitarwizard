@@ -89,10 +89,13 @@ class SmoothCurve:
     bulge or a hollow through them, as a hand-drawn outline does: every
     interior point's slope is that of the chord between its neighbours.
     The first point's slope is zero (a headstock edge leaves the nut
-    parallel to the neck) and the last point takes its secant.
+    parallel to the neck) and the last point takes its secant. A sharp
+    corner (``corners``) takes on each side its own side's secant, so
+    between two corners the curve runs straight.
 
     Args:
         points: At least two points with strictly increasing ``x``.
+        corners: Which points are sharp corners; empty for none.
 
     Raises:
         GeometryException: For fewer than two points, non-finite values or
@@ -100,7 +103,9 @@ class SmoothCurve:
     """
 
     points: tuple[tuple[float, float], ...]
+    corners: tuple[bool, ...] = ()
     slopes: tuple[float, ...] = field(init=False)
+    slopes_in: tuple[float, ...] = field(init=False)
 
     def __post_init__(self) -> None:
         """Validate the points and compute the slope at each one."""
@@ -117,7 +122,23 @@ class SmoothCurve:
             slopes.append((y1 - y0) / (x1 - x0))
         (xa, ya), (xb, yb) = self.points[-2], self.points[-1]
         slopes.append((yb - ya) / (xb - xa))
+        # A corner's slopes: each side its own side's secant (slopes leave
+        # each point, slopes_in arrive at it; the same but at a corner).
+        if self.corners and len(self.corners) != len(self.points):
+            raise GeometryException("A curve needs one corner mark a point.")
+        arriving = list(slopes)
+        for i, sharp in enumerate(self.corners):
+            if not sharp:
+                continue
+            x, y = self.points[i]
+            if i > 0:
+                xp, yp = self.points[i - 1]
+                arriving[i] = (y - yp) / (x - xp)
+            if i < len(self.points) - 1:
+                xn, yn = self.points[i + 1]
+                slopes[i] = (yn - y) / (xn - x)
         object.__setattr__(self, "slopes", tuple(slopes))
+        object.__setattr__(self, "slopes_in", tuple(arriving))
 
     def value_at(self, x: float) -> float:
         """Return ``y`` at ``x``; outside the points the ends are held flat."""
@@ -135,5 +156,5 @@ class SmoothCurve:
             (2 * t3 - 3 * t2 + 1) * y0
             + (t3 - 2 * t2 + t) * width * self.slopes[index]
             + (-2 * t3 + 3 * t2) * y1
-            + (t3 - t2) * width * self.slopes[index + 1]
+            + (t3 - t2) * width * self.slopes_in[index + 1]
         )

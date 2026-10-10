@@ -15,13 +15,25 @@ from .point2d import Point2D
 from .point3d import Point3D
 from .point_in_polygon import point_in_polygon
 from .rounded_polygon import rounded_polygon_points
-from .spline import closed_catmull_rom, open_catmull_rom
+from .spline import (
+    CORNER,
+    ROUND,
+    DrawnPoint,
+    closed_catmull_rom,
+    drawn_points,
+    drawn_polygon,
+    moved,
+    open_catmull_rom,
+)
 from .stroke_outline import stroke_outlines
 from .surface_mesh import QuadFace, SurfaceMesh
 from .vector2d import Vector2D
 
 __all__ = [
+    "CORNER",
+    "ROUND",
     "BezierSpan",
+    "DrawnPoint",
     "Line2D",
     "MonotoneCurve",
     "SmoothCurve",
@@ -36,6 +48,9 @@ __all__ = [
     "hermite_spans",
     "smooth_curve_spans",
     "closed_catmull_rom",
+    "drawn_points",
+    "drawn_polygon",
+    "moved",
     "nudge_inward",
     "open_catmull_rom",
     "point_in_polygon",

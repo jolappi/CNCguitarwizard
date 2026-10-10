@@ -6,7 +6,8 @@ the top keeps its full height, and every band nearer the edge lies one
 graphic (its pinstripes nested along the edge) made into levels. The
 boundaries are the outline taken in by ``body_top_step_insets``, or drawn
 (``YourDesignShape.step_points``): straight lines between points, so a
-step can run straight across where the edge curves (the Hexed's tail).
+step can run straight across where the edge curves (the Hexed's tail),
+rounded through a point drawn round.
 """
 
 from __future__ import annotations
