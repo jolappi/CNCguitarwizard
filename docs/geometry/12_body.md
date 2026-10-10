@@ -763,7 +763,7 @@ Optional, and off by default (`geometry.body.edges`):
 | `body_top_binding_width` / `_depth`, `body_back_binding_width` / `_depth` | A binding channel (rabbet) instead of a roundover; the default depth is 6 mm |
 | `body_arm_contour_depth`, `_width`, `_length`, `_position` | A Strat-style arm contour on the top of the bass-side rear bout |
 | `body_belly_cut_depth`, `_width`, `_length`, `_position` | A belly cut on the back of the bass-side upper bout |
-| `body_heel_relief`, `_depth`, `_reach` | A heel relief on the back where the neck joins: `"contour"`, `"notch"` or `"bevel"`; beside a neck plate, its treble corner, or under it a bevel |
+| `body_heel_relief`, `_depth`, `_reach`, `_line` | A heel relief on the back where the neck joins: `"contour"`, `"notch"` or `"bevel"`, round the heel, by the pocket or (`_line` `"pocket"`, `"corner"`) across its treble corner |
 
 A `ContourCut` follows `length` of the outline (resampled every 4 mm)
 centred on its deepest point. Across the edge it is a straight ramp from
@@ -804,12 +804,26 @@ curve), else a U round the heel: from the centreline
 sides that far out from the neck pocket, each to where it first leaves
 the body (the cutaway's or the horn's edge beside the neck).
 
-A neck plate needs the flat back, so beside one the automatic line is
-straight instead, slanting at 45 degrees past the plate's treble corner
-toward the nut (the clipped one of an asymmetric plate)
-`NECK_PLATE_RELIEF_GAP` (2 mm) clear of it, from edge to edge: the relief
-is the corner of the back beyond it, as on Fender's contoured heel. A
-drawn line that runs over the plate is refused.
+That U is `body_heel_relief_line` `"around"` (the default). With
+`"pocket"` the line is by the neck pocket instead: its outline offset
+`body_heel_relief_reach` outward all round, the corners rounded about
+the pocket's, along its sides and round its tail end, each end where it
+first leaves the body. With
+`"corner"` the automatic line is straight instead, slanting at 45 degrees
+toward the heel end on the treble side and crossing the centreline
+`body_heel_relief_reach` behind the body's edge at the neck end, from
+edge to edge: the relief is the heel's treble corner of the back beyond
+it, as on Fender's contoured heel. A neck plate needs the flat back, so
+beside one the line runs further out if need be, `NECK_PLATE_RELIEF_GAP`
+(2 mm) clear of the plate's treble corner toward the nut (the clipped one
+of an asymmetric plate). A bevel there is a flat slope across the corner
+(`HeelRelief.plane_axis` square to the line): at the face along the line,
+its full depth at the corner of the body furthest out. Choosing a plate
+does not change the line by itself: a U, or a drawn line, that runs over
+the plate is drawn as it is and refused at the build. Where the corner
+line falls outside the body (beside a plate with no body beyond it) the
+body editor draws the U meanwhile and says why in red, and the build
+refuses it (a drawn line is used as it is).
 
 A `"bevel"` is flat, so a plate can sit on it — Ibanez's Tilt Joint (their
 AANJ is a thinned, rounded heel with sunk ferrules: a contour here). It

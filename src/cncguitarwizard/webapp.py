@@ -182,6 +182,11 @@ _CHOICE_LABELS: dict[str, dict[str, str]] = {
         "stratocaster": "Stratocaster (beside the neck, a tail past the bridge)",
         "superstrat": "Superstrat (close round the pickups)",
     },
+    "body_heel_relief_line": {
+        "around": "Around the heel (a U across the neck pocket)",
+        "pocket": "By the pocket (its outline, the reach out all round)",
+        "corner": "Across the treble corner (clear of a neck plate)",
+    },
     "body_pickup_frame": {
         "none": "None",
         "ring": "Plain ring (a rounded rectangle round the route)",
@@ -672,7 +677,10 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         (laid out automatically or drawn), its pickup and switch openings
         and its holes — or ``None``;
         ``arm_contour`` and ``belly_cut`` ``{"points", "automatic"}`` — the
-        lines where they start (see ``_contour_line``) — or ``None``;
+        lines where they start (see ``_contour_line``) — or ``None``, and
+        ``heel_relief`` the same; ``problems`` what the build refuses that is
+        drawn anyway (``BodyLayout.problems``: a heel relief's corner line
+        drawn as the U);
         ``frames`` each humbucker frame's ``{"position", "field", "turned",
         "adjusted", "problem", "points", "handles", "origin", "along", "across",
         "stretch", "openings", "holes"}`` — its points in its own frame (as
@@ -926,6 +934,8 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         "heel_relief": _contour_line(
             parameters, layout.contours, local, "Heel relief", "heel_relief_points"
         ),
+        # What the build refuses that is drawn anyway, and why.
+        "problems": list(layout.problems),
         "engraving": (
             [local(line) for line in layout.engraving.lines]
             if layout.engraving is not None

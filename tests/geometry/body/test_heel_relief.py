@@ -1,6 +1,7 @@
 """Tests for the heel relief: the back cut away where the neck joins."""
 
 import ast
+import math
 from dataclasses import replace
 
 import pytest
@@ -11,6 +12,7 @@ from cncguitarwizard.geometry.body import HeelRelief
 from cncguitarwizard.geometry.exceptions import BodyGeometryError
 from cncguitarwizard.geometry.primitives import Point2D, point_in_polygon
 from cncguitarwizard.presets import Prototype001Parameters
+from cncguitarwizard.presets.body_shapes import YOUR_DESIGN_TEMPLATES
 from cncguitarwizard.presets.prototype001 import NECK_BOLT_MIN_WOOD
 from cncguitarwizard.webapp import body_editor_layout
 
@@ -170,3 +172,77 @@ def test_the_body_editor_draws_its_line() -> None:
     line = layout["heel_relief"]
     assert line["automatic"] is True and len(line["points"]) == 7
     assert body_editor_layout({"prototype": {}})["heel_relief"] is None
+
+
+def test_a_bevel_across_a_corner_slopes_along_its_own_axis() -> None:
+    # The square's corner at (-100, 100) cut off by a 45 degree line.
+    out = (-math.sqrt(0.5), math.sqrt(0.5))
+    line = (Point2D(-100.0, 40.0), Point2D(-70.0, 70.0), Point2D(-40.0, 100.0))
+    face = -100.0 * out[0] + 40.0 * out[1]
+    deep = -100.0 * out[0] + 100.0 * out[1]
+    relief = HeelRelief.between(
+        "Heel relief", square(), line, 6.0, "plane", (deep, face), out
+    )
+
+    def at(along: float) -> Point2D:
+        # A point that far along the axis, on the corner's diagonal.
+        return Point2D(along * out[0], along * out[1])
+
+    assert relief.depth_at(at(face + 0.5)) == pytest.approx(6.0 * 0.5 / (deep - face))
+    assert relief.depth_at(at((face + deep) / 2.0)) == pytest.approx(3.0)
+    assert relief.depth_at(at(face - 5.0)) == 0.0
+    # Its layers narrow toward the corner.
+    half = relief.level_region(3.0)
+    assert point_in_polygon(at(deep - 3.0), half)
+    assert not point_in_polygon(at(face + 5.0), half)
+    with pytest.raises(BodyGeometryError, match="unit direction"):
+        HeelRelief.between(
+            "Heel relief", square(), line, 6.0, "plane", (deep, face), (1.0, 1.0)
+        )
+
+
+def distance_to(point: Point2D, polygon: tuple[Point2D, ...]) -> float:
+    """The distance from ``point`` to a closed polygon's edges."""
+    best = math.inf
+    for a, b in zip(polygon, (*polygon[1:], polygon[0]), strict=True):
+        ex, ey = b.x - a.x, b.y - a.y
+        t = ((point.x - a.x) * ex + (point.y - a.y) * ey) / (ex * ex + ey * ey)
+        t = min(1.0, max(0.0, t))
+        best = min(best, math.hypot(a.x + ex * t - point.x, a.y + ey * t - point.y))
+    return best
+
+
+@pytest.mark.parametrize("kind", ["contour", "notch", "bevel"])
+def test_a_line_by_the_pocket_keeps_the_reach_from_it_all_round(kind: str) -> None:
+    parameters = replace(
+        Prototype001Parameters(),
+        body_heel_relief=kind,
+        body_heel_relief_line="pocket",
+    )
+    body = parameters.build().body
+    (relief,) = [c for c in body.contours if c.name == "Heel relief"]
+    assert isinstance(relief, HeelRelief)
+    pocket = body.neck_pocket
+    assert pocket is not None
+
+    for point in relief.line:
+        assert distance_to(point, pocket.outline) == pytest.approx(15.0, abs=0.3)
+    # Round its tail end, out to the body's edge on both sides.
+    heel_end = max(p.x for p in pocket.outline)
+    assert max(p.x for p in relief.line) == pytest.approx(heel_end + 15.0, abs=0.1)
+    assert relief.line[0].y * relief.line[-1].y < 0.0
+    if kind == "bevel":
+        # Sloping along the neck, as round the heel.
+        assert relief.plane_axis == (1.0, 0.0)
+
+
+def test_a_plate_tilts_on_a_bevel_by_the_pocket() -> None:
+    parameters = replace(
+        Prototype001Parameters(),
+        body_shape=YOUR_DESIGN_TEMPLATES["stratocaster"][1],
+        body_neck_plate="plate",
+        body_heel_relief="bevel",
+        body_heel_relief_line="pocket",
+    )
+    holes = parameters.build().body.side_holes
+    assert len([hole for hole in holes if hole.name.startswith("Neck bolt")]) == 4

@@ -383,9 +383,10 @@ class HeelRelief:
     horns) gives no crossing rulings. Along each ruling a ``"ramp"`` (a
     contour) rises from ``depth`` at the edge to the face at the line; a
     ``"flat"`` profile (a notch) is ``depth`` deep all the way in, a wall
-    at the line; a ``"plane"`` (a bevel for a neck plate to sit on) is a
-    flat slope across the neck, ``depth`` deep at ``plane[0]`` along X and
-    at the face at ``plane[1]``, never deeper than ``depth``.
+    at the line; a ``"plane"`` (a bevel, for a neck plate to sit on) is a
+    flat slope, ``depth`` deep at ``plane[0]`` along ``plane_axis`` (X: a
+    slope across the neck) and at the face at ``plane[1]``, never deeper
+    than ``depth``.
 
     Args:
         name: Its name, e.g. ``"Heel relief"``.
@@ -395,15 +396,18 @@ class HeelRelief:
             nearer ``edge[0]``.
         depth: How deep it is at its deepest.
         profile: ``"ramp"``, ``"flat"`` or ``"plane"``.
-        plane: For a ``"plane"``: the X where it is ``depth`` deep and the
-            X where it meets the face.
+        plane: For a ``"plane"``: where it is ``depth`` deep and where it
+            meets the face, along ``plane_axis``.
+        plane_axis: The unit direction ``plane`` is measured along: X for a
+            bevel across the neck, slanting for one across a corner.
         carries: The holes drilled from its surface (their depths, from
             the face, take it in): they may start on it.
         face: Always the back.
 
     Raises:
         BodyGeometryError: For a depth that is not finite and positive,
-            mismatched samples, or a plane whose two X are the same.
+            mismatched samples, a plane whose two places are the same, or
+            a plane axis that is not a unit vector.
     """
 
     name: str
@@ -412,6 +416,7 @@ class HeelRelief:
     depth: float
     profile: Literal["ramp", "flat", "plane"] = "ramp"
     plane: tuple[float, float] = (0.0, 0.0)
+    plane_axis: tuple[float, float] = (1.0, 0.0)
     carries: tuple[str, ...] = ()
     face: Literal["back"] = "back"
 
@@ -425,6 +430,8 @@ class HeelRelief:
             )
         if self.profile == "plane" and math.isclose(self.plane[0], self.plane[1]):
             raise BodyGeometryError(f"{self.name}'s slope needs a length.")
+        if not math.isclose(math.hypot(*self.plane_axis), 1.0):
+            raise BodyGeometryError(f"{self.name}'s slope needs a unit direction.")
 
     @classmethod
     def between(
@@ -435,6 +442,7 @@ class HeelRelief:
         depth: float,
         profile: Literal["ramp", "flat", "plane"] = "ramp",
         plane: tuple[float, float] = (0.0, 0.0),
+        plane_axis: tuple[float, float] = (1.0, 0.0),
     ) -> HeelRelief:
         """Return a relief from the edge in to ``line``.
 
@@ -456,6 +464,7 @@ class HeelRelief:
             depth,
             profile,
             plane,
+            plane_axis,
         )
 
     def _profile_depth(self, t: float, point: Point2D) -> float:
@@ -464,9 +473,13 @@ class HeelRelief:
             return self.depth
         if self.profile == "plane":
             deep, face = self.plane
-            fraction = (face - point.x) / (face - deep)
+            fraction = (self.along_plane(point) - face) / (deep - face)
             return self.depth * min(1.0, max(0.0, fraction))
         return self.depth * (1.0 - t)
+
+    def along_plane(self, point: Point2D) -> float:
+        """Return how far ``point`` lies along ``plane_axis``."""
+        return point.x * self.plane_axis[0] + point.y * self.plane_axis[1]
 
     def _locate(self, point: Point2D) -> float | None:
         """Return how far along the rulings ``point`` lies (0 at the edge,
@@ -540,8 +553,13 @@ class HeelRelief:
                 t = 1.0
             elif self.profile == "plane":
                 deep, face = self.plane
-                x = face - (level / self.depth) * (face - deep)
-                t = 1.0 if math.isclose(start.x, e.x) else (x - e.x) / (start.x - e.x)
+                there = face + (level / self.depth) * (deep - face)
+                at_edge, at_line = self.along_plane(e), self.along_plane(start)
+                t = (
+                    1.0
+                    if math.isclose(at_line, at_edge)
+                    else (there - at_edge) / (at_line - at_edge)
+                )
                 t = min(1.0, max(0.0, t))
             else:
                 t = 1.0 - level / self.depth

@@ -8,6 +8,7 @@ import pytest
 
 from cncguitarwizard.backends.freecad import FreeCADScriptExporter
 from cncguitarwizard.cam import MachiningParameters, plan_body_machining
+from cncguitarwizard.geometry.body import HeelRelief
 from cncguitarwizard.geometry.body.body_solid import outlines_overlap
 from cncguitarwizard.geometry.exceptions import BodyGeometryError
 from cncguitarwizard.geometry.primitives import Point2D, point_in_polygon
@@ -103,8 +104,10 @@ def test_the_plate_keeps_clear_of_the_rear_covers() -> None:
 
 @pytest.mark.parametrize("kind", ["plate", "asymmetric"])
 @pytest.mark.parametrize("relief", ["contour", "notch"])
-def test_an_automatic_heel_relief_slants_past_the_plate(kind: str, relief: str) -> None:
-    parameters = strat(body_neck_plate=kind, body_heel_relief=relief)
+def test_a_corner_heel_relief_slants_past_the_plate(kind: str, relief: str) -> None:
+    parameters = strat(
+        body_neck_plate=kind, body_heel_relief=relief, body_heel_relief_line="corner"
+    )
     body = parameters.build().body
     (heel_relief,) = body.contours
     treble = -parameters.bass_sign
@@ -126,6 +129,78 @@ def test_an_automatic_heel_relief_slants_past_the_plate(kind: str, relief: str) 
         )
         > 0.0
     )
+
+
+def test_a_plate_leaves_the_heel_relief_round_the_heel() -> None:
+    # Choosing a plate does not change the relief's line: still the U
+    # round the heel, across the neck pocket, as without one (the plate on
+    # it then refused at the build, not in the editor's drawing).
+    around = strat(body_heel_relief="contour")
+    with_plate = replace(around, body_neck_plate="plate")
+    heel_end = around.body_layout().heel_end
+
+    lines = [
+        next(c for c in p.body_layout().contours if c.name == "Heel relief").line
+        for p in (around, with_plate)
+    ]
+    assert lines[0] == lines[1]
+    assert max(point.x for point in lines[1]) == pytest.approx(heel_end + 15.0, abs=0.1)
+    with pytest.raises(BodyGeometryError, match="sits on the Heel relief"):
+        with_plate.build()
+    layout = body_editor_layout(
+        {"prototype": {"body_heel_relief": "contour", "body_neck_plate": "plate"}}
+    )
+    assert "error" not in layout
+    assert layout["heel_relief"]["automatic"] is True
+
+
+@pytest.mark.parametrize("relief", ["contour", "notch", "bevel"])
+def test_a_corner_heel_relief_cuts_the_treble_corner_without_a_plate(
+    relief: str,
+) -> None:
+    # The Design by Jone body, with ferrules: its line slants at 45 degrees
+    # across the treble corner, crossing the centreline the reach (15 mm)
+    # behind the body's edge at the neck end.
+    parameters = replace(
+        Prototype001Parameters(),
+        body_heel_relief=relief,
+        body_heel_relief_line="corner",
+    )
+    body = parameters.build().body
+    (heel_relief,) = [c for c in body.contours if c.name == "Heel relief"]
+    assert isinstance(heel_relief, HeelRelief)
+    treble = -parameters.bass_sign
+    out = (-math.sqrt(0.5), treble * math.sqrt(0.5))
+    across = [p.x * out[0] + p.y * out[1] for p in heel_relief.inner_edge()]
+    assert max(across) - min(across) == pytest.approx(0.0, abs=1e-6)
+    # Where the centreline leaves the body ahead of the heel end.
+    edge = parameters.body_layout().heel_end
+    while point_in_polygon(Point2D(edge, 0.0), body.outline.points):
+        edge -= 0.5
+    crossing = across[0] / out[0]  # the line's X on the centreline
+    assert crossing - edge == pytest.approx(15.0)
+    # The relief is the treble corner: deep near it, nothing on the bass side.
+    deepest = max(heel_relief.edge, key=lambda p: p.x * out[0] + p.y * out[1])
+    assert deepest.y * treble > 0.0
+    assert heel_relief.depth_at(Point2D(edge + 20.0, -treble * 20.0)) == 0.0
+    if relief == "bevel":
+        # A flat slope across the corner, at the face along its line.
+        assert heel_relief.plane_axis == pytest.approx(out)
+        assert heel_relief.plane[1] == pytest.approx(min(across))
+
+
+def test_a_plate_beside_a_corner_bevel_stays_flat() -> None:
+    parameters = strat(
+        body_neck_plate="asymmetric",
+        body_heel_relief="bevel",
+        body_heel_relief_line="corner",
+    )
+    body = parameters.build().body
+
+    assert not any(hole.name.startswith("Neck bolt") for hole in body.side_holes)
+    assert {
+        hole.name for hole in body.rear_holes if hole.name.startswith("Neck bolt")
+    } == {f"Neck bolt {n} hole" for n in range(1, 5)}
 
 
 def test_a_drawn_heel_relief_over_the_plate_is_refused() -> None:
@@ -190,3 +265,46 @@ def test_the_body_editor_draws_the_plate_and_keeps_its_bolts() -> None:
     assert {
         c["group"] for c in plain["circles"] if c["name"].startswith("Neck bolt")
     } == {"bolt:0", "bolt:1", "bolt:2", "bolt:3"}
+
+
+def test_a_corner_heel_relief_needs_body_beyond_the_plates_corner() -> None:
+    # The Design by Jone body's treble cutaway runs right by the plate.
+    parameters = replace(
+        Prototype001Parameters(),
+        body_neck_plate="plate",
+        body_heel_relief="contour",
+        body_heel_relief_line="corner",
+    )
+    with pytest.raises(BodyGeometryError, match="set body_heel_relief_line to around"):
+        parameters.build()
+
+
+def test_the_body_editor_draws_the_u_for_a_corner_line_that_does_not_fit() -> None:
+    # The Design by Jone body leaves no corner beyond a plate's: the editor
+    # still draws (its layout is not validated), the U round the heel, and
+    # says why the chosen line could not be laid out.
+    layout = body_editor_layout(
+        {
+            "prototype": {
+                "body_heel_relief": "notch",
+                "body_heel_relief_line": "corner",
+                "body_neck_plate": "plate",
+            }
+        }
+    )
+
+    assert "error" not in layout
+    line = layout["heel_relief"]
+    assert line["automatic"] is True and len(line["points"]) == 7
+    (problem,) = layout["problems"]
+    assert "no corner of the body to cut" in problem
+    for relief in ("contour", "bevel"):
+        corner = body_editor_layout(
+            {
+                "prototype": {
+                    "body_heel_relief": relief,
+                    "body_heel_relief_line": "corner",
+                }
+            }
+        )
+        assert corner["problems"] == []

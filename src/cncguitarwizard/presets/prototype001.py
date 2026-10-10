@@ -536,6 +536,9 @@ class BodyLayout:
             ferrules (see ``body_neck_plate``).
         joint_notes: How to drill a tilted neck plate's bolts by hand, for
             the programs' notes, or none.
+        problems: What the build refuses that the body editor draws anyway
+            (a heel relief's corner line that falls outside the body, drawn
+            as the U), each saying why.
     """
 
     heel_end: float
@@ -570,6 +573,7 @@ class BodyLayout:
     pickup_frames: tuple[PickupFrame, ...] = ()
     neck_plate: tuple[Point2D, ...] = ()
     joint_notes: tuple[str, ...] = ()
+    problems: tuple[str, ...] = ()
 
 
 TRUSS_ROD_STOCK_LENGTHS: tuple[float, ...] = tuple(
@@ -879,17 +883,23 @@ class Prototype001Parameters:
     # across the neck for a neck plate to sit on (Ibanez's Tilt Joint),
     # that deep at the body's edge on the centreline and up to the face
     # at its line's furthest point behind the heel, a wall elsewhere along
-    # its line. It starts
-    # body_heel_relief_reach behind the heel end on the centreline and
-    # curves forward to the edge beside the neck pocket either side (or
-    # along the body shape's heel_relief_points, drawn in the body
-    # editor). The neck bolts are drilled from it: their ferrules sink
-    # body_neck_ferrule_depth into its surface. Beside a neck plate
-    # (body_neck_plate), which needs the flat back, a contour or notch is
-    # instead the corner beside the plate's treble side toward the nut,
-    # cut off by a line slanting past that corner (the clipped one of an
-    # asymmetric plate), NECK_PLATE_RELIEF_GAP clear of it. A plate on a
-    # bevel tilts with it, placed so its tail bolts come out in the pocket
+    # its line. Where it starts is the body shape's heel_relief_points,
+    # drawn in the body editor, or else body_heel_relief_line: "around" a
+    # U round the heel, across the neck pocket, body_heel_relief_reach
+    # behind the heel end on the centreline and curving forward to the
+    # edge beside the pocket either side; "pocket" by the neck pocket, its
+    # outline body_heel_relief_reach out all round (its corners rounded),
+    # along its sides and round its tail end; "corner" the heel's treble
+    # corner, cut off by a line slanting at 45 degrees toward the heel end
+    # on the treble side, crossing the centreline body_heel_relief_reach
+    # behind the body's edge at the neck end, or further out beside a neck
+    # plate (body_neck_plate), NECK_PLATE_RELIEF_GAP clear of its treble
+    # corner toward the nut (the clipped one of an asymmetric plate), so
+    # the plate keeps the flat back it needs (Fender's contoured heel); a
+    # bevel there slopes across the corner. The neck bolts are
+    # drilled from it: their ferrules sink body_neck_ferrule_depth into
+    # its surface. A plate on a bevel round the heel tilts with it, placed
+    # so its tail bolts come out in the pocket
     # body_neck_bolt_end_wall from its end, and its bolts go in square to
     # the bevel: the CNC marks each one's centre NECK_BOLT_MARK_DEPTH into
     # the bevel and the builder drills it by hand (Body_back_small_holes'
@@ -898,6 +908,7 @@ class Prototype001Parameters:
     body_heel_relief: Literal["none", "contour", "notch", "bevel"] = "none"
     body_heel_relief_depth: float = 6.0
     body_heel_relief_reach: float = 15.0
+    body_heel_relief_line: Literal["around", "pocket", "corner"] = "around"
     # Rear-routed electronics cavities are cut up from the back face to
     # within body_rear_cavity_top_wall of the top so the pot and switch
     # bushings can pass through, and closed by a cover plate seated in a
@@ -2437,10 +2448,11 @@ class Prototype001Parameters:
     def _bevel_slope(bevel: HeelRelief | None) -> float:
         """Return how far a bevel falls per mm toward the nut, or 0.
 
-        Only a ``"plane"`` heel relief (``body_heel_relief="bevel"``) is
-        one; a neck plate on it tilts as steeply.
+        Only a ``"plane"`` heel relief (``body_heel_relief="bevel"``) round
+        the heel is one, sloping along the neck; a neck plate on it tilts as
+        steeply. One across the corner tilts no plate.
         """
-        if bevel is None or bevel.profile != "plane":
+        if bevel is None or bevel.profile != "plane" or bevel.plane_axis != (1.0, 0.0):
             return 0.0
         deep, face = bevel.plane
         return bevel.depth / (face - deep)
@@ -3235,26 +3247,30 @@ class Prototype001Parameters:
             self.heel_thickness,
             floor_slope=math.tan(math.radians(self.neck_angle_degrees)),
         )
-        # The neck plate first, which the heel relief keeps clear of, then
+        # The neck plate first, which a corner heel relief runs past, then
         # the heel relief: the neck bolts are drilled from it. But a bevel
-        # comes first, and a plate sits on it.
-        if self.body_heel_relief == "bevel":
-            heel_relief = self._heel_relief(
-                shape, body_outline.points, heel_end, neck_pocket
+        # round the heel comes first, and a plate sits on it. A corner line
+        # that cannot be laid out is refused by the build; the editor draws
+        # the U meanwhile.
+        if self.body_heel_relief == "bevel" and self.body_heel_relief_line != "corner":
+            heel_relief, relief_problem = self._heel_relief(
+                shape, body_outline.points, heel_end, neck_pocket, check=check_steps
             )
             neck_plate = self._neck_plate(heel_end, heel_relief, neck_pocket)
         else:
             neck_plate = self._neck_plate(heel_end)
-            heel_relief = self._heel_relief(
+            heel_relief, relief_problem = self._heel_relief(
                 shape,
                 body_outline.points,
                 heel_end,
                 neck_pocket,
                 neck_plate[0] if neck_plate is not None else (),
+                check=check_steps,
             )
         # Only a bolt-on neck has bolts: a set neck is glued, and a
         # neck-through body has no pocket (its outline stays as where the
         # neck passes, for the keep-outs).
+        problems = [relief_problem] if relief_problem else []
         neck_bolts = (
             self._neck_bolt_holes(
                 outline,
@@ -3813,6 +3829,7 @@ class Prototype001Parameters:
             frames,
             neck_plate=neck_plate[0] if neck_plate is not None else (),
             joint_notes=joint_notes,
+            problems=tuple(problems),
         )
 
     def _string_ferrules(self, holes: tuple[DrilledHole, ...]) -> list[DrilledHole]:
@@ -5462,33 +5479,39 @@ class Prototype001Parameters:
         heel_end: float,
         pocket: TracedCavity,
         plate: tuple[Point2D, ...] = (),
-    ) -> HeelRelief | None:
-        """Return the heel relief (``body_heel_relief``), or ``None``.
+        *,
+        check: bool = True,
+    ) -> tuple[HeelRelief | None, str]:
+        """Return the heel relief (``body_heel_relief``), or ``None``, and
+        why its chosen line could not be laid out ("" when it could).
 
         It runs in from the body's edge at the neck end to a line: the
         shape's ``heel_relief_points`` when drawn, else a U round the heel,
         from the centreline ``body_heel_relief_reach`` behind the heel end
         forward along both sides that far out from the neck pocket, each
         to where it first leaves the body (the cutaway's or the horn's
-        edge beside the neck). With a neck plate (its outline ``plate``),
-        which needs the flat back, the line is instead straight, slanting
-        at 45 degrees past the plate's treble corner toward the nut
-        ``NECK_PLATE_RELIEF_GAP`` clear of it, from edge to edge: the
-        relief is the corner of the back beyond it. A ``"notch"`` is a
-        flat step, a ``"contour"`` a ramp and a ``"bevel"`` a flat slope
-        (a plate may sit on it, so it is laid out without one), its full
-        depth at the body's edge on the centreline and at the face at the
-        line's furthest point behind the heel end.
+        edge beside the neck). With ``body_heel_relief_line="corner"`` the
+        line is instead straight, slanting at 45 degrees across the heel's
+        treble corner (clear of a neck plate, its outline ``plate``), from
+        edge to edge: the relief is the corner of the back beyond it. A ``"notch"`` is a
+        flat step, a ``"contour"`` a ramp and a ``"bevel"`` a flat slope:
+        round the heel (a plate may sit on it, so it is laid out without
+        one) its full depth at the body's edge on the centreline and at the
+        face at the line's furthest point behind the heel end; across the
+        corner its full depth at the corner of the body furthest out and at
+        the face along the line. A corner line that cannot be laid out
+        (``_corner_relief_line``) is refused when ``check``ing (the build);
+        the body editor gets the U and the reason.
 
         Raises:
             BodyGeometryError: For a neck-through or one-piece body, a depth
-                or reach that is not finite and positive, a plate with no
-                body beyond its corner, a bevel's line that does not run on
-                behind the body's edge, or a line that does not run inside
-                the body.
+                or reach that is not finite and positive, a corner line that
+                cannot be laid out (when checking), a bevel's line that does
+                not run on behind the body's edge, or a line that does not
+                run inside the body.
         """
         if self.body_heel_relief == "none":
-            return None
+            return None, ""
         if self.neck_runs_through:
             raise BodyGeometryError(
                 "A neck-through or one-piece body has no heel to relieve; set "
@@ -5500,36 +5523,17 @@ class Prototype001Parameters:
         ):
             if not math.isfinite(value) or value <= 0.0:
                 raise BodyGeometryError(f"Heel relief {label} must be positive.")
+        problem = ""
+        drawn: list[Point2D] = []
         if shape.heel_relief_points:
             drawn = [Point2D(heel_end + x, y) for x, y in shape.heel_relief_points]
-        elif plate:
-            # Out from the plate (toward the nut and the treble side) and
-            # along the slant (toward the heel end and the treble side).
-            treble = -self.bass_sign
-            out_x, out_y = -math.sqrt(0.5), treble * math.sqrt(0.5)
-            along_x, along_y = treble * math.sqrt(0.5), math.sqrt(0.5)
-            corner = max(plate, key=lambda p: p.x * out_x + p.y * out_y)
-            start = Point2D(
-                corner.x + out_x * NECK_PLATE_RELIEF_GAP,
-                corner.y + out_y * NECK_PLATE_RELIEF_GAP,
-            )
-            if not point_in_polygon(start, outline):
-                raise BodyGeometryError(
-                    "The neck plate leaves no corner of the body beside it for "
-                    "an automatic heel relief; draw its line in the body editor."
-                )
-
-            def edge(step: float) -> Point2D:
-                # Along the slant from the start, the first point out of
-                # the body.
-                x, y = start.x, start.y
-                while point_in_polygon(Point2D(x, y), outline):
-                    x += along_x * step
-                    y += along_y * step
-                return Point2D(x, y)
-
-            drawn = [edge(-1.0), start, edge(1.0)]
-        else:
+        elif self.body_heel_relief_line == "corner":
+            drawn, problem = self._corner_relief_line(outline, plate, heel_end)
+            if problem and check:
+                raise BodyGeometryError(problem)
+        elif self.body_heel_relief_line == "pocket":
+            drawn = self._pocket_relief_line(outline, pocket)
+        if not drawn:
             reach = self.body_heel_relief_reach
             side = max(abs(point.y) for point in pocket.outline) + reach
 
@@ -5553,33 +5557,183 @@ class Prototype001Parameters:
             ]
         line = open_catmull_rom(drawn, CONTOUR_LINE_SAMPLES)
         if self.body_heel_relief != "bevel":
-            return HeelRelief.between(
+            return (
+                HeelRelief.between(
+                    "Heel relief",
+                    outline,
+                    line,
+                    self.body_heel_relief_depth,
+                    "flat" if self.body_heel_relief == "notch" else "ramp",
+                ),
+                problem,
+            )
+        if self.body_heel_relief_line == "corner":
+            # Across the corner: at the face along the line (its innermost
+            # point), its full depth at the corner of the body furthest out.
+            axis = self._corner_out()
+            relief = HeelRelief.between(
                 "Heel relief",
                 outline,
                 line,
                 self.body_heel_relief_depth,
-                "flat" if self.body_heel_relief == "notch" else "ramp",
+                "plane",
+                (1.0, 0.0),
+                axis,
             )
-        # Its full depth at the body's edge on the centreline, walking
-        # toward the nut from the heel end, and up to the face at the
-        # line's furthest point behind the heel.
-        deep = heel_end
-        while deep > heel_end - 400.0 and point_in_polygon(Point2D(deep, 0.0), outline):
-            deep -= 0.5
+            face = min(relief.along_plane(point) for point in relief.line)
+            deep = max(relief.along_plane(point) for point in relief.edge)
+            return replace(relief, plane=(deep, face)), problem
+        # Round the heel: its full depth at the body's edge on the
+        # centreline, and up to the face at the line's furthest point
+        # behind the heel.
+        deep = self._neck_end_edge(outline, heel_end)
         face = max(point.x for point in line)
         if face <= deep + 1.0:
             raise BodyGeometryError(
                 "The heel bevel's line must run on behind the body's edge at "
                 "the neck end."
             )
-        return HeelRelief.between(
-            "Heel relief",
-            outline,
-            line,
-            self.body_heel_relief_depth,
-            "plane",
-            (deep, face),
+        return (
+            HeelRelief.between(
+                "Heel relief",
+                outline,
+                line,
+                self.body_heel_relief_depth,
+                "plane",
+                (deep, face),
+            ),
+            problem,
         )
+
+    def _pocket_relief_line(
+        self, outline: tuple[Point2D, ...], pocket: TracedCavity
+    ) -> list[Point2D]:
+        """Return a heel relief's line by the neck pocket.
+
+        The pocket's outline offset ``body_heel_relief_reach`` outward, its
+        corners rounded about the pocket's: along its sides and round its
+        tail end, from where it first leaves the body on one side to where
+        it does on the other (each end its first point out of the body).
+        """
+        reach = self.body_heel_relief_reach
+        corners = list(pocket.outline)
+        area = sum(
+            a.x * b.y - b.x * a.y
+            for a, b in zip(corners, (*corners[1:], corners[0]), strict=True)
+        )
+        if area < 0.0:
+            corners.reverse()
+        # Counter-clockwise, each edge's outward normal is to its right;
+        # round each corner from one edge's normal to the next's.
+        ring: list[Point2D] = []
+        count = len(corners)
+        for index, here in enumerate(corners):
+            before, after = corners[index - 1], corners[(index + 1) % count]
+            start = math.atan2(-(here.x - before.x), here.y - before.y)
+            end = math.atan2(-(after.x - here.x), after.y - here.y)
+            sweep = (end - start) % (2.0 * math.pi)
+            steps = max(1, math.ceil(sweep / (math.pi / 16.0)))
+            for step in range(steps + 1):
+                angle = start + sweep * step / steps
+                ring.append(
+                    Point2D(
+                        here.x + reach * math.cos(angle),
+                        here.y + reach * math.sin(angle),
+                    )
+                )
+        # Points every 2 mm or closer, so the spline drawn through them
+        # keeps to the straight runs.
+        dense: list[Point2D] = []
+        for a, b in zip(ring, (*ring[1:], ring[0]), strict=True):
+            pieces = max(1, math.ceil(math.hypot(b.x - a.x, b.y - a.y) / 2.0))
+            dense.extend(
+                Point2D(
+                    a.x + (b.x - a.x) * piece / pieces,
+                    a.y + (b.y - a.y) * piece / pieces,
+                )
+                for piece in range(pieces)
+            )
+        # From the middle of the tail end, each way to the body's edge.
+        tail = max(range(len(dense)), key=lambda i: (dense[i].x, -abs(dense[i].y)))
+        half = len(dense) // 2
+
+        def walk(step: int) -> list[Point2D]:
+            points = []
+            for offset in range(1, half):
+                point = dense[(tail + step * offset) % len(dense)]
+                points.append(point)
+                if not point_in_polygon(point, outline):
+                    break
+            return points
+
+        return [*reversed(walk(-1)), dense[tail], *walk(1)]
+
+    @staticmethod
+    def _neck_end_edge(outline: tuple[Point2D, ...], heel_end: float) -> float:
+        """Return the X where the centreline leaves the body ahead of the heel."""
+        x = heel_end
+        while x > heel_end - 400.0 and point_in_polygon(Point2D(x, 0.0), outline):
+            x -= 0.5
+        return x
+
+    def _corner_out(self) -> tuple[float, float]:
+        """Return the unit direction out across the heel's treble corner.
+
+        Toward the nut and the treble side, at 45 degrees: square to a
+        corner heel relief's line.
+        """
+        return (-math.sqrt(0.5), -self.bass_sign * math.sqrt(0.5))
+
+    def _corner_relief_line(
+        self,
+        outline: tuple[Point2D, ...],
+        plate: tuple[Point2D, ...],
+        heel_end: float,
+    ) -> tuple[list[Point2D], str]:
+        """Return a corner heel relief's line, or no points and why not.
+
+        It slants at 45 degrees, toward the heel end on the treble side,
+        crossing the centreline ``body_heel_relief_reach`` behind the
+        body's edge at the neck end, from edge to edge: the relief is the
+        treble corner of the back beyond it. Beside a neck plate (its
+        outline ``plate``) it runs further out if need be, to keep
+        ``NECK_PLATE_RELIEF_GAP`` clear of the plate's treble corner toward
+        the nut (the clipped one of an asymmetric plate). There is none if
+        that leaves no body beyond it.
+        """
+        out_x, out_y = self._corner_out()
+        along_x, along_y = out_y, -out_x
+        start = Point2D(
+            self._neck_end_edge(outline, heel_end) + self.body_heel_relief_reach,
+            0.0,
+        )
+        if plate:
+            tip = max(plate, key=lambda p: p.x * out_x + p.y * out_y)
+            clear = Point2D(
+                tip.x + out_x * NECK_PLATE_RELIEF_GAP,
+                tip.y + out_y * NECK_PLATE_RELIEF_GAP,
+            )
+            if clear.x * out_x + clear.y * out_y > start.x * out_x + start.y * out_y:
+                start = clear
+        if not point_in_polygon(start, outline):
+            return [], (
+                "A corner heel relief has no corner of the body to cut: its line "
+                "falls outside the body (beside the neck plate's corner, or "
+                "body_heel_relief_reach behind the edge); set "
+                "body_heel_relief_line to around, or draw the relief's line in "
+                "the body editor."
+            )
+
+        def edge(step: float) -> Point2D:
+            # Along the slant from the start, the first point out of the
+            # body.
+            x, y = start.x, start.y
+            while point_in_polygon(Point2D(x, y), outline):
+                x += along_x * step
+                y += along_y * step
+            return Point2D(x, y)
+
+        return [edge(-1.0), start, edge(1.0)], ""
 
     def _contours(
         self,

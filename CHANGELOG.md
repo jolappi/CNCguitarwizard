@@ -18,8 +18,11 @@
   (`body_neck_plate_clip`), as on Fender's contoured heel. The plate
   fixes the bolts at its holes; it is drawn in the plan view, on the
   DXF's `NECK_PLATE` layer and in the body editor, and must sit wholly on
-  the flat back. Beside a plate the automatic heel relief is the back's
-  treble corner, cut off by a line slanting past the plate.
+  the flat back. With `body_heel_relief_line="corner"` the automatic heel
+  relief is the heel's treble corner, cut off by a line slanting at 45
+  degrees, clear of a plate, and with `pocket` it follows the neck
+  pocket's outline the reach out all round (the default `around` keeps
+  the U round the heel); a bevel across the corner slopes across it.
 - A heel relief on the back where the neck joins the body
   (`body_heel_relief`): a smooth contour or a flat notch,
   `body_heel_relief_depth` deep at the edge, running in to a line drawn

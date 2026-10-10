@@ -676,9 +676,21 @@ sallii; levy määrää pulttien paikat, joten runkomuodon `neck_bolts` ja
 piirretään tasokuvaan, DXF:n `NECK_PLATE`-tasolle ja runkoeditoriin, ja
 sen on oltava kokonaan tasaisella takapinnalla: 1 mm takareunan
 pyöristyksen tai reunanauhan sisäpuolella, irti takapinnan muotoiluista
-ja takakansista. Levyn vieressä automaattinen kantapään muotoilu on
-rungon diskanttipuolen kulma, jonka 45 asteen suora viiva rajaa 2 mm
-levyn kulman ohi. Viiste (`"bevel"`) on tasainen kalteva pinta kaulan
+ja takakansista. Kantapään muotoilun automaattinen viiva valitaan
+kentällä `body_heel_relief_line`: `"around"` (oletus) on U kantapään
+ympäri kaulataskun yli, `"pocket"` kaulataskun ääriviiva
+`body_heel_relief_reach` ulompana joka puolelta (kulmat pyöristettyinä)
+taskun sivuja pitkin ja sen pään ympäri, `"corner"` kantapään
+diskanttipuolen kulma, jonka
+45 asteen suora viiva rajaa: viiva leikkaa keskilinjan
+`body_heel_relief_reach` rungon kaulanpuoleisen reunan takana, ja levyn
+vieressä se kulkee tarvittaessa kauempana, 2 mm levyn kulman ohi.
+Kulmaviisteessä tasainen pinta viettää kulman poikki, eikä levy kallistu.
+Levyn valinta ei itse vaihda viivaa: levyn päälle osuva muotoilu
+piirretään sellaisenaan ja hylätään vasta rakennettaessa. Jos kulmaviiva
+jää rungon ulkopuolelle (levyn kulman takana ei ole runkoa),
+runkoeditori piirtää sillä välin U:n ja kertoo syyn punaisella, ja
+rakennus hylkää sen. Viiste (`"bevel"`) on tasainen kalteva pinta kaulan
 poikki: se on täysisyvä siellä, missä keskilinja lähtee rungosta kaulan
 puolella, ja nousee pintaan viivansa kauimmassa kohdassa kantapään
 takana; muualla viivalla on seinämä kuten lovessa. Hylsyt upotetaan

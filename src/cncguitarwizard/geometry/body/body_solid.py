@@ -709,7 +709,13 @@ class BodySolid:
                 self.neck_plate, contour.region()
             ):
                 continue
-            if isinstance(contour, HeelRelief) and contour.profile == "plane":
+            # A plate may sit tilted on a bevel round the heel (sloping along
+            # the neck), not on one across a corner.
+            if (
+                isinstance(contour, HeelRelief)
+                and contour.profile == "plane"
+                and contour.plane_axis == (1.0, 0.0)
+            ):
                 region = contour.region()
                 if not all(
                     point_in_polygon(point, region) and point.x >= contour.plane[0]

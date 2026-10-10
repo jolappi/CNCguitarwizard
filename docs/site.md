@@ -188,8 +188,15 @@ Python.
    `body_belly_cut_depth`, `belly_cut_points` and *Auto belly cut*, and the
    heel relief's on the back where the neck joins, in plum, with
    `body_heel_relief` (a contour or a notch, beside the editor with its
-   depth), `heel_relief_points` and *Auto heel relief* (beside a neck
-   plate, a straight line slanting past its treble corner). With
+   depth and `body_heel_relief_line`), `heel_relief_points` and *Auto
+   heel relief* (a U round the heel, with `pocket` the pocket's outline
+   offset by the reach, or with `corner` a straight line
+   slanting across the heel's treble corner, clear of a neck plate; where
+   a plate leaves no corner beyond it the U is drawn and the status line
+   says why). A line moved by hand stays as drawn whatever relief is
+   chosen, and the status line says so; choosing `body_heel_relief_line`
+   by hand (not a loaded design or an undo) goes back to that automatic
+   line, as *Auto heel relief* does. With
    `body_neck_plate` (beside the editor: ferrules, a Fender style plate or
    an asymmetric one) the plate is drawn on the back in steel grey and its
    bolts stay at its holes, not dragged; on a `"bevel"` heel relief it

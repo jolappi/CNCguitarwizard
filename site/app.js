@@ -214,7 +214,7 @@ const EDITOR_FIELDS = {
     "body_neck_pickup_offset", "body_middle_pickup_offset", "body_bridge_pickup_offset", "body_pickups_follow_fan",
     "body_bridge", "body_bridge_follows_fan", "body_controls", "body_switch", "body_jack",
     "body_pickguard", "body_pickguard_style", "body_pickup_frame", "body_pickup_frame_direction",
-    "body_arm_contour_depth", "body_belly_cut_depth", "body_heel_relief", "body_heel_relief_depth", "body_carved_top", "body_carve_depth", "body_stepped_top",
+    "body_arm_contour_depth", "body_belly_cut_depth", "body_heel_relief", "body_heel_relief_depth", "body_heel_relief_line", "body_carved_top", "body_carve_depth", "body_stepped_top",
     "body_engraving", "body_engraving_pattern", "body_engraving_seed", "body_battery_box", "body_battery_count",
     "body_neck_bolts_outward", "body_neck_plate",
   ],
@@ -3507,12 +3507,23 @@ const bodyEditor = {
     const frameProblem = (this.layout.frames || []).find((frame) => frame.problem);
     const cutBack = (this.layout.frames || []).filter((frame) => frame.adjusted && !frame.problem)
       .map((frame) => frame.position);
+    // A heel relief line moved by hand stays as drawn whatever relief or
+    // line is chosen, so say so.
+    const heelNote = this.layout.heel_relief && !this.layout.heel_relief.automatic
+      ? " The heel relief's line is drawn by hand: Auto heel relief goes back to the automatic one."
+      : "";
     const frameNote = cutBack.length === 1
       ? ` The ${cutBack[0]} pickup's frame was cut back to fit; drag its points to change it.`
       : cutBack.length
         ? ` The ${cutBack.join(" and ")} pickups' frames were cut back to fit; drag their points to change them.`
         : "";
-    if (outside.size) {
+    // What the build refuses that is drawn anyway (a heel relief's corner
+    // line drawn as the U), first: it says what to change.
+    const problems = this.layout.problems || [];
+    const outsideNote = outside.size ? ` Outside the outline: ${[...outside].join(", ")}.` : "";
+    if (problems.length) {
+      this.setStatus(`${problems.join(" ")}${outsideNote}`, "bad");
+    } else if (outside.size) {
       this.setStatus(`Outside the outline: ${[...outside].join(", ")}.${jackNote}`, "bad");
     } else if (frameProblem) {
       this.setStatus(`${frameProblem.problem} Drag its points in (or turn it round with body_pickup_frame_direction).`, "bad");
@@ -3521,7 +3532,7 @@ const bodyEditor = {
     } else if (this.guardGaveWay()) {
       this.setStatus("Every feature fits inside the outline. The drawn pickguard does not cover the controls mounted in it, so the automatic one is used.", "ok");
     } else {
-      this.setStatus(`Every feature fits inside the outline.${frameNote}`, "ok");
+      this.setStatus(`Every feature fits inside the outline.${frameNote}${heelNote}`, "ok");
     }
   },
 
@@ -5382,6 +5393,17 @@ const TUNER_LAYOUT_FIELDS = new Set([
 document.addEventListener("change", (event) => {
   if (!event.isTrusted) return;
   const original = [...mirrors].find(([, copy]) => copy === event.target)?.[0] || event.target;
+  // The heel relief's line chosen by hand (round the heel, or past a neck
+  // plate's corner) is drawn as that automatic line again; a loaded design
+  // or an undo keeps a line drawn by hand.
+  if (original.dataset?.set === "prototype" && original.dataset.name === "body_heel_relief_line") {
+    const drawn = bodyEditor.field("prototype.body_shape", "heel_relief_points");
+    if (drawn && drawn.value !== "[]") {
+      bodyEditor.setField(drawn, []);
+      bodyEditor.scheduleRefresh();
+    }
+    return;
+  }
   if (original.dataset?.set !== "prototype" || !TUNER_LAYOUT_FIELDS.has(original.dataset.name)) return;
   const { holes } = headstockEditor.inputs();
   if (!holes || (!valueProblem(holes) && readValue(holes).length === 0)) return;
