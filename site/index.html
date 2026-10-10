@@ -6,6 +6,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache">
+<!-- This page's stamp, set by tools/build_site.py (see the loader below). -->
+<meta name="cgw-page" content="83190ad550a9">
 <title>CNCguitarwizard</title>
 <style>
   :root {
@@ -776,11 +778,22 @@
 </dialog>
 <script src="https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.js"></script>
 <script>
-  // Load the manifest fresh, then the app script versioned by its build id,
-  // so a cached app.js can never run against a newer wheel.
-  fetch("wheel.json", { cache: "no-store" })
+  // Load the manifest fresh (past the browser's cache and a CDN's: a URL
+  // of its own each time), then the app script versioned by its build id,
+  // so a cached app.js can never run against a newer wheel. A page whose
+  // stamp is not the manifest's is a stale copy from a cache: it loads
+  // itself again at a URL of its own, which no cache holds (once — a page
+  // edited but not built keeps going).
+  fetch("wheel.json?t=" + Date.now(), { cache: "no-store" })
     .then((response) => response.json())
     .then((manifest) => {
+      const stamp = document.querySelector('meta[name="cgw-page"]').content;
+      const here = new URL(location.href);
+      if (manifest.page && manifest.page !== stamp && here.searchParams.get("page") !== manifest.page) {
+        here.searchParams.set("page", manifest.page);
+        location.replace(here.href);
+        return;
+      }
       window.CNCGW_MANIFEST = manifest;
       const script = document.createElement("script");
       script.src = "app.js?v=" + encodeURIComponent(manifest.build || Date.now());

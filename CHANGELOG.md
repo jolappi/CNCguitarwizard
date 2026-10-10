@@ -943,6 +943,14 @@
 
 ### Fixed
 
+- A new version of the web app shows on a plain reload, whatever cached
+  the page: the manifest is fetched past every cache (a URL of its own),
+  and a page whose stamp (`tools/build_site.py` stamps `index.html` with a
+  hash of itself) is not the manifest's loads itself once more at a URL
+  no cache holds. `tools/serve_site.py` serves the site locally with
+  `Cache-Control: no-cache`, and `site/.htaccess` does so under Apache
+  (MAMP).
+
 - A design put back on loading the page, or loaded from a file, never
   stays in error: whatever would make an editor show red (an error, a
   neck bolt with no room, a feature outside the outline) is put back to

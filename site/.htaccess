@@ -1,0 +1,9 @@
+# Served by Apache (MAMP, say): the browser checks the page, its script
+# and the manifest again every time, so a rebuild shows at once. The
+# wheel's URL carries its build id, so it may be kept. GitHub Pages
+# ignores this file (see tools/build_site.py for how the page copes there).
+<IfModule mod_headers.c>
+  <FilesMatch "\.(html|js|json)$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+</IfModule>

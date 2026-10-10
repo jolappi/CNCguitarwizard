@@ -4,7 +4,7 @@
     {
       "name": "site",
       "runtimeExecutable": "sh",
-      "runtimeArgs": ["-c", "exec .venv/bin/python -m http.server \"${PORT:-8765}\" --directory site"],
+      "runtimeArgs": ["-c", "exec .venv/bin/python tools/serve_site.py \"${PORT:-8765}\""],
       "port": 8765,
       "autoPort": true
     }

@@ -621,18 +621,33 @@ the design (*Save design*) and build it all locally from a clone with
 
 ```bash
 python tools/build_site.py
-python -m http.server 8765 --directory site
+python tools/serve_site.py 8765
 ```
 
 Then open <http://localhost:8765>. `tools/build_site.py` builds the wheel
 into `site/wheels/` and writes `site/wheel.json`, both git-ignored. The
 page needs to be served over HTTP (not opened as a file) because Pyodide
-fetches the wheel.
+fetches the wheel. `tools/serve_site.py` is Python's `http.server` with
+`Cache-Control: no-cache` on every response, so the browser checks each
+file again every time (an unchanged one comes back as a short "not
+modified"); plain `python -m http.server` sends no such header, and a
+browser may then keep the page itself for a while. Served by Apache
+instead (MAMP), `site/.htaccess` sets the same header for the page, the
+script and the manifest.
 
-`wheel.json` carries a build id (a hash of the wheel and `app.js`). The page fetches it
-uncached and appends the id to the `app.js` and wheel URLs, so after a
-rebuild a plain reload always gets the matching script and wheel — no
-hard refresh needed. The status line shows the build id that is running.
+`wheel.json` carries a build id (a hash of the wheel and `app.js`) and the
+page's stamp. The page fetches it past every cache — `cache: "no-store"`
+and a URL of its own each time (`wheel.json?t=…`), so not even a CDN's
+copy (GitHub Pages keeps files 10 minutes) is used — and appends the id
+to the `app.js` and wheel URLs, so after a rebuild a plain reload always
+gets the matching script and wheel — no hard refresh needed. The page
+itself (its markup, styles and help) is stamped by `tools/build_site.py`
+with a hash of itself (`<meta name="cgw-page">`, `stamped_page`; it
+changes only when the page does). A page whose stamp is not the
+manifest's is a stale copy from a cache: before loading anything it
+loads itself again at `?page=<stamp>`, a URL no cache holds, once (a page
+edited but not rebuilt keeps going). The status line shows the build id
+that is running.
 
 ## Deployment
 
@@ -649,4 +664,6 @@ job prints the page URL.
 | `site/app.js` | Pyodide bootstrap, form generation, build, downloads, NC Viewer simulator panel |
 | `src/cncguitarwizard/webapp.py` | Schema and build glue called from the page |
 | `src/cncguitarwizard/render/svg/plan_view.py` | The plan-view SVG |
-| `tools/build_site.py` | Wheel build and manifest |
+| `tools/build_site.py` | Wheel build, manifest and the page's stamp |
+| `tools/serve_site.py` | Local server that keeps the browser from caching the site |
+| `site/.htaccess` | The same `no-cache` header under Apache (MAMP) |

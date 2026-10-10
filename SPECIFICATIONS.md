@@ -972,6 +972,18 @@ tallentuu sinne, ja sivu palauttaa sen uudelleen ladattaessa (tilarivi
 kertoo sen, jos se ei ole oletukset), joten uudelleenlataus tai suljettu
 välilehti ei hukkaa mitään; *Reset* aloittaa alusta.
 
+Uusi versio tulee voimaan tavallisella sivun latauksella: sivu hakee
+manifestin (`wheel.json`) joka kerta omalla osoitteellaan selaimen ja
+CDN:n välimuistin ohi, ja `app.js` ja wheel haetaan sen build-tunnuksella.
+`tools/build_site.py` leimaa sivuun (`index.html`) sen oman tiivisteen ja
+kirjoittaa saman manifestiin; sivu, jonka leima ei ole manifestin, on
+vanha kopio välimuistista ja latautuu kerran uudelleen omalla
+osoitteellaan (`?page=…`), jota mikään välimuisti ei sisällä.
+Paikallisesti `tools/serve_site.py` palvelee sivuston `Cache-Control:
+no-cache` -otsakkeella (selain tarkistaa jokaisen tiedoston joka kerta),
+ja Apachelle (MAMP) `site/.htaccess` tekee saman sivulle, skriptille ja
+manifestille.
+
 Ctrl/Cmd+Enter käynnistää rakennuksen mistä kohtaa sivua tahansa (myös
 kenttää kirjoitettaessa). Kun varsinainen *Build*-painike on vieritetty
 näkyvistä (kapealla näytöllä sivu, leveällä lomakesarake), oikeaan

@@ -101,7 +101,7 @@ async function boot() {
     setStatus("Installing cncguitarwizard…");
     await pyodide.loadPackage("micropip");
     const manifest = window.CNCGW_MANIFEST
-      || await (await fetch("wheel.json", { cache: "no-store" })).json();
+      || await (await fetch("wheel.json?t=" + Date.now(), { cache: "no-store" })).json();
     const micropip = pyodide.pyimport("micropip");
     const wheelUrl = new URL("wheels/" + manifest.wheel, location.href);
     wheelUrl.searchParams.set("v", manifest.build || String(Date.now()));
