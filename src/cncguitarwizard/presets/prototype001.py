@@ -23,6 +23,7 @@ from ..geometry.body import (
     DrilledHole,
     EdgeProfile,
     Engraving,
+    EpoxyTray,
     FloydRoseSpec,
     HardtailSpec,
     HeadlessBridgeSpec,
@@ -536,6 +537,8 @@ class BodyLayout:
             ferrules (see ``body_neck_plate``).
         joint_notes: How to drill a tilted neck plate's bolts by hand, for
             the programs' notes, or none.
+        epoxy_tray: The tray routed over the top for an epoxy pour, or
+            ``None`` (see ``body_epoxy_tray_depth``).
         problems: What the build refuses that the body editor draws anyway
             (a heel relief's corner line that falls outside the body, drawn
             as the U; neck bolts with no room, drawn where they are asked
@@ -575,6 +578,7 @@ class BodyLayout:
     neck_plate: tuple[Point2D, ...] = ()
     joint_notes: tuple[str, ...] = ()
     problems: tuple[str, ...] = ()
+    epoxy_tray: EpoxyTray | None = None
 
 
 TRUSS_ROD_STOCK_LENGTHS: tuple[float, ...] = tuple(
@@ -885,6 +889,18 @@ class Prototype001Parameters:
     body_belly_cut_width: float = 70.0
     body_belly_cut_length: float = 260.0
     body_belly_cut_position: float | None = None
+    # An epoxy tray (body_epoxy_tray_depth, 0 = none): the top routed that
+    # deep over the whole body but a rim body_epoxy_tray_rim of wood at
+    # its edge, leaving a wall body_epoxy_tray_wall thick round every
+    # opening in the top (the neck pocket, the pickup routes, the other
+    # routes and the holes), for epoxy to be poured in up to the face and
+    # sanded flush. It needs the flat top (no carved or stepped top, no
+    # arm contour, not on a neck-through), a rim wider than the top edge's
+    # roundover or binding, and CARVE_WALL of wood over the rear cavities
+    # under it.
+    body_epoxy_tray_depth: float = 0.0
+    body_epoxy_tray_rim: float = 4.0
+    body_epoxy_tray_wall: float = 2.0
     # A heel relief (body_heel_relief) cuts the back away where the neck's
     # heel meets the body, so the hand reaches the top frets: "contour" a
     # smooth bevel from the body's edge at the neck end, where it is
@@ -3829,7 +3845,7 @@ class Prototype001Parameters:
             else None,
             heel_end,
         )
-        return BodyLayout(
+        layout = BodyLayout(
             heel_end,
             body_outline,
             neck_pocket,
@@ -3900,6 +3916,94 @@ class Prototype001Parameters:
             joint_notes=joint_notes,
             problems=tuple(problems),
         )
+        # The epoxy tray last: it walls in every opening in the top.
+        if self.body_epoxy_tray_depth == 0.0:
+            return layout
+        return replace(layout, epoxy_tray=self._epoxy_tray(layout))
+
+    def _epoxy_tray(self, layout: BodyLayout) -> EpoxyTray:
+        """Return the epoxy tray (``body_epoxy_tray_depth``) for a laid-out body.
+
+        Its outline is the body's outline ``body_epoxy_tray_rim`` in, and a
+        wall ``body_epoxy_tray_wall`` thick stands round every opening in
+        the top: every route cut down from it (the neck pocket, the pickup
+        routes, the bridge's, the controls' and a jack's routes, the wire
+        channels) and every hole drilled from it, as its outline that far
+        out (a hole's a circle).
+
+        Raises:
+            BodyGeometryError: For sizes that are not finite and positive, a
+                neck-through body, a rim no wider than the top edge's
+                roundover or binding, or a rim that leaves no tray.
+        """
+        depth = self.body_epoxy_tray_depth
+        rim = self.body_epoxy_tray_rim
+        wall = self.body_epoxy_tray_wall
+        if not all(
+            math.isfinite(value) and value > 0.0 for value in (depth, rim, wall)
+        ):
+            raise BodyGeometryError("Epoxy tray sizes must be finite and positive.")
+        if self.neck_runs_through:
+            raise BodyGeometryError(
+                "An epoxy tray is routed in a body's top; a neck-through or "
+                "one-piece body's centre is the neck."
+            )
+        edge = max(self.body_top_edge_radius, self.body_top_binding_width)
+        if rim <= edge:
+            raise BodyGeometryError(
+                "body_epoxy_tray_rim must be wider than the top edge's roundover "
+                f"or binding ({edge:g} mm), or the epoxy runs out over it."
+            )
+        # (Offsets are sampled every mm: thinned to 0.05 mm, as cut.)
+        outline = simplified(
+            offset_polygon(layout.outline.points, rim, inward=True), 0.05
+        )
+        if len(outline) < 3:
+            raise BodyGeometryError("The epoxy tray's rim leaves no tray.")
+        routes = [
+            layout.neck_pocket,
+            *(
+                pickup
+                for pickup in (
+                    layout.neck_pickup,
+                    layout.middle_pickup,
+                    layout.bridge_pickup,
+                )
+                if pickup is not None
+            ),
+            *((layout.truss_rod_access,) if layout.truss_rod_access else ()),
+            *layout.extra_cavities,
+            *layout.through_cavities,
+            *layout.controls.top_cavities,
+            *layout.wiring.channels,
+        ]
+        holes = [
+            (hole.center, hole.diameter / 2.0)
+            for hole in (
+                *layout.holes,
+                *layout.controls.holes,
+                *layout.controls.top_marks,
+            )
+        ]
+        holes += [
+            (pivot, layout.bridge_mounting.pivot_hole_diameter / 2.0)
+            for pivot in layout.bridge_mounting.pivot_holes
+        ]
+        walls = [
+            simplified(offset_polygon(route.outline, wall, inward=False), 0.05)
+            for route in routes
+        ]
+        walls += [
+            tuple(
+                Point2D(
+                    centre.x + (radius + wall) * math.cos(math.pi * step / 12.0),
+                    centre.y + (radius + wall) * math.sin(math.pi * step / 12.0),
+                )
+                for step in range(24)
+            )
+            for centre, radius in holes
+        ]
+        return EpoxyTray(outline, tuple(w for w in walls if w), depth)
 
     def _string_ferrules(self, holes: tuple[DrilledHole, ...]) -> list[DrilledHole]:
         """Return the counterbores from the back for the strings' ferrules.
@@ -6228,6 +6332,7 @@ class Prototype001Parameters:
             wire_notes=body_parts.wiring.by_hand,
             bridge_notes=body_parts.bridge_notes,
             joint_notes=body_parts.joint_notes,
+            epoxy_tray=body_parts.epoxy_tray,
             neck_plate=body_parts.neck_plate,
         )
         return Prototype001Geometry(

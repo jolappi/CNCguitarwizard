@@ -15,6 +15,7 @@ from .engraving import Engraving
 from .hardware import BridgeMounting, Cavity, DrilledHole, JackHole, RearCavity
 from .outline import BodyOutline, TracedOutline
 from .steps import SteppedTop
+from .tray import EpoxyTray
 from .wiring import WireHole
 
 Outline = BodyOutline | TracedOutline
@@ -138,6 +139,10 @@ class BodySolid:
             to check or do by hand), for the programs' notes.
         joint_notes: The neck joint's notes (how to drill a tilted neck
             plate's bolts by hand), for the programs' notes.
+        epoxy_tray: A shallow tray routed over the top for an epoxy pour
+            (``EpoxyTray``), or ``None``. It needs the flat top: not with a
+            carved or stepped top or a contour on the top; and it must leave
+            ``CARVE_WALL`` of wood over every rear cavity under it.
         neck_plate: The outline of a bolt-on neck's plate on the back (a
             Fender style four-bolt plate), or empty with ferrules. Bought,
             not cut, it must sit wholly on the flat back: in from the back
@@ -157,7 +162,9 @@ class BodySolid:
             gap, but its tail-ward wall must lie in body wood), a rear
             cavity would break through into a top cavity above it, or
             a hole is deeper than the slab or centred outside the
-            outline, or the neck plate is not wholly on the flat back.
+            outline, the neck plate is not wholly on the flat back, or the
+            epoxy tray is not on the flat top or leaves too little wood over
+            a rear cavity.
     """
 
     outline: Outline
@@ -191,6 +198,7 @@ class BodySolid:
     wire_notes: tuple[str, ...] = ()
     bridge_notes: tuple[str, ...] = ()
     joint_notes: tuple[str, ...] = ()
+    epoxy_tray: EpoxyTray | None = None
     neck_plate: tuple[Point2D, ...] = ()
     edge_outline: tuple[Point2D, ...] = ()
     checked: bool = True
@@ -217,6 +225,8 @@ class BodySolid:
         # The plate first: off the body, its bolts would be blamed for it.
         if self.neck_plate:
             self._check_neck_plate()
+        if self.epoxy_tray is not None:
+            self._check_epoxy_tray(self.epoxy_tray)
         for hole in (
             *self.holes,
             *self.rear_holes,
@@ -737,6 +747,36 @@ class BodySolid:
                 raise BodyGeometryError(
                     f"The neck plate overlaps {rear.cover_recess.name}."
                 )
+
+    def _check_epoxy_tray(self, tray: EpoxyTray) -> None:
+        """Check the epoxy tray is on the flat top, over enough wood.
+
+        Raises:
+            BodyGeometryError: With a carved or stepped top or a contour on
+                the top, or where it leaves under ``CARVE_WALL`` over a
+                rear cavity.
+        """
+        if self.carved_top is not None or self.stepped_top is not None:
+            raise BodyGeometryError(
+                "An epoxy tray needs the flat top: turn off body_carved_top or "
+                "body_stepped_top."
+            )
+        for contour in self.contours:
+            if contour.face == "top":
+                raise BodyGeometryError(
+                    f"An epoxy tray needs the flat top: it would run into the "
+                    f"{contour.name.lower()}."
+                )
+        for rear in self.rear_cavities:
+            for pocket in (*rear.pockets, rear.cover_recess):
+                if (
+                    pocket.depth + tray.depth > self.thickness - CARVE_WALL
+                    and outlines_overlap(pocket.outline, tray.outline)
+                ):
+                    raise BodyGeometryError(
+                        f"The epoxy tray leaves under {CARVE_WALL:g} mm of wood "
+                        f"over {pocket.name}; make it shallower."
+                    )
 
     def _check_side_holes(self) -> None:
         """Keep each hand-drilled hole in the body and out of the other cavities.

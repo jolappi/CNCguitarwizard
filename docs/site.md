@@ -172,7 +172,9 @@ Python.
    the cutaway, or a saved design's) are drawn there anyway, not moved
    out, and the status line says why in red (`problems` from
    `body_editor_layout`), so they can be dragged where they fit; the
-   build refuses them meanwhile.
+   build refuses them meanwhile. An epoxy tray (`body_epoxy_tray_depth`,
+   beside the editor) is drawn amber under the features, its walls round
+   the openings in wood.
    With `body_pickup_frame` set (ring, horns or hook, beside the editor
    with `body_pickup_frame_direction`), every humbucker's frame is drawn
    dark over it — its opening, screws and the holes over the height screws

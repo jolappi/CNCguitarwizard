@@ -2369,6 +2369,31 @@ class FreeCADScriptExporter:
                 "    )\n"
                 "body_shape = carved_body\n"
             )
+        tray = body.epoxy_tray
+        if tray is not None:
+            # The epoxy tray, routed over the top round its walls: its
+            # outline's prism less the walls', in one cut before the
+            # routes inside the walls.
+            walls = ",".join(outline_literal(wall) for wall in tray.walls)
+            lines.append(
+                f"TRAY_OUTLINE = {outline_literal(tray.outline)}\n"
+                f"TRAY_WALLS = [{walls}]\n"
+                "def tray_prism(points, top, down):\n"
+                "    return Part.Face(Part.makePolygon(\n"
+                "        [App.Vector(x, y, top) for x, y in points]\n"
+                "        + [App.Vector(points[0][0], points[0][1], top)]\n"
+                "    )).extrude(App.Vector(0.0, 0.0, -down))\n"
+                f"tray_down = {tray.depth} + body_overcut\n"
+                "tray_tool = tray_prism(TRAY_OUTLINE, body_overcut, tray_down)\n"
+                "if TRAY_WALLS:\n"
+                "    tray_tool = tray_tool.cut(Part.Compound([\n"
+                "        tray_prism(wall, body_overcut + 1.0, tray_down + 2.0)\n"
+                "        for wall in TRAY_WALLS\n"
+                "    ]))\n"
+                "body_shape = require_shape(\n"
+                '    body_shape.cut(tray_tool).removeSplitter(), "epoxy tray cut"\n'
+                ")\n"
+            )
         cavity_cuts: list[tuple[Cavity, str]] = (
             [(body.neck_pocket, "neck pocket cut")]
             if body.neck_pocket is not None

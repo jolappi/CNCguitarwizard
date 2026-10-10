@@ -47,6 +47,7 @@ def pocket(
     parameters: MachiningParameters,
     *,
     start_depth: float = 0.0,
+    islands: Sequence[Sequence[Point2D]] = (),
 ) -> Toolpath:
     """Clear a closed polygon to ``depth`` and finish its walls.
 
@@ -54,25 +55,88 @@ def pocket(
     finishing allowance still on the walls, linking rows in the cut
     where the link stays clear and retracting otherwise, then runs one
     finishing contour at the exact tool-radius offset. Plunges are
-    straight, at the plunge rate.
+    straight, at the plunge rate. ``islands`` are left standing (an
+    epoxy tray's walls round the openings in it): the raster keeps off
+    them, and each gets its own finishing contour round it; where two
+    walls are too close for the tool, a finishing contour is left off
+    between them (``_contour_runs``).
 
     Raises:
         ToolpathError: If the tool cannot fit anywhere in the polygon.
     """
     radius = parameters.tool_radius
     rough_radius = radius + parameters.finishing_allowance
-    rows = _raster_rows(polygon, rough_radius, parameters.raster_spacing)
-    contour = oriented(offset_polygon(polygon, radius, inward=True), clockwise=True)
-    if not rows and not contour:
+    rows = _raster_rows(polygon, rough_radius, parameters.raster_spacing, islands)
+    contours = [
+        oriented(offset_polygon(polygon, radius, inward=True), clockwise=True),
+        *(
+            oriented(offset_polygon(island, radius, inward=False), clockwise=False)
+            for island in islands
+        ),
+    ]
+    runs = (
+        [
+            run
+            for contour in contours
+            for run in _contour_runs(contour, polygon, islands, radius)
+        ]
+        if islands
+        else [(*contour, contour[0]) for contour in contours if contour]
+    )
+    if not rows and not runs:
         raise ToolpathError(
             f"{name} is too narrow for a {parameters.tool_diameter} mm tool."
         )
     builder = _builder(name, parameters)
     for z in depth_levels(start_depth, depth, parameters.step_down):
-        _cut_raster(builder, rows, z, polygon, rough_radius, parameters)
-        if contour:
-            _cut_contour(builder, contour, z, polygon, radius, parameters)
+        _cut_raster(builder, rows, z, polygon, rough_radius, parameters, islands)
+        for run in runs:
+            _cut_contour(builder, run, z, polygon, radius, parameters, islands)
     return builder.build()
+
+
+def _contour_runs(
+    contour: Sequence[Point2D],
+    polygon: Sequence[Point2D],
+    islands: Sequence[Sequence[Point2D]],
+    radius: float,
+) -> list[tuple[Point2D, ...]]:
+    """Return the stretches of a closed finishing contour the tool fits along.
+
+    Its points where the tool stays inside ``polygon`` and off every
+    island, in runs of neighbours: a contour that passes between two
+    walls too close for the tool is broken there, not cut through them.
+    """
+    if not contour:
+        return []
+    fits = [
+        disc_fits(point, polygon, radius)
+        and all(
+            disc_fits(point, island, radius, inside=False)
+            for island in _near(islands, point, point, radius)
+        )
+        for point in contour
+    ]
+    if all(fits):
+        return [(*contour, contour[0])]
+    if not any(fits):
+        return []
+    # Start where a gap ends, so no run wraps round the end.
+    start = next(
+        index for index in range(len(contour)) if not fits[index - 1] and fits[index]
+    )
+    runs: list[tuple[Point2D, ...]] = []
+    current: list[Point2D] = []
+    for step in range(len(contour)):
+        index = (start + step) % len(contour)
+        if fits[index]:
+            current.append(contour[index])
+        elif current:
+            runs.append(tuple(current))
+            current = []
+    if current:
+        runs.append(tuple(current))
+    return [run for run in runs if len(run) >= 2]
 
 
 def drill(
@@ -158,6 +222,7 @@ def _raster_rows(
     polygon: Sequence[Point2D],
     radius: float,
     spacing: float,
+    islands: Sequence[Sequence[Point2D]] = (),
 ) -> list[tuple[float, list[tuple[float, float]]]]:
     """Return ``(y, intervals)`` for every raster row with something to cut."""
     _, min_y, _, max_y = polygon_bounds(polygon)
@@ -169,7 +234,7 @@ def _raster_rows(
     rows = []
     for index in range(count + 1):
         y = low + (high - low) * index / count
-        intervals = clear_intervals(polygon, y, radius)
+        intervals = clear_intervals(polygon, y, radius, islands)
         if intervals:
             rows.append((y, intervals))
     return rows
@@ -182,6 +247,7 @@ def _cut_raster(
     polygon: Sequence[Point2D],
     radius: float,
     parameters: MachiningParameters,
+    islands: Sequence[Sequence[Point2D]] = (),
 ) -> None:
     """Zigzag every raster row at one depth."""
     forward = True
@@ -190,7 +256,9 @@ def _cut_raster(
             intervals if forward else [(high, low) for low, high in reversed(intervals)]
         )
         for start_x, end_x in ordered:
-            _approach(builder, Point2D(start_x, y), z, polygon, radius, parameters)
+            _approach(
+                builder, Point2D(start_x, y), z, polygon, radius, parameters, islands
+            )
             builder.cut_to(end_x, y)
         forward = not forward
 
@@ -202,17 +270,18 @@ def _cut_contour(
     polygon: Sequence[Point2D],
     radius: float,
     parameters: MachiningParameters,
+    islands: Sequence[Sequence[Point2D]] = (),
 ) -> None:
-    """Run one closed pass along the finishing contour at one depth.
+    """Run one pass along a finishing contour at one depth, as given.
 
-    The approach is checked with the bare tool radius: the contour's
-    own points sit exactly one radius from the wall, and the only
-    material the link can meet is the finishing allowance itself.
+    A closed contour comes with its first point again at its end. The
+    approach is checked with the bare tool radius: the contour's own
+    points sit exactly one radius from the wall, and the only material
+    the link can meet is the finishing allowance itself.
     """
-    _approach(builder, contour[0], z, polygon, radius, parameters)
+    _approach(builder, contour[0], z, polygon, radius, parameters, islands)
     for point in contour[1:]:
         builder.cut_to(point.x, point.y)
-    builder.cut_to(contour[0].x, contour[0].y)
 
 
 def _approach(
@@ -222,21 +291,21 @@ def _approach(
     polygon: Sequence[Point2D],
     radius: float,
     parameters: MachiningParameters,
+    islands: Sequence[Sequence[Point2D]] = (),
 ) -> None:
     """Get the tool to ``target`` at depth ``z``, staying in the cut if it can.
 
     If the straight link from the current position keeps the tool
-    inside the already-cleared region, feed there at the current depth
-    and plunge. Otherwise retract, rapid over, and plunge.
+    inside the already-cleared region (and off the islands), feed there
+    at the current depth and plunge. Otherwise retract, rapid over, and
+    plunge.
     """
     if builder.positioned and builder.z <= 0.0:
         here = Point2D(builder.x, builder.y)
-        if segment_fits(
-            here,
-            target,
-            polygon,
-            radius,
-            spacing=parameters.raster_link_spacing,
+        spacing = parameters.raster_link_spacing
+        if segment_fits(here, target, polygon, radius, spacing=spacing) and all(
+            segment_fits(here, target, island, radius, inside=False, spacing=spacing)
+            for island in _near(islands, here, target, radius)
         ):
             builder.cut_to(target.x, target.y)
             builder.plunge_to(z)
@@ -244,6 +313,27 @@ def _approach(
     builder.rapid_to(target.x, target.y)
     builder.rapid_down_to(0.0)
     builder.plunge_to(z)
+
+
+def _near(
+    islands: Sequence[Sequence[Point2D]],
+    start: Point2D,
+    end: Point2D,
+    radius: float,
+) -> list[Sequence[Point2D]]:
+    """Return the islands a disc moving from ``start`` to ``end`` may touch.
+
+    Those whose bounds, ``radius`` out, meet the move's: the others it
+    cannot reach, so need not be checked edge by edge.
+    """
+    low_x, high_x = min(start.x, end.x) - radius, max(start.x, end.x) + radius
+    low_y, high_y = min(start.y, end.y) - radius, max(start.y, end.y) + radius
+    near = []
+    for island in islands:
+        min_x, min_y, max_x, max_y = polygon_bounds(island)
+        if min_x <= high_x and low_x <= max_x and min_y <= high_y and low_y <= max_y:
+            near.append(island)
+    return near
 
 
 def _peck(

@@ -43,6 +43,7 @@ from .neck_through import (
 )
 from .outline import BodyOutline, TracedOutline
 from .steps import SteppedTop
+from .tray import EpoxyTray
 from .wiring import WireHole, WireSpace, Wiring, plan_wiring
 
 __all__ = [
@@ -68,6 +69,7 @@ __all__ = [
     "HeelRelief",
     "EngravedPocket",
     "Engraving",
+    "EpoxyTray",
     "FloydRoseSpec",
     "FloydRoseWidths",
     "HardtailSpec",

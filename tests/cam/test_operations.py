@@ -200,3 +200,64 @@ def test_profile_without_tabs_stays_at_full_depth() -> None:
     path = profile("Outline", rectangle(50.0, 30.0), 6.0, MachiningParameters())
 
     assert {round(move.z, 3) for move in cuts(path.moves)} == {-3.0, -6.0}
+
+
+def square(x: float, y: float, size: float) -> tuple[Point2D, ...]:
+    return (
+        Point2D(x, y),
+        Point2D(x + size, y),
+        Point2D(x + size, y + size),
+        Point2D(x, y + size),
+    )
+
+
+def _segment_samples(a: Move, b: Move, step: float = 0.5) -> list[Point2D]:
+    length = math.hypot(b.x - a.x, b.y - a.y)
+    count = max(1, math.ceil(length / step))
+    return [
+        Point2D(a.x + (b.x - a.x) * k / count, a.y + (b.y - a.y) * k / count)
+        for k in range(count + 1)
+    ]
+
+
+def test_a_pocket_leaves_its_islands_standing() -> None:
+    parameters = MachiningParameters()
+    polygon = rectangle(80.0, 50.0)
+    island = square(30.0, 15.0, 20.0)
+
+    path = pocket("Tray", polygon, 3.0, parameters, islands=[island])
+
+    # No cut, nor any feed between cuts at depth, comes into the island.
+    moves = path.moves
+    for first, second in zip(moves, moves[1:]):
+        if second.rapid or second.z >= 0.0 or first.z >= 0.0:
+            continue
+        for point in _segment_samples(first, second):
+            assert disc_fits(point, island, parameters.tool_radius - 1e-6, inside=False)
+    # The island's wall is finished: a cut runs a tool radius from it all
+    # round.
+    radius = parameters.tool_radius
+    near = [
+        move
+        for move in cuts(moves)
+        if 30.0 - radius - 0.01 <= move.x <= 50.0 + radius + 0.01
+        and 15.0 - radius - 0.01 <= move.y <= 35.0 + radius + 0.01
+    ]
+    assert min(move.x for move in near) == pytest.approx(30.0 - radius, abs=0.05)
+    assert max(move.y for move in near) == pytest.approx(35.0 + radius, abs=0.05)
+
+
+def test_a_finishing_contour_is_broken_where_two_walls_are_too_close() -> None:
+    parameters = MachiningParameters()
+    polygon = rectangle(80.0, 50.0)
+    # Two islands 4 mm apart: the 6 mm tool cannot pass between them.
+    islands = [square(20.0, 15.0, 20.0), square(44.0, 15.0, 20.0)]
+
+    path = pocket("Tray", polygon, 3.0, parameters, islands=islands)
+
+    for move in cuts(path.moves):
+        point = Point2D(move.x, move.y)
+        assert all(
+            disc_fits(point, island, parameters.tool_radius - 1e-6, inside=False)
+            for island in islands
+        )

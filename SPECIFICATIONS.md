@@ -720,6 +720,23 @@ ajetaan ball nose -terällä omissa ohjelmissaan (`Body_top_edges.nc`,
 `Body_back_edges.nc`), reunanauhan ura pääterällä ääriviivan jälkeen.
 FreeCAD-mallissa ne ovat 1 mm porrastuksina.
 
+## Epoksikaukalo
+
+`body_epoxy_tray_depth` (0 = ei) jyrsii kanteen koko rungon kokoisen
+matalan kaukalon epoksivalua varten: reunaan jää `body_epoxy_tray_rim`
+(4 mm) puuta, ja jokaisen kannen aukon (kaulatasku, mikkikolot, tallan ja
+elektroniikan kolot, jakkikolo, kaularaudan säätökolo, johdotuskanavat ja
+kaikki kannesta poratut reiät) ympärille jää `body_epoxy_tray_wall`
+(2 mm) paksu seinä, joten epoksi ei valu niihin. Epoksi kaadetaan
+kaukaloon pinnan tasoon ja hiotaan tasaiseksi. Kaukalo vaatii tasaisen
+kannen (ei kaarevaa tai porrastettua kantta, käsinojaviistettä tai
+läpikaulaa), reunuksen on oltava leveämpi kuin kannen reunan pyöristys tai
+reunanauhan ura, ja takakolojen päälle on jäätävä vähintään 3 mm puuta.
+`Body_top` jyrsii kaukalon ensimmäisenä päätyöterällä seinien ympäri
+(tasku jättää saarekkeet pystyyn), ja kolot jyrsitään sen jälkeen seinien
+sisään. FreeCAD mallintaa sen, tasokuva piirtää sen meripihkana, DXF
+`EPOXY_TRAY`-tasolle, ja runkoeditori näyttää sen.
+
 ## Kaareva kansi
 
 Valinnainen (`body_carved_top`, mikä tahansa runkomalli; valinta ja syvyys `body_carve_depth` myös runkoeditorin vieressä): kansi kaarretaan

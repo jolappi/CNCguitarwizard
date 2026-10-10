@@ -793,7 +793,8 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         Kahler covers on the top past its routes), ``top_control``,
         ``rear``, ``cover``, ``neck_plate`` (a bolt-on neck's plate on the
         back; its bolts then have no group, staying at its holes),
-        ``contour_top`` (an arm contour), ``contour_back`` (a belly cut) or
+        ``contour_top`` (an arm contour), ``contour_back`` (a belly cut),
+        ``tray`` and ``tray_wall`` (an epoxy tray and the walls it leaves) or
         ``plateau`` (a carved top's flat plateau, the top falling outside it);
         ``steps`` a stepped top's lines ``{"points", "automatic"}`` or
         ``None`` (see ``_steps_view``); ``circles`` a list of
@@ -896,6 +897,14 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
             offset,
             polygon(contour.name, f"contour_{contour.face}", contour.region()),
         )
+    # An epoxy tray under everything but the neck too, its walls over it.
+    if layout.epoxy_tray is not None:
+        tray = [polygon("Epoxy tray", "tray", layout.epoxy_tray.outline)]
+        tray += [
+            polygon("Epoxy tray wall", "tray_wall", wall)
+            for wall in layout.epoxy_tray.walls
+        ]
+        polygons[1:1] = tray
     for rear in (
         layout.control_cavity,
         layout.switch_cavity,
@@ -990,7 +999,7 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
     outside = {
         polygon["name"]
         for polygon in polygons
-        if polygon["role"] not in ("neck", "plateau")
+        if polygon["role"] not in ("neck", "plateau", "tray", "tray_wall")
         and not polygon["role"].startswith("contour")
         and any(
             not point_in_polygon(Point2D(x, y), body)

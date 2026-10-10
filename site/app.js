@@ -215,7 +215,7 @@ const EDITOR_FIELDS = {
     "body_neck_pickup_offset", "body_middle_pickup_offset", "body_bridge_pickup_offset", "body_pickups_follow_fan",
     "body_bridge", "body_bridge_follows_fan", "body_controls", "body_switch", "body_jack",
     "body_pickguard", "body_pickguard_style", "body_pickup_frame", "body_pickup_frame_direction",
-    "body_arm_contour_depth", "body_belly_cut_depth", "body_heel_relief", "body_heel_relief_depth", "body_heel_relief_line", "body_carved_top", "body_carve_depth", "body_stepped_top",
+    "body_arm_contour_depth", "body_belly_cut_depth", "body_heel_relief", "body_heel_relief_depth", "body_heel_relief_line", "body_carved_top", "body_carve_depth", "body_stepped_top", "body_epoxy_tray_depth",
     "body_engraving", "body_engraving_pattern", "body_engraving_seed", "body_battery_box", "body_battery_count",
     "body_neck_bolts_outward", "body_neck_plate",
   ],
@@ -2348,6 +2348,8 @@ const bodyEditor = {
       cover: { fill: "#c9b7e6", "fill-opacity": 0.35, stroke: "#5a3a8a", "stroke-width": 0.5, "stroke-dasharray": "3,2" },
       rear: { fill: "#c9b7e6", "fill-opacity": 0.55, stroke: "#5a3a8a", "stroke-width": 0.6, "stroke-dasharray": "3,2" },
       neck_plate: { fill: "#c8ccd2", "fill-opacity": 0.55, stroke: "#4a5058", "stroke-width": 0.6, "stroke-dasharray": "3,2" },
+      tray: { fill: "#e8b04a", "fill-opacity": 0.3, stroke: "#a8721a", "stroke-width": 0.5 },
+      tray_wall: { fill: "#f1e4c8", stroke: "#a8721a", "stroke-width": 0.3 },
     };
     // Features with a group can be dragged; the rest (neck, pocket,
     // bridge) follow the neck and scale and stay put.
@@ -3542,7 +3544,7 @@ const bodyEditor = {
     const outside = new Set();
     for (const polygon of this.layout.polygons) {
       // Contours follow the outline itself, so they are laid out from it.
-      if (polygon.role === "neck" || polygon.role === "plateau" || polygon.role.startsWith("contour")) continue;
+      if (["neck", "plateau", "tray", "tray_wall"].includes(polygon.role) || polygon.role.startsWith("contour")) continue;
       // The pocket opens onto the horn gap: only its tail wall must be in wood.
       const points = polygon.role === "pocket" ? polygon.points.filter((p) => p[0] > -1) : polygon.points;
       if (points.some(([x, y]) => !pointInPolygon(x, y, outline))) outside.add(polygon.name);

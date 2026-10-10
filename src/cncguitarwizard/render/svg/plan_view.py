@@ -180,6 +180,19 @@ def render_plan_view_svg(geometry: Prototype001Geometry) -> str:
             'stroke-width="0.4" stroke-dasharray="3,2"'
         )
         parts.append(path(contour.region(), look, contour.name))
+    # An epoxy tray over the top, amber, its walls left standing in wood
+    # (under the routes cut inside them).
+    if body.epoxy_tray is not None:
+        amber = 'fill="#e8b04a" fill-opacity="0.35" stroke="#a8721a" stroke-width="0.5"'
+        parts.append(path(body.epoxy_tray.outline, amber, "Epoxy tray"))
+        for wall in body.epoxy_tray.walls:
+            parts.append(
+                path(
+                    wall,
+                    'fill="#f1e4c8" stroke="#a8721a" stroke-width="0.3"',
+                    "Epoxy tray wall",
+                )
+            )
     for cavity in body.top_cavities:
         parts.append(path(cavity.outline, pocket, cavity.name))
     for rear_cavity in body.rear_cavities:

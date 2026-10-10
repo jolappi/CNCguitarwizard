@@ -213,6 +213,19 @@ def plan_body_machining(
         return _top_pocket(cavity, body, top_frame, parameters)
 
     top_paths: list[Toolpath] = []
+    # An epoxy tray first, over the whole top, its walls left standing:
+    # the routes are cut down inside them afterwards.
+    if body.epoxy_tray is not None:
+        tray = body.epoxy_tray
+        top_paths.append(
+            pocket(
+                "Epoxy tray",
+                top_frame.polygon(simplified(tray.outline, 0.05)),
+                tray.depth,
+                parameters,
+                islands=[top_frame.polygon(wall) for wall in tray.walls],
+            )
+        )
     for cavity in _top_cavities(body):
         if cavity in body.control_top_cavities:
             continue

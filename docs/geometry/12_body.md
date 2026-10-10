@@ -880,6 +880,33 @@ the depth each face can be machined to; and that a contour cuts into no
 cavity or hole on its own face and leaves 3 mm of wood over any cavity
 routed from the other face.
 
+## Epoxy tray
+
+`body_epoxy_tray_depth` (0, none) routes the top that deep over the whole
+body for an epoxy pour (`EpoxyTray`, `BodySolid.epoxy_tray`): inside a
+rim of wood `body_epoxy_tray_rim` (4 mm) wide at the edge, round a wall
+`body_epoxy_tray_wall` (2 mm) thick left standing round every opening in
+the top — every route cut down from it (the neck pocket, the pickup
+routes, the bridge's, the controls' and a jack's routes, a truss-rod
+access, the wire channels) and every hole drilled from it (pots, the
+switch, pickup screws, bridge studs and string holes, cover screws), its
+outline that far out (`offset_polygon`; a hole's a circle), so the epoxy
+stays out of them. The epoxy is poured in up to the face and sanded
+flush. Walls that meet merge in the cut; one by the neck pocket's mouth
+runs on past the outline.
+
+It needs the flat top: not with a carved or stepped top, an arm contour
+or on a neck-through (whose centre is the neck); its rim must be wider
+than the top edge's roundover or binding, or the epoxy would run out
+over it; and it must leave `CARVE_WALL` (3 mm) of wood over every rear
+cavity under it. `Body_top` routes it first, with the main tool: a
+pocket left round its walls (`pocket`'s `islands`: the raster keeps off
+them and each gets a finishing pass round it, broken where two walls are
+too close for the tool), the routes then cut down inside the walls.
+FreeCAD cuts it as its outline's prism less the walls'; the plan view
+draws it amber with the walls in wood, the DXF on its `EPOXY_TRAY` layer,
+and the body editor under the features.
+
 ## Carved top
 
 `body_carved_top` (beside the body editor too, with its depth

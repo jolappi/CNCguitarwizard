@@ -112,6 +112,7 @@ def clear_intervals(
     polygon: Sequence[Point2D],
     y: float,
     radius: float,
+    islands: Sequence[Sequence[Point2D]] = (),
 ) -> list[Interval]:
     """Return the x-intervals on a horizontal line where a disc fits inside.
 
@@ -119,27 +120,35 @@ def clear_intervals(
     (ray casting). A disc of ``radius`` centred on the line is blocked
     wherever the line passes within ``radius`` of an edge — the
     intersection of the line with that edge's stadium (segment ⊕ disc),
-    which is a single interval because a stadium is convex. The result
-    is the inside intervals minus the union of every blocked interval.
+    which is a single interval because a stadium is convex — and inside
+    any of the ``islands`` (the walls a pocket leaves standing). The
+    result is the inside intervals minus the union of every blocked one.
     """
-    crossings: list[float] = []
     blocked: list[Interval] = []
-    count = len(polygon)
-    for index in range(count):
-        first = polygon[index]
-        second = polygon[(index + 1) % count]
-        if (first.y > y) != (second.y > y):
-            crossings.append(
-                first.x + (y - first.y) * (second.x - first.x) / (second.y - first.y)
-            )
-        stadium = _stadium_interval(first, second, y, radius)
-        if stadium is not None:
-            blocked.append(stadium)
-    crossings.sort()
-    inside = [
-        (crossings[index], crossings[index + 1])
-        for index in range(0, len(crossings) - 1, 2)
-    ]
+
+    def crossed(outline: Sequence[Point2D]) -> list[Interval]:
+        crossings: list[float] = []
+        count = len(outline)
+        for index in range(count):
+            first = outline[index]
+            second = outline[(index + 1) % count]
+            if (first.y > y) != (second.y > y):
+                crossings.append(
+                    first.x
+                    + (y - first.y) * (second.x - first.x) / (second.y - first.y)
+                )
+            stadium = _stadium_interval(first, second, y, radius)
+            if stadium is not None:
+                blocked.append(stadium)
+        crossings.sort()
+        return [
+            (crossings[index], crossings[index + 1])
+            for index in range(0, len(crossings) - 1, 2)
+        ]
+
+    inside = crossed(polygon)
+    for island in islands:
+        blocked.extend(crossed(island))
     return _subtract_intervals(inside, _merge_intervals(blocked))
 
 
