@@ -201,6 +201,9 @@ NECK_BOLT_MIN_WOOD = 5.0
 """Least wood, in mm, a neck-bolt ferrule's counterbore (sunk into a heel
 relief's surface) leaves over the neck pocket for the bolt to pull on."""
 
+NECK_PLATE_RELIEF_GAP = 2.0
+"""Flat back, in mm, an automatic heel relief leaves round a neck plate."""
+
 SWITCH_SHAFT_HOLE_DIAMETERS: dict[str, float] = {
     "toggle": 12.7,
     "micro": 6.35,
@@ -524,6 +527,8 @@ class BodyLayout:
         pickup_frames: A frame round every humbucker, or none (see
             ``body_pickup_frame``; their plates are also among the
             ``controls``' covers).
+        neck_plate: The neck plate's outline on the back, or empty with
+            ferrules (see ``body_neck_plate``).
     """
 
     heel_end: float
@@ -556,6 +561,7 @@ class BodyLayout:
     pickup_centres: tuple[tuple[str, float], ...] = ()
     side_holes: tuple[SideHole, ...] = ()
     pickup_frames: tuple[PickupFrame, ...] = ()
+    neck_plate: tuple[Point2D, ...] = ()
 
 
 TRUSS_ROD_STOCK_LENGTHS: tuple[float, ...] = tuple(
@@ -866,8 +872,12 @@ class Prototype001Parameters:
     # curves forward to the edge beside the neck pocket either side (or
     # along the body shape's heel_relief_points, drawn in the body
     # editor). The neck bolts are drilled from it: their ferrules sink
-    # body_neck_ferrule_depth into its surface. A neck-through or one-piece
-    # body has no heel to relieve.
+    # body_neck_ferrule_depth into its surface. With a neck plate
+    # (body_neck_plate), which needs the flat back, it is instead the
+    # corner beside the plate's treble side toward the nut, cut off by a
+    # line slanting past that corner (the clipped one of an asymmetric
+    # plate), NECK_PLATE_RELIEF_GAP clear of it. A neck-through or
+    # one-piece body has no heel to relieve.
     body_heel_relief: Literal["none", "contour", "notch"] = "none"
     body_heel_relief_depth: float = 6.0
     body_heel_relief_reach: float = 15.0
@@ -1049,6 +1059,28 @@ class Prototype001Parameters:
     body_neck_bolt_hole_diameter: float = 5.0
     body_neck_bolt_edge_wall: float = 5.0
     body_neck_bolts_outward: bool = True
+    # What the bolts pull against on the back: "ferrules" (a ferrule each,
+    # as above), "plate" (a four-bolt neck plate, Fender style: no
+    # ferrules, the bolts through the plate's holes) or "asymmetric" (the
+    # same plate with its treble corner toward the nut clipped
+    # body_neck_plate_clip along each edge, as on Fender's contoured heel;
+    # that corner's bolt moves in to keep its inset from the clip). The
+    # plate is body_neck_plate_length along the neck by
+    # body_neck_plate_width across, its holes body_neck_plate_hole_inset in
+    # from its edges and its corners rounded about them (Fender's: 63.5 x
+    # 50.8 mm, the holes 6.35 in, so 50.8 x 38.1 apart). It is centred
+    # across the neck, its holes as near the heel end as
+    # body_neck_bolt_end_wall allows (or centred
+    # body_neck_bolt_center_offset ahead of it); the body shape's own
+    # neck_bolts and body_neck_bolts_outward do not move a plate's bolts.
+    # It must sit wholly on the flat back: in from the back edge's
+    # roundover or binding, off a heel relief or belly cut and clear of
+    # the rear cavities' covers.
+    body_neck_plate: Literal["ferrules", "plate", "asymmetric"] = "ferrules"
+    body_neck_plate_length: float = 63.5
+    body_neck_plate_width: float = 50.8
+    body_neck_plate_hole_inset: float = 6.35
+    body_neck_plate_clip: float = 19.0
     # A string-through bridge's ferrules (the hardtail, single-string
     # bridges): every hole the strings pass through the body by gets a
     # counterbore from the back body_string_ferrule_diameter wide and
@@ -2016,18 +2048,117 @@ class Prototype001Parameters:
                 centres.append((side, -distance, sign * offset))
         return tuple(centres)
 
+    def _neck_plate(
+        self, heel_end: float
+    ) -> tuple[tuple[Point2D, ...], tuple[tuple[float, float], ...]] | None:
+        """Return the neck plate's outline and its bolts' centres, or ``None``.
+
+        ``None`` with ferrules (``body_neck_plate``). The plate is centred
+        across the neck, its holes in a rectangle
+        ``body_neck_plate_hole_inset`` in from its edges, the pair nearer
+        the heel end as near it as ``body_neck_bolt_end_wall`` allows (or
+        the rectangle centred ``body_neck_bolt_center_offset`` ahead of it),
+        and its corners rounded about the holes. An ``"asymmetric"`` plate
+        has its treble corner toward the nut clipped
+        ``body_neck_plate_clip`` along each edge, and that corner's bolt
+        moved in along the diagonal to keep the inset from the clip. The
+        bolts come in the default rectangle's order.
+
+        Raises:
+            BodyGeometryError: For a plate on a neck that is not bolted on,
+                sizes that are not finite and positive, holes that do not
+                fit in the plate, or a clip of half its narrower side or
+                more.
+        """
+        if self.body_neck_plate == "ferrules":
+            return None
+        if self.neck_joint != "bolt_on":
+            raise BodyGeometryError(
+                "A neck plate holds a bolt-on neck's bolts; set "
+                "body_neck_plate to ferrules."
+            )
+        length = self.body_neck_plate_length
+        width = self.body_neck_plate_width
+        inset = self.body_neck_plate_hole_inset
+        clip = self.body_neck_plate_clip
+        if not all(
+            math.isfinite(value) and value > 0.0
+            for value in (length, width, inset, clip)
+        ):
+            raise BodyGeometryError("Neck plate sizes must be finite and positive.")
+        radius = self.body_neck_bolt_hole_diameter / 2.0
+        if not radius < inset < min(length, width) / 2.0 - radius:
+            raise BodyGeometryError(
+                "The neck plate's holes must fit in it: body_neck_plate_hole_inset "
+                "must be more than the bolt hole's radius and leave the holes "
+                "apart."
+            )
+        clipped = self.body_neck_plate == "asymmetric"
+        if clipped and clip >= min(length, width) / 2.0:
+            raise BodyGeometryError(
+                "body_neck_plate_clip must be under half the neck plate's "
+                "narrower side."
+            )
+        spacing = length - 2.0 * inset
+        offset = (
+            radius + self.body_neck_bolt_end_wall + spacing / 2.0
+            if self.body_neck_bolt_center_offset is None
+            else self.body_neck_bolt_center_offset
+        )
+        centre = heel_end - offset
+        half_x, half_y = length / 2.0, width / 2.0
+        treble = -self.bass_sign
+        # The corners counter-clockwise, the clipped one (toward the nut on
+        # the treble side) cut by a chord ``clip`` along each edge.
+        corners = [
+            Point2D(centre - half_x, -half_y),
+            Point2D(centre + half_x, -half_y),
+            Point2D(centre + half_x, half_y),
+            Point2D(centre - half_x, half_y),
+        ]
+        vertices: list[Point2D] = []
+        for index, corner in enumerate(corners):
+            if not clipped or corner != Point2D(centre - half_x, treble * half_y):
+                vertices.append(corner)
+                continue
+            for neighbour in (corners[index - 1], corners[(index + 1) % 4]):
+                edge = math.hypot(neighbour.x - corner.x, neighbour.y - corner.y)
+                vertices.append(
+                    Point2D(
+                        corner.x + (neighbour.x - corner.x) / edge * clip,
+                        corner.y + (neighbour.y - corner.y) / edge * clip,
+                    )
+                )
+        outline = rounded_polygon_points(vertices, [inset] * len(vertices))
+        bolts = []
+        for sx, sy in ((-1.0, -1.0), (1.0, -1.0), (-1.0, 1.0), (1.0, 1.0)):
+            x = centre + sx * (half_x - inset)
+            y = sy * (half_y - inset)
+            if clipped and sx < 0.0 and sy == treble:
+                # In along the diagonal until the clip is ``inset`` away.
+                shift = max(
+                    0.0, (clip / math.sqrt(2.0) + inset - inset * math.sqrt(2.0))
+                ) / math.sqrt(2.0)
+                x += shift
+                y -= sy * shift
+            bolts.append((x, y))
+        return outline, tuple(bolts)
+
     def _neck_bolt_holes(
         self,
         outline: NeckOutline,
         heel_end: float,
         pocket: TracedCavity,
         heel_relief: HeelRelief | None = None,
+        plate_bolts: tuple[tuple[float, float], ...] | None = None,
     ) -> tuple[DrilledHole, ...]:
         """Return the neck bolts' ferrule counterbores and bolt holes.
 
         Their depths are from the back face: a ferrule under a heel relief
         sinks ``body_neck_ferrule_depth`` into the relief's surface, so its
-        counterbore is that much deeper from the face.
+        counterbore is that much deeper from the face. With a neck plate
+        the bolts are at its holes (``plate_bolts``, see ``_neck_plate``),
+        where they stay, and have no ferrules.
 
         Each bolt keeps its place along the neck (the body shape's
         ``neck_bolts`` or the default rectangle) and, with
@@ -2071,7 +2202,9 @@ class Prototype001Parameters:
                 "must leave material beneath its floor in the "
                 f"{self.body_thickness:g} mm thick body."
             )
-        if self.built_body_shape.neck_bolts:
+        if plate_bolts is not None:
+            centres = list(plate_bolts)
+        elif self.built_body_shape.neck_bolts:
             centres = [(heel_end + x, y) for x, y in self.built_body_shape.neck_bolts]
         else:
             offset = (
@@ -2132,7 +2265,7 @@ class Prototype001Parameters:
         for index, (x, y) in enumerate(centres, start=1):
             limit = neck_half_width(x) - wall - radius
             side = 1.0 if y > 0.0 else -1.0 if y < 0.0 else 1.0
-            if self.body_neck_bolts_outward:
+            if self.body_neck_bolts_outward and plate_bolts is None:
                 # From the neck's edge in toward the rod, the first spot
                 # whose ferrule keeps its wood to the body's edge.
                 steps = int(max(0.0, limit) / 0.25)
@@ -2164,14 +2297,28 @@ class Prototype001Parameters:
             if abs(y) > limit + 1e-6:
                 raise BodyGeometryError(
                     f"Neck bolt {index} at {where} leaves under {wall:g} mm of "
-                    "wood to the neck's edge; move it in."
+                    "wood to the neck's edge; "
+                    + (
+                        "use a narrower neck plate (body_neck_plate_width)."
+                        if plate_bolts is not None
+                        else "move it in."
+                    )
                 )
             if rod_gap(x, y) < 3.0:
                 raise BodyGeometryError(
-                    f"Neck bolt {index} at {where} is within 3 mm of the truss "
-                    "rod, and its ferrule has no room further out; move it along "
-                    "the neck (drag it in the body editor)."
+                    f"Neck bolt {index} at {where} is within 3 mm of the truss rod"
+                    + (
+                        "; use a wider neck plate or a smaller clip "
+                        "(body_neck_plate_width, body_neck_plate_clip)."
+                        if plate_bolts is not None
+                        else ", and its ferrule has no room further out; move it "
+                        "along the neck (drag it in the body editor)."
+                    )
                 )
+            if plate_bolts is not None:
+                # The plate itself is checked with the body (BodySolid).
+                placed.append((x, y))
+                continue
             if not ferrule_in_body(x, y):
                 raise BodyGeometryError(
                     f"Neck bolt {index} ferrule at {where} leaves under "
@@ -2191,6 +2338,17 @@ class Prototype001Parameters:
         bolt_depth = self.body_thickness - pocket.depth
         holes: list[DrilledHole] = []
         for index, (x, y) in enumerate(placed, start=1):
+            if plate_bolts is not None:
+                holes.append(
+                    DrilledHole(
+                        f"Neck bolt {index} hole",
+                        x,
+                        y,
+                        self.body_neck_bolt_hole_diameter,
+                        bolt_depth,
+                    )
+                )
+                continue
             relief = heel_relief.depth_at(Point2D(x, y)) if heel_relief else 0.0
             ferrule_depth = relief + self.body_neck_ferrule_depth
             wood = bolt_depth - ferrule_depth
@@ -2947,15 +3105,27 @@ class Prototype001Parameters:
             self.heel_thickness,
             floor_slope=math.tan(math.radians(self.neck_angle_degrees)),
         )
-        # The heel relief first: the neck bolts are drilled from it.
+        # The neck plate first, which the heel relief keeps clear of, then
+        # the heel relief: the neck bolts are drilled from it.
+        neck_plate = self._neck_plate(heel_end)
         heel_relief = self._heel_relief(
-            shape, body_outline.points, heel_end, neck_pocket
+            shape,
+            body_outline.points,
+            heel_end,
+            neck_pocket,
+            neck_plate[0] if neck_plate is not None else (),
         )
         # Only a bolt-on neck has bolts: a set neck is glued, and a
         # neck-through body has no pocket (its outline stays as where the
         # neck passes, for the keep-outs).
         neck_bolts = (
-            self._neck_bolt_holes(outline, heel_end, neck_pocket, heel_relief)
+            self._neck_bolt_holes(
+                outline,
+                heel_end,
+                neck_pocket,
+                heel_relief,
+                neck_plate[1] if neck_plate is not None else None,
+            )
             if self.neck_joint == "bolt_on"
             else ()
         )
@@ -3499,6 +3669,7 @@ class Prototype001Parameters:
             ),
             bridge.side_holes,
             frames,
+            neck_plate=neck_plate[0] if neck_plate is not None else (),
         )
 
     def _string_ferrules(self, holes: tuple[DrilledHole, ...]) -> list[DrilledHole]:
@@ -5147,6 +5318,7 @@ class Prototype001Parameters:
         outline: tuple[Point2D, ...],
         heel_end: float,
         pocket: TracedCavity,
+        plate: tuple[Point2D, ...] = (),
     ) -> HeelRelief | None:
         """Return the heel relief (``body_heel_relief``), or ``None``.
 
@@ -5155,13 +5327,18 @@ class Prototype001Parameters:
         from the centreline ``body_heel_relief_reach`` behind the heel end
         forward along both sides that far out from the neck pocket, each
         to where it first leaves the body (the cutaway's or the horn's
-        edge beside the neck). A ``"notch"`` is a flat step, a
-        ``"contour"`` a ramp.
+        edge beside the neck). With a neck plate (its outline ``plate``),
+        which needs the flat back, the line is instead straight, slanting
+        at 45 degrees past the plate's treble corner toward the nut
+        ``NECK_PLATE_RELIEF_GAP`` clear of it, from edge to edge: the
+        relief is the corner of the back beyond it. A ``"notch"`` is a
+        flat step, a ``"contour"`` a ramp.
 
         Raises:
             BodyGeometryError: For a neck-through or one-piece body, a depth
-                or reach that is not finite and positive, or a line that
-                does not run inside the body.
+                or reach that is not finite and positive, a plate with no
+                body beyond its corner, or a line that does not run inside
+                the body.
         """
         if self.body_heel_relief == "none":
             return None
@@ -5178,6 +5355,33 @@ class Prototype001Parameters:
                 raise BodyGeometryError(f"Heel relief {label} must be positive.")
         if shape.heel_relief_points:
             drawn = [Point2D(heel_end + x, y) for x, y in shape.heel_relief_points]
+        elif plate:
+            # Out from the plate (toward the nut and the treble side) and
+            # along the slant (toward the heel end and the treble side).
+            treble = -self.bass_sign
+            out_x, out_y = -math.sqrt(0.5), treble * math.sqrt(0.5)
+            along_x, along_y = treble * math.sqrt(0.5), math.sqrt(0.5)
+            corner = max(plate, key=lambda p: p.x * out_x + p.y * out_y)
+            start = Point2D(
+                corner.x + out_x * NECK_PLATE_RELIEF_GAP,
+                corner.y + out_y * NECK_PLATE_RELIEF_GAP,
+            )
+            if not point_in_polygon(start, outline):
+                raise BodyGeometryError(
+                    "The neck plate leaves no corner of the body beside it for "
+                    "an automatic heel relief; draw its line in the body editor."
+                )
+
+            def edge(step: float) -> Point2D:
+                # Along the slant from the start, the first point out of
+                # the body.
+                x, y = start.x, start.y
+                while point_in_polygon(Point2D(x, y), outline):
+                    x += along_x * step
+                    y += along_y * step
+                return Point2D(x, y)
+
+            drawn = [edge(-1.0), start, edge(1.0)]
         else:
             reach = self.body_heel_relief_reach
             side = max(abs(point.y) for point in pocket.outline) + reach
@@ -5631,6 +5835,7 @@ class Prototype001Parameters:
             side_holes=body_parts.side_holes,
             wire_notes=body_parts.wiring.by_hand,
             bridge_notes=body_parts.bridge_notes,
+            neck_plate=body_parts.neck_plate,
         )
         return Prototype001Geometry(
             outline,

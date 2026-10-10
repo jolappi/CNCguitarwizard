@@ -4,9 +4,10 @@
 (millimetres, X from the nut toward the tail, Y across the neck): the
 body, neck, headstock and fretboard outlines, the nut, the fret slots,
 the inlays and tuner holes, every cavity, hole and wire hole of the body,
-the top's carve, steps and contours, the engraving and the cover plates,
-each kind on a layer of its own (the holes drilled sideways by hand,
-a tremolo claw's screws, on ``SIDE_HOLES``). ``render_covers_dxf`` lays the sheet
+the top's carve, steps and contours, the engraving, the cover plates and
+a bolt-on neck's plate on the back, each kind on a layer of its own (the
+holes drilled sideways by hand, a tremolo claw's screws, on
+``SIDE_HOLES``). ``render_covers_dxf`` lays the sheet
 plates (cavity covers, control plates, the pickguard, the truss-rod cover)
 out side by side for cutting, each with its holes and slots and a label.
 """
@@ -82,6 +83,8 @@ def render_plan_dxf(geometry: Prototype001Geometry) -> str:
         dxf.polyline(rear_cavity.cover_recess.outline, rear)
         for pocket in rear_cavity.pockets:
             dxf.polyline(pocket.outline, rear)
+    if body.neck_plate:
+        dxf.polyline(body.neck_plate, dxf.layer("NECK_PLATE", 8))
     holes = dxf.layer("BODY_HOLES_TOP", 3)
     mounting = body.bridge_mounting
     for pivot in mounting.pivot_holes:

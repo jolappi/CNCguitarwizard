@@ -1,0 +1,192 @@
+"""Tests for the neck plate: a bolt-on neck's bolts through a plate on the back."""
+
+import ast
+import math
+from dataclasses import replace
+
+import pytest
+
+from cncguitarwizard.backends.freecad import FreeCADScriptExporter
+from cncguitarwizard.cam import MachiningParameters, plan_body_machining
+from cncguitarwizard.geometry.body.body_solid import outlines_overlap
+from cncguitarwizard.geometry.exceptions import BodyGeometryError
+from cncguitarwizard.geometry.primitives import Point2D, point_in_polygon
+from cncguitarwizard.presets import Prototype001Parameters
+from cncguitarwizard.presets.body_shapes import YOUR_DESIGN_TEMPLATES
+from cncguitarwizard.presets.prototype001 import NECK_PLATE_RELIEF_GAP
+from cncguitarwizard.render.dxf import render_plan_dxf
+from cncguitarwizard.render.svg.plan_view import render_plan_view_svg
+from cncguitarwizard.webapp import body_editor_layout
+
+STRATOCASTER = YOUR_DESIGN_TEMPLATES["stratocaster"][1]
+
+
+def strat(**overrides: object) -> Prototype001Parameters:
+    """The Stratocaster style body, whose back has room for a Fender plate."""
+    return replace(  # type: ignore[arg-type]
+        Prototype001Parameters(), **{"body_shape": STRATOCASTER, **overrides}
+    )
+
+
+def bolts(parameters: Prototype001Parameters) -> dict[str, tuple[float, float]]:
+    """The neck bolts' holes by name: (X from the heel end, Y)."""
+    heel_end = parameters.body_layout().heel_end
+    return {
+        hole.name: (hole.center_x - heel_end, hole.center_y)
+        for hole in parameters.build().body.rear_holes
+        if hole.name.startswith("Neck bolt")
+    }
+
+
+def test_a_fender_plate_holds_the_bolts_at_its_holes() -> None:
+    parameters = strat(body_neck_plate="plate")
+    body = parameters.build().body
+    heel_end = parameters.body_layout().heel_end
+
+    # No ferrules: four bolt holes 50.8 x 38.1 apart, the tail pair 3 mm
+    # of wood (the end wall) from the heel end.
+    expected = {
+        "Neck bolt 1 hole": (-56.3, -19.05),
+        "Neck bolt 2 hole": (-5.5, -19.05),
+        "Neck bolt 3 hole": (-56.3, 19.05),
+        "Neck bolt 4 hole": (-5.5, 19.05),
+    }
+    found = bolts(parameters)
+    assert found.keys() == expected.keys()
+    for name, place in expected.items():
+        assert found[name] == pytest.approx(place)
+    xs = [point.x - heel_end for point in body.neck_plate]
+    ys = [point.y for point in body.neck_plate]
+    assert max(xs) - min(xs) == pytest.approx(63.5)
+    assert max(ys) - min(ys) == pytest.approx(50.8)
+    # Its corners are rounded about the holes, 6.35 mm out all round.
+    for x, y in bolts(parameters).values():
+        nearest = min(
+            math.hypot(point.x - heel_end - x, point.y - y) for point in body.neck_plate
+        )
+        assert nearest == pytest.approx(6.35, abs=0.05)
+
+
+def test_an_asymmetric_plate_clips_its_treble_corner_toward_the_nut() -> None:
+    parameters = strat(body_neck_plate="asymmetric")
+    plate = parameters.build().body.neck_plate
+    heel_end = parameters.body_layout().heel_end
+    treble = -parameters.bass_sign
+    nut_end = heel_end - 62.65
+
+    assert not point_in_polygon(Point2D(nut_end + 3.0, treble * 22.4), plate)
+    assert point_in_polygon(Point2D(nut_end + 3.0, -treble * 22.4), plate)
+    # That corner's bolt moves in along the diagonal, the others stay.
+    shift = (19.0 / math.sqrt(2.0) + 6.35 - 6.35 * math.sqrt(2.0)) / math.sqrt(2.0)
+    treble_side = sorted(xy for xy in bolts(parameters).values() if xy[1] * treble > 0)
+    assert treble_side[0] == pytest.approx((-56.3 + shift, treble * (19.05 - shift)))
+    assert treble_side[1] == pytest.approx((-5.5, treble * 19.05))
+
+
+def test_the_plate_needs_the_flat_back() -> None:
+    # The Design by Jone body's deep treble cutaway leaves it no room.
+    with pytest.raises(BodyGeometryError, match="keep 1 mm of flat back"):
+        replace(Prototype001Parameters(), body_neck_plate="plate").build()
+    # Nor does it sit on a roundover.
+    with pytest.raises(BodyGeometryError, match="keep 7 mm of flat back"):
+        strat(body_neck_plate="plate", body_back_edge_radius=6.0).build()
+
+
+def test_the_plate_keeps_clear_of_the_rear_covers() -> None:
+    body = strat(body_neck_plate="plate").build().body
+    assert body.control_cavity is not None
+    cover = body.control_cavity.cover_recess
+
+    with pytest.raises(BodyGeometryError, match=f"overlaps {cover.name}"):
+        replace(body, neck_plate=cover.outline)
+
+
+@pytest.mark.parametrize("kind", ["plate", "asymmetric"])
+@pytest.mark.parametrize("relief", ["contour", "notch"])
+def test_an_automatic_heel_relief_slants_past_the_plate(kind: str, relief: str) -> None:
+    parameters = strat(body_neck_plate=kind, body_heel_relief=relief)
+    body = parameters.build().body
+    (heel_relief,) = body.contours
+    treble = -parameters.bass_sign
+
+    assert not outlines_overlap(body.neck_plate, heel_relief.region())
+    # Its line runs at 45 degrees, the gap out from the plate's corner.
+    out = (-math.sqrt(0.5), treble * math.sqrt(0.5))
+    corner = max(body.neck_plate, key=lambda p: p.x * out[0] + p.y * out[1])
+    reach = corner.x * out[0] + corner.y * out[1]
+    for point in heel_relief.inner_edge():
+        assert point.x * out[0] + point.y * out[1] == pytest.approx(
+            reach + NECK_PLATE_RELIEF_GAP
+        )
+    # The back is cut away beyond it.
+    beyond = NECK_PLATE_RELIEF_GAP + 2.0
+    assert (
+        heel_relief.depth_at(
+            Point2D(corner.x + out[0] * beyond, corner.y + out[1] * beyond)
+        )
+        > 0.0
+    )
+
+
+def test_a_drawn_heel_relief_over_the_plate_is_refused() -> None:
+    line = ((-80.0, 40.0), (-20.0, 40.0), (15.0, 0.0), (-20.0, -40.0), (-80.0, -40.0))
+    parameters = strat(
+        body_neck_plate="plate",
+        body_heel_relief="contour",
+        body_shape=replace(STRATOCASTER, heel_relief_points=line),
+    )
+    with pytest.raises(BodyGeometryError, match="sits on the Heel relief"):
+        parameters.build()
+
+
+@pytest.mark.parametrize(
+    ("overrides", "match"),
+    [
+        ({"body_neck_plate_length": -1.0}, "finite and positive"),
+        ({"body_neck_plate_hole_inset": 2.0}, "must fit in it"),
+        ({"body_neck_plate_hole_inset": 24.0}, "must fit in it"),
+        (
+            {"body_neck_plate": "asymmetric", "body_neck_plate_clip": 30.0},
+            "under half",
+        ),
+        ({"neck_joint": "set"}, "bolt-on neck's bolts"),
+    ],
+)
+def test_plate_sizes_that_do_not_fit_are_refused(
+    overrides: dict[str, object], match: str
+) -> None:
+    parameters = strat(**{"body_neck_plate": "plate", **overrides})
+    with pytest.raises(BodyGeometryError, match=match):
+        parameters.build()
+
+
+def test_the_plate_has_no_ferrules_to_machine_and_is_drawn() -> None:
+    geometry = strat(body_neck_plate="asymmetric").build()
+    plan = plan_body_machining(geometry.body, MachiningParameters())
+
+    assert not any("ferrule" in path.name for path in plan.back.toolpaths)
+    assert plan.back_small_holes is not None
+    assert {f"Neck bolt {n} hole" for n in range(1, 5)} <= {
+        path.name for path in plan.back_small_holes.toolpaths
+    }
+    assert "Neck plate (back)" in render_plan_view_svg(geometry)
+    assert "NECK_PLATE" in render_plan_dxf(geometry)
+    ast.parse(FreeCADScriptExporter().render_prototype001(geometry))
+
+
+def test_the_body_editor_draws_the_plate_and_keeps_its_bolts() -> None:
+    layout = body_editor_layout({"prototype": {"body_neck_plate": "plate"}})
+
+    (plate,) = [p for p in layout["polygons"] if p["role"] == "neck_plate"]
+    assert len(plate["points"]) > 4
+    groups = {c["name"]: c["group"] for c in layout["circles"]}
+    assert all(
+        group is None for name, group in groups.items() if name.startswith("Neck bolt")
+    )
+    # Its other features still move.
+    assert any(group for name, group in groups.items() if "cover screw" in name)
+    plain = body_editor_layout({"prototype": {}})
+    assert not any(p["role"] == "neck_plate" for p in plain["polygons"])
+    assert {
+        c["group"] for c in plain["circles"] if c["name"].startswith("Neck bolt")
+    } == {"bolt:0", "bolt:1", "bolt:2", "bolt:3"}

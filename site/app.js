@@ -216,7 +216,7 @@ const EDITOR_FIELDS = {
     "body_pickguard", "body_pickguard_style", "body_pickup_frame", "body_pickup_frame_direction",
     "body_arm_contour_depth", "body_belly_cut_depth", "body_heel_relief", "body_heel_relief_depth", "body_carved_top", "body_carve_depth", "body_stepped_top",
     "body_engraving", "body_engraving_pattern", "body_engraving_seed", "body_battery_box", "body_battery_count",
-    "body_neck_bolts_outward",
+    "body_neck_bolts_outward", "body_neck_plate",
   ],
   "headstock-editor-options": [
     "headstock_style", "headstock_bass_side", "headstock_length", "tuner_hole_diameter", "nut_style", "locking_nut",
@@ -2296,6 +2296,7 @@ const bodyEditor = {
       contour_back: { fill: "#9aa9d6", "fill-opacity": 0.35, stroke: "#34457a", "stroke-width": 0.5, "stroke-dasharray": "3,2" },
       cover: { fill: "#c9b7e6", "fill-opacity": 0.35, stroke: "#5a3a8a", "stroke-width": 0.5, "stroke-dasharray": "3,2" },
       rear: { fill: "#c9b7e6", "fill-opacity": 0.55, stroke: "#5a3a8a", "stroke-width": 0.6, "stroke-dasharray": "3,2" },
+      neck_plate: { fill: "#c8ccd2", "fill-opacity": 0.55, stroke: "#4a5058", "stroke-width": 0.6, "stroke-dasharray": "3,2" },
     };
     // Features with a group can be dragged; the rest (neck, pocket,
     // bridge) follow the neck and scale and stay put.

@@ -18,7 +18,7 @@ def render_plan_view_svg(geometry: Prototype001Geometry) -> str:
     headstock at the top, the model's X (nut toward tail) running down
     the page and +Y to the right — the side view turned a quarter turn
     clockwise, not mirrored. Top-face cavities are filled,
-    rear cavities are dashed, holes are circles, frets are lines, and
+    rear cavities and a neck plate are dashed, holes are circles, frets are lines, and
     the inlays are drawn as their own outlines. The nut is drawn on its
     seat: bone white, or dark for a locking nut; a fretboard that runs on
     under the nut (a slotted nut's, an R2 locking nut's) reaches under it
@@ -192,6 +192,13 @@ def render_plan_view_svg(geometry: Prototype001Geometry) -> str:
         )
         for rear_pocket in rear_cavity.pockets:
             parts.append(path(rear_pocket.outline, rear, f"{rear_pocket.name} (back)"))
+    # A bolt-on neck's plate on the back, dashed in steel grey.
+    if body.neck_plate:
+        plate = (
+            'fill="#c8ccd2" fill-opacity="0.55" stroke="#4a5058" '
+            'stroke-width="0.6" stroke-dasharray="3,2"'
+        )
+        parts.append(path(body.neck_plate, plate, "Neck plate (back)"))
     pivot_radius = body.bridge_mounting.pivot_hole_diameter / 2.0
     for pivot in body.bridge_mounting.pivot_holes:
         parts.append(circle(pivot.x, pivot.y, pivot_radius, hole, "Bridge pivot hole"))

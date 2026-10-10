@@ -335,6 +335,43 @@ and -6 (y about 10 and 19). In the body editor the bolts can be dragged
 along the neck like the cavities. Under a heel relief each ferrule sinks
 its depth into the relief's surface (see Heel relief).
 
+### Neck plate
+
+`body_neck_plate` picks what the bolts pull against on the back:
+
+| Value | What it is |
+| --- | --- |
+| `ferrules` | A ferrule for each bolt, placed as above (the default) |
+| `plate` | A four-bolt neck plate, Fender style: no ferrules, the bolts through the plate's holes |
+| `asymmetric` | The same plate with its treble corner toward the nut clipped, as on Fender's contoured heel |
+
+The plate is `body_neck_plate_length` (63.5 mm) along the neck by
+`body_neck_plate_width` (50.8 mm) across, its holes
+`body_neck_plate_hole_inset` (6.35 mm) in from its edges — a Fender
+plate's 50.8 × 38.1 mm hole pattern — and its corners rounded about the
+holes; measure your own plate and set these. It is centred across the
+neck, its tail pair of holes as near the heel end as
+`body_neck_bolt_end_wall` allows (or the pattern centred
+`body_neck_bolt_center_offset` ahead of the heel end). The plate fixes its
+bolts: the body shape's own `neck_bolts` and `body_neck_bolts_outward` do
+not move them, and the body editor draws the plate in steel grey with its
+bolts fixed. An asymmetric plate's corner is clipped
+`body_neck_plate_clip` (19 mm) along each edge, and the bolt in that
+corner moves in along the diagonal until it keeps the inset from the clip
+(by about 7.6 mm each way).
+
+Every bolt keeps the edge wall to the neck's edge and 3 mm of wood to the
+truss rod, as with ferrules, and the bolt holes run from the back face to
+the pocket, drilled in `Body_back_small_holes`. The plate is bought
+hardware, not cut: it is drawn in the plan view (dashed, *Neck plate
+(back)*) and on the DXF's `NECK_PLATE` layer, and kept in
+`BodySolid.neck_plate`, which checks that it sits wholly on the flat back
+— `NECK_PLATE_EDGE_WALL` (1 mm) in from the back edge's roundover or
+binding, off every back contour and clear of the rear cavities' covers.
+A body whose cutaway runs close to the neck (the Design by Jone body)
+has no room for a plate; the Stratocaster style template has. A
+neck-through, set or one-piece neck has no plate.
+
 ## Controls and cover plates
 
 `body_controls` picks the electronics layout (`presets.controls`); each
@@ -725,7 +762,7 @@ Optional, and off by default (`geometry.body.edges`):
 | `body_top_binding_width` / `_depth`, `body_back_binding_width` / `_depth` | A binding channel (rabbet) instead of a roundover; the default depth is 6 mm |
 | `body_arm_contour_depth`, `_width`, `_length`, `_position` | A Strat-style arm contour on the top of the bass-side rear bout |
 | `body_belly_cut_depth`, `_width`, `_length`, `_position` | A belly cut on the back of the bass-side upper bout |
-| `body_heel_relief`, `_depth`, `_reach` | A heel relief on the back where the neck joins: `"contour"` or `"notch"` |
+| `body_heel_relief`, `_depth`, `_reach` | A heel relief on the back where the neck joins: `"contour"` or `"notch"`; beside a neck plate, its treble corner |
 
 A `ContourCut` follows `length` of the outline (resampled every 4 mm)
 centred on its deepest point. Across the edge it is a straight ramp from
@@ -765,6 +802,13 @@ curve), else a U round the heel: from the centreline
 `body_heel_relief_reach` (15 mm) behind the heel end, forward along both
 sides that far out from the neck pocket, each to where it first leaves
 the body (the cutaway's or the horn's edge beside the neck).
+
+A neck plate needs the flat back, so beside one the automatic line is
+straight instead, slanting at 45 degrees past the plate's treble corner
+toward the nut (the clipped one of an asymmetric plate)
+`NECK_PLATE_RELIEF_GAP` (2 mm) clear of it, from edge to edge: the relief
+is the corner of the back beyond it, as on Fender's contoured heel. A
+drawn line that runs over the plate is refused.
 
 The edge between the bevels at a body's neck end is concave (between its
 horns), where an arm contour's normals would cross, so a `HeelRelief` is

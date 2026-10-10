@@ -4,6 +4,15 @@
 
 ### Added
 
+- A neck plate in place of the neck bolts' ferrules (`body_neck_plate`):
+  a Fender style four-bolt plate (63.5 × 50.8 mm, its holes 6.35 mm in,
+  set with `body_neck_plate_length`, `_width` and `_hole_inset`) or an
+  asymmetric one with its treble corner toward the nut clipped
+  (`body_neck_plate_clip`), as on Fender's contoured heel. The plate
+  fixes the bolts at its holes; it is drawn in the plan view, on the
+  DXF's `NECK_PLATE` layer and in the body editor, and must sit wholly on
+  the flat back. Beside a plate the automatic heel relief is the back's
+  treble corner, cut off by a line slanting past the plate.
 - A heel relief on the back where the neck joins the body
   (`body_heel_relief`): a smooth contour or a flat notch,
   `body_heel_relief_depth` deep at the edge, running in to a line drawn

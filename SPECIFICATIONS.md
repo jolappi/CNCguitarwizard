@@ -661,6 +661,24 @@ joten sarvien välinen kovera reuna leikkautuu siististi. Kaulapulttien
 hylsyt upotetaan `body_neck_ferrule_depth` muotoilun pintaan, ja
 taskun yläpuolelle on jäätävä vähintään 5 mm puuta; liian syvä muotoilu
 nimeää pultin. Läpikaula- ja yksipalarungossa kantapäätä ei ole.
+Hylsyjen sijaan kaulapultit voi kiristää kaulalevyä vasten
+(`body_neck_plate`): `"plate"` on Fender-tyylinen neljän pultin levy
+(`body_neck_plate_length` 63,5 × `body_neck_plate_width` 50,8 mm, reiät
+`body_neck_plate_hole_inset` 6,35 mm reunoista, eli 50,8 × 38,1 mm
+välein, kulmat pyöristetty reikien ympäri) ja `"asymmetric"` sama levy,
+jonka diskanttipuolen kaulanpuoleinen kulma on viistetty
+`body_neck_plate_clip` (19 mm) kummaltakin reunalta kuten Fenderin
+muotoillussa kantapäässä; sen kulman pultti siirtyy lävistäjää pitkin
+sisemmäs. Levy keskitetään kaulan poikki ja sen kantapään puoleiset
+reiät tulevat niin lähelle kantapään päätä kuin `body_neck_bolt_end_wall`
+sallii; levy määrää pulttien paikat, joten runkomuodon `neck_bolts` ja
+`body_neck_bolts_outward` eivät niitä siirrä. Levyä ei jyrsitä, mutta se
+piirretään tasokuvaan, DXF:n `NECK_PLATE`-tasolle ja runkoeditoriin, ja
+sen on oltava kokonaan tasaisella takapinnalla: 1 mm takareunan
+pyöristyksen tai reunanauhan sisäpuolella, irti takapinnan muotoiluista
+ja takakansista. Levyn vieressä automaattinen kantapään muotoilu on
+rungon diskanttipuolen kulma, jonka 45 asteen suora viiva rajaa 2 mm
+levyn kulman ohi.
 Viisteet ja pyöristykset
 ajetaan ball nose -terällä omissa ohjelmissaan (`Body_top_edges.nc`,
 `Body_back_edges.nc`), reunanauhan ura pääterällä ääriviivan jälkeen.

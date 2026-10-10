@@ -52,6 +52,10 @@ def max_radius_for(inset: float) -> float:
 CARVE_WALL = 3.0
 """Least wood a carved top leaves over a cavity routed from the back, in mm."""
 
+NECK_PLATE_EDGE_WALL = 1.0
+"""Least flat back, in mm, between a neck plate and the back edge's
+roundover or binding (or the edge itself, when square)."""
+
 
 @dataclass(frozen=True, slots=True)
 class BodySolid:
@@ -131,6 +135,11 @@ class BodySolid:
             hole fits), for the programs' notes.
         bridge_notes: The bridge's fitting notes (its routing sheet, what
             to check or do by hand), for the programs' notes.
+        neck_plate: The outline of a bolt-on neck's plate on the back (a
+            Fender style four-bolt plate), or empty with ferrules. Bought,
+            not cut, it must sit wholly on the flat back: in from the back
+            edge's roundover or binding by ``NECK_PLATE_EDGE_WALL``, off
+            every back contour and clear of the rear cavities' covers.
         edge_outline: The outline the edge finishes (roundover, binding)
             follow, if not ``outline``: on one part of a neck-through body,
             the body's outline carried on past its glue lines into the
@@ -145,7 +154,7 @@ class BodySolid:
             gap, but its tail-ward wall must lie in body wood), a rear
             cavity would break through into a top cavity above it, or
             a hole is deeper than the slab or centred outside the
-            outline.
+            outline, or the neck plate is not wholly on the flat back.
     """
 
     outline: Outline
@@ -178,6 +187,7 @@ class BodySolid:
     side_holes: tuple[SideHole, ...] = ()
     wire_notes: tuple[str, ...] = ()
     bridge_notes: tuple[str, ...] = ()
+    neck_plate: tuple[Point2D, ...] = ()
     edge_outline: tuple[Point2D, ...] = ()
     checked: bool = True
 
@@ -200,6 +210,9 @@ class BodySolid:
             raise BodyGeometryError(
                 "The engraving must be shallower than half the body's thickness."
             )
+        # The plate first: off the body, its bolts would be blamed for it.
+        if self.neck_plate:
+            self._check_neck_plate()
         for hole in (
             *self.holes,
             *self.rear_holes,
@@ -661,6 +674,42 @@ class BodySolid:
         outline_min_y = min(point.y for point in self.outline.points)
         outline_max_y = max(point.y for point in self.outline.points)
         return (outline_max_y - outline_min_y) / 2.0
+
+    def _check_neck_plate(self) -> None:
+        """Check the neck plate sits wholly on the flat back.
+
+        Raises:
+            BodyGeometryError: If it comes within ``NECK_PLATE_EDGE_WALL``
+                of the back edge's roundover or binding (or of the edge),
+                lies on a back contour, or overlaps a rear cavity's cover.
+        """
+        edge = self.back_edge
+        wall = max(edge.radius, edge.binding_width) + NECK_PLATE_EDGE_WALL
+        for point in self.neck_plate:
+            if (
+                not point_in_polygon(point, self.outline.points)
+                or _distance_to_outline(point, self.edge_points) < wall
+            ):
+                raise BodyGeometryError(
+                    f"The neck plate must keep {wall:g} mm of flat back to the "
+                    "body's edge (past its roundover or binding); move it "
+                    "toward the heel end (body_neck_bolt_center_offset) or "
+                    "use a smaller plate."
+                )
+        for contour in self.contours:
+            if contour.face == "back" and outlines_overlap(
+                self.neck_plate, contour.region()
+            ):
+                raise BodyGeometryError(
+                    f"The neck plate sits on the {contour.name}: it needs the "
+                    f"flat back; draw the {contour.name.lower()}'s line clear "
+                    "of it in the body editor."
+                )
+        for rear in self.rear_cavities:
+            if outlines_overlap(self.neck_plate, rear.cover_recess.outline):
+                raise BodyGeometryError(
+                    f"The neck plate overlaps {rear.cover_recess.name}."
+                )
 
     def _check_side_holes(self) -> None:
         """Keep each sideways hole in the body and out of the other cavities.

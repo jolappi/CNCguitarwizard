@@ -648,7 +648,8 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         with ``role`` one of ``neck``, ``pocket``,
         ``pickup``, ``bridge``, ``bridge_plate`` (what a bridge such as a
         Kahler covers on the top past its routes), ``top_control``,
-        ``rear``, ``cover``,
+        ``rear``, ``cover``, ``neck_plate`` (a bolt-on neck's plate on the
+        back; its bolts then have no group, staying at its holes),
         ``contour_top`` (an arm contour), ``contour_back`` (a belly cut) or
         ``plateau`` (a carved top's flat plateau, the top falling outside it);
         ``steps`` a stepped top's lines ``{"points", "automatic"}`` or
@@ -769,10 +770,17 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         }
         for hole in layout.holes
     ]
+    if layout.neck_plate:
+        polygons.append(polygon("Neck plate", "neck_plate", layout.neck_plate))
     circles += [
         {
             "name": hole.name,
-            "group": _editor_group(hole.name),
+            # A neck plate's bolts stay at its holes.
+            "group": (
+                None
+                if layout.neck_plate and hole.name.startswith("Neck bolt ")
+                else _editor_group(hole.name)
+            ),
             "x": round(hole.center_x - heel_end, 2),
             "y": round(hole.center_y, 2),
             "r": hole.diameter / 2.0,
