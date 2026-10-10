@@ -122,6 +122,7 @@
 - Build floating in the corner while the page's own is out of sight
 - A heel relief on the back where the neck joins: a contour or a notch, drawn in the body editor
 - A neck plate in place of the ferrules: a Fender style plate or an asymmetric one
+- A heel bevel with the neck plate tilted on it (Ibanez's Tilt Joint), its bolts drilled by hand
 - Index pins as wide as a main tool wider than 6 mm (an 8 mm end mill,
   8 mm dowels)
 - The neck's back carved with the ball nose alone, in one program

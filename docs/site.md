@@ -192,7 +192,8 @@ Python.
    plate, a straight line slanting past its treble corner). With
    `body_neck_plate` (beside the editor: ferrules, a Fender style plate or
    an asymmetric one) the plate is drawn on the back in steel grey and its
-   bolts stay at its holes, not dragged. With `body_engraving` on (beside the editor too, with
+   bolts stay at its holes, not dragged; on a `"bevel"` heel relief it
+   tilts with it (a Tilt Joint). With `body_engraving` on (beside the editor too, with
    `body_engraving_seed`) the decorative engraving is drawn in blue lines,
    and *New pattern* sets a new random seed (turning the engraving on);
    *Reroll* beside `body_engraving_seed` (in the form and the editor's

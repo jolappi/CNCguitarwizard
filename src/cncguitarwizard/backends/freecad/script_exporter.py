@@ -2571,9 +2571,10 @@ class FreeCADScriptExporter:
                 f"    {wire.name.lower() + ' cut'!r},\n"
                 ")\n"
             )
-        # The holes drilled sideways by hand into a cavity's wall (a
-        # tremolo claw's screws): each from 1 mm inside that cavity to its
-        # end.
+        # The holes drilled by hand at an angle (a tremolo claw's screws
+        # sideways into a cavity's wall, a tilted neck plate's bolts): each
+        # from 1 mm inside the cavity it is drilled from to its end, or 1 mm
+        # past it into the cavity it opens into.
         for side in body.side_holes:
             run = (
                 side.end.x - side.start.x,
@@ -2586,10 +2587,11 @@ class FreeCADScriptExporter:
                 side.start.y - direction[1],
                 side.start.z - body.thickness - direction[2],
             )
+            past = 1.0 if side.opens_into else 0.0
             lines.append(
                 "side_hole = Part.makeCylinder(\n"
                 f"    {side.diameter / 2.0},\n"
-                f"    {side.length + 1.0},\n"
+                f"    {side.length + 1.0 + past},\n"
                 f"    App.Vector{side_start},\n"
                 f"    App.Vector{direction},\n"
                 ")\n"

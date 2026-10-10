@@ -416,6 +416,7 @@ def plan_body_machining(
             (
                 "Same fixture and X/Y zero as Body_back; change to the small drill "
                 "and re-touch Z on the stock top (the back face).",
+                *body.joint_notes,
             ),
             reference_points,
             small_tool,

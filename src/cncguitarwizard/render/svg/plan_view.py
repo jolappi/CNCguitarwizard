@@ -231,8 +231,8 @@ def render_plan_view_svg(geometry: Prototype001Geometry) -> str:
         parts.append(
             circle(jack.start_x, jack.start_y, jack.diameter / 2.0, hole, "Output jack")
         )
-    # The holes drilled sideways by hand into a cavity's wall (a tremolo
-    # claw's screws), dashed.
+    # The holes drilled by hand at an angle (a tremolo claw's screws, a
+    # tilted neck plate's bolts), dashed.
     for side in body.side_holes:
         parts.append(
             line(

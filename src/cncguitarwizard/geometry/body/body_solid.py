@@ -127,14 +127,17 @@ class BodySolid:
             routes by design.
         wire_holes: Wire holes drilled by hand from one cavity into
             another (``wiring.WireHole``); modelled, not machined.
-        side_holes: Holes drilled sideways by hand into a cavity's wall
-            (``bridges.SideHole``: a tremolo claw's screws); modelled, not
-            machined. Each must stay in the body and keep out of every
-            other cavity.
+        side_holes: Holes drilled by hand at an angle
+            (``bridges.SideHole``: a tremolo claw's screws sideways into
+            its cavity's wall, a tilted neck plate's bolts square to their
+            bevel); modelled, not machined. Each must stay in the body and
+            keep out of every other cavity but the one it opens into.
         wire_notes: The wiring left to the builder (a way no straight
             hole fits), for the programs' notes.
         bridge_notes: The bridge's fitting notes (its routing sheet, what
             to check or do by hand), for the programs' notes.
+        joint_notes: The neck joint's notes (how to drill a tilted neck
+            plate's bolts by hand), for the programs' notes.
         neck_plate: The outline of a bolt-on neck's plate on the back (a
             Fender style four-bolt plate), or empty with ferrules. Bought,
             not cut, it must sit wholly on the flat back: in from the back
@@ -187,6 +190,7 @@ class BodySolid:
     side_holes: tuple[SideHole, ...] = ()
     wire_notes: tuple[str, ...] = ()
     bridge_notes: tuple[str, ...] = ()
+    joint_notes: tuple[str, ...] = ()
     neck_plate: tuple[Point2D, ...] = ()
     edge_outline: tuple[Point2D, ...] = ()
     checked: bool = True
@@ -676,12 +680,16 @@ class BodySolid:
         return (outline_max_y - outline_min_y) / 2.0
 
     def _check_neck_plate(self) -> None:
-        """Check the neck plate sits wholly on the flat back.
+        """Check the neck plate sits wholly on the flat back, or on a bevel.
+
+        A heel relief with a ``"plane"`` profile (a bevel) is flat too: the
+        plate may sit on it, tilted, if wholly on its slope.
 
         Raises:
             BodyGeometryError: If it comes within ``NECK_PLATE_EDGE_WALL``
                 of the back edge's roundover or binding (or of the edge),
-                lies on a back contour, or overlaps a rear cavity's cover.
+                lies on a back contour other than wholly on a bevel's
+                slope, or overlaps a rear cavity's cover.
         """
         edge = self.back_edge
         wall = max(edge.radius, edge.binding_width) + NECK_PLATE_EDGE_WALL
@@ -697,9 +705,22 @@ class BodySolid:
                     "use a smaller plate."
                 )
         for contour in self.contours:
-            if contour.face == "back" and outlines_overlap(
+            if contour.face != "back" or not outlines_overlap(
                 self.neck_plate, contour.region()
             ):
+                continue
+            if isinstance(contour, HeelRelief) and contour.profile == "plane":
+                region = contour.region()
+                if not all(
+                    point_in_polygon(point, region) and point.x >= contour.plane[0]
+                    for point in self.neck_plate
+                ):
+                    raise BodyGeometryError(
+                        "The neck plate must sit wholly on the heel bevel's "
+                        "slope: draw the bevel's line round it in the body "
+                        "editor, or move the plate (body_neck_bolt_center_offset)."
+                    )
+            else:
                 raise BodyGeometryError(
                     f"The neck plate sits on the {contour.name}: it needs the "
                     f"flat back; draw the {contour.name.lower()}'s line clear "
@@ -712,11 +733,11 @@ class BodySolid:
                 )
 
     def _check_side_holes(self) -> None:
-        """Keep each sideways hole in the body and out of the other cavities.
+        """Keep each hand-drilled hole in the body and out of the other cavities.
 
         Sampled along it from 1 mm into the wood: every point in the
         outline, between the back and the top, and in no rear pocket below
-        its floor or top route above its floor.
+        its floor or top route above its floor — but the one it opens into.
         """
         for hole in self.side_holes:
             steps = max(1, math.ceil(hole.length / SIDE_HOLE_SAMPLE))
@@ -730,15 +751,19 @@ class BodySolid:
                     raise BodyGeometryError(f"{hole.name} must lie in the body.")
                 for rear in self.rear_cavities:
                     for pocket in rear.pockets:
-                        if point.z < pocket.depth and point_in_polygon(
-                            plan, pocket.outline
+                        if (
+                            pocket.name != hole.opens_into
+                            and point.z < pocket.depth
+                            and point_in_polygon(plan, pocket.outline)
                         ):
                             raise BodyGeometryError(
                                 f"{hole.name} would break into {pocket.name}."
                             )
                 for top in self.top_cavities:
-                    if point.z > self.thickness - top.depth and point_in_polygon(
-                        plan, top.outline
+                    if (
+                        top.name != hole.opens_into
+                        and point.z > self.thickness - top.depth
+                        and point_in_polygon(plan, top.outline)
                     ):
                         raise BodyGeometryError(
                             f"{hole.name} would break into {top.name}."

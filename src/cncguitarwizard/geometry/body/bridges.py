@@ -38,12 +38,14 @@ from .hardware import (
 
 @dataclass(frozen=True, slots=True)
 class SideHole:
-    """A hole drilled sideways by hand into a cavity's wall, modelled.
+    """A hole drilled by hand at an angle, modelled.
 
-    A router cannot drill sideways; the hole is in the model (FreeCAD, the
-    plan view, the DXF) so its place is seen and checked. The bit meets
-    the wood at ``start``, on the wall, and stops at ``end``; heights are
-    above the back face.
+    A router cannot drill sideways (a tremolo claw's screws into its
+    cavity's wall) or slanting (a tilted neck plate's bolts, square to
+    their bevel); the hole is in the model (FreeCAD, the plan view, the
+    DXF) so its place is seen and checked. The bit meets the wood at
+    ``start``, on the wall, and stops at ``end``; heights are above the
+    back face.
 
     Args:
         name: ``"Trem claw screw 1 hole"``.
@@ -51,6 +53,8 @@ class SideHole:
         end: Where the hole ends.
         diameter: The bit's diameter.
         drilled_from: The cavity it is drilled from.
+        opens_into: The cavity it opens into at ``end`` (a neck bolt's
+            into the neck pocket), or empty when it ends in the wood.
 
     Raises:
         BodyGeometryError: For a non-positive diameter or a hole of no
@@ -62,6 +66,7 @@ class SideHole:
     end: Point3D
     diameter: float
     drilled_from: str
+    opens_into: str = ""
 
     def __post_init__(self) -> None:
         """Reject a hole of no size."""

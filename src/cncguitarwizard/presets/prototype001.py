@@ -204,6 +204,10 @@ relief's surface) leaves over the neck pocket for the bolt to pull on."""
 NECK_PLATE_RELIEF_GAP = 2.0
 """Flat back, in mm, an automatic heel relief leaves round a neck plate."""
 
+NECK_BOLT_MARK_DEPTH = 1.0
+"""How deep, in mm, the CNC marks a tilted neck plate's bolt into its bevel
+for the hand drill to start in."""
+
 SWITCH_SHAFT_HOLE_DIAMETERS: dict[str, float] = {
     "toggle": 12.7,
     "micro": 6.35,
@@ -522,13 +526,16 @@ class BodyLayout:
         pickup_centres: Each fitted pickup's position (``"neck"``,
             ``"middle"``, ``"bridge"``) and the X of its centre on the
             centreline, the point it turns about.
-        side_holes: The bridge's holes drilled sideways by hand (a
-            tremolo claw's screws), modelled.
+        side_holes: The holes drilled by hand at an angle, modelled: the
+            bridge's sideways (a tremolo claw's screws) and a tilted neck
+            plate's bolts.
         pickup_frames: A frame round every humbucker, or none (see
             ``body_pickup_frame``; their plates are also among the
             ``controls``' covers).
         neck_plate: The neck plate's outline on the back, or empty with
             ferrules (see ``body_neck_plate``).
+        joint_notes: How to drill a tilted neck plate's bolts by hand, for
+            the programs' notes, or none.
     """
 
     heel_end: float
@@ -562,6 +569,7 @@ class BodyLayout:
     side_holes: tuple[SideHole, ...] = ()
     pickup_frames: tuple[PickupFrame, ...] = ()
     neck_plate: tuple[Point2D, ...] = ()
+    joint_notes: tuple[str, ...] = ()
 
 
 TRUSS_ROD_STOCK_LENGTHS: tuple[float, ...] = tuple(
@@ -867,18 +875,27 @@ class Prototype001Parameters:
     # heel meets the body, so the hand reaches the top frets: "contour" a
     # smooth bevel from the body's edge at the neck end, where it is
     # body_heel_relief_depth deep, up to the face where it starts; "notch"
-    # a flat step that deep, a wall where it starts. It starts
+    # a flat step that deep, a wall where it starts; "bevel" a flat slope
+    # across the neck for a neck plate to sit on (Ibanez's Tilt Joint),
+    # that deep at the body's edge on the centreline and up to the face
+    # at its line's furthest point behind the heel, a wall elsewhere along
+    # its line. It starts
     # body_heel_relief_reach behind the heel end on the centreline and
     # curves forward to the edge beside the neck pocket either side (or
     # along the body shape's heel_relief_points, drawn in the body
     # editor). The neck bolts are drilled from it: their ferrules sink
-    # body_neck_ferrule_depth into its surface. With a neck plate
-    # (body_neck_plate), which needs the flat back, it is instead the
-    # corner beside the plate's treble side toward the nut, cut off by a
-    # line slanting past that corner (the clipped one of an asymmetric
-    # plate), NECK_PLATE_RELIEF_GAP clear of it. A neck-through or
-    # one-piece body has no heel to relieve.
-    body_heel_relief: Literal["none", "contour", "notch"] = "none"
+    # body_neck_ferrule_depth into its surface. Beside a neck plate
+    # (body_neck_plate), which needs the flat back, a contour or notch is
+    # instead the corner beside the plate's treble side toward the nut,
+    # cut off by a line slanting past that corner (the clipped one of an
+    # asymmetric plate), NECK_PLATE_RELIEF_GAP clear of it. A plate on a
+    # bevel tilts with it, placed so its tail bolts come out in the pocket
+    # body_neck_bolt_end_wall from its end, and its bolts go in square to
+    # the bevel: the CNC marks each one's centre NECK_BOLT_MARK_DEPTH into
+    # the bevel and the builder drills it by hand (Body_back_small_holes'
+    # notes give the angle). A neck-through or one-piece body has no heel
+    # to relieve.
+    body_heel_relief: Literal["none", "contour", "notch", "bevel"] = "none"
     body_heel_relief_depth: float = 6.0
     body_heel_relief_reach: float = 15.0
     # Rear-routed electronics cavities are cut up from the back face to
@@ -2049,7 +2066,10 @@ class Prototype001Parameters:
         return tuple(centres)
 
     def _neck_plate(
-        self, heel_end: float
+        self,
+        heel_end: float,
+        bevel: HeelRelief | None = None,
+        pocket: TracedCavity | None = None,
     ) -> tuple[tuple[Point2D, ...], tuple[tuple[float, float], ...]] | None:
         """Return the neck plate's outline and its bolts' centres, or ``None``.
 
@@ -2058,8 +2078,10 @@ class Prototype001Parameters:
         ``body_neck_plate_hole_inset`` in from its edges, the pair nearer
         the heel end as near it as ``body_neck_bolt_end_wall`` allows (or
         the rectangle centred ``body_neck_bolt_center_offset`` ahead of it),
-        and its corners rounded about the holes. An ``"asymmetric"`` plate
-        has its treble corner toward the nut clipped
+        and its corners rounded about the holes. On a ``bevel`` its bolts
+        lean toward the heel end as they go in (``_bolt_exit``), so the
+        tail pair is placed where they come out in the ``pocket``. An
+        ``"asymmetric"`` plate has its treble corner toward the nut clipped
         ``body_neck_plate_clip`` along each edge, and that corner's bolt
         moved in along the diagonal to keep the inset from the clip. The
         bolts come in the default rectangle's order.
@@ -2100,12 +2122,20 @@ class Prototype001Parameters:
                 "narrower side."
             )
         spacing = length - 2.0 * inset
-        offset = (
-            radius + self.body_neck_bolt_end_wall + spacing / 2.0
-            if self.body_neck_bolt_center_offset is None
-            else self.body_neck_bolt_center_offset
-        )
-        centre = heel_end - offset
+        if self.body_neck_bolt_center_offset is None:
+            # Where the tail pair come out of the bevel's slope and into the
+            # pocket (solving _bolt_exit for its start): the end wall short
+            # of the heel end.
+            out = heel_end - radius - self.body_neck_bolt_end_wall
+            slope = self._bevel_slope(bevel)
+            face = bevel.plane[1] if bevel is not None else 0.0
+            bolt_depth = self.body_thickness - pocket.depth if pocket else 0.0
+            tail = (out - slope * bolt_depth + slope * slope * face) / (
+                1.0 + slope * slope
+            )
+            centre = tail - spacing / 2.0
+        else:
+            centre = heel_end - self.body_neck_bolt_center_offset
         half_x, half_y = length / 2.0, width / 2.0
         treble = -self.bass_sign
         # The corners counter-clockwise, the clipped one (toward the nut on
@@ -2158,7 +2188,10 @@ class Prototype001Parameters:
         sinks ``body_neck_ferrule_depth`` into the relief's surface, so its
         counterbore is that much deeper from the face. With a neck plate
         the bolts are at its holes (``plate_bolts``, see ``_neck_plate``),
-        where they stay, and have no ferrules.
+        where they stay, and have no ferrules; on a bevel, only a centre
+        mark ``NECK_BOLT_MARK_DEPTH`` into it each, the holes drilled by
+        hand (``_tilted_neck_bolts``), and their end wall measured where
+        they come out in the pocket.
 
         Each bolt keeps its place along the neck (the body shape's
         ``neck_bolts`` or the default rectangle) and, with
@@ -2261,6 +2294,14 @@ class Prototype001Parameters:
                 for step in range(36)
             )
 
+        bolt_depth = self.body_thickness - pocket.depth
+        tilted = plate_bolts is not None and self._bevel_slope(heel_relief) > 0.0
+
+        def end_x(x: float, y: float) -> float:
+            if tilted and heel_relief is not None:
+                return self._bolt_exit(x, y, heel_relief, bolt_depth)
+            return x
+
         placed: list[tuple[float, float]] = []
         for index, (x, y) in enumerate(centres, start=1):
             limit = neck_half_width(x) - wall - radius
@@ -2287,7 +2328,8 @@ class Prototype001Parameters:
                     )
                 y = found
             where = f"({x - heel_end:.1f}, {y:.1f}) from the heel end"
-            end_wall = heel_end - (x + radius)
+            # On a bevel, where the bolt comes out in the pocket.
+            end_wall = heel_end - (end_x(x, y) + radius)
             if end_wall < self.body_neck_bolt_end_wall - 1e-6:
                 raise BodyGeometryError(
                     f"Neck bolt {index} at {where} leaves {end_wall:.1f} mm of wood "
@@ -2335,9 +2377,21 @@ class Prototype001Parameters:
                     )
             placed.append((x, y))
 
-        bolt_depth = self.body_thickness - pocket.depth
         holes: list[DrilledHole] = []
         for index, (x, y) in enumerate(placed, start=1):
+            if tilted and heel_relief is not None:
+                # Drilled by hand square to the bevel (_tilted_neck_bolts),
+                # from a mark the CNC drills into it.
+                holes.append(
+                    DrilledHole(
+                        f"Neck bolt {index} centre mark",
+                        x,
+                        y,
+                        self.body_neck_bolt_hole_diameter,
+                        heel_relief.depth_at(Point2D(x, y)) + NECK_BOLT_MARK_DEPTH,
+                    )
+                )
+                continue
             if plate_bolts is not None:
                 holes.append(
                     DrilledHole(
@@ -2378,6 +2432,82 @@ class Prototype001Parameters:
                 )
             )
         return tuple(holes)
+
+    @staticmethod
+    def _bevel_slope(bevel: HeelRelief | None) -> float:
+        """Return how far a bevel falls per mm toward the nut, or 0.
+
+        Only a ``"plane"`` heel relief (``body_heel_relief="bevel"``) is
+        one; a neck plate on it tilts as steeply.
+        """
+        if bevel is None or bevel.profile != "plane":
+            return 0.0
+        deep, face = bevel.plane
+        return bevel.depth / (face - deep)
+
+    def _bolt_exit(
+        self, x: float, y: float, bevel: HeelRelief, bolt_depth: float
+    ) -> float:
+        """Return the X where a bolt square to ``bevel`` comes out in the pocket.
+
+        It goes in at (``x``, ``y``) on the bevel and leans toward the heel
+        end by the bevel's slope per mm it rises, to the pocket's floor
+        ``bolt_depth`` above the back face.
+        """
+        start = bevel.depth_at(Point2D(x, y))
+        return x + self._bevel_slope(bevel) * (bolt_depth - start)
+
+    def _tilted_neck_bolts(
+        self,
+        bolts: tuple[DrilledHole, ...],
+        bevel: HeelRelief | None,
+        pocket: TracedCavity,
+    ) -> tuple[tuple[SideHole, ...], tuple[str, ...]]:
+        """Return a tilted neck plate's bolt holes and how to drill them.
+
+        A plate on a bevel (``body_heel_relief="bevel"``) tilts with it, and
+        its bolts go in square to it: each from its centre mark on the
+        bevel, leaning toward the heel end, through to the pocket's floor.
+        A router cannot drill them, so they are modelled (``SideHole``,
+        opening into the neck pocket) and drilled by hand; the notes say
+        how. None on a flat back.
+        """
+        slope = self._bevel_slope(bevel)
+        if bevel is None or slope <= 0.0:
+            return (), ()
+        bolt_depth = self.body_thickness - pocket.depth
+        holes = []
+        for mark in bolts:
+            start = bevel.depth_at(mark.center)
+            holes.append(
+                SideHole(
+                    mark.name.replace("centre mark", "hole"),
+                    Point3D(mark.center_x, mark.center_y, start),
+                    Point3D(
+                        self._bolt_exit(
+                            mark.center_x, mark.center_y, bevel, bolt_depth
+                        ),
+                        mark.center_y,
+                        bolt_depth,
+                    ),
+                    self.body_neck_bolt_hole_diameter,
+                    bevel.name,
+                    opens_into=pocket.name,
+                )
+            )
+        angle = math.degrees(math.atan(slope))
+        longest = max(hole.length for hole in holes)
+        notes = (
+            f"Neck bolts: the neck plate sits on the heel bevel, tilted "
+            f"{angle:.1f} degrees. Once the bevel is cut (Body_back_edges), "
+            "drill each bolt hole by hand from its centre mark, "
+            f"{self.body_neck_bolt_hole_diameter:g} mm, square to the bevel: "
+            f"{angle:.1f} degrees from square, leaning toward the heel end as "
+            f"it goes in, through into the neck pocket (up to {longest:.0f} mm). "
+            f"On the drill press, a {angle:.1f} degree wedge under the body "
+            "sets the bevel level.",
+        )
+        return tuple(holes), notes
 
     @property
     def switch_shaft_hole_diameter(self) -> float:
@@ -3106,15 +3236,22 @@ class Prototype001Parameters:
             floor_slope=math.tan(math.radians(self.neck_angle_degrees)),
         )
         # The neck plate first, which the heel relief keeps clear of, then
-        # the heel relief: the neck bolts are drilled from it.
-        neck_plate = self._neck_plate(heel_end)
-        heel_relief = self._heel_relief(
-            shape,
-            body_outline.points,
-            heel_end,
-            neck_pocket,
-            neck_plate[0] if neck_plate is not None else (),
-        )
+        # the heel relief: the neck bolts are drilled from it. But a bevel
+        # comes first, and a plate sits on it.
+        if self.body_heel_relief == "bevel":
+            heel_relief = self._heel_relief(
+                shape, body_outline.points, heel_end, neck_pocket
+            )
+            neck_plate = self._neck_plate(heel_end, heel_relief, neck_pocket)
+        else:
+            neck_plate = self._neck_plate(heel_end)
+            heel_relief = self._heel_relief(
+                shape,
+                body_outline.points,
+                heel_end,
+                neck_pocket,
+                neck_plate[0] if neck_plate is not None else (),
+            )
         # Only a bolt-on neck has bolts: a set neck is glued, and a
         # neck-through body has no pocket (its outline stays as where the
         # neck passes, for the keep-outs).
@@ -3133,6 +3270,11 @@ class Prototype001Parameters:
             heel_relief = replace(
                 heel_relief, carries=tuple(hole.name for hole in neck_bolts)
             )
+        tilted_bolts, joint_notes = (
+            self._tilted_neck_bolts(neck_bolts, heel_relief, neck_pocket)
+            if neck_plate is not None
+            else ((), ())
+        )
         truss_rod = self.truss_rod(outline)
         truss_rod_access = (
             TracedCavity(
@@ -3667,9 +3809,10 @@ class Prototype001Parameters:
                 )
                 if kind != "none"
             ),
-            bridge.side_holes,
+            (*bridge.side_holes, *tilted_bolts),
             frames,
             neck_plate=neck_plate[0] if neck_plate is not None else (),
+            joint_notes=joint_notes,
         )
 
     def _string_ferrules(self, holes: tuple[DrilledHole, ...]) -> list[DrilledHole]:
@@ -5332,12 +5475,16 @@ class Prototype001Parameters:
         at 45 degrees past the plate's treble corner toward the nut
         ``NECK_PLATE_RELIEF_GAP`` clear of it, from edge to edge: the
         relief is the corner of the back beyond it. A ``"notch"`` is a
-        flat step, a ``"contour"`` a ramp.
+        flat step, a ``"contour"`` a ramp and a ``"bevel"`` a flat slope
+        (a plate may sit on it, so it is laid out without one), its full
+        depth at the body's edge on the centreline and at the face at the
+        line's furthest point behind the heel end.
 
         Raises:
             BodyGeometryError: For a neck-through or one-piece body, a depth
                 or reach that is not finite and positive, a plate with no
-                body beyond its corner, or a line that does not run inside
+                body beyond its corner, a bevel's line that does not run on
+                behind the body's edge, or a line that does not run inside
                 the body.
         """
         if self.body_heel_relief == "none":
@@ -5405,12 +5552,33 @@ class Prototype001Parameters:
                 Point2D(ends[-1.0], -side),
             ]
         line = open_catmull_rom(drawn, CONTOUR_LINE_SAMPLES)
+        if self.body_heel_relief != "bevel":
+            return HeelRelief.between(
+                "Heel relief",
+                outline,
+                line,
+                self.body_heel_relief_depth,
+                "flat" if self.body_heel_relief == "notch" else "ramp",
+            )
+        # Its full depth at the body's edge on the centreline, walking
+        # toward the nut from the heel end, and up to the face at the
+        # line's furthest point behind the heel.
+        deep = heel_end
+        while deep > heel_end - 400.0 and point_in_polygon(Point2D(deep, 0.0), outline):
+            deep -= 0.5
+        face = max(point.x for point in line)
+        if face <= deep + 1.0:
+            raise BodyGeometryError(
+                "The heel bevel's line must run on behind the body's edge at "
+                "the neck end."
+            )
         return HeelRelief.between(
             "Heel relief",
             outline,
             line,
             self.body_heel_relief_depth,
-            "flat" if self.body_heel_relief == "notch" else "ramp",
+            "plane",
+            (deep, face),
         )
 
     def _contours(
@@ -5835,6 +6003,7 @@ class Prototype001Parameters:
             side_holes=body_parts.side_holes,
             wire_notes=body_parts.wiring.by_hand,
             bridge_notes=body_parts.bridge_notes,
+            joint_notes=body_parts.joint_notes,
             neck_plate=body_parts.neck_plate,
         )
         return Prototype001Geometry(

@@ -4,6 +4,13 @@
 
 ### Added
 
+- A heel bevel (`body_heel_relief="bevel"`): a flat slope across the
+  neck, its full depth at the body's edge on the centreline, for a neck
+  plate to sit on tilted — Ibanez's Tilt Joint. The plate is placed so
+  its bolts, square to the bevel, come out in the pocket the end wall
+  short of the heel end; `Body_back_small_holes` marks their centres on
+  the bevel and its notes say how to drill them by hand at the bevel's
+  angle, and the slanting holes are modelled in FreeCAD.
 - A neck plate in place of the neck bolts' ferrules (`body_neck_plate`):
   a Fender style four-bolt plate (63.5 × 50.8 mm, its holes 6.35 mm in,
   set with `body_neck_plate_length`, `_width` and `_hole_inset`) or an

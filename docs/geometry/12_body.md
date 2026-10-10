@@ -370,7 +370,8 @@ hardware, not cut: it is drawn in the plan view (dashed, *Neck plate
 binding, off every back contour and clear of the rear cavities' covers.
 A body whose cutaway runs close to the neck (the Design by Jone body)
 has no room for a plate; the Stratocaster style template has. A
-neck-through, set or one-piece neck has no plate.
+neck-through, set or one-piece neck has no plate. On a heel bevel the
+plate tilts, and its bolts are drilled by hand (see Heel relief).
 
 ## Controls and cover plates
 
@@ -762,7 +763,7 @@ Optional, and off by default (`geometry.body.edges`):
 | `body_top_binding_width` / `_depth`, `body_back_binding_width` / `_depth` | A binding channel (rabbet) instead of a roundover; the default depth is 6 mm |
 | `body_arm_contour_depth`, `_width`, `_length`, `_position` | A Strat-style arm contour on the top of the bass-side rear bout |
 | `body_belly_cut_depth`, `_width`, `_length`, `_position` | A belly cut on the back of the bass-side upper bout |
-| `body_heel_relief`, `_depth`, `_reach` | A heel relief on the back where the neck joins: `"contour"` or `"notch"`; beside a neck plate, its treble corner |
+| `body_heel_relief`, `_depth`, `_reach` | A heel relief on the back where the neck joins: `"contour"`, `"notch"` or `"bevel"`; beside a neck plate, its treble corner, or under it a bevel |
 
 A `ContourCut` follows `length` of the outline (resampled every 4 mm)
 centred on its deepest point. Across the edge it is a straight ramp from
@@ -809,6 +810,26 @@ toward the nut (the clipped one of an asymmetric plate)
 `NECK_PLATE_RELIEF_GAP` (2 mm) clear of it, from edge to edge: the relief
 is the corner of the back beyond it, as on Fender's contoured heel. A
 drawn line that runs over the plate is refused.
+
+A `"bevel"` is flat, so a plate can sit on it — Ibanez's Tilt Joint (their
+AANJ is a thinned, rounded heel with sunk ferrules: a contour here). It
+is a plane sloping across the neck (`HeelRelief` profile `"plane"`), its
+full depth where the centreline leaves the body ahead of the heel and at
+the face at its line's furthest point behind the heel end; it falls
+about 4 degrees on the default bodies (6 mm over 70 to 90 mm). Elsewhere
+along its line it ends in a wall, as a notch does. Under ferrules it is
+cut like a contour, the ferrules sunk into it. A plate on it tilts with
+it, so its bolts go in square to it, leaning toward the heel end as they
+go in: the plate is placed where its tail pair comes out in the pocket
+`body_neck_bolt_end_wall` short of the heel end, and must sit wholly on
+the bevel's slope (inside its line, behind the edge's full depth). A
+router cannot drill slanting holes, so `Body_back_small_holes` marks each
+bolt's centre on the bevel (*Neck bolt N centre mark*, the bolt hole's
+diameter, `NECK_BOLT_MARK_DEPTH` (1 mm) into it) and its notes say how to
+drill them by hand: square to the bevel, the angle given, with a wedge of
+that angle under the body on the drill press. The holes are modelled
+(`SideHole`, opening into the neck pocket), seen in FreeCAD and the plan
+view.
 
 The edge between the bevels at a body's neck end is concave (between its
 horns), where an arm contour's normals would cross, so a `HeelRelief` is

@@ -678,7 +678,20 @@ sen on oltava kokonaan tasaisella takapinnalla: 1 mm takareunan
 pyöristyksen tai reunanauhan sisäpuolella, irti takapinnan muotoiluista
 ja takakansista. Levyn vieressä automaattinen kantapään muotoilu on
 rungon diskanttipuolen kulma, jonka 45 asteen suora viiva rajaa 2 mm
-levyn kulman ohi.
+levyn kulman ohi. Viiste (`"bevel"`) on tasainen kalteva pinta kaulan
+poikki: se on täysisyvä siellä, missä keskilinja lähtee rungosta kaulan
+puolella, ja nousee pintaan viivansa kauimmassa kohdassa kantapään
+takana; muualla viivalla on seinämä kuten lovessa. Hylsyt upotetaan
+siihen kuten loivennukseen. Kaulalevy voi istua viisteellä kallistettuna
+(Ibanezin Tilt Joint; Ibanezin AANJ on ohennettu, pyöristetty kantapää
+upotetuin hylsyin, eli loivennus): levyn pultit menevät kohtisuoraan
+viistettä vastaan ja kallistuvat kantapään päätä kohti, joten levy
+sijoitetaan niin, että kantapään puoleiset pultit tulevat taskuun
+`body_neck_bolt_end_wall` ennen kantapään päätä, ja levyn on oltava
+kokonaan viisteen kaltevalla osalla. CNC poraa viisteeseen vain
+keskityspisteet (1 mm syviä), ja `Body_back_small_holes`-ohjelman
+muistiinpanot kertovat, miten reiät porataan käsin viisteen kulmassa
+(kiila porapöydälle); vinot reiät mallinnetaan FreeCADiin.
 Viisteet ja pyöristykset
 ajetaan ball nose -terällä omissa ohjelmissaan (`Body_top_edges.nc`,
 `Body_back_edges.nc`), reunanauhan ura pääterällä ääriviivan jälkeen.
