@@ -123,9 +123,14 @@ def test_a_drawn_shape_that_cannot_be_cut_is_refused(
 
 
 @pytest.mark.parametrize(
-    # (The parallelogram leans out over its frets: held in, below.)
+    # (The parallelogram leans out over its frets, and a symbol fills its
+    # fret space: held in, below.)
     "style",
-    [style for style in INLAY_STYLES if style != "parallelogram"],
+    [
+        style
+        for style in INLAY_STYLES
+        if style not in {"parallelogram", "runes", "iommi_cross", "iron_cross"}
+    ],
 )
 def test_every_style_starts_the_editor_with_its_own_marker(style: str) -> None:
     layout = InlayLayout(surface(), 2.0, style=style)  # type: ignore[arg-type]
@@ -157,6 +162,18 @@ def test_the_limits_keep_a_drawn_shape_inside_every_marker() -> None:
     # held inside the limits.
     leaning = InlayLayout(surface(), 2.0, style="parallelogram").editable_points()
     assert all(low <= along <= high for along, _ in leaning)
+    # A symbol fills its fret space; the editor starts from it shrunk whole
+    # inside the limits, its shape kept (an iron cross as long as wide).
+    for style in ("runes", "iommi_cross", "iron_cross"):
+        points = InlayLayout(surface(), 2.0, style=style).editable_points()  # type: ignore[arg-type]
+        assert all(low <= a <= high and abs(c) <= across for a, c in points)
+    cross = InlayLayout(surface(), 2.0, style="iron_cross")
+    drawn = InlayLayout(
+        surface(), 2.0, style="custom", custom_points=cross.editable_points()
+    ).markers[0]
+    xs = [p.x for p in drawn.outline]
+    ys = [p.y for p in drawn.outline]
+    assert max(xs) - min(xs) == pytest.approx(max(ys) - min(ys), rel=0.05)
     with pytest.raises(FretboardGeometryError, match="No fret"):
         custom_limits(surface(), ())
     with pytest.raises(FretboardGeometryError, match="off the fretboard"):

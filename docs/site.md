@@ -305,7 +305,12 @@ Python.
    its corners are read back, a curve as corners within 0.05 mm of it,
    each held inside the dashed line, and the import's note stays at the
    head of the status line until the next change. `inlay_style`, `inlay_depth` and
-   `inlay_block_edge_margin` sit in its pane.
+   `inlay_block_edge_margin` sit in its pane. With the `runes` style each
+   marker fret gets its own choice of rune above the drawing (`showRunes`,
+   from the schema's `runes` and the layout's), each named with its glyph
+   and what it stands for; a change writes them all to `inlay_runes`.
+   *Random runes* picks one for every fret at random, no two the same
+   (24 runes to choose from), and writes them there too.
 3. **Save design** downloads every setting as one JSON file on the user's
    own computer — the instrument, the guitar's name, all `prototype` and
    `machining` values, the drawn body's `control_points` and the drawn

@@ -4,6 +4,16 @@
 
 ### Added
 
+- Symbol fret markers (`inlay_style`): `runes`, a rune of the Elder
+  Futhark at every marker fret, chosen for each in the inlay editor with
+  what it stands for, or all at random (`inlay_runes`; a default set of
+  wealth, strength, protection, wisdom, protection, the sun, victory, the
+  horse, mankind and heritage), `iommi_cross`, Tony Iommi's Latin
+  crosses along the neck, and `iron_cross`, the cross pattée. Each is as large as its fret
+  space allows, its thinnest part kept wide enough for the 1 mm inlay
+  cutter; the runes are drawn as strokes with a round pen
+  (`stroke_outlines`), an area they close in filled.
+
 - A heel bevel (`body_heel_relief="bevel"`): a flat slope across the
   neck, its full depth at the body's edge on the centreline, for a neck
   plate to sit on tilted — Ibanez's Tilt Joint. The plate is placed so

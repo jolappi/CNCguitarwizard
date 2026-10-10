@@ -161,6 +161,11 @@
     border-radius: 6px; background: #fff; touch-action: none; user-select: none; }
   .body-editor .actions { margin: 6px 0; flex-wrap: wrap; }
   .editor-options { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 10px; align-items: center; margin: 8px 0; max-width: 520px; }
+  .rune-choices { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 4px 12px; margin: 8px 0; }
+  .rune-choices[hidden] { display: none; }
+  .rune-choices label { display: flex; flex-direction: column; gap: 2px; font-size: 0.85em; }
+  .rune-choices select { min-width: 0; }
+  .rune-choices > button { justify-self: start; align-self: end; }
   .editor-options label { font-size: 13px; }
   .editor-options select, .editor-options input[type=number] { max-width: 100%; }
   .editor-options input[type=checkbox] { justify-self: start; }
@@ -682,6 +687,7 @@
         <button class="secondary undo-button" type="button" disabled>Undo</button>
         <button class="secondary redo-button" type="button" disabled>Redo</button>
       </div>
+      <div id="inlay-editor-runes" class="rune-choices" hidden></div>
       <p id="inlay-editor-status" class="note"></p>
       <svg id="inlay-editor-svg" xmlns="http://www.w3.org/2000/svg"></svg>
       <svg id="inlay-editor-board" xmlns="http://www.w3.org/2000/svg"></svg>

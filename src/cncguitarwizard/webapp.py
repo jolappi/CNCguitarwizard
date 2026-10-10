@@ -61,6 +61,7 @@ from .geometry.body import (
 from .geometry.exceptions import GeometryException
 from .geometry.fret import FretCalculator
 from .geometry.fretboard.inlay_layout import DEFAULT_CUSTOM_POINTS, custom_limits
+from .geometry.fretboard.runes import DEFAULT_RUNES, RUNES
 from .geometry.lettering import text_lines
 from .geometry.neck import LOCKING_NUT_SPECS, TunerLayout
 from .geometry.primitives import Point2D, closed_catmull_rom_spans, point_in_polygon
@@ -170,6 +171,9 @@ _CHOICE_LABELS: dict[str, dict[str, str]] = {
         "parallelogram": "Parallelograms",
         "diamond": "Diamonds",
         "split_block": "Split blocks (Gibson)",
+        "runes": "Runes (the Elder Futhark, one chosen for each fret)",
+        "iommi_cross": "Iommi crosses (Latin crosses along the neck)",
+        "iron_cross": "Iron crosses (cross pattée)",
         "custom": "Custom (drawn in the Inlay design window)",
     },
     "body_jack": {
@@ -419,7 +423,9 @@ def parameter_schema() -> dict[str, Any]:
         (``NECK_TEMPLATE_RESETS`` the template does not set);
         ``pickup_configurations`` each named pickup layout to its
         ``[neck, middle, bridge]`` types (the body editor turns a layout
-        into "custom" to remove one pickup).
+        into "custom" to remove one pickup); ``runes`` the Elder Futhark's
+        runes in order, each ``{"name", "glyph", "meaning"}``, for
+        ``inlay_runes``.
     """
     return {
         "instruments": {
@@ -444,6 +450,10 @@ def parameter_schema() -> dict[str, Any]:
         "locking_nut_widths": {
             kind: spec.width for kind, spec in LOCKING_NUT_SPECS.items()
         },
+        "runes": [
+            {"name": rune.name, "glyph": rune.glyph, "meaning": rune.meaning}
+            for rune in RUNES.values()
+        ],
         "machining": [
             {
                 "title": "Machining",
@@ -1216,7 +1226,8 @@ def inlay_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
     Returns:
         ``{"fret", "front", "back", "nut_half", "final_half",
         "final_position", "bass_sign", "mirrored", "custom", "points",
-        "limits", "markers", "frets", "problem"}`` or ``{"error": message}``: the
+        "limits", "markers", "frets", "runes", "problem"}`` or
+        ``{"error": message}``: the
         first marker's fret, its fret space from ``front`` to ``back`` (mm
         from the nut), the board's half-width at the nut and at the last
         fret (``final_position`` from the nut), the marker's shape as
@@ -1224,8 +1235,10 @@ def inlay_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         that fret), ``limits`` (``along`` from and to, ``across`` either
         side: ``custom_limits``) inside which a drawn corner fits every
         marker, every marker's outline and every fret's line for the
-        board's preview, and ``problem``, why the markers cannot be cut as
-        drawn (``None`` when they can).
+        board's preview, ``runes`` each marker fret's rune
+        ``{"fret", "rune"}`` (nut first, ``inlay_runes`` starting over; empty
+        but for the ``runes`` style), and ``problem``, why the markers cannot
+        be cut as drawn (``None`` when they can).
     """
     try:
         built = Prototype001Parameters(**_coerce(payload.get("prototype", {})))
@@ -1276,6 +1289,17 @@ def inlay_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         ) / 2.0
 
     (low, high), across = custom_limits(surface, frets)
+    # Each marker fret's rune, nut first (inlay_runes, starting over), for
+    # the editor to change them.
+    names = parameters.inlay_runes or DEFAULT_RUNES
+    runes = (
+        [
+            {"fret": fret, "rune": names[index % len(names)]}
+            for index, fret in enumerate(frets)
+        ]
+        if parameters.inlay_style == "runes"
+        else []
+    )
 
     def fret_line(position: float) -> list[list[float]]:
         half = half_at(position)
@@ -1299,6 +1323,7 @@ def inlay_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         "markers": markers,
         "frets": [fret_line(0.0)]
         + [fret_line(positions[n]) for n in range(1, surface.fret_count + 1)],
+        "runes": runes,
         "problem": problem,
     }
 

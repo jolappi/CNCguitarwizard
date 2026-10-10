@@ -737,7 +737,15 @@ class Prototype001Parameters:
     # the share of the board's half-width toward the bass edge (-1 the
     # treble edge, +1 the bass edge), drawn on the first marker in the web
     # app's inlay editor and fitted to every marker's fret space and the
-    # board's taper (a block until drawn).
+    # board's taper (a block until drawn). Or a symbol in every marker's
+    # fret space, as large as it fits (SYMBOL_SPAN of the board's width at
+    # most): "runes", a rune of the Elder Futhark each, inlay_runes' names
+    # one per marker fret from the nut (starting over; empty for the
+    # default set, DEFAULT_RUNES: fehu, uruz, thurisaz, ansuz, algiz,
+    # sowilo, tiwaz, ehwaz, mannaz, othala; what each stands for in
+    # geometry.fretboard.runes), upright with its top toward the bass edge;
+    # "iommi_cross", Tony Iommi's Latin cross, its long arm along the neck
+    # and its head toward the nut; or "iron_cross", the cross pattée.
     inlay_depth: float = 2.0
     inlay_single_marker_frets: tuple[int, ...] = (3, 5, 7, 9, 15, 17, 19, 21)
     inlay_double_marker_frets: tuple[int, ...] = (12, 24)
@@ -746,6 +754,7 @@ class Prototype001Parameters:
     inlay_block_length_fraction: float = 0.6
     inlay_block_edge_margin: float = 5.0
     inlay_points: tuple[tuple[float, float], ...] = ()
+    inlay_runes: tuple[str, ...] = ()
     # Solid body (right-handed, as drawn): outline, pickup routes, bridge baseplate
     # cutout, and the rear control and switch cavities (each with its
     # cover recess) are all digitised directly from the user's own
@@ -4983,6 +4992,7 @@ class Prototype001Parameters:
             custom_points=tuple(
                 cast(tuple[float, float], tuple(point)) for point in self.inlay_points
             ),
+            runes=tuple(self.inlay_runes),
         )
 
     def _check_bridge_strings(self) -> None:

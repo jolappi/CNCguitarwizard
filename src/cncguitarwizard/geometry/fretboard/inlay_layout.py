@@ -11,7 +11,12 @@ style ``sharktooth`` (a triangle, its point at the treble edge), a
 leaning ``parallelogram``, a ``diamond``, and Gibson's ``split_block``
 (a block split along its diagonal into two pieces) — or ``custom``, a
 shape of the builder's own drawn once (``custom_points``) and fitted to
-every marker's fret space and the board's taper there.
+every marker's fret space and the board's taper there. The symbol styles
+(``SYMBOL_STYLES``) set one symbol in every marker's fret space, as large
+as it fits: ``runes``, a rune of the Elder Futhark each (``runes``, see
+``runes.RUNES`` for what each stands for), ``iommi_cross``, Tony Iommi's
+Latin cross, its long arm along the neck and its head toward the nut, and
+``iron_cross``, the cross pattée.
 """
 
 from __future__ import annotations
@@ -29,6 +34,14 @@ from .barbed_wire_2 import (
     BARBED_WIRE_2_EDITOR_OUTLINE,
     BARBED_WIRE_2_OUTLINE,
 )
+from .runes import (
+    DEFAULT_RUNES,
+    RUNE_EDITOR_TOLERANCE,
+    RUNE_STROKE,
+    RUNE_TOLERANCE,
+    RUNES,
+    rune_outlines,
+)
 from .skew import FretSkew
 from .surface import FretboardSurface
 
@@ -42,6 +55,9 @@ InlayStyle = Literal[
     "parallelogram",
     "diamond",
     "split_block",
+    "runes",
+    "iommi_cross",
+    "iron_cross",
     "custom",
 ]
 
@@ -55,14 +71,22 @@ INLAY_STYLES: tuple[str, ...] = (
     "parallelogram",
     "diamond",
     "split_block",
+    "runes",
+    "iommi_cross",
+    "iron_cross",
     "custom",
 )
 """Every inlay style, in the order the form offers them."""
+
+SYMBOL_STYLES: frozenset[str] = frozenset({"runes", "iommi_cross", "iron_cross"})
+"""Styles that set one symbol in every marker's fret space, as large as it
+fits, turning with slanted frets as barbed wire does."""
 
 BOARD_STYLES: frozenset[str] = frozenset(INLAY_STYLES) - {
     "barbed_wire",
     "barbed_wire_2",
     "dot",
+    *SYMBOL_STYLES,
 }
 """Styles that span the board between two frets, one per fret, leaning
 point by point with slanted frets."""
@@ -95,6 +119,38 @@ BARBED_WIRE_2_SPAN = 0.8
 BARBED_WIRE_2_FRET_CLEARANCE = 1.5
 """Wood a ``barbed_wire_2`` knot's barbs keep from the frets either side,
 in mm: in a short fret space the knot is drawn smaller to keep it."""
+
+SYMBOL_SPAN = 0.6
+"""How much of the board's width a symbol spans across it, at most."""
+
+SYMBOL_THINNEST = 1.1
+"""The thinnest a symbol's stroke or arm may be drawn, in mm: the 1 mm
+inlay cutter must get into it. A fret space that leaves less is
+refused."""
+
+IOMMI_CROSS: tuple[tuple[float, float], ...] = (
+    (0.0, -0.08),
+    (0.22, -0.08),
+    (0.22, -0.3),
+    (0.38, -0.3),
+    (0.38, -0.08),
+    (1.0, -0.08),
+    (1.0, 0.08),
+    (0.38, 0.08),
+    (0.38, 0.3),
+    (0.22, 0.3),
+    (0.22, 0.08),
+    (0.0, 0.08),
+)
+"""A Latin cross, ``(along, across)`` for a cross one unit long: its long
+arm along the neck from its head (``along`` 0, toward the nut), the
+crossbar 0.6 wide a third of the way down, the arms 0.16 wide."""
+
+IRON_CROSS_TIP = 0.21
+"""Half an iron cross's arm's width at its tip, for a cross one unit across."""
+
+IRON_CROSS_WAIST = 0.09
+"""Where an iron cross's arms meet, from its centre along each axis."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -142,7 +198,9 @@ class InlayLayout:
             edge.
         block_corner_radius: Corner rounding of the board-spanning shapes.
         bass_sign: Which side the bass strings are on (-1: -Y, +1: +Y),
-            for the shapes that differ side to side.
+            for the shapes that differ side to side; a rune stands with its
+            top toward the bass edge (read from the front, the guitar
+            played).
         custom_points: The ``custom`` marker's corners, straight lines
             between them (rounded by ``block_corner_radius``), as
             ``(along, across)``: ``along`` 0 at the fret toward the nut and
@@ -152,6 +210,9 @@ class InlayLayout:
             along it scale the shape, so it is drawn once (on the first
             marker, in the web app's inlay editor) and fits every fret;
             empty for ``DEFAULT_CUSTOM_POINTS``.
+        runes: The ``runes`` style's runes (``runes.RUNES`` names), one per
+            marker fret from the nut, starting over when there are more
+            frets; empty for ``DEFAULT_RUNES``.
 
     Raises:
         FretboardGeometryError: If the depth cannot fit the fretboard
@@ -170,6 +231,7 @@ class InlayLayout:
     block_corner_radius: float = 1.0
     bass_sign: float = -1.0
     custom_points: tuple[tuple[float, float], ...] = ()
+    runes: tuple[str, ...] = ()
     markers: tuple[InlayMarker, ...] = field(init=False)
 
     def __post_init__(self) -> None:
@@ -244,6 +306,19 @@ class InlayLayout:
                             ),
                         )
                     )
+        elif self.style in SYMBOL_STYLES:
+            frets = sorted((*self.single_marker_frets, *self.double_marker_frets))
+            for index, fret_number in enumerate(frets):
+                previous = 0.0 if fret_number == 1 else fret_positions[fret_number - 1]
+                position = midpoint(fret_number)
+                for outline in self._symbol(
+                    index,
+                    fret_number,
+                    position,
+                    fret_positions[fret_number] - previous,
+                    half_width_at(position),
+                ):
+                    markers.append(InlayMarker(fret_number, position, outline))
         elif self.style == "barbed_wire_2":
             for fret_number in sorted(
                 (*self.single_marker_frets, *self.double_marker_frets)
@@ -304,6 +379,114 @@ class InlayLayout:
             "markers",
             tuple(sorted(markers, key=lambda marker: marker.position)),
         )
+
+    def symbol_shapes(
+        self, index: int, tolerance: float | None = None
+    ) -> tuple[tuple[Point2D, ...], ...]:
+        """Return a symbol style's shapes in its own unit, for one marker.
+
+        ``(along, across)`` about the symbol's centre for a symbol one unit
+        across the board (``across`` toward the bass edge): the ``index``-th
+        marker's rune (``runes``, starting over), turned upright with its top
+        toward the bass edge and read from the front (its outline within
+        ``tolerance`` of its height, ``runes.RUNE_TOLERANCE`` by default);
+        an Iommi cross, its head toward the nut; an iron cross.
+        """
+        if self.style == "iommi_cross":
+            length = 1.0 / 0.6  # the crossbar spans the unit
+            return (
+                tuple(
+                    Point2D((along - 0.5) * length, across * length)
+                    for along, across in IOMMI_CROSS
+                ),
+            )
+        if self.style == "iron_cross":
+            tip, waist = IRON_CROSS_TIP, IRON_CROSS_WAIST
+            quarter = [(0.5, -tip), (0.5, tip), (waist, waist)]
+            points = []
+            for turn in range(4):
+                # Each arm a quarter turn on, counter-clockwise.
+                cosine, sine = (1, 0, -1, 0)[turn], (0, 1, 0, -1)[turn]
+                points += [
+                    Point2D(x * cosine - y * sine, x * sine + y * cosine)
+                    for x, y in quarter
+                ]
+            return (tuple(points),)
+        names = self.runes or DEFAULT_RUNES
+        name = names[index % len(names)]
+        rune = RUNES[name]
+        tolerance = RUNE_TOLERANCE if tolerance is None else tolerance
+        # Its box's height, round ends and all, is the unit. Read from
+        # the front with the bass edge on top, the nut is on the right of
+        # a right-handed guitar (its bass at -Y) and on the left of a
+        # left-handed one: the rune is turned half round by the bass side,
+        # never mirrored.
+        height = 1.0 / (1.0 + RUNE_STROKE)
+        return tuple(
+            tuple(
+                Point2D(
+                    self.bass_sign * (p.x - rune.width / 2.0) * height,
+                    self.bass_sign * (p.y - 0.5) * height,
+                )
+                for p in piece
+            )
+            for piece in rune_outlines(name, tolerance)
+        )
+
+    def _symbol(
+        self,
+        index: int,
+        fret_number: int,
+        position: float,
+        spacing: float,
+        half_width: float,
+    ) -> list[tuple[Point2D, ...]]:
+        """Return one symbol style marker's pieces, as large as they fit.
+
+        At most ``SYMBOL_SPAN`` of the board's width across it, and
+        ``CUSTOM_CLEARANCE`` from the frets either side.
+
+        Raises:
+            FretboardGeometryError: If that leaves its thinnest part under
+                ``SYMBOL_THINNEST``.
+        """
+        shapes = self.symbol_shapes(index)
+        along = max(abs(p.x) for shape in shapes for p in shape) * 2.0
+        across = max(abs(p.y) for shape in shapes for p in shape) * 2.0
+        scale = min(
+            2.0 * half_width * SYMBOL_SPAN / across,
+            (spacing - 2.0 * CUSTOM_CLEARANCE) / along,
+        )
+        # Its thinnest part, in its own unit: a rune's stroke, a Latin
+        # cross's arm, an iron cross's waist.
+        thinnest = {
+            "runes": RUNE_STROKE / (1.0 + RUNE_STROKE),
+            "iommi_cross": 0.16 / 0.6,
+            "iron_cross": 2.0 * IRON_CROSS_WAIST,
+        }[self.style]
+        if scale * thinnest < SYMBOL_THINNEST:
+            raise FretboardGeometryError(
+                f"Fret {fret_number}'s space is too short for a {self.style} "
+                f"marker: its thinnest part would be under {SYMBOL_THINNEST:g} mm "
+                "for the inlay cutter."
+            )
+        pieces = []
+        for shape in shapes:
+            corners = [Point2D(position + p.x * scale, p.y * scale) for p in shape]
+            if _signed_area(corners) < 0.0:
+                corners.reverse()
+            # The crosses' corners rounded, as the blocks' are; a rune's
+            # are round already.
+            pieces.append(
+                tuple(corners)
+                if self.style == "runes"
+                else rounded_polygon_points(
+                    corners,
+                    [self.block_corner_radius] * len(corners),
+                    samples_per_corner=6,
+                )
+            )
+        return pieces
 
     def _custom_marker(
         self,
@@ -394,6 +577,19 @@ class InlayLayout:
             corners = list(
                 _dot_outline(middle, 0.0, self.dot_diameter / 2.0, samples=12)
             )
+        elif self.style in SYMBOL_STYLES:
+            shapes = self.symbol_shapes(0, RUNE_EDITOR_TOLERANCE)
+            along = max(abs(p.x) for shape in shapes for p in shape) * 2.0
+            wide = max(abs(p.y) for shape in shapes for p in shape) * 2.0
+            scale = min(
+                2.0 * half_width_at(middle) * SYMBOL_SPAN / wide,
+                (back - front - 2.0 * CUSTOM_CLEARANCE) / along,
+                # Whole within the limits a drawn shape keeps (not held in
+                # point by point, which would bend it).
+                (min(high - 0.5, 0.5 - low) * (back - front)) / (along / 2.0),
+                across * half_width_at(middle) / (wide / 2.0),
+            )
+            corners = [Point2D(middle + p.x * scale, p.y * scale) for p in shapes[0]]
         elif self.style == "barbed_wire_2":
             corners = list(
                 _knot_outline(
@@ -458,6 +654,11 @@ class InlayLayout:
             raise FretboardGeometryError("Inlay block corner radius must be >= 0.")
         if self.style == "custom":
             _check_custom(self.custom_points or DEFAULT_CUSTOM_POINTS)
+        unknown = [name for name in self.runes if name not in RUNES]
+        if unknown:
+            raise FretboardGeometryError(
+                f"Unknown rune {unknown[0]!r}; use one of {', '.join(RUNES)}."
+            )
         if not math.isfinite(self.depth) or self.depth <= 0.0:
             raise FretboardGeometryError(
                 "Inlay depth must be a finite, positive number."

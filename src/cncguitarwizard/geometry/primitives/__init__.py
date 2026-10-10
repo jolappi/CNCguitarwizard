@@ -16,6 +16,7 @@ from .point3d import Point3D
 from .point_in_polygon import point_in_polygon
 from .rounded_polygon import rounded_polygon_points
 from .spline import closed_catmull_rom, open_catmull_rom
+from .stroke_outline import stroke_outlines
 from .surface_mesh import QuadFace, SurfaceMesh
 from .vector2d import Vector2D
 
@@ -39,4 +40,5 @@ __all__ = [
     "open_catmull_rom",
     "point_in_polygon",
     "rounded_polygon_points",
+    "stroke_outlines",
 ]

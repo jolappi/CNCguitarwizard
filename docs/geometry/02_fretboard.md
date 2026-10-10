@@ -69,6 +69,9 @@ one of `INLAY_STYLES`:
 | `parallelogram` | Leaning blocks, the treble edge `PARALLELOGRAM_LEAN` (35 % of the length) toward the nut |
 | `diamond` | A diamond, its points on the centreline and at the edges' margin |
 | `split_block` | Gibson split blocks: a block split along its diagonal (treble front corner to bass back corner) into two pieces `SPLIT_BLOCK_GAP` (1.5 mm) apart |
+| `runes` | A rune of the Elder Futhark at every marker fret, chosen for each (`inlay_runes`) — see below |
+| `iommi_cross` | Tony Iommi's Latin crosses: the long arm along the neck, its head toward the nut |
+| `iron_cross` | Iron crosses (cross pattée): four arms flaring from a narrow waist |
 | `custom` | Your own shape (`inlay_points`), drawn once and fitted to every fret space — see below |
 
 `barbed_wire_2` spans `BARBED_WIRE_2_SPAN` (80 %) of the board's width at
@@ -83,7 +86,65 @@ cannot cut taken off, so at these sizes the 1 mm inlay cutter cuts each
 knot whole. The inlay editor starts from a coarser copy of it (43
 corners, `BARBED_WIRE_2_EDITOR_OUTLINE`).
 
-Every style but the barbed wires and dots spans the board between its frets
+The symbol styles (`SYMBOL_STYLES`: `runes`, `iommi_cross`,
+`iron_cross`) set one symbol in every marker fret's space, 12 and 24
+too, as large as it fits: at most `SYMBOL_SPAN` (60 %) of the board's
+width across it and `CUSTOM_CLEARANCE` (1 mm) from the frets either side.
+Its thinnest part (a rune's stroke, a cross's arm or waist) must stay
+`SYMBOL_THINNEST` (1.1 mm) wide for the 1 mm inlay cutter; a fret space
+too short for that is refused. The crosses' corners are rounded 1 mm as
+the blocks' are. With slanted or fanned frets a symbol turns to their
+angle, as barbed wire does. The inlay editor starts from the first
+marker's symbol shrunk whole inside the limits a drawn shape keeps (its
+shape kept).
+
+### Runes
+
+`runes` sets a rune of the Elder Futhark (`geometry.fretboard.runes`) in
+every marker fret: `inlay_runes` names them nut first, starting over when
+there are more frets; empty, the default set (`DEFAULT_RUNES`:
+fehu, uruz, thurisaz, ansuz, algiz, sowilo, tiwaz, ehwaz, mannaz, othala). In the inlay editor each marker fret has
+its own choice, each rune with what it stands for. Each rune is drawn as
+a few straight strokes (its stave and branches) with a round pen
+`RUNE_STROKE` (12 %) of its height wide: the strokes' outline is traced
+where the distance to them is half that (`stroke_outlines`, marching
+squares on a grid `RUNE_CELL` of the height apart, thinned within
+`RUNE_TOLERANCE`). An area a rune closes in (Thurisaz's thorn,
+Berkano's and Dagaz's triangles, Ingwaz's diamond) is filled, as an
+inlay piece cannot hold an island of wood; Jera's two hooks are two
+pieces. A rune stands with its top toward the bass edge, read from the
+front with the guitar played (its nut on the right of a right-handed
+guitar): turned half round by the bass side, never mirrored, so in the
+inlay editor and the drawings (the nut on the left) it is upside down.
+
+| Rune | Name | Stands for |
+| --- | --- | --- |
+| ᚠ | `fehu` | wealth, cattle |
+| ᚢ | `uruz` | strength, the aurochs |
+| ᚦ | `thurisaz` | the thorn, protection, a giant |
+| ᚨ | `ansuz` | Odin, wisdom, the spoken word |
+| ᚱ | `raidho` | the journey, the ride |
+| ᚲ | `kaunan` | the torch, knowledge |
+| ᚷ | `gebo` | a gift, partnership |
+| ᚹ | `wunjo` | joy, harmony |
+| ᚺ | `hagalaz` | hail, a sudden change |
+| ᚾ | `naudiz` | need, endurance |
+| ᛁ | `isa` | ice, stillness |
+| ᛃ | `jera` | the year, the harvest |
+| ᛇ | `eihwaz` | the yew, defence, endurance |
+| ᛈ | `perthro` | fate, mystery |
+| ᛉ | `algiz` | protection, the elk |
+| ᛊ | `sowilo` | the sun, victory, success |
+| ᛏ | `tiwaz` | Tyr, victory, honour |
+| ᛒ | `berkano` | the birch, growth, new beginnings |
+| ᛖ | `ehwaz` | the horse, movement, trust |
+| ᛗ | `mannaz` | mankind, the self |
+| ᛚ | `laguz` | water, the flow of life |
+| ᛜ | `ingwaz` | Ing, fertility, completion |
+| ᛞ | `dagaz` | the day, dawn, breakthrough |
+| ᛟ | `othala` | heritage, home, ancestry |
+
+Every style but the barbed wires, dots and symbols spans the board between its frets
 (`BOARD_STYLES`): one per listed fret, `inlay_block_length_fraction`
 (60 %) of the fret spacing long, `inlay_block_edge_margin` (5 mm) inside
 each board edge with the board's taper, its corners rounded 1 mm. The

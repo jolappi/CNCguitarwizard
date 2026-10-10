@@ -5018,6 +5018,7 @@ const headstockEditor = {
 // fitted to its own fret space (shown below it on the whole board).
 const inlayEditor = {
   panel: document.getElementById("inlay-editor"),
+  runeChoices: document.getElementById("inlay-editor-runes"),
   svg: document.getElementById("inlay-editor-svg"),
   boardSvg: document.getElementById("inlay-editor-board"),
   status: document.getElementById("inlay-editor-status"),
@@ -5060,8 +5061,56 @@ const inlayEditor = {
       this.layout = layout;
       this.points = layout.points.map((p) => [...p]);
       this.draw();
+      this.showRunes();
     } catch (error) {
       this.setStatus(`Cannot draw the markers: ${error.message}`, "bad");
+    }
+  },
+
+  // With the runes style, a choice of rune for every marker fret, each
+  // with what it stands for; a change writes them all (inlay_runes, nut
+  // first).
+  showRunes() {
+    const choices = this.layout.runes || [];
+    this.runeChoices.hidden = choices.length === 0;
+    this.runeChoices.replaceChildren();
+    const write = (names) => setControlValue(
+      form.querySelector('[data-set="prototype"][data-name="inlay_runes"]'), names,
+    );
+    // A rune for every fret at random, no two the same while there are
+    // runes enough (24): kept in inlay_runes, so Undo takes it back.
+    const random = document.createElement("button");
+    random.type = "button";
+    random.className = "secondary";
+    random.textContent = "Random runes";
+    random.title = "A rune for every marker fret at random, no two the same (Undo takes it back)";
+    random.addEventListener("click", () => {
+      const names = schema.runes.map(({ name }) => name);
+      for (let i = names.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [names[i], names[j]] = [names[j], names[i]];
+      }
+      write(choices.map((_, index) => names[index % names.length]));
+    });
+    this.runeChoices.appendChild(random);
+    const selects = choices.map(({ fret, rune }) => {
+      const label = document.createElement("label");
+      label.textContent = `Fret ${fret}`;
+      const select = document.createElement("select");
+      for (const { name, glyph, meaning } of schema.runes) {
+        const option = document.createElement("option");
+        option.value = name;
+        option.textContent = `${glyph} ${name[0].toUpperCase()}${name.slice(1)} — ${meaning}`;
+        select.appendChild(option);
+      }
+      select.value = rune;
+      select.title = `The rune at fret ${fret}`;
+      label.appendChild(select);
+      this.runeChoices.appendChild(label);
+      return select;
+    });
+    for (const select of selects) {
+      select.addEventListener("change", () => write(selects.map((each) => each.value)));
     }
   },
 
