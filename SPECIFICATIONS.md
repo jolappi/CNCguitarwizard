@@ -987,6 +987,11 @@ build-painikkeiden ja soittimen valinnan alla, editorien yläpuolella.
 Ensin yhteenveto (aihiot, ohjelmat aika-arvioineen), sitten lataukset,
 tasokuva ja työradat; virhe näkyy samassa kohdassa. Jos kohta ei ole
 näkyvissä, kun tulos tai virhe tulee, sivu vierittää sen esiin.
+Kapealla näytöllä tiedostotaulukko mahtuu ruutuun: tiedoston linkit
+(*Download*, *Plot*, *Simulate*) rivittyvät allekkain ja nimi katkeaa
+alaviivan kohdalta, ja liian leveä taulukko vierii omana laatikkonaan
+(tulososio leikkaa ruudun yli menevän pois, joten *Simulate* jäi
+näkymättömiin).
 
 *Build 3D and CNC files* -painike on omalla, sarakkeen levyisellä
 rivillään; *Reset*, *Undo* ja *Redo* ovat sen alla.

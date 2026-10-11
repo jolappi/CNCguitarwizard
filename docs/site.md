@@ -614,7 +614,10 @@ Python.
    until opened (its title says how many programs) — the
    model and report first, then body, neck, fretboard, the inlay pieces, the nut jig and covers — each
    program numbered in the order it is run (`build.json` gives it as the
-   program's `step`), its toolpath plot a *Plot* link on its row. Each `.nc` row also has a *Simulate* button: it
+   program's `step`), its toolpath plot a *Plot* link on its row; on a
+   narrow screen a row's links wrap, its name breaks after an underscore
+   and a table still too wide scrolls on its own, so nothing runs past the
+   results' clipped edge. Each `.nc` row also has a *Simulate* button: it
    copies that program to the clipboard and opens
    [NC Viewer](https://ncviewer.com) in a panel below, where selecting all
    in its editor (Ctrl/Cmd+A), pasting (Ctrl/Cmd+V) and pressing *Plot*

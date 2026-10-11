@@ -1047,6 +1047,9 @@
   the belly cut, the heel relief) as it is cut, not as a curve through
   its handles: a heel relief by the pocket follows the pocket's corners
   and one round the heel its U. The handles spread evenly along the line.
+- On a phone the results fit the screen: a file's links wrap and its name
+  breaks after an underscore, so its Simulate button stays in view (the
+  table ran past the screen's edge, where the results clip it).
 
 - A new version of the web app shows on a plain reload, whatever cached
   the page: the manifest is fetched past every cache (a URL of its own),

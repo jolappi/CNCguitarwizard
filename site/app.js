@@ -1197,8 +1197,10 @@ function showResult(result) {
     const text = result.files[name];
     const info = programOf(name);
     const row = document.createElement("tr");
+    // The name may break after an underscore on a narrow screen.
     row.innerHTML =
-      `<td class="step">${info && isProgram(name) ? `${info.step}.` : ""}</td><td>${name}</td>` +
+      `<td class="step">${info && isProgram(name) ? `${info.step}.` : ""}</td>` +
+      `<td class="name">${name.replaceAll("_", "_<wbr>")}</td>` +
       `<td>${(text.length / 1024).toFixed(0)} kB</td><td class="links"></td>`;
     const links = row.lastElementChild;
     links.appendChild(download(name, "Download"));

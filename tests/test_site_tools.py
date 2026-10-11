@@ -86,6 +86,20 @@ def test_the_page_offers_a_style_and_an_easy_mode() -> None:
     assert "neck_through_changes(json.loads(easy_values))" in script
 
 
+def test_the_results_fit_a_phone_screen() -> None:
+    page = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
+    script = (ROOT / "site" / "app.js").read_text(encoding="utf-8")
+
+    # A file's links wrap and its name breaks after an underscore, so
+    # Simulate stays in view in the results, which clip what runs past.
+    narrow = page[page.index("@media (max-width: 900px)") :]
+    assert "#files td.links { white-space: normal; }" in narrow
+    assert "#files details.file-part > table { display: block; overflow-x: auto; }" in (
+        narrow
+    )
+    assert 'name.replaceAll("_", "_<wbr>")' in script
+
+
 def test_the_editor_draws_an_automatic_contour_as_it_is_cut() -> None:
     script = (ROOT / "site" / "app.js").read_text(encoding="utf-8")
 

@@ -432,6 +432,13 @@
     .aside-top { order: 0; padding: 0 16px; }
     section.results { order: 1; padding: 8px 16px 24px; min-width: 0; }
     .aside-form { order: 2; padding: 14px 16px 40px; border-top: 1px solid var(--line); }
+    /* The results clip what runs past the screen's edge: a file's links
+       wrap under each other and a long name breaks, so its Simulate stays
+       in view; a table still too wide scrolls on its own. */
+    #files td.name { overflow-wrap: anywhere; }
+    #files td.step { white-space: nowrap; }
+    #files td.links { white-space: normal; }
+    #files details.file-part > table { display: block; overflow-x: auto; }
   }
 </style>
 </head>
