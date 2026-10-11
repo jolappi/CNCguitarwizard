@@ -1111,6 +1111,11 @@
 
 ### Fixed
 
+- Choosing another body under *Start from* works again: a template that
+  leaves its jack's inset out (`jack_inset`, worked out) wrote the text
+  "null" into that field, which no field reads, and every body after it
+  failed with "Jack inset (jack_inset): Not a number". It is left empty
+  ("auto") now.
 - A shaped headstock tip (the Gibson's, a Les Paul's or an SG's) is in
   the 3D model, not cut off square: the tip leaves its corners along the
   lofted headstock's sides, and FreeCAD's cut grazing them failed and

@@ -3614,7 +3614,12 @@ const bodyEditor = {
   setField(input, value) {
     if (!input) return;
     this.notice = "";
-    input.value = input.dataset.type === "json" ? JSON.stringify(value) : String(value);
+    const type = input.dataset.type;
+    if (type === "json") input.value = JSON.stringify(value);
+    // An optional value left out (a template's jack_inset) is an empty
+    // field, worked out ("auto"), not the text "null".
+    else if (type === "optional_float" && value === null) input.value = "";
+    else input.value = String(value);
     markChanged(input);
     const fold = input.closest("details.advanced");
     if (fold) flagAdvancedSummary(fold);

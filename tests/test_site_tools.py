@@ -104,3 +104,25 @@ def test_the_editor_draws_an_automatic_contour_as_it_is_cut() -> None:
     script = (ROOT / "site" / "app.js").read_text(encoding="utf-8")
 
     assert "this.openPath(data.line || openCatmullRom(line.points, 8))" in script
+
+
+def test_a_body_template_leaves_an_optional_value_empty_not_null() -> None:
+    # Start from writes each of the template's shape fields into the form;
+    # one it leaves out (jack_inset None) was written as the text "null",
+    # which no field reads ("Not a number"), so no other body could load.
+    import typing
+
+    from cncguitarwizard.presets.body_shapes import (
+        YOUR_DESIGN_TEMPLATES,
+        YourDesignShape,
+    )
+    from cncguitarwizard.webapp import _form_type
+
+    hints = typing.get_type_hints(YourDesignShape)
+    assert _form_type(hints["jack_inset"]) == "optional_float"
+    assert any(shape.jack_inset is None for _, shape in YOUR_DESIGN_TEMPLATES.values())
+    script = (ROOT / "site" / "app.js").read_text(encoding="utf-8")
+    assert (
+        'else if (type === "optional_float" && value === null) input.value = "";'
+        in script
+    )
