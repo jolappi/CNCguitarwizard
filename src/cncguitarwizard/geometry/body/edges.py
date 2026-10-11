@@ -371,6 +371,11 @@ class ContourCut:
 HEEL_RELIEF_RULINGS = 72
 """How many rulings (edge point to line point) a heel relief is drawn by."""
 
+HEEL_RELIEF_FADE = 10.0
+"""How far along its edge a contour heel relief fades in from nothing at
+either end, in mm: where its line meets the edge it runs out smoothly,
+not as a wall the relief's full depth."""
+
 
 @dataclass(frozen=True, slots=True)
 class HeelRelief:
@@ -381,12 +386,16 @@ class HeelRelief:
     evenly along their lengths, the same number of points each, and the
     samples are joined in order, so a concave edge (between a body's
     horns) gives no crossing rulings. Along each ruling a ``"ramp"`` (a
-    contour) rises from ``depth`` at the edge to the face at the line; a
+    contour) rises from ``depth`` at the edge to the face at the line,
+    fading in along the edge over ``HEEL_RELIEF_FADE`` from either end
+    (where the line meets it) so it runs out there smoothly; a
     ``"flat"`` profile (a notch) is ``depth`` deep all the way in, a wall
     at the line; a ``"plane"`` (a bevel, for a neck plate to sit on) is a
     flat slope, ``depth`` deep at ``plane[0]`` along ``plane_axis`` (X: a
     slope across the neck) and at the face at ``plane[1]``, never deeper
-    than ``depth``.
+    than ``depth``; with a ``side_run`` (no plate to sit on it) its sides
+    slope too, up to the face at the line from that far in, so it has no
+    wall there.
 
     Args:
         name: Its name, e.g. ``"Heel relief"``.
@@ -403,11 +412,14 @@ class HeelRelief:
         carries: The holes drilled from its surface (their depths, from
             the face, take it in): they may start on it.
         face: Always the back.
+        side_run: For a ``"plane"``: how far in from its line it reaches
+            the plane's depth, rising straight to the face at the line
+            (0: the plane right up to a wall at the line).
 
     Raises:
         BodyGeometryError: For a depth that is not finite and positive,
-            mismatched samples, a plane whose two places are the same, or
-            a plane axis that is not a unit vector.
+            mismatched samples, a plane whose two places are the same, a
+            plane axis that is not a unit vector, or a negative side run.
     """
 
     name: str
@@ -419,6 +431,7 @@ class HeelRelief:
     plane_axis: tuple[float, float] = (1.0, 0.0)
     carries: tuple[str, ...] = ()
     face: Literal["back"] = "back"
+    side_run: float = 0.0
 
     def __post_init__(self) -> None:
         """Reject a relief that cannot be cut."""
@@ -432,6 +445,8 @@ class HeelRelief:
             raise BodyGeometryError(f"{self.name}'s slope needs a length.")
         if not math.isclose(math.hypot(*self.plane_axis), 1.0):
             raise BodyGeometryError(f"{self.name}'s slope needs a unit direction.")
+        if not math.isfinite(self.side_run) or self.side_run < 0.0:
+            raise BodyGeometryError(f"{self.name}'s side run must not be negative.")
 
     @classmethod
     def between(
@@ -443,6 +458,7 @@ class HeelRelief:
         profile: Literal["ramp", "flat", "plane"] = "ramp",
         plane: tuple[float, float] = (0.0, 0.0),
         plane_axis: tuple[float, float] = (1.0, 0.0),
+        side_run: float = 0.0,
     ) -> HeelRelief:
         """Return a relief from the edge in to ``line``.
 
@@ -465,39 +481,91 @@ class HeelRelief:
             profile,
             plane,
             plane_axis,
+            side_run=side_run,
         )
 
-    def _profile_depth(self, t: float, point: Point2D) -> float:
-        """Return the depth ``t`` of the way along a ruling, at ``point``."""
+    def _profile_depth(self, t: float, point: Point2D, fade: float = 1.0) -> float:
+        """Return the depth ``t`` of the way along a ruling, at ``point``.
+
+        ``fade`` is the share of its full depth a ramp has at the edge
+        there (``_fades``).
+        """
         if self.profile == "flat":
             return self.depth
         if self.profile == "plane":
             deep, face = self.plane
             fraction = (self.along_plane(point) - face) / (deep - face)
-            return self.depth * min(1.0, max(0.0, fraction))
-        return self.depth * (1.0 - t)
+            sloped = self.depth * min(1.0, max(0.0, fraction))
+            if self.side_run:
+                # Its sides rising to the face at the line.
+                side = self.depth * _distance_to(self.line, point) / self.side_run
+                return min(sloped, side)
+            return sloped
+        return self.depth * fade * (1.0 - t)
+
+    def _fades(self) -> tuple[float, ...]:
+        """Return the share of its full depth a ramp has at each ruling.
+
+        Rising smoothly from nothing at either end of the edge to all of it
+        ``HEEL_RELIEF_FADE`` along (the rulings are evenly spaced along
+        it); a notch or a bevel keeps its depth to the ends.
+        """
+        count = len(self.edge)
+        if self.profile != "ramp":
+            return (1.0,) * count
+        length = sum(
+            math.dist(_xy(a), _xy(b))
+            for a, b in zip(self.edge, self.edge[1:], strict=False)
+        )
+        spacing = length / (count - 1)
+        shares = []
+        for k in range(count):
+            s = min(1.0, min(k, count - 1 - k) * spacing / HEEL_RELIEF_FADE)
+            shares.append(s * s * (3.0 - 2.0 * s))
+        return tuple(shares)
+
+    def _side_reach(self, e: Point2D, start: Point2D, level: float) -> float:
+        """Return how far along the ruling ``e``→``start`` a plane's sloping
+        sides stay deeper than ``level`` (``side_run``)."""
+        near = level * self.side_run / self.depth
+        steps = 40
+        for step in range(1, steps + 1):
+            t = step / steps
+            point = Point2D(e.x + (start.x - e.x) * t, e.y + (start.y - e.y) * t)
+            if _distance_to(self.line, point) <= near:
+                # Between the last sample still that far in and this one.
+                return (step - 0.5) / steps
+        return 1.0
 
     def along_plane(self, point: Point2D) -> float:
         """Return how far ``point`` lies along ``plane_axis``."""
         return point.x * self.plane_axis[0] + point.y * self.plane_axis[1]
 
-    def _locate(self, point: Point2D) -> float | None:
+    def _locate(self, point: Point2D) -> tuple[float, float] | None:
         """Return how far along the rulings ``point`` lies (0 at the edge,
-        1 at the line), or ``None`` outside the relief."""
+        1 at the line) and the fade there (``_fades``, between the two
+        rulings either side), or ``None`` outside the relief."""
         for k in range(len(self.edge) - 1):
             quad = (self.edge[k], self.edge[k + 1], self.line[k + 1], self.line[k])
             if not _in_box(point, quad) or not point_in_polygon(point, quad):
                 continue
+            fades = self._fades()
             t0, d0 = _along(self.edge[k], self.line[k], point)
             t1, d1 = _along(self.edge[k + 1], self.line[k + 1], point)
-            t = t0 if d0 + d1 <= 1e-12 else (t0 * d1 + t1 * d0) / (d0 + d1)
-            return min(1.0, max(0.0, t))
+            if d0 + d1 <= 1e-12:
+                return min(1.0, max(0.0, t0)), fades[k]
+            t = (t0 * d1 + t1 * d0) / (d0 + d1)
+            fade = (fades[k] * d1 + fades[k + 1] * d0) / (d0 + d1)
+            return min(1.0, max(0.0, t)), fade
         return None
 
     def depth_at(self, point: Point2D) -> float:
         """Return the relief's depth below the back face at ``point``."""
-        t = self._locate(point)
-        return 0.0 if t is None else self._profile_depth(t, point)
+        located = self._locate(point)
+        if located is None:
+            return 0.0
+        t, fade = located
+        return self._profile_depth(t, point, fade)
 
     def machining_depth(self, point: Point2D, slot: float) -> float:
         """Return the depth a cutter takes at ``point``.
@@ -506,13 +574,19 @@ class HeelRelief:
         (``slot`` wide, where the cutter finishes the edge from), the
         depth at the nearest edge point, and nothing further out.
         """
-        t = self._locate(point)
-        if t is not None:
-            return self._profile_depth(t, point)
+        located = self._locate(point)
+        if located is not None:
+            t, fade = located
+            return self._profile_depth(t, point, fade)
         nearest, distance, outside = _nearest_on(self.edge, point, self._clockwise)
         if distance > slot or not outside:
             return 0.0
-        return self._profile_depth(0.0, nearest)
+        # The fade of the edge's sample nearest there.
+        k = min(
+            range(len(self.edge)),
+            key=lambda i: math.dist(_xy(self.edge[i]), _xy(nearest)),
+        )
+        return self._profile_depth(0.0, nearest, self._fades()[k])
 
     @property
     def _clockwise(self) -> bool:
@@ -548,8 +622,9 @@ class HeelRelief:
         inner: list[Point2D] = []
         outer: list[Point2D] = []
         clockwise = self._clockwise
+        fades = self._fades()
         for k, (e, start) in enumerate(zip(self.edge, self.line, strict=True)):
-            if self._profile_depth(0.0, e) <= level:
+            if self._profile_depth(0.0, e, fades[k]) <= level:
                 continue
             if self.profile == "flat":
                 t = 1.0
@@ -563,8 +638,10 @@ class HeelRelief:
                     else (there - at_edge) / (at_line - at_edge)
                 )
                 t = min(1.0, max(0.0, t))
+                if self.side_run:
+                    t = min(t, self._side_reach(e, start, level))
             else:
-                t = 1.0 - level / self.depth
+                t = 1.0 - level / (self.depth * fades[k])
             inner.append(Point2D(e.x + (start.x - e.x) * t, e.y + (start.y - e.y) * t))
             out = _outward(self.edge, k, clockwise)
             outer.append(
@@ -642,6 +719,17 @@ def _resample(points: Sequence[Point2D], count: int) -> tuple[Point2D, ...]:
         t = 0.0 if span <= 0.0 else (target - lengths[index]) / span
         out.append(Point2D(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t))
     return tuple(out)
+
+
+def _distance_to(polyline: Sequence[Point2D], point: Point2D) -> float:
+    """Return the distance from ``point`` to the open ``polyline``."""
+    best = math.inf
+    for a, b in zip(polyline, polyline[1:], strict=False):
+        t, _ = _along(a, b, point)
+        t = min(1.0, max(0.0, t))
+        foot = (a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t)
+        best = min(best, math.dist(foot, _xy(point)))
+    return best
 
 
 def _in_box(point: Point2D, polygon: Sequence[Point2D]) -> bool:

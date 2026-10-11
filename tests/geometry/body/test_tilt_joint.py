@@ -13,7 +13,10 @@ from cncguitarwizard.geometry.exceptions import BodyGeometryError
 from cncguitarwizard.geometry.primitives import Point2D, point_in_polygon
 from cncguitarwizard.presets import Prototype001Parameters
 from cncguitarwizard.presets.body_shapes import YOUR_DESIGN_TEMPLATES
-from cncguitarwizard.presets.prototype001 import NECK_BOLT_MARK_DEPTH
+from cncguitarwizard.presets.prototype001 import (
+    HEEL_BEVEL_SIDE_RUN,
+    NECK_BOLT_MARK_DEPTH,
+)
 from cncguitarwizard.render.svg.plan_view import render_plan_view_svg
 
 STRATOCASTER = YOUR_DESIGN_TEMPLATES["stratocaster"][1]
@@ -176,3 +179,42 @@ def test_a_plate_tilts_toward_the_treble_corner_on_a_corner_bevel(
     note = plan.back_small_holes.notes[-1]
     assert "toward the treble corner" in note
     assert "toward the heel end and the bass side" in note
+
+
+def test_a_bevel_with_no_plate_slopes_at_its_sides_too() -> None:
+    # Up to the face at its line from HEEL_BEVEL_SIDE_RUN in, a slanted
+    # side, not a wall the slope's depth deep; with a plate on it, flat to
+    # its line, for the plate to sit on.
+    parameters = replace(Prototype001Parameters(), body_heel_relief="bevel")
+    relief = bevel_of(parameters)
+    assert relief.side_run == HEEL_BEVEL_SIDE_RUN
+    assert bevel_of(tilt()).side_run == 0.0
+    body = parameters.build().body
+    pocket = body.neck_pocket
+    assert pocket is not None
+    bass = parameters.bass_sign
+    bass_wall = max(p.y * bass for p in pocket.outline)
+    heel_end = max(p.x for p in pocket.outline)
+    deep, face = relief.plane
+    x = heel_end - 20.0
+    sloped = relief.depth * (face - x) / (face - deep)
+    for inside in (1.0, 3.0, 6.0):
+        point = Point2D(x, (bass_wall - inside) * bass)
+        assert relief.depth_at(point) == pytest.approx(
+            min(sloped, relief.depth * inside / HEEL_BEVEL_SIDE_RUN), abs=0.05
+        )
+    # Well in from its line, the slope itself.
+    assert relief.depth_at(Point2D(x, 0.0)) == pytest.approx(sloped)
+    # Its layers keep in from the line by as much.
+    level = relief.depth / 3.0
+    region = relief.level_region(level)
+    assert not point_in_polygon(Point2D(x, (bass_wall - 1.0) * bass), region)
+
+
+def test_a_bevel_side_run_must_not_be_negative() -> None:
+    line = (Point2D(-100.0, 50.0), Point2D(-60.0, 0.0), Point2D(-100.0, -50.0))
+    edge = (Point2D(-100.0, 50.0), Point2D(-100.0, 0.0), Point2D(-100.0, -50.0))
+    with pytest.raises(BodyGeometryError, match="side run"):
+        HeelRelief(
+            "Heel relief", edge, line, 6.0, "plane", (-100.0, -60.0), side_run=-1.0
+        )

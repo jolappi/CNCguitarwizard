@@ -9,6 +9,7 @@ import pytest
 from cncguitarwizard.backends.freecad import FreeCADScriptExporter
 from cncguitarwizard.cam import MachiningParameters, plan_body_machining
 from cncguitarwizard.geometry.body import HeelRelief
+from cncguitarwizard.geometry.body.edges import HEEL_RELIEF_FADE
 from cncguitarwizard.geometry.exceptions import BodyGeometryError
 from cncguitarwizard.geometry.primitives import Point2D, point_in_polygon
 from cncguitarwizard.presets import Prototype001Parameters
@@ -55,6 +56,27 @@ def test_a_contour_ramps_from_the_edge_in_to_its_line() -> None:
     # Everywhere between edge and line it rises toward the line.
     depths = [relief.depth_at(Point2D(x, 10.0)) for x in range(-99, -60, 3)]
     assert depths == sorted(depths, reverse=True)
+
+
+def test_a_contour_runs_out_smoothly_where_its_line_meets_the_edge() -> None:
+    # Here the line meets the left edge at y = 50 and y = -50: the depth at
+    # the edge fades in from nothing there over HEEL_RELIEF_FADE, never a
+    # wall its full depth deep.
+    relief = HeelRelief.between("Heel relief", square(), LINE, 8.0)
+
+    along = [relief.depth_at(Point2D(-99.5, y)) for y in (49.5, 47.5, 45.0, 42.5)]
+    assert along == sorted(along)
+    assert along[0] < 0.5
+    assert relief.depth_at(Point2D(-99.5, 50.0 - HEEL_RELIEF_FADE - 1.0)) == (
+        pytest.approx(8.0, abs=0.2)
+    )
+    # A notch keeps its depth to the ends.
+    notch = HeelRelief.between("Heel relief", square(), LINE, 8.0, "flat")
+    assert notch.depth_at(Point2D(-99.5, 49.0)) == 8.0
+    # Its layers start in from the ends too.
+    deep = relief.level_region(7.0)
+    assert not point_in_polygon(Point2D(-99.0, 49.0), deep)
+    assert point_in_polygon(Point2D(-99.0, 0.0), deep)
 
 
 def test_a_notch_is_flat_to_a_wall_at_its_line() -> None:

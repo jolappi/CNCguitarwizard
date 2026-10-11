@@ -219,6 +219,11 @@ FENDER_HEEL_CORNER_RADIUS = 6.35
 NECK_PLATE_RELIEF_GAP = 2.0
 """Flat back, in mm, an automatic heel relief leaves round a neck plate."""
 
+HEEL_BEVEL_SIDE_RUN = 15.0
+"""How far in from its line a heel bevel with no plate on it reaches its
+slope, in mm: its sides rise to the face at the line, not a wall
+(``HeelRelief.side_run``)."""
+
 NECK_BOLT_MARK_DEPTH = 1.0
 """How deep, in mm, the CNC marks a tilted neck plate's bolt into its bevel
 for the hand drill to start in."""
@@ -6203,7 +6208,8 @@ class Prototype001Parameters:
             return replace(relief, plane=(deep, face)), problem
         # Round the heel: its full depth at the body's edge on the
         # centreline, and up to the face at the line's furthest point
-        # behind the heel.
+        # behind the heel; with no plate on it, its sides slope up to the
+        # face too.
         deep = self._neck_end_edge(outline, heel_end)
         face = max(point.x for point in line)
         if face <= deep + 1.0:
@@ -6219,6 +6225,7 @@ class Prototype001Parameters:
                 self.body_heel_relief_depth,
                 "plane",
                 (deep, face),
+                side_run=0.0 if carries_plate else HEEL_BEVEL_SIDE_RUN,
             ),
             problem,
         )

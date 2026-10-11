@@ -734,7 +734,16 @@ jossa käsi kiertää kantapään ympäri ylimmille nauhoille: viivasta
 suuntaisen rajan diskanttipuolella, ja siitä, missä se ylittää rajan,
 viiva jatkuu rajaa pitkin rungon kaulanpuoleiseen reunaan, joten
 muotoilu päättyy rajaan (loivennus ohenee siinä olemattomiin, lovessa
-ja viisteessä on seinämä). Kantapään ympäri, taskun mukaan ja
+ja viisteessä on seinämä). Loivennuksen syvyys rungon reunalla myös
+nousee pehmeästi nollasta täyteen 10 mm:n matkalla reunan kummastakin
+päästä (`HEEL_RELIEF_FADE`), joten siellä, missä viiva kohtaa reunan
+(taskun bassoseinän kohdalla, kaarteessa), muotoilu loppuu loivasti
+eikä täyden syvyyden suorana kulmana. Viisteessä ilman kaulalevyä myös
+sivut viettävät: viivalta pinta laskee suoraan viisteen syvyyteen
+15 mm:n matkalla (`HEEL_BEVEL_SIDE_RUN`), joten kaulan suuntaisilla
+sivuilla (taskun bassoseinä, diskanttipuoli) on kalteva viiste eikä
+pystysuoraa pudotusta; kaulalevyn alla viiste pysyy tasaisena viivaan
+asti, jotta levy istuu sillä. Kantapään ympäri, taskun mukaan ja
 piirrettynä raja on kaulataskun bassoseinä: muotoilu kattaa koko
 kantapään eli kaulataskun kohdan takapinnalla eikä enempää
 bassopuolelta. Diskanttikulman poikki raja on keskilinja. Viisteellä

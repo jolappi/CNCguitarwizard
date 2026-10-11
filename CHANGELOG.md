@@ -1045,6 +1045,15 @@
 
 ### Fixed
 
+- A heel bevel with no neck plate on it slopes at its sides too: from its
+  line it rises to the face over `HEEL_BEVEL_SIDE_RUN` (15 mm), a slanted
+  side, not a wall the slope's depth deep where it runs along the neck
+  (the pocket's bass wall, the treble side). With a plate on it, it stays
+  flat to its line for the plate to sit on.
+- A contour heel relief fades in along the body's edge from nothing at
+  either end (`HEEL_RELIEF_FADE`, 10 mm), so where its line meets the
+  edge (by the pocket's bass wall, at a cutaway) it runs out smoothly, not
+  as a wall its full depth deep at a right angle.
 - A heel relief round the heel, by the pocket or drawn takes in the whole
   heel: its line stops at the neck pocket's bass wall, not the
   centreline, so it no longer cuts through the middle of the heel (a

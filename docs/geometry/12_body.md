@@ -850,7 +850,15 @@ or automatic), its last run on the relief's side of a boundary along the
 neck is kept, and from where it comes over the boundary the line runs on
 along it to the body's edge at the neck end (`_treble_side`), so the
 relief stops there — a smooth ramp down to nothing for a contour, a wall
-for a notch or a bevel. Round the heel, by the pocket or drawn, the
+for a notch or a bevel. A contour's depth at the edge also fades in from
+nothing at either end of its edge stretch, over `HEEL_RELIEF_FADE`
+(10 mm, smoothly), so where its line meets the edge — at the pocket's
+bass wall by the neck end, at a cutaway — it runs out smoothly instead
+of dropping its full depth at a right angle. A bevel with no neck plate on
+it has slanted sides as well: within `HEEL_BEVEL_SIDE_RUN` (15 mm) of
+its line it rises straight to the face there (`HeelRelief.side_run`),
+so where the line runs along the neck (the pocket's bass wall, the
+treble side) it has no wall; under a plate it stays flat to its line. Round the heel, by the pocket or drawn, the
 boundary is the neck pocket's bass wall: the relief takes in the whole
 heel, the pocket's place on the back, and no more of the bass side.
 Across the treble corner it is the centreline. A neck plate tilted on a
