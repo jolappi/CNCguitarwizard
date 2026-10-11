@@ -453,7 +453,8 @@ FIELD_HELP: dict[str, str] = {
         "how far in from the edge it reaches, in mm (0: none). It is left "
         "square beside the neck's pocket and where the body shape's round "
         "points leave the edge rounded over (an SG's tail), and narrows "
-        "gently past routes, holes and narrow horns."
+        "gently past routes, holes and narrow horns; a drawn pickguard is "
+        "kept in off it."
     ),
     "body_back_bevel_width": (
         "The same bevel round the back's edge, in mm (0: none). With a "

@@ -1928,6 +1928,78 @@ pocket fall in its route and do not matter."""
 
 _DESIGN_BY_JONE = DesignByJoneShape()
 
+SG_PICKGUARDS: dict[str, tuple[DrawnPoint, ...]] = {
+    # A '61 style small guard on the treble side, about 176 x 92 mm, its
+    # sizes from Electric Herald's and Ploutone's dimension drawings: its
+    # tongue between the pickups' rings (46 x 26 mm), its bass edges
+    # butting their treble ends, its neck end following the treble
+    # cutaway up to a point toward the horn, an S-curve along the treble
+    # side and a point toward the toggle at the bridge end.
+    "sg_small": (
+        (-4.0, 95.0, "corner"),
+        (8.0, 106.0),
+        (35.0, 114.0),
+        (65.0, 114.0),
+        (95.0, 106.0),
+        (125.0, 96.0),
+        (148.0, 92.0),
+        (172.0, 98.0, "corner"),
+        (158.0, 64.0),
+        (157.0, 48.0, "corner"),
+        (106.0, 48.0, "corner"),
+        (104.0, 22.0, "corner"),
+        (60.0, 22.0, "corner"),
+        (58.0, 48.0, "corner"),
+        (6.0, 48.0, "corner"),
+        (12.0, 60.0),
+        (12.0, 74.0),
+        (5.0, 86.0),
+    ),
+    # A 1966 on batwing (full-face) guard, about 200 x 184 mm (156 mm on
+    # the bass side), from Ploutone's and WD's dimension drawings: a tab at
+    # the neck, scallops following both cutaways out to the wings' tips,
+    # the bass edge straight down, an S-curve up the treble side and a
+    # wave below the Tune-o-matic's posts, which go through it as the
+    # pickups do.
+    "sg_batwing": (
+        (2.0, 29.0, "corner"),
+        (2.0, -29.0, "corner"),
+        (8.0, -38.0),
+        (13.0, -50.0),
+        (15.0, -60.0),
+        (13.0, -70.0),
+        (11.0, -80.0),
+        (10.0, -92.0, "corner"),
+        (90.0, -93.0),
+        (166.0, -92.0, "corner"),
+        (178.0, -62.0),
+        (188.0, -40.0),
+        (190.0, -22.0),
+        (186.0, 0.0),
+        (190.0, 22.0),
+        (192.0, 40.0),
+        (192.0, 66.0),
+        (190.0, 92.0, "corner"),
+        (165.0, 95.0),
+        (140.0, 90.0),
+        (115.0, 94.0),
+        (85.0, 104.0),
+        (55.0, 108.0),
+        (25.0, 106.0),
+        (6.0, 98.0, "corner"),
+        (8.0, 86.0),
+        (12.0, 74.0),
+        (14.0, 62.0),
+        (12.0, 50.0),
+        (8.0, 38.0),
+    ),
+}
+"""The SG's two drawn guards (``body_pickguard_style`` "sg_small",
+"sg_batwing"): control points (X from the heel end, Y, the treble side at
++Y; ``"corner"`` a sharp one) on the SG template, its pickups, its
+Tune-o-matic and inside its bevels — mockups from dimension drawings, not
+the originals."""
+
 _MOCKINGBIRD_ROUND_POINTS: tuple[DrawnPoint, ...] = (
     (302.7, -187.0),
     (207.2, 171.1),

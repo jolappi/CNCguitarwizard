@@ -2623,6 +2623,7 @@ const bodyEditor = {
     // The pickguard, over the features, with square handles at its
     // control points; dragging one draws the guard (pickguard_points).
     this.guardPoints = layout.pickguard ? layout.pickguard.points.map((p) => [...p]) : null;
+    this.guardLaidOut = layout.pickguard ? JSON.stringify(layout.pickguard.points) : null;
     if (this.guardPoints) {
       // The guard with its openings and holes cut out of it (even-odd).
       this.guardPath = this.element("path", {
@@ -3299,7 +3300,9 @@ const bodyEditor = {
   // subpaths (cut out by the even-odd fill).
   guardData() {
     const guard = this.layout.pickguard;
-    let d = this.pathData(closedCatmullRom(this.guardPoints, 8));
+    // As laid out (meeting the pickup frames) until its handles move.
+    const laidOut = guard.outline && JSON.stringify(this.guardPoints) === this.guardLaidOut;
+    let d = this.pathData(laidOut ? guard.outline : closedCatmullRom(this.guardPoints, 8));
     for (const opening of guard.openings) d += " " + this.pathData(opening);
     for (const hole of guard.holes) {
       d += ` M${hole.x - hole.r},${-hole.y} a${hole.r},${hole.r} 0 1,0 ${2 * hole.r},0 a${hole.r},${hole.r} 0 1,0 ${-2 * hole.r},0`;

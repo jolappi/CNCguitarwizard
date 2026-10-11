@@ -150,6 +150,8 @@
   bouts' widest (on the back only to the treble waist, before its control
   cavity), its tail rounded over, a Mockingbird's sides bevelled and its
   ends rounded over (the shape's round points)
+- The SG's small and batwing guards, kept on the flat top and meeting
+  the pickup frames
 - Index pins as wide as a main tool wider than 6 mm (an 8 mm end mill,
   8 mm dowels)
 - The neck's back carved with the ball nose alone, in one program

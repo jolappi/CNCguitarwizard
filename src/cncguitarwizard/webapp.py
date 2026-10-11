@@ -205,6 +205,8 @@ _CHOICE_LABELS: dict[str, dict[str, str]] = {
     "body_pickguard_style": {
         "stratocaster": "Stratocaster (beside the neck, a tail past the bridge)",
         "superstrat": "Superstrat (close round the pickups)",
+        "sg_small": "SG '61 small guard (drawn for the SG body)",
+        "sg_batwing": "SG batwing guard (drawn for the SG body)",
     },
     "body_heel_relief": {
         "none": "None (a flat back)",
@@ -1170,6 +1172,8 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
                     local(layout.pickguard.control_points), layout.pickguard.corners
                 ),
                 "automatic": layout.pickguard.automatic,
+                # As cut: meeting the pickup frames on it or beside it.
+                "outline": local(layout.pickguard.plate.outline),
                 "openings": [
                     local(slot.outline) for slot in layout.pickguard.plate.slots
                 ],

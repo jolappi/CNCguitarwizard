@@ -392,7 +392,20 @@ kieleke kaulan vieressä 34 mm eteenpäin, reuna levenee 25 mm
 ensimmäisen mikin päästä viimeisen mikin keskelle ja lyhyemmän sakaran
 puolella pyöristetty häntä 55 mm tallan etureunan ohi; `superstrat` –
 10 mm kaulan vieressä, reuna kaartuu mikkien välissä 5 mm sisään ja
-levenee viimeisestä mikistä tallaa kohti 9 mm. Lyhyemmän
+levenee viimeisestä mikistä tallaa kohti 9 mm; `sg_small` ja
+`sg_batwing` piirtävät SG:n omat pleksit SG-pohjalle mittapiirroksista
+(`body_shapes.SG_PICKGUARDS`, viisteiden sisäpuolelle): '61:n pieni
+pleksi diskanttipuolella noin 176 × 92 mm, kieleke mikkikehysten välissä
+ja kärjet sarvea ja kytkintä kohti, sekä vuoden 1966 jälkeinen batwing
+noin 200 × 190 mm, kieleke kaulalla, kaarevat lovet molempien
+cutawayden kohdalla, mikit aukoista ja Tune-o-maticin tapit pleksin
+läpi (sitä ei porrasteta tallan ympäri). SG-tyylissä on pieni pleksi.
+Mikin kehysten (`body_pickup_frame`) kanssa pleksi kohtaa kehykset ilman
+näkyvää puuta (`pickguard.meeting_frames`): kehyksen vieressä
+(pieni pleksi) pleksin reuna kulkee kehyksen reunaa pitkin ja sulkee alle
+6 mm:n raot (`FRAME_REACH`), jolloin kieleke ulottuu kehyksestä toiseen;
+kehyksen alla (batwing) pleksi ulottuu koko kehyksen alle. Pleksin ruuvit
+väistävät kehyksiä, ja runkoeditori piirtää pleksin leikattuna. Lyhyemmän
 sakaran puolella pleksi seuraa rungon reunaa sakaran kärkeen ja
 cutawayta pitkin takaisin kaulan loveen (ilman cutawayta se jatkuu
 kaulan viereen niin pitkälle kuin puuta on); jos bassopuoli on tämä
@@ -854,7 +867,11 @@ kolo aukeaa kylkeen, kuten SG:n kaulatasku); jokainen kavennus loivenee
 reunaa pitkin enintään 1 mm 4 mm:n matkalla (`AROUND_TAPER`), joten
 väistö on vyötärö eikä lovi. SG-tyylissä 18 mm päällä ja 14 mm takana
 25°:ssa, Mockingbird-tyylissä 12 mm molemmissa 30°:ssa, kummassakin
-5 mm:n pyöristys reunoissa.
+5 mm:n pyöristys reunoissa. Piirretty pleksi (SG:n) on tasaisella
+kannella: yläviisteen päälle osuvat pisteet siirretään viisteen
+sisäpuolelle 2 mm:n päähän siitä (`ContourCut.clear_of`), joten viiste
+jatkuu cutawayta pitkin pleksin vieressä. SG-tyylin humbuckerit ovat
+rengaskehyksissä, joihin pieni pleksi liittyy.
 
 ## Epoksikaukalo
 

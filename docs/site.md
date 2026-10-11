@@ -39,7 +39,10 @@ Python.
    (`body_top_bevel_width`, `body_back_bevel_width`), rounding over 5 mm
    the stretches their templates' `top_round_points` /
    `back_round_points` mark: the SG's tail (and on the back its control
-   cavity's lower bout), the Mockingbird's neck end and tail.
+   cavity's lower bout), the Mockingbird's neck end and tail. The SG style
+   has its small guard (`body_pickguard_style` "sg_small", or the
+   batwing) and its humbuckers in rings; a guard meets the humbucker
+   frames with no wood between them, and the body editor draws it as cut.
    Choosing one (asked first when values were changed) loads
    `webapp.style_design(instrument, style, name)` as a saved design is
    loaded (`applyDesign`, then `repairDesign`): every setting back to the

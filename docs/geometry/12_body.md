@@ -516,6 +516,31 @@ notch the neck sits in, and:
 The Stratocaster style's numbers were measured off a Stratocaster's HH
 guard; the superstrat's were drawn in the body editor.
 
+Two more draw the SG's own guards on the SG template
+(`body_shapes.SG_PICKGUARDS`, mockups from dimension drawings, inside its
+bevels), whatever the shape's drawn guard: `sg_small`, a '61's small
+guard on the treble side, about 176 × 92 mm, its tongue between the
+pickups' rings and its ends pointing toward the treble horn and the
+toggle; and `sg_batwing`, the 1966-on full-face guard, about 200 × 190
+mm, its tab at the neck, scallops following both cutaways out to the
+wings' tips and a wave below the bridge, the pickups through openings in
+it and a Tune-o-matic's posts through it (it is not stepped round that
+bridge). The SG style has the small one.
+
+A guard meets the humbucker frames (`body_pickup_frame`) with no wood
+showing between them (`pickguard.meeting_frames`, given the frames when
+it is made, so they are laid out first). A frame the guard covers the
+most of sits on it (on the batwing): where the guard's edge crosses it,
+the edge runs round the frame's outside instead, so all of the frame
+sits on the guard. Any other sits beside it (the small guard): where the
+edge crosses it, it runs round the frame's inside, and wherever it passes
+less than `FRAME_REACH` (6 mm) clear, it is moved onto the frame's edge —
+the small guard's tongue then reaches from frame to frame and its lower
+edge sits along their tops. Along the frames the edge is followed every
+millimetre. The guard's screws keep clear of the frames too, and the
+body editor draws the guard as it is cut (its `outline`) until a handle
+is moved.
+
 The Stratocaster style template comes with that guard itself, drawn
 (`pickguard_points`): traced from a photo, scaled to the body — its
 notch on the neck pocket's end, its bass side stepping back clear of the
@@ -881,6 +906,13 @@ makes a waist in the bevel, never a notch. It is cut with the edge
 finishes, by the ball nose from its face. The SG style bevels the top
 18 mm and the back 14 mm at 25°, the Mockingbird style 12 mm at 30°,
 both rounding their edges over 5 mm.
+
+A drawn pickguard (the SG's) sits on the flat top: the top bevel is laid
+out without it first, and the guard's points it would cover are moved in
+off it, `AROUND_GAP` clear (`ContourCut.clear_of`), so the bevel runs on
+along the cutaway beside the guard. The SG style's humbuckers sit in
+rings, which 5 mm of roundover leaves room for beside the cutaways (6
+would not).
 
 ### Heel relief
 

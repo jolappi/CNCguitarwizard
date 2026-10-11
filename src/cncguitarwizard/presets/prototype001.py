@@ -43,6 +43,7 @@ from ..geometry.body import (
     plateau_round,
     turned_hardware,
 )
+from ..geometry.body.edges import AROUND_GAP
 from ..geometry.body.neck_through import NeckThrough
 from ..geometry.body.wiring import WireSpace, Wiring, plan_wiring
 from ..geometry.exceptions import (
@@ -100,6 +101,7 @@ from .body_shapes import (
     BASS_BODY,
     BODY_WIDENING_PER_STRING,
     GUITAR_BODY,
+    SG_PICKGUARDS,
     BodyShapeSpec,
     mirrored_shape,
     widened_shape,
@@ -956,7 +958,8 @@ class Prototype001Parameters:
     # body, so the back bevel runs on round the heel. The body shape's
     # top_round_points / back_round_points mark, in pairs, stretches of
     # the edge a bevel leaves to the edges' roundover (an SG's tail, a
-    # Mockingbird's neck end and tail).
+    # Mockingbird's neck end and tail). A drawn pickguard (the SG's) is
+    # kept in off the top bevel, on the flat top.
     body_top_edge_radius: float = 0.0
     body_back_edge_radius: float = 0.0
     body_top_binding_width: float = 0.0
@@ -4035,21 +4038,6 @@ class Prototype001Parameters:
                 for hole in bridge.holes
             ),
         ]
-        guard = self._pickguard(
-            shape,
-            heel_end,
-            body_outline.points,
-            [route for route in (neck_pickup, middle_pickup, bridge_pickup) if route],
-            bridge_areas,
-            controls,
-            neck_pocket.outline,
-            pickup_holes,
-            truss_rod_access.outline if truss_rod_access else (),
-        )
-        if guard is not None:
-            controls = controls.with_covers(
-                ControlFeatures(top_marks=guard.screw_spots, covers=(guard.plate,))
-            )
         frames = self._pickup_frames(
             [
                 ("neck", neck_type, neck_pickup_x, neck_angle, neck_pickup),
@@ -4090,16 +4078,9 @@ class Prototype001Parameters:
                 ),
             ],
         )
-        if frames:
-            controls = controls.with_covers(
-                ControlFeatures(
-                    top_marks=tuple(s for frame in frames for s in frame.screw_spots),
-                    covers=tuple(frame.plate for frame in frames),
-                )
-            )
         lane = max(outline.heel_width, outline.last_fret_width) / 2.0
-        # What a top bevel all round keeps clear of (the guard's and the
-        # pickup frames' plates and screws among the covers and marks).
+        # What a top bevel all round keeps clear of (the guard and the
+        # pickup frames, laid out clear of it, are added below).
         top_clear = [
             neck_pocket.outline,
             *((truss_rod_access.outline,) if truss_rod_access else ()),
@@ -4113,6 +4094,48 @@ class Prototype001Parameters:
             *(
                 _circle_points(hole.center, hole.diameter / 2.0)
                 for hole in (*holes, *controls.holes, *controls.top_marks)
+            ),
+        ]
+        guard = self._pickguard(
+            shape,
+            heel_end,
+            body_outline.points,
+            [route for route in (neck_pickup, middle_pickup, bridge_pickup) if route],
+            bridge_areas,
+            controls,
+            neck_pocket.outline,
+            pickup_holes,
+            truss_rod_access.outline if truss_rod_access else (),
+            bridge.holes,
+            # The top bevel without the guard, for a drawn one to keep off.
+            self._bevel(
+                "top",
+                body_outline.points,
+                heel_end,
+                lane,
+                top_clear,
+                shape.top_round_points,
+            ),
+            [frame.plate.outline for frame in frames],
+        )
+        if guard is not None:
+            controls = controls.with_covers(
+                ControlFeatures(top_marks=guard.screw_spots, covers=(guard.plate,))
+            )
+        if frames:
+            controls = controls.with_covers(
+                ControlFeatures(
+                    top_marks=tuple(s for frame in frames for s in frame.screw_spots),
+                    covers=tuple(frame.plate for frame in frames),
+                )
+            )
+        top_clear += [
+            *(plate.plate.outline for plate in (guard, *frames) if plate is not None),
+            *(
+                _circle_points(spot.center, spot.diameter / 2.0)
+                for plate in (guard, *frames)
+                if plate is not None
+                for spot in plate.screw_spots
             ),
         ]
         back_clear = [
@@ -5412,6 +5435,9 @@ class Prototype001Parameters:
         neck_pocket: tuple[Point2D, ...],
         openings: list[tuple[str, tuple[Point2D, ...]]],
         truss_rod_access: tuple[Point2D, ...] = (),
+        bridge_holes: Sequence[DrilledHole] = (),
+        top_bevel: ContourCut | None = None,
+        frames: Sequence[Sequence[Point2D]] = (),
     ) -> Pickguard | None:
         """Return the pickguard, or ``None`` without one (see ``body_pickguard``).
 
@@ -5419,7 +5445,15 @@ class Prototype001Parameters:
         it with them, ``body_pickguard`` or not, and must be under it: a
         drawn guard that does not cover them — a template's, drawn for its
         own rear cavities — gives way to the automatic guard, which is made
-        round them.
+        round them. ``body_pickguard_style`` "sg_small" / "sg_batwing" draw
+        the SG's own guards (``SG_PICKGUARDS``) where the shape has none
+        drawn (once one is moved in the editor, the shape's is it); over a
+        Tune-o-matic they take its posts (``bridge_holes``) through them
+        rather than stepping round it. A drawn guard sits on the flat top:
+        its points closer to the edge than a ``top_bevel`` reaches in are
+        moved in off it, ``AROUND_GAP`` clear. Its edge meets the pickup
+        ``frames`` on it or beside it, no wood showing between them
+        (``pickguard.meeting_frames``).
 
         Raises:
             BodyGeometryError: For a guard that does not fit the body.
@@ -5429,6 +5463,18 @@ class Prototype001Parameters:
         if not self.body_pickguard and not in_guard:
             return None
         cavities = [c for c in controls.top_cavities if c.name == "Control cavity"]
+        # The SG's own guards, drawn right-handed (the treble side at +Y),
+        # unless the shape has a guard drawn (one moved in the editor).
+        sg_guard = SG_PICKGUARDS.get(self.body_pickguard_style)
+        drawn_guard = shape.pickguard_points or (
+            tuple((p[0], p[1] * -self.bass_sign, *p[2:]) for p in sg_guard)
+            if sg_guard is not None
+            else ()
+        )
+        # Drawn over a Tune-o-matic (the batwing), its posts go through.
+        over_bridge = sg_guard is not None and isinstance(
+            self.body_bridge, TuneOMaticSpec
+        )
 
         def guard_from(
             points: Sequence[Point2D],
@@ -5441,24 +5487,33 @@ class Prototype001Parameters:
                 corners=corners,
                 thickness=self.body_pickguard_thickness,
                 pickup_openings=openings,
-                holes=[*controls.holes, *controls.guard_holes],
+                holes=[
+                    *controls.holes,
+                    *controls.guard_holes,
+                    *(bridge_holes if over_bridge else ()),
+                ],
                 # A rear-mounted blade switch's slot, should the guard cover it.
                 slots=(*controls.guard_slots, *controls.through_cavities),
                 screw_clearance=SCREW_CLEARANCE,
                 screw_spot_diameter=SCREW_SPOT_DIAMETER,
                 screw_spot_depth=self.body_pickguard_thickness + SCREW_SPOT_DEPTH,
+                frames=frames,
             )
 
         # Either way the truss rod's spoke wheel stays uncovered.
-        if shape.pickguard_points:
+        if drawn_guard:
             # Drawn for one bridge; stepped round whichever is fitted. A
             # point kept where it was keeps its corner; the steps round
             # are rounded.
-            points, marks = drawn_points(shape.pickguard_points)
+            points, marks = drawn_points(drawn_guard)
             placed = [Point2D(heel_end + p.x, p.y) for p in points]
+            if top_bevel is not None:
+                placed = [top_bevel.clear_of(p, AROUND_GAP) for p in placed]
             sharp = {p for p, mark in zip(placed, marks, strict=True) if mark}
             drawn = clear_of_truss_rod(
-                clear_of_bridge(
+                tuple(placed)
+                if over_bridge
+                else clear_of_bridge(
                     placed,
                     bridge_areas,
                     [route.outline for route in pickups],
@@ -5487,7 +5542,9 @@ class Prototype001Parameters:
             [route.outline for route in pickups],
             neck_pocket,
             self.bass_sign,
-            PICKGUARD_STYLES[self.body_pickguard_style],
+            PICKGUARD_STYLES.get(
+                self.body_pickguard_style, PICKGUARD_STYLES["stratocaster"]
+            ),
         )
         return guard_from(
             clear_of_truss_rod(automatic, truss_rod_access), automatic=True

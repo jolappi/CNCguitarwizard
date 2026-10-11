@@ -4,6 +4,21 @@
 
 ### Added
 
+- The SG's two pickguards (`body_pickguard_style` "sg_small",
+  "sg_batwing"; `body_shapes.SG_PICKGUARDS`), drawn on the SG template
+  from dimension drawings: a '61's small guard on the treble side, and the
+  full-face batwing, the pickups and a Tune-o-matic's posts through it. A
+  drawn guard sits on the flat top: its points are moved in off a top
+  bevel (`ContourCut.clear_of`), so the bevel runs on along the cutaway
+  beside it. The SG style has the small guard, its humbuckers in rings
+  (`body_pickup_frame` "ring") that the guard butts up to.
+- A pickguard meets the humbucker frames (`body_pickup_frame`) with no wood
+  showing between them (`pickguard.meeting_frames`): beside a frame (the
+  SG's small guard) its edge runs along the frame's and closes any gap
+  under `FRAME_REACH` (6 mm), its tongue reaching from frame to frame;
+  under a frame (the batwing) it reaches out under all of it. Its screws
+  keep clear of the frames, and the body editor draws it as cut.
+
 - Bevels all round the edge (`body_top_bevel_width`,
   `body_back_bevel_width`, `body_bevel_angle`; `ContourCut.around`), as
   on an SG or a Mockingbird: a constant angle, thinner across a horn's

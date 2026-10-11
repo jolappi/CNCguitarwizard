@@ -56,6 +56,10 @@ hardtail, a Tune-o-matic)."""
 CONTROLS_MARGIN = 12.0
 """How far the guard runs past a pickguard control cavity, in mm."""
 
+FRAME_REACH = 6.0
+"""How near a pickup frame, in mm, a guard's edge is moved onto it
+(``meeting_frames``): any gap narrower than this would show the wood."""
+
 POINT_SPACING = 22.0
 """About how far apart an automatic guard's control points are, in mm."""
 
@@ -125,8 +129,9 @@ class PickguardStyle:
     tail: float
 
 
-PickguardStyleName = Literal["stratocaster", "superstrat"]
-"""An automatic guard's style (see ``PICKGUARD_STYLES``)."""
+PickguardStyleName = Literal["stratocaster", "superstrat", "sg_small", "sg_batwing"]
+"""A guard's style: an automatic one's (see ``PICKGUARD_STYLES``), or one
+of the SG's drawn guards (``body_shapes.SG_PICKGUARDS``)."""
 
 PICKGUARD_STYLES: dict[str, PickguardStyle] = {
     # Measured off a Stratocaster's HH guard: a tongue beside the neck,
@@ -667,10 +672,13 @@ def pickguard(
     screw_spot_diameter: float,
     screw_spot_depth: float,
     corners: Sequence[bool] = (),
+    frames: Sequence[Sequence[Point2D]] = (),
 ) -> Pickguard:
     """Return the guard through ``control_points`` with its openings.
 
-    Sharp at the ``corners`` (one mark a point; empty for none).
+    Sharp at the ``corners`` (one mark a point; empty for none). Its edge
+    meets the pickup ``frames`` (their outlines) on it or beside it
+    (``meeting_frames``), and its screws keep clear of them.
 
     ``holes`` and ``slots`` under the guard go through it (pots, the
     selector's bushing, a blade switch's slot); so do the
@@ -679,7 +687,7 @@ def pickguard(
     It is not checked against the body here (the body editor draws a
     guard still being moved): see ``check_on_body``.
     """
-    outline = guard_outline(control_points, corners)
+    outline = meeting_frames(guard_outline(control_points, corners), frames)
     openings: list[Cavity] = [
         TracedCavity(name, opening, thickness)
         for name, opening in pickup_openings
@@ -693,7 +701,7 @@ def pickguard(
         for hole in holes
         if point_in_polygon(hole.center, outline)
     ]
-    screws = _screws(outline, openings, through)
+    screws = _screws(outline, openings, through, frames)
     plate = CoverPlate(
         "Pickguard",
         "top",
@@ -757,6 +765,166 @@ def clear_of_bridge(
         max(abs(p.y) for p in points) + DRAWN_BRIDGE_CLEARANCE,
     )
     return _clear_of_box(control_points, box, "the bridge")
+
+
+def meeting_frames(
+    outline: Sequence[Point2D], frames: Sequence[Sequence[Point2D]]
+) -> tuple[Point2D, ...]:
+    """Return a guard's outline meeting the pickup frames on or beside it.
+
+    A frame the guard covers the most of sits on it (on a batwing): where
+    the guard's edge crosses the frame, it runs round the frame's outside
+    instead, so the whole frame sits on the guard. Any other frame sits
+    beside the guard (an SG's small guard): where the edge crosses it, the
+    edge runs round its inside instead, and wherever it passes less than
+    ``FRAME_REACH`` clear of it, it is moved onto it, so the two butt up
+    with no wood showing between them. Along the frames the edge is
+    followed every millimetre.
+    """
+    edge = list(outline)
+    for frame in frames:
+        ring = _densified(frame, 1.0)
+        covered = sum(point_in_polygon(point, edge) for point in ring)
+        under = covered > len(ring) / 2
+        edge = _round_frame(_densified(edge, 1.0), ring, outside=under)
+        if not under:
+            edge = [_onto_frame(point, ring) for point in edge]
+    # Points moved onto one spot of a frame (an edge leaving it square)
+    # are kept once.
+    kept = [point for point, after in zip(edge, (*edge[1:], edge[0])) if point != after]
+    return tuple(kept or edge)
+
+
+def _round_frame(
+    edge: Sequence[Point2D], ring: Sequence[Point2D], *, outside: bool
+) -> list[Point2D]:
+    """Return a guard's edge led round a frame's edge where it crosses it.
+
+    Every run of the edge inside the frame is replaced by the frame's own
+    edge from where the run enters it to where it leaves, the way round
+    outside the guard (``outside``) or inside it.
+    """
+    inside = [point_in_polygon(point, ring) for point in edge]
+    if not any(inside) or all(inside):
+        return list(edge)
+    count = len(edge)
+    first = inside.index(False)
+    order = [(first + k) % count for k in range(count)]
+    result: list[Point2D] = []
+    k = 0
+    while k < count:
+        index = order[k]
+        if not inside[index]:
+            result.append(edge[index])
+            k += 1
+            continue
+        end = k
+        while end < count and inside[order[end]]:
+            end += 1
+        before, after = edge[order[k - 1]], edge[order[end % count]]
+        entry = _crossing(before, edge[index], ring)
+        leave = _crossing(after, edge[order[end - 1]], ring)
+        ways = [_frame_path(ring, entry, leave, step) for step in (1, -1)]
+        result += next(
+            (way for way in ways if point_in_polygon(_middle(way), edge) != outside),
+            ways[0],
+        )
+        k = end
+    return result
+
+
+def _crossing(
+    outside: Point2D, inside: Point2D, ring: Sequence[Point2D]
+) -> tuple[Point2D, float]:
+    """Return where the segment from ``outside`` a frame to ``inside`` it
+    first crosses the frame's edge, and that point's place along the edge
+    (``index + t`` of the edge's segments)."""
+    best: tuple[float, Point2D, float] | None = None
+    count = len(ring)
+    dx, dy = inside.x - outside.x, inside.y - outside.y
+    for index in range(count):
+        a, b = ring[index], ring[(index + 1) % count]
+        ex, ey = b.x - a.x, b.y - a.y
+        denominator = dx * ey - dy * ex
+        if abs(denominator) < 1e-12:
+            continue
+        u = ((a.x - outside.x) * ey - (a.y - outside.y) * ex) / denominator
+        t = ((a.x - outside.x) * dy - (a.y - outside.y) * dx) / denominator
+        if 0.0 <= u <= 1.0 and 0.0 <= t <= 1.0 and (best is None or u < best[0]):
+            best = (u, Point2D(outside.x + dx * u, outside.y + dy * u), index + t)
+    if best is None:
+        nearest = _nearest_on_outline(inside, ring)
+        place = min(range(count), key=lambda i: math.dist(_xy(ring[i]), _xy(nearest)))
+        return nearest, float(place)
+    return best[1], best[2]
+
+
+def _frame_path(
+    ring: Sequence[Point2D],
+    start: tuple[Point2D, float],
+    end: tuple[Point2D, float],
+    step: int,
+) -> list[Point2D]:
+    """Return a frame's edge from ``start`` to ``end`` (points with their
+    places along it), forward (``step`` 1) or back (-1)."""
+    count = len(ring)
+    (first, at), (last, to) = start, end
+    span = ((to - at) if step > 0 else (at - to)) % count
+    points = [first]
+    index = math.floor(at) + 1 if step > 0 else math.floor(at)
+    for _ in range(count):
+        if ((index - at) if step > 0 else (at - index)) % count >= span:
+            break
+        points.append(ring[index % count])
+        index += step
+    points.append(last)
+    return points
+
+
+def _middle(path: Sequence[Point2D]) -> Point2D:
+    """Return the middle of a path's middle segment (clear of its ends)."""
+    a, b = path[len(path) // 2 - 1], path[len(path) // 2]
+    return Point2D((a.x + b.x) / 2.0, (a.y + b.y) / 2.0)
+
+
+def _onto_frame(point: Point2D, ring: Sequence[Point2D]) -> Point2D:
+    """Return ``point`` moved onto a frame's edge if less than
+    ``FRAME_REACH`` clear of it, else as it is."""
+    nearest = _nearest_on_outline(point, ring)
+    if math.dist(_xy(point), _xy(nearest)) < FRAME_REACH:
+        return nearest
+    return point
+
+
+def _xy(point: Point2D) -> tuple[float, float]:
+    return point.x, point.y
+
+
+def _densified(outline: Sequence[Point2D], step: float) -> list[Point2D]:
+    """Return a closed outline with a point at least every ``step`` mm."""
+    points: list[Point2D] = []
+    for a, b in zip(outline, (*outline[1:], outline[0]), strict=True):
+        count = max(1, math.ceil(math.hypot(b.x - a.x, b.y - a.y) / step))
+        points += [
+            Point2D(a.x + (b.x - a.x) * k / count, a.y + (b.y - a.y) * k / count)
+            for k in range(count)
+        ]
+    return points
+
+
+def _nearest_on_outline(point: Point2D, outline: Sequence[Point2D]) -> Point2D:
+    """Return the point of a closed outline's edge nearest ``point``."""
+    best, nearest = math.inf, outline[0]
+    for a, b in zip(outline, (*outline[1:], outline[0]), strict=True):
+        ex, ey = b.x - a.x, b.y - a.y
+        size = ex * ex + ey * ey
+        t = ((point.x - a.x) * ex + (point.y - a.y) * ey) / size if size else 0.0
+        t = min(1.0, max(0.0, t))
+        candidate = Point2D(a.x + ex * t, a.y + ey * t)
+        distance = math.hypot(candidate.x - point.x, candidate.y - point.y)
+        if distance < best:
+            best, nearest = distance, candidate
+    return nearest
 
 
 def clear_of_truss_rod(
@@ -1028,8 +1196,10 @@ def _screws(
     outline: Sequence[Point2D],
     openings: Sequence[Cavity],
     holes: Sequence[DrilledHole],
+    frames: Sequence[Sequence[Point2D]] = (),
 ) -> tuple[Point2D, ...]:
-    """Return the guard's screws, ``SCREW_INSET`` in, clear of its openings."""
+    """Return the guard's screws, ``SCREW_INSET`` in, clear of its openings
+    and of the pickup frames on it or beside it."""
     path = offset_polygon(outline, SCREW_INSET, inward=True)
     if len(path) < 3:
         return ()
@@ -1039,7 +1209,10 @@ def _screws(
     )
     count = max(6, round(perimeter / SCREW_PITCH))
     clear = 4.0
-    grown = [offset_polygon(o.outline, clear, inward=False) for o in openings]
+    grown = [
+        offset_polygon(area, clear, inward=False)
+        for area in (*(o.outline for o in openings), *frames)
+    ]
     screws: list[Point2D] = []
     for point in _resampled(path, count):
         near_opening = any(point_in_polygon(point, area) for area in grown)

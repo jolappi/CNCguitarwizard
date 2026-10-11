@@ -212,14 +212,22 @@ STYLES: dict[str, InstrumentStyle] = {
                 jack_y=64.7,
             ),
             "body_jack": "top",
+            # A '61's small guard on the treble side (or the batwing:
+            # body_pickguard_style "sg_batwing").
+            "body_pickguard": True,
+            "body_pickguard_style": "sg_small",
             # Its bevels at about 25 degrees as on an SG, but where the
             # template's round points leave the edge rounded over: the
             # tail, and on the back the control cavity's lower bout.
             "body_top_bevel_width": 18.0,
             "body_back_bevel_width": 14.0,
             "body_bevel_angle": 25.0,
+            # 5 mm: 6 would leave the neck pickup's ring no room beside
+            # the cutaways (it keeps to the flat top past a roundover).
             "body_top_edge_radius": 5.0,
             "body_back_edge_radius": 5.0,
+            # Its humbuckers in rings, the small guard butting up to them.
+            "body_pickup_frame": "ring",
             "inlay_style": "trapezoid",
         },
     ),

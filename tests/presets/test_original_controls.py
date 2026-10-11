@@ -235,7 +235,8 @@ def test_a_switch_apart_from_the_pots_keeps_a_cavity_of_its_own() -> None:
     apart = replace(styled("sg").body_shape, switch_in_control_cavity=False)
     controls = styled("sg", body_shape=apart).body_layout().controls
     assert controls.switch_cavity is not None
-    assert len(controls.covers) == 2
+    # Two covers on the back (the guard on the top is a cover too).
+    assert [cover.face for cover in controls.covers].count("back") == 2
 
 
 def test_a_jack_in_the_top_needs_a_rear_cavity_under_it() -> None:

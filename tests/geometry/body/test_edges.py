@@ -435,6 +435,30 @@ def sg_style(**changes: object) -> Prototype001Parameters:
     )
 
 
+@pytest.mark.parametrize("guard", ["sg_small", "sg_batwing"])
+def test_an_sgs_bevels_run_round_it_past_its_guard_without_a_notch(guard: str) -> None:
+    # The guard stopped the top bevel along the treble cutaway, and the
+    # routes and covers it kept clear of notched both bevels.
+    parameters = sg_style(body_pickguard_style=guard)
+    layout = parameters.body_layout()
+    bevels = [c for c in layout.contours if c.name.endswith("bevel")]
+    assert len(bevels) == 2
+    for bevel in bevels:
+        assert_no_notch(bevel)
+    (top,) = [c for c in bevels if c.face == "top"]
+    treble = -parameters.bass_sign
+    cutaway = [
+        reach
+        for point, reach in zip(top.edge, top.reaches, strict=True)
+        if abs(point.x - layout.heel_end) <= 10.0 and point.y * treble > 50.0
+    ]
+    # (Narrower by the neck pickup's ring, but never stopped.)
+    assert cutaway and min(cutaway) > 3.0
+    guard_plate = layout.pickguard
+    assert guard_plate is not None
+    assert not any(top.cuts(p) for p in guard_plate.control_points)
+
+
 @pytest.mark.parametrize(
     ("style", "joint", "runs_round"),
     [

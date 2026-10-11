@@ -1,5 +1,7 @@
 """Tests for the pickguard: its shape, openings, screws and the Strat controls."""
 
+import math
+from collections.abc import Sequence
 from dataclasses import replace
 
 import pytest
@@ -12,10 +14,11 @@ from cncguitarwizard.geometry.body.bridges import (
     TuneOMaticSpec,
 )
 from cncguitarwizard.geometry.exceptions import BodyGeometryError
-from cncguitarwizard.geometry.primitives import point_in_polygon
+from cncguitarwizard.geometry.primitives import Point2D, point_in_polygon
 from cncguitarwizard.presets import Prototype001Parameters
 from cncguitarwizard.presets.body_shapes import YOUR_DESIGN_TEMPLATES, YourDesignShape
-from cncguitarwizard.webapp import body_editor_layout
+from cncguitarwizard.presets.pickguard import FRAME_REACH, meeting_frames
+from cncguitarwizard.webapp import _jsonable, body_editor_layout
 
 STRAT = YOUR_DESIGN_TEMPLATES["stratocaster"][1]
 # Design by Jone without its drawn guard: the automatic one.
@@ -482,3 +485,160 @@ def test_a_headstock_adjusted_truss_rod_leaves_the_guard_alone() -> None:
     layout = parameters.body_layout()
 
     assert layout.truss_rod_access is None and layout.pickguard is not None
+
+
+def sg_guarded(style: str, **changes: object) -> Prototype001Parameters:
+    """Return the SG style's guitar with one of its guards."""
+    from cncguitarwizard.presets.styles import STYLES
+
+    return replace(
+        Prototype001Parameters.for_instrument("electric_guitar"),
+        **{
+            **STYLES["sg"].prototype_values("electric_guitar"),
+            "body_pickguard_style": style,
+            **changes,
+        },
+    )
+
+
+def test_the_sg_style_has_a_61s_small_guard_on_the_treble_side() -> None:
+    geometry = sg_guarded("sg_small").build()
+    (guard,) = [c for c in geometry.covers if c.name == "Pickguard"]
+    # On the treble side (+Y right-handed), clear of the pickups' routes.
+    assert min(p.y for p in guard.outline) > 15.0
+    assert not any(h.name.startswith("Bridge post") for h in guard.holes)
+    xs = [p.x for p in guard.outline]
+    ys = [p.y for p in guard.outline]
+    assert max(xs) - min(xs) == pytest.approx(176.0, abs=6.0)
+    assert max(ys) - min(ys) == pytest.approx(92.0, abs=6.0)
+    # Left-handed it stays on the treble side, now at -Y.
+    left = sg_guarded("sg_small", handedness="left").build()
+    (mirrored,) = [c for c in left.covers if c.name == "Pickguard"]
+    assert max(p.y for p in mirrored.outline) < -15.0
+
+
+def test_an_sg_batwing_takes_the_pickups_and_the_bridge_posts_through() -> None:
+    geometry = sg_guarded("sg_batwing").build()
+    (guard,) = [c for c in geometry.covers if c.name == "Pickguard"]
+    posts = [h for h in guard.holes if h.name.startswith("Bridge post")]
+    assert len(posts) == 2
+    screws = [h for h in guard.holes if h.name.startswith("Screw")]
+    # (One fewer by the neck pickup's ring, which sits on it.)
+    assert len(screws) == 10
+    body = geometry.body
+    for route in (body.neck_pickup, body.bridge_pickup):
+        assert route is not None
+        assert all(point_in_polygon(p, guard.outline) for p in route.outline)
+    xs = [p.x for p in guard.outline]
+    ys = [p.y for p in guard.outline]
+    assert max(ys) - min(ys) == pytest.approx(200.0, abs=8.0)
+    assert max(xs) - min(xs) == pytest.approx(190.0, abs=8.0)
+
+
+def _square(x0: float, y0: float, x1: float, y1: float) -> tuple[Point2D, ...]:
+    return (Point2D(x0, y0), Point2D(x1, y0), Point2D(x1, y1), Point2D(x0, y1))
+
+
+def _gap(point: Point2D, outline: Sequence[Point2D]) -> float:
+    return min(
+        _segment_distance(point, a, b)
+        for a, b in zip(outline, (*outline[1:], outline[0]), strict=True)
+    )
+
+
+def _segment_distance(point: Point2D, a: Point2D, b: Point2D) -> float:
+    ex, ey = b.x - a.x, b.y - a.y
+    size = ex * ex + ey * ey
+    t = ((point.x - a.x) * ex + (point.y - a.y) * ey) / size if size else 0.0
+    t = min(1.0, max(0.0, t))
+    return math.hypot(point.x - a.x - ex * t, point.y - a.y - ey * t)
+
+
+def test_a_guard_beside_a_frame_butts_up_against_it() -> None:
+    # A guard 3 mm short of one frame and 2 mm over another: no wood
+    # showing between them, and none of the guard under either.
+    guard = _square(0.0, 0.0, 100.0, 50.0)
+    short = _square(103.0, 10.0, 140.0, 40.0)
+    over = _square(20.0, -30.0, 60.0, 2.0)
+    assert 103.0 - 100.0 < FRAME_REACH
+    met = meeting_frames(guard, [short, over])
+    for frame in (short, over):
+        assert not any(
+            point_in_polygon(p, frame) and _gap(p, frame) > 0.01 for p in met
+        )
+    assert any(p.x == pytest.approx(103.0) for p in met)
+    assert max(p.x for p in met) == pytest.approx(103.0)
+    assert min(p.y for p in met if 25.0 < p.x < 55.0) == pytest.approx(2.0)
+    # Far from both, the edge stays where it was.
+    assert Point2D(0.0, 0.0) in met and Point2D(0.0, 50.0) in met
+
+
+def test_a_frame_on_a_guard_sits_on_it_all_over() -> None:
+    # The guard covers most of the frame: it reaches out under all of it.
+    guard = _square(0.0, 0.0, 100.0, 50.0)
+    frame = _square(80.0, 10.0, 110.0, 40.0)
+    met = meeting_frames(guard, [frame])
+    assert all(point_in_polygon(p, met) or _gap(p, met) < 0.01 for p in frame)
+    assert max(p.x for p in met) == pytest.approx(110.0)
+
+
+def _across(outline: Sequence[Point2D], y: float) -> list[float]:
+    """Where an outline crosses the line at ``y`` (its X values)."""
+    return [
+        a.x + (b.x - a.x) * (y - a.y) / (b.y - a.y)
+        for a, b in zip(outline, (*outline[1:], outline[0]), strict=True)
+        if (a.y - y) * (b.y - y) < 0.0
+    ]
+
+
+@pytest.mark.parametrize("style", ["sg_small", "sg_batwing"])
+@pytest.mark.parametrize("frame", ["ring", "horns"])
+def test_an_sg_guard_meets_its_pickup_frames(style: str, frame: str) -> None:
+    # Beside the frames the guard showed wood between them and itself;
+    # under them, a frame hung off the guard's edge.
+    parameters = sg_guarded(style, body_pickup_frame=frame)
+    layout = parameters.body_layout()
+    guard = layout.pickguard
+    assert guard is not None and len(layout.pickup_frames) == 2
+    outline = guard.plate.outline
+    neck, bridge = sorted(
+        (f.plate.outline for f in layout.pickup_frames),
+        key=lambda ring: min(p.x for p in ring),
+    )
+    for ring in (neck, bridge):
+        if style == "sg_batwing":
+            # Every frame sits on the guard.
+            assert all(
+                point_in_polygon(p, outline) or _gap(p, outline) < 0.05 for p in ring
+            )
+        else:
+            # None of the guard under a frame.
+            assert not any(
+                point_in_polygon(p, ring) and _gap(p, ring) > 0.05 for p in outline
+            )
+        # No guard screw under a frame.
+        assert not any(point_in_polygon(s.center, ring) for s in guard.screw_spots)
+    if style == "sg_small":
+        # Its tongue reaches from frame to frame, no wood either side.
+        treble = -parameters.bass_sign
+        between = [
+            p.y * treble
+            for p in outline
+            if max(q.x for q in neck) < p.x < min(q.x for q in bridge)
+        ]
+        y = (min(between) + 1.0) * treble
+        reach = (max(_across(neck, y)), min(_across(bridge, y)))
+        assert all(
+            point_in_polygon(Point2D(x, y), outline)
+            for x in (reach[0] + 0.3, reach[1] - 0.3)
+        )
+    # The body editor draws the guard as cut.
+    from cncguitarwizard.presets.styles import STYLES
+
+    values = {
+        **STYLES["sg"].prototype_values("electric_guitar"),
+        "body_pickguard_style": style,
+        "body_pickup_frame": frame,
+    }
+    view = body_editor_layout({"prototype": _jsonable(values)})
+    assert len(view["pickguard"]["outline"]) == len(outline)
