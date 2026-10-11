@@ -390,3 +390,31 @@ def test_a_line_wholly_on_the_bass_side_is_refused() -> None:
     # Past the pocket's bass wall all the way.
     with pytest.raises(BodyGeometryError, match="wholly on the bass side"):
         replace(parameters, body_shape=shape).build()
+
+
+def test_the_form_explains_the_heel_relief_in_plain_words() -> None:
+    from cncguitarwizard.webapp import parameter_schema
+
+    fields = {
+        field["name"]: field
+        for group in parameter_schema()["prototype"]
+        for field in group["fields"]
+        if str(field["name"]).startswith("body_heel_relief")
+    }
+    # Every kind and every line named for what it does.
+    assert set(fields["body_heel_relief"]["labels"]) == {
+        "none",
+        "contour",
+        "notch",
+        "bevel",
+    }
+    assert set(fields["body_heel_relief_line"]["labels"]) == {
+        "around",
+        "pocket",
+        "corner",
+    }
+    # In words, not the code's names for the other settings.
+    for name, field in fields.items():
+        help_text = str(field["help"])
+        assert "body_" not in help_text and "_" not in help_text, name
+    assert "whole heel" in str(fields["body_heel_relief_line"]["help"])

@@ -206,10 +206,16 @@ _CHOICE_LABELS: dict[str, dict[str, str]] = {
         "stratocaster": "Stratocaster (beside the neck, a tail past the bridge)",
         "superstrat": "Superstrat (close round the pickups)",
     },
+    "body_heel_relief": {
+        "none": "None (a flat back)",
+        "contour": "Contour (a smooth slope, deepest at the body's edge)",
+        "notch": "Notch (a flat step down, a wall where it ends)",
+        "bevel": "Bevel (a flat slope along the neck, for a tilted neck plate)",
+    },
     "body_heel_relief_line": {
-        "around": "Around the heel (a U across the neck pocket)",
-        "pocket": "By the pocket (its outline, the reach out all round)",
-        "corner": "Across the treble corner (clear of a neck plate)",
+        "around": "Round the heel (a curve behind it, the whole heel)",
+        "pocket": "Along the neck pocket (its outline, the whole heel)",
+        "corner": "Across the treble corner (a straight 45° line)",
     },
     "body_pickup_frame": {
         "none": "None",

@@ -448,6 +448,30 @@ FIELD_HELP: dict[str, str] = {
         "A belly cut: the back bevelled where the body meets the player, "
         "this deep in mm (0: none)."
     ),
+    "body_heel_relief": (
+        "A heel relief thins the back where the neck joins the body, so the "
+        "hand reaches the top frets. Contour: a smooth slope, deepest at the "
+        "body's edge. Notch: a flat step down. Bevel: a flat slope along the "
+        "neck that a tilted neck plate can sit on (without a plate its sides "
+        "slope too). None: a flat back."
+    ),
+    "body_heel_relief_depth": (
+        "How deep the heel relief cuts into the back at its deepest, in mm "
+        "(at the body's edge by the neck)."
+    ),
+    "body_heel_relief_reach": (
+        "How far the heel relief's automatic line runs out past the neck "
+        "pocket, in mm: behind the heel's end and on the treble side (across "
+        "the corner: how far in from the edge it crosses the centreline)."
+    ),
+    "body_heel_relief_line": (
+        "Where the heel relief's automatic line runs. Round the heel: a "
+        "curve behind the heel's end. Along the neck pocket: its outline, "
+        "the reach out. Either takes in the whole heel and reaches out past "
+        "it on the treble side only. Across the treble corner: a straight "
+        "45 degree line, clear of a neck plate. Draw your own line in the "
+        "body editor; Auto heel relief comes back to this one."
+    ),
     "body_wire_channels": (
         "Wires the pickups, a switch cavity and a battery box to the controls "
         "and grounds the bridge: a channel "

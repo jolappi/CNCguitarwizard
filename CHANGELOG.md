@@ -1045,6 +1045,10 @@
 
 ### Fixed
 
+- The heel relief's settings say what they do in plain words: the kinds
+  (none, contour, notch, bevel) and the lines (round the heel, along the
+  neck pocket, across the treble corner) named for the shape they cut,
+  and the depth, reach and line explained without the code's names.
 - A heel bevel with no neck plate on it slopes at its sides too: from its
   line it rises to the face over `HEEL_BEVEL_SIDE_RUN` (15 mm), a slanted
   side, not a wall the slope's depth deep where it runs along the neck
