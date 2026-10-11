@@ -6717,30 +6717,51 @@ TELECASTER_NECK: dict[str, Any] = {
     "headstock_angle": 0.0,
     "headstock_style": "6_inline",
     "headstock_outline": "drawn",
-    # A Telecaster outline round the default six-in-line row: the tuner
-    # edge straight along the posts, flaring out from the nut; the other
-    # edge nearly straight, sweeping out to the rounded treble point; the
-    # end wrapping round the last tuner.
+    # A Telecaster's headstock, 183 mm (7 3/16 in) long, its outline traced
+    # from Wikimedia Commons' "Fender headstock telecaster.svg" (GreyCat,
+    # CC BY-SA) scaled to that length. As on a Stratocaster, its six posts
+    # follow the strings, so the row runs diagonally across toward the
+    # tip, 24 mm apart from 45 mm (E to E 120 mm); the bass edge flares
+    # out from the nut and runs straight along them, 12 mm out (a 10 mm
+    # hole keeps 7 mm of wood); the treble edge swells out, runs in to
+    # its waist and out to the round lip, and the end rounds over from the
+    # lip to the bass edge.
+    "tuner_inline_first_distance": 45.0,
+    "tuner_inline_spacing": 24.0,
+    "tuner_edge_offset": 11.0,
+    "tuner_edge_clearance": 6.0,
     "headstock_bass_edge": (
-        (12.0, 26.0),
-        (26.0, 35.0),
-        (40.0, 39.5),
-        (80.0, 29.4),
-        (120.0, 19.4),
-        (160.0, 9.3),
-        (183.0, 2.8),
-        (196.0, -5.0),
-        (204.0, -20.0),
+        (8.0, 24.5),
+        (16.0, 32.0),
+        (25.0, 37.7),
+        (60.0, 28.3),
+        (100.0, 17.6),
+        (140.0, 6.9),
+        (159.3, 1.7),
     ),
     "headstock_treble_edge": (
-        (15.0, 23.0),
-        (70.0, 24.5),
-        (120.0, 26.5),
-        (160.0, 30.0),
-        (186.0, 36.0),
-        (204.0, 39.0),
+        (8.0, 21.6),
+        (24.0, 22.6),
+        (40.0, 27.4),
+        (56.0, 33.2),
+        (72.0, 38.8),
+        (88.0, 42.4),
+        (100.0, 42.6),
+        (112.0, 39.3),
+        (122.0, 35.3),
+        (130.0, 33.4),
+        (138.0, 36.3),
+        (146.0, 42.7),
+        (152.0, 44.9),
+        (159.3, 45.7),
     ),
-    "headstock_tip_points": ((3.5, 27.0), (4.5, 33.0)),
+    "headstock_tip_points": (
+        (14.7, 2.3),
+        (21.2, 8.8),
+        (23.7, 23.4),
+        (21.2, 33.0),
+        (13.7, 40.5),
+    ),
     "truss_rod_adjustment": "heel",
 }
 """A Telecaster neck (see ``NECK_TEMPLATES``): a slotted nut, a flat
@@ -7024,6 +7045,8 @@ NECK_TEMPLATE_RESETS: frozenset[str] = frozenset(
         "tuner_inline_spacing",
         "tuner_station_distances",
         "tuner_side_offsets",
+        "tuner_edge_offset",
+        "tuner_edge_clearance",
     }
 )
 """The tuner and tip settings a neck template's outline is drawn round, and

@@ -825,6 +825,15 @@
 
 ### Changed
 
+- The Telecaster neck's headstock looks like a Telecaster's, traced from
+  Wikimedia Commons' Telecaster headstock outline (GreyCat, CC BY-SA)
+  scaled to 183 mm: as on the Stratocaster its six posts follow the
+  strings in a straight row running diagonally across toward the tip, 24
+  mm apart from 45 mm (120 mm E to E), the bass edge straight along them
+  12 mm out (the template keeps the holes 11 mm from the edge,
+  `tuner_edge_offset`, with 6 mm of wood beside them,
+  `tuner_edge_clearance`; other neck templates put back 15 and 8), the
+  treble edge swelling out, in to its waist and out to the round lip.
 - Easy mode shows the scale length under the style.
 
 - The heel relief is always on the treble side, where the hand reaches

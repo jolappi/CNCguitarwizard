@@ -21,7 +21,7 @@ from cncguitarwizard.presets.body_shapes import (
     widened_shape,
 )
 from cncguitarwizard.presets.pickup_frames import FRAME_POINTS
-from cncguitarwizard.presets.prototype001 import BODY_TEMPLATE_VALUES, TELECASTER_NECK
+from cncguitarwizard.presets.prototype001 import BODY_TEMPLATE_VALUES
 from cncguitarwizard.presets.truss_rod_covers import (
     CUSTOM_COVER_RADIUS,
     check_custom_cover,
@@ -39,6 +39,35 @@ DRAWN = Prototype001Parameters().body_shape
 assert isinstance(DRAWN, YourDesignShape)
 # A drawn inlay: a tooth, wide on the bass side.
 TOOTH = ((0.25, 0.8), (0.75, 0.8), (0.75, -0.5))
+# A drawn six-in-line headstock round the default row of posts, its tip
+# shaped by two points.
+DRAWN_HEADSTOCK = {
+    "nut_style": "slot",
+    "locking_nut": "none",
+    "headstock_angle": 0.0,
+    "headstock_style": "6_inline",
+    "headstock_outline": "drawn",
+    "headstock_bass_edge": (
+        (12.0, 26.0),
+        (26.0, 35.0),
+        (40.0, 39.5),
+        (80.0, 29.4),
+        (120.0, 19.4),
+        (160.0, 9.3),
+        (183.0, 2.8),
+        (196.0, -5.0),
+        (204.0, -20.0),
+    ),
+    "headstock_treble_edge": (
+        (15.0, 23.0),
+        (70.0, 24.5),
+        (120.0, 26.5),
+        (160.0, 30.0),
+        (186.0, 36.0),
+        (204.0, 39.0),
+    ),
+    "headstock_tip_points": ((3.5, 27.0), (4.5, 33.0)),
+}
 
 
 def cornered(points: tuple, *indices: int, mark: str = CORNER) -> tuple:  # type: ignore[type-arg]
@@ -185,11 +214,11 @@ def test_a_drawn_pickup_frame_takes_corners() -> None:
 
 
 def test_a_drawn_headstock_tip_takes_corners() -> None:
-    telecaster = replace(Prototype001Parameters(), **TELECASTER_NECK)
-    *edge, end = telecaster.headstock_bass_edge
+    drawn = replace(Prototype001Parameters(), **DRAWN_HEADSTOCK)
+    *edge, end = drawn.headstock_bass_edge
     # The bass edge's end is the tip's -Y corner here (bass toward -Y).
     sharp = replace(
-        telecaster,
+        drawn,
         headstock_bass_edge=(*edge, (*end, CORNER)),
         headstock_tip_points=((3.5, 27.0, CORNER), (4.5, 33.0)),
     )

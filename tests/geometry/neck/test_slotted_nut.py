@@ -120,8 +120,19 @@ def test_the_telecaster_neck_builds(adjustment: str) -> None:
         **{**TELECASTER_NECK, "truss_rod_adjustment": adjustment},
     )
     plan, tuners = parameters.headstock_design()
-    assert plan.is_drawn and plan.length == pytest.approx(204.0)
+    assert plan.is_drawn and plan.reach == pytest.approx(183.0, abs=0.1)
+    # Its posts 24 mm apart from 45 mm, as a Stratocaster's following the
+    # strings: a straight row running diagonally across toward the tip.
     assert len(tuners.holes) == 6
+    holes = sorted(tuners.holes, key=lambda hole: -hole.center.x)
+    along = [-hole.center.x for hole in holes]
+    assert along == pytest.approx([45.0 + 24.0 * k for k in range(6)])
+    across = [hole.center.y * parameters.bass_sign for hole in holes]
+    assert across[0] > 15.0 and across[-1] < -10.0
+    # Each a string's spacing on from the last, closing up toward the tip.
+    steps = [a - b for a, b in zip(across, across[1:])]
+    assert all(5.5 < step < 7.5 for step in steps)
+    assert steps == sorted(steps, reverse=True)
     geometry = parameters.build()
     assert geometry.locking_nut is not None and not geometry.locking_nut.is_locking
     assert geometry.truss_rod_channel.adjustment_side == (
@@ -144,6 +155,6 @@ def test_the_web_form_offers_the_nut_style_and_the_telecaster_neck() -> None:
     template = schema["neck_templates"]["telecaster"]
     assert template["label"] == NECK_TEMPLATES["telecaster"][0]
     assert template["values"]["nut_style"] == "slot"
-    assert template["values"]["headstock_bass_edge"][0] == [12.0, 26.0]
+    assert template["values"]["headstock_bass_edge"][0] == [8.0, 24.5]
     # Every value the template sets is a field of the form.
     assert set(template["values"]) <= set(fields)

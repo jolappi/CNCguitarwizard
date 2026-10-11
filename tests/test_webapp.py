@@ -590,11 +590,14 @@ def test_the_headstock_editor_opens_on_a_drawing_its_tuners_no_longer_fit() -> N
 def test_a_neck_template_puts_back_what_another_left() -> None:
     templates = parameter_schema()["neck_templates"]
     # The Explorer places its own row of posts and has no tip points; a
-    # Telecaster loaded after it must not keep that row under its outline.
+    # Telecaster loaded after it must not keep that row under its outline,
+    # nor the Telecaster's posts kept closer to its edge another's.
     assert "tuner_inline_offsets" not in templates["explorer"]["resets"]
     assert "headstock_tip_points" in templates["explorer"]["resets"]
-    assert {"tuner_inline_offsets", "tuner_inline_first_distance"} <= set(
-        templates["telecaster"]["resets"]
+    assert "tuner_inline_offsets" in templates["telecaster"]["resets"]
+    assert "tuner_edge_offset" in templates["telecaster"]["values"]
+    assert {"tuner_edge_offset", "tuner_edge_clearance"} <= set(
+        templates["stratocaster"]["resets"]
     )
     for template in templates.values():
         assert not set(template["resets"]) & set(template["values"])

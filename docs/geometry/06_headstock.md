@@ -278,10 +278,17 @@ notch for the key (see [Truss rod](08_truss_rod.md#spoke-wheel-or-not)).
 
 `NECK_TEMPLATES["telecaster"]` (`TELECASTER_NECK`, *Start from* in the
 web app's headstock editor) sets a whole Telecaster neck: the slotted
-nut, a flat (0°) six-in-line headstock drawn as a Telecaster's (the tuner
-edge straight along the posts and flaring out from the nut, the other
-edge sweeping out to a rounded treble point, the end wrapping round the
-last tuner; 204 mm long round the default row) and the truss rod
+nut, a flat (0°) six-in-line headstock drawn as a Telecaster's (183 mm,
+7 3/16 in, long, its outline traced from Wikimedia Commons' "Fender
+headstock telecaster.svg" — GreyCat, CC BY-SA — scaled to that length:
+as on the Stratocaster its six posts follow the strings, a straight row
+running diagonally across toward the tip, 24 mm apart from 45 mm, 120 mm
+E to E; the bass edge flaring out from the nut and running straight
+along them 12 mm out, the template keeping the holes 11 mm from the edge
+(`tuner_edge_offset`) and 6 mm of wood beside them
+(`tuner_edge_clearance`) where other necks keep 15 and 8; the treble
+edge swelling out, in to its waist and out to the round lip, the end
+rounded over from the lip to the bass edge) and the truss rod
 adjusted at the heel, vintage style; `truss_rod_adjustment = "headstock"`
 gives the modern one. The plan view draws the nut in its slot, the board
 running on behind it with a line where it starts sloping down.
