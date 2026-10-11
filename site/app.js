@@ -20,6 +20,7 @@ const filterEmpty = document.getElementById("filter-empty");
 const instrumentSelect = document.getElementById("instrument");
 const saveDesignButton = document.getElementById("save-design");
 const guitarName = document.getElementById("guitar-name");
+const styleSelect = document.getElementById("style");
 const ncZipButton = document.getElementById("download-nc-zip");
 const loadDesignButton = document.getElementById("load-design");
 const loadDesignFile = document.getElementById("load-design-file");
@@ -150,6 +151,7 @@ async function boot() {
 }
 
 function renderForm() {
+  showStyles();
   form.innerHTML = "";
   const opened = savedOpenGroups();
   const sections = [
@@ -1330,6 +1332,55 @@ async function simulate(name, text, after = document.getElementById("files")) {
 function reset() {
   renderForm();
   clearError();
+}
+
+// The styles offered for the instrument, under it: a whole instrument in
+// one choice (its body, neck, pickups, bridge and the rest), the quick way
+// in among the many settings. A new form (another instrument, Reset, a
+// design loaded) shows none chosen.
+function showStyles() {
+  styleSelect.replaceChildren();
+  const offered = Object.entries(schema.styles || {})
+    .filter(([, style]) => style.instruments.includes(instrumentSelect.value));
+  const none = document.createElement("option");
+  none.value = "";
+  none.textContent = "Choose a style…";
+  styleSelect.appendChild(none);
+  for (const [key, style] of offered) {
+    const option = document.createElement("option");
+    option.value = key;
+    option.textContent = style.label;
+    styleSelect.appendChild(option);
+  }
+  styleSelect.closest(".instrument").hidden = offered.length === 0;
+}
+
+// Load a style as a design (webapp.style_design): every setting back to
+// the instrument's defaults, then the style's own, the guitar's name kept.
+async function loadStyle() {
+  const key = styleSelect.value;
+  if (!key) return;
+  const label = schema.styles[key].label;
+  if (form.querySelector(".changed") && !(await askConfirm(
+    `Start from the ${label}? Every setting goes back to the instrument's defaults, then the style sets its own.`
+  ))) {
+    styleSelect.value = "";
+    return;
+  }
+  clearError();
+  pyodide.globals.set("style_args", JSON.stringify([instrumentSelect.value, key, guitarName.value.trim()]));
+  const design = JSON.parse(pyodide.runPython(
+    "import json\nfrom cncguitarwizard.webapp import style_design\n" +
+    "json.dumps(style_design(*json.loads(style_args)))"
+  ));
+  if (design.error) {
+    showError(design.error);
+    styleSelect.value = "";
+    return;
+  }
+  applyDesign(design);
+  styleSelect.value = key;
+  setStatus(`Loaded the ${label}${repairNote(await repairDesign())}: build it, or change what you like first.`, "ok");
 }
 
 // ---------------------------------------------------------------------------
@@ -5749,6 +5800,7 @@ form.addEventListener("change", (event) => {
   if (event.target.dataset.name !== "control_points") bodyEditor.scheduleRefresh();
 });
 
+styleSelect.addEventListener("change", loadStyle);
 instrumentSelect.addEventListener("change", async () => {
   if (form.querySelector(".changed") && !(await askConfirm(
     "Switch instrument? Every value goes back to that instrument's defaults."
@@ -5901,7 +5953,9 @@ const TOUR_STEPS = [
   {
     target: () => document.getElementById("instrument-rows"),
     title: "Choose the instrument",
-    text: "A guitar, a 7- or 8-string or a bass, and its name: the files are named after it.",
+    text: "A guitar, a 7- or 8-string or a bass, and its name: the files are named after it. " +
+      "Style sets a whole instrument at once — a Stratocaster, a Les Paul, a Jackson RR… — to build as it is " +
+      "or change from there.",
   },
   {
     target: () => bodyEditor.svg,

@@ -99,6 +99,7 @@ from .presets.prototype001 import (
     NECK_TEMPLATE_RESETS,
     NECK_TEMPLATES,
 )
+from .presets.styles import STYLES
 from .presets.truss_rod_covers import editable_cover_points, truss_rod_cover_shape
 from .render.svg import render_plan_view_svg
 from .workflows import Prototype001Build
@@ -438,7 +439,9 @@ def parameter_schema() -> dict[str, Any]:
         ``[neck, middle, bridge]`` types (the body editor turns a layout
         into "custom" to remove one pickup); ``runes`` the Elder Futhark's
         runes in order, each ``{"name", "glyph", "meaning"}``, for
-        ``inlay_runes``.
+        ``inlay_runes``; ``styles`` each instrument style (``STYLES``) to
+        ``{"label", "instruments"}``, the instruments it is offered for
+        (``style_design`` gives its settings).
     """
     return {
         "instruments": {
@@ -467,6 +470,10 @@ def parameter_schema() -> dict[str, Any]:
             {"name": rune.name, "glyph": rune.glyph, "meaning": rune.meaning}
             for rune in RUNES.values()
         ],
+        "styles": {
+            key: {"label": style.label, "instruments": list(style.instruments)}
+            for key, style in STYLES.items()
+        },
         "machining": [
             {
                 "title": "Machining",
@@ -517,6 +524,36 @@ def upgrade_design(design: dict[str, Any]) -> dict[str, Any]:
 
 DESIGN_FORMAT = "cncguitarwizard-design"
 """The ``format`` entry of a design saved with the web app's Save design."""
+
+
+def style_design(instrument: str, style: str, name: str = "") -> dict[str, Any]:
+    """Return an instrument style as a design, for the page to load whole.
+
+    The style's settings (``InstrumentStyle.prototype_values``) over the
+    instrument's defaults, as Save design writes a design; every setting
+    it does not make is the instrument's default.
+
+    Args:
+        instrument: An ``INSTRUMENT_OVERRIDES`` key.
+        style: A ``STYLES`` key offered for that instrument.
+        name: The guitar's name, kept.
+
+    Returns:
+        ``{"format", "version", "name", "instrument", "prototype",
+        "machining"}``, or ``{"error": message}`` for a style not offered
+        for the instrument.
+    """
+    chosen = STYLES.get(style)
+    if chosen is None or instrument not in chosen.instruments:
+        return {"error": f"There is no {style!r} style for {instrument!r}."}
+    return {
+        "format": DESIGN_FORMAT,
+        "version": 1,
+        "name": name,
+        "instrument": instrument,
+        "prototype": _jsonable(chosen.prototype_values(instrument)),
+        "machining": {},
+    }
 
 
 @dataclasses.dataclass(frozen=True, slots=True)

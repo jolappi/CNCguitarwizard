@@ -4,6 +4,14 @@
 
 ### Added
 
+- Instrument styles (`presets.styles`): a *Style* choice under the
+  instrument loads a whole instrument at once — its body and neck
+  templates, pickups, bridge, controls, neck joint, scale, frets and
+  inlays — the quick way in among the many settings: Design by Jone, a
+  Fender Stratocaster or Telecaster, a Gibson Les Paul, SG, Flying V or
+  Explorer, a Jackson RR, an ESP LTD Alexi Hexed, a B.C. Rich Mockingbird
+  or a Fender Jazz Bass style, each offered for the instruments it suits.
+
 - A round heel end (`neck_heel_end="round"`), as a Stratocaster's: a
   127 mm arc across the end blended into 6.35 mm corners. The neck
   pocket follows it its clearance out, the fretboard's end is rounded

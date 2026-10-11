@@ -187,6 +187,28 @@ raahaus luetaan); editorin tekstin esikatselu on rakennettu teksti
 peilattuna takaisin, joten se näkyy luettavana. Aiemmin koodi ja
 dokumentit kutsuivat oletusta virheellisesti vasenkätiseksi.
 
+## Tyylit
+
+Soitinvalinnan alla on tyylivalinta (*Style*), helppo tapa aloittaa, kun
+asetuksia on paljon: yksi valinta asettaa koko soittimen, eli
+runkopohjan, kaulapohjan (tai soittimen oman kaulan) ja niihin kuuluvat
+asetukset (mitta, nauhat, mikit, talla, säätimet, kaulan kiinnitys ja
+inlayt). Tyylit ovat mallinnoksia tutuista soittimista, eivät valmistajien
+omia: Design by Jone (6-, 7- ja 8-kieliset), Fender Stratocaster (647,7
+mm, 22 nauhaa, SSS, kiinteä talla, säätimet automaattisessa
+Strat-suojalevyssä, Strat-jakki, kaulalevy, käsinoja- ja vatsaviiste,
+pyöreä kanta, pisteet), Fender Telecaster (SS, Tele-säädinlevy,
+kuppijakki), Gibson Les Paul (628,65 mm, liimattu kaula, HH,
+Tune-o-matic, Gibson-säätimet, kaareva kansi, trapetsit), Gibson SG,
+Flying V ja Explorer, Jackson RR (6–8 kieltä, läpikaula, HH, Floyd Rose
+soittimen kielimäärälle, sharktooth), ESP LTD Alexi Hexed (6 ja 7
+kieltä), B.C. Rich Mockingbird ja Fender Jazz Bass (4- ja 5-kieliset
+bassot, JJ, Jazz Bass -säädinlevy, piirretty suojalevy). Vain soittimelle
+sopivat tyylit näytetään. Valinta (kysytään ensin, jos arvoja on
+muutettu) palauttaa kaikki asetukset soittimen oletuksiin ja asettaa
+tyylin omat, ja kitaran nimi säilyy; sen jälkeen voi rakentaa heti tai
+muuttaa mitä haluaa.
+
 ## Terävät kulmat ja suorat välit piirroksissa
 
 Jokaisessa piirtotyökalussa pisteiden välin voi tehdä suoraksi ja

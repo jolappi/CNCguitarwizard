@@ -17,7 +17,19 @@ Python.
    form with that instrument's defaults (after a confirmation when values
    were changed — every yes/no question is asked in the page's own
    dialog, `askConfirm`, not `window.confirm`, which some embedded
-   browsers answer unseen) and sends it as `prototype.instrument`. Then asks
+   browsers answer unseen) and sends it as `prototype.instrument`. Under
+   it, *Style* offers the styles made for that instrument (the schema's
+   `styles`, `presets.styles.STYLES`; hidden where there are none): a
+   whole instrument in one choice, the quick way in among the many
+   settings — Design by Jone, a Fender Stratocaster or Telecaster, a
+   Gibson Les Paul, SG, Flying V or Explorer, a Jackson RR, an ESP LTD
+   Alexi Hexed, a B.C. Rich Mockingbird or a Fender Jazz Bass style.
+   Choosing one (asked first when values were changed) loads
+   `webapp.style_design(instrument, style, name)` as a saved design is
+   loaded (`applyDesign`, then `repairDesign`): every setting back to the
+   instrument's defaults, then the style's own, the guitar's name kept; a
+   new form (another instrument, *Reset*, a design loaded) shows none
+   chosen (`showStyles`, `loadStyle`). Then asks
    `cncguitarwizard.webapp.parameter_schema()` for every field of
    `Prototype001Parameters` and `MachiningParameters` and draws a grouped
    form from it. Changed values are highlighted; tuple fields are edited as

@@ -31,6 +31,34 @@ source = FreeCADScriptExporter().render_prototype001(
 )
 ```
 
+## Instrument styles
+
+Prototype001 has many settings. `presets.styles.STYLES` gathers the ones
+that make a familiar instrument, so it can be chosen whole: each
+`InstrumentStyle` is a body template (`YOUR_DESIGN_TEMPLATES`, with its
+`BODY_TEMPLATE_VALUES`), a neck template (`NECK_TEMPLATES`) or the
+instrument's own neck, and the rest of its settings, offered for the
+instruments it suits. `prototype_values(instrument)` gives them, over the
+instrument's defaults; a bridge made for a string count (a Floyd Rose) is
+set for the instrument's. They are mockups of the familiar instruments,
+not the makers' own.
+
+| Style | Instruments | Body / neck | Its own settings |
+| --- | --- | --- | --- |
+| Design by Jone | 6-, 7-, 8-string | Design by Jone / the instrument's | none (the defaults) |
+| Fender Stratocaster | 6-string | Stratocaster / Stratocaster (round heel) | 647.7 mm, 22 frets, SSS, hardtail, controls in the automatic Strat guard, Strat jack, Fender plate, arm contour 10 mm and belly cut 12 mm, dots |
+| Fender Telecaster | 6-string | Telecaster / Telecaster | 647.7 mm, 22 frets, SS, hardtail, Tele control plate, cup jack, Fender plate, dots |
+| Gibson Les Paul | 6-string | Les Paul / Gibson | 628.65 mm, 22 frets, set neck, HH, Tune-o-matic, Gibson controls, carved top, trapezoids |
+| Gibson SG | 6-string | SG / Gibson | as the Les Paul, flat top |
+| Gibson Flying V, Explorer | 6-string | Flying V, Explorer / their own | the Gibson set, 3 pots in a row, dots |
+| Jackson RR | 6-, 7-, 8-string | Jackson RR / the instrument's | neck-through, HH, Floyd Rose, 3 pots in a row, sharkteeth |
+| ESP LTD Alexi Hexed | 6-, 7-string | Alexi Hexed (its stepped top, one humbucker, one volume, Floyd Rose) / the instrument's | neck-through, sharkteeth |
+| B.C. Rich Mockingbird | 6-string | Mockingbird / Mockingbird | neck-through, HH, Tune-o-matic, diamonds |
+| Fender Jazz Bass | 4-, 5-string bass | Jazz Bass / the instrument's | JJ, Jazz Bass control plate, its drawn guard, Fender plate, dots |
+
+The web app offers them under the instrument (*Style*): `webapp.style_design`
+gives one as a design, which the page loads as it would a saved one.
+
 ## Electric guitar, extended-range guitar or bass
 
 `Prototype001Parameters.for_instrument("electric_guitar")` is the plain
