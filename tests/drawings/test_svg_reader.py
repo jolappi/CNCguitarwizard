@@ -123,3 +123,22 @@ def test_what_is_not_svg_is_refused() -> None:
         read_svg_shapes("<html/>")
     with pytest.raises(DrawingError, match="Cannot read the path data"):
         parse_path("M0 0 L")
+
+
+def test_sharp_nodes_are_where_a_path_turns() -> None:
+    # Smooth where the curves meet in line; sharp at the other nodes,
+    # the closing node too. A circle's arcs meet smoothly all round.
+    path, circle = read_svg_shapes(
+        _svg(
+            '<path d="M0,0 C10,0 20,0 30,0 C40,0 50,10 50,20 L0,20 Z"/>'
+            '<circle cx="50" cy="50" r="10"/>'
+        )
+    )
+    line = path.subpaths[0]
+    assert [(round(line[i].x, 6), round(line[i].y, 6)) for i in path.corners[0]] == [
+        (0, 0),
+        (50, 20),
+        (0, 20),
+    ]
+    assert set(path.corners[0]) < set(path.nodes[0])
+    assert circle.corners == ((),)

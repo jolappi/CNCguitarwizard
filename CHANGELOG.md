@@ -4,6 +4,13 @@
 
 ### Added
 
+- A drawn headstock template keeps its sharp corners when read back: the
+  drawing readers note a path's sharp nodes (`SvgShape.corners`,
+  `ReadOutline.corners`; a DXF template marks them on `cgwCorners`) and
+  the headstock fit keeps them as the edges' corners
+  (`fit_headstock(corners=...)`), so a pointed headstock's template reads
+  back unchanged.
+
 - Controls a body template draws as on the original: `rear_pots` place a
   rear layout's pots, its cavity and cover routed round them (a toggle
   among them shares the cavity); `pickguard_controls`,

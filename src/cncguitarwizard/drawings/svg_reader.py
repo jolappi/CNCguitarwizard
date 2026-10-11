@@ -13,7 +13,7 @@ from __future__ import annotations
 import math
 import re
 import xml.etree.ElementTree as ElementTree
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 
 from ..geometry.primitives import BezierSpan, Point2D, flatten_span
@@ -62,6 +62,10 @@ SKIPPED = {
 }
 """Elements whose content is not drawn geometry."""
 
+SHARP_TURN = 1.0
+"""Degrees a path turns at a node, at least, for the node to be a sharp
+corner (a smooth node's curves meet in line)."""
+
 _NUMBER = re.compile(r"[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?")
 _LENGTH = re.compile(
     r"^\s*([-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?)\s*([a-zA-Z%]*)\s*$"
@@ -86,6 +90,8 @@ class SvgShape:
         nodes: For each piece, the indices of its points that are the
             drawing's own nodes (where one curve or line of the path meets
             the next), its start first.
+        corners: For each piece, the indices of its nodes that are sharp
+            corners (see ``sharp_nodes``).
     """
 
     element_id: str
@@ -95,6 +101,7 @@ class SvgShape:
     subpaths: tuple[tuple[Point2D, ...], ...]
     closed: tuple[bool, ...]
     nodes: tuple[tuple[int, ...], ...] = ()
+    corners: tuple[tuple[int, ...], ...] = ()
 
     def names(self) -> tuple[str, ...]:
         """Return its own id and label."""
@@ -277,25 +284,26 @@ def _walk(
     subpaths: list[tuple[Point2D, ...]] = []
     closed: list[bool] = []
     nodes: list[tuple[int, ...]] = []
+    corners: list[tuple[int, ...]] = []
     for start, spans, is_closed in pieces:
+        placed: list[BezierSpan] = [
+            (
+                _apply(matrix, span[0]),
+                _apply(matrix, span[1]),
+                _apply(matrix, span[2]),
+                _apply(matrix, span[3]),
+            )
+            for span in spans
+        ]
         points = [_apply(matrix, start)]
         ends = [0]
-        for span in spans:
-            points.extend(
-                flatten_span(
-                    (
-                        _apply(matrix, span[0]),
-                        _apply(matrix, span[1]),
-                        _apply(matrix, span[2]),
-                        _apply(matrix, span[3]),
-                    ),
-                    tolerance,
-                )
-            )
+        for span in placed:
+            points.extend(flatten_span(span, tolerance))
             ends.append(len(points) - 1)
         subpaths.append(tuple(points))
         closed.append(is_closed)
         nodes.append(tuple(ends))
+        corners.append(tuple(ends[node] for node in sharp_nodes(placed, is_closed)))
     shapes.append(
         SvgShape(
             element_id,
@@ -305,8 +313,43 @@ def _walk(
             tuple(subpaths),
             tuple(closed),
             tuple(nodes),
+            tuple(corners),
         )
     )
+
+
+def sharp_nodes(spans: Sequence[BezierSpan], closed: bool) -> tuple[int, ...]:
+    """Return the nodes where a piece of a path turns sharply.
+
+    Node ``k`` is where span ``k`` starts and span ``k - 1`` ends; a closed
+    piece's node 0 is also where its last span ends, an open piece's ends
+    are no corners. A node is sharp where the span arriving and the span
+    leaving it meet out of line by ``SHARP_TURN`` degrees or more.
+    """
+    sharp = []
+    for node in range(0 if closed else 1, len(spans)):
+        leaving = _leaving(spans[node])
+        back = _leaving(tuple(reversed(spans[node - 1])))
+        if leaving is None or back is None:
+            continue
+        arriving = (-back[0], -back[1])
+        turn = math.atan2(
+            arriving[0] * leaving[1] - arriving[1] * leaving[0],
+            arriving[0] * leaving[0] + arriving[1] * leaving[1],
+        )
+        if abs(math.degrees(turn)) >= SHARP_TURN:
+            sharp.append(node)
+    return tuple(sharp)
+
+
+def _leaving(span: Sequence[Point2D]) -> tuple[float, float] | None:
+    """Return the direction a span leaves its start in (``None`` for a
+    span that is only a point)."""
+    start = span[0]
+    for point in span[1:]:
+        if math.hypot(point.x - start.x, point.y - start.y) > 1e-9:
+            return point.x - start.x, point.y - start.y
+    return None
 
 
 Piece = tuple[Point2D, list[BezierSpan], bool]

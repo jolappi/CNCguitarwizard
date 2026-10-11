@@ -154,7 +154,11 @@ def test_a_headstock_read_back_unchanged_is_the_same_headstock(key: str) -> None
     for drawing in (svg, _wrapped(svg, "translate(-20 15) scale(1.3333)")):
         read = read_template_outline(drawing, HEADSTOCK)
         fit = fit_headstock(
-            read.points, parameters.nut_width / 2, plan.bass_sign, read.nodes
+            read.points,
+            parameters.nut_width / 2,
+            plan.bass_sign,
+            read.nodes,
+            corners=read.corners,
         )
         for got, expected in (
             (fit.bass_edge, plan.bass_edge),

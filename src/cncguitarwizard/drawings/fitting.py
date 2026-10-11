@@ -11,15 +11,18 @@ move it.
 from __future__ import annotations
 
 import math
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Collection, Sequence
 from dataclasses import dataclass
 
 from ..geometry.exceptions import GeometryException
 from ..geometry.neck.headstock import TIP_POINT_WIDTH, tip_direction, tip_tangents
 from ..geometry.primitives import (
+    CORNER,
+    DrawnPoint,
     Point2D,
     SmoothCurve,
     closed_catmull_rom,
+    drawn_points,
     flatten_span,
     hermite_spans,
 )
@@ -238,7 +241,8 @@ class HeadstockFit:
 
     Attributes:
         bass_edge: ``headstock_bass_edge``: (distance from the nut,
-            half-width) points, the last at the tip.
+            half-width) points, the last at the tip; a point where the
+            drawing has a sharp corner is marked ``"corner"``.
         treble_edge: ``headstock_treble_edge`` likewise.
         tip_points: ``headstock_tip_points``: (how far past the tip line,
             y) across the tip from -Y to +Y.
@@ -246,8 +250,8 @@ class HeadstockFit:
             most (mm), the nut's own end left out.
     """
 
-    bass_edge: tuple[tuple[float, float], ...]
-    treble_edge: tuple[tuple[float, float], ...]
+    bass_edge: tuple[DrawnPoint, ...]
+    treble_edge: tuple[DrawnPoint, ...]
     tip_points: tuple[tuple[float, float], ...]
     deviation: float
 
@@ -258,6 +262,7 @@ def fit_headstock(
     bass_sign: float,
     nodes: Sequence[int] = (),
     tolerance: float = FIT_TOLERANCE,
+    corners: Sequence[int] = (),
 ) -> HeadstockFit:
     """Return the drawn edges and tip that make a headstock's outline.
 
@@ -274,7 +279,10 @@ def fit_headstock(
     time. Corners closer together than ``TIP_POINT_WIDTH`` make a pointed
     tip. The drawing's own ``nodes`` (indices into ``outline``) on an edge
     or the tip are its first points there (from the template, every handle
-    the editor had), and points are added where it strays.
+    the editor had), and points are added where it strays. Those of them
+    in ``corners`` (its sharp nodes) along an edge, short of the tip, are
+    the edge's sharp corners (``"corner"``), as a Jackson style point's
+    are.
 
     Raises:
         DrawingError: If the outline does not reach back to the nut on
@@ -315,6 +323,7 @@ def fit_headstock(
     # The side leaving the nut at -Y first (it may cross over by the tip).
     low, high = sorted(chains, key=lambda chain: chain[0][1])
     node_points = [(-outline[i].x, outline[i].y) for i in anchors]
+    sharp = {(-outline[i].x, outline[i].y) for i in set(corners) & set(anchors)}
     reach = min(_reach(low), _reach(high))
 
     on_low = [node for node in node_points if _on(low, node)]
@@ -328,15 +337,15 @@ def fit_headstock(
         },
         reverse=True,
     )
-    corners = [chain[_corner(chain)] for chain in (low, high)]
+    tip_corners = [chain[_corner(chain)] for chain in (low, high)]
     # Corners meeting: a pointed tip, its edges running on to the point.
-    meeting = abs(corners[1][1] - corners[0][1]) < TIP_POINT_WIDTH
+    meeting = abs(tip_corners[1][1] - tip_corners[0][1]) < TIP_POINT_WIDTH
     best: tuple[float, HeadstockFit] | None = None
     tried: set[float] = set()
     # The node pairs, furthest first (a symmetric tip's own nodes pair up
     # too, so one is kept only well within the tolerance, else the
     # closest); then the corners and the sweep, the first close enough.
-    distances = [corner[0] for corner in corners]
+    distances = [corner[0] for corner in tip_corners]
     for stage in (
         [reach] if meeting else [],
         pairs,
@@ -348,7 +357,14 @@ def fit_headstock(
                 continue
             tried.add(round(length, 2))
             fit = _fit_at(
-                low, high, length, node_points, nut_half_width, bass_sign, tolerance
+                low,
+                high,
+                length,
+                node_points,
+                nut_half_width,
+                bass_sign,
+                tolerance,
+                sharp,
             )
             if fit is None:
                 continue
@@ -393,11 +409,13 @@ def _fit_at(
     nut_half_width: float,
     bass_sign: float,
     tolerance: float,
+    sharp: Collection[tuple[float, float]] = (),
 ) -> HeadstockFit | None:
     """Return the fit with the tip line at ``length``, or ``None``.
 
     ``None`` where the tip, from the -Y side's end at ``length`` round to
-    the +Y side's, does not run across the headstock.
+    the +Y side's, does not run across the headstock. The ``sharp``
+    nodes are the edges' corners.
     """
     low_edge, low_rest = _cut(low, length)
     high_edge, high_rest = _cut(high, length)
@@ -416,7 +434,9 @@ def _fit_at(
             (-1.0, low_edge, seeds[0]),
             (1.0, high_edge, seeds[1]),
         ):
-            points, error = _fit_edge(edge, nut_half_width, y_sign, tolerance, seed)
+            points, error = _fit_edge(
+                edge, nut_half_width, y_sign, tolerance, seed, sharp
+            )
             edges["bass" if y_sign * bass_sign > 0 else "treble"] = points
             deviation = max(deviation, error)
         tip_points: tuple[tuple[float, float], ...] = ()
@@ -489,12 +509,14 @@ def _fit_edge(
     y_sign: float,
     tolerance: float,
     seeds: Sequence[tuple[float, float]] = (),
-) -> tuple[tuple[tuple[float, float], ...], float]:
+    sharp: Collection[tuple[float, float]] = (),
+) -> tuple[tuple[DrawnPoint, ...], float]:
     """Return a ``SmoothCurve`` edge's points, and how far it strays.
 
     ``edge`` runs from the nut to the tip as (distance, y); the curve
     starts at the nut's half-width, runs through the ``seeds`` (nodes on
-    the edge) and ends at the edge's own end.
+    the edge), sharp at those of them that are ``sharp``, and ends at the
+    edge's own end.
     """
     samples = [(d, y_sign * y) for d, y in edge if d > NUT_REACH]
     for (d0, _), (d1, _) in zip(samples, samples[1:]):
@@ -508,14 +530,20 @@ def _fit_edge(
         raise DrawingError("The headstock outline has no edge past the nut.")
     end = samples[-1]
     chosen = [end]
+    corners = set()
     for d, y in sorted(seeds):
         if NUT_REACH < d < end[0] - 0.05 and all(abs(d - c) >= 0.05 for c, _ in chosen):
             chosen.append((d, y_sign * y))
+            if (d, y) in sharp:
+                corners.add((d, y_sign * y))
     chosen.sort()
     error = 0.0
     for _ in range(MAX_EDGE_POINTS):
         try:
-            curve = SmoothCurve(((0.0, nut_half_width), *chosen))
+            curve = SmoothCurve(
+                ((0.0, nut_half_width), *chosen),
+                (False, *(point in corners for point in chosen)),
+            )
         except GeometryException as failure:
             raise DrawingError(f"The edge cannot be drawn ({failure}).") from failure
         worst, error = None, 0.0
@@ -526,13 +554,19 @@ def _fit_edge(
         if worst is None or error <= tolerance:
             break
         chosen = sorted([*chosen, worst])
-    return tuple((round(d, 2), round(h, 2)) for d, h in chosen), error
+    drawn: list[DrawnPoint] = [
+        (round(d, 2), round(h, 2), CORNER)
+        if (d, h) in corners
+        else (round(d, 2), round(h, 2))
+        for d, h in chosen
+    ]
+    return tuple(drawn), error
 
 
 def _fit_tip(
     tip: Sequence[tuple[float, float]],
     length: float,
-    edges: dict[str, tuple[tuple[float, float], ...]],
+    edges: dict[str, tuple[DrawnPoint, ...]],
     bass_sign: float,
     nut_half_width: float,
     tolerance: float,
@@ -553,7 +587,11 @@ def _fit_tip(
 
     def edge_y(y_sign: float) -> Callable[[float], float]:
         side = "bass" if y_sign * bass_sign > 0 else "treble"
-        curve = SmoothCurve(((0.0, nut_half_width), *edges[side]))
+        points, corners = drawn_points(edges[side])
+        curve = SmoothCurve(
+            ((0.0, nut_half_width), *((p.x, p.y) for p in points)),
+            (False, *corners),
+        )
         return lambda d: y_sign * curve.value_at(d)
 
     low = Point2D(-length, edge_y(-1.0)(length))

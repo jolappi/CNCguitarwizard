@@ -2185,7 +2185,11 @@ def _import_headstock(payload: dict[str, Any], svg: str) -> dict[str, Any]:
     frame = TemplateFrame(_HEADSTOCK_MARKS, bool(layout["mirrored"]))
     read = read_template_outline(svg, frame)
     fit = fit_headstock(
-        read.points, layout["nut_half_width"], layout["bass_sign"], read.nodes
+        read.points,
+        layout["nut_half_width"],
+        layout["bass_sign"],
+        read.nodes,
+        corners=read.corners,
     )
     # The headstock is drawn as read; its tuners are the editor's to check.
     dataclasses.replace(

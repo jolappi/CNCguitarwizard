@@ -44,7 +44,9 @@ where a corner fits every marker (`custom_limits`).
 `read_svg_shapes(text)` reads any SVG drawing into `SvgShape`s, each a
 list of polylines in the document's millimetres with its id, its
 Inkscape label or Illustrator `data-name`, the groups (layers) it sits
-in, whether it is hidden and which points are its own nodes: paths
+in, whether it is hidden, which points are its own nodes and which of
+those are sharp (`corners`: where the curve arriving and the one leaving
+meet out of line by `SHARP_TURN`, 1°, or more; `sharp_nodes`): paths
 (every command, relative and absolute, arcs split into quarter-turn
 cubics), rects (rounded too), circles, ellipses, lines, polylines and
 polygons, inside groups with any `transform`, the document sized in any
@@ -100,10 +102,11 @@ and the title and notes as text below it), `cgwMarkA` to `cgwMarkC`
 (each mark a cross in a circle), `cgwPatternLayer` (with a pattern) and
 `cgwOutline`: the outline as one closed polyline within 0.005 mm of its
 curves, with a point on `cgwHandles` at every node — the editor's
-handles. CAD programs have no curve that keeps them, so read back the
-outline's nodes are its vertices on those points (where it still runs
-through them, within 0.01 mm), and an outline read back unchanged gives
-the same handles as from SVG.
+handles — and one on `cgwCorners` too at every sharp node. CAD programs
+have no curve that keeps them, so read back the outline's nodes are its
+vertices on those points (where it still runs through them, within
+0.01 mm), its corners those on a `cgwCorners` point too, and an outline
+read back unchanged gives the same handles and corners as from SVG.
 
 `read_template_outline` and `read_template_pattern` read either kind,
 told apart by the text (`is_dxf`: a file that starts a `SECTION`). A
@@ -150,7 +153,10 @@ first; the template's own corners fit well within it), where each side
 turns to run more across than along it, and back from the far end a
 millimetre at a time. Corners that meet make a pointed tip. Each edge is
 a `SmoothCurve` from the nut's half-width through its nodes and the
-points where it strays most; the tip a Hermite curve through its nodes
+points where it strays most, sharp (`"corner"`) at the nodes short of
+the tip that `corners` names (`ReadOutline.corners`), so a pointed
+headstock's template comes back with its corners; the tip a Hermite
+curve through its nodes
 and the like (`tip_tangents`, as `HeadstockPlan.tip_outline`). An edge
 turning back toward the nut, or a tip turning back across the headstock
 (a hook), cannot be drawn and is refused.

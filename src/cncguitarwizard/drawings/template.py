@@ -27,6 +27,7 @@ from .svg_reader import (
     SvgShape,
     apply_matrix,
     read_svg_drawing,
+    sharp_nodes,
 )
 
 REFERENCE_LAYER = "cgwReference"
@@ -42,6 +43,11 @@ OUTLINE_ID = "cgwOutline"
 HANDLES_LAYER = "cgwHandles"
 """A DXF template's layer of points at the editor's handles: the
 outline's nodes, read back where it still runs through them."""
+
+CORNERS_LAYER = "cgwCorners"
+"""A DXF template's layer of points at the outline's sharp nodes (see
+``sharp_nodes``), read back as its corners where it still has nodes
+there."""
 
 MARK_IDS = ("cgwMarkA", "cgwMarkB", "cgwMarkC")
 """The registration marks' ids, in the order of ``TemplateFrame.marks``."""
@@ -244,8 +250,10 @@ def template_dxf(
     round, and the notes), ``cgwMarkA`` to ``cgwMarkC`` (each mark a cross
     in a circle), ``cgwPatternLayer`` (with ``pattern``) and
     ``cgwOutline``: the outline as one closed polyline within 0.005 mm of
-    its curves, and at every node a point on ``cgwHandles`` (the editor's
-    handles, read back as its nodes). AutoCAD R12 (AC1009) ASCII.
+    its curves, at every node a point on ``cgwHandles`` (the editor's
+    handles, read back as its nodes) and at every sharp node one on
+    ``cgwCorners`` too (read back as its corners). AutoCAD R12 (AC1009)
+    ASCII.
     """
 
     def at(point: Point2D) -> Point2D:
@@ -282,6 +290,9 @@ def template_dxf(
     handles = dxf.layer(HANDLES_LAYER, 3)
     for span in outline:
         dxf.point(at(span[0]), handles)
+    sharp = dxf.layer(CORNERS_LAYER, 1)
+    for node in sharp_nodes(outline, closed=True):
+        dxf.point(at(outline[node][0]), sharp)
     corners = [at(p) for p in points] + [
         at(p) for shape in references for p in shape.points
     ]
@@ -295,7 +306,8 @@ def template_dxf(
 def _drawing(text: str) -> tuple[tuple[SvgShape, ...], tuple[SvgImage, ...]]:
     """Return a drawing's shapes and pictures: an SVG's, or a DXF's (no
     pictures), whose outline's nodes are its handles' points where it
-    has them (see ``template_dxf``).
+    has them, and its corners those of them on the corners' layer (see
+    ``template_dxf``).
 
     Raises:
         DrawingError: If it is neither.
@@ -304,20 +316,25 @@ def _drawing(text: str) -> tuple[tuple[SvgShape, ...], tuple[SvgImage, ...]]:
         return read_svg_drawing(text)
     shapes, points = read_dxf_drawing(text)
     handles = [point for layer, point in points if layer.startswith(HANDLES_LAYER)]
+    sharp = [point for layer, point in points if layer.startswith(CORNERS_LAYER)]
     if not handles:
         return shapes, ()
+
+    def on(line: Sequence[Point2D], marks: Sequence[Point2D]) -> tuple[int, ...]:
+        return tuple(
+            index
+            for index, p in enumerate(line)
+            if any(abs(p.x - m.x) <= 0.01 and abs(p.y - m.y) <= 0.01 for m in marks)
+        )
 
     def on_handles(shape: SvgShape) -> SvgShape:
         if not _named(shape, OUTLINE_ID):
             return shape
         line = shape.subpaths[0]
-        nodes = tuple(
-            index
-            for index, p in enumerate(line)
-            if any(abs(p.x - h.x) <= 0.01 and abs(p.y - h.y) <= 0.01 for h in handles)
-        )
+        nodes = on(line, handles)
         if not nodes:
             return shape
+        corners = tuple(index for index in on(line, sharp) if index in nodes)
         return SvgShape(
             shape.element_id,
             shape.label,
@@ -326,6 +343,7 @@ def _drawing(text: str) -> tuple[tuple[SvgShape, ...], tuple[SvgImage, ...]]:
             shape.subpaths,
             shape.closed,
             (nodes,),
+            (corners,),
         )
 
     return tuple(on_handles(shape) for shape in shapes), ()
@@ -344,12 +362,14 @@ class ReadOutline:
         ignored: How many other closed shapes outside the reference layer
             were left out (the largest outline is the one read).
         nodes: The indices of ``points`` that are the drawing's own nodes.
+        corners: The indices of ``points`` that are its sharp nodes.
     """
 
     points: tuple[Point2D, ...]
     scale: float
     ignored: int
     nodes: tuple[int, ...] = ()
+    corners: tuple[int, ...] = ()
 
 
 def read_template_outline(text: str, frame: TemplateFrame) -> ReadOutline:
@@ -377,13 +397,13 @@ def read_template_outline(text: str, frame: TemplateFrame) -> ReadOutline:
             "There is no closed outline in the drawing: draw it as one closed "
             "path in the Outline layer."
         )
-    _, _, points, nodes = choice
+    _, _, points, nodes, corners = choice
     beside = len(_beside(shapes, matrix, choice))
-    return ReadOutline(points, scale, beside, nodes)
+    return ReadOutline(points, scale, beside, nodes, corners)
 
 
-Choice = tuple[int, int, tuple[Point2D, ...], tuple[int, ...]]
-"""The outline's shape and piece (indices), its points and its nodes."""
+Choice = tuple[int, int, tuple[Point2D, ...], tuple[int, ...], tuple[int, ...]]
+"""The outline's shape and piece (indices), its points, nodes and corners."""
 
 
 def _drawn(shapes: Sequence[SvgShape]) -> list[int]:
@@ -405,11 +425,12 @@ def _outline_choice(shapes: Sequence[SvgShape], matrix: Affine) -> Choice | None
     best: tuple[float, Choice] | None = None
     for index in named or drawn:
         shape = shapes[index]
-        for piece, (points, closed, nodes) in enumerate(
+        for piece, (points, closed, nodes, corners) in enumerate(
             zip(
                 shape.subpaths,
                 shape.closed,
                 shape.nodes or ((),) * len(shape.subpaths),
+                shape.corners or ((),) * len(shape.subpaths),
                 strict=True,
             )
         ):
@@ -419,9 +440,10 @@ def _outline_choice(shapes: Sequence[SvgShape], matrix: Affine) -> Choice | None
             if len(mapped) < 3 or (not closed and _gap(mapped) > CLOSE_GAP):
                 continue
             kept = tuple(sorted({node % len(mapped) for node in nodes}))
+            sharp = tuple(sorted({node % len(mapped) for node in corners}))
             area = abs(_area(mapped))
             if best is None or area > best[0]:
-                best = (area, (index, piece, tuple(mapped), kept))
+                best = (area, (index, piece, tuple(mapped), kept, sharp))
     return best[1] if best is not None else None
 
 
