@@ -1052,6 +1052,11 @@
 
 ### Fixed
 
+- A shaped headstock tip (the Gibson's, a Les Paul's or an SG's) is in
+  the 3D model, not cut off square: the tip leaves its corners along the
+  lofted headstock's sides, and FreeCAD's cut grazing them failed and
+  left the loft's end. The cut now crosses the sides square to them, from
+  where the tip is `TIP_CUT_CLEARANCE` (0.3 mm) inside them.
 - The heel relief's settings say what they do in plain words: the kinds
   (none, contour, notch, bevel) and the lines (round the heel, along the
   neck pocket, across the treble corner) named for the shape they cut,

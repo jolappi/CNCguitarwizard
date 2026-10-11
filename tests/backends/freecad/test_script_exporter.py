@@ -12,6 +12,7 @@ from cncguitarwizard.backends.freecad import FreeCADScriptExporter
 from cncguitarwizard.backends.freecad.exceptions import FreeCADBackendError
 from cncguitarwizard.backends.freecad.script_exporter import (
     MAX_HEADSTOCK_SECTION_GAP,
+    TIP_CUT_CLEARANCE,
     TRANSITION_CUT_SAMPLES,
 )
 from cncguitarwizard.geometry.body import (
@@ -1266,6 +1267,32 @@ def test_a_shaped_tip_is_lofted_past_it_and_cut_back() -> None:
     )
     # The neck's CAM outline follows the point too.
     assert min(p.x for p in neck_plan_polygon(geometry)) == pytest.approx(-165.0)
+
+
+def test_a_shaped_tip_cut_crosses_the_lofts_sides_square() -> None:
+    from cncguitarwizard.presets.prototype001 import NECK_TEMPLATES
+
+    # The Gibson tip leaves its corners along the loft's sides: a cut
+    # grazing them failed in FreeCAD and left the tip square.
+    geometry = replace(Prototype001Parameters(), **NECK_TEMPLATES["gibson"][1]).build()
+    plan = geometry.headstock.plan
+    source = FreeCADScriptExporter().render_prototype001(geometry)
+    (line,) = [
+        line for line in source.splitlines() if line.startswith("headstock_tip_corners")
+    ]
+    corners = [
+        tuple(float(value) for value in vector.split(",")[:2])
+        for vector in line.split("App.Vector(")[1:]
+    ]
+    (high_x, _), _, _, (low_x, _), *tip = corners
+    past = plan.length + 1.0
+    low = plan.envelope_y(past, -1.0) + TIP_CUT_CLEARANCE
+    high = plan.envelope_y(past, 1.0) - TIP_CUT_CLEARANCE
+    assert (tip[0][0], tip[-1][0]) == (low_x, high_x)
+    assert all(low < y < high for _, y in tip)
+    # Just past the clearance on either side, and the notch kept.
+    assert tip[0][1] < low + 0.5 and tip[-1][1] > high - 0.5
+    assert min(x for x, _ in tip) == pytest.approx(-plan.reach, abs=0.01)
 
 
 def test_a_hooked_drawn_tip_is_lofted_closely_enough_to_follow_it() -> None:

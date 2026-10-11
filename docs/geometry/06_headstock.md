@@ -85,7 +85,12 @@ holes keep their clearance to the tip measured straight to its curve
 bulges (`envelope_y`). Being
 measured from the tip line, they move with it when the tip handles change
 the length. The FreeCAD loft runs 1 mm past the furthest point and a
-prism cuts it back to the tip (`_render_headstock_tip_cut`); the neck's
+prism cuts it back to the tip (`_render_headstock_tip_cut`). The tip
+leaves its corners along the loft's sides, and a prism grazing them made
+FreeCAD's cut fail and leave the loft's square end, so the prism follows
+the tip only from where it is `TIP_CUT_CLEARANCE` (0.3 mm) inside the
+sides and crosses them square there, leaving a sliver no thicker than
+that by each corner; the neck's
 outline program, its blank and the tuner holes' tip clearance follow the
 shaped tip. A fitted headstock ignores them.
 

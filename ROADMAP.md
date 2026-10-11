@@ -142,6 +142,7 @@
 - Automatic contour lines drawn as cut in the body editor; the results'
   files fit a phone screen
 - Drawn headstock templates read back with their sharp corners
+- A shaped headstock tip in the 3D model
 - Index pins as wide as a main tool wider than 6 mm (an 8 mm end mill,
   8 mm dowels)
 - The neck's back carved with the ball nose alone, in one program

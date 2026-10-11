@@ -65,6 +65,12 @@ VINTAGE_ROD_STEP = 5.0
 MIN_SECTION_GAP = 0.2
 """Least distance between two loft sections along the neck, in mm."""
 
+TIP_CUT_CLEARANCE = 0.3
+"""How far inside the lofted headstock's side a shaped tip's cut crosses
+it, in mm. The tip leaves each corner along that side, and a cut grazing
+the side fails in FreeCAD's boolean (leaving the loft's square end); the
+sliver it leaves by the corner is no thicker than this."""
+
 MAX_HEADSTOCK_SECTION_GAP = 3.0
 """Most distance between two loft sections along the headstock, in mm.
 
@@ -1325,7 +1331,10 @@ class FreeCADScriptExporter:
         The loft runs on 1 mm past the tip's furthest point at the tip
         corners' width; a prism over everything past the tip line and the
         tip's own points, wider than the headstock, cuts it back. Its
-        faces cross the loft rather than touching it.
+        faces cross the loft rather than touching it: the tip leaves each
+        corner along the loft's side, so the prism follows it only from
+        where it is ``TIP_CUT_CLEARANCE`` inside the side, crossing the
+        side square to it there.
 
         A pointed tip is lofted ``POINT_LOFT_WIDTH`` wide over its last
         run (``point_start``) and cut back to its two edges meeting in the
@@ -1361,12 +1370,19 @@ class FreeCADScriptExporter:
             low = min(point.y for point in tip) - 10.0
             high = max(point.y for point in tip) + 10.0
             far = -(plan.reach + 10.0)
+            # The loft's sides past the tip line (see envelope_y).
+            past = plan.length + 1.0
+            low_side = plan.envelope_y(past, -1.0) + TIP_CUT_CLEARANCE
+            high_side = plan.envelope_y(past, 1.0) - TIP_CUT_CLEARANCE
+            first = next(k for k, point in enumerate(tip) if point.y > low_side)
+            last = max(k for k, point in enumerate(tip) if point.y < high_side)
+            inner = tip[first : last + 1]
             outline = [
-                (-plan.length, high),
+                (inner[-1].x, high),
                 (far, high),
                 (far, low),
-                (-plan.length, low),
-                *((point.x, point.y) for point in tip),
+                (inner[0].x, low),
+                *((point.x, point.y) for point in inner),
             ]
         else:
             return ""
