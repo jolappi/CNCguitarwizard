@@ -23,10 +23,12 @@ from ...geometry.neck import (
     HeadstockSolid,
     LockingNut,
     NeckBackSurface,
+    NeckOutline,
     NutSlotJig,
     TrussRodChannel,
     TunerLayout,
 )
+from ...geometry.neck.outline import heel_end_curve
 from ...geometry.primitives import Point2D, Point3D, point_in_polygon
 from ...presets import Prototype001Geometry
 from .exceptions import FreeCADBackendError
@@ -503,9 +505,27 @@ class FreeCADScriptExporter:
         locking_nut_shelf_source = self._render_locking_nut_shelf(locking_nut)
         locking_nut_screw_source = self._render_locking_nut_screws(locking_nut)
         body_source = self._render_body(body, body_object_name, neck_through)
+        # A round heel end cuts the neck, the fretboard and its binding
+        # back to it.
+        heel_trim_source = self._render_heel_end_trim(neck_surface.neck_outline)
+        board_trim_source = (
+            "fretboard_shape = require_shape(\n"
+            "    fretboard_shape.cut(heel_end_trim), 'round heel end on the board'\n"
+            ")\n"
+            if heel_trim_source
+            else ""
+        )
         binding_source = self._render_fretboard_binding(
             fretboard_surface, fretboard_binding_width, fretboard_object_name
-        ) + self._render_headstock_lettering(headstock, headstock_engraving)
+        )
+        if binding_source and heel_trim_source:
+            binding_source += (
+                "fretboard_binding_feature.Shape = "
+                "fretboard_binding_feature.Shape.cut(heel_end_trim)\n"
+            )
+        binding_source += self._render_headstock_lettering(
+            headstock, headstock_engraving
+        )
         serialized_fret_rows = (
             f"FRET_SURFACE_ROWS = {self._serialize_rows(fret_surface_rows)}\n"
             if fret_layout is not None
@@ -796,6 +816,7 @@ class FreeCADScriptExporter:
             '        "heel-transition fillet",\n'
             "    )\n"
             f"{truss_rod_source}"
+            f"{heel_trim_source}"
             "neck_feature = document.addObject("
             f'"Part::Feature", "{neck_object_name}")\n'
             "neck_feature.Shape = neck_shape\n"
@@ -818,6 +839,7 @@ class FreeCADScriptExporter:
             "        fretboard_nut_edges,\n"
             '        "fretboard nut-corner fillet",\n'
             "    )\n"
+            f"{board_trim_source}"
             f"{locking_nut_shelf_source}"
             f"{fret_slot_source}"
             f"{inlay_source}"
@@ -881,6 +903,48 @@ class FreeCADScriptExporter:
             "    for line in HEADSTOCK_LETTERING\n"
             "])\n"
             f"headstock_lettering_feature.Label = {label!r}\n"
+        )
+
+    @staticmethod
+    def _render_heel_end_trim(outline: NeckOutline) -> str:
+        """Return the prism a round heel end cuts the neck back to, and that
+        cut ("" for a square end).
+
+        It is what lies past the end (``heel_end_curve``) and beside the
+        heel from where the end begins to round, through the whole neck's
+        height; the fretboard and its binding are cut by it too. It lies
+        ``HEEL_TRIM_SLACK`` out past the heel's sides and end, so its faces
+        cross the neck's instead of touching them (where a boolean cut
+        fails).
+        """
+        if outline.heel_end_radius == 0.0:
+            return ""
+        end_x = outline.last_fret_position + outline.heel_length
+        half = outline.heel_width / 2.0 + HEEL_TRIM_SLACK
+        end = heel_end_curve(
+            end_x + HEEL_TRIM_SLACK,
+            half,
+            outline.heel_end_radius,
+            outline.heel_corner_radius,
+        )
+        start, far = end[0].x, 30.0
+        points = [
+            (start, half + far),
+            (end_x + far, half + far),
+            (end_x + far, -half - far),
+            (start, -half - far),
+            *((point.x, point.y) for point in end),
+        ]
+        return (
+            "# The round heel end: what lies past it cut off the neck.\n"
+            f"HEEL_END_TRIM_POINTS = {points!r}\n"
+            "heel_end_trim = Part.Face(Part.makePolygon(\n"
+            "    [App.Vector(x, y, -100.0) for x, y in HEEL_END_TRIM_POINTS]\n"
+            "    + [App.Vector(*HEEL_END_TRIM_POINTS[0], -100.0)]\n"
+            ")).extrude(App.Vector(0.0, 0.0, 200.0))\n"
+            "neck_shape = require_shape(\n"
+            "    neck_shape.cut(heel_end_trim), 'round heel end'\n"
+            ")\n"
         )
 
     @staticmethod
@@ -3223,6 +3287,10 @@ class FreeCADScriptExporter:
                 "Inlay layout must be built from the same fretboard surface."
             )
 
+
+HEEL_TRIM_SLACK = 0.02
+"""How far, in mm, a round heel end's trim lies past the heel's sides and
+end, so a cut is not left to faces that only touch."""
 
 EDGE_LAYER = 1.0
 """Height of the layers a roundover or contour is modelled in, in mm."""

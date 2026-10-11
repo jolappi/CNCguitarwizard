@@ -90,8 +90,9 @@ nut-origin frame:
 - the neck pocket is *not* traced: it is the neck's own tapered outline over
   the last `body_neck_pocket_length` (79.5 mm) before the heel end, widened
   by `body_neck_pocket_clearance` (0.15 mm) per side, so it always matches
-  the neck it receives; with a `neck_angle` its floor tilts (see *Neck
-  angle* below);
+  the neck it receives (a round heel's end too, `neck_heel_end`: see
+  [Neck outline](03_neck_outline.md)); with a `neck_angle` its floor
+  tilts (see *Neck angle* below);
 - the bridge baseplate cutout is the drawing's `LWPOLYLINE`;
 - the almond control cavity and the round switch cavity are the drawing's
   pairs of concentric loops — the inner loop is the cavity, the outer loop the

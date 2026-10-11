@@ -289,7 +289,9 @@ Python.
    slotted nut, flat six-in-line headstock, drawn Telecaster outline and
    heel-adjusted truss rod, or the Stratocaster, Gibson style, Flying V,
    Explorer or Mockingbird neck (mockups traced from product photos): its
-   headstock style, angle, drawn outline, tuner stations and truss rod.
+   headstock style, angle, drawn outline, tuner stations and truss rod —
+   the Stratocaster's with a round heel end (`neck_heel_end`), the others
+   square.
    Below it the **inlay editor** (*Inlay design*) draws the first fret
    marker's space on the board, nut to the left, with the style's marker
    in it (`webapp.inlay_editor_layout()`, `InlayLayout.editable_points()`)

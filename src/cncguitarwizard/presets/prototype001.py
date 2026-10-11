@@ -80,6 +80,7 @@ from ..geometry.neck.nut_jig import (
     nut_slot_jig,
     resolved_gauges,
 )
+from ..geometry.neck.outline import clip_to_heel_end
 from ..geometry.neck.reinforcement import CLEARANCE as CARBON_ROD_CLEARANCE
 from ..geometry.neck.reinforcement import CarbonRods
 from ..geometry.primitives import (
@@ -206,6 +207,13 @@ between two ferrules."""
 NECK_BOLT_MIN_WOOD = 5.0
 """Least wood, in mm, a neck-bolt ferrule's counterbore (sunk into a heel
 relief's surface) leaves over the neck pocket for the bolt to pull on."""
+
+FENDER_HEEL_END_RADIUS = 127.0
+"""A round (Fender Stratocaster) heel end's arc across it, in mm (5 in)."""
+
+FENDER_HEEL_CORNER_RADIUS = 6.35
+"""A round heel end's corners, blending its arc into the sides, in mm
+(1/4 in)."""
 
 NECK_PLATE_RELIEF_GAP = 2.0
 """Flat back, in mm, an automatic heel relief leaves round a neck plate."""
@@ -720,6 +728,13 @@ class Prototype001Parameters:
     neck_through_width: float | None = None
     neck_through_heel_ramp: float = 40.0
     heel_length: float = 4.0
+    # neck_heel_end: the heel's end, square across the neck (a Telecaster's)
+    # or "round" as a Stratocaster's: a FENDER_HEEL_END_RADIUS arc across
+    # it blended into each side by FENDER_HEEL_CORNER_RADIUS corners. The
+    # pocket's end follows it (its clearance round it, its end touching the
+    # heel's on the centre), and so does a fretboard reaching the heel's
+    # end. Not for a neck run through the body.
+    neck_heel_end: Literal["square", "round"] = "square"
     fretboard_end_extension: float = 4.0
     # Square nut-end corners: the board meets the nut with no rounding.
     fretboard_nut_corner_radius: float = 0.0
@@ -1579,8 +1594,10 @@ class Prototype001Parameters:
         The pocket runs from ``heel_end - body_neck_pocket_length`` to
         ``heel_end``; between those the neck is ``nut_width`` wide at
         the nut tapering to ``last_fret_width`` at the last fret, then
-        ``heel_width`` to the heel end. Every wall sits
-        ``body_neck_pocket_clearance`` outside the neck.
+        ``heel_width`` to the heel end. Every side wall sits
+        ``body_neck_pocket_clearance`` outside the neck; a round heel's end
+        (``neck_heel_end``) is followed that far out too, the pocket's end
+        touching the heel's on the centre.
         """
         start = heel_end - self.body_neck_pocket_length
         if start < 0.0:
@@ -1613,7 +1630,16 @@ class Prototype001Parameters:
         stations.append((heel_end, outline.heel_width / 2.0))
         lower = [Point2D(x, -(half + clearance)) for x, half in stations]
         upper = [Point2D(x, half + clearance) for x, half in reversed(stations)]
-        return tuple(lower + upper)
+        # Round, its end the heel's offset by the clearance, held at the
+        # heel end.
+        radius = outline.heel_end_radius
+        return clip_to_heel_end(
+            lower + upper,
+            heel_end,
+            outline.heel_width / 2.0 + clearance,
+            radius + clearance if radius else 0.0,
+            outline.heel_corner_radius + clearance,
+        )
 
     def _headstock_layout(self) -> _HeadstockLayout:
         """Resolve the headstock plan and tuner stations for the style.
@@ -2177,12 +2203,22 @@ class Prototype001Parameters:
         spacing = length - 2.0 * inset
         half_x, half_y = length / 2.0, width / 2.0
         # The tail pair come out in the pocket the end wall short of the
-        # heel end (or the rectangle is centred the offset ahead of it),
-        # the plate centred across the neck.
-        out = heel_end - radius - self.body_neck_bolt_end_wall
+        # heel's end beside them (or the rectangle is centred the offset
+        # ahead of the heel end), the plate centred across the neck.
+        neck = self.neck_outline()
+
+        def out(y: float) -> float:
+            return (
+                heel_end
+                - neck.heel_end_inset(y)
+                - radius
+                - self.body_neck_bolt_end_wall
+            )
+
+        tails = (half_y - inset, inset - half_y)
         centre_y = 0.0
         if self.body_neck_bolt_center_offset is None:
-            centre = out - spacing / 2.0
+            centre = min(out(y) for y in tails) - spacing / 2.0
         else:
             centre = heel_end - self.body_neck_bolt_center_offset
         if bevel is not None and bevel.profile == "plane":
@@ -2200,12 +2236,12 @@ class Prototype001Parameters:
                 if self.body_neck_bolt_center_offset is None:
                     tail = min(
                         (
-                            out
+                            out(centre_y + y)
                             + rate * ax * bolt_depth
                             - rate * rate * ax * (ay * (centre_y + y) - face)
                         )
                         / (1.0 + (rate * ax) ** 2)
-                        for y in (half_y - inset, inset - half_y)
+                        for y in tails
                     )
                     centre = tail - spacing / 2.0
                 centre_y = (
@@ -2362,22 +2398,37 @@ class Prototype001Parameters:
                 return self._bolt_exit(x, y, heel_relief, bolt_depth)
             return x, y
 
+        def outward(x: float, side: float) -> float | None:
+            # From the neck's edge in toward the rod, the first spot whose
+            # ferrule keeps its wood to the body's edge.
+            limit = neck_half_width(x) - wall - radius
+            for step in range(int(max(0.0, limit) / 0.25) + 1):
+                candidate = side * (limit - 0.25 * step)
+                if rod_gap(x, candidate) < 3.0:
+                    return None
+                if ferrule_in_body(x, candidate):
+                    return candidate
+            return None
+
+        def clear_of_end(x: float, y: float) -> float:
+            # A round heel ends short of its end beside the bolt: moved
+            # toward the neck as far as that, if need be, to keep its end
+            # wall.
+            short = outline.heel_end_inset(y)
+            fits = heel_end - short - radius - self.body_neck_bolt_end_wall
+            return max(x - short, min(x, fits))
+
         placed: list[tuple[float, float]] = []
         for index, (x, y) in enumerate(centres, start=1):
             limit = neck_half_width(x) - wall - radius
             side = 1.0 if y > 0.0 else -1.0 if y < 0.0 else 1.0
             if self.body_neck_bolts_outward and plate_bolts is None:
-                # From the neck's edge in toward the rod, the first spot
-                # whose ferrule keeps its wood to the body's edge.
-                steps = int(max(0.0, limit) / 0.25)
-                found = None
-                for step in range(steps + 1):
-                    candidate = side * (limit - 0.25 * step)
-                    if rod_gap(x, candidate) < 3.0:
-                        break
-                    if ferrule_in_body(x, candidate):
-                        found = candidate
-                        break
+                found = outward(x, side)
+                if found is not None and clear_of_end(x, found) != x:
+                    # Sought out again where it is moved to.
+                    x = clear_of_end(x, found)
+                    limit = neck_half_width(x) - wall - radius
+                    found = outward(x, side)
                 if found is None:
                     raise BodyGeometryError(
                         f"Neck bolt {index} at {x - heel_end:.1f} mm from the heel "
@@ -2387,9 +2438,13 @@ class Prototype001Parameters:
                         "edge; move it along the neck (drag it in the body editor)."
                     )
                 y = found
+            elif plate_bolts is None:
+                x = clear_of_end(x, y)
             where = f"({x - heel_end:.1f}, {y:.1f}) from the heel end"
             end_x, end_y = exit_at(x, y)
-            end_wall = heel_end - (end_x + radius)
+            # To the heel's end beside it (short of the end on the centre
+            # where it is round).
+            end_wall = heel_end - outline.heel_end_inset(end_y) - (end_x + radius)
             if end_wall < self.body_neck_bolt_end_wall - 1e-6:
                 raise BodyGeometryError(
                     f"Neck bolt {index} at {where} leaves {end_wall:.1f} mm of wood "
@@ -2504,16 +2559,24 @@ class Prototype001Parameters:
 
         A neck plate's holes (``plate_bolts``), else the body shape's own
         ``neck_bolts``, else the default rectangle (see
-        ``_neck_bolt_holes``).
+        ``_neck_bolt_holes``), its tail pair the end wall short of the
+        heel's end beside them — of a round heel's, as far out as they may
+        be moved.
         """
         if plate_bolts is not None:
             return list(plate_bolts)
         if self.built_body_shape.neck_bolts:
             return [(heel_end + x, y) for x, y in self.built_body_shape.neck_bolts]
+        furthest_out = (
+            self.heel_width / 2.0
+            - self.body_neck_bolt_edge_wall
+            - self.body_neck_bolt_hole_diameter / 2.0
+        )
         offset = (
             self.body_neck_bolt_hole_diameter / 2.0
             + self.body_neck_bolt_end_wall
             + self.body_neck_bolt_spacing_x / 2.0
+            + self.neck_outline().heel_end_inset(furthest_out)
             if self.body_neck_bolt_center_offset is None
             else self.body_neck_bolt_center_offset
         )
@@ -3352,7 +3415,20 @@ class Prototype001Parameters:
         return PICKUP_CONFIGURATIONS[self.body_pickups]
 
     def neck_outline(self) -> NeckOutline:
-        """Return the neck's plan outline (cheap: no surfaces are built)."""
+        """Return the neck's plan outline (cheap: no surfaces are built).
+
+        Raises:
+            NeckGeometryError: For a round heel end on a neck run through
+                the body, or an unknown ``neck_heel_end``.
+        """
+        if self.neck_heel_end not in ("square", "round"):
+            raise NeckGeometryError('neck_heel_end must be "square" or "round".')
+        round_end = self.neck_heel_end == "round"
+        if round_end and self.neck_runs_through:
+            raise NeckGeometryError(
+                "A neck run through the body has no heel end to round; set "
+                "neck_heel_end to square."
+            )
         return NeckOutline(
             self.centre_scale,
             self.fret_count,
@@ -3360,6 +3436,8 @@ class Prototype001Parameters:
             self.final_fret_width,
             self.heel_width,
             self.heel_length,
+            FENDER_HEEL_END_RADIUS if round_end else 0.0,
+            FENDER_HEEL_CORNER_RADIUS if round_end else 0.0,
         )
 
     def _body_layout(
@@ -6669,6 +6747,7 @@ TELECASTER_NECK: dict[str, Any] = {
 six-in-line headstock drawn as a Telecaster's, adjusted at the heel."""
 
 STRATOCASTER_NECK: dict[str, Any] = {
+    "neck_heel_end": "round",
     "nut_style": "slot",
     "locking_nut": "none",
     "headstock_angle": 0.0,
@@ -6937,6 +7016,7 @@ still be moved to the headstock afterwards)."""
 
 NECK_TEMPLATE_RESETS: frozenset[str] = frozenset(
     {
+        "neck_heel_end",
         "headstock_tip_points",
         "tuner_inline_offsets",
         "tuner_hole_points",
@@ -6946,10 +7026,10 @@ NECK_TEMPLATE_RESETS: frozenset[str] = frozenset(
         "tuner_side_offsets",
     }
 )
-"""The tuner and tip settings a neck template's outline is drawn round:
-loading a template puts back the defaults of those it does not set, so
-none is left over from another (an Explorer's row of posts under a
-Telecaster's outline)."""
+"""The tuner and tip settings a neck template's outline is drawn round, and
+the heel's end: loading a template puts back the defaults of those it does
+not set, so none is left over from another (an Explorer's row of posts
+under a Telecaster's outline, a Stratocaster's round heel on a Gibson)."""
 
 BODY_TEMPLATE_VALUES: dict[str, dict[str, Any]] = {
     "alexi_hexed": {

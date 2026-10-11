@@ -129,6 +129,7 @@
 - Sharp corners and straight spans in every drawing tool, and polygons rounded through a corner
 - A new version of the web app shows on a plain reload, never a cached page
 - The heel relief always on the treble side
+- A round (Stratocaster) heel end, its pocket and fretboard end following it
 - Index pins as wide as a main tool wider than 6 mm (an 8 mm end mill,
   8 mm dowels)
 - The neck's back carved with the ball nose alone, in one program

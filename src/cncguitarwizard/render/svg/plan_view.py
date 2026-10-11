@@ -299,17 +299,20 @@ def _fretboard_polygon(geometry: Prototype001Geometry) -> Sequence[Point2D]:
     """Return the fretboard's plan outline from the nut to its end.
 
     Taken from the surface's end rows, so slanted frets slant both ends.
-    A board that runs on under the nut reaches the nut's seat further back.
+    A board that runs on under the nut reaches the nut's seat further back,
+    and one reaching a round heel's end is rounded with it.
     """
     rows = geometry.fretboard_surface.mesh.rows
     first, last = rows[0], rows[-1]
     nut = geometry.locking_nut
     back = nut.seat_length if nut is not None and nut.on_fretboard else 0.0
-    return (
-        Point2D(first[0].x - back, first[0].y),
-        Point2D(last[0].x, last[0].y),
-        Point2D(last[-1].x, last[-1].y),
-        Point2D(first[-1].x - back, first[-1].y),
+    return geometry.neck_outline.trimmed(
+        (
+            Point2D(first[0].x - back, first[0].y),
+            Point2D(last[0].x, last[0].y),
+            Point2D(last[-1].x, last[-1].y),
+            Point2D(first[-1].x - back, first[-1].y),
+        )
     )
 
 

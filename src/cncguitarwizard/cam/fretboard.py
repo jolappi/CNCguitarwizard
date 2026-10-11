@@ -248,7 +248,8 @@ def fretboard_outline_polygon(geometry: Prototype001Geometry) -> tuple[Point2D, 
 
     The corners are the surface's own end rows, so slanted frets give a
     slanted nut end and board end. A board that runs on under a locking
-    nut ends the nut's seat behind the nut line instead.
+    nut ends the nut's seat behind the nut line instead; one reaching a
+    round heel's end is rounded with it (``NeckOutline.trimmed``).
     """
     surface = geometry.fretboard_surface
     first = surface.mesh.rows[0]
@@ -262,8 +263,10 @@ def fretboard_outline_polygon(geometry: Prototype001Geometry) -> tuple[Point2D, 
         Point2D(last[-1].x, last[-1].y),
         Point2D(first[-1].x - back, first[-1].y),
     ]
-    return rounded_polygon_points(
-        vertices, [radius, 0.0, 0.0, radius], samples_per_corner=8
+    return geometry.neck_outline.trimmed(
+        rounded_polygon_points(
+            vertices, [radius, 0.0, 0.0, radius], samples_per_corner=8
+        )
     )
 
 

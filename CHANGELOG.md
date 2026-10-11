@@ -4,6 +4,14 @@
 
 ### Added
 
+- A round heel end (`neck_heel_end="round"`), as a Stratocaster's: a
+  127 mm arc across the end blended into 6.35 mm corners. The neck
+  pocket follows it its clearance out, the fretboard's end is rounded
+  with it, the neck bolts keep their end wall to the heel's end beside
+  them, and the CAM outlines, the plan view and the FreeCAD model are cut
+  to it. The Stratocaster neck template chooses it; the others go back to
+  a square end.
+
 - Sharp corners and straight spans in every drawing tool: double-click a
   handle of a curved line (the body's outline, the pickguard, a
   humbucker frame, the contour lines, the headstock's edges and tip) to
