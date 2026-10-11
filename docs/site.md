@@ -23,8 +23,14 @@ Python.
    whole instrument in one choice, the quick way in among the many
    settings — Design by Jone, a Fender Stratocaster or Telecaster, a
    Gibson Les Paul, SG, Flying V or Explorer, a Jackson RR, an ESP LTD
-   Alexi Hexed, a B.C. Rich Mockingbird or a Fender Jazz Bass style.
-   Choosing one (asked first when values were changed) loads
+   Alexi Hexed, a B.C. Rich Mockingbird or a Fender Jazz Bass style. The
+   Fender, Gibson and Jackson ones place their controls, jack and pickups
+   as on the original (measured from photos and the user's Stratocaster
+   drawing; see [Body shapes](geometry/12_body.md#body-shapes)): a '52
+   Telecaster's plate and side jack and its bridge pickup slanted 16°, a
+   vintage Stratocaster's guard, controls and jack plate, a Les Paul's
+   staggered pots, an SG's jack in the top, an Explorer's row of pots and
+   a Rhoads' toggle among its pots. Choosing one (asked first when values were changed) loads
    `webapp.style_design(instrument, style, name)` as a saved design is
    loaded (`applyDesign`, then `repairDesign`): every setting back to the
    instrument's defaults, then the style's own, the guitar's name kept; a

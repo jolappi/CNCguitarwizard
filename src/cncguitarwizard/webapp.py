@@ -199,6 +199,7 @@ _CHOICE_LABELS: dict[str, dict[str, str]] = {
         "cup": "Cup jack or Electrosocket (7/8 in counterbore)",
         "strat": "Stratocaster style top plate (cavity from the top)",
         "plate": "On the Jazz Bass control plate (no bore from the edge)",
+        "top": "In the top, into the rear control cavity (SG, Explorer style)",
     },
     "body_pickguard_style": {
         "stratocaster": "Stratocaster (beside the neck, a tail past the bridge)",

@@ -142,6 +142,25 @@ class DesignByJoneShape:
         pickguard_points: A drawn pickguard's control points (X from the
             heel end, Y); empty for the automatic guard (used with
             ``Prototype001Parameters.body_pickguard``).
+        pickguard_controls: Where a pickguard's controls go (the
+            ``"pickguard"`` layout), as on the original: the blade switch's
+            slot centre, then the three pots (X from the heel end, Y); the
+            cavity under them is routed round them. Empty: a row of pots
+            along the neck turned and moved to fit under the guard.
+        pickguard_switch_degrees: The switch slot's direction, counter-
+            clockwise from the neck's axis, with ``pickguard_controls``.
+        pickguard_cavity_points: The cavity under ``pickguard_controls``
+            as drawn (X from the heel end, Y), as on the original; empty
+            for one routed round them.
+        rear_pots: Where a generated rear cavity's pots go, as on the
+            original (``"gibson_4"``, ``"rear_3"``, ``"volume_1"``,
+            ``"active_4"`` with that many pots): (X from the heel end, Y);
+            the cavity and its cover are routed round them (and round a
+            jack mounted in the top). Empty, or another count: the
+            layout's own row or square of pots.
+        jack_inset: How far in from the edge, along the jack's line, a
+            ``"strat"`` jack's cavity centre sits; empty for just in from
+            the edge.
         arm_contour_points: Where a drawn arm contour starts on the top:
             an open line's control points (X from the heel end, Y), its
             ends on the body's edge; empty for the automatic contour (used
@@ -189,6 +208,11 @@ class DesignByJoneShape:
     control_stretch: float = 0.0
     control_stretch_across: float = 0.0
     pickguard_points: tuple[DrawnPoint, ...] = ()
+    pickguard_controls: tuple[tuple[float, float], ...] = ()
+    pickguard_switch_degrees: float = 0.0
+    pickguard_cavity_points: tuple[tuple[float, float], ...] = ()
+    rear_pots: tuple[tuple[float, float], ...] = ()
+    jack_inset: float | None = None
     arm_contour_points: tuple[DrawnPoint, ...] = ()
     belly_cut_points: tuple[DrawnPoint, ...] = ()
     heel_relief_points: tuple[DrawnPoint, ...] = ()
@@ -329,6 +353,25 @@ class YourDesignShape:
         pickguard_points: A drawn pickguard's control points (X from the
             heel end, Y); empty for the automatic guard (used with
             ``Prototype001Parameters.body_pickguard``).
+        pickguard_controls: Where a pickguard's controls go (the
+            ``"pickguard"`` layout), as on the original: the blade switch's
+            slot centre, then the three pots (X from the heel end, Y); the
+            cavity under them is routed round them. Empty: a row of pots
+            along the neck turned and moved to fit under the guard.
+        pickguard_switch_degrees: The switch slot's direction, counter-
+            clockwise from the neck's axis, with ``pickguard_controls``.
+        pickguard_cavity_points: The cavity under ``pickguard_controls``
+            as drawn (X from the heel end, Y), as on the original; empty
+            for one routed round them.
+        rear_pots: Where a generated rear cavity's pots go, as on the
+            original (``"gibson_4"``, ``"rear_3"``, ``"volume_1"``,
+            ``"active_4"`` with that many pots): (X from the heel end, Y);
+            the cavity and its cover are routed round them (and round a
+            jack mounted in the top). Empty, or another count: the
+            layout's own row or square of pots.
+        jack_inset: How far in from the edge, along the jack's line, a
+            ``"strat"`` jack's cavity centre sits; empty for just in from
+            the edge.
         arm_contour_points: Where a drawn arm contour starts on the top:
             an open line's control points (X from the heel end, Y), its
             ends on the body's edge; empty for the automatic contour (used
@@ -374,6 +417,11 @@ class YourDesignShape:
     control_stretch: float = 0.0
     control_stretch_across: float = 0.0
     pickguard_points: tuple[DrawnPoint, ...] = ()
+    pickguard_controls: tuple[tuple[float, float], ...] = ()
+    pickguard_switch_degrees: float = 0.0
+    pickguard_cavity_points: tuple[tuple[float, float], ...] = ()
+    rear_pots: tuple[tuple[float, float], ...] = ()
+    jack_inset: float | None = None
     arm_contour_points: tuple[DrawnPoint, ...] = ()
     belly_cut_points: tuple[DrawnPoint, ...] = ()
     heel_relief_points: tuple[DrawnPoint, ...] = ()
@@ -483,6 +531,12 @@ def mirrored_shape(shape: BodyShapeSpec) -> BodyShapeSpec:
         battery_angle_degrees=-shape.battery_angle_degrees,
         control_angle_degrees=-shape.control_angle_degrees,
         pickguard_points=_side_drawn(shape.pickguard_points, True),
+        pickguard_controls=flipped(shape.pickguard_controls),
+        pickguard_switch_degrees=-shape.pickguard_switch_degrees,
+        pickguard_cavity_points=tuple(
+            (x, -y) for x, y in reversed(shape.pickguard_cavity_points)
+        ),
+        rear_pots=flipped(shape.rear_pots),
         arm_contour_points=flipped_drawn(shape.arm_contour_points),
         belly_cut_points=flipped_drawn(shape.belly_cut_points),
         heel_relief_points=flipped_drawn(shape.heel_relief_points),
@@ -518,6 +572,9 @@ def widened_shape(shape: BodyShapeSpec, widening: float) -> BodyShapeSpec:
         battery_y=widen_y(shape.battery_y, widening),
         control_shift=(shift_x, moved_almond - almond_y),
         pickguard_points=widen_drawn(shape.pickguard_points, widening),
+        pickguard_controls=widen_points(shape.pickguard_controls, widening),
+        pickguard_cavity_points=widen_points(shape.pickguard_cavity_points, widening),
+        rear_pots=widen_points(shape.rear_pots, widening),
         arm_contour_points=widen_drawn(shape.arm_contour_points, widening),
         belly_cut_points=widen_drawn(shape.belly_cut_points, widening),
         heel_relief_points=widen_drawn(shape.heel_relief_points, widening),
@@ -1451,79 +1508,161 @@ BASS_BODY = YourDesignShape(
 """The bass guitar's default drawn body: the Jazz Bass style mockup (see
 ``_JAZZ_BASS_POINTS``)."""
 
-_STRATOCASTER_PICKGUARD_POINTS: tuple[tuple[float, float], ...] = (
-    (-58.2, 118.8),
-    (-55.8, 124.0),
-    (-41.0, 130.1),
-    (-28.3, 130.9),
-    (-15.6, 131.8),
-    (-3.7, 128.3),
-    (8.2, 124.8),
-    (24.1, 118.2),
-    (39.9, 111.5),
-    (55.8, 104.8),
-    (78.7, 105.7),
-    (91.4, 110.1),
-    (104.1, 114.4),
-    (120.5, 122.2),
-    (136.9, 130.1),
-    (153.3, 137.9),
-    (169.7, 145.7),
-    (184.1, 149.6),
-    (198.4, 153.6),
-    (205.8, 153.6),
-    (214.0, 150.1),
-    (218.1, 144.0),
-    (217.3, 130.9),
-    (206.1, 115.3),
-    (194.9, 99.6),
-    (183.7, 84.0),
-    (178.8, 68.3),
-    (178.3, 53.9),
-    (177.9, 39.6),
-    (166.5, 38.7),
-    (164.0, 35.2),
-    (164.0, 11.5),
-    (164.0, -12.3),
-    (164.0, -36.1),
-    (166.5, -38.7),
-    (177.9, -38.7),
-    (177.1, -49.2),
-    (172.2, -59.6),
-    (164.8, -67.4),
-    (152.5, -73.5),
-    (141.9, -76.1),
-    (122.2, -76.1),
-    (105.0, -71.8),
-    (85.7, -63.5),
-    (66.4, -55.2),
-    (53.3, -52.2),
-    (40.2, -49.2),
-    (20.9, -49.2),
-    (1.6, -49.2),
-    (-12.3, -52.6),
-    (-26.2, -56.1),
-    (-33.6, -53.5),
-    (-36.9, -43.1),
-    (-32.0, -29.1),
-    (-18.9, -29.1),
-    (-5.7, -29.1),
-    (-1.6, -24.8),
-    (-0.8, -6.1),
-    (0.0, 12.6),
-    (-1.6, 24.8),
-    (-7.4, 30.0),
-    (0.8, 48.3),
-    (2.5, 70.0),
-    (-3.3, 87.4),
-    (-18.9, 104.8),
-    (-37.7, 113.5),
-    (-54.9, 116.1),
+_STRATOCASTER_CONTROL_CAVITY: tuple[tuple[float, float], ...] = (
+    (107.1, 75.4),
+    (105.0, 78.2),
+    (103.9, 81.5),
+    (103.8, 85.0),
+    (104.9, 88.3),
+    (106.9, 91.1),
+    (139.2, 117.8),
+    (141.7, 119.3),
+    (144.4, 120.3),
+    (147.3, 120.6),
+    (150.1, 120.3),
+    (153.2, 119.4),
+    (156.7, 119.0),
+    (160.2, 119.4),
+    (163.5, 120.5),
+    (192.7, 138.2),
+    (195.5, 139.5),
+    (198.4, 140.2),
+    (201.4, 140.2),
+    (204.3, 139.7),
+    (207.1, 138.5),
+    (209.6, 136.8),
+    (211.6, 134.6),
+    (213.1, 132.0),
+    (214.1, 129.1),
+    (214.5, 126.2),
+    (214.2, 123.2),
+    (213.3, 120.3),
+    (211.8, 117.7),
+    (181.9, 83.8),
+    (162.5, 48.0),
+    (158.0, 46.4),
+    (149.0, 46.0),
+    (140.0, 46.6),
+    (135.6, 48.0),
 )
-"""The Stratocaster style template's pickguard: traced from a photo of a
-Stratocaster's HH guard (its outline to about 1.6 mm), scaled to fit this
-body — the notch on the neck pocket's end, the bass side's step on the
-bridge's front, clear of the bridge — X from the heel end."""
+"""The Stratocaster style template's control cavity, under its guard: the
+user's Stratocaster drawing's (stratbody.dxf, aligned on its neck
+pocket's end), its point toward the bridge pickup cut off 2.5 mm short of
+the pickup's route (the drawing joins the two; here the pickup's lead
+has a hole of its own)."""
+
+_STRATOCASTER_PICKGUARD_POINTS: tuple[tuple[float, float], ...] = (
+    (-54.1, 114.9),
+    (-48.8, 119.7),
+    (-38.1, 123.2),
+    (-27.4, 124.5),
+    (-16.7, 124.5),
+    (-6.0, 122.9),
+    (4.7, 120.0),
+    (15.4, 116.2),
+    (26.1, 112.2),
+    (35.9, 108.2),
+    (42.6, 105.8),
+    (49.3, 103.9),
+    (56.0, 102.3),
+    (62.7, 101.3),
+    (69.3, 100.5),
+    (76.0, 100.5),
+    (82.7, 100.7),
+    (89.4, 101.8),
+    (96.0, 103.4),
+    (102.7, 105.5),
+    (109.4, 107.9),
+    (116.1, 110.9),
+    (122.8, 113.8),
+    (129.4, 116.8),
+    (136.1, 120.0),
+    (142.8, 122.9),
+    (149.5, 125.8),
+    (156.2, 128.8),
+    (162.8, 131.7),
+    (169.5, 134.4),
+    (176.2, 137.1),
+    (182.9, 139.5),
+    (189.6, 141.6),
+    (196.2, 143.7),
+    (202.9, 145.3),
+    (209.6, 146.4),
+    (216.3, 146.7),
+    (224.8, 144.3),
+    (229.1, 140.0),
+    (231.0, 133.6),
+    (229.1, 127.2),
+    (221.9, 117.0),
+    (214.9, 109.0),
+    (208.4, 101.0),
+    (202.1, 93.0),
+    (197.0, 85.0),
+    (193.3, 76.9),
+    (190.8, 68.9),
+    (189.4, 60.9),
+    (188.9, 52.9),
+    (188.6, 44.9),
+    (189.0, 36.9),
+    (176.7, 36.1),
+    (176.7, -39.5),
+    (191.2, -41.1),
+    (190.1, -50.8),
+    (185.3, -61.4),
+    (179.7, -66.8),
+    (169.3, -72.1),
+    (160.2, -74.5),
+    (149.5, -76.1),
+    (138.8, -75.9),
+    (128.1, -74.3),
+    (117.4, -71.6),
+    (106.7, -68.4),
+    (96.0, -64.4),
+    (85.4, -60.1),
+    (74.7, -56.1),
+    (64.0, -52.6),
+    (53.3, -50.2),
+    (42.6, -48.6),
+    (31.9, -47.8),
+    (21.2, -47.6),
+    (10.6, -48.4),
+    (-0.1, -50.0),
+    (-10.8, -52.1),
+    (-21.5, -54.2),
+    (-29.8, -52.1),
+    (-32.2, -45.7),
+    (-30.6, -39.3),
+    (-27.9, -32.9),
+    (-7.0, -28.7),
+    (-1.1, -21.5),
+    (-0.1, -14.0),
+    (0.5, -6.3),
+    (0.6, 0.0),
+    (0.4, 8.2),
+    (-0.3, 15.9),
+    (-1.5, 23.4),
+    (-7.0, 28.7),
+    (0.5, 33.4),
+    (3.7, 41.4),
+    (6.0, 49.4),
+    (7.1, 57.4),
+    (6.8, 65.5),
+    (5.1, 73.5),
+    (1.9, 81.5),
+    (-3.2, 89.5),
+    (-11.9, 98.3),
+    (-17.2, 101.8),
+    (-23.1, 104.5),
+    (-30.1, 106.6),
+    (-38.1, 108.7),
+    (-46.1, 110.1),
+)
+"""The Stratocaster style template's pickguard: a vintage style SSS guard
+traced from a straight-on photo of a Stratocaster (Wikimedia Commons,
+"Fender Stratocaster Relic FCS AvR.png", its body outline fitted to this
+template's to within 3 mm): the treble horn's point, the bridge's notch,
+the long bass side, and a notch round the neck pocket's round end 0.6 mm
+out from it. Its controls are the template's ``pickguard_controls``."""
 
 _DESIGN_BY_JONE_PICKGUARD_POINTS: tuple[tuple[float, float], ...] = (
     (215.7, 128.3),
@@ -1785,6 +1924,22 @@ YOUR_DESIGN_TEMPLATES: dict[str, tuple[str, YourDesignShape]] = {
             switch_cover_offset=2.0,
             switch_cover_y=-78.0,
             neck_bolts=((-38.5, -20.0), (-5.5, -20.0), (-38.5, 12.0), (-5.5, 12.0)),
+            # Its four pots as on a '59 reissue (Wikimedia Commons, "Full
+            # front R9 Les Paul.jpg", its outline fitted to this one's to
+            # within 4 mm): the two volumes nearer the strings, the tones
+            # out toward the edge and each pair stepped back, the cavity
+            # routed round them; the jack into the treble side's rim
+            # behind them, aimed into the cavity.
+            rear_pots=((208.2, 110.5), (233.8, 67.9), (268.3, 109.1), (294.8, 66.9)),
+            # The almond and its two pots (the other layouts) there too,
+            # and the battery box beside them.
+            pot_offsets=((231.3, 88.1), (271.3, 89.1)),
+            control_shift=(49.8, 2.9),
+            battery_offset=289.5,
+            battery_y=39.0,
+            jack_offset=285.0,
+            jack_y=100.0,
+            jack_direction_degrees=236.8,
         ),
     ),
     "stratocaster": (
@@ -1792,6 +1947,23 @@ YOUR_DESIGN_TEMPLATES: dict[str, tuple[str, YourDesignShape]] = {
         YourDesignShape(
             control_points=_STRATOCASTER_POINTS,
             pickguard_points=_STRATOCASTER_PICKGUARD_POINTS,
+            # As on the original: the blade switch angled out ahead of the
+            # volume pot and the two tone pots stepping out toward the
+            # lower edge (from the same photo); the jack's cavity in its
+            # angled plate where the user's Stratocaster drawing has it
+            # (stratbody.dxf, aligned on its neck pocket's end).
+            pickguard_controls=(
+                (132.2, 94.5),
+                (154.0, 58.5),
+                (175.6, 95.6),
+                (201.8, 125.5),
+            ),
+            pickguard_switch_degrees=42.8,
+            pickguard_cavity_points=_STRATOCASTER_CONTROL_CAVITY,
+            jack_offset=241.1,
+            jack_y=93.8,
+            jack_direction_degrees=232.5,
+            jack_inset=67.5,
             # The neck bolts spread like the bass's: the pair at the
             # pocket's mouth out near the body's edge, the rear pair's
             # ferrules wholly over the pocket.
@@ -1817,6 +1989,12 @@ YOUR_DESIGN_TEMPLATES: dict[str, tuple[str, YourDesignShape]] = {
             jack_offset=175.2,
             jack_y=126.5,
             jack_direction_degrees=291.8,
+            # With three pots (rear_3), as on a Jackson Rhoads (Wikimedia
+            # Commons, "Jackson Rhoads (2017-11 by Alexander Lesnitsky).jpg",
+            # scaled from its frets, its outline fitted to this one's to
+            # within 2 mm): two down the treble wing, the third out toward
+            # its tip, the cavity routed round them.
+            rear_pots=((136.4, 61.3), (189.5, 61.9), (213.6, 111.6)),
             # The neck bolts' front pair as far out as the narrow wings
             # leave 3-5 mm of wood beside its ferrules (the treble wing is
             # the nearer), the rear pair's ferrules wholly over the pocket.
@@ -1876,10 +2054,19 @@ YOUR_DESIGN_TEMPLATES: dict[str, tuple[str, YourDesignShape]] = {
         "Telecaster style (mockup, not the original)",
         YourDesignShape(
             control_points=_TELECASTER_POINTS,
-            # The jack into the treble side nearest the control cavity.
-            jack_offset=197.0,
-            jack_y=87.0,
-            jack_direction_degrees=290.0,
+            # As on a '52 (TELE_PLATE), from a straight-on photo of one
+            # whose body outline fits this template's to within 3 mm: the
+            # control plate's centre 197 mm behind the heel end, 92.5 mm
+            # out on the treble side, its rear end turned 1.2 degrees in
+            # toward the strings; the almond and its pots follow it.
+            pot_offsets=((177.4, 102.0), (217.4, 103.0)),
+            control_shift=(-3.4, 16.0),
+            control_angle_degrees=-1.2,
+            # The jack into the treble side about level with the tone pot,
+            # angled forward into the cavity.
+            jack_offset=235.0,
+            jack_y=95.0,
+            jack_direction_degrees=250.0,
         ),
     ),
     "sg": (
@@ -1889,15 +2076,38 @@ YOUR_DESIGN_TEMPLATES: dict[str, tuple[str, YourDesignShape]] = {
             jack_offset=197.0,
             jack_y=87.0,
             jack_direction_degrees=309.0,
+            # As on a '61 reissue (Wikimedia Commons, "Gibson SG 61 Reissue
+            # 2007 (front).jpg", its outline fitted to this one's to within
+            # 3 mm; the four 10 mm forward and in, so the cover keeps off
+            # the edge): the four pots low on the treble side, each pair
+            # stepped out, the cavity routed round them (the SG style puts
+            # the toggle up on the treble horn and the jack in the top).
+            rear_pots=((259.4, 90.1), (261.3, 129.2), (306.5, 76.4), (307.7, 113.6)),
         ),
     ),
     "explorer": (
         "Explorer style (mockup, not the original)",
         YourDesignShape(
             control_points=_EXPLORER_POINTS,
-            jack_offset=197.0,
-            jack_y=87.0,
-            jack_direction_degrees=290.0,
+            # As on a 1976 style Explorer (Wikimedia Commons,
+            # "Gibson-Explorer noBG.png", its outline fitted to this one's
+            # to within 5 mm): the toggle up on the treble horn, the three
+            # pots (rear_3) in a row along the lower treble edge, the cavity
+            # routed round them, the jack up into it from the lower edge.
+            switch_cavity_offset=-34.6,
+            switch_cavity_y=134.8,
+            switch_cover_offset=-34.6,
+            switch_cover_y=134.8,
+            rear_pots=((220.9, 88.5), (269.4, 72.1), (317.0, 56.6)),
+            # The almond and its two pots (the other layouts) there too,
+            # and the battery box beside them.
+            pot_offsets=((249.1, 71.9), (289.1, 72.9)),
+            control_shift=(67.6, -13.3),
+            battery_offset=273.2,
+            battery_y=18.5,
+            jack_offset=317.0,
+            jack_y=56.6,
+            jack_direction_degrees=180.0,
         ),
     ),
     "flying_v": (

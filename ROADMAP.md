@@ -134,6 +134,8 @@
 - Easy mode: the settings hidden, a style and Build
 - A vintage Fender truss rod laid in from the back, under a walnut strip
   and a teardrop plug
+- Fender, Gibson and Jackson styles with their controls, jacks, pickups and
+  a Stratocaster's pickguard as on the originals; a jack in the top
 - Index pins as wide as a main tool wider than 6 mm (an 8 mm end mill,
   8 mm dowels)
 - The neck's back carved with the ball nose alone, in one program

@@ -256,6 +256,11 @@ CONTROL_CLEARANCE_SHIFT = 20.0
 """How far, in mm, a generated control cavity may move out from the
 centreline to clear a deep top route (see ``_placed_controls``)."""
 
+POCKET_MOUTH = 2.0
+"""How far ahead of the body's front edge the neck pocket starts, in mm,
+where the body reaches further forward than ``body_neck_pocket_length``:
+the pocket always opens through the front."""
+
 JACK_DEFAULT_DEPTH = 55.0
 """The jack bore's length, in mm, when it aims at no control cavity."""
 
@@ -1132,10 +1137,16 @@ class Prototype001Parameters:
     # jack_direction_degrees) meets the outline, whatever the body, and
     # runs on into the control cavity, JACK_CAVITY_OVERRUN past its wall;
     # body_jack_depth fixes its length instead (JACK_DEFAULT_DEPTH when it
-    # aims at no control cavity). "plate" puts the jack on the Jazz Bass
-    # style control plate (body_controls "jazz_bass"), behind its pots:
-    # no bore from the edge.
-    body_jack: Literal["side", "cup", "strat", "plate"] = "side"
+    # aims at no control cavity). A shape's jack_inset sets the Strat
+    # style cavity that far in along the line, as on a Stratocaster, its
+    # bore then turned to the control cavity if the line misses it.
+    # "plate" puts the jack on the Jazz Bass style control plate
+    # (body_controls "jazz_bass"), behind its pots: no bore from the edge.
+    # "top" mounts it through the top at the shape's jack_offset / jack_y,
+    # as on an SG or an Explorer: a JACK_PLATE_HOLE drilled through into
+    # the rear control cavity (a shape's rear_pots route the cavity round
+    # it), no bore from the edge.
+    body_jack: Literal["side", "cup", "strat", "plate", "top"] = "side"
     body_jack_diameter: float = 12.5
     body_jack_depth: float | None = None
     # The wire channels (see geometry.body.wiring): every pickup route and
@@ -1630,12 +1641,18 @@ class Prototype001Parameters:
         return self.heel_root_length
 
     def _neck_pocket_outline(
-        self, outline: NeckOutline, heel_end: float
+        self,
+        outline: NeckOutline,
+        heel_end: float,
+        body_outline: tuple[Point2D, ...] = (),
     ) -> tuple[Point2D, ...]:
         """Return the pocket polygon: the neck's own outline plus clearance.
 
         The pocket runs from ``heel_end - body_neck_pocket_length`` to
-        ``heel_end``; between those the neck is ``nut_width`` wide at
+        ``heel_end`` — or, where ``body_outline`` reaches further forward
+        in the neck's way, from ``POCKET_MOUTH`` ahead of it, so the pocket
+        always opens through the body's front; between those the neck is
+        ``nut_width`` wide at
         the nut tapering to ``last_fret_width`` at the last fret, then
         ``heel_width`` to the heel end. Every side wall sits
         ``body_neck_pocket_clearance`` outside the neck; a round heel's end
@@ -1643,6 +1660,12 @@ class Prototype001Parameters:
         touching the heel's on the centre.
         """
         start = heel_end - self.body_neck_pocket_length
+        lane = max(outline.heel_width, outline.last_fret_width) / 2.0
+        front = min(
+            (p.x for p in body_outline if abs(p.y) <= lane and p.x < heel_end),
+            default=start,
+        )
+        start = min(start, front - POCKET_MOUTH)
         if start < 0.0:
             raise NeckGeometryError("Neck pocket must not reach past the nut.")
         # A set neck's pocket is a tight glue joint.
@@ -3635,7 +3658,7 @@ class Prototype001Parameters:
         body_outline = TracedOutline(shape.outline_points(heel_end, widening))
         neck_pocket = TracedCavity(
             "Neck pocket",
-            self._neck_pocket_outline(outline, heel_end),
+            self._neck_pocket_outline(outline, heel_end, body_outline.points),
             self.heel_thickness,
             floor_slope=math.tan(math.radians(self.neck_angle_degrees)),
         )
@@ -3923,6 +3946,7 @@ class Prototype001Parameters:
             Point2D(heel_end + shape.jack_offset, shape.jack_y),
             shape.jack_direction_degrees,
             controls,
+            shape.jack_inset,
         )
         holes: list[DrilledHole] = [*bridge.holes, *controls.holes]
         # A pickguard's square openings, one per pickup cover.
@@ -5554,24 +5578,31 @@ class Prototype001Parameters:
         aim: Point2D,
         direction_degrees: float,
         controls: ControlFeatures,
+        inset: float | None = None,
     ) -> tuple[JackHole | None, TracedCavity | None]:
         """Return the output jack's bore and a Strat style jack's cavity.
 
-        Neither with the jack on the control plate (``body_jack`` "plate").
+        Neither with the jack on the control plate or in the top
+        (``body_jack`` "plate", "top": the controls place it).
 
         The bore's line runs through ``aim`` along the shape's direction; it
         starts where that line enters the body (the crossing of the outline
         nearest ``aim``), so it sits on the edge of whatever body is drawn,
-        and runs on into the control cavity (see ``body_jack``).
+        and runs on into the control cavity (see ``body_jack``). A Strat
+        style cavity sits ``inset`` in along the line (the shape's
+        ``jack_inset``), or just in from the edge; where its bore's line
+        misses the control cavity, the bore turns to the cavity's nearest
+        point.
 
         Raises:
             BodyGeometryError: For an unknown ``body_jack``.
         """
-        if self.body_jack not in ("side", "cup", "strat", "plate"):
+        if self.body_jack not in ("side", "cup", "strat", "plate", "top"):
             raise BodyGeometryError(
-                f"Unknown jack {self.body_jack!r}: choose side, cup, strat or plate."
+                f"Unknown jack {self.body_jack!r}: choose side, cup, strat, plate "
+                "or top."
             )
-        if self.body_jack == "plate":
+        if self.body_jack in ("plate", "top"):
             return None, None
         radians = math.radians(direction_degrees)
         ux, uy = math.cos(radians), math.sin(radians)
@@ -5589,7 +5620,7 @@ class Prototype001Parameters:
         cavity: TracedCavity | None = None
         if self.body_jack == "strat":
             radius = JACK_STRAT_DIAMETER / 2.0
-            centre = along(start, radius + JACK_STRAT_WALL)
+            centre = along(start, radius + JACK_STRAT_WALL if inset is None else inset)
             cavity = TracedCavity(
                 "Jack cavity",
                 tuple(
@@ -5624,6 +5655,21 @@ class Prototype001Parameters:
             ]
             if hits:
                 depth = min(hits) + JACK_CAVITY_OVERRUN
+            elif cavity is not None and targets:
+                # A Strat style jack inside the body: wired straight to
+                # the cavity's nearest point, the line through the plate
+                # being the plug's.
+                nearest = min(
+                    (point for polygon in targets for point in polygon),
+                    key=lambda point: math.hypot(point.x - start.x, point.y - start.y),
+                )
+                direction_degrees = math.degrees(
+                    math.atan2(nearest.y - start.y, nearest.x - start.x)
+                )
+                depth = (
+                    math.hypot(nearest.x - start.x, nearest.y - start.y)
+                    + JACK_CAVITY_OVERRUN
+                )
         cup = self.body_jack == "cup"
         if cup:
             depth = max(depth, JACK_CUP_DEPTH + 5.0)
@@ -5861,6 +5907,16 @@ class Prototype001Parameters:
                 moved = replace(
                     shape,
                     pot_offsets=tuple((x + dx, y + side * dy) for x, y in pots),
+                    pickguard_controls=tuple(
+                        (x + dx, y + side * dy) for x, y in shape.pickguard_controls
+                    ),
+                    pickguard_cavity_points=tuple(
+                        (x + dx, y + side * dy)
+                        for x, y in shape.pickguard_cavity_points
+                    ),
+                    rear_pots=tuple(
+                        (x + dx, y + side * dy) for x, y in shape.rear_pots
+                    ),
                     control_angle_degrees=shape.control_angle_degrees + turn,
                 )
             return control_features(
@@ -5875,6 +5931,11 @@ class Prototype001Parameters:
                 # One pickup needs no selector beside a single volume pot.
                 switch=sum(kind != "none" for kind in self.pickup_types()) > 1,
                 plate_jack=self.body_jack == "plate",
+                top_jack=(
+                    Point2D(heel_end + shape.jack_offset, shape.jack_y)
+                    if self.body_jack == "top"
+                    else None
+                ),
             )
 
         def clear(controls: ControlFeatures) -> bool:
@@ -5892,6 +5953,9 @@ class Prototype001Parameters:
 
         controls = build(0.0, 0.0)
         if self.body_controls == "pickguard":
+            # Drawn as on the original, they stay where they are drawn.
+            if shape.pickguard_controls:
+                return controls
             return self._guard_controls_placed(build, outline, top_cavities)
         if self.body_controls not in GENERATED_REAR_LAYOUTS or clear(controls):
             return controls
@@ -6944,6 +7008,10 @@ TELECASTER_NECK: dict[str, Any] = {
         (13.7, 40.5),
     ),
     "truss_rod_adjustment": "heel",
+    # Vintage: a plain nut at the heel's end face, turned with the neck
+    # off, so no notch in the body round a spoke wheel, where a
+    # Telecaster's neck pickup sits.
+    "truss_rod_spoke_wheel": "no",
 }
 """A Telecaster neck (see ``NECK_TEMPLATES``): a slotted nut, a flat
 six-in-line headstock drawn as a Telecaster's, adjusted at the heel."""
@@ -7228,6 +7296,7 @@ NECK_TEMPLATE_RESETS: frozenset[str] = frozenset(
         "tuner_side_offsets",
         "tuner_edge_offset",
         "tuner_edge_clearance",
+        "truss_rod_spoke_wheel",
     }
 )
 """The tuner and tip settings a neck template's outline is drawn round, and

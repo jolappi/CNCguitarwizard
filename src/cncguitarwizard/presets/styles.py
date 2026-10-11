@@ -89,9 +89,35 @@ FENDER_SCALE = 647.7
 GIBSON_SCALE = 628.65
 """Gibson's scale length, in mm (24.75 in)."""
 
+TELE_PICKUPS = {
+    "body_neck_pickup_offset": 31.4,
+    "body_bridge_pickup_offset": 28.6,
+    "body_bridge_single_coil_angle": 16.0,
+}
+"""A Telecaster's pickups where a '52's sit on its body (Wikimedia
+Commons, "Fender Telecaster American Vintage 1952 transparent.png", its
+outline fitted to the Telecaster template's to within 3 mm): the neck
+pickup's centre 31.4 mm behind the heel end, the bridge pickup's 28.6 mm
+ahead of the saddle line, slanted 16 degrees, its treble end back."""
+
+STRAT_PICKUPS = {
+    "body_neck_pickup_offset": 24.7,
+    "body_middle_pickup_offset": 83.8,
+    "body_bridge_pickup_offset": 36.9,
+    "body_bridge_single_coil_angle": 10.0,
+}
+"""A Stratocaster's pickups where the user's Stratocaster drawing routes
+them (stratbody.dxf, aligned on its neck pocket's end, as the
+Stratocaster template is): the neck and middle pickups' centres 24.7 and
+83.8 mm behind the heel end, the bridge pickup's 36.9 mm ahead of the
+saddle line, slanted 10 degrees."""
+
 GIBSON = {
     "scale_length": GIBSON_SCALE,
     "fret_count": 22,
+    # The bridge humbucker's centre 39.6 mm ahead of the saddles, as on
+    # a '59 Les Paul and a '61 SG.
+    "body_bridge_pickup_offset": 39.6,
     "neck_joint": "set",
     "body_pickups": "HH",
     "body_bridge": TuneOMaticSpec(),
@@ -110,13 +136,9 @@ STYLES: dict[str, InstrumentStyle] = {
             "scale_length": FENDER_SCALE,
             "fret_count": 22,
             "body_pickups": "SSS",
+            **STRAT_PICKUPS,
             "body_bridge": HardtailSpec(),
             "body_controls": "pickguard",
-            # The automatic guard, made round the controls in it (the
-            # template's drawn one is for its rear cavity's).
-            "body_shape": replace(
-                YOUR_DESIGN_TEMPLATES["stratocaster"][1], pickguard_points=()
-            ),
             "body_pickguard": True,
             "body_jack": "strat",
             "body_neck_plate": "plate",
@@ -133,6 +155,7 @@ STYLES: dict[str, InstrumentStyle] = {
         {
             "scale_length": FENDER_SCALE,
             "fret_count": 22,
+            **TELE_PICKUPS,
             "body_pickups": "SS",
             "body_bridge": HardtailSpec(),
             "body_controls": "tele",
@@ -158,7 +181,23 @@ STYLES: dict[str, InstrumentStyle] = {
         GUITAR,
         "sg",
         "gibson",
-        {**GIBSON, "body_controls": "gibson_4", "inlay_style": "trapezoid"},
+        {
+            **GIBSON,
+            "body_controls": "gibson_4",
+            # As on a '61 reissue: the toggle up on the treble horn level
+            # with the bridge, the jack in the top beside the lower pots.
+            "body_shape": replace(
+                YOUR_DESIGN_TEMPLATES["sg"][1],
+                switch_cavity_offset=204.5,
+                switch_cavity_y=114.7,
+                switch_cover_offset=204.5,
+                switch_cover_y=114.7,
+                jack_offset=323.4,
+                jack_y=64.7,
+            ),
+            "body_jack": "top",
+            "inlay_style": "trapezoid",
+        },
     ),
     "flying_v": InstrumentStyle(
         "Gibson Flying V style",
@@ -183,6 +222,19 @@ STYLES: dict[str, InstrumentStyle] = {
             "body_pickups": "HH",
             "body_bridge": FloydRoseSpec(),
             "body_controls": "rear_3",
+            # As on a Jackson Rhoads: the toggle among the three pots down
+            # the treble wing (sharing their cavity), the jack into the
+            # wing's inner edge below them.
+            "body_shape": replace(
+                YOUR_DESIGN_TEMPLATES["jackson_rr"][1],
+                switch_cavity_offset=163.4,
+                switch_cavity_y=81.8,
+                switch_cover_offset=163.4,
+                switch_cover_y=81.8,
+                jack_offset=215.0,
+                jack_y=83.2,
+                jack_direction_degrees=180.0,
+            ),
             "inlay_style": "sharktooth",
         },
     ),

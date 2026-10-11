@@ -403,7 +403,8 @@ FIELD_HELP: dict[str, str] = {
     "body_jack": (
         "The output jack: in from the body's side (a Les Paul plate or a "
         "barrel jack), a cup jack in a round counterbore, a Stratocaster "
-        "style plate on the top, or on the Jazz Bass control plate."
+        "style plate on the top, on the Jazz Bass control plate, or in the "
+        "top straight into the control cavity, as on an SG."
     ),
     "body_stepped_top": (
         "Steps the top down in bands along the edge, as on an ESP LTD Alexi "

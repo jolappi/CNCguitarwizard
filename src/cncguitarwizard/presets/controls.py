@@ -30,7 +30,7 @@ from ..geometry.body import (
     cover_screw_points,
 )
 from ..geometry.exceptions import BodyGeometryError
-from ..geometry.primitives import Point2D
+from ..geometry.primitives import Point2D, point_in_polygon
 from .body_shapes import BodyShapeSpec
 
 ControlLayout = Literal[
@@ -99,6 +99,64 @@ JACK_PLATE_HOLE = 9.6
 SCREW_SPOT_DIAMETER = 3.0
 SCREW_SPOT_DEPTH = 1.0
 SCREW_CLEARANCE = 3.2
+
+POT_ROOM = 13.0
+"""The radius routed round a drawn pot's shaft, in mm: a 24 mm pot and a
+millimetre."""
+
+JACK_ROOM = 12.0
+"""The radius routed round a jack mounted in the top, in mm."""
+
+SWITCH_ROOM = 11.0
+"""The radius routed round each end of a drawn blade switch, in mm."""
+
+SWITCH_REACH = 20.0
+"""How far a drawn blade switch's body runs each way along its slot from
+the slot's centre, in mm."""
+
+COVER_MARGIN = 6.0
+"""How far a cover routed round drawn pots reaches past their cavity, in
+mm."""
+
+TOGGLE_ROOM = 13.0
+"""The radius routed round a toggle switch sharing a drawn control
+cavity, in mm."""
+
+
+REAR_POT_COUNTS = {"gibson_4": 4, "rear_3": 3, "volume_1": 1, "active_4": 4}
+"""How many pots each generated rear layout has: a shape's ``rear_pots``
+of that many place them."""
+
+
+@dataclass(frozen=True, slots=True)
+class TelePlate:
+    """A Telecaster control plate's sizes, along it from its centre.
+
+    Args:
+        length: The plate's length, in mm.
+        width: Its width.
+        cavity_length: The cavity's under it.
+        cavity_width: The cavity's width: room for 24 mm pots.
+        switch: The blade switch slot's centre.
+        pots: The volume and the tone pot.
+        screws: The two mounting screws.
+    """
+
+    length: float
+    width: float
+    cavity_length: float
+    cavity_width: float
+    switch: float
+    pots: tuple[float, float]
+    screws: tuple[float, float]
+
+
+TELE_PLATE = TelePlate(155.0, 32.0, 142.0, 25.4, -50.0, (-2.0, 57.0), (-74.5, 74.5))
+"""A '52 Telecaster's control plate, measured from a straight-on photo
+(Wikimedia Commons, "Fender Telecaster American Vintage 1952
+transparent.png", scaled from its frets): about 6 1/8 x 1 1/4 in, the
+switch some 1 15/16 in ahead of the volume pot and the tone pot 2 3/8 in
+behind it."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -310,6 +368,40 @@ def _turned(
     )
 
 
+def _round_hull(
+    rooms: list[tuple[Point2D, float]], samples: int = 32
+) -> tuple[Point2D, ...]:
+    """Return the convex hull round circles (centre, radius), counter-
+    clockwise: a cavity routed round its pots."""
+    points = sorted(
+        {
+            (
+                round(centre.x + radius * math.cos(2.0 * math.pi * k / samples), 9),
+                round(centre.y + radius * math.sin(2.0 * math.pi * k / samples), 9),
+            )
+            for centre, radius in rooms
+            for k in range(samples)
+        }
+    )
+
+    def cross(
+        o: tuple[float, float], a: tuple[float, float], b: tuple[float, float]
+    ) -> float:
+        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+    lower: list[tuple[float, float]] = []
+    for point in points:
+        while len(lower) >= 2 and cross(lower[-2], lower[-1], point) <= 0.0:
+            lower.pop()
+        lower.append(point)
+    upper: list[tuple[float, float]] = []
+    for point in reversed(points):
+        while len(upper) >= 2 and cross(upper[-2], upper[-1], point) <= 0.0:
+            upper.pop()
+        upper.append(point)
+    return tuple(Point2D(x, y) for x, y in lower[:-1] + upper[:-1])
+
+
 def _principal_axis(points: tuple[Point2D, ...]) -> Point2D:
     """Return the long axis of ``points`` (a unit vector, X never negative)."""
     n = len(points)
@@ -373,12 +465,16 @@ def control_features(
     switch_hole_diameter: float,
     switch: bool = True,
     plate_jack: bool = False,
+    top_jack: Point2D | None = None,
 ) -> ControlFeatures:
     """Return the cavities, holes and plates of one electronics layout.
 
     ``switch`` off leaves out the round switch cavity of a ``volume_1``
     layout (a single pickup needs no selector); ``plate_jack`` puts the
-    output jack on a ``jazz_bass`` plate.
+    output jack on a ``jazz_bass`` plate. ``top_jack`` mounts the jack in
+    the top there, as an SG's or an Explorer's: its hole is drilled
+    through into the rear control cavity, which a shape's ``rear_pots``
+    route round it too; a cavity laid out otherwise must lie under it.
 
     Raises:
         BodyGeometryError: When ``thickness`` leaves no room under
@@ -386,7 +482,8 @@ def control_features(
             shortens the control cavity or its cover past its rounded ends,
             ``shape.control_stretch_across`` leaves the cavity narrower
             than ``MIN_CONTROL_CAVITY_WIDTH``, or the jack is asked onto a
-            layout with no plate for it.
+            layout with no plate for it, or into the top with no rear
+            control cavity under it.
     """
     if plate_jack and layout != "jazz_bass":
         raise BodyGeometryError(
@@ -422,6 +519,13 @@ def control_features(
     def spread_across(dy: float) -> float:
         return dy + math.copysign(widen / 2.0, dy) if dy else 0.0
 
+    if top_jack is not None and layout not in (*REAR_POT_COUNTS, "almond_2"):
+        raise BodyGeometryError(
+            "A jack in the top (body_jack top) goes through into a rear control "
+            f"cavity: the {layout} layout has none (choose almond_2, gibson_4, "
+            "rear_3, volume_1 or active_4)."
+        )
+
     if layout == "pickguard":
         return _pickguard_controls(
             Point2D(anchor_x, anchor_y),
@@ -430,6 +534,9 @@ def control_features(
             turn,
             stretch,
             widen,
+            tuple(Point2D(heel_end + x, y) for x, y in shape.pickguard_controls),
+            shape.pickguard_switch_degrees,
+            tuple(Point2D(heel_end + x, y) for x, y in shape.pickguard_cavity_points),
         )
 
     if layout == "tele":
@@ -462,7 +569,48 @@ def control_features(
     steps: tuple[Cavity, ...] = ()
     extra_holes: list[DrilledHole] = []
     screws = 4
-    if layout == "almond_2":
+    drawn_rear = (
+        layout in REAR_POT_COUNTS and len(shape.rear_pots) == REAR_POT_COUNTS[layout]
+    )
+    switch_at = Point2D(heel_end + shape.switch_cavity_offset, shape.switch_cavity_y)
+    wants_switch = layout not in SWITCHLESS_LAYOUTS and (switch or layout != "volume_1")
+    # A switch among drawn pots (a Jackson Rhoads') shares their cavity:
+    # its own round cavity and cover would run into theirs.
+    shared_switch = (
+        drawn_rear
+        and wants_switch
+        and min(
+            math.hypot(heel_end + x - switch_at.x, y - switch_at.y)
+            for x, y in shape.rear_pots
+        )
+        < POT_ROOM + shape.switch_cover_diameter / 2.0 + COVER_MARGIN
+    )
+    if drawn_rear:
+        # Where the shape draws them, as on the original: the cavity and
+        # its cover routed round the pots (and a jack in the top), turned
+        # about their middle.
+        drawn_pots = tuple(Point2D(heel_end + x, y) for x, y in shape.rear_pots)
+        middle = Point2D(
+            sum(p.x for p in drawn_pots) / len(drawn_pots),
+            sum(p.y for p in drawn_pots) / len(drawn_pots),
+        )
+        centre = middle
+        turned_pots = _turned(drawn_pots, middle, turn)
+        pots = [(p.x, p.y) for p in turned_pots]
+        axis = Point2D(1.0, 0.0)
+        rooms = [(p, POT_ROOM) for p in turned_pots]
+        if top_jack is not None:
+            rooms.append((top_jack, JACK_ROOM))
+        if shared_switch:
+            rooms.append((switch_at, TOGGLE_ROOM))
+        cavity: Cavity = TracedCavity("Control cavity", _round_hull(rooms), depth)
+        cover: Cavity = TracedCavity(
+            "Control cavity cover recess",
+            _round_hull([(p, r + COVER_MARGIN) for p, r in rooms]),
+            cover_depth,
+        )
+        screws = {"volume_1": 3, "active_4": 6}.get(layout, 4)
+    elif layout == "almond_2":
         # The drawn almond turns about its own centre; its pots are the
         # shape's own pot_offsets, placed (and turned) by the editor.
         drawn = shape.control_cavity_points(heel_end)
@@ -481,8 +629,8 @@ def control_features(
             longer = _stretched(points, centre, axis, stretch)
             return _turned(_stretched(longer, centre, across, widen), centre, turn)
 
-        cavity: Cavity = TracedCavity("Control cavity", reshaped(drawn), depth)
-        cover: Cavity = TracedCavity(
+        cavity = TracedCavity("Control cavity", reshaped(drawn), depth)
+        cover = TracedCavity(
             "Control cavity cover recess", reshaped(drawn_cover), cover_depth
         )
     elif layout == "gibson_4":
@@ -638,7 +786,17 @@ def control_features(
     control = RearCavity(cavity, cover, steps)
     switch_cavity: RearCavity | None = None
     holes: list[DrilledHole] = []
-    if layout not in SWITCHLESS_LAYOUTS and (switch or layout != "volume_1"):
+    if shared_switch:
+        holes.append(
+            DrilledHole(
+                "Switch shaft hole",
+                switch_at.x,
+                switch_at.y,
+                switch_hole_diameter,
+                thickness,
+            )
+        )
+    elif wants_switch:
         switch_x = heel_end + shape.switch_cavity_offset
         switch_cavity = RearCavity(
             CircularCavity(
@@ -673,6 +831,17 @@ def control_features(
         for index, (x, y) in enumerate(pots, start=1)
     ]
     holes += extra_holes
+    if top_jack is not None:
+        if not point_in_polygon(top_jack, control.cavity.outline):
+            raise BodyGeometryError(
+                "A jack in the top (body_jack top) goes through into the control "
+                "cavity, but the cavity is not under it: move the jack (the "
+                "shape's jack_offset / jack_y) over it, or draw the pots round it "
+                "(rear_pots)."
+            )
+        holes.append(
+            DrilledHole("Jack hole", top_jack.x, top_jack.y, JACK_PLATE_HOLE, thickness)
+        )
     marks: list[DrilledHole] = []
     covers: list[CoverPlate] = []
     for rear, count in ((control, screws), (switch_cavity, 3)):
@@ -740,6 +909,9 @@ def _pickguard_controls(
     turn: float = 0.0,
     stretch: float = 0.0,
     widen: float = 0.0,
+    drawn: tuple[Point2D, ...] = (),
+    switch_degrees: float = 0.0,
+    drawn_cavity: tuple[Point2D, ...] = (),
 ) -> ControlFeatures:
     """Stratocaster style controls, mounted in the pickguard.
 
@@ -749,34 +921,79 @@ def _pickguard_controls(
     the top. ``stretch`` / ``widen`` make the cavity longer / wider, the
     end pots and the switch moving out with its ends; all of it turns
     ``turn`` degrees about the cavity's centre.
+
+    ``drawn`` (the switch's slot centre, then the three pots) places them
+    as on the original instead, the slot along ``switch_degrees``, the
+    cavity ``drawn_cavity`` or else routed round the pots and the
+    switch's body, all of it turned ``turn`` about the pots' middle;
+    ``centre``, ``stretch`` and ``widen`` do not apply.
     """
+    if drawn:
+        drawn_pots = drawn[1:]
+        middle = Point2D(
+            sum(p.x for p in drawn_pots) / len(drawn_pots),
+            sum(p.y for p in drawn_pots) / len(drawn_pots),
+        )
+        switch_at, *pots = _turned(drawn, middle, turn)
+        outline = _turned(drawn_cavity, middle, turn)
+        slot_turn = switch_degrees + turn
+        along = Point2D(
+            math.cos(math.radians(slot_turn)), math.sin(math.radians(slot_turn))
+        )
+        ends = [
+            Point2D(switch_at.x + s * along.x, switch_at.y + s * along.y)
+            for s in (-SWITCH_REACH, SWITCH_REACH)
+        ]
+        cavity: Cavity = TracedCavity(
+            "Control cavity",
+            outline
+            or _round_hull(
+                [(p, POT_ROOM) for p in pots] + [(p, SWITCH_ROOM) for p in ends]
+            ),
+            depth,
+        )
+        switch = _box("Control switch slot", switch_at, 22.0, 5.0, 1.0, 2.49, slot_turn)
+        control_middle = middle
+    else:
 
-    def spread(dx: float) -> float:
-        return dx + math.copysign(stretch / 2.0, dx) if dx else 0.0
+        def spread(dx: float) -> float:
+            return dx + math.copysign(stretch / 2.0, dx) if dx else 0.0
 
-    # The cavity's middle sits between the switch and the last pot.
-    middle = Point2D(centre.x - 17.5, centre.y)
+        # The cavity's middle sits between the switch and the last pot.
+        control_middle = Point2D(centre.x - 17.5, centre.y)
 
-    def at(dx: float) -> Point2D:
-        (point,) = _turned((Point2D(middle.x + spread(dx), middle.y),), middle, turn)
-        return point
+        def at(dx: float) -> Point2D:
+            (point,) = _turned(
+                (Point2D(control_middle.x + spread(dx), control_middle.y),),
+                control_middle,
+                turn,
+            )
+            return point
 
-    cavity = _box(
-        "Control cavity", middle, 127.0 + stretch, 50.0 + widen, depth, 12.0, turn
-    )
-    pots = [at(dx + 17.5) for dx in (-30.0, 0.0, 30.0)]
+        cavity = _box(
+            "Control cavity",
+            control_middle,
+            127.0 + stretch,
+            50.0 + widen,
+            depth,
+            12.0,
+            turn,
+        )
+        pots = [at(dx + 17.5) for dx in (-30.0, 0.0, 30.0)]
+        switch = _box(
+            "Control switch slot", at(-60.0 + 17.5), 22.0, 5.0, 1.0, 2.49, turn
+        )
     holes = tuple(
         DrilledHole(
             f"Control pot {index} shaft hole", p.x, p.y, pot_hole_diameter, depth
         )
         for index, p in enumerate(pots, start=1)
     )
-    switch = _box("Control switch slot", at(-60.0 + 17.5), 22.0, 5.0, 1.0, 2.49, turn)
     return ControlFeatures(
         top_cavities=(cavity,),
         guard_holes=holes,
         guard_slots=(switch,),
-        control_centre=middle,
+        control_centre=control_middle,
         control_axis=_turned((Point2D(1.0, 0.0),), Point2D(0.0, 0.0), turn)[0],
     )
 
@@ -792,13 +1009,14 @@ def _tele(
 ) -> ControlFeatures:
     """A Telecaster-style plate: flush in the top, parallel to the neck.
 
-    The 160 × 32 mm round-ended plate carries the blade switch's slot at
-    its front and two pots behind it; the cavity under it is 140 × 22 mm;
-    two screws hold it at its ends. ``stretch`` makes the plate and cavity
-    that much longer, moving the screws, the slot and the rear pot out
-    with the ends, and ``widen`` that much wider, their ends staying half
-    circles. All of it turns ``turn`` degrees about the plate's
-    centre.
+    As on a '52 Telecaster (``TELE_PLATE``): the 155 × 32 mm round-ended
+    plate carries the blade switch's slot at its front, the volume pot
+    about its middle and the tone pot behind; the 142 × 25.4 mm cavity
+    under it takes 24 mm pots; two screws hold it near its ends.
+    ``stretch`` makes the plate and cavity that much longer, moving the
+    screws, the slot and the pots off the middle out with the ends, and
+    ``widen`` that much wider, their ends staying half circles. All of it
+    turns ``turn`` degrees about the plate's centre.
     """
 
     def at(dx: float) -> Point2D:
@@ -807,28 +1025,29 @@ def _tele(
         (point,) = _turned((Point2D(centre.x + dx, centre.y),), centre, turn)
         return point
 
-    width = 22.0 + widen
+    width = TELE_PLATE.cavity_width + widen
     _check_width(width)
+    plate_width = width + TELE_PLATE.width - TELE_PLATE.cavity_width
     recess = _box(
         "Control plate recess",
         centre,
-        160.0 + stretch,
-        width + 10.0,
+        TELE_PLATE.length + stretch,
+        plate_width,
         cover_depth,
-        width / 2.0 + 4.99,
+        plate_width / 2.0 - 0.01,
         turn,
     )
     cavity = _box(
         "Control cavity",
         centre,
-        140.0 + stretch,
+        TELE_PLATE.cavity_length + stretch,
         width,
         depth,
         width / 2.0 - 0.01,
         turn,
     )
-    screws = [at(-75.0), at(75.0)]
-    pots = [at(0.0), at(45.0)]
+    screws = [at(dx) for dx in TELE_PLATE.screws]
+    pots = [at(dx) for dx in TELE_PLATE.pots]
     plate = CoverPlate(
         "Control plate",
         "top",
@@ -847,7 +1066,15 @@ def _tele(
             ),
         ),
         slots=(
-            _box("Blade switch slot", at(-45.0), 20.0, 7.0, cover_depth, 3.49, turn),
+            _box(
+                "Blade switch slot",
+                at(TELE_PLATE.switch),
+                20.0,
+                7.0,
+                cover_depth,
+                3.49,
+                turn,
+            ),
         ),
     )
     marks = tuple(

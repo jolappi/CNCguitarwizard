@@ -4,6 +4,17 @@
 
 ### Added
 
+- Controls a body template draws as on the original: `rear_pots` place a
+  rear layout's pots, its cavity and cover routed round them (a toggle
+  among them shares the cavity); `pickguard_controls`,
+  `pickguard_switch_degrees` and `pickguard_cavity_points` a
+  Stratocaster's in its guard over their own cavity; `jack_inset` sets a
+  Strat style jack's cavity in from the edge. A jack in the top
+  (`body_jack` "top", as on an SG) is drilled through into the rear
+  control cavity. The neck pocket always opens through the body's front,
+  starting 2 mm ahead of a body reaching further forward than
+  `body_neck_pocket_length`.
+
 - A vintage Fender truss rod (`truss_rod_install` "back"): a 4.76 mm rod
   laid into a curved channel routed from the neck's back (4 mm below the
   glue face at its ends, 2.5 mm deeper in the middle), from the nut seat's
@@ -838,6 +849,23 @@
   round (was 5 mm, too narrow for the screws).
 
 ### Changed
+
+- The Fender, Gibson and Jackson styles place their controls, jacks and
+  pickups as on the originals, measured from straight-on photos (Wikimedia
+  Commons; each photo's body outline fitted to the template's to within
+  2-5 mm) and the user's Stratocaster drawing: a '52 Telecaster's control
+  plate (`TELE_PLATE`, 155 x 32 mm over a 142 x 25.4 mm cavity for 24 mm
+  pots, the switch, volume and tone where a '52's are) out on the treble
+  side and its cup jack into the side level with the tone pot, its bridge
+  pickup slanted 16 degrees and no spoke wheel; a vintage Stratocaster's
+  SSS pickguard traced from a photo, its switch and pots as on the
+  original over the drawing's own control cavity, its jack's cavity in
+  its angled plate and its pickups in the drawing's routes; a Les Paul's
+  four pots staggered as on a '59 reissue, an SG's low on the treble side
+  with the toggle on the horn and the jack in the top, an Explorer's three
+  in a row along the lower treble edge with the toggle on the horn, and a
+  Jackson Rhoads' three down the treble wing with the toggle among them;
+  the Gibson styles' bridge humbucker 39.6 mm ahead of the saddles.
 
 - The Telecaster neck's headstock looks like a Telecaster's, traced from
   Wikimedia Commons' Telecaster headstock outline (GreyCat, CC BY-SA)

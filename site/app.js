@@ -3595,6 +3595,13 @@ const bodyEditor = {
       const [sx, sy] = readValue(input);
       this.setField(input, [round(sx + dx), round(sy + dy)]);
       movePots(() => true);
+      // Controls a template draws as on the original move with them.
+      for (const name of ["pickguard_controls", "pickguard_cavity_points", "rear_pots"]) {
+        const drawn = this.field(shape, name);
+        if (!drawn) continue;
+        const points = readValue(drawn) || [];
+        if (points.length) this.setField(drawn, points.map(([x, y]) => [round(x + dx), round(y + dy)]));
+      }
     } else if (group === "switch") {
       for (const name of ["switch_cavity_offset", "switch_cover_offset"]) this.shiftField(shape, name, dx);
       for (const name of ["switch_cavity_y", "switch_cover_y"]) this.shiftField(shape, name, dy);

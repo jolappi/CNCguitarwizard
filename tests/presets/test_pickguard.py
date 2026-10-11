@@ -258,11 +258,11 @@ def test_the_stratocaster_template_has_a_traced_strat_guard() -> None:
 
 
 def test_a_drawn_guard_not_over_the_controls_gives_way() -> None:
-    # The traced HH guard has no room for a Stratocaster's controls: the
-    # automatic guard, made round them, takes its place.
+    # The Les Paul's traced guard has no room for a Stratocaster's
+    # controls: the automatic guard, made round them, takes its place.
     parameters = replace(
         Prototype001Parameters(),
-        body_shape=STRAT,
+        body_shape=YOUR_DESIGN_TEMPLATES["les_paul"][1],
         body_pickguard=True,
         body_pickups="SSS",
         body_controls="pickguard",

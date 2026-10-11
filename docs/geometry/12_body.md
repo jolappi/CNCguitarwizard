@@ -92,7 +92,9 @@ nut-origin frame:
   by `body_neck_pocket_clearance` (0.15 mm) per side, so it always matches
   the neck it receives (a round heel's end too, `neck_heel_end`: see
   [Neck outline](03_neck_outline.md)); with a `neck_angle` its floor
-  tilts (see *Neck angle* below);
+  tilts (see *Neck angle* below); where the body's outline reaches further
+  forward in the neck's way, the pocket starts `POCKET_MOUTH` (2 mm) ahead
+  of it instead, so it always opens through the body's front;
 - the bridge baseplate cutout is the drawing's `LWPOLYLINE`;
 - the almond control cavity and the round switch cavity are the drawing's
   pairs of concentric loops — the inner loop is the cavity, the outer loop the
@@ -129,14 +131,14 @@ a complete `YourDesignShape` (outline and electronics placements):
 | Key | Label | Outline |
 | --- | --- | --- |
 | `design_by_jone` | Design by Jone | The traced DXF outline resampled to 64 evenly spaced control points, with that body's own switch, pot and jack placements |
-| `les_paul` | Les Paul style (mockup, not the original) | Single cutaway traced from a reference render and reshaped by hand — a genre mockup, not the original outline; its selector switch sits on the bass-side upper bout |
-| `stratocaster` | Stratocaster style (mockup, not the original) | Offset double cutaway traced from a reference DXF drawing (aligned on its neck pocket) and reshaped by hand at both horns and the neck joint — a genre mockup, not the original outline; its neck bolts spread like the bass's, the front pair 63.5 mm ahead of the heel end near the body's edge and the rear pair at 7.5 mm, its ferrules wholly over the pocket |
-| `jackson_rr` | Jackson RR style (mockup, not the original) | Offset V traced from a reference render and reshaped by hand at the neck joint, both wing tips and the V notch — a genre mockup, not the original outline; the switch on the bass wing, the pots, control cavity and jack on the treble wing; the neck bolts' front pair as far out as the narrow wings allow (50 mm ahead of the heel end on the bass side, 44 mm on the treble side), the rear pair at 7.5 mm |
+| `les_paul` | Les Paul style (mockup, not the original) | Single cutaway traced from a reference render and reshaped by hand — a genre mockup, not the original outline; its selector switch sits on the bass-side upper bout; its four pots (`rear_pots`) as on a '59 reissue, the volumes nearer the strings and each pair stepped back, the almond and battery box beside them, the jack into the treble side's rim behind them |
+| `stratocaster` | Stratocaster style (mockup, not the original) | Offset double cutaway traced from a reference DXF drawing (aligned on its neck pocket) and reshaped by hand at both horns and the neck joint — a genre mockup, not the original outline; its neck bolts spread like the bass's, the front pair 63.5 mm ahead of the heel end near the body's edge and the rear pair at 7.5 mm, its ferrules wholly over the pocket; a vintage SSS pickguard traced from a photo, its controls (`pickguard_controls`: the blade switch angled out ahead of the volume pot, the two tone pots stepping out toward the lower edge) over the drawing's own control cavity (`pickguard_cavity_points`), and the jack's cavity in its angled plate where the drawing has it (`jack_inset`) |
+| `jackson_rr` | Jackson RR style (mockup, not the original) | Offset V traced from a reference render and reshaped by hand at the neck joint, both wing tips and the V notch — a genre mockup, not the original outline; the switch on the bass wing, the pots, control cavity and jack on the treble wing (three pots, `rear_3`, as on a Jackson Rhoads: two down the wing and one out toward its tip; the Jackson RR style moves the toggle among them, sharing their cavity, and the jack into the wing's inner edge); the neck bolts' front pair as far out as the narrow wings allow (50 mm ahead of the heel end on the bass side, 44 mm on the treble side), the rear pair at 7.5 mm |
 | `alexi_hexed` | ESP LTD Alexi Hexed style (mockup, not the original) | The Jackson RR style outline and placements (ESP's Alexi body is an offset V after Alexi Laiho's Jackson RRs), with no drawn guard; loading it in the body editor also sets the Hexed's look (`prototype001.BODY_TEMPLATE_VALUES`): one bridge humbucker (`body_pickups` "H") under one volume pot (`volume_1`, no selector), a Floyd Rose, and its graphic as a stepped top (*Stepped top*, below), its two steps drawn (`step_points`) where the original's pinstripes run: two nested arrows from the edge beside the neck pocket (where they converge) out into the wings, each tail a sharp V at the notch — the inner arrow, round the pickup and the bridge, at full height, the band between them 1.5 mm lower (only 4 mm wide at the notch), the rest out to the edge and the wing tips 3 mm lower. Its purple fade and pinstripes (on the back and sides too) are the painter's; it is neck-through with sawtooth inlays, left to choose (`neck_joint`, `inlay_style` "sharktooth") |
 | `mockingbird` | Mockingbird style (mockup, not the original) | Traced from a straight-on product photo of a B.C. Rich Mockingbird (its edge as photographed, the strap button and the jack's rim left out), scaled from its 24 frets and placed with its 24th fret 4 mm ahead of the heel end, as the default neck's is, then reshaped by hand: the long curved horn on the treble side longer and sharper, the beak below it redrawn, the front of the bass side's deep scoop and its lower lobe drawn out; the notched short horn on the bass side. The switch a little in from the narrow treble waist, the jack in the lower treble edge and the battery box behind the bridge, square to the neck |
-| `telecaster` | Telecaster style (mockup, not the original) | Single cutaway traced from a straight-on product photo, scaled from its frets (its 22nd fret 4 mm ahead of the heel end) — a genre mockup, not the original outline; the jack into the treble side nearest the control cavity |
-| `sg` | SG style (mockup, not the original) | Double cutaway traced the same way — the horns meet the neck near its end, so the outline runs on along the neck's sides to hold a bolt-on neck's pocket |
-| `explorer` | Explorer style (mockup, not the original) | Traced the same way, then reshaped by hand: the bass shoulder, the long bottom corner and the wing's tip sharper, the tip further forward; the long wing forward on the treble side, the long bottom corner back on the bass side |
+| `telecaster` | Telecaster style (mockup, not the original) | Single cutaway traced from a straight-on product photo, scaled from its frets (its 22nd fret 4 mm ahead of the heel end) — a genre mockup, not the original outline; its control plate (and the almond with it) where a '52's sits, 92.5 mm out on the treble side, its rear end turned 1.2° in, the jack into the treble side level with the tone pot, angled forward into the cavity |
+| `sg` | SG style (mockup, not the original) | Double cutaway traced the same way — the horns meet the neck near its end, so the outline runs on along the neck's sides to hold a bolt-on neck's pocket; its four pots (`rear_pots`) low on the treble side as on a '61 reissue (the SG style puts the toggle on the treble horn level with the bridge and the jack in the top beside the pots) |
+| `explorer` | Explorer style (mockup, not the original) | Traced the same way, then reshaped by hand: the bass shoulder, the long bottom corner and the wing's tip sharper, the tip further forward; the long wing forward on the treble side, the long bottom corner back on the bass side; the toggle up on the treble horn, its three pots (`rear_pots`) in a row along the lower treble edge as on a 1976 style one, the almond and battery box beside them, the jack up into them from the lower edge |
 | `flying_v` | Flying V style (mockup, not the original) | Traced the same way: two straight wings and a rounded notch; the switch behind the bridge, the control cavity turned 20 degrees along the treble wing (a Tele plate there too), the jack into the wing's outer edge and the battery box on past them toward its tip |
 | `jazz_bass` | Jazz Bass style (mockup, not the original) | Offset waist traced from a reference render (straightened on its centre stripe, scaled from its bridge pickup) and reshaped by hand at both horns and the treble cutaway — a genre mockup, not the original outline; its pots and control cavity on the lower bout behind the bridge pickup; the bass guitar's default body (`BASS_BODY`) |
 
@@ -388,9 +390,25 @@ follows the shape and moves with the control group in the body editor.
 | `superstrat` | Superstrat rear cavity | Ibanez RG / Jackson style: a 112 × 40 mm rear cavity (r 12) in a 124 × 52 mm recess holding a 5-way blade switch ahead of the volume and tone pots (26 mm apart), no round switch cavity. The switch sits in a 54 × 16 mm pocket deeper into the cavity, leaving `BLADE_SWITCH_TOP_WALL` (4 mm) of top so its lever stands out; its lever comes through a 27 × 6.5 mm slot routed from the top 1 mm into that pocket (a through route, cut in `Body_top` — wide enough for the 6 mm end mill), and its two #6-32 screws go through Ø 3.6 holes in the top into its tabs, 41.28 mm (1-5/8 in, Oak Grigsby / CRL) apart |
 | `volume_1` | One volume pot | A 56 × 34 mm round-ended rear cavity with one pot and a three-screw cover; the round switch cavity only with two or more pickups (an EVH style single humbucker needs none) |
 | `active_4` | Active bass, 4 pots | A 130 × 44 mm round-ended rear cavity (room for a preamp) in a 142 × 56 mm recess, 4 pots 28 mm apart in a row (volume, blend, bass, treble), a six-screw cover, no switch cavity; the 9 V battery goes in the battery box (`body_battery_box`) |
-| `tele` | Telecaster-style plate | A 160 × 32 mm plate recess (cover depth) routed into the **top**, with a 140 × 22 mm control cavity from its floor; the plate carries 2 pot holes, a 20 × 7 mm blade switch slot and 2 screws |
+| `tele` | Telecaster-style plate | A '52's (`controls.TELE_PLATE`, measured from a photo): a 155 × 32 mm plate recess (cover depth) routed into the **top**, with a 142 × 25.4 mm control cavity from its floor taking 24 mm pots; along the plate from its centre the blade switch's 20 × 7 mm slot at −50 mm, the volume pot at −2 and the tone pot at +57, two screws at ±74.5 |
 | `jazz_bass` | Jazz Bass style plate | A 150 × 36 mm round-ended plate recess in the top (a real Jazz Bass plate is as long, gently curved) over a 112 × 26 mm cavity; 3 pots 32 mm apart (volume, volume, tone), two screws 124.5 mm (4.9 in) apart, and with `body_jack` "plate" the output jack's Ø 9.6 hole behind the pots (no bore from the edge), no switch cavity |
 | `none` | No controls | No control or switch cavity, pots or covers |
+
+### Controls as on the original
+
+A template can place its controls as the original instrument has them.
+Its `rear_pots` put a generated rear layout's pots (`gibson_4`, `rear_3`,
+`volume_1`, `active_4`, with that many pots) where they are drawn, the
+cavity routed round them — the convex hull of a `POT_ROOM` (13 mm) circle
+round each, and of a `JACK_ROOM` (12 mm) one round a jack in the top —
+and its cover `COVER_MARGIN` (6 mm) further out; a round switch whose own
+cover would run into theirs (a Jackson Rhoads' toggle among its pots)
+shares their cavity in a `TOGGLE_ROOM` (13 mm) circle. Its
+`pickguard_controls` (the blade switch's slot centre, then the three
+pots) and `pickguard_switch_degrees` place a Stratocaster's controls in
+the guard, over `pickguard_cavity_points` (the cavity as drawn, else
+routed round them); drawn so, they are not moved to fit the guard. The
+editor's control drag moves them all with the pots.
 
 The body shape's `control_angle_degrees` turns the whole layout about its
 cavity's centre, counter-clockwise in the plan: the drawn almond and its
@@ -433,6 +451,12 @@ editor then says so). The housings:
 | `cup` | The bore with a 7/8 in (22.2 mm) counterbore 25 mm deep at the edge: a Telecaster cup jack or an Electrosocket (`JackHole.cup_diameter`, `cup_depth`) |
 | `strat` | A Stratocaster style plate on the top: a Ø 25.4 × 32 mm cavity routed from the top 4 mm in from the edge (`Jack cavity`, cut with the top's pockets), the bore running on from its centre into the controls |
 | `plate` | On the Jazz Bass control plate (`body_controls` "jazz_bass" only): a hole in the plate behind its pots, nothing bored from the edge (`BodySolid.jack_hole` is `None`) |
+| `top` | In the top at `jack_offset` / `jack_y`, as on an SG: a Ø 9.6 mm (3/8 in) `Jack hole` drilled through into the rear control cavity (a rear layout only; drawn `rear_pots` route the cavity round it, another cavity must lie under it), nothing bored from the edge |
+
+A shape's `jack_inset` sets a `strat` jack's cavity that far in along the
+line instead (a Stratocaster's sits in its angled plate well in from the
+edge); where the bore's line from it misses the control cavity, the bore
+is wired straight to the cavity's nearest point.
 
 The jack's line can be dragged and turned (Shift-drag) in the body editor;
 the bore follows the drawn outline and the cavity.
@@ -521,9 +545,10 @@ cut back along the box's edges — the way round that keeps the box out,
 on to wherever the guard next comes out of it, so a guard that spans
 the box's whole front is cut there too — points `DRAWN_BRIDGE_STEP` (8 mm) apart
 so the spline keeps to them. A drawn guard that does not cover a
-`pickguard` control layout's cavity — every template's is drawn for its
-own rear cavities; the traced HH guard has no room for one — gives way to
-the automatic guard, made round the controls (the body editor says so).
+`pickguard` control layout's cavity — the Les Paul's, say, drawn for its
+rear cavities — gives way to the automatic guard, made round the
+controls (the body editor says so). The Stratocaster template's guard is
+drawn over its own controls.
 
 The shape's `pickguard_points` (dragged in the body editor,
 where a click on its edge adds a point and Alt-click or right-click

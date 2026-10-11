@@ -155,7 +155,7 @@ def test_screw_points_go_to_the_corners_of_a_rectangular_ledge() -> None:
     assert cover_screw_points(rectangle(30, 20), rectangle(32, 22), 4, 5.0) == ()
 
 
-@pytest.mark.parametrize("template", ["stratocaster", "les_paul", "jackson_rr"])
+@pytest.mark.parametrize("template", ["stratocaster", "jackson_rr"])
 def test_a_gibson_cavity_moves_clear_of_a_floyd_rose(template: str) -> None:
     # In place, the Gibson cavity would rout into the Floyd Rose's
     # fine-tuner recess with no wood between the floors; the layout moves
@@ -173,6 +173,28 @@ def test_a_gibson_cavity_moves_clear_of_a_floyd_rose(template: str) -> None:
     assert not outlines_overlap(cavity.outline, recess.outline)
     unmoved = replace(parameters, body_bridge=Prototype001Parameters().body_bridge)
     assert cavity.min_y > unmoved.build().body.control_cavity.cavity.min_y
+
+
+@pytest.mark.parametrize("template", ["les_paul", "sg"])
+def test_drawn_gibson_pots_stay_clear_of_a_floyd_rose(template: str) -> None:
+    # Where a template draws its four pots, as on the original, the cavity
+    # is routed round them, clear of the fine-tuner recess.
+    shape = YOUR_DESIGN_TEMPLATES[template][1]
+    parameters = replace(
+        Prototype001Parameters(),
+        body_shape=shape,
+        body_controls="gibson_4",
+        body_bridge=FloydRoseSpec(),
+    )
+    body = parameters.build().body
+    cavity = body.control_cavity.cavity
+    recess = next(c for c in body.extra_cavities if "fine-tuner" in c.name)
+    assert not outlines_overlap(cavity.outline, recess.outline)
+    pots = [h for h in body.holes if h.name.startswith("Control pot")]
+    assert len(pots) == 4
+    assert all(
+        point_in_polygon(Point2D(h.center_x, h.center_y), cavity.outline) for h in pots
+    )
 
 
 def test_a_floyd_rose_spring_cavity_gets_a_six_screw_cover() -> None:
