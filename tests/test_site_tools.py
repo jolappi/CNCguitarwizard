@@ -78,3 +78,6 @@ def test_the_page_offers_a_style_and_an_easy_mode() -> None:
         "body.easy #jump .jump-settings { display: none; }"
     ) in page
     assert '"cncguitarwizard.easyMode"' in script
+    # With the scale length under the style, a copy of the form's field.
+    assert 'id="easy-options"' in page
+    assert '"easy-options": ["scale_length"]' in script

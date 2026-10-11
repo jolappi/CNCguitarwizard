@@ -211,9 +211,9 @@ muuttaa mitä haluaa.
 
 Helppo tila (*Easy mode*, tyylivalinnan alla) piilottaa pitkän
 asetuslomakkeen, editorien *Settings*-osiot ja *Settings*-linkin: näkyviin
-jäävät soitin, tyyli, kitaran nimi, piirtoeditorit, *Build* ja tulos, eli
-valitse tyyli ja rakenna. Valinta muistetaan selaimessa (oletuksena pois),
-ja `/` (asetuksen haku) poistuu helposta tilasta.
+jäävät soitin, tyyli, kitaran nimi, skaalan pituus, piirtoeditorit,
+*Build* ja tulos, eli valitse tyyli ja rakenna. Valinta muistetaan selaimessa (oletuksena pois),
+ja `/` (asetuksen haku) poistuu helposta tilasta. Ruksi *Neck-through*
 
 ## Terävät kulmat ja suorat välit piirroksissa
 

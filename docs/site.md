@@ -32,8 +32,9 @@ Python.
    chosen (`showStyles`, `loadStyle`). *Easy mode* under it hides the long
    settings form, the editors' *Settings* and the *Settings* jump link
    (`body.easy`, `setEasyMode`): the instrument, its style, the guitar's
-   name, the drawings, *Build* and the result stay — choose a style and
-   build. It is kept in the browser (`cncguitarwizard.easyMode`), off
+   name, the scale length (a copy of the form's field, `easy-options` in
+   `EDITOR_FIELDS`, shown only in easy mode), the drawings, *Build* and the
+   result stay — choose a style and build. It is kept in the browser (`cncguitarwizard.easyMode`), off
    until chosen, and `/` (Find a setting) leaves it. Then asks
    `cncguitarwizard.webapp.parameter_schema()` for every field of
    `Prototype001Parameters` and `MachiningParameters` and draws a grouped

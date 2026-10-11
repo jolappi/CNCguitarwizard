@@ -152,6 +152,7 @@
   /* Easy mode: the instrument, its style, the drawings and Build; the
      long settings form, the editors' settings and the link to them hidden. */
   body.easy .aside-form, body.easy .editor-settings, body.easy #jump .jump-settings { display: none; }
+  body:not(.easy) .easy-options { display: none; }
   .body-editor { margin-bottom: 20px; }
   /* An editor's how-to, folded by default: a plain line to open it. */
   details.editor-help { border: 0; background: none; margin: 0 0 6px; }
@@ -499,6 +500,8 @@
       <label class="toggle" title="Only the instrument, its style, the drawings and Build: the long list of settings (and the editors' settings) hidden"><input type="checkbox" id="easy-mode"> Easy mode</label>
       <span class="note">the settings hidden: choose a style and build</span>
     </div>
+    <!-- Easy mode's few settings: copies of the form's (EDITOR_FIELDS). -->
+    <div id="easy-options" class="instrument easy-options"></div>
     <div class="instrument">
       <label for="guitar-name">Guitar name</label>
       <input id="guitar-name" type="text" maxlength="60" placeholder="Prototype001"

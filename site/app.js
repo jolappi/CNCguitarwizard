@@ -232,6 +232,8 @@ const EDITOR_FIELDS = {
     "inlay_style", "inlay_single_marker_frets", "inlay_double_marker_frets", "inlay_dot_diameter",
     "inlay_block_length_fraction", "inlay_block_edge_margin", "inlay_depth", "fretboard_binding_width",
   ],
+  // Under the style in easy mode, the settings form hidden.
+  "easy-options": ["scale_length"],
 };
 const mirrors = new Map();
 
@@ -287,8 +289,10 @@ function mirrorEditorFields() {
 // settings back to the form, where they can still be seen and changed.
 function showMirroredRows() {
   for (const [original, copy] of mirrors) {
-    const shown = !copy.closest(".body-editor").classList.contains("hidden");
-    original.closest(".field")?.classList.toggle("mirrored", shown);
+    // Easy mode's copies stand beside the form's rows, not for them.
+    const editor = copy.closest(".body-editor");
+    if (!editor) continue;
+    original.closest(".field")?.classList.toggle("mirrored", !editor.classList.contains("hidden"));
   }
 }
 

@@ -825,6 +825,8 @@
 
 ### Changed
 
+- Easy mode shows the scale length under the style.
+
 - The heel relief is always on the treble side, where the hand reaches
   round the heel: every line, drawn or automatic, stops at the centreline
   and runs on along it to the body's edge, so nothing is cut on the bass
