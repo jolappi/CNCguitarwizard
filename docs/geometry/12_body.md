@@ -803,6 +803,7 @@ Optional, and off by default (`geometry.body.edges`):
 | `body_arm_contour_depth`, `_width`, `_length`, `_position` | A Strat-style arm contour on the top of the bass-side rear bout |
 | `body_belly_cut_depth`, `_width`, `_length`, `_position` | A belly cut on the back of the bass-side upper bout |
 | `body_leg_contour_depth`, `_width`, `_length`, `_position` | A leg contour on the back of the treble-side waist, where the body sits on the thigh |
+| `body_top_bevel_width`, `body_back_bevel_width`, `body_bevel_angle` | A bevel all round the top's / the back's edge, as on an SG or a Mockingbird, `body_bevel_angle` (25°) steep |
 | `body_heel_relief`, `_depth`, `_reach`, `_line` | A heel relief on the back where the neck joins: `"contour"`, `"notch"` or `"bevel"`, round the heel, by the pocket or (`_line` `"pocket"`, `"corner"`) across its treble corner |
 
 A `ContourCut` follows `length` of the outline (resampled every 4 mm)
@@ -836,6 +837,50 @@ line is drawn the same way: `belly_cut_points` (seen from the top, as the
 outline is) with `body_belly_cut_depth`, in blue on the editor, *Auto
 belly cut* emptying them; and the leg contour's, `leg_contour_points`
 with `body_leg_contour_depth`, in teal, *Auto leg contour*.
+
+### Bevels all round
+
+`body_top_bevel_width` / `body_back_bevel_width` bevel the edge all
+round, as an SG's or a Mockingbird's is (`ContourCut.around`, named
+"Top bevel" / "Back bevel"): that wide in from the edge, deep at the
+edge by the width times the tangent of `body_bevel_angle` (25°), so the
+bevel keeps its angle wherever it narrows. It is left square where the
+neck joins, fading in over `AROUND_FADE` (20 mm) either side: on the top
+beside the neck's pocket (the outline within `BEVEL_NECK_CLEARANCE`,
+5 mm, of the neck's widest half-width ahead of the heel end); on the
+back the same beside a bolt-on neck's plate or a neck run through (the
+body beside it is the neck's own blank, its heel already falling to the
+back), but with a set neck only where the neck leaves the body (the
+body's front edge that close to the neck), so the back bevel runs on
+round the heel, as an SG's does, and with a rounded stretch on the back
+to start and end at not even there (the SG's heel bevelled across the
+body's front edge too). FreeCAD terraces a bevel in one region for each
+run of it at a depth (`ContourCut.level_regions`): one region reaching
+across where it thins to nothing (a horn's tip) or is left square cut a
+groove through it. The body shape's `top_round_points` /
+`back_round_points` (X from the heel end, Y) mark, in pairs, stretches
+of the edge left square for the edge's roundover: the outline's points
+nearest the two of each pair and those between them, the shorter way
+round (`_round_stretches`). The bevel leaves square every stretch it is
+told to (the longest is where it starts and ends), fading out over
+`AROUND_FADE` (20 mm) into the neck's and over `AROUND_ROUND_FADE`
+(60 mm) into a rounded one (`ContourCut.around`'s `rounded`), so it runs
+into the roundover rather than ending at a wall. The SG template's leave its tail rounded over
+from its lower bouts' widest, and on the back its control cavity's lower
+bout from the treble waist; the Mockingbird template's its neck end
+(round the horns and the cutaways) and its tail, top and back, its two
+sides bevelled. It reaches in at most `AROUND_SHARE` (45 %) of the
+body's width across at a point, so a horn's tip is bevelled thinner and
+the bevels either side of it never meet, as on an SG; and it stops
+`AROUND_GAP` (2 mm) short of every route, cover, guard and hole in its
+face, narrowing beside them (and stopping where a route opens out of the
+side, the SG's neck pocket). Every narrowing eases in and out along the
+edge — the reach changes by at most `AROUND_TAPER` (0.25 mm per mm) — so
+a cover near the edge (the Mockingbird's control cover on the back)
+makes a waist in the bevel, never a notch. It is cut with the edge
+finishes, by the ball nose from its face. The SG style bevels the top
+18 mm and the back 14 mm at 25°, the Mockingbird style 12 mm at 30°,
+both rounding their edges over 5 mm.
 
 ### Heel relief
 

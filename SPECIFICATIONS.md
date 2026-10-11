@@ -818,6 +818,44 @@ ajetaan ball nose -terällä omissa ohjelmissaan (`Body_top_edges.nc`,
 `Body_back_edges.nc`), reunanauhan ura pääterällä ääriviivan jälkeen.
 FreeCAD-mallissa ne ovat 1 mm porrastuksina.
 
+Kehäviisteet päälle ja taakse koko rungon ympäri kuten SG:ssä ja
+Mockingbirdissä (`body_top_bevel_width`, `body_back_bevel_width`,
+`body_bevel_angle` 25°): vakiokulmainen viiste, joka on reunalla
+leveys × tan(kulma) syvä, jätetään suoraksi kaulan kohdalta ja
+häivytetään 20 mm:n matkalla: päällä kaulataskun vierestä (5 mm kaulan
+leveimmän puolikkaan ulkopuolelle kantapään edessä), takana samoin
+pulttikaulan levyn ja läpikaulan vierestä (läpikaulan vieressä runko on
+kaulan omaa aihiota, jonka kanta jo laskeutuu takapintaan), mutta
+liimatulla kaulalla vain siitä, missä kaula lähtee rungosta (rungon
+etureuna), joten takaviiste kiertää kantapään ympäri, ja jos takapinnalla
+on pyöristetty jakso, josta viiste alkaa ja johon se päättyy, ei sielläkään
+(SG:n kantapää viistetään myös rungon etureunan yli). FreeCAD-malli
+porrastaa viisteen jokaisella syvyydellä erillisinä alueina kustakin
+yhtenäisestä osasta (`ContourCut.level_regions`): yksi alue raon yli
+(sarven kärjessä, jossa viiste ohenee olemattomiin, tai kanttiin jätetyn
+jakson yli) leikkasi uran. Rungon muodon
+`top_round_points` / `back_round_points` merkitsevät pareittain reunan
+jaksot, jotka viiste jättää reunan pyöristykselle (kunkin parin pisteiden
+välillä lyhyempää tietä); viiste loivenee kunkin jakson molemmin puolin
+60 mm:n matkalla (`AROUND_ROUND_FADE`), joten se yhtyy pyöristykseen eikä
+lopu kuin seinään. Runkoeditori piirtää jaksot ääriviivaa pitkin (yläpinnan
+oranssina, takapinnan violettina katkoviivana hieman sisempänä) ja niiden
+päihin neliökahvat, jotka liukuvat reunaa pitkin (kahvat hieman reunan
+sisäpuolella, irti ääriviivan omista kahvoista); *Round top edge* /
+*Round back edge* lisää jakson häntään, Alt- tai oikea klikkaus poistaa
+sen. SG-pohjassa häntä on pyöristetty alakaarten leveimmästä kohdasta
+alkaen ja takana lisäksi ohjauskotelon puoleinen alakaari diskanttipuolen
+vyötäröltä (häntä pyöristetty, Les Paul -foorumi ja kuvat);
+Mockingbird-pohjassa kaulanpuoleinen pääty (sarvet ja cutawayt) ja häntä
+päällä ja takana, sivut viistettyinä. Viiste kapenee sarven kärjessä
+enintään 45 %:iin rungon leveydestä siinä kohdassa ja väistää 2 mm:n
+päästä saman pinnan kolot, kannet, pleksin ja reiät (ja loppuu, missä
+kolo aukeaa kylkeen, kuten SG:n kaulatasku); jokainen kavennus loivenee
+reunaa pitkin enintään 1 mm 4 mm:n matkalla (`AROUND_TAPER`), joten
+väistö on vyötärö eikä lovi. SG-tyylissä 18 mm päällä ja 14 mm takana
+25°:ssa, Mockingbird-tyylissä 12 mm molemmissa 30°:ssa, kummassakin
+5 mm:n pyöristys reunoissa.
+
 ## Epoksikaukalo
 
 `body_epoxy_tray_depth` (0 = ei) jyrsii kanteen koko rungon kokoisen

@@ -218,7 +218,7 @@ const EDITOR_FIELDS = {
     "body_neck_pickup_offset", "body_middle_pickup_offset", "body_bridge_pickup_offset", "body_pickups_follow_fan",
     "body_bridge", "body_bridge_follows_fan", "body_controls", "body_switch", "body_jack",
     "body_pickguard", "body_pickguard_style", "body_pickup_frame", "body_pickup_frame_direction",
-    "body_arm_contour_depth", "body_belly_cut_depth", "body_leg_contour_depth", "body_heel_relief", "body_heel_relief_depth", "body_heel_relief_line", "body_carved_top", "body_carve_depth", "body_stepped_top", "body_epoxy_tray_depth",
+    "body_arm_contour_depth", "body_belly_cut_depth", "body_leg_contour_depth", "body_top_bevel_width", "body_back_bevel_width", "body_heel_relief", "body_heel_relief_depth", "body_heel_relief_line", "body_carved_top", "body_carve_depth", "body_stepped_top", "body_epoxy_tray_depth",
     "body_engraving", "body_engraving_pattern", "body_engraving_seed", "body_battery_box", "body_battery_count",
     "body_neck_bolts_outward", "body_neck_plate",
   ],
@@ -2228,6 +2228,58 @@ const CONTOUR_LINES = [
   { key: "heel", layout: "heel_relief", field: "heel_relief_points", label: "heel relief" },
 ];
 
+// The stretches of the edge a bevel all round leaves to the roundover, on
+// the top and on the back: their ends in pairs (top_round_points /
+// back_round_points), slid along the outline.
+// Each face's stretches are drawn ``inset`` in from the edge, and their
+// handles ``handleInset``, clear of the outline's own handles and of each
+// other's where they share a point (each still slides along the edge).
+const ROUND_STRETCHES = [
+  { key: "top", field: "top_round_points", label: "top", inset: 0, handleInset: 6 },
+  { key: "back", field: "back_round_points", label: "back", inset: 4, handleInset: 12 },
+];
+
+// A closed outline's sample moved in from the edge by ``inset``.
+function insetSample(samples, index, inset) {
+  const [x, y] = samples[index];
+  if (!inset) return [x, y];
+  const count = samples.length;
+  const [ax, ay] = samples[(index - 1 + count) % count], [bx, by] = samples[(index + 1) % count];
+  const size = Math.hypot(bx - ax, by - ay) || 1;
+  let [nx, ny] = [-(by - ay) / size, (bx - ax) / size];
+  if (!pointInPolygon(x + nx * inset, y + ny * inset, samples)) [nx, ny] = [-nx, -ny];
+  return [x + nx * inset, y + ny * inset];
+}
+
+// The index of the sample nearest a point.
+function nearestSample(samples, [x, y]) {
+  let best = 0, bestDistance = Infinity;
+  samples.forEach(([sx, sy], i) => {
+    const distance = (sx - x) ** 2 + (sy - y) ** 2;
+    if (distance < bestDistance) { bestDistance = distance; best = i; }
+  });
+  return best;
+}
+
+// A closed outline's sample indices from one to another, the shorter way
+// round (as the build takes a rounded stretch).
+function shorterWay(samples, from, to) {
+  const count = samples.length;
+  const step = (i, by) => (i + by + count) % count;
+  const length = (by) => {
+    let total = 0;
+    for (let i = from; i !== to; i = step(i, by)) {
+      const [ax, ay] = samples[i], [bx, by2] = samples[step(i, by)];
+      total += Math.hypot(bx - ax, by2 - ay);
+    }
+    return total;
+  };
+  const by = length(1) <= length(-1) ? 1 : -1;
+  const way = [from];
+  for (let i = from; i !== to; i = step(i, by)) way.push(step(i, by));
+  return way;
+}
+
 function pointInPolygon(x, y, polygon) {
   let inside = false;
   for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
@@ -2767,6 +2819,30 @@ const bodyEditor = {
       });
     }
 
+    // The stretches of the edge each bevel all round leaves to the
+    // roundover, drawn along the outline, with square handles at their
+    // ends that slide along it; dragging one draws them.
+    this.roundStretches = {};
+    for (const spec of ROUND_STRETCHES) {
+      const stretch = { spec, points: (layout.round_points?.[spec.key] || []).map((p) => [...p]), paths: [] };
+      this.roundStretches[spec.key] = stretch;
+      this.drawRoundStretch(spec.key);
+      stretch.handles = stretch.points.map((point, index) => {
+        const [hx, hy] = this.onOutline(point, spec.handleInset);
+        const handle = this.element("rect", {
+          class: `round-handle ${spec.key}`, x: hx - 2.2, y: -hy - 2.2, width: 4.4, height: 4.4,
+        });
+        this.element("title", {}, handle).textContent =
+          `An end of a stretch of the ${spec.label} edge left rounded over, not bevelled — drag along the edge to move, Alt-click or right-click to take the stretch away`;
+        handle.addEventListener("pointerdown", (event) => {
+          if (event.altKey) { this.removeRoundStretch(spec.key, index); return; }
+          this.startRoundDrag(event, spec.key, index, handle);
+        });
+        handle.addEventListener("contextmenu", (event) => { event.preventDefault(); this.removeRoundStretch(spec.key, index); });
+        return handle;
+      });
+    }
+
     // A wide, invisible stroke over the outline: one click on the line
     // adds a handle there (the body inside it is left alone).
     this.outlineHit = this.element("path", { class: "outline-hit", d: this.pathData(this.outline()) });
@@ -3053,6 +3129,99 @@ const bodyEditor = {
   // An open line as path data.
   openPath(points) {
     return points.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(2)},${(-y).toFixed(2)}`).join(" ");
+  },
+
+  // A point (as a round point is stored) on the outline as drawn: the
+  // outline's sample nearest it once widened.
+  onOutline(point, inset = 0) {
+    const edge = this.outline();
+    return insetSample(edge, nearestSample(edge, this.widen(point)), inset);
+  },
+
+  // Draw one face's rounded stretches along the outline, each between a
+  // pair of its points, the shorter way round.
+  drawRoundStretch(key) {
+    const stretch = this.roundStretches[key];
+    for (const path of stretch.paths) path.remove();
+    const edge = this.outline();
+    stretch.paths = [];
+    for (let i = 0; i + 1 < stretch.points.length; i += 2) {
+      const from = nearestSample(edge, this.widen(stretch.points[i]));
+      const to = nearestSample(edge, this.widen(stretch.points[i + 1]));
+      const way = shorterWay(edge, from, to).map((index) => insetSample(edge, index, stretch.spec.inset));
+      const path = this.element("path", { class: `round-stretch ${key}`, d: this.openPath(way) });
+      // Under the handles.
+      const first = this.svg.querySelector(".round-handle, .handle");
+      if (first) first.parentNode.insertBefore(path, first);
+      stretch.paths.push(path);
+    }
+  },
+
+  // Slide a rounded stretch's end along the outline; on drop the points
+  // are written.
+  startRoundDrag(event, key, index, handle) {
+    event.preventDefault();
+    event.stopPropagation();
+    const stretch = this.roundStretches[key];
+    const edge = this.outline();
+    handle.classList.add("dragging");
+    let moved = false;
+    const move = (moveEvent) => {
+      moved ||= stirred(event, moveEvent);
+      if (!moved) return;
+      const at = nearestSample(edge, this.toModel(moveEvent));
+      stretch.points[index] = this.unwiden(edge[at]);
+      const [x, y] = insetSample(edge, at, stretch.spec.handleInset);
+      handle.setAttribute("x", x - 2.2);
+      handle.setAttribute("y", -y - 2.2);
+      this.drawRoundStretch(key);
+    };
+    const end = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", end);
+      window.removeEventListener("pointercancel", end);
+      handle.classList.remove("dragging");
+      if (moved) this.commitRoundStretches(key);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", end);
+    window.addEventListener("pointercancel", end);
+  },
+
+  // Write a face's round points (stored before the body's widening) and
+  // lay the body out again.
+  commitRoundStretches(key) {
+    const stretch = this.roundStretches[key];
+    const points = stretch.points.map((p) => roundedPoint(p));
+    this.setField(this.field("prototype.body_shape", stretch.spec.field), points);
+    this.refresh();
+  },
+
+  // Take away the stretch a handle ends.
+  removeRoundStretch(key, index) {
+    const stretch = this.roundStretches[key];
+    stretch.points.splice(index - (index % 2), 2);
+    this.commitRoundStretches(key);
+  },
+
+  // A new rounded stretch on a face, 60 mm along the outline round its
+  // tail end, to be slid where it belongs.
+  addRoundStretch(key) {
+    const stretch = this.roundStretches?.[key];
+    if (!stretch) return;
+    const edge = this.outline();
+    const tail = edge.reduce((best, p, i) => (p[0] > edge[best][0] ? i : best), 0);
+    const walk = (by) => {
+      let i = tail, travelled = 0;
+      while (travelled < 30) {
+        const next = (i + by + edge.length) % edge.length;
+        travelled += Math.hypot(edge[next][0] - edge[i][0], edge[next][1] - edge[i][1]);
+        i = next;
+      }
+      return this.unwiden(edge[i]);
+    };
+    stretch.points.push(walk(-1), walk(1));
+    this.commitRoundStretches(key);
   },
 
   // Drag one of a contour line's points; on drop its points are written
@@ -4289,6 +4458,8 @@ function syncBodyButtons() {
     "body-editor-auto-steps": on("body_stepped_top"),
     "body-editor-auto-belly": positive("body_belly_cut_depth"),
     "body-editor-auto-leg": positive("body_leg_contour_depth"),
+    "body-editor-round-top": positive("body_top_bevel_width"),
+    "body-editor-round-back": positive("body_back_bevel_width"),
     "body-editor-auto-heel": (field("body_heel_relief")?.value ?? "none") !== "none",
     "body-editor-new-pattern": on("body_engraving") && field("body_engraving_pattern")?.value !== "drawn",
   };
@@ -4307,6 +4478,8 @@ document.getElementById("body-editor-auto-steps").addEventListener("click", () =
 document.getElementById("body-editor-auto-arm").addEventListener("click", () => bodyEditor.autoContour("arm"));
 document.getElementById("body-editor-auto-belly").addEventListener("click", () => bodyEditor.autoContour("belly"));
 document.getElementById("body-editor-auto-leg").addEventListener("click", () => bodyEditor.autoContour("leg"));
+document.getElementById("body-editor-round-top").addEventListener("click", () => bodyEditor.addRoundStretch("top"));
+document.getElementById("body-editor-round-back").addEventListener("click", () => bodyEditor.addRoundStretch("back"));
 document.getElementById("body-editor-auto-heel").addEventListener("click", () => bodyEditor.autoContour("heel"));
 // A new engraving pattern: another seed (turning the engraving on).
 document.getElementById("body-editor-new-pattern").addEventListener("click", () => {

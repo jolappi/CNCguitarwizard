@@ -545,12 +545,12 @@ class BodySolid:
                 other_face = self.top_cavities
                 holes = (*self.rear_holes, *self.control_back_marks)
             for cavity in same_face:
-                if any(contour.depth_at(p) > 0.0 for p in cavity.outline):
+                if any(contour.cuts(p) for p in cavity.outline):
                     raise BodyGeometryError(f"{contour.name} cuts into {cavity.name}.")
             for hole in holes:
-                bevel = contour.depth_at(hole.center)
-                if bevel <= 0.0:
+                if not contour.cuts(hole.center):
                     continue
+                bevel = contour.depth_at(hole.center)
                 # A hole drilled from the bevel's surface (its depth takes
                 # the bevel in) may start on it, if it still reaches into
                 # the wood below.
@@ -566,7 +566,10 @@ class BodySolid:
             for cavity in other_face:
                 if cavity in self.through_cavities:
                     continue
-                bevel = max(contour.depth_at(p) for p in cavity.outline)
+                bevel = max(
+                    contour.depth_at(p) if contour.cuts(p) else 0.0
+                    for p in cavity.outline
+                )
                 if bevel > 0.0 and cavity.depth + bevel > self.thickness - 3.0:
                     raise BodyGeometryError(
                         f"{contour.name} leaves too little wood over {cavity.name}."

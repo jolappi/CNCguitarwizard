@@ -212,6 +212,14 @@ STYLES: dict[str, InstrumentStyle] = {
                 jack_y=64.7,
             ),
             "body_jack": "top",
+            # Its bevels at about 25 degrees as on an SG, but where the
+            # template's round points leave the edge rounded over: the
+            # tail, and on the back the control cavity's lower bout.
+            "body_top_bevel_width": 18.0,
+            "body_back_bevel_width": 14.0,
+            "body_bevel_angle": 25.0,
+            "body_top_edge_radius": 5.0,
+            "body_back_edge_radius": 5.0,
             "inlay_style": "trapezoid",
         },
     ),
@@ -276,6 +284,13 @@ STYLES: dict[str, InstrumentStyle] = {
             "neck_joint": "neck_through",
             "body_pickups": "HH",
             "body_bridge": TuneOMaticSpec(),
+            # Its bevelled edging along its sides, top and back, its neck
+            # end and its tail rounded over (the template's round points).
+            "body_top_bevel_width": 12.0,
+            "body_back_bevel_width": 12.0,
+            "body_bevel_angle": 30.0,
+            "body_top_edge_radius": 5.0,
+            "body_back_edge_radius": 5.0,
             "inlay_style": "diamond",
         },
     ),

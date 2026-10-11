@@ -34,7 +34,12 @@ Python.
    have their pointed headstocks (the `jackson` and `alexi` neck
    templates, on six strings), with the laminated neck blank they need on
    a neck run through the body (the style's machining,
-   `InstrumentStyle.machining_values`, in the design's `machining`).
+   `InstrumentStyle.machining_values`, in the design's `machining`). The
+   SG and Mockingbird styles bevel their edges all round
+   (`body_top_bevel_width`, `body_back_bevel_width`), rounding over 5 mm
+   the stretches their templates' `top_round_points` /
+   `back_round_points` mark: the SG's tail (and on the back its control
+   cavity's lower bout), the Mockingbird's neck end and tail.
    Choosing one (asked first when values were changed) loads
    `webapp.style_design(instrument, style, name)` as a saved design is
    loaded (`applyDesign`, then `repairDesign`): every setting back to the
@@ -247,7 +252,15 @@ Python.
    by hand (not a loaded design or an undo) goes back to that automatic
    line, as *Auto heel relief* does. An automatic line is drawn as it is
    cut (the layout's `line`), its handles spread evenly along it; moved,
-   the line runs through the handles. With
+   the line runs through the handles. The stretches of the edge a bevel
+   all round leaves to the roundover (the shape's `top_round_points` /
+   `back_round_points`, the layout's `round_points`) are drawn along the
+   outline, the top's in orange and the back's dashed purple a little
+   inside it, with square handles at their ends set in from the edge
+   (clear of the outline's own handles) that slide along it; *Round top
+   edge* / *Round back edge* (shown with that bevel) add one 60 mm long at
+   the tail, and Alt-click or right-click on a handle takes its stretch
+   away. With
    `body_neck_plate` (beside the editor: ferrules, a Fender style plate or
    an asymmetric one) the plate is drawn on the back in steel grey and its
    bolts stay at its holes, not dragged; on a `"bevel"` heel relief it

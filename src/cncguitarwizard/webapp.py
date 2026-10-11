@@ -312,6 +312,8 @@ _BASIC_FIELDS: frozenset[str] = frozenset(
         "body_bridge_follows_fan",
         "body_top_edge_radius",
         "body_back_edge_radius",
+        "body_top_bevel_width",
+        "body_back_bevel_width",
         "body_top_binding_width",
         "body_arm_contour_depth",
         "body_belly_cut_depth",
@@ -936,6 +938,10 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         dragged to ``p`` is at ``a = (p - origin)·along``, ``c`` the same
         across, narrowed by half the ``stretch``), and why it does not fit,
         or ``None``;
+        ``round_points`` ``{"top", "back"}``: the shape's
+        ``top_round_points`` / ``back_round_points`` (as its field holds
+        them), each two the ends of a stretch of the edge a bevel all round
+        leaves to the roundover;
         ``engraving`` the decorative engraving's lines, or ``None``;
         ``relief`` a relief engraving's shapes ``{"outline", "depth"}``
         (camo), empty for none.
@@ -1151,6 +1157,13 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         },
         "bass_sign": parameters.bass_sign,
         "steps": _steps_view(parameters, layout, local),
+        "round_points": {
+            face: [list(point) for point in getattr(parameters.body_shape, field)]
+            for face, field in (
+                ("top", "top_round_points"),
+                ("back", "back_round_points"),
+            )
+        },
         "pickguard": (
             {
                 "points": _marked(

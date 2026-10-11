@@ -178,6 +178,12 @@ class DesignByJoneShape:
         heel_relief_points: The same for a drawn heel relief on the back,
             where the neck joins (used with
             ``Prototype001Parameters.body_heel_relief``).
+        top_round_points: Points on the edge in pairs (X from the heel
+            end, Y): a top bevel all round
+            (``Prototype001Parameters.body_top_bevel_width``) leaves the
+            edge between the two of each pair, the shorter way round, to
+            the edge's roundover; empty, it runs all round.
+        back_round_points: The same for a back bevel all round.
         step_points: A drawn stepped top's step lines (used with
             ``Prototype001Parameters.body_stepped_top``): one closed
             polygon of points (X from the heel end, Y) per step, joined by
@@ -225,6 +231,8 @@ class DesignByJoneShape:
     belly_cut_points: tuple[DrawnPoint, ...] = ()
     leg_contour_points: tuple[DrawnPoint, ...] = ()
     heel_relief_points: tuple[DrawnPoint, ...] = ()
+    top_round_points: tuple[DrawnPoint, ...] = ()
+    back_round_points: tuple[DrawnPoint, ...] = ()
     step_points: tuple[tuple[DrawnPoint, ...], ...] = ()
     # Whether the traced outline and almond cavity (constants drawn
     # right-handed) are mirrored: set by mirrored_shape, with every other
@@ -398,6 +406,12 @@ class YourDesignShape:
         heel_relief_points: The same for a drawn heel relief on the back,
             where the neck joins (used with
             ``Prototype001Parameters.body_heel_relief``).
+        top_round_points: Points on the edge in pairs (X from the heel
+            end, Y): a top bevel all round
+            (``Prototype001Parameters.body_top_bevel_width``) leaves the
+            edge between the two of each pair, the shorter way round, to
+            the edge's roundover; empty, it runs all round.
+        back_round_points: The same for a back bevel all round.
         step_points: A drawn stepped top's step lines (used with
             ``Prototype001Parameters.body_stepped_top``): one closed
             polygon of points (X from the heel end, Y) per step, joined by
@@ -443,6 +457,8 @@ class YourDesignShape:
     belly_cut_points: tuple[DrawnPoint, ...] = ()
     leg_contour_points: tuple[DrawnPoint, ...] = ()
     heel_relief_points: tuple[DrawnPoint, ...] = ()
+    top_round_points: tuple[DrawnPoint, ...] = ()
+    back_round_points: tuple[DrawnPoint, ...] = ()
     step_points: tuple[tuple[DrawnPoint, ...], ...] = ()
     # Whether the traced outline and almond cavity (constants drawn
     # right-handed) are mirrored: set by mirrored_shape, with every other
@@ -559,6 +575,8 @@ def mirrored_shape(shape: BodyShapeSpec) -> BodyShapeSpec:
         belly_cut_points=flipped_drawn(shape.belly_cut_points),
         leg_contour_points=flipped_drawn(shape.leg_contour_points),
         heel_relief_points=flipped_drawn(shape.heel_relief_points),
+        top_round_points=flipped_drawn(shape.top_round_points),
+        back_round_points=flipped_drawn(shape.back_round_points),
         step_points=tuple(_side_drawn(polygon, True) for polygon in shape.step_points),
         mirrored=not shape.mirrored,
     )
@@ -598,6 +616,8 @@ def widened_shape(shape: BodyShapeSpec, widening: float) -> BodyShapeSpec:
         belly_cut_points=widen_drawn(shape.belly_cut_points, widening),
         leg_contour_points=widen_drawn(shape.leg_contour_points, widening),
         heel_relief_points=widen_drawn(shape.heel_relief_points, widening),
+        top_round_points=widen_drawn(shape.top_round_points, widening),
+        back_round_points=widen_drawn(shape.back_round_points, widening),
         step_points=tuple(
             widen_drawn(polygon, widening) for polygon in shape.step_points
         ),
@@ -1908,6 +1928,18 @@ pocket fall in its route and do not matter."""
 
 _DESIGN_BY_JONE = DesignByJoneShape()
 
+_MOCKINGBIRD_ROUND_POINTS: tuple[DrawnPoint, ...] = (
+    (302.7, -187.0),
+    (207.2, 171.1),
+    (-122.0, 157.5),
+    (48.3, -144.8),
+)
+"""Where the Mockingbird's edge is rounded over, not bevelled, in pairs:
+its tail, from the bass side's lower bout round to the treble side's, and
+its neck end, from the treble horn's tip round the cutaways to the bass
+horn's root. Its two sides between are bevelled."""
+
+
 YOUR_DESIGN_TEMPLATES: dict[str, tuple[str, YourDesignShape]] = {
     "design_by_jone": (
         "Design by Jone",
@@ -2068,6 +2100,10 @@ YOUR_DESIGN_TEMPLATES: dict[str, tuple[str, YourDesignShape]] = {
             battery_offset=265.0,
             battery_y=35.0,
             battery_angle_degrees=0.0,
+            # Its bevels along each side's outer edge, its neck end and its
+            # tail rounded over, top and back.
+            top_round_points=_MOCKINGBIRD_ROUND_POINTS,
+            back_round_points=_MOCKINGBIRD_ROUND_POINTS,
         ),
     ),
     "telecaster": (
@@ -2103,6 +2139,11 @@ YOUR_DESIGN_TEMPLATES: dict[str, tuple[str, YourDesignShape]] = {
             # stepped out, the cavity routed round them (the SG style puts
             # the toggle up on the treble horn and the jack in the top).
             rear_pots=((259.4, 90.1), (261.3, 129.2), (306.5, 76.4), (307.7, 113.6)),
+            # Its bevels on along both lower bouts to their widest, the
+            # tail rounded over; on the back only to the treble side's
+            # waist, its control cavity's lower bout rounded over too.
+            top_round_points=((274.8, -164.0), (270.8, 161.4)),
+            back_round_points=((274.8, -164.0), (167.8, 123.3)),
         ),
     ),
     "explorer": (

@@ -145,6 +145,11 @@
 - A shaped headstock tip in the 3D model
 - Jackson RR and ESP Alexi pointed headstocks
 - A leg contour on the back of the treble-side waist
+- Bevels all round (SG, Mockingbird), easing past what they keep clear
+  of and running round a set neck's heel; an SG's bevelled to its lower
+  bouts' widest (on the back only to the treble waist, before its control
+  cavity), its tail rounded over, a Mockingbird's sides bevelled and its
+  ends rounded over (the shape's round points)
 - Index pins as wide as a main tool wider than 6 mm (an 8 mm end mill,
   8 mm dowels)
 - The neck's back carved with the ball nose alone, in one program

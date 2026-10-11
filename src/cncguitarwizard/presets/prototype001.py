@@ -219,6 +219,10 @@ FENDER_HEEL_CORNER_RADIUS = 6.35
 NECK_PLATE_RELIEF_GAP = 2.0
 """Flat back, in mm, an automatic heel relief leaves round a neck plate."""
 
+BEVEL_NECK_CLEARANCE = 5.0
+"""How far, in mm, a bevel all round the edge keeps from the neck: the
+edge within that of the neck's sides ahead of the heel end is left square."""
+
 HEEL_BEVEL_SIDE_RUN = 15.0
 """How far in from its line a heel bevel with no plate on it reaches its
 slope, in mm: its sides rise to the face at the line, not a wall
@@ -941,7 +945,18 @@ class Prototype001Parameters:
     # body_leg_contour_* on the back of the treble-side waist, where the
     # body sits on the thigh (a leg contour). Each is deepest at the bout's
     # outermost point (the waist's innermost), or at body_*_position (X
-    # from the heel end) when that is set.
+    # from the heel end) when that is set. body_top_bevel_width /
+    # body_back_bevel_width bevel the edge all round instead, as on an SG
+    # or a Mockingbird: body_bevel_angle steep from the face, that wide in
+    # from the edge, narrower across a narrow part (a horn's tip) and
+    # beside a route or cover too near the edge (easing in and out), and
+    # left square where the neck joins (ContourCut.around): on the top
+    # beside its pocket; on the back beside a bolt-on neck's plate or a
+    # neck run through, but with a set neck only where it leaves the
+    # body, so the back bevel runs on round the heel. The body shape's
+    # top_round_points / back_round_points mark, in pairs, stretches of
+    # the edge a bevel leaves to the edges' roundover (an SG's tail, a
+    # Mockingbird's neck end and tail).
     body_top_edge_radius: float = 0.0
     body_back_edge_radius: float = 0.0
     body_top_binding_width: float = 0.0
@@ -960,6 +975,9 @@ class Prototype001Parameters:
     body_leg_contour_width: float = 45.0
     body_leg_contour_length: float = 180.0
     body_leg_contour_position: float | None = None
+    body_top_bevel_width: float = 0.0
+    body_back_bevel_width: float = 0.0
+    body_bevel_angle: float = 25.0
     # An epoxy tray (body_epoxy_tray_depth, 0 = none): the top routed that
     # deep over the whole body but a rim body_epoxy_tray_rim of wood at
     # its edge, leaving a wall body_epoxy_tray_wall thick round every
@@ -4079,8 +4097,62 @@ class Prototype001Parameters:
                     covers=tuple(frame.plate for frame in frames),
                 )
             )
+        lane = max(outline.heel_width, outline.last_fret_width) / 2.0
+        # What a top bevel all round keeps clear of (the guard's and the
+        # pickup frames' plates and screws among the covers and marks).
+        top_clear = [
+            neck_pocket.outline,
+            *((truss_rod_access.outline,) if truss_rod_access else ()),
+            *(p.outline for p in (neck_pickup, middle_pickup, bridge_pickup) if p),
+            *(c.outline for c in (*bridge.top_cavities, *bridge.through_cavities)),
+            *((bridge.footprint,) if bridge.footprint else ()),
+            *((jack_cavity.outline,) if jack_cavity else ()),
+            *(c.outline for c in controls.top_cavities),
+            *(c.outline for c in controls.through_cavities),
+            *(c.outline for c in controls.covers if c.face == "top"),
+            *(
+                _circle_points(hole.center, hole.diameter / 2.0)
+                for hole in (*holes, *controls.holes, *controls.top_marks)
+            ),
+        ]
+        back_clear = [
+            *(
+                route.outline
+                for rear in (
+                    controls.control_cavity,
+                    controls.switch_cavity,
+                    controls.battery_cavity,
+                    *bridge.rear_cavities,
+                )
+                if rear is not None
+                for route in (rear.cavity, rear.cover_recess, *rear.steps)
+            ),
+            *(
+                _circle_points(hole.center, hole.diameter / 2.0)
+                for hole in (*neck_bolts, *controls.back_marks)
+            ),
+        ]
+        bevels = (
+            self._bevel(
+                "top",
+                body_outline.points,
+                heel_end,
+                lane,
+                top_clear,
+                shape.top_round_points,
+            ),
+            self._bevel(
+                "back",
+                body_outline.points,
+                heel_end,
+                lane,
+                back_clear,
+                shape.back_round_points,
+            ),
+        )
         contours = (
             *self._contours(shape, body_outline.points, heel_end, bass_sign),
+            *(bevel for bevel in bevels if bevel is not None),
             *((heel_relief,) if heel_relief is not None else ()),
         )
         carve_pickups = [
@@ -6542,6 +6614,85 @@ class Prototype001Parameters:
             )
         return tuple(contours)
 
+    def _bevel(
+        self,
+        face: Literal["top", "back"],
+        outline: tuple[Point2D, ...],
+        heel_end: float,
+        lane: float,
+        keep_clear: Sequence[Sequence[Point2D]] = (),
+        round_points: Sequence[DrawnPoint] = (),
+    ) -> ContourCut | None:
+        """Return the bevel all round the edge on one face, or ``None``.
+
+        ``body_top_bevel_width`` / ``body_back_bevel_width`` in from the
+        edge, ``body_bevel_angle`` steep from the face, left square where
+        the neck joins (``ContourCut.around``): on the top, the outline
+        within ``BEVEL_NECK_CLEARANCE`` of the neck's ``lane`` (half its
+        widest) ahead of the heel end and the same past it, where the
+        neck sits in its pocket; on the back the same beside a bolt-on
+        neck's plate or a neck run through (the body beside it is the
+        neck's blank, its heel already falling to the back), but beside a
+        set neck only where it leaves the body (the body's front edge,
+        that close to the lane), so the bevel runs on round the heel, as
+        an SG's does, and with a rounded stretch to start and end at not
+        even there (on across the front edge under the heel). It keeps
+        clear of the
+        routes, covers and holes in its face (``keep_clear``: their
+        outlines), narrower and shallower beside them.
+
+        ``round_points`` (the shape's ``top_round_points`` /
+        ``back_round_points``) mark, in pairs, stretches of the edge it
+        leaves square too, for the edge's roundover: between the outline's
+        points nearest the two of each pair, the shorter way round. It
+        fades out into those over ``AROUND_ROUND_FADE``, so it runs into
+        the roundover.
+
+        Raises:
+            BodyGeometryError: For a width that is negative, an angle
+                outside 5 to 60 degrees, or round points not in pairs.
+        """
+        name, width = (
+            ("Top bevel", self.body_top_bevel_width)
+            if face == "top"
+            else ("Back bevel", self.body_back_bevel_width)
+        )
+        if not math.isfinite(width) or width < 0.0:
+            raise BodyGeometryError(f"{name} width must not be negative.")
+        if width == 0.0:
+            return None
+        if not 5.0 <= self.body_bevel_angle <= 60.0:
+            raise BodyGeometryError(
+                "body_bevel_angle must lie between 5 and 60 degrees."
+            )
+        beside = [abs(point.y) <= lane + BEVEL_NECK_CLEARANCE for point in outline]
+        square_to = heel_end
+        if face == "back" and self.neck_joint == "set":
+            # Only the body's front edge, where the neck leaves it.
+            square_to = min(
+                point.x for point, near in zip(outline, beside, strict=True) if near
+            )
+        skip = [
+            near and point.x <= square_to + BEVEL_NECK_CLEARANCE
+            for point, near in zip(outline, beside, strict=True)
+        ]
+        rounded = _round_stretches(outline, heel_end, round_points, name)
+        if face == "back" and self.neck_joint == "set" and rounded:
+            # Starting and ending at a rounded stretch, it runs on across
+            # the body's front edge under the heel too.
+            skip = [False] * len(outline)
+        depth = width * math.tan(math.radians(self.body_bevel_angle))
+        return ContourCut.around(
+            name,
+            face,
+            outline,
+            skip,
+            width,
+            depth,
+            keep_clear,
+            [index in rounded for index in range(len(outline))],
+        )
+
     def build(self) -> Prototype001Geometry:
         """Build and validate all geometry from this parameter set.
 
@@ -7620,6 +7771,51 @@ def _near(polygon: Sequence[Point2D], centre: Point2D, reach: float) -> bool:
         min(xs) - reach <= centre.x <= max(xs) + reach
         and min(ys) - reach <= centre.y <= max(ys) + reach
     )
+
+
+def _round_stretches(
+    outline: Sequence[Point2D],
+    heel_end: float,
+    points: Sequence[DrawnPoint],
+    name: str,
+) -> set[int]:
+    """Return the outline's points a bevel leaves to the roundover.
+
+    ``points`` (X from the heel end, Y) are in pairs: the outline's
+    points nearest the two of a pair and those between them, the shorter
+    way round, for each pair.
+
+    Raises:
+        BodyGeometryError: For points not in pairs.
+    """
+    drawn, _ = drawn_points(points)
+    if len(drawn) % 2:
+        raise BodyGeometryError(
+            f"{name}'s rounded stretches need their points in pairs."
+        )
+    count = len(outline)
+    lengths = [
+        math.dist((a.x, a.y), (b.x, b.y))
+        for a, b in zip(outline, (*outline[1:], outline[0]), strict=True)
+    ]
+
+    def nearest(point: Point2D) -> int:
+        return min(
+            range(count),
+            key=lambda i: math.dist(
+                (outline[i].x, outline[i].y), (heel_end + point.x, point.y)
+            ),
+        )
+
+    rounded: set[int] = set()
+    for a, b in zip(drawn[::2], drawn[1::2], strict=True):
+        start, end = nearest(a), nearest(b)
+        forward = (end - start) % count
+        ahead = sum(lengths[(start + k) % count] for k in range(forward))
+        if ahead > sum(lengths) / 2.0:
+            start, forward = end, count - forward
+        rounded.update((start + k) % count for k in range(forward + 1))
+    return rounded
 
 
 def _waist(outline: Sequence[Point2D], span: Sequence[int], side: float) -> int | None:

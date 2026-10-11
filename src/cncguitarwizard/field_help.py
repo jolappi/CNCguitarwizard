@@ -448,6 +448,22 @@ FIELD_HELP: dict[str, str] = {
         "A belly cut: the back bevelled where the body meets the player, "
         "this deep in mm (0: none)."
     ),
+    "body_top_bevel_width": (
+        "A bevel all round the top's edge, as on an SG or a Mockingbird: "
+        "how far in from the edge it reaches, in mm (0: none). It is left "
+        "square beside the neck's pocket and where the body shape's round "
+        "points leave the edge rounded over (an SG's tail), and narrows "
+        "gently past routes, holes and narrow horns."
+    ),
+    "body_back_bevel_width": (
+        "The same bevel round the back's edge, in mm (0: none). With a "
+        "set neck it runs on round the heel; beside a bolt-on neck's plate "
+        "or a neck run through it is left square."
+    ),
+    "body_bevel_angle": (
+        "How steep the bevels all round are, in degrees from the face: their "
+        "depth at the edge is the width times its tangent (25 on an SG)."
+    ),
     "body_leg_contour_depth": (
         "A leg contour: the back bevelled at the treble side's waist, where "
         "the body sits on the thigh when played seated, this deep in mm (0: "

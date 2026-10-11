@@ -3666,14 +3666,15 @@ def _body_edge_lines(
         layers = max(2, math.ceil(contour.depth / EDGE_LAYER))
         for index in range(1, layers + 1):
             level = contour.depth * index / layers
-            region = contour.level_region(level - contour.depth / layers / 2.0)
-            if len(region) < 3:
-                continue
             if contour.face == "top":
                 high, low = 0.6, -level
             else:
                 high, low = -body.thickness + level, -body.thickness - 0.6
-            lines.append(f"terrace({outline_literal(region)}, {high!r}, {low!r})\n")
+            for region in contour.level_regions(level - contour.depth / layers / 2.0):
+                if len(region) >= 3:
+                    lines.append(
+                        f"terrace({outline_literal(region)}, {high!r}, {low!r})\n"
+                    )
     # One general boolean for every layer is far quicker than one cut per
     # layer.
     lines.append(

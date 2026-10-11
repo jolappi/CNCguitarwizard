@@ -6,6 +6,8 @@ edges and flat faces of the slab.
 
 from __future__ import annotations
 
+import bisect
+import itertools
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
@@ -63,6 +65,28 @@ CONTOUR_SAMPLE_SPACING = 4.0
 
 CONTOUR_WASTE = 10.0
 """How far past the edge (into the waste) a contour's layers reach, in mm."""
+
+AROUND_SHARE = 0.45
+"""The most of the body's width across at a point a bevel all round
+(``ContourCut.around``) reaches in, so the bevels either side of a narrow
+part (a horn's tip) never meet."""
+
+AROUND_GAP = 2.0
+"""How far, in mm, a bevel all round stops short of a route or hole."""
+
+AROUND_FADE = 20.0
+"""How far along the edge, in mm, a bevel all round fades in from either
+end (where the neck joins)."""
+
+AROUND_ROUND_FADE = 60.0
+"""How far along the edge, in mm, a bevel all round fades out into a
+stretch it leaves to the edge's roundover (``rounded``), so the two run
+into each other rather than the bevel ending at a wall."""
+
+AROUND_TAPER = 0.25
+"""How fast a bevel all round narrows to keep clear of something, and
+widens again past it: its reach changes by at most this many millimetres
+per millimetre along the edge, so it eases into a waist, not a notch."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -239,6 +263,117 @@ class ContourCut:
             )
         return replace(shape, width=widest, reaches=reaches)
 
+    @classmethod
+    def around(
+        cls,
+        name: str,
+        face: Literal["top", "back"],
+        outline: Sequence[Point2D],
+        skip: Sequence[bool],
+        width: float,
+        depth: float,
+        keep_clear: Sequence[Sequence[Point2D]] = (),
+        rounded: Sequence[bool] = (),
+    ) -> ContourCut:
+        """Return a bevel all round the body but where ``skip`` marks it.
+
+        ``skip`` marks the outline's points left square (where the neck
+        joins, and any other stretch); the bevel runs round from the end of
+        the longest such run to its start, square across the others,
+        ``width`` in from the edge and ``depth`` deep there, but never
+        further in than ``AROUND_SHARE`` of the body's width across at a
+        point (a horn's tip), nor than ``AROUND_GAP`` short of anything in
+        ``keep_clear`` (the routes and holes in its face, as outlines), its
+        depth going with its reach so its angle stays the same, as an SG's
+        does. Wherever it narrows so it eases in and out over the edge
+        beside, by ``AROUND_TAPER`` (a waist rather than a notch), and it
+        fades in over ``AROUND_FADE`` from either end of every stretch left
+        square, over ``AROUND_ROUND_FADE`` from one ``rounded`` marks
+        (left to the edge's roundover; skipped too).
+
+        Raises:
+            BodyGeometryError: When ``skip`` marks none of the outline or
+                all of it.
+        """
+        points = list(outline)
+        count = len(points)
+        rounded = list(rounded) or [False] * count
+        skip = [square or round_over for square, round_over in zip(skip, rounded)]
+        if len(skip) != count or not any(skip) or all(skip):
+            raise BodyGeometryError(
+                f"{name} needs a stretch of the edge to leave square."
+            )
+        # The longest run of skipped points, round the outline.
+        best_start, best_run = 0, 0
+        for index in range(count):
+            if not skip[index] or skip[index - 1]:
+                continue
+            run = 0
+            while skip[(index + run) % count] and run < count:
+                run += 1
+            if run > best_run:
+                best_start, best_run = index, run
+        first = (best_start + best_run - 1) % count
+        last = best_start
+        steps = (last - first) % count
+        stretch = [points[(first + k) % count] for k in range(steps + 1)]
+        arcs = [0.0]
+        for a, b in itertools.pairwise(stretch):
+            arcs.append(arcs[-1] + math.dist(_xy(a), _xy(b)))
+        length = arcs[-1]
+        apex = (
+            first + min(range(steps + 1), key=lambda k: abs(arcs[k] - length / 2.0))
+        ) % count
+        shape = cls.along_edge(name, face, outline, apex, length, width, depth)
+        closed = [*points, points[0]]
+        reaches = []
+        for point, normal in zip(shape.edge, shape.normals, strict=True):
+            origin = Point2D(point.x + normal.x * 0.01, point.y + normal.y * 0.01)
+            across = _ray_to_line(origin, normal, closed)
+            reaches.append(min(width, AROUND_SHARE * across) if across > 0.0 else 0.0)
+        # Short of whatever it must keep clear of: every point of it caps
+        # the reach of the edge either side of it; one breaking through
+        # the edge (a neck pocket opening out of the side) stops it there.
+        spacing = shape.length / (len(shape.arc) - 1)
+        for polygon in keep_clear:
+            for point in _densified(polygon, 2.0):
+                s, inward = shape.locate(point)
+                if inward < -CONTOUR_WASTE:
+                    continue
+                cap = max(0.0, inward - AROUND_GAP)
+                position = (s - shape.arc[0]) / spacing
+                for index in {math.floor(position), math.ceil(position)}:
+                    if 0 <= index < len(reaches):
+                        reaches[index] = min(reaches[index], cap)
+        # Eased into and out of every narrowing, both ways along the edge.
+        step = AROUND_TAPER * spacing
+        for index in range(1, len(reaches)):
+            reaches[index] = min(reaches[index], reaches[index - 1] + step)
+        for index in range(len(reaches) - 2, -1, -1):
+            reaches[index] = min(reaches[index], reaches[index + 1] + step)
+        # Fading in from either end, and either side of every other
+        # stretch left square (its points, along the edge as the samples).
+        middle = arcs[(apex - first) % count]
+        places = [arc - middle for arc in arcs]
+        square = [
+            (
+                places[k],
+                AROUND_ROUND_FADE if rounded[(first + k) % count] else AROUND_FADE,
+            )
+            for k in range(steps + 1)
+            if skip[(first + k) % count]
+        ]
+        faded = []
+        for reach, s in zip(reaches, shape.arc, strict=True):
+            end = min(abs(s - place) / fade for place, fade in square)
+            # Between two points left square: none of it.
+            k = min(max(bisect.bisect_right(places, s) - 1, 0), steps - 1)
+            if skip[(first + k) % count] and skip[(first + k + 1) % count]:
+                end = 0.0
+            end = min(1.0, max(0.0, end))
+            faded.append(reach * end * end * (3.0 - 2.0 * end))
+        return replace(shape, reaches=tuple(faded))
+
     def reach(self, s: float) -> float:
         """Return how far in from the edge the bevel reaches at arc ``s``."""
         if not self.reaches:
@@ -254,6 +389,35 @@ class ContourCut:
                     + (self.reaches[index + 1] - self.reaches[index]) * t
                 )
         return 0.0
+
+    def clear_of(self, point: Point2D, gap: float) -> Point2D:
+        """Return ``point`` moved in off the bevel, ``gap`` past it.
+
+        A point closer to the edge than the bevel reaches in beside it,
+        and ``gap`` more, is moved in along the edge's normal to that far
+        in; any other is returned as it is.
+        """
+        s, inward = self.locate(point)
+        reach = self.reach(s)
+        if reach <= 0.0 or inward >= reach + gap:
+            return point
+        normal = self._normal_at(s)
+        shift = reach + gap - inward
+        return Point2D(point.x + normal.x * shift, point.y + normal.y * shift)
+
+    def _normal_at(self, s: float) -> Point2D:
+        """Return the inward unit normal at arc ``s`` (between samples,
+        their normals blended)."""
+        index = min(
+            len(self.arc) - 2,
+            max(0, next((k for k, a in enumerate(self.arc) if a > s), 1) - 1),
+        )
+        a, b = self.arc[index], self.arc[index + 1]
+        t = min(1.0, max(0.0, (s - a) / (b - a))) if b > a else 0.0
+        na, nb = self.normals[index], self.normals[index + 1]
+        nx, ny = na.x + (nb.x - na.x) * t, na.y + (nb.y - na.y) * t
+        size = math.hypot(nx, ny) or 1.0
+        return Point2D(nx / size, ny / size)
 
     def fade(self, s: float) -> float:
         """Return the depth at the edge at arc ``s`` over the deepest (0 to 1)."""
@@ -327,6 +491,13 @@ class ContourCut:
             return 0.0
         return self.depth_from(s, inward)
 
+    def cuts(self, point: Point2D) -> bool:
+        """Whether the bevel cuts at ``point``: on the body, or in the waste
+        no more than ``CONTOUR_WASTE`` past the edge (the ramp runs on
+        outside it for the cutter, but nothing further out is cut)."""
+        s, inward = self.locate(point)
+        return inward >= -CONTOUR_WASTE and self.depth_from(s, inward) > 0.0
+
     def max_depth(self, outline: Sequence[Point2D]) -> float:
         """Return the deepest the bevel goes on the body (at its edge)."""
         return self.depth
@@ -342,18 +513,30 @@ class ContourCut:
         """Return the bevelled area: the edge stretch and the bevel's inner edge."""
         return (*self.edge, *reversed(self.inner_edge()))
 
-    def level_region(self, level: float) -> tuple[Point2D, ...]:
-        """Return the area where the bevel is deeper than ``level``.
+    def level_regions(self, level: float) -> tuple[tuple[Point2D, ...], ...]:
+        """Return the areas where the bevel is deeper than ``level``.
 
-        Bounded inside the body by where the ramp passes that depth and
-        outside it by a line ``CONTOUR_WASTE`` past the edge, so a terrace
-        cut down to ``level`` clears the edge too.
+        Each bounded inside the body by where the ramp passes that depth
+        and outside it by a line ``CONTOUR_WASTE`` past the edge, so a
+        terrace cut down to ``level`` clears the edge too: one for each run
+        of the edge it is that deep along (a bevel thinned to nothing round
+        a horn's tip, or left square along a stretch, makes two, not one
+        reaching across the gap).
         """
+        regions: list[tuple[Point2D, ...]] = []
         inner: list[Point2D] = []
         outer: list[Point2D] = []
+
+        def close() -> None:
+            if len(inner) >= 2:
+                regions.append((*inner, *reversed(outer)))
+            inner.clear()
+            outer.clear()
+
         for point, normal, arc in zip(self.edge, self.normals, self.arc, strict=True):
             edge_depth = self.depth * self.fade(arc)
             if edge_depth <= level:
+                close()
                 continue
             reach = self.reach(arc) * (1.0 - level / edge_depth)
             inner.append(
@@ -365,7 +548,8 @@ class ContourCut:
                     point.y - normal.y * CONTOUR_WASTE,
                 )
             )
-        return (*inner, *reversed(outer))
+        close()
+        return tuple(regions)
 
 
 HEEL_RELIEF_RULINGS = 72
@@ -597,6 +781,10 @@ class HeelRelief:
         )
         return area < 0.0
 
+    def cuts(self, point: Point2D) -> bool:
+        """Whether the relief cuts at ``point``."""
+        return self.depth_at(point) > 0.0
+
     def max_depth(self, outline: Sequence[Point2D]) -> float:
         """Return the deepest the relief goes."""
         return self.depth
@@ -608,6 +796,11 @@ class HeelRelief:
     def region(self, outline: Sequence[Point2D] = ()) -> tuple[Point2D, ...]:
         """Return the relieved area: the edge stretch and the line."""
         return (*self.edge, *reversed(self.line))
+
+    def level_regions(self, level: float) -> tuple[tuple[Point2D, ...], ...]:
+        """Return the area where the relief is deeper than ``level``, as
+        the one region (see ``level_region``)."""
+        return (self.level_region(level),)
 
     def level_region(self, level: float) -> tuple[Point2D, ...]:
         """Return the area where the relief is deeper than ``level``.
@@ -730,6 +923,18 @@ def _distance_to(polyline: Sequence[Point2D], point: Point2D) -> float:
         foot = (a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t)
         best = min(best, math.dist(foot, _xy(point)))
     return best
+
+
+def _densified(polygon: Sequence[Point2D], step: float) -> list[Point2D]:
+    """Return the closed ``polygon`` with a point at least every ``step``."""
+    points: list[Point2D] = []
+    for a, b in zip(polygon, (*polygon[1:], polygon[0]), strict=True):
+        count = max(1, math.ceil(math.dist(_xy(a), _xy(b)) / step))
+        points += [
+            Point2D(a.x + (b.x - a.x) * k / count, a.y + (b.y - a.y) * k / count)
+            for k in range(count)
+        ]
+    return points
 
 
 def _in_box(point: Point2D, polygon: Sequence[Point2D]) -> bool:

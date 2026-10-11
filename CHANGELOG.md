@@ -4,6 +4,34 @@
 
 ### Added
 
+- Bevels all round the edge (`body_top_bevel_width`,
+  `body_back_bevel_width`, `body_bevel_angle`; `ContourCut.around`), as
+  on an SG or a Mockingbird: a constant angle, thinner across a horn's
+  tip and narrowing beside the routes, covers, guard and holes in their
+  face, easing in and out of every narrowing (`AROUND_TAPER`: a waist,
+  never a notch). The top bevel is left square beside the neck's pocket;
+  the back bevel beside a bolt-on neck's plate or a neck run through, but
+  with a set neck only where the neck leaves the body, so it runs on
+  round the heel, and with a rounded stretch on the back to start and end
+  at not even there (an SG's heel bevelled across the body's front edge
+  too). The FreeCAD model terraces a bevel in one region for each run of
+  it at a depth (`ContourCut.level_regions`): one reaching across where
+  it thins to nothing (a horn's tip) or is left square cut a groove. A
+  body shape's `top_round_points` / `back_round_points` mark, in pairs,
+  stretches of the edge a bevel leaves to the edge's roundover (between
+  the two of each pair, the shorter way round), the bevel running out
+  into each over `AROUND_ROUND_FADE` (60 mm), not ending at a wall. The
+  body editor draws them along the outline (the top's in orange, the
+  back's dashed purple a little inside it), their ends square handles
+  that slide along the edge; *Round top edge* / *Round back edge* add one
+  at the tail, Alt-click takes one away. The SG template's leave its tail
+  rounded over from its lower bouts' widest, and on the back its control
+  cavity's lower bout from the treble waist; the Mockingbird template's
+  its neck end (round the horns and the cutaways) and its tail, top and
+  back, its two sides bevelled. The SG style bevels the top 18 mm and the
+  back 14 mm at 25 degrees, the Mockingbird style 12 mm at 30 degrees,
+  both rounding their edges over 5 mm.
+
 - A leg contour (`body_leg_contour_depth`, `_width`, `_length`,
   `_position`; off by default): the back bevelled at the treble side's
   waist, where the body sits on the thigh when played seated, deepest at
