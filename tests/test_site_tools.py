@@ -61,3 +61,20 @@ def test_the_local_server_asks_for_every_file_to_be_checked_again(
                 assert response.read() == b"<p>hello</p>"
         finally:
             server.shutdown()
+
+
+def test_the_page_offers_a_style_and_an_easy_mode() -> None:
+    page = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
+    script = (ROOT / "site" / "app.js").read_text(encoding="utf-8")
+
+    # A style under the instrument, loaded as a design.
+    assert '<select id="style"' in page
+    assert "style_design(*json.loads(style_args))" in script
+    # Easy mode hides the settings form, the editors' and the link to them,
+    # and is kept in the browser.
+    assert 'id="easy-mode"' in page
+    assert (
+        "body.easy .aside-form, body.easy .editor-settings, "
+        "body.easy #jump .jump-settings { display: none; }"
+    ) in page
+    assert '"cncguitarwizard.easyMode"' in script

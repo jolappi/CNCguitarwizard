@@ -131,6 +131,7 @@
 - The heel relief always on the treble side
 - A round (Stratocaster) heel end, its pocket and fretboard end following it
 - Instrument styles: a whole instrument in one choice, under the instrument
+- Easy mode: the settings hidden, a style and Build
 - Index pins as wide as a main tool wider than 6 mm (an 8 mm end mill,
   8 mm dowels)
 - The neck's back carved with the ball nose alone, in one program

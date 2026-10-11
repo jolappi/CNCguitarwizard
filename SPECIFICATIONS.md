@@ -209,6 +209,12 @@ muutettu) palauttaa kaikki asetukset soittimen oletuksiin ja asettaa
 tyylin omat, ja kitaran nimi säilyy; sen jälkeen voi rakentaa heti tai
 muuttaa mitä haluaa.
 
+Helppo tila (*Easy mode*, tyylivalinnan alla) piilottaa pitkän
+asetuslomakkeen, editorien *Settings*-osiot ja *Settings*-linkin: näkyviin
+jäävät soitin, tyyli, kitaran nimi, piirtoeditorit, *Build* ja tulos, eli
+valitse tyyli ja rakenna. Valinta muistetaan selaimessa (oletuksena pois),
+ja `/` (asetuksen haku) poistuu helposta tilasta.
+
 ## Terävät kulmat ja suorat välit piirroksissa
 
 Jokaisessa piirtotyökalussa pisteiden välin voi tehdä suoraksi ja

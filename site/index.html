@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache">
 <!-- This page's stamp, set by tools/build_site.py (see the loader below). -->
-<meta name="cgw-page" content="50f18c157d47">
+<meta name="cgw-page" content="99737b9d002e">
 <title>CNCguitarwizard</title>
 <style>
   :root {
@@ -148,6 +148,10 @@
   .instrument { display: flex; gap: 10px; align-items: center; margin: 0 0 12px; font-weight: 600; }
   .instrument select, .instrument input { flex: 1; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; font: inherit; background: #fff; }
   .instrument label { min-width: 7em; }
+  .instrument .toggle { margin: 0; font-weight: 600; }
+  /* Easy mode: the instrument, its style, the drawings and Build; the
+     long settings form, the editors' settings and the link to them hidden. */
+  body.easy .aside-form, body.easy .editor-settings, body.easy #jump .jump-settings { display: none; }
   .body-editor { margin-bottom: 20px; }
   /* An editor's how-to, folded by default: a plain line to open it. */
   details.editor-help { border: 0; background: none; margin: 0 0 6px; }
@@ -490,6 +494,10 @@
     <div class="instrument">
       <label for="style">Style</label>
       <select id="style" title="A whole instrument in one choice — its body, neck, pickups, bridge, controls and inlays (mockups, not the makers' own): build it, or change what you like from there"></select>
+    </div>
+    <div class="instrument">
+      <label class="toggle" title="Only the instrument, its style, the drawings and Build: the long list of settings (and the editors' settings) hidden"><input type="checkbox" id="easy-mode"> Easy mode</label>
+      <span class="note">the settings hidden: choose a style and build</span>
     </div>
     <div class="instrument">
       <label for="guitar-name">Guitar name</label>

@@ -21,6 +21,7 @@ const instrumentSelect = document.getElementById("instrument");
 const saveDesignButton = document.getElementById("save-design");
 const guitarName = document.getElementById("guitar-name");
 const styleSelect = document.getElementById("style");
+const easyMode = document.getElementById("easy-mode");
 const ncZipButton = document.getElementById("download-nc-zip");
 const loadDesignButton = document.getElementById("load-design");
 const loadDesignFile = document.getElementById("load-design-file");
@@ -5955,7 +5956,7 @@ const TOUR_STEPS = [
     title: "Choose the instrument",
     text: "A guitar, a 7- or 8-string or a bass, and its name: the files are named after it. " +
       "Style sets a whole instrument at once — a Stratocaster, a Les Paul, a Jackson RR… — to build as it is " +
-      "or change from there.",
+      "or change from there; Easy mode hides the long list of settings.",
   },
   {
     target: () => bodyEditor.svg,
@@ -6268,12 +6269,35 @@ findSetting.addEventListener("keydown", (event) => {
     applyFormFilter();
   }
 });
-// "/" anywhere but a field goes to Find a setting.
+// Easy mode: the instrument, its style, the drawings and Build, the long
+// settings form (and the editors' settings) hidden — the quick way in
+// among the many settings. Kept in the browser, off until chosen.
+const EASY_MODE = "cncguitarwizard.easyMode";
+
+function setEasyMode(on) {
+  easyMode.checked = on;
+  document.body.classList.toggle("easy", on);
+  try {
+    localStorage.setItem(EASY_MODE, on ? "1" : "0");
+  } catch {
+    // No storage: it holds for this visit.
+  }
+}
+
+try {
+  setEasyMode(localStorage.getItem(EASY_MODE) === "1");
+} catch {
+  setEasyMode(false);
+}
+easyMode.addEventListener("change", () => setEasyMode(easyMode.checked));
+
+// "/" anywhere but a field goes to Find a setting (out of easy mode).
 document.addEventListener("keydown", (event) => {
   if (event.key !== "/" || event.ctrlKey || event.metaKey || event.altKey) return;
   if (event.target.closest?.("input, select, textarea, [contenteditable]")) return;
   if (document.querySelector("dialog[open]")) return;
   event.preventDefault();
+  if (easyMode.checked) setEasyMode(false);
   findSetting.focus();
   findSetting.select();
 });

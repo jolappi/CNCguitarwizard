@@ -4,6 +4,10 @@
 
 ### Added
 
+- Easy mode: a switch under the style hides the long settings form and
+  the editors' settings, leaving the instrument, its style, the drawings
+  and Build — choose a style and build. It is kept in the browser.
+
 - Instrument styles (`presets.styles`): a *Style* choice under the
   instrument loads a whole instrument at once — its body and neck
   templates, pickups, bridge, controls, neck joint, scale, frets and
