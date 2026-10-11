@@ -894,11 +894,13 @@
   drawn solid in the plan view and the body editor, so they stand out on
   the ledge.
 
-- The heel relief is always on the treble side, where the hand reaches
-  round the heel: every line, drawn or automatic, stops at the centreline
-  and runs on along it to the body's edge, so nothing is cut on the bass
-  side. Only a neck plate tilted on a bevel takes the bevel across the
-  neck, 2 mm past the plate's bass edge. With the corner line the plate
+- The heel relief reaches out past the heel on the treble side only,
+  where the hand reaches round the heel: every line, drawn or automatic,
+  stops at a boundary along the neck and runs on along it to the body's
+  edge — the neck pocket's bass wall round the heel, by the pocket or
+  drawn (the whole heel taken in), the centreline across the treble
+  corner — so nothing past it is cut on the bass side. A neck plate tilted
+  on a bevel takes the bevel 2 mm past the plate's bass edge. With the corner line the plate
   tilts toward the treble corner, Ibanez style: its bolts lean toward
   the heel end and the bass side, and the plate sits that far toward the
   treble side so they come out either side of the centreline. The
@@ -1043,6 +1045,15 @@
 
 ### Fixed
 
+- A heel relief round the heel, by the pocket or drawn takes in the whole
+  heel: its line stops at the neck pocket's bass wall, not the
+  centreline, so it no longer cuts through the middle of the heel (a
+  contour, a notch or a bevel alike); out past the heel it still reaches
+  on the treble side only, and across the treble corner it still stops
+  at the centreline.
+- A heel relief's layers stay one simple outline where the body's edge
+  turns sharply in (a Les Paul's cutaway by the neck): the points past
+  the edge crossed there, and FreeCAD left the relief uncut.
 - The body editor draws an automatic contour's line (the arm contour,
   the belly cut, the heel relief) as it is cut, not as a curve through
   its handles: a heel relief by the pocket follows the pocket's corners

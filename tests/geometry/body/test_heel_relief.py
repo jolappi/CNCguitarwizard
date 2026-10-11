@@ -121,6 +121,32 @@ def test_the_preset_relieves_the_heel_and_sinks_the_ferrules_into_it(kind: str) 
     )
 
 
+@pytest.mark.parametrize("line", ["around", "pocket"])
+def test_a_relief_round_the_heel_takes_in_the_whole_heel(line: str) -> None:
+    # The neck pocket's place on the back, to its bass wall, and no more
+    # on the bass side: out past the heel on the treble side only.
+    parameters = replace(
+        Prototype001Parameters(),
+        body_heel_relief="contour",
+        body_heel_relief_line=line,
+    )
+    body = parameters.build().body
+    (relief,) = [c for c in body.contours if c.name == "Heel relief"]
+    pocket = body.neck_pocket
+    assert pocket is not None
+    bass = parameters.bass_sign
+    bass_wall = max(point.y * bass for point in pocket.outline)
+    heel_end = max(p.x for p in pocket.outline)
+    assert max(point.y * bass for point in relief.line) == pytest.approx(bass_wall)
+    outline = body.outline.points
+    for x in (heel_end - 30.0, heel_end - 15.0, heel_end - 5.0):
+        for y in (-0.8, -0.4, 0.0, 0.4, 0.8):
+            point = Point2D(x, y * bass_wall)
+            if point_in_polygon(point, outline):
+                assert relief.depth_at(point) > 0.0
+        assert relief.depth_at(Point2D(x, (bass_wall + 3.0) * bass)) == 0.0
+
+
 def test_the_preset_takes_a_drawn_heel_relief_line() -> None:
     drawn = Prototype001Parameters().built_body_shape
     line = ((-20.0, 40.0), (10.0, 30.0), (20.0, 0.0), (10.0, -30.0), (-20.0, -40.0))
@@ -253,16 +279,18 @@ def test_a_line_by_the_pocket_keeps_the_reach_from_it_on_the_treble_side(
     assert pocket is not None
     treble = -parameters.bass_sign
 
+    heel_end = max(p.x for p in pocket.outline)
+    bass_wall = max(-point.y * treble for point in pocket.outline)
     for point in relief.line:
-        if point.y * treble > 1e-6:
+        if point.y * treble > -bass_wall + 1e-6:
             assert distance_to(point, pocket.outline) == pytest.approx(15.0, abs=0.3)
         else:
-            # The rest along the centreline to the body's edge.
-            assert point.y == pytest.approx(0.0, abs=1e-9)
+            # The rest along the pocket's bass wall to the body's edge.
+            assert -point.y * treble == pytest.approx(bass_wall, abs=1e-9)
     # Round its tail end, out to the body's edge on the treble side.
-    heel_end = max(p.x for p in pocket.outline)
     assert max(p.x for p in relief.line) == pytest.approx(heel_end + 15.0, abs=0.1)
-    assert relief.line[0].y == 0.0 and relief.line[-1].y * treble > 0.0
+    assert -relief.line[0].y * treble == pytest.approx(bass_wall)
+    assert relief.line[-1].y * treble > 0.0
     if kind == "bevel":
         # Sloping along the neck, as round the heel.
         assert relief.plane_axis == (1.0, 0.0)
@@ -294,13 +322,20 @@ def test_the_relief_is_always_on_the_treble_side(
         body_heel_relief=kind,
         body_heel_relief_line=line,
     )
-    (relief,) = [c for c in parameters.build().body.contours if c.name == "Heel relief"]
+    body = parameters.build().body
+    (relief,) = [c for c in body.contours if c.name == "Heel relief"]
     assert isinstance(relief, HeelRelief)
     treble = -parameters.bass_sign
+    pocket = body.neck_pocket
+    assert pocket is not None
 
-    # Edge and line alike: nothing past the centreline on the bass side.
-    assert min(p.y * treble for p in (*relief.edge, *relief.line)) >= -1e-9
-    assert relief.depth_at(Point2D(relief.line[-1].x, -treble * 5.0)) == 0.0
+    # Edge and line alike: on the bass side nothing past the pocket's bass
+    # wall round the heel (it takes in the whole heel), nor past the
+    # centreline across the treble corner.
+    bound = 0.0 if line == "corner" else max(-p.y * treble for p in pocket.outline)
+    assert min(p.y * treble for p in (*relief.edge, *relief.line)) >= -bound - 1e-9
+    beyond = Point2D(relief.line[-1].x, -treble * (bound + 5.0))
+    assert relief.depth_at(beyond) == 0.0
 
 
 def test_a_tilted_plate_takes_the_bevel_across_the_neck_and_no_further() -> None:
@@ -328,7 +363,8 @@ def test_a_line_wholly_on_the_bass_side_is_refused() -> None:
     bass = parameters.bass_sign
     shape = replace(
         parameters.body_shape,
-        heel_relief_points=((-30.0, bass * 60.0), (10.0, bass * 20.0)),
+        heel_relief_points=((-30.0, bass * 60.0), (10.0, bass * 35.0)),
     )
+    # Past the pocket's bass wall all the way.
     with pytest.raises(BodyGeometryError, match="wholly on the bass side"):
         replace(parameters, body_shape=shape).build()

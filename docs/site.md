@@ -226,13 +226,16 @@ Python.
    heel relief's on the back where the neck joins, in plum, with
    `body_heel_relief` (a contour or a notch, beside the editor with its
    depth and `body_heel_relief_line`), `heel_relief_points` and *Auto
-   heel relief* (a U round the heel, with `pocket` the pocket's outline
-   offset by the reach, or with `corner` a straight line
+   heel relief* (a U round the heel, or with `pocket` the pocket's outline
+   offset by the reach, either taking in the whole heel to the pocket's
+   bass wall; or with `corner` a straight line
    slanting across the heel's treble corner, clear of a neck plate; where
    a plate leaves no corner beyond it the U is drawn and the status line
-   says why); the relief is cut on the treble side only, stopping at the
-   centreline (a plate tilted on a bevel takes it across the neck to just
-   past the plate). A line moved by hand stays as drawn whatever relief is
+   says why); the relief reaches out past the heel on the treble side
+   only: round the heel, by the pocket or drawn it takes in the whole heel
+   to the pocket's bass wall, across the corner it stops at the centreline
+   (a plate tilted on a bevel takes it across the neck to just past the
+   plate). A line moved by hand stays as drawn whatever relief is
    chosen, and the status line says so; choosing `body_heel_relief_line`
    by hand (not a loaded design or an undo) goes back to that automatic
    line, as *Auto heel relief* does. An automatic line is drawn as it is

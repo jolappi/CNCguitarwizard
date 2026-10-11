@@ -728,17 +728,20 @@ jonka seinämä on viivalla. Viivan voi piirtää runkoeditorissa
 U-muoto kantapään ympäri `body_heel_relief_reach` (15 mm) kantapään pään
 takaa ja yhtä kauas kaulataskun sivuilta, kummankin pään ollessa siellä,
 missä viiva ensin lähtee rungosta. *Auto heel relief* palauttaa
-automaattisen. Muotoilu on aina diskanttipuolella, jossa käsi kiertää
-kantapään ympäri ylimmille nauhoille: viivasta (piirretystä tai
-automaattisesta) säilyy sen viimeinen diskanttipuolen osa, ja siitä,
-missä se ylittää keskilinjan, viiva jatkuu keskilinjaa pitkin rungon
-kaulanpuoleiseen reunaan, joten muotoilu päättyy keskilinjaan
-(loivennus ohenee siinä olemattomiin, lovessa ja viisteessä on seinämä).
-Vain viisteellä kallistettu kaulalevy vie viisteen kaulan poikki, 2 mm
-levyn bassoreunan ohi, jotta levy istuu kokonaan viisteellä; levy
-kallistuu kaulan suuntaan tai diskanttikulmaa kohti, ei koskaan
-bassopuolelle. Kokonaan bassopuolelle
-piirretty viiva hylätään. Muotoilu on viivoitettu pinta reunan ja viivan välillä,
+automaattisen. Muotoilu ulottuu kantapään ohi vain diskanttipuolelle,
+jossa käsi kiertää kantapään ympäri ylimmille nauhoille: viivasta
+(piirretystä tai automaattisesta) säilyy sen viimeinen osa kaulan
+suuntaisen rajan diskanttipuolella, ja siitä, missä se ylittää rajan,
+viiva jatkuu rajaa pitkin rungon kaulanpuoleiseen reunaan, joten
+muotoilu päättyy rajaan (loivennus ohenee siinä olemattomiin, lovessa
+ja viisteessä on seinämä). Kantapään ympäri, taskun mukaan ja
+piirrettynä raja on kaulataskun bassoseinä: muotoilu kattaa koko
+kantapään eli kaulataskun kohdan takapinnalla eikä enempää
+bassopuolelta. Diskanttikulman poikki raja on keskilinja. Viisteellä
+kallistettu kaulalevy vie viisteen 2 mm levyn bassoreunan ohi, jotta
+levy istuu kokonaan viisteellä; levy kallistuu kaulan suuntaan tai
+diskanttikulmaa kohti, ei koskaan bassopuolelle. Kokonaan rajan
+bassopuolelle piirretty viiva hylätään. Muotoilu on viivoitettu pinta reunan ja viivan välillä,
 joten sarvien välinen kovera reuna leikkautuu siististi. Kaulapulttien
 hylsyt upotetaan `body_neck_ferrule_depth` muotoilun pintaan, ja
 taskun yläpuolelle on jäätävä vähintään 5 mm puuta; liian syvä muotoilu
@@ -760,9 +763,10 @@ sen on oltava kokonaan tasaisella takapinnalla: 1 mm takareunan
 pyöristyksen tai reunanauhan sisäpuolella, irti takapinnan muotoiluista
 ja takakansista. Kantapään muotoilun automaattinen viiva valitaan
 kentällä `body_heel_relief_line`: `"around"` (oletus) on U kantapään
-ympäri kaulataskun yli, `"pocket"` kaulataskun ääriviiva
+ympäri, `"pocket"` kaulataskun ääriviiva
 `body_heel_relief_reach` ulompana joka puolelta (kulmat pyöristettyinä)
-taskun sivuja pitkin ja sen pään ympäri (runkoeditori piirtää
+taskun sivuja pitkin ja sen pään ympäri; kumpikin kattaa koko kantapään
+taskun bassoseinään asti (runkoeditori piirtää
 automaattisen viivan täsmälleen leikattavana viivana, ei käyränä
 kahvojen kautta; kahvat ovat tasavälein viivalla), `"corner"` kantapään
 diskanttipuolen kulma, jonka

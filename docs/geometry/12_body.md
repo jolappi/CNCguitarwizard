@@ -844,26 +844,30 @@ curve), else a U round the heel: from the centreline
 sides that far out from the neck pocket, each to where it first leaves
 the body (the cutaway's or the horn's edge beside the neck).
 
-The relief is always on the treble side, where the hand reaches round
-the heel to the top frets: whatever the line (drawn or automatic), its
-last run on the treble side of the centreline is kept, and from where it
-comes over the centreline the line runs on along it to the body's edge
-at the neck end (`_treble_side`), so the relief stops at the
-centreline — a smooth ramp down to nothing there for a contour, a wall
-for a notch or a bevel. Only a neck plate tilted on a bevel takes it
-across the neck, to `NECK_PLATE_RELIEF_GAP` (2 mm) past the
-plate's bass edge, so the plate sits wholly on the slope; the plate
-tilts along the neck or toward the treble corner, never toward the bass
-side. A line wholly on the bass
-side is refused. The line's ends are taken onto the outline exactly
-where it passes nearest them (on a side, not only at a corner), so the
-relief ends on the centreline, not a sliver past it.
+The relief reaches out past the heel on the treble side only, where the
+hand reaches round the heel to the top frets: whatever the line (drawn
+or automatic), its last run on the relief's side of a boundary along the
+neck is kept, and from where it comes over the boundary the line runs on
+along it to the body's edge at the neck end (`_treble_side`), so the
+relief stops there — a smooth ramp down to nothing for a contour, a wall
+for a notch or a bevel. Round the heel, by the pocket or drawn, the
+boundary is the neck pocket's bass wall: the relief takes in the whole
+heel, the pocket's place on the back, and no more of the bass side.
+Across the treble corner it is the centreline. A neck plate tilted on a
+bevel takes it to `NECK_PLATE_RELIEF_GAP` (2 mm) past the plate's bass
+edge, so the plate sits wholly on the slope; the plate tilts along the
+neck or toward the treble corner, never toward the bass side. A line
+wholly past the boundary on the bass side is refused. The line's ends
+are taken onto the outline exactly where it passes nearest them (on a
+side, not only at a corner), so the relief ends on the boundary, not a
+sliver past it.
 
 That U is `body_heel_relief_line` `"around"` (the default). With
 `"pocket"` the line is by the neck pocket instead: its outline offset
 `body_heel_relief_reach` outward all round, the corners rounded about
 the pocket's, along its sides and round its tail end, each end where it
-first leaves the body. With
+first leaves the body. Either takes in the whole heel, to the pocket's
+bass wall. With
 `"corner"` the automatic line is straight instead, slanting at 45 degrees
 toward the heel end on the treble side and crossing the centreline
 `body_heel_relief_reach` behind the body's edge at the neck end, then

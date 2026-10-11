@@ -968,16 +968,18 @@ class Prototype001Parameters:
     # along the neck for a neck plate to sit on (Ibanez's Tilt Joint),
     # that deep at the body's edge on the centreline and up to the face
     # at its line's furthest point behind the heel, a wall elsewhere along
-    # its line. It is always on the treble side: it stops at the
-    # centreline (a plate tilted on a bevel takes it across the neck, just
-    # past the plate's bass edge). Where it starts is the body shape's
+    # its line. It reaches out past the heel on the treble side only:
+    # round the heel, by the pocket or drawn it takes in the whole heel
+    # and stops at the pocket's bass wall; across the treble corner it
+    # stops at the centreline; a plate tilted on a bevel takes it just
+    # past the plate's bass edge. Where it starts is the body shape's
     # heel_relief_points,
     # drawn in the body editor, or else body_heel_relief_line: "around" a
-    # U round the heel, across the neck pocket, body_heel_relief_reach
-    # behind the heel end on the centreline and curving forward to the
-    # edge beside the pocket either side; "pocket" by the neck pocket, its
-    # outline body_heel_relief_reach out all round (its corners rounded),
-    # along its sides and round its tail end; "corner" the heel's treble
+    # U round the heel, body_heel_relief_reach behind the heel end on the
+    # centreline and curving forward to the edge beside the pocket either
+    # side; "pocket" by the neck pocket, its outline body_heel_relief_reach
+    # out all round (its corners rounded), along its sides and round its
+    # tail end; "corner" the heel's treble
     # corner, cut off by a line slanting at 45 degrees toward the heel end
     # on the treble side, crossing the centreline body_heel_relief_reach
     # behind the body's edge at the neck end, or further out beside a neck
@@ -6148,14 +6150,18 @@ class Prototype001Parameters:
                 *((Point2D(heel_end, -side),) if ends[-1.0] < heel_end else ()),
                 Point2D(ends[-1.0], -side),
             ]
-        # On the treble side only; a neck plate tilted on a bevel takes it
-        # across the neck, to NECK_PLATE_RELIEF_GAP past the plate's bass
-        # edge, so the plate sits wholly on its slope.
-        beyond = (
-            self.body_neck_plate_width / 2.0 + NECK_PLATE_RELIEF_GAP
-            if carries_plate
-            else 0.0
-        )
+        # Out past the heel on the treble side only. Round the heel, by the
+        # pocket or drawn, it takes in the whole heel, to the pocket's bass
+        # wall; a neck plate tilted on a bevel takes it to
+        # NECK_PLATE_RELIEF_GAP past the plate's bass edge, so the plate
+        # sits wholly on its slope; across the treble corner it stops at
+        # the centreline.
+        if carries_plate:
+            beyond = self.body_neck_plate_width / 2.0 + NECK_PLATE_RELIEF_GAP
+        elif shape.heel_relief_points or self.body_heel_relief_line != "corner":
+            beyond = max(point.y * self.bass_sign for point in pocket.outline)
+        else:
+            beyond = 0.0
         line = self._treble_side(
             open_catmull_rom(drawn, CONTOUR_LINE_SAMPLES, corners),
             outline,

@@ -541,7 +541,9 @@ class HeelRelief:
         Along each ruling, from ``CONTOUR_WASTE`` past the edge (into the
         waste) in to where it passes that depth (the wall, for a flat
         profile); rulings no deeper than ``level`` at the edge are left
-        out.
+        out. Where the edge turns sharply in (a cutaway's corner by the
+        neck) the points past it would cross: the loop they make is left
+        out, so the area stays one simple outline.
         """
         inner: list[Point2D] = []
         outer: list[Point2D] = []
@@ -568,7 +570,7 @@ class HeelRelief:
             outer.append(
                 Point2D(e.x + out.x * CONTOUR_WASTE, e.y + out.y * CONTOUR_WASTE)
             )
-        return (*inner, *reversed(outer))
+        return (*inner, *reversed(_without_loops(outer)))
 
 
 Contour = ContourCut | HeelRelief
@@ -656,6 +658,43 @@ def _along(a: Point2D, b: Point2D, point: Point2D) -> tuple[float, float]:
         return 0.0, math.dist(_xy(a), _xy(point))
     wx, wy = point.x - a.x, point.y - a.y
     return (wx * ex + wy * ey) / size, abs(wx * ey - wy * ex) / math.sqrt(size)
+
+
+def _without_loops(points: Sequence[Point2D]) -> list[Point2D]:
+    """Return the open polyline ``points`` with every loop it makes cut out.
+
+    Where two of its spans cross, the points between them go and the
+    crossing takes their place.
+    """
+    kept = list(points)
+    crossed = True
+    while crossed:
+        crossed = False
+        for i in range(len(kept) - 3):
+            for j in range(len(kept) - 2, i + 1, -1):
+                meet = _crossing(kept[i], kept[i + 1], kept[j], kept[j + 1])
+                if meet is not None:
+                    kept[i + 1 : j + 1] = [meet]
+                    crossed = True
+                    break
+            if crossed:
+                break
+    return kept
+
+
+def _crossing(a: Point2D, b: Point2D, c: Point2D, d: Point2D) -> Point2D | None:
+    """Return where the spans ``a``-``b`` and ``c``-``d`` cross, if they do."""
+    rx, ry = b.x - a.x, b.y - a.y
+    sx, sy = d.x - c.x, d.y - c.y
+    denominator = rx * sy - ry * sx
+    if abs(denominator) < 1e-12:
+        return None
+    qx, qy = c.x - a.x, c.y - a.y
+    t = (qx * sy - qy * sx) / denominator
+    u = (qx * ry - qy * rx) / denominator
+    if 0.0 < t < 1.0 and 0.0 < u < 1.0:
+        return Point2D(a.x + rx * t, a.y + ry * t)
+    return None
 
 
 def _outward(edge: Sequence[Point2D], k: int, clockwise: bool) -> Point2D:
