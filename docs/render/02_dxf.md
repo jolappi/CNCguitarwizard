@@ -28,6 +28,7 @@ DXF*, *Import DXF*; see [Outline templates](03_svg_templates.md#dxf-for-cad-prog
 | `INLAYS` | Every marker's outline |
 | `TUNER_HOLES` | The tuner holes |
 | `TRUSS_ROD_ACCESS`, `CARBON_RODS` | A headstock-adjusted rod's trough, the carbon bars' channels |
+| `TRUSS_ROD_WALNUT` | A vintage rod's walnut strip and teardrop plug, in the neck's back |
 | `TOP_CARVE_PLATEAU`, `TOP_STEPS`, `TOP_CONTOURS`, `BACK_CONTOURS` | A carved top's plateau, a stepped top's step walls, the arm contour and belly cut |
 | `BODY_TOP_CAVITIES` | Every cavity routed from the top (wire channels included) |
 | `BODY_REAR_CAVITIES` | Every rear cavity and its cover recess |

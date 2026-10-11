@@ -112,6 +112,10 @@ class TrussRodChannel:
         shelf_length: The nut shelf in front of the headstock face.
         rod_axis_depth: The rod's (and adjuster's) axis below the neck's
             top; 0 puts it half the pocket's width above the pocket floor.
+        routed_from: ``"top"``, cut from the neck's top as described; or
+            ``"back"``, a vintage rod laid in from the neck's back (see
+            ``vintage_rod.VintageTrussRod``), where this is only its plan,
+            for what must keep clear of it, and nothing is cut from the top.
 
     Raises:
         TrussRodGeometryError: If the route does not fit safely in the neck.
@@ -139,6 +143,7 @@ class TrussRodChannel:
     access_diameter: float = 0.0
     shelf_length: float = 0.0
     rod_axis_depth: float = 0.0
+    routed_from: Literal["top", "back"] = "top"
     end_position: float = field(init=False)
     centerline: Line2D = field(init=False)
     top_boundary: tuple[Point2D, ...] = field(init=False)
@@ -309,8 +314,16 @@ class TrussRodChannel:
         )
         if not all(math.isfinite(value) for value in dimensions):
             raise TrussRodGeometryError("Truss-rod dimensions must be finite.")
-        if self.adjustment_side == "heel" and (
-            self.start_position < -self.shelf_length - 1e-9
+        if self.routed_from not in ("top", "back"):
+            raise TrussRodGeometryError(
+                "A truss-rod channel is routed from the top or the back."
+            )
+        # A rod laid in from the back is anchored in the headstock, past
+        # the nut shelf.
+        if (
+            self.routed_from == "top"
+            and self.adjustment_side == "heel"
+            and self.start_position < -self.shelf_length - 1e-9
         ):
             raise TrussRodGeometryError(
                 "Truss-rod start position must not precede the nut shelf."

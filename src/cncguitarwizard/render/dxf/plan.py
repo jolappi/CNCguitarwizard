@@ -59,6 +59,10 @@ def render_plan_dxf(geometry: Prototype001Geometry) -> str:
     truss = geometry.truss_rod_channel
     if truss.adjustment_side == "nut" and truss.adjuster_boundary:
         dxf.polyline(truss.adjuster_boundary, dxf.layer("TRUSS_ROD_ACCESS", 1))
+    if geometry.vintage_truss_rod is not None:
+        walnut = dxf.layer("TRUSS_ROD_WALNUT", 30)
+        dxf.polyline(geometry.vintage_truss_rod.strip_outline, walnut)
+        dxf.polyline(geometry.vintage_truss_rod.plug_outline, walnut)
     if geometry.carbon_rods is not None:
         rods = dxf.layer("CARBON_RODS", 8)
         for channel in geometry.carbon_rods.channels():

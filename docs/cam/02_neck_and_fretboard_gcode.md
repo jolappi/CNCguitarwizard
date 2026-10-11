@@ -65,6 +65,7 @@ beyond the headstock tip and beyond the heel, on the centerline.
 | `Neck_top.nc` | glue face up, on dowels | Truss-rod channel; the 8° headstock face as Z-limited roughing plus a finishing raster with the flat tool; the truss rod's step and pocket at its adjusting end, each run 3 mm on over its neighbour so no round corner is left for the rod's square blocks (and a headstock-adjusted rod's access trough, unless `truss_rod_trough` is off in the headstock face; the heel adjuster's sleeve as a 9 mm slot down to the bore's floor, under the fretboard — or, with `truss_rod_sleeve_routed` off, a bore to drill by hand, as the notes say); 0.5 mm centre marks for the six tuner holes |
 | `Neck_top_small_holes.nc` | same fixture and zero, the small drill (`small_hole_tool_diameter`) | A locking nut's screw pilots, and a truss-rod cover's in the headstock face (1.5 mm, 8 mm deep, from the face): drilled to size and depth where the drill is no wider than them, else started 2 mm deep as a guide to drill on by hand (the default 3 mm drill); only with a locking nut or a cover (not on a laminated neck's face, cut later) |
 | `Headstock_engraving.nc` | same fixture and zero as `Neck_top` (with a laminated blank: right after `Headstock_top`), V-bit | The headstock lettering (`headstock_engraving_text`) and the lines drawn on the face (`headstock_engraving_lines`), each line in 1 mm passes to `headstock_engraving_depth` below the finished face, following its angle; only with either |
+| `Neck_back_truss_rod.nc` | flipped about the centerline, Z zero on the blank's back | Only with a vintage truss rod (`truss_rod_install` "back"): its plug's teardrop and its curved channel, then the rod and walnut glued in (see below) |
 | `Neck_back_rough.nc` | flipped about the centerline | Z-limited roughing of the neck back and headstock back, 3 mm layers, 60 % step-over |
 | `Neck_back_finish.nc` | same, ball nose | Finishing raster along the neck, 0.75 mm step-over (≈ 0.023 mm scallop) |
 | `Neck_back_outline.nc` | same, flat tool | Plan outline through the 2 mm skin, six tabs |
@@ -93,6 +94,24 @@ drill press with an 8° wedge. Other simplifications: the nut shelf is a
 straight 5 mm ledge (the model's U-shaped trim is not machined), the
 headstock-root volute follows the mesh/plane union rather than the
 FreeCAD fillets, and the spoke-wheel access pocket is not modelled.
+
+### Vintage truss rod
+
+With `truss_rod_install` "back" (see [Truss rod](../geometry/08_truss_rod.md#vintage-rod-laid-in-from-the-back))
+`Neck_top.nc` cuts nothing of the rod, and `Neck_back_truss_rod.nc` comes
+before `Neck_back_rough` (or `Neck_back`): the blank flipped onto its
+dowels, Z zero on its back, the flat tool routes the teardrop for the
+walnut plug down to the plug's floor, then the channel along the
+centreline from its start out through the heel's end, back and forth in
+layers no deeper than its step-down, each no deeper than the channel's
+curving ceiling, so the last follows it (2 mm steps along it). The
+default 20 mm blank's channel is 18.4 mm deep at its ends and 15.9 mm in
+the middle: the cutter must reach that deep, as the notes say. A cutter
+narrower than the channel runs it in lanes. The notes then say to lay in
+the rod, glue in the walnut strip and plug (their sizes given, a
+millimetre proud), let them cure and plane them flush with the blank's
+back; the back's programs carve them with it, the blank back on the same
+dowels.
 
 ### Carbon fibre reinforcement
 

@@ -133,6 +133,11 @@ FIELD_HELP: dict[str, str] = {
         "Where the truss rod (the steel rod that sets the neck's bow) is "
         "adjusted: at the heel, or at the headstock behind the nut."
     ),
+    "truss_rod_install": (
+        "How the truss rod goes in: from the neck's top under the "
+        "fretboard, or the vintage Fender way, laid in from the back under "
+        "a walnut strip and a teardrop plug (adjusted at the heel)."
+    ),
     "truss_rod_spoke_wheel": (
         "A spoke-wheel adjuster, turned with a rod through its holes: auto "
         "fits one at the heel and none at the headstock."

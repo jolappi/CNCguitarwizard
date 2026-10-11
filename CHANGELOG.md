@@ -4,6 +4,20 @@
 
 ### Added
 
+- A vintage Fender truss rod (`truss_rod_install` "back"): a 4.76 mm rod
+  laid into a curved channel routed from the neck's back (4 mm below the
+  glue face at its ends, 2.5 mm deeper in the middle), from the nut seat's
+  end out through the heel's end, adjusted there, under a walnut strip and
+  a walnut teardrop plug over its anchor, carved with the back
+  (`geometry.neck.VintageTrussRod`). The build keeps 1.5 mm of wood over
+  its anchor and 3 mm of walnut over it under the carved back, and refuses
+  it with a headstock adjuster, a spoke wheel, a low-profile rod, an angled
+  headstock or a neck run through the body. `Neck_back_truss_rod.nc`
+  routes its teardrop and channel before the back is carved, its notes
+  giving the strip's and the plug's sizes; nothing of it is cut from the
+  top. FreeCAD models the walnut as `TrussRodStrip` and `TrussRodPlug`;
+  the plan view and its DXF (`TRUSS_ROD_WALNUT`) show them.
+
 - Easy mode: a switch under the style hides the long settings form and
   the editors' settings, leaving the instrument, its style, the drawings
   and Build — choose a style and build. It is kept in the browser.

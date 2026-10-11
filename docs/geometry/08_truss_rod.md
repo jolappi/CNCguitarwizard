@@ -200,6 +200,53 @@ The FreeCAD script cuts the step, pocket and trough as rows of boxes no
 longer than 5 mm, which keeps FreeCAD's `check(True)` clean where their
 walls cross the lofted neck top.
 
+## Vintage rod laid in from the back
+
+`truss_rod_install="back"` lays the rod in the vintage Fender way: from
+the neck's back, before the back is carved, under a walnut strip (the
+"skunk stripe") and a walnut teardrop plug, instead of from the top under
+the fretboard (`"top"`, the default). `geometry.neck.VintageTrussRod`
+holds it:
+
+| Part | Size |
+| --- | --- |
+| Rod (`VINTAGE_ROD_DIAMETER`) | Ø 4.76 mm (3/16 in), made to the neck's length |
+| Channel | `truss_rod_width` (6 mm) wide, from the nut seat's end (`nut_seat_length` behind the nut, where the top starts down onto the headstock's face) out through the heel's end |
+| Rod's axis | `VINTAGE_ROD_END_DEPTH` (4 mm) below the glue face at both ends, `VINTAGE_ROD_BOW` (2.5 mm) deeper in the middle, a parabola between |
+| Walnut strip | the channel's width, from the rod's back side to the carved back, from the plug's narrow end to the heel's end |
+| Teardrop plug | `VINTAGE_PLUG_WIDTH` × `VINTAGE_PLUG_LENGTH` (11 × 30 mm): round over the anchor, narrowing to the channel; its floor flat at the rod's back side where that lies deepest under it |
+
+The channel is curved like Fender's: the rod lies deeper toward the
+back in the middle, so tightened it pulls straight against the wood
+toward the fretboard, against the strings' pull. It is adjusted at the
+heel, its nut at the heel's end face, turned with the neck off.
+
+`vintage_truss_rod` refuses it with a headstock adjuster
+(`truss_rod_adjustment` must be `"heel"`), a spoke wheel
+(`truss_rod_spoke_wheel` `"yes"`; `"auto"` fits none), a low-profile rod,
+an angled headstock (it is a Fender's, behind a flat one), a headless neck
+or a neck run through the body. The build checks it against the carved
+neck (`_checked_vintage_rod`): at least `VINTAGE_ROD_WALL` (1.5 mm) of
+wood over its anchor end, and at least `VINTAGE_STRIP_MIN` (3 mm) of
+walnut over the rod everywhere, once the back is carved; a thinner neck is
+refused with the place it gets too thin. The Telecaster style's neck
+(17 mm at the first fret, 19 mm at the twelfth) leaves 3.1 mm at its
+thinnest, near the fifth fret. The Stratocaster neck template's rod is
+adjusted at the headstock: set `truss_rod_adjustment` to `"heel"` with
+it.
+
+`truss_rod()` still returns the rod's plan as a `TrussRodChannel`
+(`routed_from="back"`, from the rod's start to the heel's end), for what
+must keep clear of it; nothing of it is cut from the top, and
+`truss_rod_fit` asks for no stock rod. The FreeCAD model cuts the channel
+(a side profile of its ceiling swept across its width) and the teardrop
+from the neck's back and adds the walnut as objects of their own,
+`TrussRodStrip` and `TrussRodPlug`, the uncut neck's wood from the rod's
+back side to the back; the rod's own space is left empty. The plan view
+draws both dashed, and the plan DXF on layer `TRUSS_ROD_WALNUT`. The
+G-code routes them from the back in `Neck_back_truss_rod.nc`, before the
+back is carved (see [Neck and fretboard G-code](../cam/02_neck_and_fretboard_gcode.md#vintage-truss-rod)).
+
 ## Carbon fibre reinforcement
 
 `neck_carbon_rods` sets two carbon fibre bars into the neck's top, one

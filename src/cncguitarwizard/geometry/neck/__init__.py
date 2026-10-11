@@ -21,6 +21,7 @@ from .side_profile import (
     NeckSideProfile,
 )
 from .truss_rod import TrussRodChannel
+from .vintage_rod import VintageTrussRod
 
 __all__ = [
     "CarbonRods",
@@ -43,4 +44,5 @@ __all__ = [
     "TunerHole",
     "TunerLayout",
     "TrussRodChannel",
+    "VintageTrussRod",
 ]

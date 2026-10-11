@@ -150,6 +150,16 @@ def render_plan_view_svg(geometry: Prototype001Geometry) -> str:
     truss = geometry.truss_rod_channel
     if truss.adjustment_side == "nut" and truss.adjuster_boundary:
         parts.append(path(truss.adjuster_boundary, pocket, "Truss rod adjuster trough"))
+    # A vintage rod's walnut in the neck's back, dashed as the carbon bars
+    # under the fretboard: the strip over the rod and the teardrop plug
+    # over its anchor.
+    rod = geometry.vintage_truss_rod
+    if rod is not None:
+        walnut = (
+            'fill="none" stroke="#c08850" stroke-width="0.6" stroke-dasharray="3,2"'
+        )
+        parts.append(path(rod.strip_outline, walnut, "Walnut strip (back)"))
+        parts.append(path(rod.plug_outline, walnut, "Walnut teardrop plug (back)"))
 
     # A carved top's plateau, dashed: the top falls outside it.
     if body.carved_top is not None:

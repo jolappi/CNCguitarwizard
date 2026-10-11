@@ -27,6 +27,7 @@ from ...geometry.neck import (
     NutSlotJig,
     TrussRodChannel,
     TunerLayout,
+    VintageTrussRod,
 )
 from ...geometry.neck.outline import heel_end_curve
 from ...geometry.primitives import Point2D, Point3D, point_in_polygon
@@ -53,6 +54,13 @@ TRANSITION_CUT_SAMPLES = 12
 
 TRUSS_ROD_POCKET_PIECE_LENGTH = 5.0
 """Longest box a truss-rod nut pocket or trough is cut with (mm)."""
+
+VINTAGE_ROD_CUT_BELOW = 60.0
+"""How far below the glue face a vintage rod's channel is cut from, in mm:
+past any neck's back."""
+
+VINTAGE_ROD_STEP = 5.0
+"""Longest step along a vintage rod's curved channel, in mm."""
 
 MIN_SECTION_GAP = 0.2
 """Least distance between two loft sections along the neck, in mm."""
@@ -156,6 +164,7 @@ class FreeCADScriptExporter:
             neck_through=geometry.neck_through,
             carbon_rods=geometry.carbon_rods,
             nut_jig=geometry.nut_jig,
+            vintage_truss_rod=geometry.vintage_truss_rod,
             fretboard_binding_width=geometry.fretboard_binding_width,
             headstock_engraving=geometry.headstock_engraving,
             neck_tilt=geometry.neck_tilt,
@@ -224,6 +233,7 @@ class FreeCADScriptExporter:
         neck_through: NeckThrough | None = None,
         carbon_rods: CarbonRods | None = None,
         nut_jig: NutSlotJig | None = None,
+        vintage_truss_rod: VintageTrussRod | None = None,
         fretboard_binding_width: float = 0.0,
         headstock_engraving: Engraving | None = None,
         neck_tilt: tuple[float, float, float] = (0.0, 0.0, 0.0),
@@ -463,6 +473,11 @@ class FreeCADScriptExporter:
             export_feature_names.append("headstock_feature")
         if fretboard_binding_width > 0.0:
             export_feature_names.append("fretboard_binding_feature")
+        if vintage_truss_rod is not None:
+            export_feature_names += [
+                "truss_rod_strip_feature",
+                "truss_rod_plug_feature",
+            ]
         if body is not None and neck_through is not None:
             export_feature_names += ["neck_block_feature"]
             export_feature_names += [
@@ -847,6 +862,7 @@ class FreeCADScriptExporter:
             f"{binding_source}"
             f"{headstock_source}"
             f"{locking_nut_screw_source}"
+            f"{self._render_vintage_truss_rod(vintage_truss_rod)}"
             f"{self._render_nut_jig(nut_jig)}"
             f"{self._render_neck_tilt(neck_tilt)}"
             f"{body_source}"
@@ -2838,8 +2854,12 @@ class FreeCADScriptExporter:
     def _render_truss_rod_cut(
         channel: TrussRodChannel | None,
     ) -> str:
-        """Return FreeCAD commands that subtract a rectangular rod channel."""
-        if channel is None:
+        """Return FreeCAD commands that subtract a rectangular rod channel.
+
+        Nothing for a vintage rod laid in from the back: its channel is cut
+        with its walnut (``_render_vintage_truss_rod``).
+        """
+        if channel is None or channel.routed_from == "back":
             return ""
 
         def pieces(
@@ -2962,6 +2982,97 @@ class FreeCADScriptExporter:
             "    neck_shape.cut(carbon_rod_channels).removeSplitter(),\n"
             '    "carbon rod channels",\n'
             ")\n"
+        )
+
+    @staticmethod
+    def _render_vintage_truss_rod(rod: VintageTrussRod | None) -> str:
+        """Return a vintage truss rod's channel and teardrop, cut from the
+        neck's back, and the walnut strip and plug over the rod in them,
+        objects of their own.
+
+        The channel is a side profile — its ceiling, the rod's side nearest
+        the fretboard, curving along the rod — swept across its width, on
+        out past the heel's end; the teardrop a prism from the plug's floor
+        down. The strip and the plug are the uncut neck's wood from the
+        rod's back side (the plug's floor) down to the carved back.
+        """
+        if rod is None:
+            return ""
+        below = -VINTAGE_ROD_CUT_BELOW
+        steps = max(8, math.ceil((rod.end - rod.start) / VINTAGE_ROD_STEP))
+        stations = [
+            rod.start + (rod.end - rod.start) * index / steps
+            for index in range(steps + 1)
+        ]
+        past = rod.end + 1.0
+
+        def side(depth: Callable[[float], float], start: float) -> str:
+            # The curve at -depth from start to the heel's end, on past it,
+            # and back along a floor well below any back.
+            xs = [start, *(x for x in stations if x > start + 1e-6)]
+            points = [
+                *((x, -depth(x)) for x in xs),
+                (past, -depth(rod.end)),
+                (past, below),
+                (start, below),
+            ]
+            return ", ".join(
+                f"App.Vector({x!r}, {-rod.width / 2.0!r}, {z!r})" for x, z in points
+            )
+
+        plug = ", ".join(
+            f"App.Vector({point.x!r}, {point.y!r}, {-rod.plug_depth!r})"
+            for point in rod.plug_outline
+        )
+        return (
+            "# The vintage truss rod laid in from the back: its channel and\n"
+            "# teardrop cut, the walnut strip and plug glued in over it.\n"
+            "def swept_side(points):\n"
+            "    return Part.Face(Part.makePolygon(points + points[:1])).extrude(\n"
+            f"        App.Vector(0.0, {rod.width!r}, 0.0)\n"
+            "    )\n\n"
+            f"vintage_channel = swept_side([{side(rod.ceiling_depth, rod.start)}])\n"
+            f"vintage_strip = swept_side([{side(rod.strip_depth, rod.strip_start)}])\n"
+            f"vintage_plug_corners = [{plug}]\n"
+            "vintage_plug = Part.Face(\n"
+            "    Part.makePolygon(vintage_plug_corners + vintage_plug_corners[:1])\n"
+            f").extrude(App.Vector(0.0, 0.0, {below + rod.plug_depth!r}))\n"
+            # Against the lofted neck a plain boolean can fail quietly (an
+            # empty walnut, the neck hardly cut), so a little fuzz is tried,
+            # and a cut kept only when the walnut is there and the neck lost
+            # more than the walnut: the rod's room too.
+            "uncut_neck = neck_feature.Shape.copy()\n"
+            "vintage_parts = None\n"
+            "for vintage_fuzz in (0.0, 0.001, 0.01):\n"
+            "    attempt = uncut_neck.cut([vintage_channel, vintage_plug], "
+            "vintage_fuzz)\n"
+            "    strip = uncut_neck.common(vintage_strip, vintage_fuzz)\n"
+            "    plug = uncut_neck.common(vintage_plug, vintage_fuzz)\n"
+            "    if attempt.isNull() or not attempt.isValid():\n"
+            "        continue\n"
+            "    removed = uncut_neck.Volume - attempt.Volume\n"
+            "    if strip.Solids and plug.Solids and (\n"
+            "        removed > strip.Volume + plug.Volume\n"
+            "    ):\n"
+            "        vintage_parts = (attempt, strip, plug)\n"
+            "        break\n"
+            "if vintage_parts is None:\n"
+            '    raise RuntimeError("vintage truss-rod channel cut failed")\n'
+            "neck_feature.Shape = vintage_parts[0]\n"
+            "truss_rod_strip_feature = document.addObject(\n"
+            '    "Part::Feature", "TrussRodStrip"\n'
+            ")\n"
+            "truss_rod_strip_feature.Shape = require_shape(\n"
+            "    vintage_parts[1], 'walnut strip'\n"
+            ")\n"
+            "truss_rod_strip_feature.Label = 'Walnut strip'\n"
+            "truss_rod_plug_feature = document.addObject(\n"
+            '    "Part::Feature", "TrussRodPlug"\n'
+            ")\n"
+            "truss_rod_plug_feature.Shape = require_shape(\n"
+            "    vintage_parts[2], 'walnut teardrop plug'\n"
+            ")\n"
+            "truss_rod_plug_feature.Label = 'Walnut teardrop plug'\n"
         )
 
     @staticmethod

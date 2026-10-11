@@ -9,8 +9,10 @@ both setups:
   raster with the flat end mill, and shallow centre marks for the tuner
   holes (which must be drilled perpendicular to the angled face, so they
   are left to a drill press with an 8-degree wedge);
-* **back** (flipped about the centerline) — Z-limited roughing of the
-  neck back and headstock back with the flat end mill, ball-nose
+* **back** (flipped about the centerline) — a vintage truss rod's
+  curved channel and teardrop, when it is laid in from the back (the rod
+  and its walnut glued in before the back is carved), Z-limited roughing
+  of the neck back and headstock back with the flat end mill, ball-nose
   finishing, and finally the plan outline cut through the remaining
   skin with holding tabs.
 
@@ -32,7 +34,7 @@ from .engraving import engraving_path, engraving_tool
 from .exceptions import ToolpathError
 from .fixturing import StockBounds, resolve_index_pins
 from .gcode import Setup
-from .operations import drill, pocket, profile
+from .operations import depth_levels, drill, pocket, profile
 from .parameters import MachiningParameters
 from .planar import polygon_bounds
 from .surfacing import (
@@ -43,10 +45,10 @@ from .surfacing import (
     raster_rough,
     sample_surface,
 )
-from .toolpath import Toolpath
+from .toolpath import PathBuilder, Toolpath
 
 if TYPE_CHECKING:
-    from ..geometry.neck import HeadstockSolid, TrussRodChannel
+    from ..geometry.neck import HeadstockSolid, TrussRodChannel, VintageTrussRod
     from ..presets import Prototype001Geometry
 
 
@@ -172,7 +174,10 @@ class NeckMachiningPlan:
     neck is cut from the plank first, and the ``headstock_*`` setups cut
     the headstock after the block is glued on, before the outline. With
     the back cut by the ball nose alone (``back_cut`` "ball") it is one
-    program, ``back_rough``, and ``back_finish`` is ``None``.
+    program, ``back_rough``, and ``back_finish`` is ``None``. A vintage
+    truss rod's channel and teardrop are routed from the back first
+    (``back_truss_rod``), the rod and its walnut glued in before the back
+    is carved.
     """
 
     index_pins: Setup
@@ -195,6 +200,7 @@ class NeckMachiningPlan:
     block_back_setups: tuple[Setup, ...] = ()
     carbon_rods: Setup | None = None
     small_holes: Setup | None = None
+    back_truss_rod: Setup | None = None
 
     @property
     def setups(self) -> tuple[Setup, ...]:
@@ -213,6 +219,7 @@ class NeckMachiningPlan:
             *((self.small_holes,) if self.small_holes is not None else ()),
             *self.block_top_setups,
             *((self.top_engraving,) if self.top_engraving is not None else ()),
+            *((self.back_truss_rod,) if self.back_truss_rod is not None else ()),
             self.back_rough,
             *((self.back_finish,) if self.back_finish is not None else ()),
             *self.headstock_setups,
@@ -465,6 +472,126 @@ def _overrun_truss_route(
     return route
 
 
+VINTAGE_CHANNEL_STEP = 2.0
+"""Longest step along a vintage truss rod's curved channel floor, in mm."""
+
+
+def _vintage_rod_setup(
+    rod: VintageTrussRod,
+    frame: _Frame,
+    thickness: float,
+    tool: MachiningParameters,
+    fixture_notes: tuple[str, ...],
+    next_back: str,
+    reference_points: tuple[tuple[float, float], ...],
+) -> Setup:
+    """Return the vintage truss rod's routes from the blank's back.
+
+    The teardrop for the walnut plug over the rod's anchor, then the
+    curved channel (``_vintage_channel``), in a blank ``thickness`` thick
+    with Z zero on its back; the notes say how the rod, the strip and the
+    plug go in before ``next_back`` carves them with the back.
+    """
+    teardrop = pocket(
+        "Truss-rod plug teardrop",
+        frame.polygon(rod.plug_outline),
+        thickness - rod.plug_depth,
+        tool,
+    )
+    channel = _vintage_channel(rod, frame, thickness, tool)
+    middle = (rod.start + rod.end) / 2.0
+    strip_height = thickness - min(
+        rod.strip_depth(rod.strip_start), rod.strip_depth(rod.end)
+    )
+    return Setup(
+        "Neck_back_truss_rod",
+        "Neck back - the vintage truss rod's channel and plug teardrop",
+        (teardrop, channel),
+        (
+            *fixture_notes,
+            f"The truss rod's channel, {rod.width:g} mm wide on the "
+            f"centreline from {-rod.start:g} mm behind the nut out through "
+            "the heel's end, curves with the rod: "
+            f"{thickness - rod.ceiling_depth(rod.end):.1f} mm deep at its "
+            f"ends and {thickness - rod.ceiling_depth(middle):.1f} mm in the "
+            f"middle. The cutter must reach {-channel.deepest_z():.1f} mm "
+            "deep.",
+            f"Lay in the {rod.rod_diameter:g} mm rod, "
+            f"{rod.end - rod.start:.0f} mm long, its anchor in the teardrop "
+            "and its adjusting nut at the heel's end face.",
+            f"Glue in a walnut strip {rod.width:g} mm wide, at least "
+            f"{strip_height + 1.0:.0f} mm tall and "
+            f"{rod.end - rod.strip_start + 1.0:.0f} mm long, from the "
+            "teardrop's narrow end to the heel's end, pressed down onto the "
+            f"rod; and a walnut plug in the teardrop ({rod.plug_width:g} x "
+            f"{rod.plug_length:g} mm, at least "
+            f"{thickness - rod.plug_depth + 1.0:.0f} mm tall) over its anchor.",
+            f"Let the glue cure, then plane the walnut flush with the blank's "
+            f"back: {next_back} carves it with the back.",
+        ),
+        reference_points,
+        tool,
+    )
+
+
+def _vintage_channel(
+    rod: VintageTrussRod, frame: _Frame, thickness: float, tool: MachiningParameters
+) -> Toolpath:
+    """Return a vintage truss rod's channel, routed from the blank's back.
+
+    The cutter runs along the channel, back and forth one depth level at
+    a time, from its start (the cutter's round end there) on out past
+    the heel's end; each pass no deeper than the channel's ceiling — the
+    rod's side nearest the fretboard, curving with it — so the last
+    follows it. A cutter narrower than the channel runs it in lanes.
+
+    Raises:
+        ToolpathError: If the cutter is wider than the channel.
+    """
+    spare = rod.width - tool.tool_diameter
+    if spare < -1e-9:
+        raise ToolpathError(
+            f"The vintage truss rod's {rod.width:g} mm channel is narrower than "
+            f"the {tool.tool_diameter:g} mm cutter."
+        )
+    lane_count = 1 if spare <= 1e-9 else math.ceil(spare / tool.raster_spacing) + 1
+    lanes = [
+        0.0 if lane_count == 1 else -spare / 2.0 + spare * index / (lane_count - 1)
+        for index in range(lane_count)
+    ]
+    start = rod.start + tool.tool_radius
+    end = rod.end + tool.tool_radius + 0.5
+    steps = max(2, math.ceil((end - start) / VINTAGE_CHANNEL_STEP))
+    stations = [start + (end - start) * index / steps for index in range(steps + 1)]
+
+    def floor(x: float) -> float:
+        return -(thickness - rod.ceiling_depth(x))
+
+    deepest = -min(floor(x) for x in stations)
+    builder = PathBuilder(
+        "Truss-rod channel from the back",
+        safe_height=tool.safe_height,
+        feed_rate=tool.feed_rate,
+        plunge_rate=tool.plunge_rate,
+    )
+    forward = True
+    for level in depth_levels(0.0, deepest, tool.step_down):
+        for lane in lanes:
+            run = stations if forward else stations[::-1]
+            first = frame.point(Point2D(run[0], lane))
+            if not builder.positioned:
+                builder.rapid_to(first.x, first.y)
+            else:
+                # Across to the next lane in the cut, at the depth reached.
+                builder.cut_to(first.x, first.y)
+            builder.plunge_to(max(level, floor(run[0])))
+            for x in run[1:]:
+                point = frame.point(Point2D(x, lane))
+                builder.cut_to(point.x, point.y, max(level, floor(x)))
+            forward = not forward
+    return builder.build()
+
+
 def neck_plan_polygon(geometry: Prototype001Geometry) -> tuple[Point2D, ...]:
     """Return the whole neck's plan outline: headstock, neck, and heel."""
     neck = geometry.neck_outline.boundary
@@ -637,7 +764,10 @@ def plan_neck_machining(
     )
 
     truss = geometry.truss_rod_channel
-    route = _overrun_truss_route(truss, flat.tool_radius)
+    # A vintage rod is laid in from the back (Neck_back_truss_rod): nothing
+    # of it is cut from the top.
+    from_top = truss.routed_from == "top"
+    route = _overrun_truss_route(truss, flat.tool_radius) if from_top else []
     truss_paths = [
         pocket(name, top_frame.polygon(boundary), depth, flat)
         for name, boundary, depth in route
@@ -745,9 +875,15 @@ def plan_neck_machining(
         ),
     )
     truss_notes = (
-        f"The truss-rod step and pocket each run {flat.tool_radius:g} mm on "
-        "over their neighbours, so the cutter's round corners stay out of "
-        "the rod's square blocks.",
+        *(
+            (
+                f"The truss-rod step and pocket each run {flat.tool_radius:g} "
+                "mm on over their neighbours, so the cutter's round corners "
+                "stay out of the rod's square blocks.",
+            )
+            if from_top
+            else ()
+        ),
         *(
             (
                 f"The truss-rod adjuster's sleeve sits in a {truss.bore.diameter:g} "
@@ -782,7 +918,8 @@ def plan_neck_machining(
         # A board running on under the nut covers the route there itself.
         *(
             ()
-            if geometry.locking_nut is not None and geometry.locking_nut.on_fretboard
+            if not from_top
+            or (geometry.locking_nut is not None and geometry.locking_nut.on_fretboard)
             else _nut_filler_note(truss, shelf)
         ),
         *_locking_nut_notes(geometry),
@@ -804,7 +941,9 @@ def plan_neck_machining(
     else:
         top = Setup(
             "Neck_top",
-            "Neck glue face - truss-rod channel, headstock face, tuner centre marks",
+            "Neck glue face - "
+            + ("truss-rod channel, " if from_top else "")
+            + "headstock face, tuner centre marks",
             (*truss_paths[:1], *face_paths, *truss_paths[1:]),
             (
                 "Blank on the two index pins, glue face up, same work zero.",
@@ -1074,6 +1213,23 @@ def plan_neck_machining(
         return rough, finish
 
     flip = "Flip the blank about the neck centerline onto the same two index pins."
+    back_truss_rod: Setup | None = None
+    rod = geometry.vintage_truss_rod
+    if rod is not None:
+        back_truss_rod = _vintage_rod_setup(
+            rod,
+            back_frame,
+            plank if laminated else thickness,
+            flat,
+            (flip, "Keep X/Y zero at index pin 1; set Z zero on the (new) blank top."),
+            first_back,
+            reference_points,
+        )
+        # The blank is face down already, the walnut flush with its back.
+        flip = (
+            "Back on the same two index pins, glue face down, the walnut "
+            "planed flush with the blank's back."
+        )
     # The back is carved across the neck and headstock: a neck-through
     # block's waste beside the neck goes with its full-depth outline cut.
     _, carve_low, _, carve_high = (
@@ -1292,6 +1448,7 @@ def plan_neck_machining(
         block_back_setups=block_back,
         carbon_rods=carbon_rods,
         small_holes=small_holes,
+        back_truss_rod=back_truss_rod,
         preview_outlines=(
             top_outline,
             top_outline,
@@ -1299,6 +1456,7 @@ def plan_neck_machining(
             *((top_outline,) if small_holes is not None else ()),
             *block_top_previews,
             *((top_outline,) if top_engraving is not None else ()),
+            *((back_outline_polygon,) if back_truss_rod is not None else ()),
             *((back_outline_polygon,) * len(neck_back)),
             *headstock_previews,
             *block_back_previews,

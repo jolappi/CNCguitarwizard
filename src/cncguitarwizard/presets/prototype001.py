@@ -73,6 +73,7 @@ from ..geometry.neck import (
     TrussRodChannel,
     TunerHole,
     TunerLayout,
+    VintageTrussRod,
 )
 from ..geometry.neck.nut_jig import (
     NutSlotJig,
@@ -337,6 +338,32 @@ TRUSS_ROD_MIN_FLOOR = 1.0
 """Wood left under a headstock-adjusted standard rod's deepest pocket, in
 mm: the neck is made this much thicker than the pocket's depth."""
 
+VINTAGE_ROD_DIAMETER = 4.76
+"""A vintage (back-routed) truss rod's diameter, in mm (3/16 in)."""
+
+VINTAGE_ROD_END_DEPTH = 4.0
+"""A vintage rod's axis below the neck's top at its ends, in mm: its side
+nearest the fretboard 1.6 mm under the glue face."""
+
+VINTAGE_ROD_BOW = 2.5
+"""How much deeper a vintage rod lies in the middle than at its ends, in
+mm: its channel's curve."""
+
+VINTAGE_PLUG_WIDTH = 11.0
+"""A vintage rod's teardrop plug's width at its round end, in mm."""
+
+VINTAGE_PLUG_LENGTH = 30.0
+"""A vintage rod's teardrop plug's length, from its round end to the
+channel's width, in mm."""
+
+VINTAGE_ROD_WALL = 1.5
+"""Least wood, in mm, between a vintage rod and the neck's top over its
+anchor end, where the top starts down onto the headstock's face."""
+
+VINTAGE_STRIP_MIN = 3.0
+"""Least walnut, in mm, between a vintage rod and the neck's back: the
+strip's thinnest, once the back is carved."""
+
 STEP_EDGE_SLACK = 3.0
 """How near the body's edge drawn step lines may cross, in mm: where they
 converge on the edge (the sliver between them is cut with the outer
@@ -498,6 +525,9 @@ class Prototype001Geometry:
     """Whether the neck is glued into its pocket (no bolts)."""
     nut_jig: NutSlotJig | None = None
     """The nut-slot filing jig, cut from sheet, or ``None``."""
+    vintage_truss_rod: VintageTrussRod | None = None
+    """A vintage truss rod laid in from the neck's back, its walnut strip
+    and plug, or ``None`` for one routed from the top."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -1214,6 +1244,19 @@ class Prototype001Parameters:
     truss_rod_sleeve_diameter: float = 9.0
     truss_rod_axis_depth: float = 7.5
     truss_rod_adjustment: Literal["heel", "headstock"] = "heel"
+    # truss_rod_install: "top", the rod routed from the neck's top under
+    # the fretboard as above; or "back", vintage Fender: a plain
+    # VINTAGE_ROD_DIAMETER rod laid into a channel truss_rod_width wide
+    # routed from the neck's back, curved (its axis VINTAGE_ROD_END_DEPTH
+    # below the top at its ends, VINTAGE_ROD_BOW deeper in the middle), from
+    # its anchor at the nut seat's end, where the headstock begins, to the
+    # heel end, where its nut is turned at the heel's end face; a walnut strip
+    # glued in over it (the "skunk stripe") and a walnut teardrop plug over
+    # its anchor (VINTAGE_PLUG_WIDTH x VINTAGE_PLUG_LENGTH), both carved
+    # with the back. It is made to the neck's length, not a stock rod. It
+    # needs the heel adjustment without a spoke wheel, a flat headstock and
+    # a bolt-on or set neck.
+    truss_rod_install: Literal["top", "back"] = "top"
     truss_rod_nut_diameter: float = 15.0
     truss_rod_nut_length: float = 6.0
     truss_rod_access_length: float | None = None
@@ -2854,8 +2897,11 @@ class Prototype001Parameters:
         """Return whether the truss rod's adjuster has a spoke wheel.
 
         ``truss_rod_spoke_wheel``; ``"auto"`` fits one at the heel only,
-        on a standard rod.
+        on a standard rod laid in from the top (a vintage rod's nut is
+        plain).
         """
+        if self.truss_rod_install == "back":
+            return self.truss_rod_spoke_wheel == "yes"
         if self.truss_rod_spoke_wheel == "auto":
             return (
                 self.truss_rod_adjustment == "heel"
@@ -2876,7 +2922,24 @@ class Prototype001Parameters:
         )
 
     def truss_rod(self, outline: NeckOutline) -> TrussRodChannel:
-        """Return the truss-rod channel with its adjusting nut's pocket."""
+        """Return the truss-rod channel with its adjusting nut's pocket.
+
+        A vintage rod laid in from the back (``truss_rod_install``) gives
+        its plan alone, routed from the back (see ``vintage_truss_rod``).
+        """
+        if self.truss_rod_install == "back":
+            rod = self.vintage_truss_rod(outline)
+            assert rod is not None
+            return TrussRodChannel(
+                outline,
+                rod.start,
+                rod.end - rod.start,
+                rod.width,
+                rod.strip_depth(rod.start),
+                adjustment_side="heel",
+                rod_axis_depth=rod.end_depth,
+                routed_from="back",
+            )
         heel = self.truss_rod_adjustment == "heel"
         wheel = self.truss_rod_spoke_wheel_fitted
         key_notch = self._truss_rod_key_notch()
@@ -2968,6 +3031,116 @@ class Prototype001Parameters:
                     )
         return channel
 
+    def vintage_truss_rod(self, outline: NeckOutline) -> VintageTrussRod | None:
+        """Return the vintage truss rod laid in from the neck's back, or
+        ``None`` for one routed from the top (``truss_rod_install``).
+
+        From its anchor at the nut seat's end, where the top starts down
+        onto the headstock's face, to the heel end, ``truss_rod_width``
+        wide.
+
+        Raises:
+            NeckGeometryError: For an unknown ``truss_rod_install``, or a
+                vintage rod with the headstock adjustment, a spoke wheel, a
+                low-profile rod, an angled headstock, no headstock or a
+                neck run through the body.
+        """
+        if self.truss_rod_install not in ("top", "back"):
+            raise NeckGeometryError('truss_rod_install must be "top" or "back".')
+        if self.truss_rod_install == "top":
+            return None
+        problem = next(
+            (
+                text
+                for wrong, text in (
+                    (
+                        self.truss_rod_adjustment != "heel",
+                        "is adjusted at the heel: set truss_rod_adjustment to heel",
+                    ),
+                    (
+                        self.truss_rod_spoke_wheel == "yes",
+                        "has a plain nut: set truss_rod_spoke_wheel to auto or no",
+                    ),
+                    (
+                        self.truss_rod_profile != "standard",
+                        "is its own: set truss_rod_profile to standard",
+                    ),
+                    (
+                        self.headless,
+                        "is anchored in the headstock: a headless neck has none",
+                    ),
+                    (
+                        self.headstock_angle != 0.0,
+                        "is a Fender's, behind a flat headstock: set "
+                        "headstock_angle to 0",
+                    ),
+                    (
+                        self.neck_runs_through,
+                        "is laid in from the neck's back: a neck run through "
+                        "the body has its back in the body",
+                    ),
+                )
+                if wrong
+            ),
+            None,
+        )
+        if problem is not None:
+            raise NeckGeometryError(
+                f"A vintage truss rod (truss_rod_install back) {problem}."
+            )
+        heel_end = outline.last_fret_position + outline.heel_length
+        return VintageTrussRod(
+            -self.nut_seat_length(),
+            heel_end,
+            self.truss_rod_width,
+            VINTAGE_ROD_DIAMETER,
+            VINTAGE_ROD_END_DEPTH,
+            VINTAGE_ROD_BOW,
+            VINTAGE_PLUG_WIDTH,
+            VINTAGE_PLUG_LENGTH,
+        )
+
+    def _checked_vintage_rod(
+        self,
+        outline: NeckOutline,
+        neck_surface: NeckBackSurface,
+        headstock: HeadstockSolid,
+    ) -> VintageTrussRod | None:
+        """Return ``vintage_truss_rod``, checked against the neck: at least
+        ``VINTAGE_ROD_WALL`` of wood over its anchor, under a top starting
+        down onto the headstock's face, and ``VINTAGE_STRIP_MIN`` of walnut
+        over it everywhere once the back is carved.
+
+        Raises:
+            NeckGeometryError: Where the top or the back comes nearer.
+        """
+        rod = self.vintage_truss_rod(outline)
+        if rod is None:
+            return None
+        half = rod.width / 2.0
+        if any(
+            rod.ceiling_depth(rod.start) + headstock.top_z(rod.start, y)
+            < VINTAGE_ROD_WALL - 1e-9
+            for y in (-half, 0.0, half)
+        ):
+            raise NeckGeometryError(
+                "A vintage truss rod's anchor would come within "
+                f"{VINTAGE_ROD_WALL:g} mm of the neck's top."
+            )
+        rows = neck_surface.mesh.rows
+        steps = max(2, math.ceil((rod.end - rod.start) / 5.0))
+        for step in range(steps + 1):
+            x = rod.start + (rod.end - rod.start) * step / steps
+            walnut = -_back_z(rows, x, half) - rod.strip_depth(x)
+            if walnut < VINTAGE_STRIP_MIN - 1e-9:
+                raise NeckGeometryError(
+                    f"A vintage truss rod leaves {walnut:.1f} mm of walnut over "
+                    f"it {x:.0f} mm from the nut, under {VINTAGE_STRIP_MIN:g} mm: "
+                    "make the neck thicker there (first_fret_thickness, "
+                    "twelfth_fret_thickness)."
+                )
+        return rod
+
     def _truss_rod_start(self, heel: bool, shelf: float) -> float:
         """Return where the truss rod's route starts, from the nut.
 
@@ -3025,6 +3198,11 @@ class Prototype001Parameters:
             NeckGeometryError: When ``truss_rod_rod_length`` is longer than
                 the neck takes, or no stock length fits.
         """
+        vintage = self.vintage_truss_rod(outline)
+        if vintage is not None:
+            # Made to the neck's length, its nut at the heel's end face.
+            length = vintage.end - vintage.start
+            return TrussRodFit(length, None, length, length, 0.0)
         heel = self.truss_rod_adjustment == "heel"
         wheel = self.truss_rod_spoke_wheel_fitted
         shelf = self.nut_seat_length() + self.nut_shelf_reach()
@@ -6621,6 +6799,9 @@ class Prototype001Parameters:
             carbon_rods,
             self.neck_joint == "set",
             self.nut_slot_jig(),
+            vintage_truss_rod=self._checked_vintage_rod(
+                outline, neck_surface, headstock
+            ),
         )
 
 

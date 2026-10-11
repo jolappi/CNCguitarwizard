@@ -140,6 +140,10 @@ _CHOICE_LABELS: dict[str, dict[str, str]] = {
         "standard": "Standard two-way rod (11 mm pocket at its adjusting end)",
         "low_profile": "Low-profile two-way rod (straight 6.35 x 9.5 mm channel)",
     },
+    "truss_rod_install": {
+        "top": "From the top, under the fretboard",
+        "back": "Vintage: from the back, under a walnut strip and teardrop plug",
+    },
     "truss_rod_spoke_wheel": {
         "auto": "Auto (a spoke wheel at the heel, none at the headstock)",
         "yes": "Spoke wheel",
@@ -251,6 +255,7 @@ _BASIC_FIELDS: frozenset[str] = frozenset(
         "fret_count",
         "fret_slant_angle",
         "truss_rod_adjustment",
+        "truss_rod_install",
         "truss_rod_spoke_wheel",
         "truss_rod_profile",
         "truss_rod_rod_length",
