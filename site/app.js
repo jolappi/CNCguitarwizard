@@ -218,7 +218,7 @@ const EDITOR_FIELDS = {
     "body_neck_pickup_offset", "body_middle_pickup_offset", "body_bridge_pickup_offset", "body_pickups_follow_fan",
     "body_bridge", "body_bridge_follows_fan", "body_controls", "body_switch", "body_jack",
     "body_pickguard", "body_pickguard_style", "body_pickup_frame", "body_pickup_frame_direction",
-    "body_arm_contour_depth", "body_belly_cut_depth", "body_heel_relief", "body_heel_relief_depth", "body_heel_relief_line", "body_carved_top", "body_carve_depth", "body_stepped_top", "body_epoxy_tray_depth",
+    "body_arm_contour_depth", "body_belly_cut_depth", "body_leg_contour_depth", "body_heel_relief", "body_heel_relief_depth", "body_heel_relief_line", "body_carved_top", "body_carve_depth", "body_stepped_top", "body_epoxy_tray_depth",
     "body_engraving", "body_engraving_pattern", "body_engraving_seed", "body_battery_box", "body_battery_count",
     "body_neck_bolts_outward", "body_neck_plate",
   ],
@@ -2224,6 +2224,7 @@ function splineSegment(p0, p1, p2, p3, samples, out) {
 const CONTOUR_LINES = [
   { key: "arm", layout: "arm_contour", field: "arm_contour_points", label: "arm contour" },
   { key: "belly", layout: "belly_cut", field: "belly_cut_points", label: "belly cut" },
+  { key: "leg", layout: "leg_contour", field: "leg_contour_points", label: "leg contour" },
   { key: "heel", layout: "heel_relief", field: "heel_relief_points", label: "heel relief" },
 ];
 
@@ -4287,6 +4288,7 @@ function syncBodyButtons() {
     "body-editor-auto-arm": positive("body_arm_contour_depth"),
     "body-editor-auto-steps": on("body_stepped_top"),
     "body-editor-auto-belly": positive("body_belly_cut_depth"),
+    "body-editor-auto-leg": positive("body_leg_contour_depth"),
     "body-editor-auto-heel": (field("body_heel_relief")?.value ?? "none") !== "none",
     "body-editor-new-pattern": on("body_engraving") && field("body_engraving_pattern")?.value !== "drawn",
   };
@@ -4304,6 +4306,7 @@ document.getElementById("body-editor-auto-guard").addEventListener("click", () =
 document.getElementById("body-editor-auto-steps").addEventListener("click", () => bodyEditor.autoSteps());
 document.getElementById("body-editor-auto-arm").addEventListener("click", () => bodyEditor.autoContour("arm"));
 document.getElementById("body-editor-auto-belly").addEventListener("click", () => bodyEditor.autoContour("belly"));
+document.getElementById("body-editor-auto-leg").addEventListener("click", () => bodyEditor.autoContour("leg"));
 document.getElementById("body-editor-auto-heel").addEventListener("click", () => bodyEditor.autoContour("heel"));
 // A new engraving pattern: another seed (turning the engraving on).
 document.getElementById("body-editor-new-pattern").addEventListener("click", () => {

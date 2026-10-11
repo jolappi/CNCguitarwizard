@@ -568,7 +568,8 @@ class BodyLayout:
             cover plates (see ``controls.control_features``).
         top_edge: The top edge's roundover or binding channel.
         back_edge: The back edge's roundover or binding channel.
-        contours: The arm contour and belly cut that are switched on.
+        contours: The arm contour, belly cut and leg contour that are
+            switched on.
         truss_rod_access: The notch past the neck pocket for a
             heel-adjusted truss rod's spoke wheel, or ``None``.
         pickguard: The pickguard, or ``None`` (its plate is also one of
@@ -936,8 +937,10 @@ class Prototype001Parameters:
     # over the bass-side rear bout (a Strat-style arm contour),
     # reaching body_arm_contour_width in from the edge and fading out
     # along body_arm_contour_length of it; body_belly_cut_* does the same
-    # on the back of the bass-side upper bout (a belly cut). Each is
-    # deepest at the bout's outermost point, or at body_*_position (X
+    # on the back of the bass-side upper bout (a belly cut), and
+    # body_leg_contour_* on the back of the treble-side waist, where the
+    # body sits on the thigh (a leg contour). Each is deepest at the bout's
+    # outermost point (the waist's innermost), or at body_*_position (X
     # from the heel end) when that is set.
     body_top_edge_radius: float = 0.0
     body_back_edge_radius: float = 0.0
@@ -953,6 +956,10 @@ class Prototype001Parameters:
     body_belly_cut_width: float = 70.0
     body_belly_cut_length: float = 260.0
     body_belly_cut_position: float | None = None
+    body_leg_contour_depth: float = 0.0
+    body_leg_contour_width: float = 45.0
+    body_leg_contour_length: float = 180.0
+    body_leg_contour_position: float | None = None
     # An epoxy tray (body_epoxy_tray_depth, 0 = none): the top routed that
     # deep over the whole body but a rim body_epoxy_tray_rim of wood at
     # its edge, leaving a wall body_epoxy_tray_wall thick round every
@@ -6418,15 +6425,20 @@ class Prototype001Parameters:
         heel_end: float,
         bass_sign: float,
     ) -> tuple[ContourCut, ...]:
-        """Return the arm contour and belly cut that are switched on.
+        """Return the arm contour, belly cut and leg contour switched on.
 
-        Both sit on the bass side: the arm contour over the rear bout
-        (from 120 mm behind the heel end), the belly cut over the upper
-        bout (40 mm ahead of it to 120 mm behind). Each is deepest at the
-        outline point furthest out on that side, or the one nearest
-        ``body_*_position`` behind the heel end. The shape's
-        ``arm_contour_points`` / ``belly_cut_points``, when drawn, are where
-        the arm contour / belly cut starts instead (``ContourCut.along_line``).
+        The arm contour and belly cut sit on the bass side: the arm contour
+        over the rear bout (from 120 mm behind the heel end), the belly cut
+        over the upper bout (40 mm ahead of it to 120 mm behind), each
+        deepest at the outline point furthest out on that side. The leg
+        contour sits on the treble side's waist (40 to 260 mm behind the
+        heel end), where the body rests on the thigh, deepest at its
+        innermost point (of those at least half as far out as the side's
+        furthest). Any is deepest at the outline point nearest
+        ``body_*_position`` behind the heel end instead, when that is set.
+        The shape's ``arm_contour_points`` / ``belly_cut_points`` /
+        ``leg_contour_points``, when drawn, are where it starts instead
+        (``ContourCut.along_line``).
         """
         contours: list[ContourCut] = []
         for name, face, depth, points in (
@@ -6437,6 +6449,12 @@ class Prototype001Parameters:
                 shape.arm_contour_points,
             ),
             ("Belly cut", "back", self.body_belly_cut_depth, shape.belly_cut_points),
+            (
+                "Leg contour",
+                "back",
+                self.body_leg_contour_depth,
+                shape.leg_contour_points,
+            ),
         ):
             if depth <= 0.0 or not points:
                 continue
@@ -6449,7 +6467,7 @@ class Prototype001Parameters:
             contours.append(
                 ContourCut.along_line(name, face, outline, line, depth)  # type: ignore[arg-type]
             )
-        for name, face, depth, width, length, position, span in (
+        for name, face, depth, width, length, position, span, side in (
             (
                 "Arm contour",
                 "top",
@@ -6458,6 +6476,7 @@ class Prototype001Parameters:
                 self.body_arm_contour_length,
                 self.body_arm_contour_position,
                 (120.0, math.inf),
+                bass_sign,
             ),
             (
                 "Belly cut",
@@ -6467,30 +6486,49 @@ class Prototype001Parameters:
                 self.body_belly_cut_length,
                 self.body_belly_cut_position,
                 (-40.0, 120.0),
+                bass_sign,
+            ),
+            (
+                "Leg contour",
+                "back",
+                self.body_leg_contour_depth,
+                self.body_leg_contour_width,
+                self.body_leg_contour_length,
+                self.body_leg_contour_position,
+                (40.0, 260.0),
+                -bass_sign,
             ),
         ):
             if depth <= 0.0 or any(c.name == name for c in contours):
                 continue
-            bass_side = [
-                index
-                for index, point in enumerate(outline)
-                if point.y * bass_sign > 0.0
+            on_side = [
+                index for index, point in enumerate(outline) if point.y * side > 0.0
             ]
+            where = "bass" if side == bass_sign else "treble"
             if position is not None:
                 apex = min(
-                    bass_side, key=lambda i: abs(outline[i].x - heel_end - position)
+                    on_side, key=lambda i: abs(outline[i].x - heel_end - position)
                 )
             else:
                 in_span = [
                     index
-                    for index in bass_side
+                    for index in on_side
                     if span[0] <= outline[index].x - heel_end <= span[1]
                 ]
                 if not in_span:
                     raise BodyGeometryError(
-                        f"The body has no bass-side edge for the {name.lower()}."
+                        f"The body has no {where}-side edge for the {name.lower()}."
                     )
-                apex = max(in_span, key=lambda i: outline[i].y * bass_sign)
+                if side == bass_sign:
+                    # The bout's outermost point.
+                    apex = max(in_span, key=lambda i: outline[i].y * side)
+                else:
+                    waist = _waist(outline, in_span, side)
+                    if waist is None:
+                        raise BodyGeometryError(
+                            f"The body has no treble-side waist for the {name.lower()}."
+                        )
+                    apex = waist
             contours.append(
                 ContourCut.along_edge(
                     name,
@@ -7582,6 +7620,21 @@ def _near(polygon: Sequence[Point2D], centre: Point2D, reach: float) -> bool:
         min(xs) - reach <= centre.x <= max(xs) + reach
         and min(ys) - reach <= centre.y <= max(ys) + reach
     )
+
+
+def _waist(outline: Sequence[Point2D], span: Sequence[int], side: float) -> int | None:
+    """Return a side's waist: its innermost point among ``span``, or
+    ``None`` for none.
+
+    Only points on the outer edge count, at least half as far out on the
+    ``side`` (``1.0`` +Y, ``-1.0`` -Y) as the side's furthest, so a horn's
+    inner edge is not taken for it.
+    """
+    furthest = max(point.y * side for point in outline)
+    edge = [index for index in span if outline[index].y * side >= furthest / 2.0]
+    if not edge:
+        return None
+    return min(edge, key=lambda index: outline[index].y * side)
 
 
 def _circle_points(centre: Point2D, radius: float) -> tuple[Point2D, ...]:

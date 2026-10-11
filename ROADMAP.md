@@ -144,6 +144,7 @@
 - Drawn headstock templates read back with their sharp corners
 - A shaped headstock tip in the 3D model
 - Jackson RR and ESP Alexi pointed headstocks
+- A leg contour on the back of the treble-side waist
 - Index pins as wide as a main tool wider than 6 mm (an 8 mm end mill,
   8 mm dowels)
 - The neck's back carved with the ball nose alone, in one program

@@ -227,7 +227,9 @@ Python.
    round handles: dragging one writes `arm_contour_points`, a click on the
    line adds one, Alt- or right-click removes one, and *Auto arm contour*
    empties them again. The belly cut's line works the same, in blue, with
-   `body_belly_cut_depth`, `belly_cut_points` and *Auto belly cut*, and the
+   `body_belly_cut_depth`, `belly_cut_points` and *Auto belly cut*, the leg
+   contour's in teal with `body_leg_contour_depth`, `leg_contour_points`
+   and *Auto leg contour*, and the
    heel relief's on the back where the neck joins, in plum, with
    `body_heel_relief` (a contour or a notch, beside the editor with its
    depth and `body_heel_relief_line`), `heel_relief_points` and *Auto

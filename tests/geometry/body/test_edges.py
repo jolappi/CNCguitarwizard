@@ -251,3 +251,63 @@ def test_the_preset_takes_a_drawn_belly_cut_line() -> None:
     # A drawn line is ignored while the belly cut is off.
     off = replace(drawn, body_belly_cut_depth=0.0)
     assert off.body_layout().contours == ()
+
+
+def strat_style(**changes: object) -> Prototype001Parameters:
+    """Return the Stratocaster style's guitar (its controls in the guard)."""
+    from cncguitarwizard.presets.styles import STYLES
+
+    return replace(
+        Prototype001Parameters.for_instrument("electric_guitar"),
+        **{**STYLES["stratocaster"].prototype_values("electric_guitar"), **changes},
+    )
+
+
+def test_a_leg_contour_bevels_the_back_of_the_treble_side_waist() -> None:
+    # Where the body sits on the thigh when played seated: the back of the
+    # treble side's waist, deepest at its innermost point.
+    parameters = strat_style(body_leg_contour_depth=8.0)
+    body = parameters.build().body
+    leg = next(c for c in body.contours if c.name == "Leg contour")
+    assert leg.face == "back"
+    # The right-handed default has its treble side at +Y.
+    assert all(point.y > 0.0 for point in leg.edge)
+    heel_end = parameters.body_layout().heel_end
+    apex = leg.edge[len(leg.edge) // 2]
+    assert 40.0 <= apex.x - heel_end <= 260.0
+    # Its innermost point there: further in than the edge either side.
+    assert apex.y < leg.edge[0].y and apex.y < leg.edge[-1].y
+    assert leg.max_depth(body.outline.points) == 8.0
+    # Off unless asked for.
+    off = replace(parameters, body_leg_contour_depth=0.0).build().body
+    assert "Leg contour" not in [c.name for c in off.contours]
+    # Cut from the back with the belly cut.
+    from cncguitarwizard.cam import MachiningParameters, plan_body_machining
+
+    plan = plan_body_machining(body, MachiningParameters())
+    assert plan.back_edges is not None
+    assert [path.name for path in plan.back_edges.toolpaths][-2:] == [
+        "Leg contour roughing",
+        "Leg contour finishing",
+    ]
+
+
+def test_the_preset_takes_a_drawn_leg_contour_line() -> None:
+    from cncguitarwizard.presets.styles import STYLES
+    from cncguitarwizard.webapp import body_editor_layout
+
+    values = STYLES["stratocaster"].prototype_values("electric_guitar")
+    automatic = strat_style(body_leg_contour_depth=8.0)
+    editor = body_editor_layout(
+        {"prototype": {**values, "body_leg_contour_depth": 8.0}}
+    )
+    assert editor["leg_contour"]["automatic"]
+    line = editor["leg_contour"]["points"]
+    points = tuple(
+        (x, y if index in (0, len(line) - 1) else y * 0.95)
+        for index, (x, y) in enumerate(line)
+    )
+    shape = replace(automatic.body_shape, leg_contour_points=points)
+    drawn = replace(automatic, body_shape=shape)
+    cut = next(c for c in drawn.body_layout().contours if c.name == "Leg contour")
+    assert cut.face == "back" and cut.reaches

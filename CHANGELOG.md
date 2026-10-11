@@ -4,6 +4,13 @@
 
 ### Added
 
+- A leg contour (`body_leg_contour_depth`, `_width`, `_length`,
+  `_position`; off by default): the back bevelled at the treble side's
+  waist, where the body sits on the thigh when played seated, deepest at
+  the waist's innermost point (45 x 180 mm), as an arm contour or a belly
+  cut is; its line can be drawn in the body editor (`leg_contour_points`,
+  *Auto leg contour*). It is cut from the back with the belly cut.
+
 - Jackson and ESP Alexi necks (`NECK_TEMPLATES` "jackson", "alexi"): the
   pointed 13 degree six-in-line headstocks of a Jackson RR1 and an LTD
   Alexi Hexed, measured off straight-on photos, their tuners in a row

@@ -802,6 +802,7 @@ Optional, and off by default (`geometry.body.edges`):
 | `body_top_binding_width` / `_depth`, `body_back_binding_width` / `_depth` | A binding channel (rabbet) instead of a roundover; the default depth is 6 mm |
 | `body_arm_contour_depth`, `_width`, `_length`, `_position` | A Strat-style arm contour on the top of the bass-side rear bout |
 | `body_belly_cut_depth`, `_width`, `_length`, `_position` | A belly cut on the back of the bass-side upper bout |
+| `body_leg_contour_depth`, `_width`, `_length`, `_position` | A leg contour on the back of the treble-side waist, where the body sits on the thigh |
 | `body_heel_relief`, `_depth`, `_reach`, `_line` | A heel relief on the back where the neck joins: `"contour"`, `"notch"` or `"bevel"`, round the heel, by the pocket or (`_line` `"pocket"`, `"corner"`) across its treble corner |
 
 A `ContourCut` follows `length` of the outline (resampled every 4 mm)
@@ -811,8 +812,12 @@ and depth fade with a `cos²` taper, so it blends into the square edge at
 both ends. Its deepest point is the outline point furthest out on the
 bass side — for the arm contour from 120 mm behind the heel end, for the
 belly cut from 40 mm ahead of it to 120 mm behind — or the one nearest
-`_position` (X from the heel end). The defaults are 60 × 240 mm for the
-arm contour and 70 × 260 mm for the belly cut.
+`_position` (X from the heel end). The leg contour's is the treble
+side's waist instead: its innermost outline point 40 to 260 mm behind the
+heel end, of those at least half as far out as the side's furthest (so
+not the cutaway by the neck). The defaults are 60 × 240 mm for the arm
+contour, 70 × 260 mm for the belly cut and 45 × 180 mm for the leg
+contour.
 
 Where the arm contour starts on the top can be drawn instead: the
 shape's `arm_contour_points` are an open line's control points (X from
@@ -829,7 +834,8 @@ click the line to add one, Alt-click or right-click to remove one (three
 at least); *Auto arm contour* empties the points again. The belly cut's
 line is drawn the same way: `belly_cut_points` (seen from the top, as the
 outline is) with `body_belly_cut_depth`, in blue on the editor, *Auto
-belly cut* emptying them.
+belly cut* emptying them; and the leg contour's, `leg_contour_points`
+with `body_leg_contour_depth`, in teal, *Auto leg contour*.
 
 ### Heel relief
 

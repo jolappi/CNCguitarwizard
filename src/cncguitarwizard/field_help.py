@@ -448,6 +448,11 @@ FIELD_HELP: dict[str, str] = {
         "A belly cut: the back bevelled where the body meets the player, "
         "this deep in mm (0: none)."
     ),
+    "body_leg_contour_depth": (
+        "A leg contour: the back bevelled at the treble side's waist, where "
+        "the body sits on the thigh when played seated, this deep in mm (0: "
+        "none); its line can be drawn in the body editor."
+    ),
     "body_heel_relief": (
         "A heel relief thins the back where the neck joins the body, so the "
         "hand reaches the top frets. Contour: a smooth slope, deepest at the "

@@ -172,6 +172,9 @@ class DesignByJoneShape:
         belly_cut_points: The same for a drawn belly cut on the back (seen
             from the top, as the outline is), used with
             ``Prototype001Parameters.body_belly_cut_depth``.
+        leg_contour_points: The same for a drawn leg contour on the back
+            of the treble-side waist, used with
+            ``Prototype001Parameters.body_leg_contour_depth``.
         heel_relief_points: The same for a drawn heel relief on the back,
             where the neck joins (used with
             ``Prototype001Parameters.body_heel_relief``).
@@ -220,6 +223,7 @@ class DesignByJoneShape:
     jack_inset: float | None = None
     arm_contour_points: tuple[DrawnPoint, ...] = ()
     belly_cut_points: tuple[DrawnPoint, ...] = ()
+    leg_contour_points: tuple[DrawnPoint, ...] = ()
     heel_relief_points: tuple[DrawnPoint, ...] = ()
     step_points: tuple[tuple[DrawnPoint, ...], ...] = ()
     # Whether the traced outline and almond cavity (constants drawn
@@ -388,6 +392,9 @@ class YourDesignShape:
         belly_cut_points: The same for a drawn belly cut on the back (seen
             from the top, as the outline is), used with
             ``Prototype001Parameters.body_belly_cut_depth``.
+        leg_contour_points: The same for a drawn leg contour on the back
+            of the treble-side waist, used with
+            ``Prototype001Parameters.body_leg_contour_depth``.
         heel_relief_points: The same for a drawn heel relief on the back,
             where the neck joins (used with
             ``Prototype001Parameters.body_heel_relief``).
@@ -434,6 +441,7 @@ class YourDesignShape:
     jack_inset: float | None = None
     arm_contour_points: tuple[DrawnPoint, ...] = ()
     belly_cut_points: tuple[DrawnPoint, ...] = ()
+    leg_contour_points: tuple[DrawnPoint, ...] = ()
     heel_relief_points: tuple[DrawnPoint, ...] = ()
     step_points: tuple[tuple[DrawnPoint, ...], ...] = ()
     # Whether the traced outline and almond cavity (constants drawn
@@ -549,6 +557,7 @@ def mirrored_shape(shape: BodyShapeSpec) -> BodyShapeSpec:
         rear_pots=flipped(shape.rear_pots),
         arm_contour_points=flipped_drawn(shape.arm_contour_points),
         belly_cut_points=flipped_drawn(shape.belly_cut_points),
+        leg_contour_points=flipped_drawn(shape.leg_contour_points),
         heel_relief_points=flipped_drawn(shape.heel_relief_points),
         step_points=tuple(_side_drawn(polygon, True) for polygon in shape.step_points),
         mirrored=not shape.mirrored,
@@ -587,6 +596,7 @@ def widened_shape(shape: BodyShapeSpec, widening: float) -> BodyShapeSpec:
         rear_pots=widen_points(shape.rear_pots, widening),
         arm_contour_points=widen_drawn(shape.arm_contour_points, widening),
         belly_cut_points=widen_drawn(shape.belly_cut_points, widening),
+        leg_contour_points=widen_drawn(shape.leg_contour_points, widening),
         heel_relief_points=widen_drawn(shape.heel_relief_points, widening),
         step_points=tuple(
             widen_drawn(polygon, widening) for polygon in shape.step_points

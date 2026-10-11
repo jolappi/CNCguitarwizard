@@ -315,6 +315,7 @@ _BASIC_FIELDS: frozenset[str] = frozenset(
         "body_top_binding_width",
         "body_arm_contour_depth",
         "body_belly_cut_depth",
+        "body_leg_contour_depth",
         "body_carved_top",
         "body_carve_depth",
         "body_stepped_top",
@@ -896,7 +897,8 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         Kahler covers on the top past its routes), ``top_control``,
         ``rear``, ``cover``, ``neck_plate`` (a bolt-on neck's plate on the
         back; its bolts then have no group, staying at its holes),
-        ``contour_top`` (an arm contour), ``contour_back`` (a belly cut),
+        ``contour_top`` (an arm contour), ``contour_back`` (a belly cut, a
+        leg contour),
         ``tray`` and ``tray_wall`` (an epoxy tray and the walls it leaves) or
         ``plateau`` (a carved top's flat plateau, the top falling outside it);
         ``steps`` a stepped top's lines ``{"points", "automatic"}`` or
@@ -918,10 +920,11 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         "automatic", "openings", "holes"}`` — the guard's control points
         (laid out automatically or drawn), its pickup and switch openings
         and its holes — or ``None``;
-        ``arm_contour`` and ``belly_cut`` ``{"points", "automatic"}`` — the
-        lines where they start (see ``_contour_line``) — or ``None``, and
-        ``heel_relief`` the same; ``outside`` the names of the features
-        that fall outside the outline (as the editor checks it); ``problems``
+        ``arm_contour``, ``belly_cut`` and ``leg_contour`` ``{"points",
+        "automatic"}`` — the lines where they start (see
+        ``_contour_line``) — or ``None``, and ``heel_relief`` the same;
+        ``outside`` the names of the features that fall outside the
+        outline (as the editor checks it); ``problems``
         what the build refuses that is
         drawn anyway (``BodyLayout.problems``: a heel relief's corner line
         drawn as the U, neck bolts with no room where they are asked to go);
@@ -1202,6 +1205,9 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         ),
         "belly_cut": _contour_line(
             parameters, layout.contours, local, "Belly cut", "belly_cut_points"
+        ),
+        "leg_contour": _contour_line(
+            parameters, layout.contours, local, "Leg contour", "leg_contour_points"
         ),
         "heel_relief": _contour_line(
             parameters, layout.contours, local, "Heel relief", "heel_relief_points"

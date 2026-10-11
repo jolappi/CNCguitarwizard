@@ -711,7 +711,10 @@ Kaikki valinnaisia ja oletuksena pois: reunojen pyöristys päältä ja takaa
 reunanauhan ura (`body_*_binding_width` / `_depth`, syvyys oletuksena 6 mm),
 soittokäden viiste päälle bassopuolen takakaaren kohdalle
 (`body_arm_contour_*`, oletuksena 60 mm leveä ja 240 mm pitkä) ja mahaviiste
-taakse bassopuolen yläkaaren kohdalle (`body_belly_cut_*`, 70 × 260 mm).
+taakse bassopuolen yläkaaren kohdalle (`body_belly_cut_*`, 70 × 260 mm)
+sekä reisiviiste taakse diskanttipuolen vyötärölle, johon runko nojaa
+reiden päällä istuen soitettaessa (`body_leg_contour_*`, 45 × 180 mm,
+syvin vyötärön sisimmässä kohdassa 40–260 mm kantapään takana).
 Viisteet kapenevat reunaa pitkin molempiin päihin. Soittokäden viisteen
 alkuviivan voi piirtää runkoeditorissa (`arm_contour_points`): vihreä
 viiva pyöreine kahvoineen, päät rungon reunalla; viiste ulottuu reunasta
@@ -719,7 +722,8 @@ viivaan asti ja on syvin siellä, missä viiva on kauimpana reunasta.
 *Auto arm contour* palauttaa automaattisen. Mahaviisteen alkuviivan voi
 piirtää samalla tavalla (`belly_cut_points`, sininen viiva, katsottuna
 päältä kuten ääriviiva), kun `body_belly_cut_depth` on päällä; *Auto belly
-cut* palauttaa automaattisen. Kantapään muotoilu (`body_heel_relief`)
+cut* palauttaa automaattisen. Reisiviisteen viiva piirretään samoin
+(`leg_contour_points`, sinivihreä viiva, *Auto leg contour*). Kantapään muotoilu (`body_heel_relief`)
 tehdään taakse kohtaan, jossa kaula liittyy runkoon, jotta käsi ylettyy
 ylimmille nauhoille: loivennus (`"contour"`) on sileä viiste, joka on
 rungon kaulanpuoleisella reunalla `body_heel_relief_depth` (6 mm) syvä ja
