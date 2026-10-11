@@ -1,6 +1,7 @@
 """Tests for the controls, jacks, pickups and guards placed as on the
 originals: the Fender and Gibson styles and a Jackson Rhoads."""
 
+import itertools
 import math
 from dataclasses import replace
 from functools import cache
@@ -11,7 +12,13 @@ from cncguitarwizard.geometry.exceptions import BodyGeometryError
 from cncguitarwizard.geometry.primitives import Point2D, point_in_polygon
 from cncguitarwizard.presets import Prototype001Geometry, Prototype001Parameters
 from cncguitarwizard.presets.body_shapes import YOUR_DESIGN_TEMPLATES
-from cncguitarwizard.presets.controls import TELE_PLATE
+from cncguitarwizard.presets.controls import (
+    COVER_SCREW_SPACING,
+    COVER_SCREW_TAB,
+    POT_ROOM,
+    ROOM_PLAY,
+    TELE_PLATE,
+)
 from cncguitarwizard.presets.prototype001 import POCKET_MOUTH
 from cncguitarwizard.presets.styles import STYLES
 
@@ -142,9 +149,93 @@ def test_an_sg_has_its_jack_in_the_top_and_the_toggle_on_the_horn() -> None:
     assert point_in_polygon(
         Point2D(jack.center_x, jack.center_y), control_cavity_outline(geometry)
     )
-    switch = geometry.body.switch_cavity
-    assert switch is not None
-    assert switch.cavity.center_x - heel == pytest.approx(204.5)
+    # One cavity for all the electronics: the toggle in it, no cavity of
+    # its own.
+    assert geometry.body.switch_cavity is None
+    (switch,) = [h for h in geometry.body.holes if h.name == "Switch shaft hole"]
+    assert switch.center_x - heel == pytest.approx(204.5)
+    assert point_in_polygon(
+        Point2D(switch.center_x, switch.center_y), control_cavity_outline(geometry)
+    )
+    assert [c.name for c in geometry.covers if "cavity" in c.name] == [
+        "Control cavity cover"
+    ]
+
+
+def cover_screws(geometry: Prototype001Geometry) -> list[Point2D]:
+    """Return the control cavity cover's screw spots."""
+    return [
+        Point2D(h.center_x, h.center_y)
+        for h in geometry.body.control_back_marks
+        if h.name.startswith("Control cavity cover screw")
+    ]
+
+
+@pytest.mark.parametrize("key", ["les_paul", "sg", "explorer", "jackson_rr"])
+def test_a_drawn_cover_has_a_screw_on_its_ledge_at_each_corner(key: str) -> None:
+    geometry = built(key)
+    control = geometry.body.control_cavity
+    assert control is not None
+    screws = cover_screws(geometry)
+    # On the ledge: inside the cover's recess, clear of the cavity.
+    for screw in screws:
+        assert point_in_polygon(screw, control.cover_recess.outline)
+        assert not point_in_polygon(screw, control.cavity.outline)
+    for a, b in itertools.combinations(screws, 2):
+        assert math.hypot(a.x - b.x, a.y - b.y) >= COVER_SCREW_SPACING
+    (plate,) = [c for c in geometry.covers if c.name == "Control cavity cover"]
+    assert len(plate.holes) == len(screws)
+
+
+@pytest.mark.parametrize("key", ["les_paul", "sg", "jackson_rr"])
+def test_a_drawn_cavity_leaves_a_tab_under_each_cover_screw(key: str) -> None:
+    # A small bump of wood into the cavity round each screw, as on a
+    # Gibson's control cavity, clear of the pots.
+    geometry = built(key)
+    control = geometry.body.control_cavity
+    assert control is not None
+    outline = control.cavity.outline
+    pots = [
+        Point2D(h.center_x, h.center_y)
+        for h in geometry.body.holes
+        if h.name.startswith("Control pot")
+    ]
+    for screw in cover_screws(geometry):
+        reach = [math.hypot(p.x - screw.x, p.y - screw.y) for p in outline]
+        assert min(reach) == pytest.approx(COVER_SCREW_TAB, abs=0.01)
+        for pot in pots:
+            assert math.hypot(pot.x - screw.x, pot.y - screw.y) >= (
+                POT_ROOM - ROOM_PLAY + COVER_SCREW_TAB - 0.01
+            )
+
+
+def test_a_les_paul_cover_has_a_screw_by_each_pot() -> None:
+    # Four, at the corners as on the original's plate, each beside a pot.
+    geometry = built("les_paul")
+    pots = [
+        Point2D(h.center_x, h.center_y)
+        for h in geometry.body.holes
+        if h.name.startswith("Control pot")
+    ]
+    screws = cover_screws(geometry)
+    assert len(screws) == 4
+    nearest = {
+        min(range(4), key=lambda i, s=s: math.hypot(pots[i].x - s.x, pots[i].y - s.y))
+        for s in screws
+    }
+    assert nearest == {0, 1, 2, 3}
+
+
+def test_an_sg_cover_takes_the_toggle_in_with_more_screws() -> None:
+    assert len(cover_screws(built("sg"))) > 4
+
+
+def test_a_switch_apart_from_the_pots_keeps_a_cavity_of_its_own() -> None:
+    # The SG's toggle shares the pots' cavity only as its shape says.
+    apart = replace(styled("sg").body_shape, switch_in_control_cavity=False)
+    controls = styled("sg", body_shape=apart).body_layout().controls
+    assert controls.switch_cavity is not None
+    assert len(controls.covers) == 2
 
 
 def test_a_jack_in_the_top_needs_a_rear_cavity_under_it() -> None:

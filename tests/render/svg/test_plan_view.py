@@ -65,3 +65,13 @@ def test_every_part_of_the_plan_view_says_what_it_is() -> None:
     # Every drawn part but the frets and the centreline carries a name.
     shapes = svg.count("<path") + svg.count("<circle")
     assert len(names) == shapes + svg.count("<line") - 24 - 1
+
+
+def test_plan_view_draws_cover_screws_solid() -> None:
+    # Small on the cover's ledge: drawn solid to stand out from the
+    # dashed holes from the back.
+    svg = render_plan_view_svg(Prototype001Parameters().build())
+
+    screws = re.findall(r"<circle[^>]*>\s*<title>[^<]*cover screw[^<]*</title>", svg)
+    assert len(screws) == 4 + 3
+    assert all("stroke-dasharray" not in screw for screw in screws)

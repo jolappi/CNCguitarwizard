@@ -239,13 +239,15 @@ def render_plan_view_svg(geometry: Prototype001Geometry) -> str:
         'fill="#fff" fill-opacity="0.6" stroke="#5a3a8a" stroke-width="0.5" '
         'stroke-dasharray="2,1.5"'
     )
+    # A cover's screws, small on its ledge, drawn solid to stand out.
+    cover_screw = 'fill="#fff" stroke="#3b2366" stroke-width="0.7"'
     for drilled in (*body.rear_holes, *body.control_back_marks):
         parts.append(
             circle(
                 drilled.center_x,
                 drilled.center_y,
                 drilled.diameter / 2.0,
-                rear_hole,
+                cover_screw if "cover screw" in drilled.name else rear_hole,
                 f"{drilled.name} (back)",
             )
         )

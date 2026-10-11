@@ -122,6 +122,18 @@ TOGGLE_ROOM = 13.0
 """The radius routed round a toggle switch sharing a drawn control
 cavity, in mm."""
 
+COVER_SCREW_SPACING = 25.0
+"""The closest two screws of a cover routed round drawn pots may be, in
+mm: a corner nearer than this to a screw already placed goes without."""
+
+COVER_SCREW_TAB = 5.0
+"""The radius of wood left round each screw of a cover routed round drawn
+pots, in mm: a small tab reaching into the cavity under the screw, as on a
+Gibson's control cavity (2 mm in from a 6 mm ledge)."""
+
+ROOM_PLAY = 1.0
+"""How much of a room routed round a drawn part is play, in mm (a 24 mm
+pot in ``POT_ROOM``): a cover screw's tab may reach into it."""
 
 REAR_POT_COUNTS = {"gibson_4": 4, "rear_3": 3, "volume_1": 1, "active_4": 4}
 """How many pots each generated rear layout has: a shape's ``rear_pots``
@@ -216,16 +228,19 @@ class ControlFeatures:
         return replace(self.with_covers(battery), battery_cavity=battery.battery_cavity)
 
 
-def rear_cover(rear: RearCavity, count: int) -> ControlFeatures:
+def rear_cover(
+    rear: RearCavity, count: int, at: tuple[Point2D, ...] = ()
+) -> ControlFeatures:
     """Return the sheet cover for a rear cavity and its screw spots.
 
     ``count`` screws are spread round the ledge between the cavity and
-    its cover recess (``cover_screw_points``); each gets a clearance hole
-    in the plate and a shallow spot 1 mm into the ledge's floor. The plate
-    is the recess's outline, as thick as the recess is deep.
+    its cover recess (``cover_screw_points``), or go where ``at`` puts
+    them (a drawn cover's corners); each gets a clearance hole in the
+    plate and a shallow spot 1 mm into the ledge's floor. The plate is the
+    recess's outline, as thick as the recess is deep.
     """
     depth = rear.cover_recess.depth
-    screws = cover_screw_points(
+    screws = at or cover_screw_points(
         rear.cavity.outline,
         rear.cover_recess.outline,
         count,
@@ -402,6 +417,169 @@ def _round_hull(
     return tuple(Point2D(x, y) for x, y in lower[:-1] + upper[:-1])
 
 
+def _corner_screws(
+    rooms: list[tuple[Point2D, float]], margin: float, steps: int = 360
+) -> tuple[Point2D, ...]:
+    """Return a screw by each corner of a cover routed round ``rooms``.
+
+    Every circle (centre, radius) the hull runs round is a corner, as on
+    a Gibson's cover. Its screw sits halfway across the ``margin`` wide
+    ledge between the cavity and its cover, as near the middle of the
+    corner's arc as its tab (``COVER_SCREW_TAB`` of wood round it, reaching
+    into the cavity) stays clear of every part the rooms hold (each room's
+    radius less ``ROOM_PLAY``): just along the side beside a pot. The
+    widest corners go first: a corner nearer than ``COVER_SCREW_SPACING``
+    to a screw already placed gets none. The screws are numbered
+    counter-clockwise round the circles' middle.
+    """
+    # Which circle the hull runs round in each direction: the one
+    # reaching furthest that way.
+    arcs: dict[int, list[float]] = {}
+    for step in range(steps):
+        angle = 2.0 * math.pi * step / steps
+        ux, uy = math.cos(angle), math.sin(angle)
+        widest = max(
+            range(len(rooms)),
+            key=lambda i: rooms[i][0].x * ux + rooms[i][0].y * uy + rooms[i][1],
+        )
+        arcs.setdefault(widest, []).append(angle)
+    # Where a screw's tab is clear of the parts, along the ledge's middle.
+    ledge = _resampled(_round_hull([(p, r + margin / 2.0) for p, r in rooms]), 1.0)
+    clear = [
+        point
+        for point in ledge
+        if all(
+            math.hypot(point.x - centre.x, point.y - centre.y)
+            >= radius - ROOM_PLAY + COVER_SCREW_TAB
+            for centre, radius in rooms
+        )
+    ]
+    if not clear:
+        return ()
+    corners: list[tuple[int, Point2D]] = []
+    for index, angles in arcs.items():
+        centre, radius = rooms[index]
+        # The arc's middle direction (its angles averaged as unit vectors).
+        middle = math.atan2(
+            sum(math.sin(a) for a in angles), sum(math.cos(a) for a in angles)
+        )
+        reach = radius + margin / 2.0
+        corner = Point2D(
+            centre.x + reach * math.cos(middle), centre.y + reach * math.sin(middle)
+        )
+        nearest = min(
+            clear, key=lambda point: math.hypot(point.x - corner.x, point.y - corner.y)
+        )
+        corners.append((len(angles), nearest))
+    screws: list[Point2D] = []
+    for _, point in sorted(corners, key=lambda corner: -corner[0]):
+        if all(
+            math.hypot(point.x - s.x, point.y - s.y) >= COVER_SCREW_SPACING
+            for s in screws
+        ):
+            screws.append(point)
+    mx = sum(centre.x for centre, _ in rooms) / len(rooms)
+    my = sum(centre.y for centre, _ in rooms) / len(rooms)
+    return tuple(sorted(screws, key=lambda s: math.atan2(s.y - my, s.x - mx)))
+
+
+def _resampled(outline: tuple[Point2D, ...], step: float) -> tuple[Point2D, ...]:
+    """Return a closed ``outline`` with a point at least every ``step`` mm."""
+    points: list[Point2D] = []
+    for a, b in zip(outline, (*outline[1:], outline[0]), strict=True):
+        count = max(1, math.ceil(math.hypot(b.x - a.x, b.y - a.y) / step))
+        points += [
+            Point2D(a.x + (b.x - a.x) * k / count, a.y + (b.y - a.y) * k / count)
+            for k in range(count)
+        ]
+    return tuple(points)
+
+
+def _with_tabs(
+    outline: tuple[Point2D, ...], screws: tuple[Point2D, ...], samples: int = 12
+) -> tuple[Point2D, ...]:
+    """Return a cavity's ``outline`` with a tab left at each cover screw.
+
+    The disc of ``COVER_SCREW_TAB`` about each screw (on the ledge outside
+    the cavity) is taken out of the cavity where it reaches in: the
+    outline runs round it on an arc, the tab a small bump of wood into the
+    cavity under the screw, as on a Gibson's control cavity.
+    """
+    points = outline
+    for screw in screws:
+        points = _notched(points, screw, COVER_SCREW_TAB, samples)
+    return points
+
+
+def _notched(
+    outline: tuple[Point2D, ...], centre: Point2D, radius: float, samples: int
+) -> tuple[Point2D, ...]:
+    """Return ``outline`` with the disc (``centre``, ``radius``) taken out.
+
+    The outline must enter the disc once and leave it once; otherwise it
+    is returned as it is.
+    """
+    count = len(outline)
+    entry: tuple[int, Point2D] | None = None
+    exit_: tuple[int, Point2D] | None = None
+    for index in range(count):
+        a, b = outline[index], outline[(index + 1) % count]
+        dx, dy = b.x - a.x, b.y - a.y
+        fx, fy = a.x - centre.x, a.y - centre.y
+        aa = dx * dx + dy * dy
+        bb = 2.0 * (fx * dx + fy * dy)
+        cc = fx * fx + fy * fy - radius * radius
+        discriminant = bb * bb - 4.0 * aa * cc
+        if aa == 0.0 or discriminant <= 0.0:
+            continue
+        root = math.sqrt(discriminant)
+        for t in sorted(((-bb - root) / (2.0 * aa), (-bb + root) / (2.0 * aa))):
+            if not 0.0 <= t < 1.0:
+                continue
+            crossing = (index, Point2D(a.x + t * dx, a.y + t * dy))
+            # Heading toward the centre there: entering the disc.
+            if (fx + t * dx) * dx + (fy + t * dy) * dy < 0.0:
+                if entry is not None:
+                    return outline
+                entry = crossing
+            else:
+                if exit_ is not None:
+                    return outline
+                exit_ = crossing
+    if entry is None or exit_ is None:
+        return outline
+    (entry_edge, entry_point), (exit_edge, exit_point) = entry, exit_
+    # From where the outline leaves the disc on round to where it enters.
+    kept = [exit_point]
+    index = (exit_edge + 1) % count
+    while True:
+        kept.append(outline[index])
+        if index == entry_edge:
+            break
+        index = (index + 1) % count
+    kept.append(entry_point)
+    # Then round the disc back, on the side inside the outline.
+    start = math.atan2(entry_point.y - centre.y, entry_point.x - centre.x)
+    end = math.atan2(exit_point.y - centre.y, exit_point.x - centre.x)
+    sweep = (end - start) % (2.0 * math.pi)
+    middle = start + sweep / 2.0
+    if not point_in_polygon(
+        Point2D(
+            centre.x + radius * math.cos(middle), centre.y + radius * math.sin(middle)
+        ),
+        outline,
+    ):
+        sweep -= 2.0 * math.pi
+    kept += [
+        Point2D(
+            centre.x + radius * math.cos(start + sweep * k / samples),
+            centre.y + radius * math.sin(start + sweep * k / samples),
+        )
+        for k in range(1, samples)
+    ]
+    return tuple(kept)
+
+
 def _principal_axis(points: tuple[Point2D, ...]) -> Point2D:
     """Return the long axis of ``points`` (a unit vector, X never negative)."""
     n = len(points)
@@ -575,16 +753,22 @@ def control_features(
     switch_at = Point2D(heel_end + shape.switch_cavity_offset, shape.switch_cavity_y)
     wants_switch = layout not in SWITCHLESS_LAYOUTS and (switch or layout != "volume_1")
     # A switch among drawn pots (a Jackson Rhoads') shares their cavity:
-    # its own round cavity and cover would run into theirs.
+    # its own round cavity and cover would run into theirs. An SG's
+    # shares it however far it is (switch_in_control_cavity).
     shared_switch = (
         drawn_rear
         and wants_switch
-        and min(
-            math.hypot(heel_end + x - switch_at.x, y - switch_at.y)
-            for x, y in shape.rear_pots
+        and (
+            shape.switch_in_control_cavity
+            or min(
+                math.hypot(heel_end + x - switch_at.x, y - switch_at.y)
+                for x, y in shape.rear_pots
+            )
+            < POT_ROOM + shape.switch_cover_diameter / 2.0 + COVER_MARGIN
         )
-        < POT_ROOM + shape.switch_cover_diameter / 2.0 + COVER_MARGIN
     )
+    # A drawn cover's screws go at its corners (_corner_screws).
+    corner_screws: tuple[Point2D, ...] = ()
     if drawn_rear:
         # Where the shape draws them, as on the original: the cavity and
         # its cover routed round the pots (and a jack in the top), turned
@@ -603,13 +787,20 @@ def control_features(
             rooms.append((top_jack, JACK_ROOM))
         if shared_switch:
             rooms.append((switch_at, TOGGLE_ROOM))
-        cavity: Cavity = TracedCavity("Control cavity", _round_hull(rooms), depth)
+        screws = {"volume_1": 3, "active_4": 6}.get(layout, 4)
+        corner_screws = _corner_screws(rooms, COVER_MARGIN)
+        # Too few corners (a lone pot's round cavity): spread them round
+        # the ledge instead, with no tabs.
+        if len(corner_screws) < 3:
+            corner_screws = ()
+        cavity: Cavity = TracedCavity(
+            "Control cavity", _with_tabs(_round_hull(rooms), corner_screws), depth
+        )
         cover: Cavity = TracedCavity(
             "Control cavity cover recess",
             _round_hull([(p, r + COVER_MARGIN) for p, r in rooms]),
             cover_depth,
         )
-        screws = {"volume_1": 3, "active_4": 6}.get(layout, 4)
     elif layout == "almond_2":
         # The drawn almond turns about its own centre; its pots are the
         # shape's own pot_offsets, placed (and turned) by the editor.
@@ -844,10 +1035,13 @@ def control_features(
         )
     marks: list[DrilledHole] = []
     covers: list[CoverPlate] = []
-    for rear, count in ((control, screws), (switch_cavity, 3)):
+    for rear, count, at in (
+        (control, screws, corner_screws),
+        (switch_cavity, 3, ()),
+    ):
         if rear is None:
             continue
-        plate = rear_cover(rear, count)
+        plate = rear_cover(rear, count, at)
         marks += plate.back_marks
         covers += plate.covers
     return ControlFeatures(

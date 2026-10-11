@@ -185,13 +185,15 @@ STYLES: dict[str, InstrumentStyle] = {
             **GIBSON,
             "body_controls": "gibson_4",
             # As on a '61 reissue: the toggle up on the treble horn level
-            # with the bridge, the jack in the top beside the lower pots.
+            # with the bridge, the jack in the top beside the lower pots,
+            # all of them in the one cavity under one cover.
             "body_shape": replace(
                 YOUR_DESIGN_TEMPLATES["sg"][1],
                 switch_cavity_offset=204.5,
                 switch_cavity_y=114.7,
                 switch_cover_offset=204.5,
                 switch_cover_y=114.7,
+                switch_in_control_cavity=True,
                 jack_offset=323.4,
                 jack_y=64.7,
             ),

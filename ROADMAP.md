@@ -136,6 +136,8 @@
   and a teardrop plug
 - Fender, Gibson and Jackson styles with their controls, jacks, pickups and
   a Stratocaster's pickguard as on the originals; a jack in the top
+- A drawn cover's screws by its corners over tabs left in the cavity; an
+  SG's one cavity for all the electronics
 - Index pins as wide as a main tool wider than 6 mm (an 8 mm end mill,
   8 mm dowels)
 - The neck's back carved with the ball nose alone, in one program

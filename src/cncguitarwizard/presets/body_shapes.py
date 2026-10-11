@@ -158,6 +158,10 @@ class DesignByJoneShape:
             the cavity and its cover are routed round them (and round a
             jack mounted in the top). Empty, or another count: the
             layout's own row or square of pots.
+        switch_in_control_cavity: Whether the selector switch shares
+            the ``rear_pots`` cavity and its cover, as on an SG (one cavity
+            for all the electronics) instead of a round cavity of its own;
+            a switch close beside the pots shares it anyway.
         jack_inset: How far in from the edge, along the jack's line, a
             ``"strat"`` jack's cavity centre sits; empty for just in from
             the edge.
@@ -212,6 +216,7 @@ class DesignByJoneShape:
     pickguard_switch_degrees: float = 0.0
     pickguard_cavity_points: tuple[tuple[float, float], ...] = ()
     rear_pots: tuple[tuple[float, float], ...] = ()
+    switch_in_control_cavity: bool = False
     jack_inset: float | None = None
     arm_contour_points: tuple[DrawnPoint, ...] = ()
     belly_cut_points: tuple[DrawnPoint, ...] = ()
@@ -369,6 +374,10 @@ class YourDesignShape:
             the cavity and its cover are routed round them (and round a
             jack mounted in the top). Empty, or another count: the
             layout's own row or square of pots.
+        switch_in_control_cavity: Whether the selector switch shares
+            the ``rear_pots`` cavity and its cover, as on an SG (one cavity
+            for all the electronics) instead of a round cavity of its own;
+            a switch close beside the pots shares it anyway.
         jack_inset: How far in from the edge, along the jack's line, a
             ``"strat"`` jack's cavity centre sits; empty for just in from
             the edge.
@@ -421,6 +430,7 @@ class YourDesignShape:
     pickguard_switch_degrees: float = 0.0
     pickguard_cavity_points: tuple[tuple[float, float], ...] = ()
     rear_pots: tuple[tuple[float, float], ...] = ()
+    switch_in_control_cavity: bool = False
     jack_inset: float | None = None
     arm_contour_points: tuple[DrawnPoint, ...] = ()
     belly_cut_points: tuple[DrawnPoint, ...] = ()

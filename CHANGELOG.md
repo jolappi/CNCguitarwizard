@@ -14,6 +14,8 @@
   control cavity. The neck pocket always opens through the body's front,
   starting 2 mm ahead of a body reaching further forward than
   `body_neck_pocket_length`.
+  `switch_in_control_cavity` puts the selector switch in the `rear_pots`
+  cavity under its cover however far it is from them, as on an SG.
 
 - A vintage Fender truss rod (`truss_rod_install` "back"): a 4.76 mm rod
   laid into a curved channel routed from the neck's back (4 mm below the
@@ -877,6 +879,16 @@
   `tuner_edge_clearance`; other neck templates put back 15 and 8), the
   treble edge swelling out, in to its waist and out to the round lip.
 - Easy mode shows the scale length under the style.
+- A cover routed round drawn pots (`rear_pots`) has a screw by each of
+  its corners, mid-ledge, as on a Gibson's plate, each over a small tab
+  of wood left in the cavity (`COVER_SCREW_TAB`, 5 mm round it, reaching
+  2 mm in): just along the side beside a pot, where the tab stays clear
+  of it. Corners nearer than `COVER_SCREW_SPACING` (25 mm) to one another
+  share one: a Les Paul's four, one beside each pot. The SG style's
+  toggle shares the pots' cavity, one cavity for all the electronics
+  under one cover with five screws, as on the original. Cover screws are
+  drawn solid in the plan view and the body editor, so they stand out on
+  the ledge.
 
 - The heel relief is always on the treble side, where the hand reaches
   round the heel: every line, drawn or automatic, stops at the centreline

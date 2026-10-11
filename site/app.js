@@ -2526,9 +2526,12 @@ const bodyEditor = {
       place(node, polygon.group, polygon.name);
     }
     for (const circle of layout.circles) {
-      const look = circle.rear
-        ? { fill: "#fff", "fill-opacity": 0.5, stroke: "#5a3a8a", "stroke-width": 0.5, "stroke-dasharray": "2,1.5" }
-        : { fill: "#fff", stroke: "#222", "stroke-width": 0.5 };
+      // A cover's screws, small on its ledge, drawn solid to stand out.
+      const look = circle.rear && circle.name.includes("cover screw")
+        ? { fill: "#fff", stroke: "#3b2366", "stroke-width": 0.7 }
+        : circle.rear
+          ? { fill: "#fff", "fill-opacity": 0.5, stroke: "#5a3a8a", "stroke-width": 0.5, "stroke-dasharray": "2,1.5" }
+          : { fill: "#fff", stroke: "#222", "stroke-width": 0.5 };
       const node = this.element("circle", { cx: circle.x, cy: -circle.y, r: circle.r, ...look }, features);
       place(node, circle.group, circle.name);
     }
