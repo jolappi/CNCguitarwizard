@@ -4,7 +4,12 @@ import pytest
 
 from cncguitarwizard.presets.prototype001 import INSTRUMENT_OVERRIDES, NECK_TEMPLATES
 from cncguitarwizard.presets.styles import STYLES
-from cncguitarwizard.webapp import load_design, parameter_schema, style_design
+from cncguitarwizard.webapp import (
+    load_design,
+    neck_through_changes,
+    parameter_schema,
+    style_design,
+)
 
 OFFERED = [
     (key, instrument)
@@ -56,3 +61,34 @@ def test_styles_are_offered_by_instrument_and_others_refused() -> None:
     )
     assert "error" in style_design("bass_guitar", "stratocaster")
     assert "error" in style_design("electric_guitar", "no_such_style")
+
+
+@pytest.mark.parametrize(("key", "instrument"), OFFERED)
+def test_every_style_builds_neck_through_from_easy_mode(
+    key: str, instrument: str
+) -> None:
+    # Easy mode's Neck-through tick: the joint and what such a neck
+    # cannot keep, changed together.
+    design = style_design(instrument, key)
+    changes = neck_through_changes(design["prototype"])
+    design["prototype"].update(changes)
+
+    parameters = load_design(design).parameters
+    assert parameters.neck_joint == "neck_through"
+    parameters.build()
+
+
+def test_neck_through_changes_only_what_it_must() -> None:
+    strat = style_design("electric_guitar", "stratocaster")["prototype"]
+    assert neck_through_changes(strat) == {
+        "neck_joint": "neck_through",
+        "neck_heel_end": "square",
+        "body_neck_plate": "ferrules",
+    }
+    # A Telecaster's vintage rod, adjusted at the heel with no spoke wheel.
+    tele = style_design("electric_guitar", "telecaster")["prototype"]
+    assert neck_through_changes(tele)["truss_rod_adjustment"] == "headstock"
+    # Already neck-through, or the defaults (a missing setting): no more.
+    rhoads = style_design("electric_guitar", "jackson_rr")["prototype"]
+    assert neck_through_changes(rhoads) == {}
+    assert neck_through_changes({}) == {"neck_joint": "neck_through"}

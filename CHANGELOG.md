@@ -878,7 +878,11 @@
   `tuner_edge_offset`, with 6 mm of wood beside them,
   `tuner_edge_clearance`; other neck templates put back 15 and 8), the
   treble edge swelling out, in to its waist and out to the round lip.
-- Easy mode shows the scale length under the style.
+- Easy mode shows the scale length under the style, and a Neck-through
+  tick (`webapp.neck_through_changes`): the joint, and what a neck run
+  through the body cannot keep — a round heel end goes square, a neck
+  plate gives way to ferrules, a rod adjusted at the heel with no spoke
+  wheel is adjusted at the headstock; cleared, they go back.
 - A cover routed round drawn pots (`rear_pots`) has a screw by each of
   its corners, mid-ledge, as on a Gibson's plate, each over a small tab
   of wood left in the cavity (`COVER_SCREW_TAB`, 5 mm round it, reaching

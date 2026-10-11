@@ -312,6 +312,7 @@ function syncMirrors() {
     }
     copy.classList.toggle("changed", original.classList.contains("changed"));
   }
+  syncNeckThrough();
   // A folded Settings shows that something in it is changed.
   for (const details of document.querySelectorAll("details.editor-settings")) {
     details.querySelector(":scope > summary").classList.toggle(
@@ -6304,6 +6305,61 @@ try {
   setEasyMode(false);
 }
 easyMode.addEventListener("change", () => setEasyMode(easyMode.checked));
+
+// Easy mode's Neck-through tick: the form's neck_joint set to
+// neck_through, with what such a neck cannot keep changed too
+// (webapp.neck_through_changes: a round heel end, a neck plate, a rod
+// adjusted at the heel); cleared, they go back to what they were (or the
+// joint to its default). syncNeckThrough (from syncMirrors) keeps the
+// tick with the form.
+const easyNeckThrough = document.getElementById("easy-neck-through");
+let beforeNeckThrough = null;
+
+function prototypeControl(name) {
+  return form.querySelector(`:is(input, select)[data-set="prototype"][data-name="${name}"]`);
+}
+
+function neckJointSelect() {
+  return prototypeControl("neck_joint");
+}
+
+// Called from syncMirrors, which may run before this part of the script.
+function syncNeckThrough() {
+  const joint = neckJointSelect();
+  document.getElementById("easy-neck-through").checked =
+    joint !== null && joint.value === "neck_through";
+}
+
+easyNeckThrough.addEventListener("change", () => {
+  const joint = neckJointSelect();
+  if (!joint || !pyodide) {
+    syncNeckThrough();
+    return;
+  }
+  if (easyNeckThrough.checked) {
+    pyodide.globals.set("easy_values", JSON.stringify(collectValues().prototype));
+    const changes = JSON.parse(pyodide.runPython(
+      "import json\nfrom cncguitarwizard.webapp import neck_through_changes\n" +
+      "json.dumps(neck_through_changes(json.loads(easy_values)))"
+    ));
+    beforeNeckThrough = {};
+    for (const [name, value] of Object.entries(changes)) {
+      const control = prototypeControl(name);
+      if (!control) continue;
+      beforeNeckThrough[name] = control.value;
+      setControlValue(control, value);
+    }
+  } else if (joint.value === "neck_through") {
+    const back = beforeNeckThrough && beforeNeckThrough.neck_joint
+      ? beforeNeckThrough
+      : { neck_joint: defaultValue(joint) === "neck_through" ? "bolt_on" : defaultValue(joint) };
+    for (const [name, value] of Object.entries(back)) {
+      const control = prototypeControl(name);
+      if (control) setControlValue(control, value);
+    }
+    beforeNeckThrough = null;
+  }
+});
 
 // "/" anywhere but a field goes to Find a setting (out of easy mode).
 document.addEventListener("keydown", (event) => {

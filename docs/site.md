@@ -41,7 +41,13 @@ Python.
    name, the scale length (a copy of the form's field, `easy-options` in
    `EDITOR_FIELDS`, shown only in easy mode), the drawings, *Build* and the
    result stay — choose a style and build. It is kept in the browser (`cncguitarwizard.easyMode`), off
-   until chosen, and `/` (Find a setting) leaves it. Then asks
+   until chosen, and `/` (Find a setting) leaves it. Its *Neck-through*
+   tick (`easy-neck-through`) sets `neck_joint` to `neck_through` with what
+   such a neck cannot keep (`webapp.neck_through_changes`: a round heel
+   end made square, a neck plate made ferrules, a rod adjusted at the heel
+   with no spoke wheel adjusted at the headstock), so any style builds
+   neck-through; cleared, it puts them back (or the joint to its default),
+   and it follows the form's joint. Then asks
    `cncguitarwizard.webapp.parameter_schema()` for every field of
    `Prototype001Parameters` and `MachiningParameters` and draws a grouped
    form from it. Changed values are highlighted; tuple fields are edited as

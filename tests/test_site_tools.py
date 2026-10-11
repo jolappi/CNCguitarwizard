@@ -81,3 +81,6 @@ def test_the_page_offers_a_style_and_an_easy_mode() -> None:
     # With the scale length under the style, a copy of the form's field.
     assert 'id="easy-options"' in page
     assert '"easy-options": ["scale_length"]' in script
+    # And a Neck-through tick, with what such a neck cannot keep.
+    assert 'id="easy-neck-through"' in page
+    assert "neck_through_changes(json.loads(easy_values))" in script

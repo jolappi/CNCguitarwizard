@@ -562,6 +562,46 @@ def style_design(instrument: str, style: str, name: str = "") -> dict[str, Any]:
     }
 
 
+def neck_through_changes(values: dict[str, Any]) -> dict[str, str]:
+    """Return the settings that turn a design into a neck-through one.
+
+    For easy mode's Neck-through tick, where the settings are hidden: the
+    joint, and what a neck run through the body cannot keep — a round
+    (Stratocaster) heel end goes square, a neck plate gives way to
+    ferrules, and a truss rod adjusted at the heel with no spoke wheel is
+    adjusted at the headstock instead.
+
+    Args:
+        values: The design's settings (the page's form values); a missing
+            one counts as the default.
+
+    Returns:
+        The settings to change, by name, with their new values.
+    """
+    defaults = Prototype001Parameters()
+    current = {
+        name: values.get(name, getattr(defaults, name))
+        for name in (
+            "neck_joint",
+            "neck_heel_end",
+            "body_neck_plate",
+            "truss_rod_adjustment",
+            "truss_rod_spoke_wheel",
+        )
+    }
+    wanted = {
+        "neck_joint": "neck_through",
+        "neck_heel_end": "square",
+        "body_neck_plate": "ferrules",
+    }
+    if (
+        current["truss_rod_adjustment"] == "heel"
+        and current["truss_rod_spoke_wheel"] == "no"
+    ):
+        wanted["truss_rod_adjustment"] = "headstock"
+    return {name: value for name, value in wanted.items() if current[name] != value}
+
+
 @dataclasses.dataclass(frozen=True, slots=True)
 class LoadedDesign:
     """A saved design's values, ready to build.

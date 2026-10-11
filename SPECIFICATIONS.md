@@ -214,6 +214,13 @@ asetuslomakkeen, editorien *Settings*-osiot ja *Settings*-linkin: näkyviin
 jäävät soitin, tyyli, kitaran nimi, skaalan pituus, piirtoeditorit,
 *Build* ja tulos, eli valitse tyyli ja rakenna. Valinta muistetaan selaimessa (oletuksena pois),
 ja `/` (asetuksen haku) poistuu helposta tilasta. Ruksi *Neck-through*
+tekee kaulasta läpikulkevan (`webapp.neck_through_changes`): liitos
+`neck_through` ja samalla se, mitä läpikulkeva kaula ei voi pitää —
+pyöreä kantapää (`neck_heel_end`) suoraksi, kaulalevy hylsyiksi
+(`body_neck_plate` "ferrules") ja kannasta ilman spoke wheeliä säädetty
+rauta lavasta säädettäväksi. Ruksin poisto palauttaa ne entisiksi (tai
+liitoksen oletukseen). Näin jokainen tyyli rakentuu läpikulkevalla
+kaulalla.
 
 ## Terävät kulmat ja suorat välit piirroksissa
 
