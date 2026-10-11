@@ -762,7 +762,9 @@ ja takakansista. Kantapään muotoilun automaattinen viiva valitaan
 kentällä `body_heel_relief_line`: `"around"` (oletus) on U kantapään
 ympäri kaulataskun yli, `"pocket"` kaulataskun ääriviiva
 `body_heel_relief_reach` ulompana joka puolelta (kulmat pyöristettyinä)
-taskun sivuja pitkin ja sen pään ympäri, `"corner"` kantapään
+taskun sivuja pitkin ja sen pään ympäri (runkoeditori piirtää
+automaattisen viivan täsmälleen leikattavana viivana, ei käyränä
+kahvojen kautta; kahvat ovat tasavälein viivalla), `"corner"` kantapään
 diskanttipuolen kulma, jonka
 45 asteen suora viiva rajaa: viiva leikkaa keskilinjan
 `body_heel_relief_reach` rungon kaulanpuoleisen reunan takana, ja levyn

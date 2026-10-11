@@ -139,6 +139,7 @@
 - A drawn cover's screws by its corners over tabs left in the cavity; an
   SG's one cavity for all the electronics; a Neck-through tick in easy
   mode
+- Automatic contour lines drawn as cut in the body editor
 - Index pins as wide as a main tool wider than 6 mm (an 8 mm end mill,
   8 mm dowels)
 - The neck's back carved with the ball nose alone, in one program

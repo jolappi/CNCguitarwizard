@@ -235,7 +235,9 @@ Python.
    past the plate). A line moved by hand stays as drawn whatever relief is
    chosen, and the status line says so; choosing `body_heel_relief_line`
    by hand (not a loaded design or an undo) goes back to that automatic
-   line, as *Auto heel relief* does. With
+   line, as *Auto heel relief* does. An automatic line is drawn as it is
+   cut (the layout's `line`), its handles spread evenly along it; moved,
+   the line runs through the handles. With
    `body_neck_plate` (beside the editor: ferrules, a Fender style plate or
    an asymmetric one) the plate is drawn on the back in steel grey and its
    bolts stay at its holes, not dragged; on a `"bevel"` heel relief it

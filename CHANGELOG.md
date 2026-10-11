@@ -1043,6 +1043,11 @@
 
 ### Fixed
 
+- The body editor draws an automatic contour's line (the arm contour,
+  the belly cut, the heel relief) as it is cut, not as a curve through
+  its handles: a heel relief by the pocket follows the pocket's corners
+  and one round the heel its U. The handles spread evenly along the line.
+
 - A new version of the web app shows on a plain reload, whatever cached
   the page: the manifest is fetched past every cache (a URL of its own),
   and a page whose stamp (`tools/build_site.py` stamps `index.html` with a

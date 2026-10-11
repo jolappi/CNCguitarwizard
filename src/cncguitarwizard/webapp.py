@@ -16,6 +16,7 @@ import dataclasses
 import functools
 import inspect
 import io
+import itertools
 import json
 import math
 import re
@@ -1325,8 +1326,11 @@ def _contour_line(
     """Return where a contour (``name``) starts, for the editor, or ``None``.
 
     ``{"points", "automatic"}``: the shape's drawn points (``field``, as
-    widened for the instrument), or ``CONTOUR_HANDLES`` points along the
-    automatic contour's inner edge, its ends on the body's edge.
+    widened for the instrument); or, for an automatic contour,
+    ``CONTOUR_HANDLES`` points spread evenly along its inner edge (its
+    ends on the body's edge) and ``"line"``, that edge itself, drawn as it
+    is cut (a heel relief by the pocket follows the pocket's corners,
+    which a curve through the handles would round off).
     """
     contour = next((c for c in contours if c.name == name), None)
     if contour is None:
@@ -1336,11 +1340,23 @@ def _contour_line(
     if drawn:
         return {"points": [list(point) for point in drawn], "automatic": False}
     inner = contour.inner_edge()
+    # How far along the edge each of its points is.
+    along = [0.0]
+    for a, b in itertools.pairwise(inner):
+        along.append(along[-1] + math.hypot(b.x - a.x, b.y - a.y))
+
+    def nearest(distance: float) -> int:
+        # The edge's point nearest that far along it.
+        return min(range(len(inner)), key=lambda i: abs(along[i] - distance))
+
     picks = [
-        round(k * (len(inner) - 1) / (CONTOUR_HANDLES - 1))
-        for k in range(CONTOUR_HANDLES)
+        nearest(along[-1] * k / (CONTOUR_HANDLES - 1)) for k in range(CONTOUR_HANDLES)
     ]
-    return {"points": local(inner[i] for i in picks), "automatic": True}
+    return {
+        "points": local(inner[i] for i in picks),
+        "automatic": True,
+        "line": local(inner),
+    }
 
 
 def inlay_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:

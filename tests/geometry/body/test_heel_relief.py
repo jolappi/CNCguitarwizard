@@ -177,6 +177,28 @@ def test_the_body_editor_draws_its_line() -> None:
     assert body_editor_layout({"prototype": {}})["heel_relief"] is None
 
 
+@pytest.mark.parametrize("line", ["around", "pocket"])
+def test_the_body_editor_draws_the_line_as_it_is_cut(line: str) -> None:
+    # The automatic line itself, not a curve through its handles (which
+    # would round off the pocket's corners); the handles spread evenly
+    # along it, its ends on its ends.
+    prototype = {"body_heel_relief": "contour", "body_heel_relief_line": line}
+    drawn = body_editor_layout({"prototype": prototype})["heel_relief"]
+    parameters = Prototype001Parameters(
+        body_heel_relief="contour", body_heel_relief_line=line
+    )
+    body = parameters.build().body
+    (relief,) = [c for c in body.contours if c.name == "Heel relief"]
+    heel_end = parameters.neck_outline().last_fret_position + parameters.heel_length
+    assert drawn["line"] == [
+        [round(p.x - heel_end, 2), round(p.y, 2)] for p in relief.line
+    ]
+    handles = drawn["points"]
+    assert handles[0] == drawn["line"][0] and handles[-1] == drawn["line"][-1]
+    steps = [math.dist(a, b) for a, b in zip(handles, handles[1:], strict=False)]
+    assert max(steps) < 2.0 * min(steps)
+
+
 def test_a_bevel_across_a_corner_slopes_along_its_own_axis() -> None:
     # The square's corner at (-100, 100) cut off by a 45 degree line.
     out = (-math.sqrt(0.5), math.sqrt(0.5))

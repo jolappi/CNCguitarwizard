@@ -2724,7 +2724,9 @@ const bodyEditor = {
       if (!data) continue;
       const line = { spec, points: data.points.map((p) => [...p]) };
       this.contourLines[spec.key] = line;
-      const d = this.openPath(openCatmullRom(line.points, 8));
+      // An automatic line is drawn as it is cut, not as a curve through
+      // its handles (the handles draw it once moved).
+      const d = this.openPath(data.line || openCatmullRom(line.points, 8));
       line.path = this.element("path", {
         class: `contour-line ${spec.key}`, d,
         "stroke-dasharray": data.automatic ? "4,2" : "none",

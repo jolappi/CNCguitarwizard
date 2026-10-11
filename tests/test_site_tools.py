@@ -84,3 +84,9 @@ def test_the_page_offers_a_style_and_an_easy_mode() -> None:
     # And a Neck-through tick, with what such a neck cannot keep.
     assert 'id="easy-neck-through"' in page
     assert "neck_through_changes(json.loads(easy_values))" in script
+
+
+def test_the_editor_draws_an_automatic_contour_as_it_is_cut() -> None:
+    script = (ROOT / "site" / "app.js").read_text(encoding="utf-8")
+
+    assert "this.openPath(data.line || openCatmullRom(line.points, 8))" in script
