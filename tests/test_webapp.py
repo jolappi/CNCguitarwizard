@@ -73,7 +73,7 @@ def test_schema_lists_every_parameter_with_a_form_type() -> None:
             "diamond",
             "split_block",
             "runes",
-            "iommi_cross",
+            "cross",
             "iron_cross",
             "custom",
         ],
@@ -1110,3 +1110,15 @@ def test_a_field_made_by_a_factory_shows_the_default_it_makes() -> None:
 
     described = {entry["name"]: entry["default"] for entry in _describe_fields(Made)}
     assert described == {"offsets": [1.0, 2.0], "depth": 3.0}
+
+
+def test_a_design_saved_with_iommi_crosses_loads_with_crosses() -> None:
+    old = {
+        "format": "cncguitarwizard-design",
+        "instrument": "electric_guitar",
+        "prototype": {"inlay_style": "iommi_cross"},
+    }
+    upgraded = upgrade_design(old)
+    assert upgraded["prototype"]["inlay_style"] == "cross"
+    assert old["prototype"]["inlay_style"] == "iommi_cross"
+    assert load_design(old).parameters.inlay_style == "cross"

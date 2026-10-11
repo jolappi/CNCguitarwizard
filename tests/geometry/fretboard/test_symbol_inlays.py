@@ -1,4 +1,4 @@
-"""Tests for the symbol inlay styles: runes, Iommi crosses, iron crosses."""
+"""Tests for the symbol inlay styles: runes, Latin crosses, iron crosses."""
 
 import ast
 from dataclasses import replace
@@ -48,7 +48,7 @@ def test_every_rune_is_drawn_as_solid_pieces(name: str) -> None:
     assert max(ys) - min(ys) > 0.75
 
 
-@pytest.mark.parametrize("style", ["runes", "iommi_cross", "iron_cross"])
+@pytest.mark.parametrize("style", ["runes", "cross", "iron_cross"])
 def test_a_symbol_fits_every_marker_fret_space(style: str) -> None:
     layout = InlayLayout(surface(), 2.0, style=style)
     positions = {
@@ -104,14 +104,12 @@ def test_a_rune_stands_with_its_top_toward_the_bass_edge(bass_sign: float) -> No
 
 
 @pytest.mark.parametrize("bass_sign", [-1.0, 1.0])
-def test_an_iommi_cross_stands_upright_its_head_toward_the_bass_edge(
+def test_a_cross_stands_upright_its_head_toward_the_bass_edge(
     bass_sign: float,
 ) -> None:
     # Upright as the guitar is played, as a rune stands: its long arm
     # across the board, its crossbar along the neck nearer the bass edge.
-    marker = InlayLayout(
-        surface(), 2.0, style="iommi_cross", bass_sign=bass_sign
-    ).markers[0]
+    marker = InlayLayout(surface(), 2.0, style="cross", bass_sign=bass_sign).markers[0]
     xs = [p.x for p in marker.outline]
     ys = [p.y * bass_sign for p in marker.outline]
     assert max(ys) - min(ys) > 1.5 * (max(xs) - min(xs))
@@ -158,7 +156,7 @@ def test_the_page_offers_the_runes_and_each_frets_choice() -> None:
     assert inlay_editor_layout({"prototype": {}})["runes"] == []
 
 
-@pytest.mark.parametrize("style", ["runes", "iommi_cross", "iron_cross"])
+@pytest.mark.parametrize("style", ["runes", "cross", "iron_cross"])
 def test_the_symbols_are_cut_and_modelled(style: str) -> None:
     geometry = replace(Prototype001Parameters(), inlay_style=style).build()
 

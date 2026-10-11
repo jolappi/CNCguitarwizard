@@ -14,9 +14,9 @@ shape of the builder's own drawn once (``custom_points``) and fitted to
 every marker's fret space and the board's taper there. The symbol styles
 (``SYMBOL_STYLES``) set one symbol in every marker's fret space, as large
 as it fits: ``runes``, a rune of the Elder Futhark each (``runes``, see
-``runes.RUNES`` for what each stands for), ``iommi_cross``, Tony Iommi's
-Latin cross, upright as the guitar is played (its long arm across the
-board, its head toward the bass edge, as a rune stands), and
+``runes.RUNES`` for what each stands for), ``cross``, a Latin cross
+upright as the guitar is played (its long arm across the board, its head
+toward the bass edge, as a rune stands), and
 ``iron_cross``, the cross pattée.
 """
 
@@ -64,7 +64,7 @@ InlayStyle = Literal[
     "diamond",
     "split_block",
     "runes",
-    "iommi_cross",
+    "cross",
     "iron_cross",
     "custom",
 ]
@@ -80,13 +80,13 @@ INLAY_STYLES: tuple[str, ...] = (
     "diamond",
     "split_block",
     "runes",
-    "iommi_cross",
+    "cross",
     "iron_cross",
     "custom",
 )
 """Every inlay style, in the order the form offers them."""
 
-SYMBOL_STYLES: frozenset[str] = frozenset({"runes", "iommi_cross", "iron_cross"})
+SYMBOL_STYLES: frozenset[str] = frozenset({"runes", "cross", "iron_cross"})
 """Styles that set one symbol in every marker's fret space, as large as it
 fits, turning with slanted frets as barbed wire does."""
 
@@ -139,7 +139,7 @@ SYMBOL_THINNEST = 1.1
 inlay cutter must get into it. A fret space that leaves less is
 refused."""
 
-IOMMI_CROSS: tuple[tuple[float, float], ...] = (
+LATIN_CROSS: tuple[tuple[float, float], ...] = (
     (0.0, -0.08),
     (0.22, -0.08),
     (0.22, -0.3),
@@ -403,17 +403,17 @@ class InlayLayout:
         marker's rune (``runes``, starting over), turned upright with its top
         toward the bass edge and read from the front (its outline within
         ``tolerance`` of its height, ``runes.RUNE_TOLERANCE`` by default);
-        an Iommi cross, upright as a rune is, its head toward the bass edge;
+        a Latin cross, upright as a rune is, its head toward the bass edge;
         an iron cross.
         """
-        if self.style == "iommi_cross":
+        if self.style == "cross":
             # Its long arm across the board, one unit, its crossbar along
             # the neck; the head toward the bass edge (-Y on a right-handed
             # guitar), the top as the guitar is played.
             return (
                 tuple(
                     Point2D(across, self.bass_sign * (0.5 - along))
-                    for along, across in IOMMI_CROSS
+                    for along, across in LATIN_CROSS
                 ),
             )
         if self.style == "iron_cross":
@@ -477,7 +477,7 @@ class InlayLayout:
         # cross's arm, an iron cross's waist.
         thinnest = {
             "runes": RUNE_STROKE / (1.0 + RUNE_STROKE),
-            "iommi_cross": 0.16,
+            "cross": 0.16,
             "iron_cross": 2.0 * IRON_CROSS_WAIST,
         }[self.style]
         if scale * thinnest < SYMBOL_THINNEST:

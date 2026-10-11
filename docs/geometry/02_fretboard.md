@@ -70,7 +70,7 @@ one of `INLAY_STYLES`:
 | `diamond` | A diamond, its points on the centreline and at the edges' margin |
 | `split_block` | Gibson split blocks: a block split along its diagonal (treble front corner to bass back corner) into two pieces `SPLIT_BLOCK_GAP` (1.5 mm) apart |
 | `runes` | A rune of the Elder Futhark at every marker fret, chosen for each (`inlay_runes`) — see below |
-| `iommi_cross` | Tony Iommi's Latin crosses, upright as the guitar is played (as a rune stands): the long arm across the board, its head toward the bass edge |
+| `cross` | Latin crosses, upright as the guitar is played (as a rune stands): the long arm across the board, its head toward the bass edge |
 | `iron_cross` | Iron crosses (cross pattée): four arms flaring from a narrow waist |
 | `custom` | Your own shape (`inlay_points`), drawn once and fitted to every fret space — see below |
 
@@ -86,7 +86,7 @@ cannot cut taken off, so at these sizes the 1 mm inlay cutter cuts each
 knot whole. The inlay editor starts from a coarser copy of it (43
 corners, `BARBED_WIRE_2_EDITOR_OUTLINE`).
 
-The symbol styles (`SYMBOL_STYLES`: `runes`, `iommi_cross`,
+The symbol styles (`SYMBOL_STYLES`: `runes`, `cross`,
 `iron_cross`) set one symbol in every marker fret's space, 12 and 24
 too, as large as it fits: at most `SYMBOL_SPAN` (60 %) of the board's
 width across it and `CUSTOM_CLEARANCE` (1 mm) from the frets either side.

@@ -129,7 +129,7 @@ def test_a_drawn_shape_that_cannot_be_cut_is_refused(
     [
         style
         for style in INLAY_STYLES
-        if style not in {"parallelogram", "runes", "iommi_cross", "iron_cross"}
+        if style not in {"parallelogram", "runes", "cross", "iron_cross"}
     ],
 )
 def test_every_style_starts_the_editor_with_its_own_marker(style: str) -> None:
@@ -164,7 +164,7 @@ def test_the_limits_keep_a_drawn_shape_inside_every_marker() -> None:
     assert all(low <= along <= high for along, _ in leaning)
     # A symbol fills its fret space; the editor starts from it shrunk whole
     # inside the limits, its shape kept (an iron cross as long as wide).
-    for style in ("runes", "iommi_cross", "iron_cross"):
+    for style in ("runes", "cross", "iron_cross"):
         points = InlayLayout(surface(), 2.0, style=style).editable_points()  # type: ignore[arg-type]
         assert all(low <= a <= high and abs(c) <= across for a, c in points)
     cross = InlayLayout(surface(), 2.0, style="iron_cross")

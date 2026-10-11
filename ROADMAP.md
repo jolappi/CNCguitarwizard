@@ -124,7 +124,7 @@
 - A neck plate in place of the ferrules: a Fender style plate or an asymmetric one
 - A heel bevel with the neck plate tilted on it (Ibanez's Tilt Joint), its bolts drilled by hand
 - The heel relief's line chosen: round the heel, by the pocket or across the treble corner
-- Rune, Iommi cross and iron cross fret markers
+- Rune, Latin cross and iron cross fret markers
 - An epoxy tray over the top, walled round the neck pocket, the pickups and every opening
 - Sharp corners and straight spans in every drawing tool, and polygons rounded through a corner
 - A new version of the web app shows on a plain reload, never a cached page

@@ -139,8 +139,8 @@
   Futhark at every marker fret, chosen for each in the inlay editor with
   what it stands for, or all at random (`inlay_runes`; a default set of
   wealth, strength, protection, wisdom, protection, the sun, victory, the
-  horse, mankind and heritage), `iommi_cross`, Tony Iommi's Latin
-  crosses along the neck, and `iron_cross`, the cross pattée. Each is as large as its fret
+  horse, mankind and heritage), `cross`, Latin crosses, and
+  `iron_cross`, the cross pattée. Each is as large as its fret
   space allows, its thinnest part kept wide enough for the 1 mm inlay
   cutter; the runes are drawn as strokes with a round pen
   (`stroke_outlines`), an area they close in filled.
@@ -918,10 +918,11 @@
 
 ### Changed
 
-- An Iommi cross (`inlay_style` "iommi_cross") stands upright as the
-  guitar is played, as a rune does: its long arm across the board, its
-  head toward the bass edge (it lay along the neck, its head toward the
-  nut).
+- The Latin cross fret markers are `inlay_style` "cross", *Crosses* in
+  the form (they were "iommi_cross"; a design saved so loads as "cross",
+  `upgrade_design`), and stand upright as the guitar is played, as a
+  rune does: the long arm across the board, the head toward the bass
+  edge (they lay along the neck, the head toward the nut).
 
 - The Fender, Gibson and Jackson styles place their controls, jacks and
   pickups as on the originals, measured from straight-on photos (Wikimedia

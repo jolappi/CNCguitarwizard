@@ -191,7 +191,7 @@ _CHOICE_LABELS: dict[str, dict[str, str]] = {
         "diamond": "Diamonds",
         "split_block": "Split blocks (Gibson)",
         "runes": "Runes (the Elder Futhark, one chosen for each fret)",
-        "iommi_cross": "Iommi crosses (upright Latin crosses)",
+        "cross": "Crosses (upright Latin crosses)",
         "iron_cross": "Iron crosses (cross pattée)",
         "custom": "Custom (drawn in the Inlay design window)",
     },
@@ -516,6 +516,9 @@ def upgrade_design(design: dict[str, Any]) -> dict[str, Any]:
     dowels as before, or as wide as the tool where it is wider (where 6
     was refused).
 
+    Designs saved before the Latin cross markers were renamed have
+    ``inlay_style`` "iommi_cross": they load as "cross".
+
     Args:
         design: The saved design, ``{"instrument", "prototype", ...}``.
 
@@ -534,6 +537,8 @@ def upgrade_design(design: dict[str, Any]) -> dict[str, Any]:
         and not prototype.get("headstock_treble_edge")
     ):
         prototype["headstock_outline"] = "drawn"
+    if prototype.get("inlay_style") == "iommi_cross":
+        prototype["inlay_style"] = "cross"
     upgraded = {**design, "prototype": prototype}
     if "machining" in design:
         upgraded["machining"] = machining
