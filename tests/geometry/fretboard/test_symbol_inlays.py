@@ -103,12 +103,22 @@ def test_a_rune_stands_with_its_top_toward_the_bass_edge(bass_sign: float) -> No
     assert max(width_near) - min(width_near) > 2.0 * (max(width_far) - min(width_far))
 
 
-def test_an_iommi_cross_has_its_head_toward_the_nut() -> None:
-    marker = InlayLayout(surface(), 2.0, style="iommi_cross").markers[0]
+@pytest.mark.parametrize("bass_sign", [-1.0, 1.0])
+def test_an_iommi_cross_stands_upright_its_head_toward_the_bass_edge(
+    bass_sign: float,
+) -> None:
+    # Upright as the guitar is played, as a rune stands: its long arm
+    # across the board, its crossbar along the neck nearer the bass edge.
+    marker = InlayLayout(
+        surface(), 2.0, style="iommi_cross", bass_sign=bass_sign
+    ).markers[0]
     xs = [p.x for p in marker.outline]
-    # The crossbar (the widest part) is nearer the nut end.
-    widest = max(marker.outline, key=lambda p: abs(p.y))
-    assert widest.x - min(xs) < (max(xs) - min(xs)) / 2.0
+    ys = [p.y * bass_sign for p in marker.outline]
+    assert max(ys) - min(ys) > 1.5 * (max(xs) - min(xs))
+    # The crossbar's ends (the furthest along the neck) on the bass side.
+    middle = (max(xs) + min(xs)) / 2.0
+    crossbar = max(marker.outline, key=lambda p: abs(p.x - middle))
+    assert crossbar.y * bass_sign > (max(ys) + min(ys)) / 2.0
 
 
 def test_an_iron_cross_is_square_and_symmetric() -> None:

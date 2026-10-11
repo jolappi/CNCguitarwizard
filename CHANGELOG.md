@@ -918,6 +918,11 @@
 
 ### Changed
 
+- An Iommi cross (`inlay_style` "iommi_cross") stands upright as the
+  guitar is played, as a rune does: its long arm across the board, its
+  head toward the bass edge (it lay along the neck, its head toward the
+  nut).
+
 - The Fender, Gibson and Jackson styles place their controls, jacks and
   pickups as on the originals, measured from straight-on photos (Wikimedia
   Commons; each photo's body outline fitted to the template's to within

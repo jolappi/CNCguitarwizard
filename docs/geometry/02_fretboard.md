@@ -70,7 +70,7 @@ one of `INLAY_STYLES`:
 | `diamond` | A diamond, its points on the centreline and at the edges' margin |
 | `split_block` | Gibson split blocks: a block split along its diagonal (treble front corner to bass back corner) into two pieces `SPLIT_BLOCK_GAP` (1.5 mm) apart |
 | `runes` | A rune of the Elder Futhark at every marker fret, chosen for each (`inlay_runes`) — see below |
-| `iommi_cross` | Tony Iommi's Latin crosses: the long arm along the neck, its head toward the nut |
+| `iommi_cross` | Tony Iommi's Latin crosses, upright as the guitar is played (as a rune stands): the long arm across the board, its head toward the bass edge |
 | `iron_cross` | Iron crosses (cross pattée): four arms flaring from a narrow waist |
 | `custom` | Your own shape (`inlay_points`), drawn once and fitted to every fret space — see below |
 

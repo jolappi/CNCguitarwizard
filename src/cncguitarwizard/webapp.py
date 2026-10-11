@@ -191,7 +191,7 @@ _CHOICE_LABELS: dict[str, dict[str, str]] = {
         "diamond": "Diamonds",
         "split_block": "Split blocks (Gibson)",
         "runes": "Runes (the Elder Futhark, one chosen for each fret)",
-        "iommi_cross": "Iommi crosses (Latin crosses along the neck)",
+        "iommi_cross": "Iommi crosses (upright Latin crosses)",
         "iron_cross": "Iron crosses (cross pattée)",
         "custom": "Custom (drawn in the Inlay design window)",
     },

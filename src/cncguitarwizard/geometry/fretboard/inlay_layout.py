@@ -15,7 +15,8 @@ every marker's fret space and the board's taper there. The symbol styles
 (``SYMBOL_STYLES``) set one symbol in every marker's fret space, as large
 as it fits: ``runes``, a rune of the Elder Futhark each (``runes``, see
 ``runes.RUNES`` for what each stands for), ``iommi_cross``, Tony Iommi's
-Latin cross, its long arm along the neck and its head toward the nut, and
+Latin cross, upright as the guitar is played (its long arm across the
+board, its head toward the bass edge, as a rune stands), and
 ``iron_cross``, the cross pattée.
 """
 
@@ -153,8 +154,9 @@ IOMMI_CROSS: tuple[tuple[float, float], ...] = (
     (0.0, 0.08),
 )
 """A Latin cross, ``(along, across)`` for a cross one unit long: its long
-arm along the neck from its head (``along`` 0, toward the nut), the
-crossbar 0.6 wide a third of the way down, the arms 0.16 wide."""
+arm from its head (``along`` 0) to its foot, the crossbar 0.6 wide a third
+of the way down, the arms 0.16 wide. On the board it stands upright, its
+long arm across the board and its head toward the bass edge."""
 
 IRON_CROSS_TIP = 0.21
 """Half an iron cross's arm's width at its tip, for a cross one unit across."""
@@ -401,13 +403,16 @@ class InlayLayout:
         marker's rune (``runes``, starting over), turned upright with its top
         toward the bass edge and read from the front (its outline within
         ``tolerance`` of its height, ``runes.RUNE_TOLERANCE`` by default);
-        an Iommi cross, its head toward the nut; an iron cross.
+        an Iommi cross, upright as a rune is, its head toward the bass edge;
+        an iron cross.
         """
         if self.style == "iommi_cross":
-            length = 1.0 / 0.6  # the crossbar spans the unit
+            # Its long arm across the board, one unit, its crossbar along
+            # the neck; the head toward the bass edge (-Y on a right-handed
+            # guitar), the top as the guitar is played.
             return (
                 tuple(
-                    Point2D((along - 0.5) * length, across * length)
+                    Point2D(across, self.bass_sign * (0.5 - along))
                     for along, across in IOMMI_CROSS
                 ),
             )
@@ -472,7 +477,7 @@ class InlayLayout:
         # cross's arm, an iron cross's waist.
         thinnest = {
             "runes": RUNE_STROKE / (1.0 + RUNE_STROKE),
-            "iommi_cross": 0.16 / 0.6,
+            "iommi_cross": 0.16,
             "iron_cross": 2.0 * IRON_CROSS_WAIST,
         }[self.style]
         if scale * thinnest < SYMBOL_THINNEST:
