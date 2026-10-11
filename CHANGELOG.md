@@ -4,6 +4,15 @@
 
 ### Added
 
+- Jackson and ESP Alexi necks (`NECK_TEMPLATES` "jackson", "alexi"): the
+  pointed 13 degree six-in-line headstocks of a Jackson RR1 and an LTD
+  Alexi Hexed, measured off straight-on photos, their tuners in a row
+  along the tuner edge. The Jackson RR and Alexi Hexed styles take them
+  on six strings, with a laminated neck blank: the headstock is deeper
+  than the 44 mm body the neck runs through, so a block is glued under
+  it (a style can now set the machining its neck needs,
+  `InstrumentStyle.neck_machining`, loaded with the style).
+
 - A drawn headstock template keeps its sharp corners when read back: the
   drawing readers note a path's sharp nodes (`SvgShape.corners`,
   `ReadOutline.corners`; a DXF template marks them on `cgwCorners`) and

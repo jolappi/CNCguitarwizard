@@ -145,7 +145,7 @@ def test_the_web_form_offers_every_neck_template() -> None:
         field["name"] for group in schema["prototype"] for field in group["fields"]
     }
     templates = schema["neck_templates"]
-    assert list(templates) == ["telecaster", *NEW_NECKS]
+    assert list(templates) == ["telecaster", *NEW_NECKS, "jackson", "alexi"]
     for key in NEW_NECKS:
         assert templates[key]["label"] == NECK_TEMPLATES[key][0]
         assert set(templates[key]["values"]) <= fields

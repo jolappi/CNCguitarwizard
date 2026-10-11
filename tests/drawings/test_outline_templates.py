@@ -321,6 +321,23 @@ def test_a_headstock_dxf_template_read_back_unchanged() -> None:
     assert _flat(fit.treble_edge) == pytest.approx(_flat(plan.treble_edge), abs=0.011)
 
 
+def test_a_pointed_headstock_dxf_template_keeps_its_corners() -> None:
+    parameters = _headstocks()["jackson"]
+    plan = parameters.headstock_plan()
+    dxf = template_dxf("h", HEADSTOCK, headstock_spans(plan), [])
+    assert "cgwCorners" in dxf
+    read = read_template_outline(dxf, HEADSTOCK)
+    fit = fit_headstock(
+        read.points,
+        parameters.nut_width / 2,
+        plan.bass_sign,
+        read.nodes,
+        corners=read.corners,
+    )
+    assert _flat(fit.bass_edge) == pytest.approx(_flat(plan.bass_edge), abs=0.011)
+    assert _flat(fit.treble_edge) == pytest.approx(_flat(plan.treble_edge), abs=0.011)
+
+
 def test_an_outline_drawn_anew_in_a_cad_program_and_its_pattern() -> None:
     from cncguitarwizard.render.dxf import DxfDocument
 

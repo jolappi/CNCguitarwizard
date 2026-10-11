@@ -7233,6 +7233,114 @@ and its tip hooked over to the treble side, traced from a straight-on
 product photo (scaled from its frets) and its tip then reshaped by hand —
 a mockup, not the original outline."""
 
+JACKSON_NECK: dict[str, Any] = {
+    "headstock_style": "6_inline",
+    "headstock_angle": 13.0,
+    "headstock_outline": "drawn",
+    # The row along the straight tuner edge, 9.5 mm in from it, 23.6 mm
+    # apart (18 mm along the neck), the strings bending at the nut toward
+    # their posts.
+    "tuner_inline_first_distance": 55.6,
+    "tuner_inline_spacing": 18.0,
+    "tuner_inline_offsets": (23.2, 7.9, -7.3, -22.6, -37.8, -53.1),
+    "tuner_edge_offset": 9.5,
+    "tuner_edge_clearance": 4.5,
+    # Straight past the locking nut, a concave flare out to the rounded
+    # ear, the straight tuner edge sloping 40 degrees across the
+    # centreline to a corner, then steeply down to the point.
+    "headstock_bass_edge": (
+        (15.0, 21.4, "corner"),
+        (18.0, 22.1),
+        (24.0, 23.2),
+        (30.0, 26.2),
+        (36.0, 31.8),
+        (40.0, 37.2),
+        (44.0, 41.2),
+        (46.9, 42.4),
+        (50.5, 40.2, "corner"),
+        (163.1, -55.2, "corner"),
+        (171.2, -83.6),
+    ),
+    # One long concave sweep out to the point on the treble side.
+    "headstock_treble_edge": (
+        (15.0, 21.4, "corner"),
+        (20.0, 22.6),
+        (30.0, 25.7),
+        (40.0, 28.9),
+        (50.0, 32.1),
+        (60.0, 35.9),
+        (70.0, 39.5),
+        (80.0, 43.4),
+        (90.0, 47.4),
+        (100.0, 51.6),
+        (110.0, 56.1),
+        (120.0, 61.0),
+        (130.0, 65.7),
+        (140.0, 71.0),
+        (150.0, 76.3),
+        (160.0, 82.0),
+        (164.0, 84.0),
+        (167.0, 84.8),
+        (171.2, 85.0),
+    ),
+    "truss_rod_adjustment": "headstock",
+}
+"""A Jackson neck (see ``NECK_TEMPLATES``): the "pointed" six-in-line
+headstock of a USA Select RR1, 13 degrees, measured off a straight-on
+product photo (scaled from its frets) — a mockup, not the original
+outline."""
+
+ALEXI_NECK: dict[str, Any] = {
+    "headstock_style": "6_inline",
+    "headstock_angle": 13.0,
+    "headstock_outline": "drawn",
+    # The row along the straight tuner edge, 11.7 mm in from it, 22.8 mm
+    # apart (20 mm along the neck).
+    "tuner_inline_first_distance": 45.0,
+    "tuner_inline_spacing": 20.06,
+    "tuner_inline_offsets": (26.8, 16.0, 5.2, -5.6, -16.4, -27.2),
+    "tuner_edge_offset": 11.0,
+    "tuner_edge_clearance": 6.0,
+    # A steepening flare out to a sharp ear, then the straight tuner edge
+    # sloping 29 degrees all the way to the point.
+    "headstock_bass_edge": (
+        (12.0, 21.0, "corner"),
+        (15.0, 22.6),
+        (19.0, 25.3),
+        (23.0, 29.4),
+        (27.0, 35.6),
+        (31.0, 44.4),
+        (33.3, 46.0, "corner"),
+        (180.5, -33.5),
+    ),
+    # Nearly straight out to a soft knee, then the end edge rising to the
+    # point.
+    "headstock_treble_edge": (
+        (21.0, 21.2),
+        (30.0, 22.7),
+        (40.0, 24.7),
+        (50.0, 26.7),
+        (60.0, 28.7),
+        (70.0, 30.8),
+        (80.0, 33.2),
+        (90.0, 35.5),
+        (100.0, 38.0),
+        (110.0, 40.5),
+        (120.0, 43.3),
+        (130.0, 46.1),
+        (136.0, 47.3),
+        (142.0, 46.6),
+        (150.0, 44.1),
+        (165.0, 39.6),
+        (180.5, 35.0),
+    ),
+    "truss_rod_adjustment": "headstock",
+}
+"""An ESP Alexi neck (see ``NECK_TEMPLATES``): the LTD Alexi Hexed's
+pointed six-in-line headstock, 13 degrees, measured off a straight-on
+product photo (scaled from its frets) — a mockup, not the original
+outline."""
+
 _MOCKINGBIRD_EDGE: tuple[tuple[float, float], ...] = (
     (10.0, 22.0),
     (20.0, 27.0),
@@ -7292,6 +7400,8 @@ NECK_TEMPLATES: dict[str, tuple[str, dict[str, Any]]] = {
         "Mockingbird neck (mockup, not the original)",
         MOCKINGBIRD_NECK,
     ),
+    "jackson": ("Jackson pointed neck (mockup, not the original)", JACKSON_NECK),
+    "alexi": ("ESP Alexi neck (mockup, not the original)", ALEXI_NECK),
 }
 """Neck and headstock starting points the headstock editor can load: each
 a label and the values it sets (for a six-string guitar; the truss rod can

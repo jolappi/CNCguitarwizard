@@ -565,7 +565,7 @@ def style_design(instrument: str, style: str, name: str = "") -> dict[str, Any]:
         "name": name,
         "instrument": instrument,
         "prototype": _jsonable(chosen.prototype_values(instrument)),
-        "machining": {},
+        "machining": _jsonable(chosen.machining_values(instrument)),
     }
 
 

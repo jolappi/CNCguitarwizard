@@ -37,8 +37,13 @@ class InstrumentStyle:
             template's own other values (``BODY_TEMPLATE_VALUES``) come
             with it.
         neck: Its neck template (a ``NECK_TEMPLATES`` key), or ``None``
-            to keep the instrument's own neck.
+            to keep the instrument's own neck; drawn round six tuners, it
+            is set on a six-string instrument only.
         values: Its other ``Prototype001Parameters`` settings.
+        neck_machining: The ``MachiningParameters`` settings its neck
+            template needs (a laminated blank under a pitched headstock
+            on a neck run through the body), set with the template: on a
+            six-string instrument only.
     """
 
     label: str
@@ -46,6 +51,14 @@ class InstrumentStyle:
     body: str
     neck: str | None = None
     values: Mapping[str, Any] = field(default_factory=dict)
+    neck_machining: Mapping[str, Any] = field(default_factory=dict)
+
+    def machining_values(self, instrument: Instrument) -> dict[str, Any]:
+        """Return the machining settings it makes for ``instrument``."""
+        strings = Prototype001Parameters.for_instrument(instrument).string_count
+        if self.neck is None or strings != 6:
+            return {}
+        return dict(self.neck_machining)
 
     def prototype_values(self, instrument: Instrument) -> dict[str, Any]:
         """Return every setting it makes for ``instrument``, over the
@@ -60,10 +73,11 @@ class InstrumentStyle:
             "body_shape": shape,
             **BODY_TEMPLATE_VALUES.get(self.body, {}),
         }
-        if self.neck is not None:
+        strings = Prototype001Parameters.for_instrument(instrument).string_count
+        # A neck template is drawn round six tuners: a six-string's.
+        if self.neck is not None and strings == 6:
             values.update(NECK_TEMPLATES[self.neck][1])
         values.update(self.values)
-        strings = Prototype001Parameters.for_instrument(instrument).string_count
         bridge = values.get("body_bridge")
         if bridge is not None and getattr(bridge, "string_count", strings) != strings:
             values["body_bridge"] = replace(bridge, string_count=strings)
@@ -219,6 +233,8 @@ STYLES: dict[str, InstrumentStyle] = {
         "Jackson RR style",
         GUITARS,
         "jackson_rr",
+        "jackson",
+        neck_machining={"neck_blank": "laminated"},
         values={
             "neck_joint": "neck_through",
             "body_pickups": "HH",
@@ -245,7 +261,11 @@ STYLES: dict[str, InstrumentStyle] = {
         "ESP LTD Alexi Hexed style",
         ("electric_guitar", "seven_string_guitar"),
         "alexi_hexed",
-        values={"neck_joint": "neck_through", "inlay_style": "sharktooth"},
+        "alexi",
+        {"neck_joint": "neck_through", "inlay_style": "sharktooth"},
+        # Its 13 degree headstock is deeper than the 44 mm body the neck
+        # runs through: a block glued under it.
+        neck_machining={"neck_blank": "laminated"},
     ),
     "mockingbird": InstrumentStyle(
         "B.C. Rich Mockingbird style",

@@ -30,7 +30,12 @@ Python.
    Telecaster's plate and side jack and its bridge pickup slanted 16°, a
    vintage Stratocaster's guard, controls and jack plate, a Les Paul's
    staggered pots, an SG's jack in the top, an Explorer's row of pots and
-   a Rhoads' toggle among its pots. Choosing one (asked first when values were changed) loads
+   a Rhoads' toggle among its pots. The Jackson RR and Alexi Hexed styles
+   have their pointed headstocks (the `jackson` and `alexi` neck
+   templates, on six strings), with the laminated neck blank they need on
+   a neck run through the body (the style's machining,
+   `InstrumentStyle.machining_values`, in the design's `machining`).
+   Choosing one (asked first when values were changed) loads
    `webapp.style_design(instrument, style, name)` as a saved design is
    loaded (`applyDesign`, then `repairDesign`): every setting back to the
    instrument's defaults, then the style's own, the guitar's name kept; a
