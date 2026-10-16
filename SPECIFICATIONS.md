@@ -557,10 +557,12 @@ kolon tai sen kohdalla olevan reiän reunan väliin jää
 `body_bridge_pickup_clearance` (3 mm) puuta: Floyd Rosen upotus, hardtailin
 Ø3 kiinnitysruuvien esiporaukset (10 mm mensuurin edellä; kolo päättyy 14,5
 mm mensuurin edelle) ja Tune-o-maticin Ø11,2 tolppareiät (diskanttitolppa 1,6 mm mensuurin
-takana; kolo päättyy 7,0 mm sen edelle). Kolo ei myöskään koskaan ulotu
-satulalinjan yli (viuhkanauhoilla linja kallistuu nauhojen mukana); Kahlerin
-kolo päättyy DXF:n mukaisesti 1,2 mm sen edelle. Käsin asetettu suurempi
-etäisyys voittaa. Jos siirretty kolo osuisi seuraavaan mikkikoloon (keski-
+takana; kolo päättyy 7,0 mm sen edelle). Kolo saa ulottua satulalinjan yli
+tallaa kohti, mutta mikin keskikohta pysyy aina satulalinjan edellä (siinä
+kielet päättyvät); Kahlerin kolo päättyy oletuksena DXF:n mukaisesti 1,2 mm
+satulalinjan edelle, ja mikin voi siirtää 3 mm:n päähän Kahlerin levystä
+(keskikohta 12 mm satulalinjan edellä). Käsin asetettu suurempi etäisyys
+voittaa. Jos siirretty kolo osuisi seuraavaan mikkikoloon (keski-
 tai kaulamikin), malli hylkää yhdistelmän `BodyGeometryError`-virheellä.
 
 ## Lapa

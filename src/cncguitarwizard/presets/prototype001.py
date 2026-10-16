@@ -870,8 +870,9 @@ class Prototype001Parameters:
     # line, but moves further forward on its own when the chosen bridge
     # reaches closer (a recessed Floyd Rose, a hardtail's baseplate screws,
     # a Tune-o-matic's posts), keeping body_bridge_pickup_clearance of wood
-    # between the route and the bridge's routes and holes, and never
-    # reaches past the saddle line.
+    # between the route and the bridge's routes, plate and holes; its
+    # centre never passes the saddle line, though its route may reach on
+    # past it toward a bridge set further back (a Kahler's plate).
     body_bridge_pickup_offset: float = 21.73  # route centre before the bridge
     body_bridge_pickup_clearance: float = 3.0
     body_pickup_route_depth: float = 22.0
@@ -5657,9 +5658,10 @@ class Prototype001Parameters:
         The route keeps ``body_bridge_pickup_clearance`` of wood ahead of
         everything the bridge cuts into or sets on the top — its routes, its
         plate (``footprint``) and the edges of its holes (a hardtail's
-        baseplate screws, a Tune-o-matic's posts) — and never reaches past
-        the saddle line, where the strings
-        leave the saddles (fanned on a multiscale).
+        baseplate screws, a Tune-o-matic's posts) — and the pickup's centre
+        never passes the saddle line, where the strings leave the saddles.
+        The route itself may reach on past that line toward a bridge set
+        further back (up to a Kahler's plate).
 
         Args:
             bridge: The bridge's features, placed (and turned) on the body.
@@ -5708,11 +5710,10 @@ class Prototype001Parameters:
                 route.outline, hole.center_y - keep_out, hole.center_y + keep_out
             )
             needed.append(scale - (hole.center_x - keep_out) + across)
-        # The saddle line leans with a fan (the strings' own bridge ends; a
-        # slant alone leaves the bridge square), so each route point is
-        # measured against the line at its own Y.
-        lean = self.fret_skew.fan_only().at(scale)
-        needed.append(max(point.x - lean * point.y for point in route.outline))
+        # The strings end at the saddle line: the pickup's centre (its pole
+        # pieces' middle, on the centreline, where a fan's saddle line
+        # crosses at the scale) stays ahead of it.
+        needed.append(0.0)
         return max(needed)
 
     def _jack(

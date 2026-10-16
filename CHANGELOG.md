@@ -1117,6 +1117,13 @@
 
 ### Fixed
 
+- The bridge pickup can be moved up to a Kahler's plate: its route stopped
+  at the saddle line, 11.5 mm short of the plate (the Design by Jone
+  body), and a pickup dragged nearer jumped back. The route may now reach
+  on past the saddle line, keeping `body_bridge_pickup_clearance` (3 mm)
+  from the bridge's routes, plate and holes as before; only the pickup's
+  centre stays ahead of the line, where the strings end. The other
+  bridges' limits (their holes and routes) are unchanged.
 - The credit's link in the web app's header and footer goes to LS Guitars
   at https://jounilappi.hopto.org/lsguitars/ (it pointed at a wrong host,
   jouni.lappi.hopto.org, over plain http).

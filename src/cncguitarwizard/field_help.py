@@ -378,8 +378,10 @@ FIELD_HELP: dict[str, str] = {
     ),
     "body_bridge_pickup_offset": (
         "How far the bridge pickup's centre sits ahead of the bridge's scale "
-        "line, in mm; it moves further forward by itself when the bridge "
-        "needs the room."
+        "line, in mm; it moves further forward by itself to keep "
+        "body_bridge_pickup_clearance of wood from the bridge's routes, plate "
+        "and holes. Its route may reach past the saddle line toward a bridge "
+        "set further back (a Kahler's plate), its centre never."
     ),
     "body_pickups_follow_fan": (
         "With fanned frets, whether the pickups turn with the frets: auto "

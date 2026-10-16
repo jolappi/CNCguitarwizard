@@ -97,14 +97,43 @@ def test_the_tune_o_matic_posts_keep_their_wood() -> None:
     assert route.max_x == pytest.approx(saddles + 1.6 - 5.6 - 3.0)
 
 
-def test_a_long_bridge_pickup_stops_at_the_saddle_line() -> None:
-    # The bass soapbar reaches 22 mm from its centre, past the 21.73 mm
-    # offset: it would end 0.27 mm under the Kahler's saddles.
-    parameters = replace(Prototype001Parameters(), body_pickups="MM")
+def test_a_bridge_pickup_reaches_past_the_saddle_line_up_to_a_kahlers_plate() -> None:
+    # Regression: the route stopped at the saddle line, 11.5 mm short of
+    # the Kahler's plate, and a pickup dragged nearer jumped back.
+    parameters = replace(Prototype001Parameters(), body_bridge_pickup_offset=14.2)
+    layout = parameters.body_layout()
+    route = layout.bridge_pickup
+    assert route is not None
+    hardware = parameters.body_bridge.hardware(
+        parameters.centre_scale, parameters.body_thickness
+    )
+    plate = min(point.x for point in hardware.footprint)
+    scale = parameters.centre_scale
+
+    # Where it was put: 6.3 mm past the saddle line, clear of the plate.
+    assert (route.min_x + route.max_x) / 2.0 == pytest.approx(scale - 14.2)
+    assert route.max_x > scale
+    assert plate - route.max_x > parameters.body_bridge_pickup_clearance
+    # Asked nearer, it stops body_bridge_pickup_clearance short of it.
+    nearest = replace(parameters, body_bridge_pickup_offset=0.0).body_layout()
+    assert nearest.bridge_pickup is not None
+    assert nearest.bridge_pickup.max_x == pytest.approx(
+        plate - parameters.body_bridge_pickup_clearance
+    )
+
+
+def test_a_bridge_pickups_centre_never_passes_the_saddle_line() -> None:
+    # With the Kahler's plate allowed under it, the strings' end still
+    # holds the pickup: its centre stays ahead of the saddle line.
+    parameters = replace(
+        Prototype001Parameters(),
+        body_bridge_pickup_offset=-30.0,
+        body_bridge_pickup_clearance=-30.0,
+    )
     route = parameters.body_layout().bridge_pickup
     assert route is not None
 
-    assert route.max_x == pytest.approx(parameters.centre_scale)
+    assert (route.min_x + route.max_x) / 2.0 == pytest.approx(parameters.centre_scale)
 
 
 @pytest.mark.parametrize("bridge", BRIDGES, ids=lambda spec: spec.kind)
@@ -116,14 +145,14 @@ def test_the_bridge_pickup_stays_ahead_of_a_fanned_saddle_line(
         body_bridge=bridge,
         body_pickups="MM",
         bass_scale_length=647.7,
+        body_bridge_pickup_offset=0.0,
     )
     route = parameters.body_layout().bridge_pickup
     assert route is not None
-    lean = parameters.fret_skew.at(parameters.centre_scale)
 
-    assert max(point.x - lean * point.y for point in route.outline) <= (
-        parameters.centre_scale + 1e-9
-    )
+    # Its centre, on the centreline, where the fanned line crosses at the
+    # scale.
+    assert (route.min_x + route.max_x) / 2.0 <= parameters.centre_scale + 1e-9
 
 
 def test_a_bridge_pickup_that_cannot_clear_the_bridge_is_refused() -> None:

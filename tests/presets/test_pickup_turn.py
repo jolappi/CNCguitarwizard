@@ -40,17 +40,14 @@ def test_a_pickup_turns_about_its_own_centre(position: str) -> None:
         tuple(sum(c) / 2.0 for c in zip(*s.values(), strict=True))
         for s in (before, after)
     ]
-    if position == "bridge":
-        # Turned, the humbucker reaches nearer the bridge's routes, so it
-        # moves toward the neck just enough to keep its clearance.
-        assert centre[1][0] < centre[0][0]
-        assert centre[1][1] == pytest.approx(centre[0][1])
-    else:
-        assert centre[1] == pytest.approx(centre[0], abs=1e-6)
-        layout = turned.body_layout()
-        assert dict(layout.pickup_centres)[position] == pytest.approx(
-            dict(HSS.body_layout().pickup_centres)[position]
-        )
+    # (The bridge humbucker too: turned on past the saddle line, it is
+    # still well clear of the Kahler's plate. A bridge it would reach is
+    # kept clear of, see the next tests.)
+    assert centre[1] == pytest.approx(centre[0], abs=1e-6)
+    layout = turned.body_layout()
+    assert dict(layout.pickup_centres)[position] == pytest.approx(
+        dict(HSS.body_layout().pickup_centres)[position]
+    )
     assert abs(_bearing(after) - _bearing(before)) == pytest.approx(12.0)
     # ...the treble end swinging toward the tail.
     shift = centre[1][0] - centre[0][0]
