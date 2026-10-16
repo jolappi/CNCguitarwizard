@@ -1122,3 +1122,18 @@ def test_a_design_saved_with_iommi_crosses_loads_with_crosses() -> None:
     assert upgraded["prototype"]["inlay_style"] == "cross"
     assert old["prototype"]["inlay_style"] == "iommi_cross"
     assert load_design(old).parameters.inlay_style == "cross"
+
+
+def test_a_design_saved_with_its_own_tray_wall_loads_with_the_rims() -> None:
+    old = {
+        "format": "cncguitarwizard-design",
+        "instrument": "electric_guitar",
+        "prototype": {"body_epoxy_tray_rim": 5.0, "body_epoxy_tray_wall": 2.0},
+    }
+    upgraded = upgrade_design(old)
+    assert "body_epoxy_tray_wall" not in upgraded["prototype"]
+    assert old["prototype"]["body_epoxy_tray_wall"] == 2.0
+    # Nothing skipped: the walls are as wide as the rim now.
+    loaded = load_design(old)
+    assert loaded.skipped == ()
+    assert loaded.parameters.body_epoxy_tray_rim == 5.0

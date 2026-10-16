@@ -23,29 +23,32 @@ def tray(**overrides: object) -> Prototype001Parameters:
     )
 
 
-def test_the_tray_leaves_a_rim_at_the_edge_and_walls_round_the_openings() -> None:
-    body = tray().build().body
+@pytest.mark.parametrize("rim", [4.0, 6.0])
+def test_the_tray_leaves_as_much_wood_at_the_edge_as_round_the_openings(
+    rim: float,
+) -> None:
+    body = tray(body_epoxy_tray_rim=rim).build().body
     assert body.epoxy_tray is not None
     outline = body.outline.points
 
-    # The rim: its edge 4 mm in from the body's.
+    # The rim: its edge body_epoxy_tray_rim in from the body's.
     for point in body.epoxy_tray.outline[::25]:
         assert point_in_polygon(point, outline)
-        assert distance_to_boundary(point, outline) == pytest.approx(4.0, abs=0.1)
-    # A wall 2 mm thick round every route and hole in the top.
+        assert distance_to_boundary(point, outline) == pytest.approx(rim, abs=0.1)
+    # A wall as thick round every route and hole in the top.
     walls = body.epoxy_tray.walls
     for cavity in (body.neck_pocket, body.neck_pickup, body.bridge_pickup):
         assert cavity is not None
         wall = next(w for w in walls if point_in_polygon(cavity.outline[0], w))
         for point in wall[::5]:
             assert distance_to_boundary(point, cavity.outline) == pytest.approx(
-                2.0, abs=0.1
+                rim, abs=0.1
             )
     for hole in body.holes:
         assert any(
             point_in_polygon(hole.center, wall)
             and min(math.dist((p.x, p.y), (hole.center.x, hole.center.y)) for p in wall)
-            == pytest.approx(hole.diameter / 2.0 + 2.0, abs=0.1)
+            == pytest.approx(hole.diameter / 2.0 + rim, abs=0.1)
             for wall in walls
         )
 

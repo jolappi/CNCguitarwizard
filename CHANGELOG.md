@@ -129,11 +129,10 @@
 
 - An epoxy tray over the top (`body_epoxy_tray_depth`): the top routed
   that deep inside a rim of wood at the edge (`body_epoxy_tray_rim`,
-  4 mm), round a wall left standing round every route and hole in it
-  (`body_epoxy_tray_wall`, 2 mm), for epoxy to be poured in and sanded
-  flush. `Body_top` routes it first (a pocket can now leave islands
-  standing), FreeCAD models it, and the plan view, the DXF and the body
-  editor draw it.
+  4 mm), round a wall as thick left standing round every route and hole
+  in it, for epoxy to be poured in and sanded flush. `Body_top` routes it
+  first (a pocket can now leave islands standing), FreeCAD models it, and
+  the plan view, the DXF and the body editor draw it.
 
 - Symbol fret markers (`inlay_style`): `runes`, a rune of the Elder
   Futhark at every marker fret, chosen for each in the inlay editor with
@@ -917,6 +916,11 @@
   round (was 5 mm, too narrow for the screws).
 
 ### Changed
+
+- An epoxy tray's walls round the openings are as thick as its rim at
+  the edge (`body_epoxy_tray_rim`), so the wood round the epoxy is as
+  wide everywhere; `body_epoxy_tray_wall` (2 mm) is gone, and a design
+  saved with it loads without it (`upgrade_design`).
 
 - The Latin cross fret markers are `inlay_style` "cross", *Crosses* in
   the form (they were "iommi_cross"; a design saved so loads as "cross",

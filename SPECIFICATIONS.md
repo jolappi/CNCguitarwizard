@@ -881,8 +881,9 @@ rengaskehyksissä, joihin pieni pleksi liittyy.
 matalan kaukalon epoksivalua varten: reunaan jää `body_epoxy_tray_rim`
 (4 mm) puuta, ja jokaisen kannen aukon (kaulatasku, mikkikolot, tallan ja
 elektroniikan kolot, jakkikolo, kaularaudan säätökolo, johdotuskanavat ja
-kaikki kannesta poratut reiät) ympärille jää `body_epoxy_tray_wall`
-(2 mm) paksu seinä, joten epoksi ei valu niihin. Epoksi kaadetaan
+kaikki kannesta poratut reiät) ympärille jää yhtä paksu seinä, joten
+epoksia ympäröi kaikkialla yhtä leveä puu eikä epoksi valu aukkoihin.
+Vanhan designin oma `body_epoxy_tray_wall` jätetään pois latauksessa. Epoksi kaadetaan
 kaukaloon pinnan tasoon ja hiotaan tasaiseksi. Kaukalo vaatii tasaisen
 kannen (ei kaarevaa tai porrastettua kantta, käsinojaviistettä tai
 läpikaulaa), reunuksen on oltava leveämpi kuin kannen reunan pyöristys tai

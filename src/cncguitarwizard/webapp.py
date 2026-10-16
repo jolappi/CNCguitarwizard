@@ -519,6 +519,10 @@ def upgrade_design(design: dict[str, Any]) -> dict[str, Any]:
     Designs saved before the Latin cross markers were renamed have
     ``inlay_style`` "iommi_cross": they load as "cross".
 
+    Designs saved before an epoxy tray's walls took its rim's width have
+    a ``body_epoxy_tray_wall`` of their own: it is dropped, so the design
+    loads with the walls as wide as the rim (and nothing skipped).
+
     Args:
         design: The saved design, ``{"instrument", "prototype", ...}``.
 
@@ -539,6 +543,7 @@ def upgrade_design(design: dict[str, Any]) -> dict[str, Any]:
         prototype["headstock_outline"] = "drawn"
     if prototype.get("inlay_style") == "iommi_cross":
         prototype["inlay_style"] = "cross"
+    prototype.pop("body_epoxy_tray_wall", None)
     upgraded = {**design, "prototype": prototype}
     if "machining" in design:
         upgraded["machining"] = machining

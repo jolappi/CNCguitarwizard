@@ -1044,8 +1044,8 @@ routed from the other face.
 `body_epoxy_tray_depth` (0, none) routes the top that deep over the whole
 body for an epoxy pour (`EpoxyTray`, `BodySolid.epoxy_tray`): inside a
 rim of wood `body_epoxy_tray_rim` (4 mm) wide at the edge, round a wall
-`body_epoxy_tray_wall` (2 mm) thick left standing round every opening in
-the top — every route cut down from it (the neck pocket, the pickup
+as thick left standing round every opening in the top, so the wood round
+the epoxy is as wide everywhere — every route cut down from it (the neck pocket, the pickup
 routes, the bridge's, the controls' and a jack's routes, a truss-rod
 access, the wire channels) and every hole drilled from it (pots, the
 switch, pickup screws, bridge studs and string holes, cover screws), its

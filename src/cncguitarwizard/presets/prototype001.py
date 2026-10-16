@@ -984,16 +984,15 @@ class Prototype001Parameters:
     body_bevel_angle: float = 25.0
     # An epoxy tray (body_epoxy_tray_depth, 0 = none): the top routed that
     # deep over the whole body but a rim body_epoxy_tray_rim of wood at
-    # its edge, leaving a wall body_epoxy_tray_wall thick round every
-    # opening in the top (the neck pocket, the pickup routes, the other
-    # routes and the holes), for epoxy to be poured in up to the face and
-    # sanded flush. It needs the flat top (no carved or stepped top, no
+    # its edge, and a wall as thick left round every opening in the top
+    # (the neck pocket, the pickup routes, the other routes and the
+    # holes), for epoxy to be poured in up to the face and sanded flush.
+    # It needs the flat top (no carved or stepped top, no
     # arm contour, not on a neck-through), a rim wider than the top edge's
     # roundover or binding, and CARVE_WALL of wood over the rear cavities
     # under it.
     body_epoxy_tray_depth: float = 0.0
     body_epoxy_tray_rim: float = 4.0
-    body_epoxy_tray_wall: float = 2.0
     # A heel relief (body_heel_relief) cuts the back away where the neck's
     # heel meets the body, so the hand reaches the top frets: "contour" a
     # smooth bevel from the body's edge at the neck end, where it is
@@ -4373,11 +4372,11 @@ class Prototype001Parameters:
         """Return the epoxy tray (``body_epoxy_tray_depth``) for a laid-out body.
 
         Its outline is the body's outline ``body_epoxy_tray_rim`` in, and a
-        wall ``body_epoxy_tray_wall`` thick stands round every opening in
-        the top: every route cut down from it (the neck pocket, the pickup
-        routes, the bridge's, the controls' and a jack's routes, the wire
-        channels) and every hole drilled from it, as its outline that far
-        out (a hole's a circle).
+        wall as thick stands round every opening in the top, so the wood
+        round the epoxy is as wide everywhere: round every route cut down
+        from it (the neck pocket, the pickup routes, the bridge's, the
+        controls' and a jack's routes, the wire channels) and every hole
+        drilled from it, as its outline that far out (a hole's a circle).
 
         Raises:
             BodyGeometryError: For sizes that are not finite and positive, a
@@ -4386,10 +4385,7 @@ class Prototype001Parameters:
         """
         depth = self.body_epoxy_tray_depth
         rim = self.body_epoxy_tray_rim
-        wall = self.body_epoxy_tray_wall
-        if not all(
-            math.isfinite(value) and value > 0.0 for value in (depth, rim, wall)
-        ):
+        if not all(math.isfinite(value) and value > 0.0 for value in (depth, rim)):
             raise BodyGeometryError("Epoxy tray sizes must be finite and positive.")
         if self.neck_runs_through:
             raise BodyGeometryError(
@@ -4438,14 +4434,14 @@ class Prototype001Parameters:
             for pivot in layout.bridge_mounting.pivot_holes
         ]
         walls = [
-            simplified(offset_polygon(route.outline, wall, inward=False), 0.05)
+            simplified(offset_polygon(route.outline, rim, inward=False), 0.05)
             for route in routes
         ]
         walls += [
             tuple(
                 Point2D(
-                    centre.x + (radius + wall) * math.cos(math.pi * step / 12.0),
-                    centre.y + (radius + wall) * math.sin(math.pi * step / 12.0),
+                    centre.x + (radius + rim) * math.cos(math.pi * step / 12.0),
+                    centre.y + (radius + rim) * math.sin(math.pi * step / 12.0),
                 )
                 for step in range(24)
             )
