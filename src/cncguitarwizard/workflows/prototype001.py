@@ -347,6 +347,8 @@ class Prototype001Build:
             self.geometry,
             fcstd_path=self._fcstd_path,
             step_path=self._step_path,
+            # An epoxy tray modelled as the main cutter routes it.
+            tray_tool_radius=self.machining.tool_radius,
         )
         exporter.write_script(self._macro_path, source)
         exporter.write_script(self._python_path, source)

@@ -3,18 +3,24 @@
 import ast
 import math
 from dataclasses import replace
+from pathlib import Path
 
 import pytest
 
 from cncguitarwizard.backends.freecad import FreeCADScriptExporter
 from cncguitarwizard.cam import MachiningParameters, plan_body_machining
-from cncguitarwizard.cam.planar import disc_fits, distance_to_boundary
+from cncguitarwizard.cam.planar import (
+    disc_fits,
+    distance_to_boundary,
+    segment_distance,
+)
 from cncguitarwizard.geometry.exceptions import BodyGeometryError
 from cncguitarwizard.geometry.primitives import Point2D, point_in_polygon
 from cncguitarwizard.presets import Prototype001Parameters
 from cncguitarwizard.render.dxf import render_plan_dxf
 from cncguitarwizard.render.svg.plan_view import render_plan_view_svg
 from cncguitarwizard.webapp import body_editor_layout, design_problems
+from cncguitarwizard.workflows import build_prototype001
 
 
 def tray(**overrides: object) -> Prototype001Parameters:
@@ -119,3 +125,46 @@ def test_the_tray_routes_keep_off_its_walls() -> None:
             disc_fits(point, wall, radius - 1e-6, inside=False)
             for wall in body.epoxy_tray.walls
         )
+
+
+def test_a_gap_in_the_tray_narrower_than_the_cutter_is_left_as_wood() -> None:
+    # The walls round the neck pocket and the neck pickup route stand 2 mm
+    # apart (10 mm between the routes, a 4 mm wall round each): the 6 mm
+    # cutter never gets in between them.
+    body = tray().build().body
+    assert body.epoxy_tray is not None
+    assert body.neck_pocket is not None and body.neck_pickup is not None
+    between = Point2D((body.neck_pocket.max_x + body.neck_pickup.min_x) / 2.0, 0.0)
+    from cncguitarwizard.cam.operations import pocket
+
+    path = pocket(
+        "Epoxy tray",
+        body.epoxy_tray.outline,
+        3.0,
+        MachiningParameters(),
+        islands=list(body.epoxy_tray.walls),
+    )
+    radius = MachiningParameters().tool_radius
+    moves = path.moves
+    for start, end in zip(moves, moves[1:], strict=False):
+        if end.rapid or end.z >= 0.0:
+            continue
+        run = (Point2D(start.x, start.y), Point2D(end.x, end.y))
+        assert segment_distance(between, *run) > radius
+
+
+def test_the_model_cuts_the_tray_only_where_the_cutter_reaches(tmp_path: Path) -> None:
+    # The build hands the body's cutter to the FreeCAD script, which cuts
+    # the tray opened by it: the gap above stays wood in the model too.
+    result = build_prototype001(
+        tmp_path,
+        tray(),
+        run_freecad=False,
+        machining=MachiningParameters(tool_diameter=8.0),
+    )
+    source = result.python_path.read_text(encoding="utf-8")
+    assert "TRAY_TOOL_RADIUS = 4.0" in source
+    assert "makeOffset2D(" in source
+    # Rendered on its own, with no cutter, the whole tray is cut.
+    alone = FreeCADScriptExporter().render_prototype001(tray().build())
+    assert "TRAY_TOOL_RADIUS = 0.0" in alone

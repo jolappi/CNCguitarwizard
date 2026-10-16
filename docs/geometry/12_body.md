@@ -1061,8 +1061,15 @@ over it; and it must leave `CARVE_WALL` (3 mm) of wood over every rear
 cavity under it. `Body_top` routes it first, with the main tool: a
 pocket left round its walls (`pocket`'s `islands`: the raster keeps off
 them and each gets a finishing pass round it, broken where two walls are
-too close for the tool), the routes then cut down inside the walls.
-FreeCAD cuts it as its outline's prism less the walls'; the plan view
+too close for the tool), the routes then cut down inside the walls. A
+gap in it narrower than the tool — between two walls, or a wall and the
+rim (the neck pocket's and the neck pickup's walls stand 2 mm apart on
+the default guitar) — is never reached, so it is left as wood: no
+narrow trench to fill with epoxy. FreeCAD cuts it the same way, its
+outline's face less the walls' opened by the main tool's radius (shrunk
+by it and grown back, `render_prototype001`'s `tray_tool_radius`, which
+the build passes on), or the whole face if FreeCAD cannot offset it; the
+plan view
 draws it amber with the walls in wood, the DXF on its `EPOXY_TRAY` layer,
 and the body editor under the features.
 

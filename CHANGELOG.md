@@ -917,6 +917,12 @@
 
 ### Changed
 
+- A gap in an epoxy tray narrower than the cutter (between two walls, or a
+  wall and the rim) is left as wood in the FreeCAD model as in the G-code,
+  which never reached it: the model cuts the tray only where the body's
+  main tool reaches (`render_prototype001(tray_tool_radius=...)`, passed
+  on by the build), not a narrow trench the cutter could not make.
+
 - An epoxy tray's walls round the openings are as thick as its rim at
   the edge (`body_epoxy_tray_rim`), so the wood round the epoxy is as
   wide everywhere; `body_epoxy_tray_wall` (2 mm) is gone, and a design

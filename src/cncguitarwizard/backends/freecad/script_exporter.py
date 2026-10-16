@@ -124,6 +124,7 @@ class FreeCADScriptExporter:
         hide_headstock: bool = False,
         fcstd_path: Path | None = None,
         step_path: Path | None = None,
+        tray_tool_radius: float = 0.0,
     ) -> str:
         """Return a complete FreeCAD script from one Prototype001 model.
 
@@ -135,6 +136,10 @@ class FreeCADScriptExporter:
                 D-profile construction guides.
             fcstd_path: Optional destination for the FreeCAD document.
             step_path: Optional destination for the combined STEP export.
+            tray_tool_radius: The body's main cutter's radius: an epoxy
+                tray is cut only where that cutter reaches, a gap in it
+                narrower than the cutter left as wood (as the G-code
+                leaves it); 0 cuts the whole tray.
 
         Returns:
             Standalone Python source for execution inside FreeCAD.
@@ -176,6 +181,7 @@ class FreeCADScriptExporter:
             neck_tilt=geometry.neck_tilt,
             fcstd_path=fcstd_path,
             step_path=step_path,
+            tray_tool_radius=tray_tool_radius,
         )
 
     def render_fretboard(
@@ -245,6 +251,7 @@ class FreeCADScriptExporter:
         neck_tilt: tuple[float, float, float] = (0.0, 0.0, 0.0),
         fcstd_path: Path | None = None,
         step_path: Path | None = None,
+        tray_tool_radius: float = 0.0,
     ) -> str:
         """Return a FreeCAD script containing neck and fretboard solids.
 
@@ -291,6 +298,8 @@ class FreeCADScriptExporter:
             body_object_name: FreeCAD identifier for the body object.
             fcstd_path: Optional destination for the FreeCAD document.
             step_path: Optional destination for the combined STEP export.
+            tray_tool_radius: The cutter's radius an epoxy tray is cut with
+                (see ``_render_body``); 0 cuts the whole tray.
 
         Returns:
             Standalone Python source for execution inside FreeCAD.
@@ -525,7 +534,9 @@ class FreeCADScriptExporter:
         inlay_source = self._render_inlay_cuts(inlay_layout)
         locking_nut_shelf_source = self._render_locking_nut_shelf(locking_nut)
         locking_nut_screw_source = self._render_locking_nut_screws(locking_nut)
-        body_source = self._render_body(body, body_object_name, neck_through)
+        body_source = self._render_body(
+            body, body_object_name, neck_through, tray_tool_radius
+        )
         # A round heel end cuts the neck, the fretboard and its binding
         # back to it.
         heel_trim_source = self._render_heel_end_trim(neck_surface.neck_outline)
@@ -2313,6 +2324,7 @@ class FreeCADScriptExporter:
         body: BodySolid | None,
         object_name: str,
         neck_through: NeckThrough | None = None,
+        tray_tool_radius: float = 0.0,
     ) -> str:
         """Return FreeCAD commands that build the solid body and its cuts.
 
@@ -2331,6 +2343,12 @@ class FreeCADScriptExporter:
         A neck-through body (``neck_through``) is built whole, then split
         along its glue lines into the centre block (one piece of wood with
         the neck, its heel running on into it) and the wings.
+
+        An epoxy tray is cut where a cutter ``tray_tool_radius`` round
+        reaches (the tray opened by it: shrunk by the radius and grown back),
+        so a gap between its walls, or a wall and its rim, narrower than the
+        cutter is left as wood, as the G-code leaves it; with 0, or if
+        FreeCAD cannot offset it, the whole tray is cut.
         """
         if body is None:
             return ""
@@ -2468,24 +2486,37 @@ class FreeCADScriptExporter:
         tray = body.epoxy_tray
         if tray is not None:
             # The epoxy tray, routed over the top round its walls: its
-            # outline's prism less the walls', in one cut before the
-            # routes inside the walls.
+            # outline's face less the walls', where the cutter reaches it,
+            # in one cut before the routes inside the walls.
             walls = ",".join(outline_literal(wall) for wall in tray.walls)
             lines.append(
                 f"TRAY_OUTLINE = {outline_literal(tray.outline)}\n"
                 f"TRAY_WALLS = [{walls}]\n"
-                "def tray_prism(points, top, down):\n"
+                f"TRAY_TOOL_RADIUS = {tray_tool_radius}\n"
+                "def tray_face(points):\n"
                 "    return Part.Face(Part.makePolygon(\n"
-                "        [App.Vector(x, y, top) for x, y in points]\n"
-                "        + [App.Vector(points[0][0], points[0][1], top)]\n"
-                "    )).extrude(App.Vector(0.0, 0.0, -down))\n"
-                f"tray_down = {tray.depth} + body_overcut\n"
-                "tray_tool = tray_prism(TRAY_OUTLINE, body_overcut, tray_down)\n"
+                "        [App.Vector(x, y, body_overcut) for x, y in points]\n"
+                "        + [App.Vector(points[0][0], points[0][1], body_overcut)]\n"
+                "    ))\n"
+                "tray_area = tray_face(TRAY_OUTLINE)\n"
                 "if TRAY_WALLS:\n"
-                "    tray_tool = tray_tool.cut(Part.Compound([\n"
-                "        tray_prism(wall, body_overcut + 1.0, tray_down + 2.0)\n"
-                "        for wall in TRAY_WALLS\n"
-                "    ]))\n"
+                "    tray_area = tray_area.cut(\n"
+                "        Part.Compound([tray_face(wall) for wall in TRAY_WALLS])\n"
+                "    )\n"
+                "# Only where the cutter reaches: a gap narrower than it is\n"
+                "# left as wood, as the G-code leaves it. (The cut leaves a\n"
+                "# shell, which makeOffset2D does not take: its faces do.)\n"
+                "if TRAY_TOOL_RADIUS > 0.0:\n"
+                "    try:\n"
+                "        reached = Part.Compound(tray_area.Faces).makeOffset2D(\n"
+                "            -TRAY_TOOL_RADIUS, join=0\n"
+                "        ).makeOffset2D(TRAY_TOOL_RADIUS, join=0)\n"
+                "        if not reached.isNull() and reached.Faces:\n"
+                "            tray_area = reached\n"
+                "    except (Part.OCCError, TypeError):\n"
+                "        pass\n"
+                f"tray_down = {tray.depth} + body_overcut\n"
+                "tray_tool = tray_area.extrude(App.Vector(0.0, 0.0, -tray_down))\n"
                 "body_shape = require_shape(\n"
                 '    body_shape.cut(tray_tool).removeSplitter(), "epoxy tray cut"\n'
                 ")\n"

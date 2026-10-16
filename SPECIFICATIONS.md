@@ -890,7 +890,11 @@ läpikaulaa), reunuksen on oltava leveämpi kuin kannen reunan pyöristys tai
 reunanauhan ura, ja takakolojen päälle on jäätävä vähintään 3 mm puuta.
 `Body_top` jyrsii kaukalon ensimmäisenä päätyöterällä seinien ympäri
 (tasku jättää saarekkeet pystyyn), ja kolot jyrsitään sen jälkeen seinien
-sisään. FreeCAD mallintaa sen, tasokuva piirtää sen meripihkana, DXF
+sisään. Kaukalon kohtaa, joka on kapeampi kuin terä (kahden seinän tai
+seinän ja reunuksen välissä; oletuskitarassa kaulataskun ja kaulamikin
+seinien väli on 2 mm), ei jyrsitä, vaan se jää puuksi. FreeCAD-malli
+leikkaa kaukalon samoin vain sieltä, mihin päätyöterä ulottuu
+(`tray_tool_radius`, build antaa terän säteen). FreeCAD mallintaa sen, tasokuva piirtää sen meripihkana, DXF
 `EPOXY_TRAY`-tasolle, ja runkoeditori näyttää sen.
 
 ## Kaareva kansi
