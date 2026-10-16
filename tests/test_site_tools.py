@@ -126,3 +126,11 @@ def test_a_body_template_leaves_an_optional_value_empty_not_null() -> None:
         'else if (type === "optional_float" && value === null) input.value = "";'
         in script
     )
+
+
+def test_the_credit_links_to_ls_guitars() -> None:
+    page = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
+
+    # In the header and the footer, at the right host over https.
+    assert page.count('href="https://jounilappi.hopto.org/lsguitars/"') == 2
+    assert "jouni.lappi.hopto.org" not in page

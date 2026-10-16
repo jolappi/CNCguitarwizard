@@ -980,7 +980,7 @@
   corner.
 
 - The credit in the web app's header and footer links Jouni Lappi's name
-  to LS Guitars (jouni.lappi.hopto.org/lsguitars).
+  to LS Guitars (jounilappi.hopto.org/lsguitars).
 - Undo's and Redo's tooltips name the fields as the form labels them
   (*Undo: Thickness*, *Undo: Bridge · Baseplate length*), not by their
   names in the code.
@@ -1117,6 +1117,9 @@
 
 ### Fixed
 
+- The credit's link in the web app's header and footer goes to LS Guitars
+  at https://jounilappi.hopto.org/lsguitars/ (it pointed at a wrong host,
+  jouni.lappi.hopto.org, over plain http).
 - Choosing another body under *Start from* works again: a template that
   leaves its jack's inset out (`jack_inset`, worked out) wrote the text
   "null" into that field, which no field reads, and every body after it
