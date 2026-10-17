@@ -62,3 +62,32 @@ def test_settings_that_cause_it_together_are_put_back_together() -> None:
     result = repair_design(payload, changes)
     assert sorted(result["reset"]) == [2, 3]
     assert result["remaining"] == []
+
+
+def test_a_strap_guide_in_the_way_is_moved_before_it_is_turned_off() -> None:
+    # Dropped on the control cavity's cover: putting its place back to
+    # automatic clears it, so the guide stays.
+    layout = body_editor_layout({"prototype": {}})
+    (recess,) = [
+        p for p in layout["polygons"] if p["name"].startswith("Control cavity cover")
+    ]
+    x = sum(point[0] for point in recess["points"]) / len(recess["points"])
+    y = sum(point[1] for point in recess["points"]) / len(recess["points"])
+    shape = dict(
+        DESIGN_BY_JONE,
+        strap_guide_offset=round(x, 1),
+        strap_guide_y=round(y, 1),
+        strap_guide_angle_degrees=0.0,
+    )
+    payload = {"prototype": {"body_shape": shape, "body_strap_guide": True}}
+    changes = [
+        change("body_strap_guide", False),
+        change("strap_guide_offset", None, "prototype.body_shape"),
+        change("strap_guide_y", None, "prototype.body_shape"),
+        change("strap_guide_angle_degrees", None, "prototype.body_shape"),
+    ]
+
+    assert any("strap guide" in problem for problem in design_problems(payload))
+    result = repair_design(payload, changes)
+    assert 0 not in result["reset"] and result["reset"]
+    assert result["remaining"] == []

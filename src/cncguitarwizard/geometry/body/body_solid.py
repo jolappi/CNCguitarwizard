@@ -159,6 +159,11 @@ class BodySolid:
             not cut, it must sit wholly on the flat back: in from the back
             edge's roundover or binding by ``NECK_PLATE_EDGE_WALL``, off
             every back contour and clear of the rear cavities' covers.
+        strap_guide: The outline of a flame strap guide's plate on the
+            back, or empty: it must sit wholly on the flat back, as the
+            neck plate must (in from the back edge's roundover or binding
+            by ``NECK_PLATE_EDGE_WALL``, off every back contour, clear of
+            the rear cavities' covers and of the neck plate).
         edge_outline: The outline the edge finishes (roundover, binding)
             follow, if not ``outline``: on one part of a neck-through body,
             the body's outline carried on past its glue lines into the
@@ -211,6 +216,7 @@ class BodySolid:
     joint_notes: tuple[str, ...] = ()
     epoxy_tray: EpoxyTray | None = None
     neck_plate: tuple[Point2D, ...] = ()
+    strap_guide: tuple[Point2D, ...] = ()
     edge_outline: tuple[Point2D, ...] = ()
     checked: bool = True
 
@@ -236,6 +242,8 @@ class BodySolid:
         # The plate first: off the body, its bolts would be blamed for it.
         if self.neck_plate:
             self._check_neck_plate()
+        if self.strap_guide:
+            self._check_strap_guide()
         if self.epoxy_tray is not None:
             self._check_epoxy_tray(self.epoxy_tray)
         for hole in (
@@ -795,6 +803,44 @@ class BodySolid:
                 raise BodyGeometryError(
                     f"The neck plate overlaps {rear.cover_recess.name}."
                 )
+
+    def _check_strap_guide(self) -> None:
+        """Check the flame strap guide sits wholly on the flat back.
+
+        Raises:
+            BodyGeometryError: If it comes within ``NECK_PLATE_EDGE_WALL``
+                of the back edge's roundover or binding (or of the edge),
+                lies on a back contour, or overlaps a rear cavity's cover
+                or the neck plate.
+        """
+        edge = self.back_edge
+        wall = max(edge.radius, edge.binding_width) + NECK_PLATE_EDGE_WALL
+        for point in self.strap_guide:
+            if (
+                not point_in_polygon(point, self.outline.points)
+                or _distance_to_outline(point, self.edge_points) < wall
+            ):
+                raise BodyGeometryError(
+                    f"The strap guide must keep {wall:g} mm of flat back to the "
+                    "body's edge (past its roundover or binding): move it in, "
+                    "in the body editor."
+                )
+        for contour in self.contours:
+            if contour.face == "back" and outlines_overlap(
+                self.strap_guide, contour.region()
+            ):
+                raise BodyGeometryError(
+                    f"The strap guide sits on the {contour.name}: it needs the "
+                    "flat back; move it in the body editor."
+                )
+        for rear in self.rear_cavities:
+            if outlines_overlap(self.strap_guide, rear.cover_recess.outline):
+                raise BodyGeometryError(
+                    f"The strap guide overlaps {rear.cover_recess.name}: move "
+                    "it in the body editor."
+                )
+        if self.neck_plate and outlines_overlap(self.strap_guide, self.neck_plate):
+            raise BodyGeometryError("The strap guide overlaps the neck plate.")
 
     def _check_epoxy_tray(self, tray: EpoxyTray) -> None:
         """Check the epoxy tray is on the flat top, over enough wood.

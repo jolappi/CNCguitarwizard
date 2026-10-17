@@ -4,6 +4,22 @@
 
 ### Added
 
+- A flame strap guide on the back (`body_strap_guide`,
+  `FlameStrapGuide`): a plate shaped as a bar with a three-tongued flame
+  at either end, screwed over two spacers the strap runs between, all
+  three cut from sheet (`Cover_strap_guide_plate`, `_spacer_1`, `_2`), the
+  two screws' pilots drilled in `Body_back_small_holes`; sized by the
+  strap's width and the spacers' and plate's sheets; placed by the body
+  shape (`strap_guide_offset`, `strap_guide_y`,
+  `strap_guide_angle_degrees`) or, left empty, by the tail, on the
+  picking hand's side, its bar along the tail's edge, wherever it stays
+  on the flat back clear of the back's covers, neck plate and contours
+  (its bar turned from the edge where the tail has no room along it);
+  dragged and turned in the body editor, which says where it does not
+  fit (and a design put back moves it before anything else).
+  `BodySolid` keeps it off the edge's roundover, the back's contours,
+  the cover recesses and the neck plate.
+
 - Combined programs (`MachiningParameters.combine_programs`, a CNC
   option, off by default): a part's programs that run one after another
   with the same tool, fixture and work zero are written as one

@@ -129,6 +129,13 @@ class DesignByJoneShape:
             with ``Prototype001Parameters.body_battery_box``).
         battery_y: Battery box centre Y.
         battery_angle_degrees: The box's long axis from the neck's axis.
+        strap_guide_offset: The flame strap guide's centre X from the heel
+            end (used with ``Prototype001Parameters.body_strap_guide``);
+            empty (or ``strap_guide_y`` or ``strap_guide_angle_degrees``)
+            for by the tail, on the picking hand's side, along its edge.
+        strap_guide_y: The strap guide's centre Y.
+        strap_guide_angle_degrees: The strap guide's bar from the neck's
+            axis, counter-clockwise; the strap runs square to it.
         control_angle_degrees: How far the control cavity, its cover and
             the layout's own pots (or the Tele plate) are turned about the
             cavity's centre, counter-clockwise in the plan.
@@ -217,6 +224,9 @@ class DesignByJoneShape:
     battery_offset: float = 242.5
     battery_y: float = 2.5
     battery_angle_degrees: float = 85.0
+    strap_guide_offset: float | None = None
+    strap_guide_y: float | None = None
+    strap_guide_angle_degrees: float | None = None
     control_angle_degrees: float = 0.0
     control_stretch: float = 0.0
     control_stretch_across: float = 0.0
@@ -357,6 +367,13 @@ class YourDesignShape:
             with ``Prototype001Parameters.body_battery_box``).
         battery_y: Battery box centre Y.
         battery_angle_degrees: The box's long axis from the neck's axis.
+        strap_guide_offset: The flame strap guide's centre X from the heel
+            end (used with ``Prototype001Parameters.body_strap_guide``);
+            empty (or ``strap_guide_y`` or ``strap_guide_angle_degrees``)
+            for by the tail, on the picking hand's side, along its edge.
+        strap_guide_y: The strap guide's centre Y.
+        strap_guide_angle_degrees: The strap guide's bar from the neck's
+            axis, counter-clockwise; the strap runs square to it.
         control_angle_degrees: How far the control cavity, its cover and
             the layout's own pots (or the Tele plate) are turned about the
             cavity's centre, counter-clockwise in the plan.
@@ -443,6 +460,9 @@ class YourDesignShape:
     battery_offset: float = 281.0
     battery_y: float = 47.5
     battery_angle_degrees: float = 15.0
+    strap_guide_offset: float | None = None
+    strap_guide_y: float | None = None
+    strap_guide_angle_degrees: float | None = None
     control_angle_degrees: float = 0.0
     control_stretch: float = 0.0
     control_stretch_across: float = 0.0
@@ -563,6 +583,12 @@ def mirrored_shape(shape: BodyShapeSpec) -> BodyShapeSpec:
         neck_bolts=flipped(shape.neck_bolts),
         battery_y=-shape.battery_y,
         battery_angle_degrees=-shape.battery_angle_degrees,
+        strap_guide_y=None if shape.strap_guide_y is None else -shape.strap_guide_y,
+        strap_guide_angle_degrees=(
+            None
+            if shape.strap_guide_angle_degrees is None
+            else -shape.strap_guide_angle_degrees
+        ),
         control_angle_degrees=-shape.control_angle_degrees,
         pickguard_points=_side_drawn(shape.pickguard_points, True),
         pickguard_controls=flipped(shape.pickguard_controls),
@@ -607,6 +633,11 @@ def widened_shape(shape: BodyShapeSpec, widening: float) -> BodyShapeSpec:
         pot_offsets=widen_points(shape.pot_offsets, widening),
         jack_y=widen_y(shape.jack_y, widening),
         battery_y=widen_y(shape.battery_y, widening),
+        strap_guide_y=(
+            None
+            if shape.strap_guide_y is None
+            else widen_y(shape.strap_guide_y, widening)
+        ),
         control_shift=(shift_x, moved_almond - almond_y),
         pickguard_points=widen_drawn(shape.pickguard_points, widening),
         pickguard_controls=widen_points(shape.pickguard_controls, widening),

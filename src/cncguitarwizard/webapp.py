@@ -732,9 +732,10 @@ def _editor_group(name: str) -> str | None:
     cover and shaft hole), ``pot:N`` (one pot hole, zero-based),
     ``pickup:neck`` / ``pickup:middle`` / ``pickup:bridge`` (a route and
     its screw recesses), ``battery`` (the battery box, its cover and
-    screws), ``bolt:N`` (a neck bolt's ferrule and hole), ``jack`` and
-    ``pickguard`` (the guard and its screw spots in the body); the neck,
-    its pocket and the bridge do not move.
+    screws), ``bolt:N`` (a neck bolt's ferrule and hole), ``jack``,
+    ``pickguard`` (the guard and its screw spots in the body) and
+    ``strap_guide`` (the flame strap guide's plate and screw pilots); the
+    neck, its pocket and the bridge do not move.
     """
     if name.startswith("Control "):
         return "control"
@@ -746,6 +747,8 @@ def _editor_group(name: str) -> str | None:
         return "jack"
     if name.startswith("Pickguard"):
         return "pickguard"
+    if name.startswith("Strap guide"):
+        return "strap_guide"
     if name.startswith("Pot ") and name.endswith("shaft hole"):
         return f"pot:{int(name.split()[1]) - 1}"
     if name.startswith("Neck bolt "):
@@ -764,10 +767,14 @@ REPAIR_FIRST = (
     "body_heel_relief_line",
     "heel_relief_points",
     "body_neck_plate",
+    "strap_guide_offset",
+    "strap_guide_y",
+    "strap_guide_angle_degrees",
 )
 """The settings ``repair_design`` tries first: those the editors' commonest
 problems come from (a neck bolt with no room, a heel relief line or a neck
-plate that does not fit)."""
+plate that does not fit, a strap guide placed where it does not), so a
+feature in the way is moved before what it is in the way of is put back."""
 
 
 def design_problems(payload: dict[str, Any]) -> list[str]:
@@ -920,6 +927,7 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         Kahler covers on the top past its routes), ``top_control``,
         ``rear``, ``cover``, ``neck_plate`` (a bolt-on neck's plate on the
         back; its bolts then have no group, staying at its holes),
+        ``strap_guide`` (the flame strap guide's plate on the back),
         ``contour_top`` (an arm contour), ``contour_back`` (a belly cut, a
         leg contour),
         ``tray`` and ``tray_wall`` (an epoxy tray and the walls it leaves) or
@@ -965,7 +973,10 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         leaves to the roundover;
         ``engraving`` the decorative engraving's lines, or ``None``;
         ``relief`` a relief engraving's shapes ``{"outline", "depth"}``
-        (camo), empty for none.
+        (camo), empty for none;
+        ``strap_guide`` ``{"x", "y", "angle"}`` — the flame strap guide's
+        centre (``x`` from the heel end) and its bar's angle, where it is
+        built — or ``None`` without one.
     """
     try:
         built = Prototype001Parameters(**_coerce(payload.get("prototype", {})))
@@ -1062,6 +1073,15 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
     ]
     if layout.neck_plate:
         polygons.append(polygon("Neck plate", "neck_plate", layout.neck_plate))
+    strap_guide: dict[str, float] | None = None
+    if layout.strap_guide is not None:
+        guide = layout.strap_guide
+        polygons.append(polygon("Strap guide plate", "strap_guide", guide.outline))
+        strap_guide = {
+            "x": round(guide.centre.x - heel_end, 1),
+            "y": round(guide.centre.y, 1),
+            "angle": round(guide.angle_degrees, 1),
+        }
     circles += [
         {
             "name": hole.name,
@@ -1264,6 +1284,7 @@ def body_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
             if layout.engraving is not None
             else []
         ),
+        "strap_guide": strap_guide,
     }
 
 
@@ -2475,6 +2496,7 @@ def _group_title(group: str) -> str:
         "control": "controls",
         "switch": "switch cavity",
         "battery": "battery box",
+        "strap_guide": "strap guide",
     }.get(group, group)
 
 

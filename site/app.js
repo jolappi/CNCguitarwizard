@@ -220,7 +220,7 @@ const EDITOR_FIELDS = {
     "body_pickguard", "body_pickguard_style", "body_pickup_frame", "body_pickup_frame_direction",
     "body_arm_contour_depth", "body_belly_cut_depth", "body_leg_contour_depth", "body_top_bevel_width", "body_back_bevel_width", "body_heel_relief", "body_heel_relief_depth", "body_heel_relief_line", "body_carved_top", "body_carve_depth", "body_stepped_top", "body_epoxy_tray_depth",
     "body_engraving", "body_engraving_pattern", "body_engraving_seed", "body_battery_box", "body_battery_count",
-    "body_neck_bolts_outward", "body_neck_plate",
+    "body_neck_bolts_outward", "body_neck_plate", "body_strap_guide",
   ],
   "headstock-editor-options": [
     "headstock_style", "headstock_bass_side", "headstock_length", "tuner_hole_diameter", "nut_style", "locking_nut",
@@ -2585,6 +2585,7 @@ const bodyEditor = {
       cover: { fill: "#c9b7e6", "fill-opacity": 0.35, stroke: "#5a3a8a", "stroke-width": 0.5, "stroke-dasharray": "3,2" },
       rear: { fill: "#c9b7e6", "fill-opacity": 0.55, stroke: "#5a3a8a", "stroke-width": 0.6, "stroke-dasharray": "3,2" },
       neck_plate: { fill: "#c8ccd2", "fill-opacity": 0.55, stroke: "#4a5058", "stroke-width": 0.6, "stroke-dasharray": "3,2" },
+      strap_guide: { fill: "#d9a066", "fill-opacity": 0.5, stroke: "#8a4a1a", "stroke-width": 0.6, "stroke-dasharray": "3,2" },
       tray: { fill: "#e8b04a", "fill-opacity": 0.3, stroke: "#a8721a", "stroke-width": 0.5 },
       tray_wall: { fill: "#f1e4c8", stroke: "#a8721a", "stroke-width": 0.3 },
     };
@@ -3608,6 +3609,12 @@ const bodyEditor = {
         apply: () => setControlValue(this.field("prototype", "body_battery_box"), false),
       };
     }
+    if (group === "strap_guide") {
+      return {
+        label: "the strap guide",
+        apply: () => setControlValue(this.field("prototype", "body_strap_guide"), false),
+      };
+    }
     if (group.startsWith("pot:")) {
       const input = this.field(shape, "pot_offsets");
       const pots = readValue(input);
@@ -3651,17 +3658,30 @@ const bodyEditor = {
     undoHistory.note();
   },
 
+  // Pin the strap guide where it is drawn, moved by (dx, dy) and turned
+  // by `degrees`: its fields may be empty (placed automatically), so all
+  // three are set from where the layout says it is.
+  placeStrapGuide(dx, dy, degrees) {
+    const shape = "prototype.body_shape";
+    const guide = this.layout.strap_guide;
+    if (!guide) return;
+    const round = (value) => Math.round(value * 10) / 10;
+    this.setField(this.field(shape, "strap_guide_offset"), round(guide.x + dx));
+    this.setField(this.field(shape, "strap_guide_y"), round(guide.y + dy));
+    this.setField(this.field(shape, "strap_guide_angle_degrees"), round(guide.angle + degrees));
+  },
+
   shiftField(set, name, amount) {
     const input = this.field(set, name);
     if (input) this.setField(input, Math.round((readValue(input) + amount) * 10) / 10);
   },
 
   // The groups Shift-drag turns: the control cavity (with its cover, pots
-  // or plate), the battery box, the jack and each pickup (about its own
-  // centre). Round ones only move.
+  // or plate), the battery box, the jack, the strap guide and each pickup
+  // (about its own centre). Round ones only move.
   turnable(group) {
     if (group && group.startsWith("pickup:")) return Boolean(this.layout.pickups && this.layout.pickups[group]);
-    return group === "control" || group === "battery" || group === "jack";
+    return group === "control" || group === "battery" || group === "jack" || group === "strap_guide";
   },
 
   // The point a group turns about, in the editor's frame (from the heel
@@ -3670,6 +3690,7 @@ const bodyEditor = {
     if (group.startsWith("pickup:")) return this.layout.pickups[group].centre;
     if (group === "jack" && this.layout.jack) return [this.layout.jack.x, this.layout.jack.y];
     if (group === "control" && this.layout.control) return this.layout.control.centre;
+    if (group === "strap_guide" && this.layout.strap_guide) return [this.layout.strap_guide.x, this.layout.strap_guide.y];
     const names = group === "battery"
       ? ["Battery cavity"]
       : ["Control cavity", "Control plate recess"];
@@ -3719,6 +3740,7 @@ const bodyEditor = {
   groupLabel(group) {
     if (group === "control") return "the controls";
     if (group.startsWith("pickup:")) return `the ${group.split(":")[1]} pickup`;
+    if (group === "strap_guide") return "the strap guide";
     return `the ${group}`;
   },
 
@@ -3732,6 +3754,8 @@ const bodyEditor = {
       this.shiftField("prototype", this.layout.pickups[group].field, degrees * this.layout.bass_sign);
     } else if (group === "battery") {
       this.shiftField(shape, "battery_angle_degrees", degrees);
+    } else if (group === "strap_guide") {
+      this.placeStrapGuide(0, 0, degrees);
     } else if (group === "jack") {
       this.shiftField(shape, "jack_direction_degrees", degrees);
     } else if (group === "control") {
@@ -3837,6 +3861,8 @@ const bodyEditor = {
     } else if (group === "battery") {
       this.shiftField(shape, "battery_offset", dx);
       this.shiftField(shape, "battery_y", dy);
+    } else if (group === "strap_guide") {
+      this.placeStrapGuide(dx, dy, 0);
     } else if (group === "jack") {
       this.shiftField(shape, "jack_offset", dx);
       this.shiftField(shape, "jack_y", dy);

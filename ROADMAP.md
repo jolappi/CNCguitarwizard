@@ -198,6 +198,10 @@
 - **9 V battery box** — done: `body_battery_box` routes an optional
   battery box in the back with its own sheet-cut cover, placed per body
   shape and dragged in the body editor.
+- **Flame strap guide** — done: `body_strap_guide` screws a flame-shaped
+  plate over two spacers onto the back, all three cut from sheet, the
+  strap running under it; placed by the tail on the picking hand's side
+  or dragged and turned in the body editor.
 - **Combined programs** — done: `combine_programs` writes a part's
   programs that run one after another with the same tool, fixture and
   work zero as one.

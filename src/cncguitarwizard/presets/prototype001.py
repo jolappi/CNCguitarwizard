@@ -7,7 +7,13 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field, replace
 from typing import Any, Literal, cast
 
-from ..cam.planar import distance_to_boundary, offset_polygon, simplified
+from ..cam.planar import (
+    PolygonIndex,
+    distance_to_boundary,
+    offset_polygon,
+    segment_distance,
+    simplified,
+)
 from ..geometry.body import (
     BRIDGE_MAX_STRINGS,
     BRIDGE_MIN_STRINGS,
@@ -24,6 +30,7 @@ from ..geometry.body import (
     EdgeProfile,
     Engraving,
     EpoxyTray,
+    FlameStrapGuide,
     FloydRoseSpec,
     HardtailSpec,
     HeadlessBridgeSpec,
@@ -44,6 +51,7 @@ from ..geometry.body import (
     plateau_round,
     turned_hardware,
 )
+from ..geometry.body.body_solid import NECK_PLATE_EDGE_WALL
 from ..geometry.body.edges import AROUND_GAP
 from ..geometry.body.neck_through import NeckThrough
 from ..geometry.body.wiring import WireSpace, Wiring, plan_wiring
@@ -267,6 +275,21 @@ much as 7.5 mm."""
 
 BATTERY_GRID = 10.0
 """The whole-body search's grid, in mm, where nothing near clears."""
+
+STRAP_GUIDE_TAIL_OFFSETS = (0.0, 20.0, -20.0, 40.0, -40.0, 60.0, -60.0, 80.0, -80.0)
+"""Where across the tail an unplaced strap guide may sit, in mm from the
+centreline toward the bass side: tried in turn, the middle first, where
+the tail's strap button would be."""
+
+STRAP_GUIDE_TURNS = (0.0, 30.0, -30.0, 60.0, -60.0, 90.0)
+"""How far an unplaced strap guide's bar may be turned from the tail's
+edge, in degrees: tried in turn, along the edge first, for a tail with
+no room across it (a Jackson RR's notch between two covers)."""
+
+STRAP_GUIDE_EDGE_INSETS = (36.0, 46.0, 56.0, 66.0, 76.0, 86.0, 96.0, 106.0, 116.0)
+"""How far in from the tail's edge an unplaced strap guide's centre may
+sit, in mm: tried in turn at each offset, the nearest first (36: its
+flames' half-width and a few millimetres; further in past a cavity)."""
 
 CONTROL_CLEARANCE_SHIFT = 20.0
 """How far, in mm, a generated control cavity may move out from the
@@ -609,6 +632,9 @@ class BodyLayout:
             the programs' notes, or none.
         epoxy_tray: The tray routed over the top for an epoxy pour, or
             ``None`` (see ``body_epoxy_tray_depth``).
+        strap_guide: The flame strap guide on the back, or ``None`` (see
+            ``body_strap_guide``); its parts are among the ``controls``'
+            covers and its pilots among their back marks.
         problems: What the build refuses that the body editor draws anyway
             (a heel relief's corner line that falls outside the body, drawn
             as the U; neck bolts with no room, drawn where they are asked
@@ -649,6 +675,7 @@ class BodyLayout:
     joint_notes: tuple[str, ...] = ()
     problems: tuple[str, ...] = ()
     epoxy_tray: EpoxyTray | None = None
+    strap_guide: FlameStrapGuide | None = None
 
 
 TRUSS_ROD_STOCK_LENGTHS: tuple[float, ...] = tuple(
@@ -1175,6 +1202,28 @@ class Prototype001Parameters:
     body_battery_cavity_width: float = 30.0
     body_battery_cavity_depth: float = 22.0
     body_battery_cover_margin: float = 7.0
+    # A flame strap guide on the back (see geometry.body.strap_guide):
+    # body_strap_guide screws a plate shaped as a bar with a flame at
+    # either end to the back over two spacers, one under each flame, the
+    # strap running under the bar between them — so the strap pulls from
+    # further in and the guitar leans toward the player. The plate is cut
+    # from body_strap_guide_thickness sheet, the spacers from
+    # body_strap_guide_gap sheet (the room the strap has: its thickness
+    # and some play), plastic or wood, each in its own program; the
+    # channel between the spacers is body_strap_width + 4 mm wide. Two
+    # screws hold it, through the spacers, into
+    # body_strap_guide_screw_diameter pilots body_strap_guide_screw_depth
+    # deep drilled up into the back. The body shape's strap_guide_offset,
+    # strap_guide_y and strap_guide_angle_degrees place it; empty, by the
+    # tail, on the picking hand's side, as it usually is: its bar along
+    # the tail's edge, the strap leaving over the tail as from the strap
+    # button there.
+    body_strap_guide: bool = False
+    body_strap_width: float = 50.0
+    body_strap_guide_gap: float = 5.0
+    body_strap_guide_thickness: float = 3.0
+    body_strap_guide_screw_diameter: float = 3.0
+    body_strap_guide_screw_depth: float = 12.0
     # Shaft holes through the top wall: the pickup selector's bushing at
     # the switch cavity's centre, and 3/8" pot bushings at the shape's pot
     # positions. body_switch picks the selector: a "toggle" (a 3-way
@@ -4002,6 +4051,62 @@ class Prototype001Parameters:
         # close with a six-screw sheet cover too.
         for rear in bridge.rear_cavities:
             controls = controls.with_covers(rear_cover(rear, 6))
+        # A flame strap guide on the back: its plate and spacers cut from
+        # sheet as the covers are, its screws' pilots drilled up into the
+        # back.
+        shape_contours = self._contours(shape, body_outline.points, heel_end, bass_sign)
+        strap_guide: FlameStrapGuide | None = None
+        if self.body_strap_guide:
+            # Where it may go: on the flat back, clear of the back's
+            # routes and cover recesses, the neck plate, the bolts and
+            # screws drilled there, and the back's contours.
+            on_back = self._strap_guide_room(
+                body_outline.points,
+                [
+                    *(
+                        route.outline
+                        for rear in (
+                            controls.control_cavity,
+                            controls.switch_cavity,
+                            controls.battery_cavity,
+                            *bridge.rear_cavities,
+                        )
+                        if rear is not None
+                        for route in (rear.cavity, rear.cover_recess)
+                    ),
+                    *((neck_plate[0],) if neck_plate is not None else ()),
+                    *(
+                        _circle_points(hole.center, hole.diameter / 2.0)
+                        for hole in (*neck_bolts, *controls.back_marks)
+                    ),
+                    *(
+                        contour.region()
+                        for contour in (
+                            *shape_contours,
+                            *((heel_relief,) if heel_relief is not None else ()),
+                        )
+                        if contour.face == "back"
+                    ),
+                ],
+            )
+            strap_guide = self._strap_guide(
+                shape, heel_end, body_outline.points, on_back
+            )
+            # The body editor draws one placed where it does not fit, to
+            # be dragged where it does (the build refuses it, BodySolid).
+            if not check_steps and not on_back(strap_guide.outline):
+                problems.append(
+                    "The strap guide must lie on the flat back, clear of the "
+                    "edge's roundover, the back's covers and contours and the "
+                    "neck plate: move it."
+                )
+        if strap_guide is not None:
+            controls = controls.with_covers(
+                ControlFeatures(
+                    back_marks=strap_guide.pilot_holes(),
+                    covers=strap_guide.covers(),
+                )
+            )
         jack_hole, jack_cavity = self._jack(
             body_outline.points,
             Point2D(heel_end + shape.jack_offset, shape.jack_y),
@@ -4180,6 +4285,7 @@ class Prototype001Parameters:
                 _circle_points(hole.center, hole.diameter / 2.0)
                 for hole in (*neck_bolts, *controls.back_marks)
             ),
+            *((strap_guide.outline,) if strap_guide is not None else ()),
         ]
         bevels = (
             self._bevel(
@@ -4200,7 +4306,7 @@ class Prototype001Parameters:
             ),
         )
         contours = (
-            *self._contours(shape, body_outline.points, heel_end, bass_sign),
+            *shape_contours,
             *(bevel for bevel in bevels if bevel is not None),
             *((heel_relief,) if heel_relief is not None else ()),
         )
@@ -4388,6 +4494,7 @@ class Prototype001Parameters:
             neck_plate=neck_plate[0] if neck_plate is not None else (),
             joint_notes=joint_notes,
             problems=tuple(problems),
+            strap_guide=strap_guide,
         )
         # The epoxy tray last: it walls in every opening in the top.
         if self.body_epoxy_tray_depth == 0.0:
@@ -5852,6 +5959,148 @@ class Prototype001Parameters:
             cavity,
         )
 
+    def _strap_guide(
+        self,
+        shape: BodyShapeSpec,
+        heel_end: float,
+        outline: Sequence[Point2D],
+        room: Callable[[tuple[Point2D, ...]], bool],
+    ) -> FlameStrapGuide:
+        """Return the flame strap guide where the shape places it.
+
+        Where its ``strap_guide_offset``, ``strap_guide_y`` and
+        ``strap_guide_angle_degrees`` say; with any of them empty, at the
+        first spot by the tail (``_strap_guide_spot``) that ``room`` takes
+        (see ``_strap_guide_room``).
+        """
+        x = shape.strap_guide_offset
+        y = shape.strap_guide_y
+        angle = shape.strap_guide_angle_degrees
+        # The three are one place: with any of them empty, the guide is
+        # placed afresh.
+        if x is None or y is None or angle is None:
+            x, y, angle = self._strap_guide_spot(heel_end, outline, room)
+        return self._flame_strap_guide(Point2D(heel_end + x, y), angle)
+
+    def _flame_strap_guide(self, centre: Point2D, angle: float) -> FlameStrapGuide:
+        """Return the strap guide of this build's sizes at ``centre``."""
+        return FlameStrapGuide(
+            centre,
+            angle,
+            strap_width=self.body_strap_width,
+            gap=self.body_strap_guide_gap,
+            thickness=self.body_strap_guide_thickness,
+            screw_diameter=self.body_strap_guide_screw_diameter,
+            screw_depth=self.body_strap_guide_screw_depth,
+        )
+
+    def _strap_guide_room(
+        self,
+        outline: Sequence[Point2D],
+        obstacles: Sequence[tuple[Point2D, ...]],
+    ) -> Callable[[tuple[Point2D, ...]], bool]:
+        """Return whether a strap guide's plate fits on the back.
+
+        It must lie in the body ``outline`` with the flat back
+        ``BodySolid`` asks for past the back edge's roundover or binding,
+        and meet none of the ``obstacles``. The test is quick, for trying
+        spot after spot: inside tests on the outline's rows, and only the
+        edges near the plate measured.
+        """
+        wall = (
+            max(self.body_back_edge_radius, self.body_back_binding_width)
+            + NECK_PLATE_EDGE_WALL
+        )
+        inside = PolygonIndex.of(outline)
+        edges = list(zip(outline, (*outline[1:], outline[0]), strict=True))
+
+        def fits(points: tuple[Point2D, ...]) -> bool:
+            if not all(inside.holds(point) for point in points):
+                return False
+            if any(outlines_overlap(points, other) for other in obstacles):
+                return False
+            low_x = min(point.x for point in points) - wall
+            high_x = max(point.x for point in points) + wall
+            low_y = min(point.y for point in points) - wall
+            high_y = max(point.y for point in points) + wall
+            near = [
+                (a, b)
+                for a, b in edges
+                if max(a.x, b.x) >= low_x
+                and min(a.x, b.x) <= high_x
+                and max(a.y, b.y) >= low_y
+                and min(a.y, b.y) <= high_y
+            ]
+            return all(
+                segment_distance(point, a, b) >= wall
+                for point in points
+                for a, b in near
+            )
+
+        return fits
+
+    def _strap_guide_spot(
+        self,
+        heel_end: float,
+        outline: Sequence[Point2D],
+        room: Callable[[tuple[Point2D, ...]], bool],
+    ) -> tuple[float, float, float]:
+        """Return where an unplaced strap guide goes: (X from the heel end,
+        Y, its bar's angle), by the tail, on the picking hand's side.
+
+        Each of ``STRAP_GUIDE_TAIL_OFFSETS`` across the tail is tried in
+        turn, at each of ``STRAP_GUIDE_EDGE_INSETS`` in from its edge, its
+        bar along the edge there so the strap leaves over the tail as from
+        the strap button there: the first that ``room`` takes. Where none
+        does, the same again with the bar turned from the edge by each of
+        ``STRAP_GUIDE_TURNS``.
+
+        Raises:
+            BodyGeometryError: If no spot fits.
+        """
+
+        def tail_edge(y: float) -> Point2D | None:
+            # Where the outline crosses y furthest from the neck.
+            crossings = [
+                a.x + (b.x - a.x) * (y - a.y) / (b.y - a.y)
+                for a, b in zip(outline, (*outline[1:], outline[0]), strict=True)
+                if (a.y - y) * (b.y - y) <= 0.0 and a.y != b.y
+            ]
+            if not crossings:
+                return None
+            return Point2D(max(crossings), y)
+
+        for turn in STRAP_GUIDE_TURNS:
+            for offset in STRAP_GUIDE_TAIL_OFFSETS:
+                y = offset * self.bass_sign
+                edge, before, after = (
+                    tail_edge(y),
+                    tail_edge(y - 5.0),
+                    tail_edge(y + 5.0),
+                )
+                if edge is None or before is None or after is None:
+                    continue
+                along = math.atan2(after.y - before.y, after.x - before.x)
+                # In from the edge, square to it, toward the neck.
+                normal = (-math.sin(along), math.cos(along))
+                if normal[0] > 0.0:
+                    normal = (-normal[0], -normal[1])
+                for inset in STRAP_GUIDE_EDGE_INSETS:
+                    spot = (
+                        round(edge.x + normal[0] * inset - heel_end, 1),
+                        round(edge.y + normal[1] * inset, 1),
+                        round(math.degrees(along) + turn, 1),
+                    )
+                    guide = self._flame_strap_guide(
+                        Point2D(heel_end + spot[0], spot[1]), spot[2]
+                    )
+                    if room(guide.outline):
+                        return spot
+        raise BodyGeometryError(
+            "There is no room for the strap guide by the tail: place it in "
+            "the body editor."
+        )
+
     def _battery_box(self, shape: BodyShapeSpec, heel_end: float) -> ControlFeatures:
         """Return the battery box where ``shape`` places it."""
         return battery_features(
@@ -7112,6 +7361,11 @@ class Prototype001Parameters:
             joint_notes=body_parts.joint_notes,
             epoxy_tray=body_parts.epoxy_tray,
             neck_plate=body_parts.neck_plate,
+            strap_guide=(
+                body_parts.strap_guide.outline
+                if body_parts.strap_guide is not None
+                else ()
+            ),
         )
         return Prototype001Geometry(
             outline,

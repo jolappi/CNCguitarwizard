@@ -540,6 +540,33 @@ vieressäkin. Runkoeditorissa kehyksen pisteitä
 raahataan (reunaa klikkaamalla lisätään piste, Alt/oikea klikkaus
 poistaa), ja tyylin vaihto palauttaa tyylin oman muodon.
 
+Valinnainen liekkikuvioinen hihnanohjain (strap guide, `body_strap_guide`,
+oletuksena pois) ruuvataan rungon taakse: hihna kulkee takapintaa pitkin
+sen alta eikä roiku reunan hihnanapista. Ohjain on kolme levystä
+leikattua osaa (muovia, vaneria tai kovaa puuta), kukin omana
+`Cover_strap_guide_*.nc`-ohjelmanaan: 22 mm leveä palkki, jonka
+kummassakin päässä on kolmikielinen liekki (toinen pää on ensimmäinen
+puoli kierrosta käännettynä), ja kummankin liekin alla välikappale, joka on
+yhtä paksu kuin hihnan tarvitsema tila (`body_strap_guide_gap`, 5 mm).
+Hihna (`body_strap_width`, 50 mm, ja 2 mm väljyys kummallekin puolelle)
+kulkee palkin alta välikappaleiden välistä. Levy on 3 mm
+(`body_strap_guide_thickness`), oletuksena noin 141 × 58 mm. Kumpikin ruuvi menee
+välikappaleen läpi 3,5 mm reiästä, ja niiden 3 × 12 mm esiporaukset
+(`body_strap_guide_screw_diameter`, `_depth`) porataan `Body_back_small_holes`-ohjelmassa.
+Paikka on rungon muodossa (`strap_guide_offset`, `strap_guide_y`,
+`strap_guide_angle_degrees`). Tyhjänä ohjain sijoitetaan rungon häntään
+plektrakäden puolelle, kuten strap guide yleensä on: ensimmäiseen kohtaan
+(hännän keskellä hihnanapin kohdalla, sitten 20, 40 … 80 mm sivuun,
+bassopuoli ensin, 36–116 mm hännän reunasta sisään, palkki reunan
+suuntaisesti, joten hihna lähtee hännän yli kuin hihnanapista; jos
+hännässä ei ole tilaa reunan suuntaan, kuten Jackson RR:n lovessa kahden
+kannen välissä, palkkia käännetään reunasta 30°, 60° ja 90°), jossa se
+pysyy tasaisella takapinnalla erillään takakoloista, kansiupotuksista,
+kaulalevystä ja takapinnan muotoiluista. Editorissa ohjainta voi raahata ja
+Shift-raahauksella kääntää. Ohjain ei saa ulottua 1 mm lähemmäs takareunan
+pyöristystä tai reunalistaa, eikä se saa olla takamuotoilun, takakolon
+kansiupotuksen tai kaulalevyn päällä.
+
 Valinnainen 9 V:n paristokotelo (`body_battery_box`, oletuksena pois)
 jyrsitään takaa samaan `Body_back_controls.nc`-ohjelmaan: 56 × 30 mm kolo
 (r 5), 22 mm syvä takapinnasta, ja sen ympärillä 7 mm leveämpi

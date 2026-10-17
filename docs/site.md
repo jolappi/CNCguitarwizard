@@ -137,7 +137,8 @@ Python.
    whether they follow a fan, the bridge (its kind; its own sizes stay in
    the form) and whether it follows a fan, controls, pickup selector,
    jack, pickguard, humbucker frames, arm contour and belly cut, carved
-   and stepped top, engraving, battery box and the neck bolts' side —
+   and stepped top, engraving, battery box, the neck bolts' side and the
+   strap guide —
    in two columns on a wide screen (1200 px and up); in the headstock
    editor the tuner layout (`headstock_style`) and its bass side, the
    headstock's length, the tuner holes' size, the nut's style
@@ -191,19 +192,26 @@ Python.
    over the neck, pocket, pickup and bridge routes and dashed rear
    cavities that `webapp.body_editor_layout()` lays out from the other
    settings. The control cavity (carrying its pots), each pot, the switch
-   cavity, the battery box (when `body_battery_box` is on), each neck bolt
+   cavity, the battery box (when `body_battery_box` is on), the strap
+   guide (when `body_strap_guide` is on: its plate and screw pilots,
+   dashed), each neck bolt
    (dashed: drilled from the back) and the jack (none with the jack on a
    Jazz Bass plate) can be dragged too, and the pickup routes slide
    along the neck. Shift-dragging the control cavity (with its cover and
-   pots, or the Tele plate), the battery box, the jack or a pickup turns
+   pots, or the Tele plate), the battery box, the jack, the strap guide or
+   a pickup turns
    it about its centre (the jack about its socket, a pickup about its own
    centre on the centreline, from `pickups` in the layout) instead,
    changing `control_angle_degrees`, `battery_angle_degrees`,
-   `jack_direction_degrees` or the pickup's `body_*_pickup_angle`; round
+   `jack_direction_degrees` or the pickup's `body_*_pickup_angle`; the
+   strap guide's drag or turn sets all three of `strap_guide_offset`,
+   `strap_guide_y` and `strap_guide_angle_degrees` from where the layout
+   draws it (`strap_guide`), since they may be empty; round
    cavities only move. A feature dropped wholly outside the outline asks whether to
    remove it: a pickup (the layout turns "custom" with that position
    empty, from `pickup_configurations` in the schema), the controls
-   (`body_controls` "none"), the battery box, one of several pots or neck
+   (`body_controls` "none"), the battery box, the strap guide, one of
+   several pots or neck
    bolts; declined, it goes back. The switch cavity and the jack cannot go
    on their own and just move. With `body_pickguard` on, the guard is drawn
    over the features with square handles at its control points; dragging
@@ -445,11 +453,14 @@ Python.
    A design put back or loaded never stays in error (`repairDesign`):
    whatever would make an editor show red — an error, a problem its
    layout reports (a neck bolt with no room, a frame or lettering that
-   does not fit), a feature outside the outline (`webapp.design_problems`)
+   does not fit, a strap guide off the flat back or on a cover), a
+   feature outside the outline (`webapp.design_problems`)
    — is put back to its default. A field whose value does not read goes
    first; then `webapp.repair_design` tries the settings changed from
    their defaults (those the commonest problems come from first,
-   `REPAIR_FIRST`): one at a time, keeping each that leaves fewer
+   `REPAIR_FIRST`, a strap guide's place among them, so a guide in the
+   way goes back to its automatic spot before what it is in the way of
+   is put back): one at a time, keeping each that leaves fewer
    problems, then more together until none are left, and last gives back
    the design's own value where its default was not needed. The status
    line names what was put back, and Undo takes it back.

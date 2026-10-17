@@ -179,17 +179,7 @@ def _cover_setup(
                 )
                 if cover.recessed
                 else (
-                    (
-                        "Visible face up: it is screwed onto the top round its "
-                        "pickup (no recess), into the pilots "
-                        "Body_top_small_holes drills; the pickup's height "
-                        "screws are reached through its two larger holes."
-                        if cover.name.endswith("pickup frame")
-                        else "Visible face up: it is screwed onto the headstock "
-                        "face over the truss-rod trough (no recess), into the "
-                        "pilots Neck_top_small_holes drills (on a laminated "
-                        "neck, drill them by hand through its holes)."
-                    ),
+                    _face_note(cover),
                     "Break the tabs and sand the edge.",
                 )
             ),
@@ -199,3 +189,29 @@ def _cover_setup(
         work_zero="the centre of the cover, Z at the sheet top",
     )
     return setup, tuple(fitted)
+
+
+def _face_note(cover: CoverPlate) -> str:
+    """Return where a part screwed onto a face (not in a recess) goes."""
+    if cover.name.endswith("pickup frame"):
+        return (
+            "Visible face up: it is screwed onto the top round its pickup (no "
+            "recess), into the pilots Body_top_small_holes drills; the "
+            "pickup's height screws are reached through its two larger holes."
+        )
+    if cover.name == "Strap guide plate":
+        return (
+            "Visible face up: it is screwed onto the back over its two spacers "
+            "(no recess), into the pilots Body_back_small_holes drills; the "
+            "strap runs under its bar, between the spacers."
+        )
+    if cover.name.startswith("Strap guide spacer"):
+        return (
+            "Either face up: it sits under one of the strap guide plate's "
+            "flames, between the plate and the back, its screw through it."
+        )
+    return (
+        "Visible face up: it is screwed onto the headstock face over the "
+        "truss-rod trough (no recess), into the pilots Neck_top_small_holes "
+        "drills (on a laminated neck, drill them by hand through its holes)."
+    )

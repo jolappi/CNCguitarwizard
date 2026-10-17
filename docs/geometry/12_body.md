@@ -758,6 +758,55 @@ would sit on each other) and any hole that would open into the battery
 box: a top hole deep enough to reach its floor (a string-through hole) or
 a hole from the back under its cover.
 
+### Strap guide
+
+`body_strap_guide` (off by default) screws a flame strap guide onto the
+back (`geometry.body.FlameStrapGuide`): the strap runs over the back
+under it instead of hanging from the edge's strap button, so it pulls
+from further in. The guide is three parts cut from sheet (plastic, or
+plywood or hardwood), each its own sheet program: a plate shaped as a
+bar 22 mm wide with a flame at either end, three tongues sweeping out of
+each (the other end's flame is the first turned half round), and under
+each flame a spacer as thick as the room the strap needs; the strap runs
+under the bar between the spacers.
+
+| Parameter | Default | Meaning |
+| --- | --- | --- |
+| `body_strap_width` | 50 mm | The strap: the spacers stand `STRAP_GUIDE_PLAY` (2 mm) clear of it each side, 54 mm apart |
+| `body_strap_guide_gap` | 5 mm | The spacers' sheet: the room the strap has under the bar |
+| `body_strap_guide_thickness` | 3 mm | The plate's sheet |
+| `body_strap_guide_screw_diameter` × `_depth` | 3 × 12 mm | The two screws' pilots up into the back, drilled in `Body_back_small_holes` |
+
+With the default strap the plate is about 141 × 58 mm. A screw goes
+through each spacer, 8 mm past the strap's channel on the bar's middle
+line, in 3.5 mm holes through the plate and the spacer
+(`Strap guide plate`, `Strap guide spacer 1` / `2`;
+`Cover_strap_guide_plate.nc`, `Cover_strap_guide_spacer_1.nc` /
+`_2.nc`).
+
+The body shape places it: `strap_guide_offset` (its centre's X from the
+heel end), `strap_guide_y` and `strap_guide_angle_degrees` (the bar from
+the neck's axis; the strap runs square to it). With any of them empty,
+it goes by the tail, on the picking hand's side, as a strap guide usually is: at
+the first of `STRAP_GUIDE_TAIL_OFFSETS` across the tail (the middle,
+where the strap button would be, then 20, 40 … 80 mm either side, the
+bass side first) and of `STRAP_GUIDE_EDGE_INSETS` in from the tail's
+edge (36 mm first, up to 116), its bar along the edge there, where it
+stays on the flat back clear of the back's routes and cover recesses,
+the neck plate and the back's contours — so the strap leaves over the
+tail as from the strap button. Where the tail has no room along its
+edge (a Jackson RR's, its notch between two covers), the bar is turned
+from the edge by each of `STRAP_GUIDE_TURNS` in turn (30°, 60° either
+way, then 90°). The body editor
+drags it, Shift-drag turns it about its centre, and either pins all
+three fields where it is drawn.
+
+`BodySolid` (`strap_guide`) rejects a guide that leaves under
+`NECK_PLATE_EDGE_WALL` (1 mm) of flat back past the back edge's
+roundover or binding, sits on a back contour (a belly cut, a bevel all
+round keeps clear of it), or overlaps a rear cavity's cover recess or
+the neck plate.
+
 ### Wire channels
 
 `body_wire_channels` (on by default) wires the pickups, a separate switch
