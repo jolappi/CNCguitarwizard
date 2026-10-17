@@ -1258,6 +1258,16 @@ BRIDGE_LABELS: dict[str, str] = {
     "single_string": "Single-string bridges (one per string)",
 }
 
+BRIDGE_NOTES: dict[str, str] = {
+    "kahler_7300": (
+        "Setting up a Kahler 7300: for a tremolo arm that swings and turns "
+        "more freely, ease its coupler. Turn the small set screw on the side "
+        'of the coupler housing counter-clockwise with a 1/16" Allen wrench, '
+        "by just 1/16 of a turn: that takes a little of its friction off."
+    ),
+}
+"""A setup note for a bridge kind, shown under it while it is chosen."""
+
 BRIDGE_MAX_STRINGS: dict[str, int] = {
     "kahler_7300": 8,
     "floyd_rose": 8,

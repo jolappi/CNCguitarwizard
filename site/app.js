@@ -236,9 +236,13 @@ const EDITOR_FIELDS = {
   "easy-options": ["scale_length"],
 };
 const mirrors = new Map();
+// A variant kind's setup note under its copy in an editor's Settings (the
+// Kahler 7300's), kept to the kind chosen: [copy, note, variant field].
+const mirroredNotes = [];
 
 function mirrorEditorFields() {
   mirrors.clear();
+  mirroredNotes.length = 0;
   for (const [id, names] of Object.entries(EDITOR_FIELDS)) {
     const holder = document.getElementById(id);
     holder.innerHTML = "";
@@ -277,6 +281,13 @@ function mirrorEditorFields() {
       if (copy.tagName !== "SELECT") copy.addEventListener("input", pass);
       holder.append(label, name.endsWith("_seed") ? withReroll(copy, original) : copy);
       mirrors.set(original, copy);
+      const variant = variantFields[name];
+      if (variant && Object.values(variant.variants).some((kind) => kind.note)) {
+        const note = document.createElement("p");
+        note.className = "variant-note";
+        holder.append(note);
+        mirroredNotes.push([copy, note, variant]);
+      }
     }
     const summary = holder.closest("details.editor-settings")?.querySelector(":scope > summary");
     if (summary) summary.textContent = `Settings (${holder.querySelectorAll("label").length})`;
@@ -311,6 +322,10 @@ function syncMirrors() {
       });
     }
     copy.classList.toggle("changed", original.classList.contains("changed"));
+  }
+  for (const [copy, note, variant] of mirroredNotes) {
+    note.textContent = variant.variants[copy.value]?.note || "";
+    note.hidden = !note.textContent;
   }
   syncNeckThrough();
   // A folded Settings shows that something in it is changed.
@@ -850,6 +865,15 @@ function renderVariantField(set, field) {
       return values && subfield.name in values ? { ...own, value: values[subfield.name] } : own;
     });
     renderFieldList(set + "." + field.name, subfields, sub, row.hidden ? field.name : undefined);
+    // A setup note for the chosen kind (the Kahler 7300's), small and quiet
+    // at the top of its fields.
+    const note = field.variants[kind].note;
+    if (note) {
+      const text = document.createElement("p");
+      text.className = "variant-note";
+      text.textContent = note;
+      sub.prepend(text);
+    }
     select.classList.toggle("changed", kind !== field.default.kind);
     if (field.name === "body_shape") bodyEditor.sync(kind, sub);
   };

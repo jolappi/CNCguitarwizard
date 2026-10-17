@@ -56,6 +56,7 @@ from .geometry.body import (
     BRIDGE_LABELS,
     BRIDGE_MAX_STRINGS,
     BRIDGE_MIN_STRINGS,
+    BRIDGE_NOTES,
     JackHole,
     bridge_spec_from_dict,
 )
@@ -2767,6 +2768,8 @@ def _describe_fields(
             entry["variants"] = {
                 kind: {
                     "label": _VARIANT_LABELS.get(kind, kind),
+                    # A setup note shown under the kind while it is chosen.
+                    "note": BRIDGE_NOTES.get(kind),
                     "max_strings": BRIDGE_MAX_STRINGS.get(kind),
                     "min_strings": BRIDGE_MIN_STRINGS.get(kind),
                     "fields": [

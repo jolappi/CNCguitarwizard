@@ -1137,3 +1137,23 @@ def test_a_design_saved_with_its_own_tray_wall_loads_with_the_rims() -> None:
     loaded = load_design(old)
     assert loaded.skipped == ()
     assert loaded.parameters.body_epoxy_tray_rim == 5.0
+
+
+def test_the_kahler_7300_carries_a_setup_note_for_the_form() -> None:
+    prototype = {
+        field["name"]: field
+        for group in parameter_schema()["prototype"]
+        for field in group["fields"]
+    }
+    variants = prototype["body_bridge"]["variants"]
+    note = variants["kahler_7300"]["note"]
+    assert "coupler" in note and '1/16"' in note
+    # The other bridges have none.
+    assert all(
+        v["note"] is None for kind, v in variants.items() if kind != "kahler_7300"
+    )
+    # The form shows it under the chosen kind, small and quiet.
+    script = (Path(__file__).resolve().parent.parent / "site" / "app.js").read_text(
+        encoding="utf-8"
+    )
+    assert 'text.className = "variant-note"' in script

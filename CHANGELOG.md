@@ -4,6 +4,12 @@
 
 ### Added
 
+- A setup note under a bridge while it is chosen (`BRIDGE_NOTES`), in the
+  form and the body editor's Settings, small and quiet: the Kahler 7300's
+  says how to ease its tremolo arm's coupler (its set screw 1/16 of a turn
+  counter-clockwise with a 1/16" Allen wrench) for an arm that swings more
+  freely.
+
 - The SG's two pickguards (`body_pickguard_style` "sg_small",
   "sg_batwing"; `body_shapes.SG_PICKGUARDS`), drawn on the SG template
   from dimension drawings: a '61's small guard on the treble side, and the
