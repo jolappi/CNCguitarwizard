@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import math
 import re
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -17,7 +17,12 @@ from ...geometry.body import (
     NeckThrough,
 )
 from ...geometry.body.carve import CELL
-from ...geometry.fretboard import FretboardSurface, FretLayout, InlayLayout
+from ...geometry.fretboard import (
+    FretboardScallops,
+    FretboardSurface,
+    FretLayout,
+    InlayLayout,
+)
 from ...geometry.neck import (
     CarbonRods,
     HeadstockSolid,
@@ -195,6 +200,7 @@ class FreeCADScriptExporter:
             fcstd_path=fcstd_path,
             step_path=step_path,
             tray_tool_radius=tray_tool_radius,
+            fretboard_scallops=geometry.fretboard_scallops,
         )
 
     def render_fretboard(
@@ -265,6 +271,7 @@ class FreeCADScriptExporter:
         fcstd_path: Path | None = None,
         step_path: Path | None = None,
         tray_tool_radius: float = 0.0,
+        fretboard_scallops: FretboardScallops | None = None,
     ) -> str:
         """Return a FreeCAD script containing neck and fretboard solids.
 
@@ -313,6 +320,9 @@ class FreeCADScriptExporter:
             step_path: Optional destination for the combined STEP export.
             tray_tool_radius: The cutter's radius an epoxy tray is cut with
                 (see ``_render_body``); 0 cuts the whole tray.
+            fretboard_scallops: The playing surface hollowed between the
+                frets, lofted through its own rows (and the binding with
+                it), or ``None``.
 
         Returns:
             Standalone Python source for execution inside FreeCAD.
@@ -489,9 +499,14 @@ class FreeCADScriptExporter:
             neck_surface.neck_outline.last_fret_position
             - neck_surface.heel_flat_start_offset
         )
-        fretboard_rows = tuple(
-            self._close_fretboard_row(row) for row in fretboard_surface.mesh.rows
+        # Scalloped, the board is lofted through the hollowed rows (more of
+        # them, between the frets); the slots still follow the fret rows.
+        surface_rows = (
+            fretboard_scallops.rows()
+            if fretboard_scallops is not None
+            else fretboard_surface.mesh.rows
         )
+        fretboard_rows = tuple(self._close_fretboard_row(row) for row in surface_rows)
         # A zero fret's slot is cut on the nut-end row too.
         zero_fret = fret_layout is not None and fret_layout.zero_fret_slot is not None
         fret_surface_rows = fretboard_surface.mesh.rows[
@@ -564,7 +579,7 @@ class FreeCADScriptExporter:
             else ""
         )
         binding_source = self._render_fretboard_binding(
-            fretboard_surface, fretboard_binding_width, fretboard_object_name
+            surface_rows, fretboard_binding_width, fretboard_object_name
         )
         if binding_source and heel_trim_source:
             binding_source += (
@@ -998,19 +1013,20 @@ class FreeCADScriptExporter:
 
     @staticmethod
     def _render_fretboard_binding(
-        surface: FretboardSurface, width: float, fretboard_object_name: str
+        rows: Sequence[tuple[Point3D, ...]], width: float, fretboard_object_name: str
     ) -> str:
         """Return the binding strips glued along the fretboard's long edges.
 
         Each strip is ``width`` thick, outside the (narrowed) board's edge,
-        and as tall as the board's edge, from the nut to the board's end.
+        and as tall as the board's edge along ``rows`` (the playing
+        surface's, scalloped or not), from the nut to the board's end.
         """
         if width <= 0.0:
             return ""
         strips = []
         for end in (0, -1):
             sections = []
-            for row in surface.mesh.rows:
+            for row in rows:
                 edge = row[end]
                 out = width if edge.y > 0.0 else -width
                 sections.append(

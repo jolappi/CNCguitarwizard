@@ -188,6 +188,7 @@ blank down, for the tabs are not all that holds the board.
 | `Fretboard_radius.nc` | ball | 430 mm radius; the crown ends `blank − 6` mm below the blank top, the edges 0.9 mm lower |
 | `Fretboard_inlays.nc` | 1 mm | Twelve barbed-wire pockets 2 mm below the crown (ten one-piece knots with `barbed_wire_2`), each the marker rounded to the tool (see below); barbs narrower than the tool are left out |
 | `Fretboard_slots.nc` | 0.6 mm | 24 slots that follow the radius across the board, 2.7 mm below the surface, in equal passes of at most `fret_slot_step_down` (14 of 0.19 mm at 0.2), 1 mm past each edge, at `fret_slot_spindle_speed` (30 000 rpm) |
+| `Fretboard_scallops.nc` | ball | Only with `fretboard_scalloped`: the fret spaces from `fretboard_scallop_from_fret` on hollowed (`FretboardScallops`), the ball nose rastering along the neck over them on a grid `SCALLOP_GRID_SPACING` (0.5 mm) along it, drop-cutter (never below the surface), roughed first if deeper than the ball's step-down; after the inlays are glued in and levelled (it cuts through them) and the slots cut. A scallop tighter than the ball comes out shallower, and the program's notes say so |
 | `Fretboard_outline.nc` | flat | A locking nut's shelf first, when the board runs on under it; then the tapered outline with square nut corners (`fretboard_nut_corner_radius`, 0 by default) and tabs |
 
 Under an R2 locking nut (see [Headstock](../geometry/06_headstock.md#locking-nut))

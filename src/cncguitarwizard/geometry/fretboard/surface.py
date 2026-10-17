@@ -135,6 +135,20 @@ class FretboardSurface:
                 "Fretboard surface leaves no material at its widest edges."
             )
 
+    def profile_row(self, position: float) -> tuple[Point3D, ...]:
+        """Return the surface's cross-section at a station along the neck.
+
+        Args:
+            position: Distance from the nut along the centreline, in mm.
+
+        Returns:
+            ``profile_sample_count`` points across the board, as the mesh's
+            own rows are built.
+        """
+        return self._build_profile_row(
+            position, self.station_positions[self.fret_count]
+        )
+
     def _build_profile_row(
         self,
         position: float,

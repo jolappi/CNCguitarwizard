@@ -17,6 +17,7 @@ top after each):
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING
 
@@ -37,6 +38,10 @@ if TYPE_CHECKING:
 
 SLOPE_STEP = 0.5
 """Height of each terrace cut down a slotted nut's board slope, in mm."""
+
+SCALLOP_GRID_SPACING = 0.5
+"""How finely, in mm along the neck, the scallops' surface is sampled for
+the ball nose: a space 11 mm long between its lands needs it."""
 
 
 def _flat_tool() -> MachiningParameters:
@@ -187,7 +192,9 @@ class FretboardCarrier:
 class FretboardMachiningPlan:
     """The setups that machine one fretboard, in running order.
 
-    ``carrier`` is the board the blank is glued on, or ``None``.
+    ``carrier`` is the board the blank is glued on, or ``None``;
+    ``scallops`` the program hollowing a scalloped board's fret spaces, or
+    ``None``.
     """
 
     index_pins: Setup
@@ -203,10 +210,21 @@ class FretboardMachiningPlan:
     index_pin_positions: tuple[tuple[float, float], ...]
     preview_outlines: tuple[tuple[Point2D, ...], ...]
     carrier: FretboardCarrier | None = None
+    scallops: Setup | None = None
 
     @property
     def setups(self) -> tuple[Setup, ...]:
-        return (self.index_pins, self.radius, self.inlays, self.slots, self.outline)
+        # The scallops after the inlays are set and the slots cut, before
+        # the board is parted from its blank.
+        hollowed = (self.scallops,) if self.scallops is not None else ()
+        return (
+            self.index_pins,
+            self.radius,
+            self.inlays,
+            self.slots,
+            *hollowed,
+            self.outline,
+        )
 
 
 def _given_blank(
@@ -601,6 +619,16 @@ def plan_fretboard_machining(
         slot_tool,
     )
 
+    scallop_setup = _scallop_setup(
+        geometry,
+        parameters,
+        surface_depth,
+        (origin_x, origin_y),
+        y_range,
+        max(abs(y) for y in ys),
+        reference_points,
+    )
+
     shelf_paths: list[Toolpath] = []
     shelf_notes: tuple[str, ...] = ()
     if nut is not None and nut.is_locking and nut.on_fretboard:
@@ -730,9 +758,133 @@ def plan_fretboard_machining(
         origin_x=origin_x,
         origin_y=origin_y,
         index_pin_positions=pins,
-        preview_outlines=(preview,) * 5,
+        preview_outlines=(preview,) * (5 if scallop_setup is None else 6),
         carrier=carrier,
+        scallops=scallop_setup,
     )
+
+
+def _scallop_setup(
+    geometry: Prototype001Geometry,
+    parameters: FretboardMachiningParameters,
+    surface_depth: Callable[[float], float],
+    origin: tuple[float, float],
+    y_range: tuple[float, float],
+    half_width: float,
+    reference_points: tuple[tuple[float, float], ...],
+) -> Setup | None:
+    """Return the program hollowing the scalloped fret spaces, or ``None``.
+
+    The ball nose rasters along the neck over the scalloped spaces only,
+    down to the radiused surface less the scallop under it (drop-cutter,
+    so it never cuts below it), on a grid ``SCALLOP_GRID_SPACING`` along
+    the neck; roughed first in layers if the scallops go deeper than the
+    ball's step-down.
+    """
+    scallops = geometry.fretboard_scallops
+    if scallops is None:
+        return None
+    ball = parameters.ball
+    origin_x, origin_y = origin
+    stations = scallops.surface.station_positions
+    first, last = stations[scallops.from_fret], stations[scallops.surface.fret_count]
+    # Leaning frets lean their spaces: as far again at the board's edges.
+    lean = half_width * max(abs(scallops.surface.skew.at(x)) for x in (first, last))
+    x_range = (
+        first - lean - ball.tool_radius - origin_x,
+        last + lean + ball.tool_radius - origin_x,
+    )
+
+    def depth(xm: float, ym: float) -> float:
+        x, y = xm + origin_x, ym + origin_y
+        return surface_depth(y) + scallops.depth_at(x, y)
+
+    grid = build_offset_grid(
+        lambda xm, ym: -depth(xm, ym),
+        x_range,
+        y_range,
+        ball,
+        spacing_x=SCALLOP_GRID_SPACING,
+        spacing_y=parameters.grid_spacing_y,
+    )
+    roughing = (
+        (
+            raster_rough(
+                "Scallop roughing",
+                grid,
+                ball,
+                x_range=x_range,
+                y_range=y_range,
+                step_over=ball.raster_spacing,
+            ),
+        )
+        if scallops.depth > ball.step_down
+        else ()
+    )
+    # The tightest scallop: its arc's radius, against the ball's.
+    tightest = min(
+        _arc_radius(stations[n + 1] - stations[n] - 2.0 * scallops.land, scallops.depth)
+        for n in scallops.fret_numbers
+    )
+    where = "the nut" if scallops.from_fret == 0 else f"fret {scallops.from_fret}"
+    # What the scallops leave of the inlays they cut through.
+    inlays = geometry.inlay_layout
+    under = [
+        max(scallops.depth_at(p.x, p.y) for p in marker.outline)
+        for marker in inlays.markers
+    ]
+    under = [depth for depth in under if depth > 0.0]
+    inlay_notes = (
+        (
+            f"The inlay pockets are {inlays.depth:g} mm deep, their pieces from "
+            f"a sheet that thick: a scallop leaves at least "
+            f"{inlays.depth - max(under):.1f} mm of each piece under it.",
+        )
+        if under
+        else ()
+    )
+    return Setup(
+        "Fretboard_scallops",
+        f"Fretboard scallops - {scallops.depth:g} mm deep between the frets "
+        f"from {where} on, ball nose",
+        (
+            *roughing,
+            raster_finish(
+                "Scallops",
+                grid,
+                ball,
+                x_range=x_range,
+                y_range=y_range,
+                step_over=parameters.finishing_step_over,
+            ),
+        ),
+        (
+            "Glue the inlay pieces in and level them with the radius before "
+            "this program: the scallops are cut through them.",
+            "Same fixture and X/Y zero; the ball nose as for Fretboard_radius, "
+            "Z zero again on the blank's untouched top beside the board.",
+            f"Each fret space from {where} on is hollowed {scallops.depth:g} mm "
+            f"at its middle, {scallops.land:g} mm left flat either side of each "
+            "fret for its foot.",
+            *inlay_notes,
+            *(
+                (
+                    f"The tightest scallop is a {tightest:.1f} mm radius, under "
+                    f"the ball's {ball.tool_radius:g} mm: it comes out shallower "
+                    "there (a smaller ball reaches it).",
+                )
+                if tightest < ball.tool_radius
+                else ()
+            ),
+        ),
+        reference_points,
+        ball,
+    )
+
+
+def _arc_radius(chord: float, depth: float) -> float:
+    """Return the radius of a circular arc ``depth`` deep over ``chord``."""
+    return (chord**2 / 4.0 + depth**2) / (2.0 * depth)
 
 
 def _steps(start: float, end: float, spacing: float) -> list[float]:

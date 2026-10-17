@@ -4,6 +4,19 @@
 
 ### Added
 
+- A scalloped fretboard (`fretboard_scalloped`): every fret space from
+  `fretboard_scallop_from_fret` on (15 by default; 0 from the nut)
+  hollowed `fretboard_scallop_depth` (2 mm) at its middle, a circular arc
+  between `fretboard_scallop_land` (1.5 mm) left flat either side of each
+  fret for its foot, eased into the land with no ridge, following the radius across the board and leaning
+  with slanted or fanned frets (`FretboardScallops`). FreeCAD lofts the
+  board and its binding through the hollowed surface, and
+  `Fretboard_scallops.nc` cuts it with the ball nose after the inlays are
+  set and the slots cut. The scallops cut through the inlays, so with a
+  marker under one the pockets are cut 1 mm deeper than the deepest
+  scallop over a marker (3 mm under 2 mm scallops), and the board must
+  keep 1.5 mm under a scallop at its edge.
+
 - The web app's footer ends with thanks in small print: to Kai Rankio
   for fresh ideas and quality control, and to Claude and GPT for the code.
 

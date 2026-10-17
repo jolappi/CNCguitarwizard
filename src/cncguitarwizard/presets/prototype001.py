@@ -54,6 +54,7 @@ from ..geometry.exceptions import (
 )
 from ..geometry.fretboard import (
     Fretboard,
+    FretboardScallops,
     FretboardSurface,
     FretLayout,
     FretSkew,
@@ -240,6 +241,9 @@ SWITCH_SHAFT_HOLE_DIAMETERS: dict[str, float] = {
 }
 """The pickup selector's bushing hole, in mm: a 3-way toggle's 1/2 in, a
 micro (mini) toggle's 1/4 in."""
+
+SCALLOP_INLAY_KEEP = 1.0
+"""How much of an inlay, in mm, a scallop over it must leave."""
 
 FLAT_HEADSTOCK_FACE_DROP = 4.0
 """How far a flat headstock's face is set below the glue face, in mm: its
@@ -544,6 +548,8 @@ class Prototype001Geometry:
     vintage_truss_rod: VintageTrussRod | None = None
     """A vintage truss rod laid in from the neck's back, its walnut strip
     and plug, or ``None`` for one routed from the top."""
+    fretboard_scallops: FretboardScallops | None = None
+    """The playing surface hollowed between the frets, or ``None``."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -799,6 +805,19 @@ class Prototype001Parameters:
     fretboard_binding_width: float = 0.0
     fret_slot_width: float = 0.6
     fret_slot_depth: float = 2.7
+    # Scallops (fretboard_scalloped): every fret space from
+    # fretboard_scallop_from_fret on to the last fret (0: from the nut)
+    # hollowed fretboard_scallop_depth deep at its middle, a circular arc
+    # along the neck between fretboard_scallop_land left flat either side
+    # of each fret (its foot sits on it), as deep right across the board,
+    # following its radius. They are cut after the inlays, through them: an
+    # inlay under one is cut deeper, every pocket SCALLOP_INLAY_KEEP deeper
+    # than the deepest scallop over a marker if inlay_depth is not (one
+    # depth, so the pieces still come from one sheet).
+    fretboard_scalloped: bool = False
+    fretboard_scallop_from_fret: int = 15
+    fretboard_scallop_depth: float = 2.0
+    fretboard_scallop_land: float = 1.5
     # Position markers, cut as flat-bottomed pockets into the playing
     # surface: barbed wire (default) or round dots, two at 12 and 24 and
     # one at every other listed fret; or one shape per fret spanning the
@@ -7033,6 +7052,9 @@ class Prototype001Parameters:
             zero_fret=locking_nut is not None and locking_nut.zero_fret,
         )
         inlay_layout = self.inlay_design(fretboard_surface)
+        scallops = self.fretboard_scallops(fretboard_surface)
+        if scallops is not None:
+            inlay_layout = _inlays_under_scallops(scallops, inlay_layout)
         truss_rod_channel = self.truss_rod(outline)
         carbon_rods = self.carbon_rods(outline, neck_surface, truss_rod_channel)
         headstock = self.headstock_solid(headstock_plan)
@@ -7123,7 +7145,59 @@ class Prototype001Parameters:
             vintage_truss_rod=self._checked_vintage_rod(
                 outline, neck_surface, headstock
             ),
+            fretboard_scallops=scallops,
         )
+
+    def fretboard_scallops(self, surface: FretboardSurface) -> FretboardScallops | None:
+        """Return the playing surface's scallops, or ``None`` without them.
+
+        Args:
+            surface: The fretboard's radiused playing surface.
+
+        Returns:
+            ``fretboard_scalloped``'s scallops from
+            ``fretboard_scallop_from_fret`` on, or ``None``.
+
+        Raises:
+            FretboardGeometryError: For scallops the board cannot take (see
+                ``FretboardScallops``).
+        """
+        if not self.fretboard_scalloped:
+            return None
+        return FretboardScallops(
+            surface,
+            self.fretboard_scallop_from_fret,
+            self.fretboard_scallop_depth,
+            self.fretboard_scallop_land,
+        )
+
+
+def _inlays_under_scallops(
+    scallops: FretboardScallops, inlays: InlayLayout
+) -> InlayLayout:
+    """Return the inlays deep enough to keep under the scallops.
+
+    The scallops are cut after the inlays are set, through them: every
+    pocket is cut ``SCALLOP_INLAY_KEEP`` deeper than the deepest scallop
+    over a marker, if ``inlay_depth`` is not already, so each piece keeps
+    that much. One depth for all of them, so the pieces still come from one
+    sheet.
+
+    Raises:
+        FretboardGeometryError: For pockets that would then leave no wood
+            under them (see ``InlayLayout``).
+    """
+    deepest = max(
+        (
+            scallops.depth_at(point.x, point.y)
+            for marker in inlays.markers
+            for point in marker.outline
+        ),
+        default=0.0,
+    )
+    if deepest == 0.0 or inlays.depth >= deepest + SCALLOP_INLAY_KEEP:
+        return inlays
+    return replace(inlays, depth=round(deepest + SCALLOP_INLAY_KEEP, 2))
 
 
 def _opened_into_controls(

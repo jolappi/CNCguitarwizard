@@ -174,6 +174,25 @@ FIELD_HELP: dict[str, str] = {
     "fret_slot_depth": (
         "How deep each fret slot is cut below the curved playing surface, in mm."
     ),
+    "fretboard_scalloped": (
+        "A scalloped fretboard: the wood between the frets hollowed out from "
+        "the fret below on, so the fingers press the strings without "
+        "touching the board."
+    ),
+    "fretboard_scallop_from_fret": (
+        "The fret the scallops start at: the space after it and every one on "
+        "to the last fret are hollowed (0 from the nut, 15 for the top frets "
+        "only)."
+    ),
+    "fretboard_scallop_depth": (
+        "How deep each scallop is at its middle, in mm, right across the "
+        "board; the inlays are cut 1 mm deeper than a scallop over them, so "
+        "it leaves that much of each."
+    ),
+    "fretboard_scallop_land": (
+        "How much of the board is left flat either side of each fret, in mm, "
+        "for its foot to sit on."
+    ),
     "inlay_style": (
         "The position markers' shape, cut as pockets into the fretboard: "
         "barbed wire, barbed wire 2 (a knot of barbed wire traced from a "
