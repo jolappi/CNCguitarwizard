@@ -1127,6 +1127,12 @@
 
 ### Fixed
 
+- A contour no longer runs out onto a horn: a Stratocaster's belly cut,
+  deepest at the bass horn's root where the side only narrows on to the
+  waist, ran out along the horn to its tip. A contour that would reach
+  ahead of the side's horn root moves back along the edge to start there
+  (`_behind_horn`); the Stratocaster style's belly cut is 190 mm long,
+  from the horn's root back past the waist.
 - The bridge pickup can be moved up to a Kahler's plate: its route stopped
   at the saddle line, 11.5 mm short of the plate (the Design by Jone
   body), and a pickup dragged nearer jumped back. The route may now reach

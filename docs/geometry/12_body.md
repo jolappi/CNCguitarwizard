@@ -843,7 +843,14 @@ side's waist instead: its innermost outline point 40 to 260 mm behind the
 heel end, of those at least half as far out as the side's furthest (so
 not the cutaway by the neck). The defaults are 60 × 240 mm for the arm
 contour, 70 × 260 mm for the belly cut and 45 × 180 mm for the leg
-contour.
+contour. A contour never runs out onto a horn: if its stretch would reach
+ahead of the root of the side's horn — where the edge leaves the neck,
+the furthest back of the side's points ahead of the heel end less than
+half as far out as its furthest — it moves back along the edge until it
+starts there (`_behind_horn`). A Stratocaster's bass side only narrows
+from the horn's root to the waist, so its belly cut, deepest at the root,
+ran out to the horn's tip; it now runs from the root back past the waist
+(the Stratocaster style's 190 mm long).
 
 Where the arm contour starts on the top can be drawn instead: the
 shape's `arm_contour_points` are an open line's control points (X from

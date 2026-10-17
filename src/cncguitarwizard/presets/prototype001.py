@@ -6655,6 +6655,7 @@ class Prototype001Parameters:
                             f"The body has no treble-side waist for the {name.lower()}."
                         )
                     apex = waist
+            apex = _behind_horn(outline, apex, length, side, heel_end)
             contours.append(
                 ContourCut.along_edge(
                     name,
@@ -7870,6 +7871,60 @@ def _round_stretches(
             start, forward = end, count - forward
         rounded.update((start + k) % count for k in range(forward + 1))
     return rounded
+
+
+def _behind_horn(
+    outline: Sequence[Point2D],
+    apex: int,
+    length: float,
+    side: float,
+    heel_end: float,
+) -> int:
+    """Return ``apex`` moved back along the edge so a contour keeps off a horn.
+
+    A contour ``length`` long centred on the apex must not reach ahead of
+    the root of the side's horn: where the edge leaves the neck, the
+    furthest back of the side's points ahead of the heel end that are less
+    than half as far out as its furthest (the cutaway's bottom, or the
+    body's neck end on a side with no horn). A side that only narrows
+    from there to the waist (a Stratocaster's bass side, its upper bout
+    widest at the horn's root) would otherwise take the contour out along
+    the horn to its tip. The apex is moved toward the tail until the
+    contour's front end is behind the root.
+    """
+    count = len(outline)
+    furthest = max(point.y * side for point in outline)
+    near_neck = [
+        point.x
+        for point in outline
+        if 0.0 < point.y * side < furthest / 2.0 and point.x < heel_end
+    ]
+    if not near_neck:
+        return apex
+    root = max(near_neck)
+    # The way round the outline that runs back from the apex.
+    back = 1 if outline[(apex + 1) % count].x > outline[apex].x else -1
+
+    def front(centre: int) -> float:
+        """The furthest forward X of the stretch centred on ``centre``."""
+        lowest = outline[centre].x
+        for way in (1, -1):
+            walked, index = 0.0, centre
+            while walked < length / 2.0:
+                after = (index + way) % count
+                walked += math.dist(
+                    (outline[index].x, outline[index].y),
+                    (outline[after].x, outline[after].y),
+                )
+                index = after
+                lowest = min(lowest, outline[index].x)
+        return lowest
+
+    for _ in range(count):
+        if front(apex) >= root:
+            break
+        apex = (apex + back) % count
+    return apex
 
 
 def _waist(outline: Sequence[Point2D], span: Sequence[int], side: float) -> int | None:

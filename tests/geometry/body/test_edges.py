@@ -298,6 +298,22 @@ def test_a_leg_contour_bevels_the_back_of_the_treble_side_waist() -> None:
     ]
 
 
+def test_a_belly_cut_keeps_off_a_stratocasters_horn() -> None:
+    # Regression: the bass side only narrows from the horn's root to the
+    # waist, so the belly cut, centred there, ran out along the horn to
+    # its tip. It now starts at the horn's root and runs back past the
+    # waist, deepest about there.
+    parameters = strat_style()
+    layout = parameters.body_layout()
+    (cut,) = [c for c in layout.contours if c.name == "Belly cut"]
+    along = [point.x - layout.heel_end for point in cut.edge]
+    horn_tip = min(point.x for point in layout.outline.points) - layout.heel_end
+    assert horn_tip < -130.0
+    assert min(along) > -50.0
+    assert 20.0 < along[len(along) // 2] < 80.0
+    assert all(point.y * parameters.bass_sign > 0.0 for point in cut.edge)
+
+
 def test_the_preset_takes_a_drawn_leg_contour_line() -> None:
     from cncguitarwizard.presets.styles import STYLES
     from cncguitarwizard.webapp import body_editor_layout

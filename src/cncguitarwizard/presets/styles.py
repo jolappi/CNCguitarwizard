@@ -157,7 +157,10 @@ STYLES: dict[str, InstrumentStyle] = {
             "body_jack": "strat",
             "body_neck_plate": "plate",
             "body_arm_contour_depth": 10.0,
+            # Its belly cut from the bass horn's root back to the waist,
+            # deepest there, as on the original (not out along the horn).
             "body_belly_cut_depth": 12.0,
+            "body_belly_cut_length": 190.0,
             "inlay_style": "dot",
         },
     ),

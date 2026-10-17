@@ -730,7 +730,13 @@ taakse bassopuolen yläkaaren kohdalle (`body_belly_cut_*`, 70 × 260 mm)
 sekä reisiviiste taakse diskanttipuolen vyötärölle, johon runko nojaa
 reiden päällä istuen soitettaessa (`body_leg_contour_*`, 45 × 180 mm,
 syvin vyötärön sisimmässä kohdassa 40–260 mm kantapään takana).
-Viisteet kapenevat reunaa pitkin molempiin päihin. Soittokäden viisteen
+Viisteet kapenevat reunaa pitkin molempiin päihin. Viiste ei koskaan
+ulotu sarveen: jos se ulottuisi sivun sarven tyven eteen (kohta, jossa
+reuna lähtee kaulalta: takimmainen kantapään edessä oleva sivun piste,
+joka on alle puolet sivun uloimmasta), sitä siirretään reunaa pitkin
+taaksepäin, kunnes se alkaa tyvestä. Stratin bassopuoli kapenee sarven
+tyvestä vyötärölle, joten mahaviiste kulki ennen sarven kärkeen; nyt se
+kulkee tyvestä vyötärön ohi (Strat-tyylissä 190 mm pitkä). Soittokäden viisteen
 alkuviivan voi piirtää runkoeditorissa (`arm_contour_points`): vihreä
 viiva pyöreine kahvoineen, päät rungon reunalla; viiste ulottuu reunasta
 viivaan asti ja on syvin siellä, missä viiva on kauimpana reunasta.
