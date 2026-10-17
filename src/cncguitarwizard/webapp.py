@@ -157,7 +157,9 @@ _CHOICE_LABELS: dict[str, dict[str, str]] = {
         "zero_fret": "Zero fret on the nut line, the nut a string guide behind it",
     },
     "locking_nut": {
-        "auto": "Auto (Floyd Rose Original nut with a Floyd Rose bridge)",
+        "auto": (
+            "Auto (Floyd Rose Original nut with a Floyd Rose or Lo-Pro Edge bridge)"
+        ),
         "none": "Plain nut",
         "r2": "Floyd Rose R2 locking nut (41.3 mm)",
         "r3": "Floyd Rose R3 locking nut (42.85 mm)",
@@ -384,6 +386,7 @@ _BASIC_VARIANT_FIELDS: dict[str, frozenset[str]] = {
         }
     ),
     "floyd_rose": frozenset({"treble_side", "pivot_offset", "pivot_stud_spacing"}),
+    "lo_pro_edge": frozenset({"treble_side", "pivot_offset"}),
     "tune_o_matic": frozenset(
         {
             "post_spacing",

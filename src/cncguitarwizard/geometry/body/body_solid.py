@@ -12,7 +12,14 @@ from .bridges import SideHole
 from .carve import CarvedTop
 from .edges import Contour, EdgeProfile, HeelRelief
 from .engraving import Engraving
-from .hardware import BridgeMounting, Cavity, DrilledHole, JackHole, RearCavity
+from .hardware import (
+    BridgeMounting,
+    Cavity,
+    DrilledHole,
+    JackHole,
+    RearCavity,
+    ScoopedGrooves,
+)
 from .outline import BodyOutline, TracedOutline
 from .steps import SteppedTop
 from .tray import EpoxyTray
@@ -27,6 +34,10 @@ cover hides it)."""
 
 SIDE_HOLE_SAMPLE = 2.0
 """How often, in mm, a sideways hole is checked along its length."""
+
+OPENING_SAMPLE = 1.0
+"""How often, in mm, scooped grooves are checked against a recess they
+open out of."""
 
 
 def rim_drop(radius: float, inset: float) -> float:
@@ -262,7 +273,8 @@ class BodySolid:
         # recess with two floor levels is described (a tremolo recess
         # cut over its whole footprint first, then deepened behind the
         # studs), so its walls stay continuous instead of two pockets
-        # meeting at a wall.
+        # meeting at a wall; and scooped grooves may open out of a
+        # shallower recess (a Lion's Claw's, out of its tremolo's).
         top_cavities = tuple(
             cavity
             for cavity in self.top_cavities
@@ -283,6 +295,8 @@ class BodySolid:
                 }:
                     continue
                 if self.is_step(second, first) or self.is_step(first, second):
+                    continue
+                if self.opens_out_of(first, second) or self.opens_out_of(second, first):
                     continue
                 if self.encloses(first, second) or self.encloses(second, first):
                     raise BodyGeometryError(
@@ -586,6 +600,39 @@ class BodySolid:
             point_in_polygon(point, outer.outline)
             for point in nudge_inward(inner.outline, 0.05)
         )
+
+    @staticmethod
+    def opens_out_of(grooves: Cavity, recess: Cavity) -> bool:
+        """Return whether scooped grooves open out of a shallower recess.
+
+        Scooped grooves (a Lion's Claw) start inside a recess and lift out
+        of the wood past its end: where the two overlap, the grooves'
+        floor must lie deeper than the recess's, so none of its floor is
+        left standing in them. Checked on a ``OPENING_SAMPLE`` grid.
+        """
+        if not isinstance(grooves, ScoopedGrooves) or isinstance(
+            recess, ScoopedGrooves
+        ):
+            return False
+        low_x = max(grooves.min_x, recess.min_x)
+        high_x = min(grooves.max_x, recess.max_x)
+        low_y = max(grooves.min_y, recess.min_y)
+        high_y = min(grooves.max_y, recess.max_y)
+        columns = math.ceil((high_x - low_x) / OPENING_SAMPLE)
+        rows = math.ceil((high_y - low_y) / OPENING_SAMPLE)
+        for column in range(columns + 1):
+            for row in range(rows + 1):
+                point = Point2D(
+                    low_x + (high_x - low_x) * column / max(1, columns),
+                    low_y + (high_y - low_y) * row / max(1, rows),
+                )
+                if (
+                    point_in_polygon(point, grooves.outline)
+                    and point_in_polygon(point, recess.outline)
+                    and grooves.floor_depth(point) <= recess.depth
+                ):
+                    return False
+        return True
 
     @staticmethod
     def is_step(inner: Cavity, outer: Cavity) -> bool:

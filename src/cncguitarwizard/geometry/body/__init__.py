@@ -14,6 +14,7 @@ from .bridges import (
     HardtailSpec,
     HeadlessBridgeSpec,
     KahlerBridgeSpec,
+    LoProEdgeSpec,
     SideHole,
     SingleStringBridgeSpec,
     TuneOMaticSpec,
@@ -33,6 +34,7 @@ from .hardware import (
     JackHole,
     RearCavity,
     RectangularCavity,
+    ScoopedGrooves,
     TracedCavity,
 )
 from .neck_through import (
@@ -78,8 +80,10 @@ __all__ = [
     "HeadlessBridgeSpec",
     "JackHole",
     "KahlerBridgeSpec",
+    "LoProEdgeSpec",
     "RearCavity",
     "RectangularCavity",
+    "ScoopedGrooves",
     "SideHole",
     "SteppedTop",
     "SingleStringBridgeSpec",

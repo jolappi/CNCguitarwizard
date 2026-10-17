@@ -20,10 +20,17 @@ from ..geometry.body import (
     Cavity,
     DrilledHole,
     RearCavity,
+    ScoopedGrooves,
     TracedCavity,
 )
 from ..geometry.primitives import Point2D, point_in_polygon
-from .body_edges import ball_tool, binding_path, contour_paths, roundover_path
+from .body_edges import (
+    ball_tool,
+    binding_path,
+    contour_paths,
+    roundover_path,
+    scoop_paths,
+)
 from .engraving import engraving_path, engraving_tool
 from .exceptions import ToolpathError
 from .fixturing import StockBounds, resolve_index_pins
@@ -941,12 +948,19 @@ def _edge_setup(
     """
     contours = [contour for contour in body.contours if contour.face == face]
     edge = body.top_edge if face == "top" else body.back_edge
-    if not contours and edge.radius <= 0.0:
+    scoops = [
+        cavity
+        for cavity in body.top_cavities
+        if face == "top" and isinstance(cavity, ScoopedGrooves)
+    ]
+    if not contours and not scoops and edge.radius <= 0.0:
         return None
     ball = ball_tool(parameters)
     paths: list[Toolpath] = []
     for contour in contours:
         paths += contour_paths(contour, frame.model, ball, floor)
+    for grooves in scoops:
+        paths += scoop_paths(grooves, frame.model, ball)
     if edge.radius > 0.0:
         paths.append(
             roundover_path(
@@ -973,6 +987,7 @@ def _edge_setup(
     other = "Body_top" if face == "top" else "Body_back"
     what = " and ".join(
         [contour.name.lower() for contour in contours]
+        + [f"{grooves.name}'s scoops" for grooves in scoops]
         + ([f"{edge.radius:g} mm roundover"] if edge.radius > 0.0 else [])
     )
     return Setup(
@@ -1024,7 +1039,13 @@ def _top_pocket(
     frame: _Frame,
     parameters: MachiningParameters,
 ) -> Toolpath:
-    """Pocket one top cavity; a through route runs on past the back."""
+    """Pocket one top cavity; a through route runs on past the back.
+
+    Of scooped grooves, the part at full depth: where they lift out of
+    the wood the ball nose follows (``Body_top_edges``).
+    """
+    if isinstance(cavity, ScoopedGrooves):
+        cavity = TracedCavity(cavity.name, cavity.flat_outline, cavity.depth)
     depth = cavity.depth
     if cavity in body.through_cavities and depth >= body.thickness:
         depth = body.thickness + parameters.through_overshoot

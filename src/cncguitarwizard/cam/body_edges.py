@@ -1,8 +1,9 @@
 """Toolpaths for the body's edge finishes: contours, roundovers, binding.
 
 The arm contour, belly cut and roundovers are cut with a ball nose the
-size of the main tool (the ball nose the neck back is finished with);
-the binding channel is a plain profile with the main end mill. Every
+size of the main tool (the ball nose the neck back is finished with), as
+are scooped grooves where they lift out of the wood (a Lion's Claw); the
+binding channel is a plain profile with the main end mill. Every
 function works in one setup's machine frame and takes a ``to_model``
 map back to the model frame, where the geometry is described.
 """
@@ -13,7 +14,7 @@ import math
 from collections.abc import Callable, Sequence
 from dataclasses import replace
 
-from ..geometry.body import Contour, EdgeProfile
+from ..geometry.body import Contour, EdgeProfile, ScoopedGrooves
 from ..geometry.primitives import Point2D
 from .operations import profile
 from .parameters import MachiningParameters
@@ -28,6 +29,10 @@ CONTOUR_STEP_OVER = 1.0
 
 ROUNDOVER_ARC_STEP = 1.0
 """Distance between roundover passes, measured round the ball's path."""
+
+SCOOP_GRID_SPACING = 0.5
+"""How finely, in mm, scooped grooves' floor is sampled for the ball nose:
+the ridges between them come to a point at their ends."""
 
 
 def ball_tool(parameters: MachiningParameters) -> MachiningParameters:
@@ -79,6 +84,68 @@ def contour_paths(
     y = y_range[0]
     while y <= y_range[1] + 1e-9:
         xs = _steps(x_range[0], x_range[1], 1.0)
+        if not forward:
+            xs.reverse()
+        tips = [grid.tip_at(x, y) for x in xs]
+        for run in _below_face(xs, tips):
+            builder.rapid_to(run[0][0], y)
+            builder.rapid_down_to(run[0][1])
+            builder.plunge_to(run[0][1])
+            for x, z in run[1:]:
+                builder.cut_to(x, y, z)
+        forward = not forward
+        y += CONTOUR_STEP_OVER
+    return rough, builder.build()
+
+
+def scoop_paths(
+    grooves: ScoopedGrooves,
+    to_model: ToModel,
+    tool: MachiningParameters,
+) -> tuple[Toolpath, Toolpath]:
+    """Return the ball nose's roughing and finishing where grooves lift out.
+
+    Their full-depth part is pocketed with the main end mill first; from
+    a groove's radius ahead of where the bit starts lifting out to their
+    round ends, their floor is sampled, offset for the ball, roughed in
+    step-down layers and finished with passes along the neck
+    ``CONTOUR_STEP_OVER`` apart, following each groove's arc and the
+    ridges between them.
+    """
+
+    def height(x: float, y: float) -> float:
+        return -grooves.floor_depth(to_model(Point2D(x, y)))
+
+    corners = [
+        _to_machine(Point2D(x, y), to_model)
+        for x in (grooves.scoop_start - grooves.radius, grooves.max_x)
+        for y in (grooves.min_y, grooves.max_y)
+    ]
+    min_x, min_y, max_x, max_y = polygon_bounds(corners)
+    margin = tool.tool_radius
+    x_range = (min_x - margin, max_x + margin)
+    y_range = (min_y - margin, max_y + margin)
+    grid = build_offset_grid(
+        height,
+        x_range,
+        y_range,
+        tool,
+        spacing_x=SCOOP_GRID_SPACING,
+        spacing_y=SCOOP_GRID_SPACING,
+    )
+    rough = raster_rough(
+        f"{grooves.name} roughing",
+        grid,
+        tool,
+        x_range=x_range,
+        y_range=y_range,
+        step_over=tool.tool_diameter * tool.step_over,
+    )
+    builder = _builder(f"{grooves.name} finishing", tool)
+    forward = True
+    y = y_range[0]
+    while y <= y_range[1] + 1e-9:
+        xs = _steps(x_range[0], x_range[1], SCOOP_GRID_SPACING)
         if not forward:
             xs.reverse()
         tips = [grid.tip_at(x, y) for x in xs]

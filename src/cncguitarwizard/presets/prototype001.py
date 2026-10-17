@@ -30,6 +30,7 @@ from ..geometry.body import (
     HeelRelief,
     JackHole,
     KahlerBridgeSpec,
+    LoProEdgeSpec,
     RearCavity,
     SideHole,
     SingleStringBridgeSpec,
@@ -417,8 +418,8 @@ MAX_MULTISCALE_RATIO = 1.15
 """The longest bass scale accepted, as a multiple of the treble scale."""
 
 FLOYD_ROSE_NUTS: dict[int, Literal["r2", "r7", "r8"]] = {6: "r2", 7: "r7", 8: "r8"}
-"""The locking nut ``locking_nut`` "auto" fits a Floyd Rose with, per
-string count."""
+"""The locking nut ``locking_nut`` "auto" fits a Floyd Rose (or a six-string
+Lo-Pro Edge) with, per string count."""
 
 HeadstockStyle = Literal[
     "3+3",
@@ -931,13 +932,14 @@ class Prototype001Parameters:
     body_pickup_screw_recess_extra_depth: float = 8.0
     # The bridge is an interchangeable spec (see geometry.body.bridges):
     # KahlerBridgeSpec (default, the DXF's flat-mount 7300 cutout; six to
-    # eight strings), FloydRoseSpec (six to eight strings), TuneOMaticSpec,
-    # HardtailSpec (string-through or top-loaded), HeadlessBridgeSpec or
-    # SingleStringBridgeSpec (a unit per string, each at its own scale on
-    # a multiscale). Each places its own routes, rear cavities and holes
-    # relative to the scale line; one with a string_count must match the
-    # instrument's. In the web form it is edited as JSON with a "kind"
-    # entry.
+    # eight strings), FloydRoseSpec (six to eight strings), LoProEdgeSpec
+    # (the six-string Ibanez Lo-Pro Edge, a JEM777's Lion's Claw routed
+    # behind it), TuneOMaticSpec, HardtailSpec (string-through or
+    # top-loaded), HeadlessBridgeSpec or SingleStringBridgeSpec (a unit per
+    # string, each at its own scale on a multiscale). Each places its own
+    # routes, rear cavities and holes relative to the scale line; one with
+    # a string_count must match the instrument's. In the web form it is
+    # edited as JSON with a "kind" entry.
     body_bridge: BridgeSpec = field(default_factory=KahlerBridgeSpec)
     # The body shape is a spec (see body_shapes): a drawn body
     # (YourDesignShape) — by default the Design by Jone template, the
@@ -1567,8 +1569,8 @@ class Prototype001Parameters:
     nut_jig_slot_play: float = 0.05
     # A Floyd Rose locking nut screwed down from the top (see
     # geometry.neck.locking_nut): "auto" takes the Floyd Rose Original R2
-    # with a Floyd Rose bridge (the 7- or 8-string nut on a seven- or
-    # eight-string) and a plain nut otherwise; "none" is always a plain
+    # with a Floyd Rose or Lo-Pro Edge bridge (the 7- or 8-string nut on a
+    # seven- or eight-string) and a plain nut otherwise; "none" is always a plain
     # nut; "r2" (41.3 mm), "r3" (42.85 mm), "r7" (47.6 mm, seven strings)
     # or "r8" (53.8 mm, eight strings; each needs nut_width at least that)
     # always a locking nut. Its seat on the neck runs the
@@ -3500,10 +3502,11 @@ class Prototype001Parameters:
     @property
     def locking_nut_kind(self) -> str:
         """Return the locking nut fitted, ``"auto"`` resolved: "none" for a
-        plain nut, else its kind ("r2" with a Floyd Rose bridge)."""
+        plain nut, else its kind ("r2" with a Floyd Rose or Lo-Pro Edge
+        bridge)."""
         if self.locking_nut != "auto":
             return self.locking_nut
-        if isinstance(self.body_bridge, FloydRoseSpec):
+        if isinstance(self.body_bridge, FloydRoseSpec | LoProEdgeSpec):
             return FLOYD_ROSE_NUTS.get(self.string_count, "r2")
         return "none"
 
@@ -3799,7 +3802,9 @@ class Prototype001Parameters:
         # The saddles' line, moved with a tilted neck.
         saddles = self.bridge_scale_line()
         bridge_spec = self.body_bridge
-        if isinstance(bridge_spec, FloydRoseSpec) and self.left_handed:
+        if isinstance(bridge_spec, FloydRoseSpec | LoProEdgeSpec) and (
+            self.left_handed
+        ):
             # The tremolo arm (and the recess's wider side) go with the
             # treble strings.
             bridge_spec = replace(

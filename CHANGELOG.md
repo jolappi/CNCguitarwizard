@@ -4,6 +4,21 @@
 
 ### Added
 
+- An Ibanez Lo-Pro Edge with a JEM777's Lion's Claw route (`body_bridge`
+  kind `lo_pro_edge`, `LoProEdgeSpec`, six strings), read off a JEM777
+  body blueprint and laid out as a Floyd Rose's: Ø 11 studs 74 mm apart,
+  a 95 mm recess 6 mm deep, 12 mm behind the stud shelf, a 25 × 78 mm
+  block route 30 mm deep, and behind it the Lion's Claw — six 10.8 mm
+  grooves, 16 mm deep under the fine tuners, then scooped: lifting out
+  of the wood past the recess's end in a quarter circle as deep as they
+  are, each ending in a half circle on the top, a ridge rising between
+  two (`ScoopedGrooves`: the flat part pocketed in `Body_top`, the scoops
+  roughed and finished with the ball nose in `Body_top_edges`, each
+  groove lofted along its bit's path in FreeCAD) — for the fine tuners
+  to go down into on a pull-up, with a 21 mm deep spring cavity behind
+  (its length and width the Floyd Rose sheet's). `locking_nut` "auto"
+  fits the Floyd Rose R2 with it.
+
 - A scalloped fretboard (`fretboard_scalloped`): every fret space from
   `fretboard_scallop_from_fret` on (15 by default; 0 from the nut)
   hollowed `fretboard_scallop_depth` (2 mm) at its middle, a circular arc

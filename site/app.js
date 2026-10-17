@@ -339,8 +339,9 @@ form.addEventListener("change", syncMirrors);
 form.addEventListener("input", syncMirrors);
 
 // Hide the kinds not made for the instrument's string count (the
-// Tune-o-matic past six strings, the Kahler and Floyd Rose outside six to
-// eight); if one of them is chosen, switch to the first kind that fits.
+// Tune-o-matic and the Lo-Pro Edge past six strings, the Kahler and Floyd
+// Rose outside six to eight); if one of them is chosen, switch to the first
+// kind that fits.
 function instrumentStrings() {
   const countInput = form.querySelector('[data-set="prototype"][data-name="string_count"]');
   return countInput ? readValue(countInput) : 6;

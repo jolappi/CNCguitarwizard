@@ -253,7 +253,181 @@ class CircularCavity:
             raise BodyGeometryError(f"{self.name} centre must be finite.")
 
 
-Cavity = RectangularCavity | CircularCavity | TracedCavity
+SCOOP_ARC_STEPS = 12
+"""How many straight steps round each scooped groove's half-circle end."""
+
+
+@dataclass(frozen=True, slots=True)
+class ScoopedGrooves:
+    """Grooves side by side, each lifting out of the wood in an arc.
+
+    As a flat-bottomed bit ``groove_width`` across cuts them: run along
+    the neck ``depth`` deep from ``front`` (where it plunges, inside a
+    deeper route) to ``scoop_start``, then lifted out in a quarter circle
+    ``depth`` in radius, its bottom rising to the top face, at
+    ``scoop_start`` + ``depth``, straight up. Each groove ends in a half
+    circle on the top face, and where it lifts out its floor is deepest
+    along its middle: a ridge rises between two grooves, from their full
+    depth to the top face at their ends — a Lion's Claw's six scooped
+    grooves behind an Ibanez Edge tremolo. ``count`` grooves lie side by
+    side, touching, centred on ``center_y``.
+
+    Shares its read interface (``name``, ``depth``, ``outline``,
+    ``min_x``/``max_x``/``min_y``/``max_y``) with ``TracedCavity``; its
+    ``outline`` is where it meets the top face.
+
+    Args:
+        name: Short label used in error messages and generated comments.
+        front: Where the grooves start along the neck, full depth.
+        scoop_start: Where the bit's centre starts lifting out.
+        depth: The grooves' depth below the top face, and the radius of
+            the arc they lift out in.
+        groove_width: Each groove's width, the bit's diameter.
+        count: How many grooves lie side by side.
+        center_y: The grooves' centre across the body.
+
+    Raises:
+        BodyGeometryError: For a size not finite and positive, no groove,
+            or a scoop starting ahead of the grooves' front.
+    """
+
+    name: str
+    front: float
+    scoop_start: float
+    depth: float
+    groove_width: float
+    count: int
+    center_y: float = 0.0
+    outline: tuple[Point2D, ...] = field(init=False)
+
+    def __post_init__(self) -> None:
+        """Validate the grooves and build where they meet the top face."""
+        for label, value in (
+            ("depth", self.depth),
+            ("groove width", self.groove_width),
+        ):
+            if not math.isfinite(value) or value <= 0.0:
+                raise BodyGeometryError(
+                    f"{self.name} {label} must be finite and positive."
+                )
+        if self.count < 1:
+            raise BodyGeometryError(f"{self.name} needs at least one groove.")
+        if not all(
+            math.isfinite(value)
+            for value in (self.front, self.scoop_start, self.center_y)
+        ):
+            raise BodyGeometryError(f"{self.name} must lie at finite positions.")
+        if self.scoop_start <= self.front:
+            raise BodyGeometryError(
+                f"{self.name} must run at full depth before it lifts out."
+            )
+        object.__setattr__(
+            self, "outline", self._outline_through(self.lift_end, self.front)
+        )
+
+    @property
+    def radius(self) -> float:
+        """Return half a groove's width."""
+        return self.groove_width / 2.0
+
+    @property
+    def lift_end(self) -> float:
+        """Return where the bit's centre leaves the top face."""
+        return self.scoop_start + self.depth
+
+    @property
+    def centres(self) -> tuple[float, ...]:
+        """Return each groove's centre across the body."""
+        half = self.count * self.radius
+        return tuple(
+            self.center_y - half + self.radius * (2 * index + 1)
+            for index in range(self.count)
+        )
+
+    @property
+    def flat_outline(self) -> tuple[Point2D, ...]:
+        """Return the part of the grooves at full depth.
+
+        From ``front`` to where the bit starts lifting out, each groove
+        ending in a half circle round its centre there.
+        """
+        return self._outline_through(self.scoop_start, self.front)
+
+    @property
+    def min_x(self) -> float:
+        """Return the grooves' smallest longitudinal extent."""
+        return self.front
+
+    @property
+    def max_x(self) -> float:
+        """Return the grooves' largest longitudinal extent."""
+        return self.lift_end + self.radius
+
+    @property
+    def min_y(self) -> float:
+        """Return the grooves' smallest lateral extent."""
+        return self.center_y - self.count * self.radius
+
+    @property
+    def max_y(self) -> float:
+        """Return the grooves' largest lateral extent."""
+        return self.center_y + self.count * self.radius
+
+    def bit_depth(self, x: float) -> float:
+        """Return how deep the bit's bottom runs with its centre at ``x``.
+
+        ``depth`` up to ``scoop_start``, then rising on the quarter circle
+        to 0 at ``lift_end``; 0 past it.
+        """
+        if x <= self.scoop_start:
+            return self.depth
+        rise = x - self.scoop_start
+        if rise >= self.depth:
+            return 0.0
+        return math.sqrt(self.depth**2 - rise**2)
+
+    def floor_depth(self, point: Point2D) -> float:
+        """Return how deep the grooves' floor lies below the top face.
+
+        Under each groove the floor is as deep as the bit ran anywhere
+        over the point: where it lifts out, at its furthest back position
+        still covering it. 0 outside the grooves.
+        """
+        if point.x < self.front:
+            return 0.0
+        deepest = 0.0
+        for centre in self.centres:
+            across = point.y - centre
+            if abs(across) > self.radius:
+                continue
+            reach = math.sqrt(self.radius**2 - across**2)
+            # The bit's centre covers the point from x - reach to x + reach.
+            start = max(self.front, point.x - reach)
+            if start <= min(self.lift_end, point.x + reach):
+                deepest = max(deepest, self.bit_depth(start))
+        return deepest
+
+    def _outline_through(self, end: float, front: float) -> tuple[Point2D, ...]:
+        """Return the grooves' outline, each ending in a half circle round
+        its centre at ``end``, from a straight ``front``."""
+        radius = self.radius
+        points = [Point2D(front, self.min_y), Point2D(end, self.min_y)]
+        for centre in self.centres:
+            points.extend(
+                Point2D(
+                    end + radius * math.cos(angle),
+                    centre + radius * math.sin(angle),
+                )
+                for angle in (
+                    math.pi * (k / SCOOP_ARC_STEPS - 0.5)
+                    for k in range(1, SCOOP_ARC_STEPS + 1)
+                )
+            )
+        points.append(Point2D(front, self.max_y))
+        return tuple(points)
+
+
+Cavity = RectangularCavity | CircularCavity | TracedCavity | ScoopedGrooves
 """Any pocket type that can be cut and bounds-checked on the body."""
 
 

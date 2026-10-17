@@ -32,6 +32,7 @@ from .hardware import (
     DrilledHole,
     RearCavity,
     RectangularCavity,
+    ScoopedGrooves,
     TracedCavity,
 )
 
@@ -199,7 +200,10 @@ def mirrored_hardware(hardware: BridgeHardware) -> BridgeHardware:
     def flip(point: Point2D) -> Point2D:
         return Point2D(point.x, -point.y)
 
-    def flip_cavity(cavity: Cavity) -> TracedCavity:
+    def flip_cavity(cavity: Cavity) -> Cavity:
+        if isinstance(cavity, ScoopedGrooves):
+            # Its grooves mirror about their own centre.
+            return replace(cavity, center_y=-cavity.center_y)
         return TracedCavity(
             cavity.name,
             tuple(flip(point) for point in reversed(cavity.outline)),
@@ -737,18 +741,13 @@ class FloydRoseSpec:
             if self.claw_screw_height is None
             else self.claw_screw_height
         )
-        claw = tuple(
-            SideHole(
-                f"Trem claw screw {index} hole",
-                Point3D(wall, y, height),
-                Point3D(wall - self.claw_screw_depth, y, height),
-                self.claw_screw_diameter,
-                "Floyd Rose spring cavity",
-            )
-            for index, y in enumerate(
-                (-self.claw_screw_spacing / 2.0, self.claw_screw_spacing / 2.0),
-                start=1,
-            )
+        claw = _trem_claw_holes(
+            wall,
+            height,
+            self.claw_screw_spacing,
+            self.claw_screw_diameter,
+            self.claw_screw_depth,
+            "Floyd Rose spring cavity",
         )
         return BridgeHardware(
             mounting,
@@ -832,6 +831,451 @@ class FloydRoseSpec:
         if self.block_route_depth + spring_depth <= body_thickness:
             raise BodyGeometryError(
                 "Floyd Rose block route would not open into the spring cavity: "
+                "the body is too thick for the routed depths."
+            )
+
+
+LO_PRO_EDGE_DRAWN_THICKNESS = 44.45
+"""The body thickness the Lo-Pro Edge's rear depths are set for (1.75 in):
+the JEM777 blueprint gives none, so the Floyd Rose sheet's."""
+
+LIONS_CLAW_GROOVES = 6
+"""The Lion's Claw's grooves: one under each string's fine tuner."""
+
+LO_PRO_EDGE_SPRING_CAVITY_RADIUS = 5.0
+"""The Lo-Pro Edge spring cavity's corner radius, as a Floyd Rose's."""
+
+
+@dataclass(frozen=True, slots=True)
+class LoProEdgeSpec:
+    """Recessed Ibanez Lo-Pro Edge with the JEM777's Lion's Claw route.
+
+    The six-string double-locking tremolo, routed as on an Ibanez JEM777:
+    every default is read off a JEM777 body blueprint (mm). The route is
+    laid out as a Floyd Rose's. From the top a recess ``recess_width``
+    (95) wide, cut ``stud_shelf_depth`` (6) deep over its whole
+    footprint, full width for ``recess_full_width_length`` (43) from its
+    front wall and then ``fine_tuner_width`` (74) wide to
+    ``recess_length`` (74); its front ``stud_shelf_length`` (18) stays at
+    that depth as the shelf carrying the two pivot-stud holes (74 apart,
+    7 behind the front wall, Ø 11, 32 deep below the shelf), while
+    everything behind is deepened to ``fine_tuner_depth`` (12), with the
+    25 long block route through that floor, 30 deep, reaching 33 to the
+    bass and 45 to the treble of the centreline (``block_route_width``
+    78, ``block_route_treble_shift`` 6) with R10 corners.
+
+    Behind the block route the Lion's Claw: six grooves
+    ``lions_claw_groove_width`` (10.8) wide side by side, one under each
+    string's fine tuner, ``lions_claw_depth`` (16) deep under the
+    fine-tuner part, then scooped: lifting out of the wood past the
+    recess's end in a quarter circle as deep as they are, as a router
+    lifted in an arc, each ending in a half circle on the top
+    ``lions_claw_length`` (52) behind the block route (``ScoopedGrooves``;
+    the blueprint's 31 + 21: the quarter circle and the bit's radius
+    behind the fine-tuner part). Where they lift out a ridge rises between
+    two grooves, to the top at their ends — the claw marks. On a pull-up
+    the fine tuners go down into them, so the tremolo pulls up further
+    than a plain recess lets it.
+
+    From the back the spring cavity, ``spring_cavity_depth`` (21) deep
+    with a ``cover_depth`` (3) cover recess, ending
+    ``spring_cavity_tail_offset`` (50.5) behind the front wall (43.5
+    behind the studs); the blueprint draws no more of it, so its length
+    and width are the Floyd Rose sheet's. The block route runs through
+    into it. The rear depths are set for a 1.75 in body
+    (``LO_PRO_EDGE_DRAWN_THICKNESS``): in a thicker one the spring cavity
+    is that much deeper, so the block route still opens into it. The
+    blueprint gives no saddle line either: the studs stand
+    ``pivot_offset`` ahead of the scale line, as a Floyd Rose's do; check
+    it against the bridge's intonation range before cutting.
+
+    Args:
+        treble_side: Which side of the centreline carries the treble
+            strings and the tremolo arm: ``"+y"`` for the right-handed
+            Prototype001 body (controls at +Y), ``"-y"`` otherwise.
+        pivot_offset: Stud centres relative to the scale line (negative =
+            ahead of it, toward the nut).
+        pivot_stud_spacing: Centre distance between the two stud anchors.
+        pivot_hole_diameter: Anchor hole diameter.
+        pivot_hole_depth: Anchor hole depth from the top face (the 6 mm
+            shelf plus the blueprint's 32).
+        stud_to_front_wall: Stud centres behind the recess's front wall.
+        stud_shelf_depth: Depth of the whole recess, and of the shelf the
+            studs stand on.
+        stud_shelf_length: Front wall to the block route's front edge.
+        recess_width: The recess's full width, centred on the strings.
+        recess_full_width_length: Length of the full-width part, from
+            the front wall.
+        recess_length: Total recess length from the front wall.
+        fine_tuner_width: Width of the narrower rear part.
+        fine_tuner_depth: Depth of the floor behind the stud shelf,
+            around the block route and the Lion's Claw.
+        recess_corner_radius: Radius of the recess's convex corners.
+        recess_step_radius: Radius where the full width steps in.
+        block_route_length: Block route length along the neck.
+        block_route_width: Block route width across the body.
+        block_route_depth: Block route depth from the top face; together
+            with the spring cavity it must exceed the body thickness so
+            the route opens into the cavity.
+        block_route_treble_shift: Block route centre toward the treble
+            side.
+        block_route_corner_radius: Radius of the block route's corners.
+        lions_claw_groove_width: Each Lion's Claw groove's width, and its
+            rounded end's diameter; the six lie side by side, centred.
+        lions_claw_length: From the block route's back to the grooves'
+            rounded ends on the top.
+        lions_claw_depth: The grooves' depth from the top face, and the
+            radius of the quarter circle they lift out in.
+        spring_cavity_length: Rear spring cavity length along the neck.
+        spring_cavity_width: Rear spring cavity width across the body.
+        spring_cavity_depth: Spring cavity depth from the back face.
+        spring_cavity_tail_offset: Spring cavity tail end behind the
+            recess's front wall.
+        cover_margin: Cover recess overhang around the spring cavity: room
+            for the cover's screws on the ledge.
+        cover_depth: Cover recess depth.
+        claw_screw_spacing: The tremolo claw's two screws apart, about the
+            spring cavity's centre.
+        claw_screw_height: The screws' height above the back face; empty
+            for halfway up the spring cavity.
+        claw_screw_diameter: Their pilot holes' diameter.
+        claw_screw_depth: How deep the pilots run into the spring
+            cavity's nut-ward wall, along the neck.
+    """
+
+    kind: Literal["lo_pro_edge"] = "lo_pro_edge"
+    treble_side: Literal["+y", "-y"] = "+y"
+    pivot_offset: float = -11.9
+    pivot_stud_spacing: float = 74.0
+    pivot_hole_diameter: float = 11.0
+    pivot_hole_depth: float = 38.0
+    stud_to_front_wall: float = 7.0
+    stud_shelf_depth: float = 6.0
+    stud_shelf_length: float = 18.0
+    recess_width: float = 95.0
+    recess_full_width_length: float = 43.0
+    recess_length: float = 74.0
+    fine_tuner_width: float = 74.0
+    fine_tuner_depth: float = 12.0
+    recess_corner_radius: float = 3.0
+    recess_step_radius: float = 6.0
+    block_route_length: float = 25.0
+    block_route_width: float = 78.0
+    block_route_depth: float = 30.0
+    block_route_treble_shift: float = 6.0
+    block_route_corner_radius: float = 10.0
+    lions_claw_groove_width: float = 10.8
+    lions_claw_length: float = 52.0
+    lions_claw_depth: float = 16.0
+    spring_cavity_length: float = 123.19
+    spring_cavity_width: float = 56.64
+    spring_cavity_depth: float = 21.0
+    spring_cavity_tail_offset: float = 50.5
+    cover_margin: float = 8.0
+    cover_depth: float = 3.0
+    claw_screw_spacing: float = 34.0
+    claw_screw_height: float | None = None
+    claw_screw_diameter: float = 3.5
+    claw_screw_depth: float = 30.0
+
+    def hardware(self, scale_length: float, body_thickness: float) -> BridgeHardware:
+        _positive(
+            self,
+            "pivot_stud_spacing",
+            "pivot_hole_diameter",
+            "pivot_hole_depth",
+            "stud_to_front_wall",
+            "stud_shelf_depth",
+            "stud_shelf_length",
+            "recess_width",
+            "recess_full_width_length",
+            "recess_length",
+            "fine_tuner_width",
+            "fine_tuner_depth",
+            "block_route_length",
+            "block_route_width",
+            "block_route_depth",
+            "lions_claw_groove_width",
+            "lions_claw_length",
+            "lions_claw_depth",
+            "spring_cavity_length",
+            "spring_cavity_width",
+            "spring_cavity_depth",
+            "spring_cavity_tail_offset",
+            "cover_margin",
+            "cover_depth",
+            "claw_screw_spacing",
+            "claw_screw_diameter",
+            "claw_screw_depth",
+        )
+        # The block hangs a fixed depth below the top; a body thicker than
+        # the one the depths are set for puts it further from the back, so
+        # the spring cavity reaches that much deeper.
+        spring_depth = self.spring_cavity_depth + max(
+            0.0, body_thickness - LO_PRO_EDGE_DRAWN_THICKNESS
+        )
+        self._check_layout(body_thickness, spring_depth)
+        sign = 1.0 if self.treble_side == "+y" else -1.0
+        pivot_x = scale_length + self.pivot_offset
+        front = pivot_x - self.stud_to_front_wall
+        block_front = front + self.stud_shelf_length
+        block_back = block_front + self.block_route_length
+        step_x = front + self.recess_full_width_length
+        back = front + self.recess_length
+        half = self.recess_width / 2.0
+        narrow = self.fine_tuner_width / 2.0
+        corner = self.recess_corner_radius
+        step = self.recess_step_radius
+
+        mounting = BridgeMounting(
+            pivot_x,
+            pivot_stud_spacing=self.pivot_stud_spacing,
+            pivot_hole_diameter=self.pivot_hole_diameter,
+            pivot_hole_depth=self.pivot_hole_depth,
+            has_sustain_block=False,
+        )
+        # As a Floyd Rose's: the whole footprint one shallow pocket, its
+        # floor deepened behind the stud shelf by a step inside it.
+        recess = TracedCavity(
+            "Lo-Pro Edge recess",
+            rounded_polygon_points(
+                [
+                    Point2D(front, -half),
+                    Point2D(step_x, -half),
+                    Point2D(step_x, -narrow),
+                    Point2D(back, -narrow),
+                    Point2D(back, narrow),
+                    Point2D(step_x, narrow),
+                    Point2D(step_x, half),
+                    Point2D(front, half),
+                ],
+                [corner, corner, step, corner, corner, step, corner, corner],
+            ),
+            self.stud_shelf_depth,
+        )
+        fine_tuners = TracedCavity(
+            "Lo-Pro Edge fine-tuner recess",
+            rounded_polygon_points(
+                [
+                    Point2D(block_front, -half),
+                    Point2D(step_x, -half),
+                    Point2D(step_x, -narrow),
+                    Point2D(back, -narrow),
+                    Point2D(back, narrow),
+                    Point2D(step_x, narrow),
+                    Point2D(step_x, half),
+                    Point2D(block_front, half),
+                ],
+                [0.0, corner, step, corner, corner, step, corner, 0.0],
+            ),
+            self.fine_tuner_depth,
+        )
+        block_route = RectangularCavity(
+            "Lo-Pro Edge block route",
+            (block_front + block_back) / 2.0,
+            sign * self.block_route_treble_shift,
+            self.block_route_length,
+            self.block_route_width,
+            min(self.block_route_depth, body_thickness),
+            corner_radius=self.block_route_corner_radius,
+        )
+        # Six grooves from halfway along the deeper block route (so no
+        # wall is left between them), lifting out past the recess's end
+        # in a quarter circle as deep as they are, their round ends
+        # lions_claw_length behind the block route.
+        lions_claw = ScoopedGrooves(
+            "Lo-Pro Edge Lion's Claw",
+            (block_front + block_back) / 2.0,
+            self._scoop_start(block_back),
+            self.lions_claw_depth,
+            self.lions_claw_groove_width,
+            LIONS_CLAW_GROOVES,
+        )
+        tail = front + self.spring_cavity_tail_offset
+        spring_cavity = RearCavity(
+            RectangularCavity(
+                "Lo-Pro Edge spring cavity",
+                tail - self.spring_cavity_length / 2.0,
+                0.0,
+                self.spring_cavity_length,
+                self.spring_cavity_width,
+                spring_depth,
+                corner_radius=LO_PRO_EDGE_SPRING_CAVITY_RADIUS,
+            ),
+            RectangularCavity(
+                "Lo-Pro Edge spring cavity cover recess",
+                tail - self.spring_cavity_length / 2.0,
+                0.0,
+                self.spring_cavity_length + 2.0 * self.cover_margin,
+                self.spring_cavity_width + 2.0 * self.cover_margin,
+                self.cover_depth,
+                corner_radius=LO_PRO_EDGE_SPRING_CAVITY_RADIUS + self.cover_margin,
+            ),
+        )
+        # The tremolo claw's two screws go into the spring cavity's
+        # nut-ward wall along the neck, drilled sideways by hand.
+        height = (
+            spring_depth / 2.0
+            if self.claw_screw_height is None
+            else self.claw_screw_height
+        )
+        claw = _trem_claw_holes(
+            tail - self.spring_cavity_length,
+            height,
+            self.claw_screw_spacing,
+            self.claw_screw_diameter,
+            self.claw_screw_depth,
+            "Lo-Pro Edge spring cavity",
+        )
+        return BridgeHardware(
+            mounting,
+            top_cavities=(recess, fine_tuners, lions_claw),
+            through_cavities=(block_route,),
+            rear_cavities=(spring_cavity,),
+            notes=(
+                "Ibanez Lo-Pro Edge with the JEM777's Lion's Claw: routing read "
+                "off a JEM777 body blueprint. The blueprint gives no saddle "
+                "line: pivot_offset places the studs as a Floyd Rose's (11.9 mm "
+                "ahead of the scale line unless changed); check the bridge's "
+                "intonation range before cutting.",
+                f"The Lion's Claw's six grooves: {self.lions_claw_depth:g} mm deep "
+                "under the fine tuners, cut with the flat end mill in Body_top, "
+                "then lifting out past the recess's end in a quarter circle, "
+                "scooped with the ball nose in Body_top_edges; on a pull-up the "
+                "fine tuners go down into them.",
+                "The blueprint draws the spring cavity's depth "
+                f"({self.spring_cavity_depth:g} mm, a {self.cover_depth:g} mm "
+                "cover recess) and its tail end "
+                f"{self.spring_cavity_tail_offset - self.stud_to_front_wall:g} mm "
+                "behind the studs; its length and width are the Floyd Rose "
+                "sheet's — fit them to the springs and claw in hand.",
+                f"Drill the trem claw's two screws' {self.claw_screw_diameter:g} "
+                "mm pilots by hand into the spring cavity's nut-ward wall, "
+                f"{self.claw_screw_depth:g} mm deep along the neck, "
+                f"{self.claw_screw_spacing:g} mm apart about the centreline and "
+                f"{height:g} mm up from the back (modelled: Trem claw screw "
+                "holes; set the bridge's claw_screw_* to the claw's own).",
+            ),
+            side_holes=claw,
+        )
+
+    def _scoop_start(self, block_back: float) -> float:
+        """Return where the Lion's Claw's bit starts lifting out: its
+        round ends ``lions_claw_length`` behind ``block_back``, less the
+        bit's radius and the quarter circle it lifts out in."""
+        return (
+            block_back
+            + self.lions_claw_length
+            - self.lions_claw_groove_width / 2.0
+            - self.lions_claw_depth
+        )
+
+    def _check_layout(self, body_thickness: float, spring_depth: float) -> None:
+        """Reject a route whose parts cannot be laid out as drawn.
+
+        Args:
+            body_thickness: The body's thickness.
+            spring_depth: The spring cavity's depth as routed in it.
+        """
+        half = self.recess_width / 2.0
+        if self.stud_to_front_wall >= self.stud_shelf_length:
+            raise BodyGeometryError(
+                "Lo-Pro Edge studs must sit on the shelf ahead of the block route."
+            )
+        if self.pivot_stud_spacing / 2.0 + self.pivot_hole_diameter / 2.0 >= half:
+            raise BodyGeometryError(
+                "Lo-Pro Edge stud holes must lie inside the recess width."
+            )
+        if self.stud_shelf_length + self.block_route_length > (
+            self.recess_full_width_length
+        ):
+            raise BodyGeometryError(
+                "Lo-Pro Edge block route must end inside the full-width part of "
+                "the recess."
+            )
+        if self.recess_full_width_length >= self.recess_length:
+            raise BodyGeometryError(
+                "Lo-Pro Edge recess must be longer than its full-width part."
+            )
+        if self.fine_tuner_width >= self.recess_width:
+            raise BodyGeometryError(
+                "Lo-Pro Edge fine-tuner recess must be narrower than the full width."
+            )
+        slot_half = self.block_route_width / 2.0
+        if (
+            self.block_route_treble_shift + slot_half > half
+            or slot_half - self.block_route_treble_shift > half
+        ):
+            raise BodyGeometryError(
+                "Lo-Pro Edge block route must lie inside the recess width."
+            )
+        if 2.0 * self.block_route_corner_radius > min(
+            self.block_route_length, self.block_route_width
+        ):
+            raise BodyGeometryError(
+                "Lo-Pro Edge block route's corners are rounded more than it is "
+                "long or wide."
+            )
+        claw_half = LIONS_CLAW_GROOVES * self.lions_claw_groove_width / 2.0
+        if claw_half > self.fine_tuner_width / 2.0:
+            raise BodyGeometryError(
+                "Lo-Pro Edge Lion's Claw's six grooves must fit the fine-tuner "
+                "recess's width."
+            )
+        # It starts inside the block route, so it must be no wider.
+        if claw_half > slot_half - abs(self.block_route_treble_shift):
+            raise BodyGeometryError(
+                "Lo-Pro Edge Lion's Claw must be no wider than the block route "
+                "it runs back from."
+            )
+        if (
+            self.stud_shelf_length + self.block_route_length + self.lions_claw_length
+            <= self.recess_length
+        ):
+            raise BodyGeometryError(
+                "Lo-Pro Edge Lion's Claw must reach past the recess's end."
+            )
+        if self._scoop_start(self.block_route_length) <= self.block_route_length / 2.0:
+            raise BodyGeometryError(
+                "Lo-Pro Edge Lion's Claw is too short to lift out of its depth: "
+                "make lions_claw_length longer or the grooves shallower."
+            )
+        if not self.fine_tuner_depth < self.lions_claw_depth < body_thickness:
+            raise BodyGeometryError(
+                "Lo-Pro Edge Lion's Claw must be deeper than the fine-tuner "
+                "recess, and shallower than the body is thick."
+            )
+        if self.spring_cavity_depth <= self.cover_depth:
+            raise BodyGeometryError(
+                "Lo-Pro Edge spring cavity must be deeper than its cover recess."
+            )
+        if self.claw_screw_spacing >= self.spring_cavity_width:
+            raise BodyGeometryError(
+                "The trem claw's screws must lie inside the spring cavity's "
+                "width: make claw_screw_spacing smaller."
+            )
+        if self.claw_screw_height is not None and not (
+            0.0 < self.claw_screw_height < body_thickness
+        ):
+            raise BodyGeometryError(
+                "claw_screw_height must lie between the back and the top."
+            )
+        # The Lion's Claw starts inside the block route, over the spring
+        # cavity, as does the floor around it.
+        if max(self.fine_tuner_depth, self.lions_claw_depth) + spring_depth >= (
+            body_thickness
+        ):
+            raise BodyGeometryError(
+                "Lo-Pro Edge routes would meet: the body is too thin for the "
+                "Lion's Claw over the spring cavity."
+            )
+        if self.pivot_hole_depth >= body_thickness:
+            raise BodyGeometryError(
+                "Lo-Pro Edge stud holes would pass through the body: too thin."
+            )
+        if self.block_route_depth + spring_depth <= body_thickness:
+            raise BodyGeometryError(
+                "Lo-Pro Edge block route would not open into the spring cavity: "
                 "the body is too thick for the routed depths."
             )
 
@@ -1234,6 +1678,7 @@ class SingleStringBridgeSpec:
 BridgeSpec = (
     KahlerBridgeSpec
     | FloydRoseSpec
+    | LoProEdgeSpec
     | TuneOMaticSpec
     | HardtailSpec
     | HeadlessBridgeSpec
@@ -1243,6 +1688,7 @@ BridgeSpec = (
 BRIDGE_KINDS: dict[str, type[Any]] = {
     "kahler_7300": KahlerBridgeSpec,
     "floyd_rose": FloydRoseSpec,
+    "lo_pro_edge": LoProEdgeSpec,
     "tune_o_matic": TuneOMaticSpec,
     "hardtail": HardtailSpec,
     "headless": HeadlessBridgeSpec,
@@ -1252,6 +1698,7 @@ BRIDGE_KINDS: dict[str, type[Any]] = {
 BRIDGE_LABELS: dict[str, str] = {
     "kahler_7300": "Kahler 7300 (fixed, flat mount)",
     "floyd_rose": "Floyd Rose (recessed tremolo)",
+    "lo_pro_edge": "Ibanez Lo-Pro Edge + Lion's Claw (recessed, as on a JEM777)",
     "tune_o_matic": "Tune-o-matic + stop bar",
     "hardtail": "Hardtail (string-through or top-load)",
     "headless": "Headless (tuners at the bridge)",
@@ -1271,18 +1718,21 @@ BRIDGE_NOTES: dict[str, str] = {
 BRIDGE_MAX_STRINGS: dict[str, int] = {
     "kahler_7300": 8,
     "floyd_rose": 8,
+    "lo_pro_edge": 6,
     "tune_o_matic": 6,
 }
 """The most strings a bridge kind is drawn for; unlisted kinds take any count.
 
 The Kahler 7300 and the Floyd Rose come for six to eight strings, the
-Tune-o-matic spec carries six-string dimensions; the hardtail and the
+Lo-Pro Edge (its Lion's Claw a groove per string) and the Tune-o-matic
+spec carry six-string dimensions; the hardtail and the
 single-string bridges make a hole or a unit per string.
 """
 
 BRIDGE_MIN_STRINGS: dict[str, int] = {
     "kahler_7300": 6,
     "floyd_rose": 6,
+    "lo_pro_edge": 6,
 }
 """The fewest strings a bridge kind is made for; unlisted kinds take any."""
 
@@ -1312,6 +1762,39 @@ def bridge_spec_from_dict(data: Mapping[str, Any]) -> BridgeSpec:
         )
     spec: BridgeSpec = spec_class(**data)
     return spec
+
+
+def _trem_claw_holes(
+    wall: float,
+    height: float,
+    spacing: float,
+    diameter: float,
+    depth: float,
+    cavity: str,
+) -> tuple[SideHole, ...]:
+    """Return a tremolo claw's two screw holes, drilled by hand.
+
+    They go into a spring cavity's nut-ward wall along the neck, ``spacing``
+    apart about the centreline.
+
+    Args:
+        wall: Where the spring cavity's nut-ward wall stands along the neck.
+        height: The holes' height above the back face.
+        spacing: The two screws apart.
+        diameter: The pilot holes' diameter.
+        depth: How deep the pilots run into the wall.
+        cavity: The spring cavity's name, the holes are drilled from.
+    """
+    return tuple(
+        SideHole(
+            f"Trem claw screw {index} hole",
+            Point3D(wall, y, height),
+            Point3D(wall - depth, y, height),
+            diameter,
+            cavity,
+        )
+        for index, y in enumerate((-spacing / 2.0, spacing / 2.0), start=1)
+    )
 
 
 def _positive(spec: object, *names: str) -> None:

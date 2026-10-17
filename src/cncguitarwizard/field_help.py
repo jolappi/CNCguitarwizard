@@ -382,10 +382,12 @@ FIELD_HELP: dict[str, str] = {
         "on a Les Paul with a carved top)."
     ),
     "body_bridge": (
-        "The bridge: a Kahler 7300 or a Floyd Rose (six to eight strings), a "
-        "Tune-o-matic, a hardtail (strung through the body or top-loaded), a "
-        "headless bridge or single-string bridges (one per string, each at "
-        "its own scale on fanned frets), with the routes and holes each needs."
+        "The bridge: a Kahler 7300 or a Floyd Rose (six to eight strings), an "
+        "Ibanez Lo-Pro Edge with a JEM777's Lion's Claw route behind it (six "
+        "strings), a Tune-o-matic, a hardtail (strung through the body or "
+        "top-loaded), a headless bridge or single-string bridges (one per "
+        "string, each at its own scale on fanned frets), with the routes and "
+        "holes each needs."
     ),
     "body_pickups": (
         "The pickups from neck to bridge: H = humbucker, S = single coil; on "

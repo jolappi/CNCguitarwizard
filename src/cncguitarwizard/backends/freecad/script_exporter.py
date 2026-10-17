@@ -15,6 +15,7 @@ from ...geometry.body import (
     Cavity,
     Engraving,
     NeckThrough,
+    ScoopedGrooves,
 )
 from ...geometry.body.carve import CELL
 from ...geometry.fretboard import (
@@ -2610,6 +2611,9 @@ class FreeCADScriptExporter:
         for through in body.through_cavities:
             cavity_cuts.append((through, f"{through.name.lower()} through cut"))
         for cavity, label in cavity_cuts:
+            if isinstance(cavity, ScoopedGrooves):
+                lines += _grooves_cut_lines(cavity, label)
+                continue
             outline = outline_literal(cavity.outline)
             lines.append(
                 f"body_shape = cavity_cut(body_shape, {outline}, "
@@ -3677,6 +3681,67 @@ def _carve_held_up(
     return [
         [(x, y, heights[j][i]) for i, (x, y, _) in enumerate(row)]
         for j, row in enumerate(poles)
+    ]
+
+
+GROOVE_LOFT_SECTIONS = 12
+"""How many spans scooped grooves are lofted in across each groove: a
+section every 15 degrees round the bit, so its round end comes out
+round."""
+
+GROOVE_LOFT_OVERLAP = 0.01
+"""How far, in mm, each scooped groove's loft reaches into its
+neighbour's: two grooves that only touched shared a face, and FreeCAD's
+boolean then left one of them uncut. The strip is a hair of the
+neighbour's own cut, so the grooves come out as they are."""
+
+
+def _grooves_cut_lines(grooves: ScoopedGrooves, label: str) -> list[str]:
+    """Return script lines cutting scooped grooves (a Lion's Claw).
+
+    Each groove as its flat-bottomed bit cuts it: a solid lofted through
+    sections along the neck across it, each the bit's path where its edge
+    passes (full depth from the grooves' front, then the quarter circle
+    up to the top face), moved on by how far the bit reaches past its
+    centre there, so its end comes out round on the top and a ridge rises
+    between two grooves.
+    """
+    centres = [round(centre, 4) for centre in grooves.centres]
+    return [
+        "groove_lofts = []\n",
+        f"for groove_centre in {centres!r}:\n",
+        "    groove_sections = []\n",
+        f"    for k in range({GROOVE_LOFT_SECTIONS} + 1):\n",
+        f"        angle = math.pi * (k / {GROOVE_LOFT_SECTIONS} - 0.5)\n",
+        f"        across = {grooves.radius + GROOVE_LOFT_OVERLAP!r}"
+        " * math.sin(angle)\n",
+        "        y = groove_centre + across\n",
+        # Where the bit starts lifting, moved on by its reach at y.
+        f"        lift = {grooves.scoop_start!r} + math.sqrt(\n",
+        f"            max(0.0, {grooves.radius!r} ** 2 - across**2)\n",
+        "        )\n",
+        f"        depth = {grooves.depth!r}\n",
+        "        corners = [\n",
+        f"            App.Vector({grooves.front!r}, y, body_overcut),\n",
+        f"            App.Vector({grooves.front!r}, y, -depth),\n",
+        "            App.Vector(lift, y, -depth),\n",
+        "            App.Vector(lift + depth, y, 0.0),\n",
+        "            App.Vector(lift + depth, y, body_overcut),\n",
+        "        ]\n",
+        "        quarter = App.Vector(\n",
+        "            lift + depth * math.sin(math.pi / 4.0), y,\n",
+        "            -depth * math.cos(math.pi / 4.0),\n",
+        "        )\n",
+        "        groove_sections.append(Part.Wire([\n",
+        "            Part.LineSegment(corners[0], corners[1]).toShape(),\n",
+        "            Part.LineSegment(corners[1], corners[2]).toShape(),\n",
+        "            Part.Arc(corners[2], quarter, corners[3]).toShape(),\n",
+        "            Part.LineSegment(corners[3], corners[4]).toShape(),\n",
+        "            Part.LineSegment(corners[4], corners[0]).toShape(),\n",
+        "        ]))\n",
+        "    groove_lofts.append(Part.makeLoft(groove_sections, True, False))\n",
+        # Each reaching a hair into the next, all in one boolean.
+        f"body_shape = require_shape(body_shape.cut(groove_lofts), {label!r})\n",
     ]
 
 

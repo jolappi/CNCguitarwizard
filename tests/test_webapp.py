@@ -89,6 +89,7 @@ def test_schema_lists_every_parameter_with_a_form_type() -> None:
     assert set(bridge["variants"]) == {
         "kahler_7300",
         "floyd_rose",
+        "lo_pro_edge",
         "tune_o_matic",
         "hardtail",
         "headless",
