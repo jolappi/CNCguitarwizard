@@ -334,10 +334,10 @@ def test_body_editor_layout_lists_the_fixed_features_relative_to_the_heel() -> N
     assert templates["stratocaster"]["label"] == (
         "Stratocaster style (mockup, not the original)"
     )
-    # The Stratocaster template is traced from a reference drawing (76
+    # The Stratocaster template is traced from a reference drawing (78
     # points); a new drawing still starts from the 42-point default.
     strat_points = templates["stratocaster"]["shape"]["control_points"]
-    assert len(strat_points) == 76 and strat_points != layout["start_points"]
+    assert len(strat_points) == 78 and strat_points != layout["start_points"]
     assert len(templates["design_by_jone"]["shape"]["control_points"]) == 64
     # The Jackson RR is a mockup too, its switch moved onto the bass wing.
     assert templates["jackson_rr"]["label"] == (

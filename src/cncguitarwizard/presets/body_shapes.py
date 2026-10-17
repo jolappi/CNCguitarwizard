@@ -763,8 +763,11 @@ the neck entering at about 55 mm ahead of the heel end. 60 control points.
 A genre starting point, free to use and change, not a reproduction of any
 maker's body."""
 
-_STRATOCASTER_POINTS: tuple[tuple[float, float], ...] = (
-    (-74.6, -13.2),
+_STRATOCASTER_POINTS: tuple[DrawnPoint, ...] = (
+    # The neck end's face straight across between two corners, rounding
+    # off into the sides.
+    (-74.8, -22.0, "corner"),
+    (-73.9, -26.6),
     (-68.8, -28.4),
     (-50.9, -35.3),
     (-51.5, -61.0),
@@ -838,17 +841,19 @@ _STRATOCASTER_POINTS: tuple[tuple[float, float], ...] = (
     (-16.2, 33.1),
     (-34.7, 28.2),
     (-54.8, 28.2),
-    (-74.3, 27.1),
-    (-74.6, 7.0),
+    (-71.0, 28.3),
+    (-73.9, 26.8),
+    (-74.8, 22.0, "corner"),
 )
 """An offset double-cutaway mockup in the Stratocaster genre — not the original.
 
 Traced from a reference DXF drawing (the body's outermost edge, aligned on
 the drawing's neck pocket: its end wall is the heel end, its middle the
 centreline; already right-handed, the long bass horn at -Y) and then
-reshaped by hand in the body editor at both horns and the neck joint. 76
-control points. A genre starting point, free to use and change, not a
-reproduction of any maker's body."""
+reshaped by hand in the body editor at both horns and the neck joint, its
+neck end's face then made straight between two sharp corners, as on the
+drawing. 78 control points. A genre starting point, free to use and change,
+not a reproduction of any maker's body."""
 
 
 _JACKSON_RR_POINTS: tuple[tuple[float, float], ...] = (

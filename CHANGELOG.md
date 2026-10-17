@@ -1127,6 +1127,15 @@
 
 ### Fixed
 
+- The Stratocaster neck's back runs straight onto its headstock: a 16 mm
+  headstock 4 mm below the glue face under a 17 mm neck stepped 7.7 mm
+  down. The template now has a modern C neck (20.8 mm at the first fret,
+  22.1 at the twelfth) and a 15 mm headstock level with the glue face
+  (`headstock_face_drop` 0), as on the original.
+- The Stratocaster template's neck end is straight: its face under the
+  neck bowed out 1.2 mm and curved back 6 mm on the bass side, a bend seen
+  below the neck pocket's floor. It now runs straight across between two
+  sharp corners, rounding off into the sides, as on the drawing.
 - A contour no longer runs out onto a horn: a Stratocaster's belly cut,
   deepest at the bass horn's root where the side only narrows on to the
   waist, ran out along the horn to its tip. A contour that would reach

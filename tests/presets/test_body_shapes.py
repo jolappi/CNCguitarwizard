@@ -195,3 +195,18 @@ def test_the_strat_and_rr_templates_spread_their_neck_bolts(
     # The rear pair's ferrules lie wholly over the pocket.
     for ferrule in ferrules:
         assert ferrule.center_x + ferrule.diameter / 2.0 <= pocket_end
+
+
+def test_the_strat_templates_neck_end_is_straight() -> None:
+    # Regression: its face under the neck bowed out 1.2 mm and curved back
+    # 6 mm on the bass side, a bend seen below the pocket's floor.
+    shape = YOUR_DESIGN_TEMPLATES["stratocaster"][1]
+    parameters = replace(Prototype001Parameters(), body_shape=shape)
+    layout = parameters.body_layout()
+    face = [
+        point.x - layout.heel_end
+        for point in layout.outline.points
+        if abs(point.y) <= 22.0 and point.x - layout.heel_end < -60.0
+    ]
+    assert len(face) > 5
+    assert max(face) - min(face) == pytest.approx(0.0, abs=1e-6)

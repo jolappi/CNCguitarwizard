@@ -7280,6 +7280,15 @@ STRATOCASTER_NECK: dict[str, Any] = {
     "headstock_angle": 0.0,
     "headstock_style": "6_inline",
     "headstock_outline": "drawn",
+    # A modern C neck, 20.8 mm deep at the first fret and 22.1 at the
+    # twelfth (the fretboard's 6 mm in them), and a 15 mm headstock with
+    # its face level with the fretboard's glue face, as on the original:
+    # the back runs straight from the neck onto the headstock's, not down
+    # a step to it.
+    "first_fret_thickness": 20.8,
+    "twelfth_fret_thickness": 22.1,
+    "headstock_thickness": 15.0,
+    "headstock_face_drop": 0.0,
     # The posts 22.5 mm apart from 51 mm, as on the original; they follow
     # the strings, so the tuner edge runs straight along them the edge
     # offset out (a little wider than the original's) and round the last
