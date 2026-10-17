@@ -12,6 +12,8 @@ from cncguitarwizard.backends.freecad import FreeCADScriptExporter
 from cncguitarwizard.backends.freecad.exceptions import FreeCADBackendError
 from cncguitarwizard.backends.freecad.script_exporter import (
     MAX_HEADSTOCK_SECTION_GAP,
+    MAX_HEADSTOCK_WIDTH_STEP,
+    MIN_SECTION_GAP,
     NECK_SPLICE_GAP,
     TIP_CUT_CLEARANCE,
     TRANSITION_CUT_SAMPLES,
@@ -41,6 +43,7 @@ from cncguitarwizard.geometry.neck import (
     TrussRodChannel,
     TunerLayout,
 )
+from cncguitarwizard.geometry.primitives import Point3D
 from cncguitarwizard.presets import Prototype001Parameters
 
 
@@ -1365,3 +1368,34 @@ def test_the_neck_loft_runs_on_smoothly_past_the_headstock_transition() -> None:
     stations = [row[0][0] for row in ast.literal_eval(line.split("=", 1)[1])]
     following = min(x for x in stations if x > last + 1e-6)
     assert following - last >= NECK_SPLICE_GAP
+
+
+def test_a_round_headstock_end_is_lofted_closely_round() -> None:
+    # Regression: a Stratocaster's round end was lofted through two
+    # sections 2.5 mm apart, 6 and 32 mm wide: a flat face and a lip, not
+    # the curve. Its sections close in where its width changes fast, and
+    # its edges run on round the end to 1.2 mm apart.
+    from cncguitarwizard.presets.prototype001 import NECK_TEMPLATES
+
+    geometry = replace(
+        Prototype001Parameters(), **NECK_TEMPLATES["stratocaster"][1]
+    ).build()
+    assert geometry.headstock is not None
+    plan = geometry.headstock.plan
+    assert not plan.pointed and plan.width_at_distance(plan.length) == pytest.approx(
+        1.2
+    )
+    rows = FreeCADScriptExporter._headstock_transition_sections(
+        geometry.headstock, geometry.neck_surface, geometry.joint_fillet_radius
+    )
+
+    def width(row: tuple[Point3D, ...]) -> float:
+        return max(point.y for point in row) - min(point.y for point in row)
+
+    end = [row for row in rows if row[0].x < -150.0]
+    for before, after in zip(end, end[1:], strict=False):
+        gap = after[0].x - before[0].x
+        assert (
+            abs(width(after) - width(before)) <= MAX_HEADSTOCK_WIDTH_STEP + 1e-9
+            or gap < 2.0 * MIN_SECTION_GAP + 0.1
+        )

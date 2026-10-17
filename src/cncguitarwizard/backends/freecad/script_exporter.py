@@ -85,6 +85,13 @@ far apart and the drawn edges turn sharply between them (a hooked tip)
 its spline swings out into a curl past the outline.
 """
 
+MAX_HEADSTOCK_WIDTH_STEP = 1.5
+"""Most the headstock's width may change between two loft sections, in
+mm, where its drawn edges turn across it (a Stratocaster's round end): two
+sections there 2.5 mm apart, 6 and 32 mm wide, lofted a flat face and a
+lip instead of the curve. Sections are added down to ``MIN_SECTION_GAP``
+apart."""
+
 
 @dataclass(frozen=True, slots=True)
 class FreeCADScriptExporter:
@@ -2082,6 +2089,31 @@ class FreeCADScriptExporter:
             positions += [
                 previous + (position - previous) * k / fill for k in range(1, fill + 1)
             ]
+        # Closer where the edges turn across the headstock (a round end):
+        # each span halved while its width changes more than
+        # MAX_HEADSTOCK_WIDTH_STEP.
+
+        def width(position: float) -> float:
+            distance = min(max(-position, 0.0), plan.length)
+            return plan.edge_y(distance, 1.0) - plan.edge_y(distance, -1.0)
+
+        def refined(start: float, end: float) -> list[float]:
+            if (
+                abs(width(end) - width(start)) <= MAX_HEADSTOCK_WIDTH_STEP
+                or end - start <= 2.0 * MIN_SECTION_GAP
+            ):
+                return [end]
+            middle = (start + end) / 2.0
+            return [*refined(start, middle), *refined(middle, end)]
+
+        positions = [
+            positions[0],
+            *(
+                position
+                for start, end in zip(positions, positions[1:], strict=False)
+                for position in refined(start, end)
+            ),
+        ]
         return tuple(
             FreeCADScriptExporter._angled_headstock_root_section(
                 headstock,

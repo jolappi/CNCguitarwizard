@@ -1145,6 +1145,13 @@
 
 ### Fixed
 
+- A Stratocaster headstock's round end is round in the FreeCAD model: it
+  was lofted through two sections 2.5 mm apart, 6 and 32 mm wide, leaving
+  a flat face and a lip. The headstock's loft sections now close in where
+  its width changes more than `MAX_HEADSTOCK_WIDTH_STEP` (1.5 mm) between
+  two (down to `MIN_SECTION_GAP`, 0.2 mm), and the Stratocaster neck's
+  edges run on round the end to 1.2 mm apart, not to a straight cut 6 mm
+  across.
 - A crease along the neck's sides just behind the nut in the FreeCAD
   model (a Stratocaster's, about 15 mm past the nut, up to 1 mm out) is
   gone. Past the nut the headstock transition's top edge was held at the

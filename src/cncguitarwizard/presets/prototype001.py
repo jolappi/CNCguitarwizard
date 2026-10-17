@@ -7308,7 +7308,9 @@ STRATOCASTER_NECK: dict[str, Any] = {
         (176.5, -5.0),
         (179.2, -13.0),
         (180.3, -21.0),
-        (180.5, -27.0),
+        # The edges run on round the end to 1.2 mm apart (a straight cut
+        # 6 mm across left a flat there).
+        (180.6, -29.4),
     ),
     # Traced: the corner flaring out from the nut, the straight run in to
     # the waist and the round treble lobe.
@@ -7334,7 +7336,8 @@ STRATOCASTER_NECK: dict[str, Any] = {
         (169.9, 51.0),
         (175.0, 46.0),
         (178.2, 40.1),
-        (180.5, 33.0),
+        (180.45, 33.4),
+        (180.6, 30.6),
     ),
     "truss_rod_adjustment": "headstock",
 }
