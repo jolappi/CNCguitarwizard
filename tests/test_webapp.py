@@ -322,6 +322,7 @@ def test_body_editor_layout_lists_the_fixed_features_relative_to_the_heel() -> N
         "stratocaster",
         "jackson_rr",
         "alexi_hexed",
+        "music_man_axis",
         "mockingbird",
         "telecaster",
         "sg",

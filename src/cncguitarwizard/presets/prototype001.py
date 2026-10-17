@@ -7724,6 +7724,94 @@ the straight-on product photo the Mockingbird style body came from
 (scaled from its frets) and its point then drawn higher by hand — a
 mockup, not the original outline."""
 
+MUSIC_MAN_NECK: dict[str, Any] = {
+    "headstock_style": "4+2",
+    "headstock_angle": 0.0,
+    "headstock_outline": "drawn",
+    "headstock_thickness": 15.0,
+    # The posts where the photographed Axis's are: the four bass ones in a
+    # row slanting in toward the tip, the pair across from the middle two,
+    # each 12-14 mm in from its edge.
+    "tuner_hole_points": (
+        (42.4, 20.5),
+        (67.8, 14.1),
+        (93.2, 6.0),
+        (118.0, -1.0),
+        (55.4, 22.1),
+        (80.2, 15.1),
+    ),
+    "tuner_edge_offset": 12.0,
+    "tuner_edge_clearance": 6.5,
+    # Straight up the bass side from the shoulder behind the locking nut
+    # and over the round top, which leans to the treble side.
+    "headstock_bass_edge": (
+        (16.0, 20.7, "corner"),
+        (20.6, 27.4),
+        (24.3, 32.2),
+        (28.8, 36.1),
+        (34.8, 36.3),
+        (40.5, 34.5),
+        (46.3, 33.0),
+        (52.2, 31.4),
+        (57.8, 29.6),
+        (63.6, 27.8),
+        (69.5, 26.3),
+        (75.3, 24.8),
+        (81.0, 23.1),
+        (86.8, 21.2),
+        (92.4, 19.4),
+        (98.3, 17.8),
+        (104.1, 16.3),
+        (109.9, 14.6),
+        (115.8, 13.2),
+        (121.5, 11.3),
+        (127.3, 9.8),
+        (133.0, 7.7),
+        (138.2, 4.5),
+        (142.3, 0.3),
+        (144.8, -5.2),
+        (146.0, -10.5),
+    ),
+    # The treble shoulder, the scoop in under the top and round it, the
+    # two edges ending 1.2 mm apart there (closer reads as a point).
+    "headstock_treble_edge": (
+        (16.0, 20.7, "corner"),
+        (21.6, 24.0),
+        (26.1, 27.6),
+        (30.4, 31.7),
+        (34.7, 35.8),
+        (40.2, 38.1),
+        (46.0, 37.9),
+        (51.9, 36.8),
+        (57.8, 35.6),
+        (63.4, 33.7),
+        (69.1, 31.8),
+        (74.9, 30.0),
+        (80.5, 28.0),
+        (86.1, 25.9),
+        (92.0, 25.0),
+        (97.8, 23.7),
+        (103.8, 23.8),
+        (109.6, 25.3),
+        (114.5, 28.8),
+        (118.2, 33.3),
+        (123.8, 34.7),
+        (129.7, 33.4),
+        (135.2, 31.1),
+        (139.8, 27.5),
+        (143.1, 22.5),
+        (145.3, 17.0),
+        (146.0, 11.7),
+    ),
+    "truss_rod_adjustment": "heel",
+}
+"""A Music Man neck (see ``NECK_TEMPLATES``): the four-and-two headstock
+of an Axis, flat (0 degrees), traced from a straight-on product photo
+(zZounds' Axis listing, "Full Straight Front"; scaled from its frets,
+1.543 px/mm, and checked against the body's width), its posts where the
+photo's are, and the truss rod turned by a spoke wheel at the heel, as on
+the original — a mockup, not the original outline."""
+
 NECK_TEMPLATES: dict[str, tuple[str, dict[str, Any]]] = {
     "telecaster": ("Telecaster neck", TELECASTER_NECK),
     "stratocaster": (
@@ -7739,6 +7827,7 @@ NECK_TEMPLATES: dict[str, tuple[str, dict[str, Any]]] = {
     ),
     "jackson": ("Jackson pointed neck (mockup, not the original)", JACKSON_NECK),
     "alexi": ("ESP Alexi neck (mockup, not the original)", ALEXI_NECK),
+    "music_man": ("Music Man neck (mockup, not the original)", MUSIC_MAN_NECK),
 }
 """Neck and headstock starting points the headstock editor can load: each
 a label and the values it sets (for a six-string guitar; the truss rod can

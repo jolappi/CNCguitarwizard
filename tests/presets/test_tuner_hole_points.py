@@ -158,4 +158,8 @@ def test_the_field_is_in_the_form_and_a_neck_template_puts_it_back() -> None:
     }
     assert "tuner_hole_points" in names
     for template in schema["neck_templates"].values():
-        assert "tuner_hole_points" in template["resets"]
+        # Cleared, or set to the template's own (the Music Man neck's).
+        assert (
+            "tuner_hole_points" in template["resets"]
+            or "tuner_hole_points" in template["values"]
+        )

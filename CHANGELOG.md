@@ -4,6 +4,17 @@
 
 ### Added
 
+- A Music Man Axis style (`music_man_axis`): its body template traced
+  from a straight-on product photo, scaled from its frets, as photographed
+  (404.6 x 319.9 mm, the bass horn up beside the neck, the outline
+  straight across the neck between two corners), its volume and toggle
+  side by side on the lower treble bout and the jack in the treble edge;
+  a Music Man neck template (`music_man`), the Axis's flat four-and-two
+  headstock traced from the same photos, its posts where the photo's are
+  and the truss rod's spoke wheel at the heel; the style sets a 25.5 in
+  scale, 22 frets, HH where the photographed one's sit, a Floyd Rose
+  with its locking nut, one volume and dots.
+
 - An Ibanez Lo-Pro Edge with a JEM777's Lion's Claw route (`body_bridge`
   kind `lo_pro_edge`, `LoProEdgeSpec`, six strings), read off a JEM777
   body blueprint and laid out as a Floyd Rose's: Ø 11 studs 74 mm apart,

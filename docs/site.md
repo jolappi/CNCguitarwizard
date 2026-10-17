@@ -23,7 +23,8 @@ Python.
    whole instrument in one choice, the quick way in among the many
    settings — Design by Jone, a Fender Stratocaster or Telecaster, a
    Gibson Les Paul, SG, Flying V or Explorer, a Jackson RR, an ESP LTD
-   Alexi Hexed, a B.C. Rich Mockingbird or a Fender Jazz Bass style. The
+   Alexi Hexed, a B.C. Rich Mockingbird, a Music Man Axis or a Fender
+   Jazz Bass style. The
    Fender, Gibson and Jackson ones place their controls, jack and pickups
    as on the original (measured from photos and the user's Stratocaster
    drawing; see [Body shapes](geometry/12_body.md#body-shapes)): a '52
@@ -179,7 +180,7 @@ Python.
    is ("Your own drawing" once its outline has been changed); choosing
    one replaces the drawing with that template at once (*Load* loads it
    again; declined, the choice goes back) — Design by Jone, Les Paul, Stratocaster, Jackson RR,
-   ESP LTD Alexi Hexed, Mockingbird, Telecaster, SG, Explorer, Flying V or Jazz Bass style
+   ESP LTD Alexi Hexed, Music Man Axis, Mockingbird, Telecaster, SG, Explorer, Flying V or Jazz Bass style
    (mockups, not the original outlines) — and its cavity placements;
    a template's own other values, the Alexi Hexed's pickup, controls, Floyd Rose and stepped top
    (`values` in the layout's templates), are set too, the confirmation naming them; what the
@@ -346,7 +347,8 @@ Python.
    `neck_templates` in the schema (`NECK_TEMPLATES`): the Telecaster neck's
    slotted nut, flat six-in-line headstock, drawn Telecaster outline and
    heel-adjusted truss rod, or the Stratocaster, Gibson style, Flying V,
-   Explorer or Mockingbird neck (mockups traced from product photos): its
+   Explorer, Mockingbird or Music Man neck (mockups traced from product
+   photos): its
    headstock style, angle, drawn outline, tuner stations and truss rod —
    the Stratocaster's with a round heel end (`neck_heel_end`), the others
    square.

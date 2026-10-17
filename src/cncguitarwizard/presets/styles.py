@@ -286,6 +286,36 @@ STYLES: dict[str, InstrumentStyle] = {
         # runs through: a block glued under it.
         neck_machining={"neck_blank": "laminated"},
     ),
+    "music_man_axis": InstrumentStyle(
+        "Music Man Axis style",
+        GUITAR,
+        "music_man_axis",
+        "music_man",
+        {
+            # As photographed: the volume pot (rear_pots) and the selector
+            # toggle side by side on the lower treble bout, in one cavity,
+            # the jack in the treble edge aimed at it.
+            "body_shape": replace(
+                YOUR_DESIGN_TEMPLATES["music_man_axis"][1],
+                switch_cavity_offset=149.3,
+                switch_cavity_y=120.6,
+                switch_cover_offset=149.3,
+                switch_cover_y=120.6,
+                jack_direction_degrees=226.4,
+            ),
+            "scale_length": FENDER_SCALE,
+            "fret_count": 22,
+            "body_pickups": "HH",
+            # The humbuckers where the photographed one's sit: the neck
+            # pickup's centre 31.4 mm behind the heel end, the bridge
+            # pickup's 43.1 mm ahead of the saddles.
+            "body_neck_pickup_offset": 31.4,
+            "body_bridge_pickup_offset": 43.1,
+            "body_bridge": FloydRoseSpec(),
+            "body_controls": "volume_1",
+            "inlay_style": "dot",
+        },
+    ),
     "mockingbird": InstrumentStyle(
         "B.C. Rich Mockingbird style",
         GUITAR,

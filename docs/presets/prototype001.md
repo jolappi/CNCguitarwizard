@@ -54,6 +54,7 @@ not the makers' own.
 | Jackson RR | 6-, 7-, 8-string | Jackson RR / the instrument's | neck-through, HH, Floyd Rose, 3 pots in a row, sharkteeth |
 | ESP LTD Alexi Hexed | 6-, 7-string | Alexi Hexed (its stepped top, one humbucker, one volume, Floyd Rose) / the instrument's | neck-through, sharkteeth |
 | B.C. Rich Mockingbird | 6-string | Mockingbird / Mockingbird | neck-through, HH, Tune-o-matic, diamonds |
+| Music Man Axis | 6-string | Music Man Axis / Music Man | 647.7 mm, 22 frets, HH where the photographed one's sit, Floyd Rose (its R2 locking nut), one volume with the toggle beside it, dots |
 | Fender Jazz Bass | 4-, 5-string bass | Jazz Bass / the instrument's | JJ, Jazz Bass control plate, its drawn guard, Fender plate, dots |
 
 The web app offers them under the instrument (*Style*): `webapp.style_design`
