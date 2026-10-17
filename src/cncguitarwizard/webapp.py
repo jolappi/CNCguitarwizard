@@ -336,6 +336,7 @@ _BASIC_FIELDS: frozenset[str] = frozenset(
         "tool_tip",
         "post_processor",
         "spindle_dwell",
+        "combine_programs",
         "neck_blank",
         "neck_back_cut",
         "spindle_speed",

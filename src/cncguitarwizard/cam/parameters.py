@@ -86,6 +86,12 @@ class MachiningParameters:
             ``.KNC`` programs).
         spindle_dwell: Seconds to wait after starting the spindle, for a
             spindle that needs time to reach speed; ``0`` for none.
+        combine_programs: Join a part's programs that run one after
+            another with the same tool, fixture and work zero into one
+            program (``Body_back`` and ``Body_back_controls`` become
+            ``Body_back_and_controls``), so nothing is loaded or started
+            in between; off (the default) keeps one program per setup, to
+            run or rerun apart.
         neck_blank: The neck blank the build plans for: ``"solid"``, one
             plank as thick as the headstock needs, or ``"laminated"``, the
             neck cut from its own plank first and the headstock after a
@@ -171,6 +177,7 @@ class MachiningParameters:
     raster_link_spacing: float = 1.0
     post_processor: PostProcessor = "grbl"
     spindle_dwell: float = 0.0
+    combine_programs: bool = False
     neck_blank: Literal["solid", "laminated"] = "solid"
     neck_back_cut: Literal["rough_and_finish", "ball"] = "rough_and_finish"
     engraving_tool_angle: float = 60.0

@@ -198,6 +198,9 @@
 - **9 V battery box** — done: `body_battery_box` routes an optional
   battery box in the back with its own sheet-cut cover, placed per body
   shape and dragged in the body editor.
+- **Combined programs** — done: `combine_programs` writes a part's
+  programs that run one after another with the same tool, fixture and
+  work zero as one.
 - **Stock truss-rod lengths** — done: the neck is routed for the longest
   20 mm stock rod that fits, or checks the rod in hand.
 - **G-code dialects** — done: every program in GRBL (default), LinuxCNC,

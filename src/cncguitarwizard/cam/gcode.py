@@ -25,6 +25,12 @@ class Setup:
             parameters handed to the writer (multi-tool parts).
         work_zero: Where the X/Y/Z zero is, when it is not index pin 1
             on the stock top (a sheet cover's own centre).
+        fixture: How the stock is held, e.g. ``"Body top face up on the
+            index pins"``: setups one after another with the same fixture,
+            tool and work zero can run as one program
+            (``combined_setups``). Anything done by hand between two
+            programs (dowels put in, inlays glued) gives the later one
+            another fixture; ``None`` for a setup never run with another.
     """
 
     name: str
@@ -34,6 +40,7 @@ class Setup:
     reference_points: tuple[tuple[float, float], ...] = ()
     tool: MachiningParameters | None = None
     work_zero: str | None = None
+    fixture: str | None = None
 
     def cutting_length(self) -> float:
         """Return the total feed-move length in millimetres."""

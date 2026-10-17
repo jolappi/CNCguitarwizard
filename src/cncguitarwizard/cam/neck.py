@@ -235,12 +235,14 @@ def _lettering_setup(
     face_depth: Callable[[float, float], float],
     after: str,
     reference_points: tuple[tuple[float, float], ...],
+    fixture: str,
 ) -> Setup | None:
     """Return the V-bit program for what is engraved on the headstock face
     (its lettering, lines drawn there), or ``None``.
 
     It follows the finished face (``face_depth``: its Z at a model point),
-    so it runs right after ``after`` mills it, before the blank is turned.
+    so it runs right after ``after`` mills it, before the blank is turned,
+    held as ``after`` is (``fixture``).
     """
     lettering = geometry.headstock_engraving
     if lettering is None:
@@ -267,8 +269,16 @@ def _lettering_setup(
         ),
         reference_points,
         tool,
+        fixture=fixture,
     )
 
+
+NECK_TOP_FIXTURE = "Neck glue face up on the index pins"
+"""How the glue face's programs hold the blank (``Setup.fixture``)."""
+
+HEADSTOCK_TOP_FIXTURE = "Neck glue face up on the index pins, the block glued on"
+"""How a laminated blank is held for its headstock face, once the block
+is glued under it."""
 
 CARBON_ROD_TOOL = 3.0
 """The end mill that cuts the carbon fibre bars' channels, in mm (narrower
@@ -761,6 +771,7 @@ def plan_neck_machining(
         face_depth,
         "Headstock_top" if laminated else "Neck_top",
         reference_points,
+        HEADSTOCK_TOP_FIXTURE if laminated else NECK_TOP_FIXTURE,
     )
 
     truss = geometry.truss_rod_channel
@@ -937,6 +948,7 @@ def plan_neck_machining(
             ),
             reference_points,
             flat,
+            fixture=NECK_TOP_FIXTURE,
         )
     else:
         top = Setup(
@@ -952,6 +964,7 @@ def plan_neck_machining(
             ),
             reference_points,
             flat,
+            fixture=NECK_TOP_FIXTURE,
         )
 
     # ---- top face: carbon fibre reinforcement ------------------------------
@@ -994,6 +1007,7 @@ def plan_neck_machining(
             ),
             reference_points,
             small,
+            fixture=NECK_TOP_FIXTURE,
         )
 
     # ---- top face: the locking nut's and the truss-rod cover's pilots ------
@@ -1095,6 +1109,7 @@ def plan_neck_machining(
             ),
             reference_points,
             drill_tool,
+            fixture=NECK_TOP_FIXTURE,
         )
 
     # ---- back: roughing, ball finishing, outline ---------------------------
@@ -1114,6 +1129,7 @@ def plan_neck_machining(
         never overlooks a neighbouring rise.
         """
         surface = _BackSurface(geometry, blank, parameters.skin, back_frame)
+        back_fixture = f"{what} back face up on the index pins"
         margin = 3.0 * max(flat.tool_diameter, ball.tool_diameter)
         cut_x = back_frame.x_range((x_from, x_to))
         sample_x = back_frame.x_range((x_from - margin, x_to + margin))
@@ -1170,6 +1186,7 @@ def plan_neck_machining(
                     ),
                     reference_points,
                     ball,
+                    fixture=back_fixture,
                 ),
             )
         rough = Setup(
@@ -1188,6 +1205,7 @@ def plan_neck_machining(
             (*notes, skin_note),
             reference_points,
             flat,
+            fixture=back_fixture,
         )
         finish = Setup(
             f"{prefix}_back_finish",
@@ -1209,6 +1227,7 @@ def plan_neck_machining(
             ),
             reference_points,
             ball,
+            fixture=back_fixture,
         )
         return rough, finish
 
@@ -1279,6 +1298,7 @@ def plan_neck_machining(
             ),
             reference_points,
             flat,
+            fixture=HEADSTOCK_TOP_FIXTURE,
         )
         headstock_back = back_setups(
             "Headstock",
@@ -1311,6 +1331,10 @@ def plan_neck_machining(
                 "Keep X/Y zero at index pin 1; set Z zero on the (new) blank top.",
             ),
         )
+    # The outline is cut last, the blank as the last back program held it.
+    outline_fixture = (
+        f"{'Headstock' if laminated else 'Neck'} back face up on the index pins"
+    )
     back_outline = Setup(
         "Neck_back_outline",
         (
@@ -1358,6 +1382,7 @@ def plan_neck_machining(
         ),
         reference_points,
         flat,
+        fixture=outline_fixture,
     )
     block_top: tuple[Setup, ...] = ()
     block_back: tuple[Setup, ...] = ()

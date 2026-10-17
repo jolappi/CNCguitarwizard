@@ -36,6 +36,13 @@ if TYPE_CHECKING:
     from ..presets import Prototype001Geometry
 
 
+FRETBOARD_FIXTURE = "Fretboard blank on the index pins"
+"""How the board's programs hold the blank (``Setup.fixture``)."""
+
+INLAID_FIXTURE = "Fretboard blank on the index pins, the inlays glued in"
+"""How the blank is held once the inlay pieces are glued in and levelled
+(for the scallops, cut through them)."""
+
 SLOPE_STEP = 0.5
 """Height of each terrace cut down a slotted nut's board slope, in mm."""
 
@@ -481,6 +488,7 @@ def plan_fretboard_machining(
         ),
         reference_points,
         parameters.ball,
+        fixture=FRETBOARD_FIXTURE,
     )
 
     inlay_paths: list[Toolpath] = []
@@ -546,6 +554,7 @@ def plan_fretboard_machining(
         ),
         reference_points,
         parameters.inlay,
+        fixture=FRETBOARD_FIXTURE,
     )
 
     slot_paths: list[Toolpath] = []
@@ -625,6 +634,7 @@ def plan_fretboard_machining(
         ),
         reference_points,
         slot_tool,
+        fixture=FRETBOARD_FIXTURE,
     )
 
     scallop_setup = _scallop_setup(
@@ -752,6 +762,7 @@ def plan_fretboard_machining(
         ),
         reference_points,
         flat,
+        fixture=FRETBOARD_FIXTURE if scallop_setup is None else INLAID_FIXTURE,
     )
     preview = machine_polygon(outline)
     return FretboardMachiningPlan(
@@ -887,6 +898,7 @@ def _scallop_setup(
         ),
         reference_points,
         ball,
+        fixture=INLAID_FIXTURE,
     )
 
 

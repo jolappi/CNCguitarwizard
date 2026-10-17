@@ -4,6 +4,15 @@
 
 ### Added
 
+- Combined programs (`MachiningParameters.combine_programs`, a CNC
+  option, off by default): a part's programs that run one after another
+  with the same tool, fixture and work zero are written as one
+  (`cam.combined_setups`), so `Body_back` and `Body_back_controls` become
+  `Body_back_and_controls`, loaded and started once. Every setup names
+  how it holds the stock (`Setup.fixture`); a flip, or anything done by
+  hand between two programs (the dowels, the inlays glued in), starts
+  another program.
+
 - A Music Man Axis style (`music_man_axis`): its body template traced
   from a straight-on product photo, scaled from its frets, as photographed
   (404.6 x 319.9 mm, the bass horn up beside the neck, the outline

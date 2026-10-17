@@ -1,6 +1,7 @@
 """Dependency-free 2.5D/3D CAM: toolpaths and GRBL G-code from the geometry."""
 
 from .body import BodyMachiningPlan, plan_body_machining
+from .combined import combined_setup, combined_setups, setup_runs
 from .covers import (
     CoverMachiningPlan,
     cover_setup_name,
@@ -67,6 +68,8 @@ __all__ = [
     "automatic_index_pins",
     "build_offset_grid",
     "clear_intervals",
+    "combined_setup",
+    "combined_setups",
     "cover_setup_name",
     "cover_tool",
     "depth_levels",
@@ -92,4 +95,5 @@ __all__ = [
     "raster_rough",
     "render_setup_svg",
     "sample_surface",
+    "setup_runs",
 ]

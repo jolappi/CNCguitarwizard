@@ -1398,6 +1398,7 @@ soittimen oletus ja tuntematon asetus ohitetaan ja luetellaan.
 | Kohta | Speksi |
 | --- | --- |
 | Kone / ohjain | TwoTrees H40 / GRBL; G-koodin murre valittavissa (`post_processor`): GRBL (oletus), LinuxCNC, Mach3/4 / UCCNC, Marlin, Fanuc-tyyppinen teollisuusohjain tai KOSY / nccad (`.knc`-tiedostot, syöttö nccad:n yksiköissä mm/min ÷ 6, kara releellä 6), ja karan kiihdytysodotus (`spindle_dwell`, sekunteina, kirjoitetaan kunkin murteen yksiköissä) |
+| Yhdistetyt ohjelmat | Valinnainen (`combine_programs`, oletuksena pois): peräkkäiset ohjelmat, jotka ajetaan samalla terällä, samassa kiinnityksessä (`Setup.fixture`) ja samalla nollapisteellä, kirjoitetaan yhdeksi ohjelmaksi, esim. `Body_back` + `Body_back_controls` → `Body_back_and_controls`; kappaleen kääntö tai käsin tehtävä työvaihe välissä (tapit paikalleen, upotusten liimaus) aloittaa aina uuden ohjelman |
 | Yleisterä | 6 mm päätyjyrsin, enintään 3 mm Z-askel |
 | Nauhauraterä | 0,6 mm, vain nauhauriin, enintään 1 mm Z-askel |
 | Viimeistelyvara | 0,30 mm |

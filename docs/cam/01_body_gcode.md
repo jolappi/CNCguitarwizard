@@ -187,6 +187,29 @@ units are those of that setup, so run the first program in nccad's own
 simulation. KinetiC-NC (CNC-STEP)
 reads the GRBL dialect as it is.
 
+## Programs run as one
+
+Each part's setups are written one program each, so any of them can be
+run, or run again, on its own. With `MachiningParameters.combine_programs`
+on, programs that run one after another with the same tool, the same
+fixture and the same work zero are joined into one
+(`cam.combined_setups`): nothing is done at the machine between them, so
+it is loaded and started once. Each setup names how it holds the stock
+(`Setup.fixture`): the body's top-face programs share one, its back's
+another once the blank is flipped; anything done by hand between two
+programs — the dowels put in after `Body_index_pins`, the inlays glued in
+before `Fretboard_scallops` — gives the later one its own, as does a
+program with its own work zero.
+
+With the default tools, `Body_back` and `Body_back_controls` become
+`Body_back_and_controls`; a stepped top's `Body_top_steps`, `Body_top`
+and `Body_top_controls` run as one too. A program for another tool (the
+small drill, the ball nose, a V-bit) still stands alone. The joined
+program is named after the first, then by the words each later one's
+name adds (`_and_controls`); its notes are the first's, then each later
+one's under its own name, and its preview is drawn on the first one's
+face.
+
 ## One feature on its own
 
 A feature left out of a body already cut — a battery box, say — can be

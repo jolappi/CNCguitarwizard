@@ -24,6 +24,7 @@ from ..cam import (
     NeckMachiningParameters,
     NeckMachiningPlan,
     NutJigMachiningPlan,
+    combined_setup,
     nut_jig_tool,
     plan_body_machining,
     plan_cover_machining,
@@ -32,6 +33,7 @@ from ..cam import (
     plan_neck_machining,
     plan_nut_jig_machining,
     render_setup_svg,
+    setup_runs,
 )
 from ..geometry.body import body_part
 from ..presets import Prototype001Geometry, Prototype001Parameters
@@ -255,10 +257,19 @@ class Prototype001Build:
         writer = GCodeWriter.for_parameters(self.machining)
         for part, plan in self._plans:
             # Each part's programs are listed, and numbered, in the order
-            # they are run (``plan.setups``).
-            for step, (setup, outline) in enumerate(
-                zip(plan.setups, plan.preview_outlines, strict=True), start=1
-            ):
+            # they are run (``plan.setups``); with combine_programs, those
+            # run one after another with the same tool and fixture as one,
+            # previewed on the first one's outline.
+            programs = list(zip(plan.setups, plan.preview_outlines, strict=True))
+            if self.machining.combine_programs:
+                programs = [
+                    (
+                        combined_setup([plan.setups[index] for index in run]),
+                        plan.preview_outlines[run[0]],
+                    )
+                    for run in setup_runs(plan.setups, self.machining)
+                ]
+            for step, (setup, outline) in enumerate(programs, start=1):
                 gcode_path = self.destination / f"{setup.name}{writer.extension}"
                 gcode_path.write_text(
                     writer.render(setup, self.machining), encoding="utf-8"

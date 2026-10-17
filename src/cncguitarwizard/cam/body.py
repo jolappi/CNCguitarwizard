@@ -46,6 +46,12 @@ from .surfacing import (
 )
 from .toolpath import PathBuilder, Toolpath
 
+TOP_FIXTURE = "Body top face up on the index pins"
+"""How the top face's programs hold the blank (``Setup.fixture``)."""
+
+BACK_FIXTURE = "Body back face up on the index pins"
+"""How the back face's programs hold the blank, once it is flipped."""
+
 
 @dataclass(frozen=True, slots=True)
 class BodyMachiningPlan:
@@ -257,6 +263,7 @@ def plan_body_machining(
                 "The plate's screw spots are in Body_top_small_holes.",
             ),
             reference_points,
+            fixture=TOP_FIXTURE,
         )
     for hole in body.holes:
         if hole in small_holes:
@@ -316,6 +323,7 @@ def plan_body_machining(
             *body.wire_notes,
         ),
         reference_points,
+        fixture=TOP_FIXTURE,
     )
 
     top_small_holes: Setup | None = None
@@ -337,6 +345,7 @@ def plan_body_machining(
             ),
             reference_points,
             small_tool,
+            fixture=TOP_FIXTURE,
         )
 
     def rear_pockets(rear: RearCavity) -> list[Toolpath]:
@@ -381,6 +390,7 @@ def plan_body_machining(
                 ),
             ),
             reference_points,
+            fixture=BACK_FIXTURE,
         )
     for hole in body.rear_holes:
         if hole not in back_small:
@@ -417,6 +427,7 @@ def plan_body_machining(
             "to the body until the end.",
         ),
         reference_points,
+        fixture=BACK_FIXTURE,
     )
 
     back_small_holes: Setup | None = None
@@ -440,6 +451,7 @@ def plan_body_machining(
             ),
             reference_points,
             small_tool,
+            fixture=BACK_FIXTURE,
         )
 
     # The top's edge work stays within the upper outline's slot; the
@@ -531,6 +543,7 @@ def _renamed(plan: BodyMachiningPlan, prefix: str) -> BodyMachiningPlan:
             name=text(setup.name),
             description=text(setup.description),
             notes=tuple(text(note) for note in setup.notes),
+            fixture=None if setup.fixture is None else text(setup.fixture),
         )
 
     changes: dict[str, Any] = {
@@ -648,6 +661,7 @@ def _steps_setup(
             "step's wall; the next step's band goes deeper after it.",
         ),
         reference_points,
+        fixture=TOP_FIXTURE,
     )
 
 
@@ -818,6 +832,7 @@ def _carve_setup(
             tuple(notes),
             reference_points,
             tool,
+            fixture=TOP_FIXTURE,
         )
     ball = ball_tool(tool)
     finish = raster_finish(
@@ -842,6 +857,7 @@ def _carve_setup(
         tuple(notes),
         reference_points,
         ball,
+        fixture=TOP_FIXTURE,
     )
 
 
@@ -880,6 +896,7 @@ def _engraving_setup(
         ),
         reference_points,
         tool,
+        fixture=TOP_FIXTURE,
     )
 
 
@@ -931,6 +948,7 @@ def _relief_setup(
         ),
         reference_points,
         tool,
+        fixture=TOP_FIXTURE,
     )
 
 
@@ -1002,6 +1020,7 @@ def _edge_setup(
         ),
         reference_points,
         ball,
+        fixture=TOP_FIXTURE if face == "top" else BACK_FIXTURE,
     )
 
 
