@@ -31,9 +31,12 @@ def test_the_axis_body_keeps_the_photographed_size_and_horn() -> None:
     bass = min(p.x for p in beside if p.y < 0.0)
     treble = min(p.x for p in beside if p.y > 0.0)
     assert bass < treble - 30.0
-    # Straight across the neck between the two corners.
-    corners = [p for p in shape.control_points if len(p) == 3]
-    assert len(corners) == 2
+    # Straight across the neck, from the bass horn to the treble cutaway.
+    across = [p for p in points if -80.0 < p.x < -40.0 and abs(p.y) < 20.0]
+    slope = (26.5 + 27.2) / (-37.3 + 81.9)
+    assert across and all(
+        abs(p.y - (-27.2 + slope * (p.x + 81.9))) < 0.5 for p in across
+    )
     # The volume pot and the jack on the treble side, as photographed;
     # the template's switch where every layout clears it.
     assert shape.rear_pots[0][1] > 0.0 and shape.jack_y > 0.0
@@ -57,7 +60,9 @@ def test_the_music_man_neck_puts_its_posts_where_the_photos_are() -> None:
     for distance, y in posts:
         side = -1.0 if y < 1.5 else 1.0
         assert abs(plan.edge_y(distance, side) - y) >= 12.0 - 0.5
-    assert plan.length == pytest.approx(146.0)
+    # The round top past the tip line, 10 mm, to 146 mm as photographed.
+    assert plan.length == pytest.approx(136.0)
+    assert max(past for past, _ in values["headstock_tip_points"]) == 10.0
     parameters.build()
     replace(parameters, handedness="left").build()
 

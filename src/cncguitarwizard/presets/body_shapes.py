@@ -1012,8 +1012,8 @@ the selector switch on the bass wing. 98 control points, within
 0.25 mm of the silhouette."""
 
 
-_MUSIC_MAN_AXIS_POINTS: tuple[DrawnPoint, ...] = (
-    (-37.3, 26.5, "corner"),
+_MUSIC_MAN_AXIS_POINTS: tuple[tuple[float, float], ...] = (
+    (-37.3, 26.5),
     (-36.3, 27.4),
     (-34.8, 27.4),
     (-31.8, 27.4),
@@ -1130,7 +1130,13 @@ _MUSIC_MAN_AXIS_POINTS: tuple[DrawnPoint, ...] = (
     (-78.0, -38.4),
     (-80.2, -32.8),
     (-81.6, -30.1),
-    (-81.9, -27.2, "corner"),
+    (-81.9, -27.2),
+    (-75.5, -19.5),
+    (-69.2, -11.9),
+    (-62.8, -4.2),
+    (-56.4, 3.5),
+    (-50.0, 11.2),
+    (-43.7, 18.8),
 )
 """A Music Man Axis's outline: a single cutaway, its bass horn reaching up
 beside the neck.
@@ -1140,8 +1146,9 @@ Straight Front"), scaled from its frets (2.997 px/mm, the 11th to the
 22nd fret within 0.5 px of a 25.5 in scale's) and placed with the last
 fret 4 mm ahead of the heel end: its strap buttons and the jack plate on
 its edge left out, the outline across the neck straight from where the
-bass horn meets it to where the treble cutaway does (both corners). 404.6
-by 319.9 mm; 118 control points, within 0.3 mm of the silhouette."""
+bass horn meets it to where the treble cutaway does (points every 10 mm
+along it, so the spline runs straight). 404.6 by 319.9 mm; 124 control
+points, within 0.3 mm of the silhouette."""
 
 
 _MOCKINGBIRD_POINTS: tuple[tuple[float, float], ...] = (

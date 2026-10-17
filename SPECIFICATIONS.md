@@ -713,7 +713,7 @@ mockuppeja, eivät alkuperäisiä ääriviivoja), Mockingbird-, Telecaster-,
 SG-, Explorer- tai Flying V -henkisen muodon (jäljitetty suoraan edestä
 otetuista tuotekuvista, mittakaava nauhoista ja viimeinen nauha 4 mm
 ennen kaulataskun päätä, mockuppeja; Music Man Axis samoin, mutta
-kuvan mukaisena muotoilematta: 404,6 × 319,9 mm, 118 ohjauspistettä
+kuvan mukaisena muotoilematta: 404,6 × 319,9 mm, 124 ohjauspistettä
 0,3 mm:n sisällä siluetista, kaulan yli suoraan bassosarven ja
 diskanttipuolen cutawayn kulmien välillä; pohjassa kytkin bassopuolen
 alaosassa, potit tallan vieressä diskanttipuolella ja jakki niitä kohti,

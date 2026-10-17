@@ -7743,7 +7743,7 @@ MUSIC_MAN_NECK: dict[str, Any] = {
     "tuner_edge_offset": 12.0,
     "tuner_edge_clearance": 6.5,
     # Straight up the bass side from the shoulder behind the locking nut
-    # and over the round top, which leans to the treble side.
+    # to the tip line, 136 mm out.
     "headstock_bass_edge": (
         (16.0, 20.7, "corner"),
         (20.6, 27.4),
@@ -7767,13 +7767,9 @@ MUSIC_MAN_NECK: dict[str, Any] = {
         (121.5, 11.3),
         (127.3, 9.8),
         (133.0, 7.7),
-        (138.2, 4.5),
-        (142.3, 0.3),
-        (144.8, -5.2),
-        (146.0, -10.5),
+        (136.0, 5.9),
     ),
-    # The treble shoulder, the scoop in under the top and round it, the
-    # two edges ending 1.2 mm apart there (closer reads as a point).
+    # The treble shoulder and the scoop in under the top.
     "headstock_treble_edge": (
         (16.0, 20.7, "corner"),
         (21.6, 24.0),
@@ -7798,10 +7794,17 @@ MUSIC_MAN_NECK: dict[str, Any] = {
         (123.8, 34.7),
         (129.7, 33.4),
         (135.2, 31.1),
-        (139.8, 27.5),
-        (143.1, 22.5),
-        (145.3, 17.0),
-        (146.0, 11.7),
+        (136.0, 30.5),
+    ),
+    # The round top past the tip line, leaning to the treble side.
+    "headstock_tip_points": (
+        (4.6, -2.6),
+        (7.4, 2.0),
+        (9.5, 6.9),
+        (10.0, 12.2),
+        (9.1, 17.5),
+        (7.2, 22.5),
+        (4.3, 27.0),
     ),
     "truss_rod_adjustment": "heel",
 }
