@@ -134,3 +134,14 @@ def test_the_credit_links_to_ls_guitars() -> None:
     # In the header and the footer, at the right host over https.
     assert page.count('href="https://jounilappi.hopto.org/lsguitars/"') == 2
     assert "jouni.lappi.hopto.org" not in page
+
+
+def test_the_footer_ends_with_the_thanks_in_small_print() -> None:
+    page = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
+    footer = page[page.index("<footer>") : page.index("</footer>")]
+
+    # The last thing in the footer, small.
+    last = footer.rstrip().rsplit("\n", 1)[-1].strip()
+    assert last.startswith('<small class="thanks">Special thanks to Kai Rankio')
+    assert "Claude and GPT for providing the code" in last
+    assert "footer .thanks { flex-basis: 100%; font-size: 11px; }" in page

@@ -4,6 +4,9 @@
 
 ### Added
 
+- The web app's footer ends with thanks in small print: to Kai Rankio
+  for fresh ideas and quality control, and to Claude and GPT for the code.
+
 - A setup note under a bridge while it is chosen (`BRIDGE_NOTES`), in the
   form and the body editor's Settings, small and quiet: the Kahler 7300's
   says how to ease its tremolo arm's coupler (its set screw 1/16 of a turn
