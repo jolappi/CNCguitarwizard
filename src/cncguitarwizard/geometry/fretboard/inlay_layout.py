@@ -16,15 +16,17 @@ every marker's fret space and the board's taper there. The symbol styles
 as it fits: ``runes``, a rune of the Elder Futhark each (``runes``, see
 ``runes.RUNES`` for what each stands for), ``cross``, a Latin cross
 upright as the guitar is played (its long arm across the board, its head
-toward the bass edge, as a rune stands), and
-``iron_cross``, the cross pattée.
+toward the bass edge, as a rune stands), ``iron_cross``, the cross
+pattée, and ``ankh``, the Egyptian ankh traced from a photograph
+(``ankh``), upright as the cross is: one piece, the wood inside its loop
+left standing (``InlayMarker.holes``).
 """
 
 from __future__ import annotations
 
 import math
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Literal
 
 from ..exceptions import FretboardGeometryError, GeometryException
@@ -37,6 +39,7 @@ from ..primitives import (
     drawn_polygon,
     rounded_polygon_points,
 )
+from .ankh import ANKH_HOLE, ANKH_OUTLINE, ANKH_THINNEST
 from .barbed_wire_2 import (
     BARBED_WIRE_2_ALONG,
     BARBED_WIRE_2_EDITOR_OUTLINE,
@@ -66,6 +69,7 @@ InlayStyle = Literal[
     "runes",
     "cross",
     "iron_cross",
+    "ankh",
     "custom",
 ]
 
@@ -82,11 +86,12 @@ INLAY_STYLES: tuple[str, ...] = (
     "runes",
     "cross",
     "iron_cross",
+    "ankh",
     "custom",
 )
 """Every inlay style, in the order the form offers them."""
 
-SYMBOL_STYLES: frozenset[str] = frozenset({"runes", "cross", "iron_cross"})
+SYMBOL_STYLES: frozenset[str] = frozenset({"runes", "cross", "iron_cross", "ankh"})
 """Styles that set one symbol in every marker's fret space, as large as it
 fits, turning with slanted frets as barbed wire does."""
 
@@ -174,11 +179,15 @@ class InlayMarker:
         position: Longitudinal distance from the nut in millimetres.
         outline: Closed, non-self-intersecting polygon in board-plane
             coordinates (x = longitudinal, y = lateral from centerline).
+        holes: The wood left standing inside it, each a closed polygon
+            inside the outline (an ankh's loop): its pocket is cut round
+            them and its piece cut out round them.
     """
 
     fret_number: int
     position: float
     outline: tuple[Point2D, ...]
+    holes: tuple[tuple[Point2D, ...], ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -324,14 +333,14 @@ class InlayLayout:
             for index, fret_number in enumerate(frets):
                 previous = 0.0 if fret_number == 1 else fret_positions[fret_number - 1]
                 position = midpoint(fret_number)
-                for outline in self._symbol(
+                for outline, holes in self._symbol(
                     index,
                     fret_number,
                     position,
                     fret_positions[fret_number] - previous,
                     half_width_at(position),
                 ):
-                    markers.append(InlayMarker(fret_number, position, outline))
+                    markers.append(InlayMarker(fret_number, position, outline, holes))
         elif self.style == "barbed_wire_2":
             for fret_number in sorted(
                 (*self.single_marker_frets, *self.double_marker_frets)
@@ -379,14 +388,7 @@ class InlayLayout:
             # Every marker follows the slanted or fanned frets around it:
             # a block leans point by point with them, barbed wire turns to
             # their angle at its centre, a dot moves onto their line.
-            markers = [
-                InlayMarker(
-                    marker.fret_number,
-                    marker.position,
-                    _slanted(marker.outline, skew, self.style),
-                )
-                for marker in markers
-            ]
+            markers = [_slanted(marker, skew, self.style) for marker in markers]
         object.__setattr__(
             self,
             "markers",
@@ -404,7 +406,8 @@ class InlayLayout:
         toward the bass edge and read from the front (its outline within
         ``tolerance`` of its height, ``runes.RUNE_TOLERANCE`` by default);
         a Latin cross, upright as a rune is, its head toward the bass edge;
-        an iron cross.
+        an iron cross; an ankh, upright as the cross (its hole:
+        ``symbol_holes``).
         """
         if self.style == "cross":
             # Its long arm across the board, one unit, its crossbar along
@@ -416,6 +419,8 @@ class InlayLayout:
                     for along, across in LATIN_CROSS
                 ),
             )
+        if self.style == "ankh":
+            return (self._upright(ANKH_OUTLINE),)
         if self.style == "iron_cross":
             tip, waist = IRON_CROSS_TIP, IRON_CROSS_WAIST
             quarter = [(0.5, -tip), (0.5, tip), (waist, waist)]
@@ -449,6 +454,24 @@ class InlayLayout:
             for piece in rune_outlines(name, tolerance)
         )
 
+    def symbol_holes(self) -> tuple[tuple[Point2D, ...], ...]:
+        """Return the wood a symbol leaves standing inside it, in its unit.
+
+        As ``symbol_shapes`` places the symbol: an ankh's hole, upright as
+        the ankh; none for the other symbols.
+        """
+        if self.style == "ankh":
+            return (self._upright(ANKH_HOLE),)
+        return ()
+
+    def _upright(self, points: Sequence[tuple[float, float]]) -> tuple[Point2D, ...]:
+        """Return ``(along, across)`` points of a symbol one unit long
+        stood upright as a Latin cross: its long axis across the board, its
+        head (``along`` 0) toward the bass edge."""
+        return tuple(
+            Point2D(across, self.bass_sign * (0.5 - along)) for along, across in points
+        )
+
     def _symbol(
         self,
         index: int,
@@ -456,15 +479,19 @@ class InlayLayout:
         position: float,
         spacing: float,
         half_width: float,
-    ) -> list[tuple[Point2D, ...]]:
+    ) -> list[tuple[tuple[Point2D, ...], tuple[tuple[Point2D, ...], ...]]]:
         """Return one symbol style marker's pieces, as large as they fit.
 
         At most ``SYMBOL_SPAN`` of the board's width across it, and
-        ``CUSTOM_CLEARANCE`` from the frets either side.
+        ``CUSTOM_CLEARANCE`` from the frets either side; each piece with
+        the wood it leaves standing inside it (``symbol_holes``). An
+        ankh's loop narrows beside its hole: where it would be thinner
+        than ``SYMBOL_THINNEST``, the hole is drawn smaller
+        (``_hole_kept_clear``).
 
         Raises:
             FretboardGeometryError: If that leaves its thinnest part under
-                ``SYMBOL_THINNEST``.
+                ``SYMBOL_THINNEST``, or an ankh's hole narrower than that.
         """
         shapes = self.symbol_shapes(index)
         along = max(abs(p.x) for shape in shapes for p in shape) * 2.0
@@ -474,11 +501,13 @@ class InlayLayout:
             (spacing - 2.0 * CUSTOM_CLEARANCE) / along,
         )
         # Its thinnest part, in its own unit: a rune's stroke, a Latin
-        # cross's arm, an iron cross's waist.
+        # cross's arm, an iron cross's waist, an ankh's stem and arms
+        # (its loop is kept as thick by its hole, below).
         thinnest = {
             "runes": RUNE_STROKE / (1.0 + RUNE_STROKE),
             "cross": 0.16,
             "iron_cross": 2.0 * IRON_CROSS_WAIST,
+            "ankh": ANKH_THINNEST,
         }[self.style]
         if scale * thinnest < SYMBOL_THINNEST:
             raise FretboardGeometryError(
@@ -489,17 +518,34 @@ class InlayLayout:
         pieces = []
         for shape in shapes:
             corners = [Point2D(position + p.x * scale, p.y * scale) for p in shape]
+            holes = []
+            for hole in self.symbol_holes():
+                points = [Point2D(position + p.x * scale, p.y * scale) for p in hole]
+                if _signed_area(points) < 0.0:
+                    points.reverse()
+                kept = _hole_kept_clear(tuple(points), tuple(corners))
+                if kept is None:
+                    raise FretboardGeometryError(
+                        f"Fret {fret_number}'s space is too short for an "
+                        f"{self.style} marker: the wood round the hole in it "
+                        f"would be under {SYMBOL_THINNEST:g} mm for the inlay "
+                        "cutter."
+                    )
+                holes.append(kept)
             if _signed_area(corners) < 0.0:
                 corners.reverse()
             # The crosses' corners rounded, as the blocks' are; a rune's
-            # are round already.
+            # and an ankh's are round already.
             pieces.append(
-                tuple(corners)
-                if self.style == "runes"
-                else rounded_polygon_points(
-                    corners,
-                    [self.block_corner_radius] * len(corners),
-                    samples_per_corner=6,
+                (
+                    tuple(corners)
+                    if self.style in ("runes", "ankh")
+                    else rounded_polygon_points(
+                        corners,
+                        [self.block_corner_radius] * len(corners),
+                        samples_per_corner=6,
+                    ),
+                    tuple(holes),
                 )
             )
         return pieces
@@ -831,9 +877,7 @@ def _knot_outline(
     return tuple(points if bass_sign < 0.0 else reversed(points))
 
 
-def _slanted(
-    outline: tuple[Point2D, ...], skew: FretSkew, style: str
-) -> tuple[Point2D, ...]:
+def _slanted(marker: InlayMarker, skew: FretSkew, style: str) -> InlayMarker:
     """Return a marker moved with slanted or fanned frets.
 
     A board-spanning shape (a block, a trapezoid...) leans every point
@@ -841,26 +885,35 @@ def _slanted(
     either side. Barbed wire turns about its
     own centre to the frets' angle there, keeping its shape. A dot keeps
     its shape and moves by the lean at its centre, onto the line between
-    the two frets.
+    the two frets. The wood left inside a marker moves with it.
     """
+    outline = marker.outline
+    move: Callable[[Point2D], Point2D]
     if style in BOARD_STYLES:
-        return tuple(Point2D(p.x + skew.at(p.x) * p.y, p.y) for p in outline)
-    centre_x = sum(p.x for p in outline) / len(outline)
-    centre_y = sum(p.y for p in outline) / len(outline)
-    lean = skew.at(centre_x)
-    moved_x = centre_x + lean * centre_y
-    if style == "dot":
-        return tuple(Point2D(p.x - centre_x + moved_x, p.y) for p in outline)
-    # Turn so the marker's across-the-board axis (0, 1) runs along the
-    # fret direction (lean, 1).
-    angle = -math.atan(lean)
-    cosine, sine = math.cos(angle), math.sin(angle)
-    return tuple(
-        Point2D(
-            moved_x + (p.x - centre_x) * cosine - (p.y - centre_y) * sine,
-            centre_y + (p.x - centre_x) * sine + (p.y - centre_y) * cosine,
-        )
-        for p in outline
+
+        def move(p: Point2D) -> Point2D:
+            return Point2D(p.x + skew.at(p.x) * p.y, p.y)
+
+    else:
+        centre_x = sum(p.x for p in outline) / len(outline)
+        centre_y = sum(p.y for p in outline) / len(outline)
+        lean = skew.at(centre_x)
+        moved_x = centre_x + lean * centre_y
+        # Turn so the marker's across-the-board axis (0, 1) runs along the
+        # fret direction (lean, 1); a dot only moves.
+        angle = 0.0 if style == "dot" else -math.atan(lean)
+        cosine, sine = math.cos(angle), math.sin(angle)
+
+        def move(p: Point2D) -> Point2D:
+            return Point2D(
+                moved_x + (p.x - centre_x) * cosine - (p.y - centre_y) * sine,
+                centre_y + (p.x - centre_x) * sine + (p.y - centre_y) * cosine,
+            )
+
+    return replace(
+        marker,
+        outline=tuple(move(p) for p in outline),
+        holes=tuple(tuple(move(p) for p in hole) for hole in marker.holes),
     )
 
 
@@ -976,6 +1029,65 @@ def _clip_beside(
                 )
             )
     return clipped
+
+
+HOLE_SHRINK_STEP = 0.025
+"""How much smaller each try draws a hole that leaves too little round it,
+as a share of its size."""
+
+HOLE_SMALLEST = 0.5
+"""The smallest a hole is drawn to leave enough round it, as a share of
+its size: smaller, the marker is refused."""
+
+
+def _hole_kept_clear(
+    hole: tuple[Point2D, ...], outline: tuple[Point2D, ...]
+) -> tuple[Point2D, ...] | None:
+    """Return a hole drawn small enough to leave the cutter room round it.
+
+    The hole as it is if every point of it is ``SYMBOL_THINNEST`` from the
+    outline, else scaled about its centre in ``HOLE_SHRINK_STEP`` steps
+    until it is (an ankh's loop thickening where it narrows beside its
+    hole), as long as the hole stays ``SYMBOL_THINNEST`` wide; ``None``
+    when no such hole is left.
+    """
+    centre_x = sum(p.x for p in hole) / len(hole)
+    centre_y = sum(p.y for p in hole) / len(hole)
+    edges = list(zip(outline, (*outline[1:], outline[0]), strict=True))
+    share = 1.0
+    while share >= HOLE_SMALLEST - 1e-9:
+        scaled = tuple(
+            Point2D(
+                centre_x + (p.x - centre_x) * share,
+                centre_y + (p.y - centre_y) * share,
+            )
+            for p in hole
+        )
+        if (
+            min(
+                max(p.x for p in scaled) - min(p.x for p in scaled),
+                max(p.y for p in scaled) - min(p.y for p in scaled),
+            )
+            < SYMBOL_THINNEST
+        ):
+            return None
+        if all(
+            _segment_distance(p, a, b) >= SYMBOL_THINNEST
+            for p in scaled
+            for a, b in edges
+        ):
+            return scaled
+        share -= HOLE_SHRINK_STEP
+    return None
+
+
+def _segment_distance(point: Point2D, a: Point2D, b: Point2D) -> float:
+    """Return ``point``'s distance from the segment ``a``-``b``."""
+    dx, dy = b.x - a.x, b.y - a.y
+    length = dx * dx + dy * dy
+    t = 0.0 if length == 0.0 else ((point.x - a.x) * dx + (point.y - a.y) * dy) / length
+    t = min(1.0, max(0.0, t))
+    return math.hypot(point.x - (a.x + t * dx), point.y - (a.y + t * dy))
 
 
 def _signed_area(points: list[Point2D]) -> float:

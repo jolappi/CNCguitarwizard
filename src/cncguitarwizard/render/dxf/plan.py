@@ -53,6 +53,8 @@ def render_plan_dxf(geometry: Prototype001Geometry) -> str:
     inlays = dxf.layer("INLAYS", 6)
     for marker in geometry.inlay_layout.markers:
         dxf.polyline(marker.outline, inlays)
+        for island in marker.holes:
+            dxf.polyline(island, inlays)
     tuners = dxf.layer("TUNER_HOLES", 3)
     for tuner in geometry.tuner_layout.holes:
         dxf.circle(tuner.center, tuner.diameter / 2.0, tuners)

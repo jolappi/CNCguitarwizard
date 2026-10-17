@@ -72,6 +72,7 @@ one of `INLAY_STYLES`:
 | `runes` | A rune of the Elder Futhark at every marker fret, chosen for each (`inlay_runes`) — see below |
 | `cross` | Latin crosses, upright as the guitar is played (as a rune stands): the long arm across the board, its head toward the bass edge |
 | `iron_cross` | Iron crosses (cross pattée): four arms flaring from a narrow waist |
+| `ankh` | Ankhs traced from a photograph of a cast one, upright as the crosses: the loop toward the bass edge, the stem across the board — one piece, the wood inside its loop left standing (see below) |
 | `custom` | Your own shape (`inlay_points`), drawn once and fitted to every fret space — see below |
 
 `barbed_wire_2` spans `BARBED_WIRE_2_SPAN` (80 %) of the board's width at
@@ -87,13 +88,33 @@ knot whole. The inlay editor starts from a coarser copy of it (43
 corners, `BARBED_WIRE_2_EDITOR_OUTLINE`).
 
 The symbol styles (`SYMBOL_STYLES`: `runes`, `cross`,
-`iron_cross`) set one symbol in every marker fret's space, 12 and 24
+`iron_cross`, `ankh`) set one symbol in every marker fret's space, 12 and 24
 too, as large as it fits: at most `SYMBOL_SPAN` (60 %) of the board's
 width across it and `CUSTOM_CLEARANCE` (1 mm) from the frets either side.
-Its thinnest part (a rune's stroke, a cross's arm or waist) must stay
-`SYMBOL_THINNEST` (1.1 mm) wide for the 1 mm inlay cutter; a fret space
-too short for that is refused. The crosses' corners are rounded 1 mm as
-the blocks' are. With slanted or fanned frets a symbol turns to their
+Its thinnest part (a rune's stroke, a cross's arm or waist, an ankh's
+loop) must stay `SYMBOL_THINNEST` (1.1 mm) wide for the 1 mm inlay
+cutter; a fret space too short for that is refused. The crosses' corners
+are rounded 1 mm as the blocks' are.
+
+An `ankh` (`geometry.fretboard.ankh`) was traced once from a photograph
+of a cast ankh (the builder's `ankh.jpeg`, not needed to build): its
+loop a drop round a drop-shaped hole, the arms widening to round ends,
+the stem widening to its foot. Its silhouette was made symmetric,
+smoothed and grown 0.011 of its length all round, so that the stem below
+the crossbar and the arms where they meet it are `ANKH_THINNEST` (0.1)
+wide, the hole kept as photographed, and thinned to 142 + 34 points
+(`ANKH_OUTLINE`, `ANKH_HOLE`). It is one piece with the wood inside its
+loop left standing (`InlayMarker.holes`): an island its pocket is cut
+round (`Fretboard_inlays`) and a hole cut out of its piece first
+(`Fretboard_inlay_pieces`, ``…, hole``), both as the inlay end mill
+cuts them, the piece's hole `INLAY_FIT_CLEARANCE` larger so the piece
+drops over the island; FreeCAD cuts the pocket round it, and the plan
+view and the DXF draw it. The loop narrows to 0.074 of its length beside
+the hole: where that leaves less than `SYMBOL_THINNEST` round the hole
+(the last frets), the hole is drawn smaller, scaled about its centre in
+2.5 % steps (`_hole_kept_clear`; at the 24th fret of a 24 in scale to
+about 78 %), and a fret space where the hole would have to go under
+half its size or 1.1 mm across is refused. With slanted or fanned frets a symbol turns to their
 angle, as barbed wire does. The inlay editor starts from the first
 marker's symbol shrunk whole inside the limits a drawn shape keeps (its
 shape kept).

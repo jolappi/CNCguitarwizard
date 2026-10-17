@@ -10,7 +10,9 @@ round in every corner the tool turns inside, the piece in every corner
 cut into it. Both therefore follow the marker outline rounded both ways
 by the tool radius (``inlay_fit_outline``), the piece
 ``INLAY_FIT_CLEARANCE`` smaller all round, so each piece drops into its
-pocket.
+pocket. The wood a marker leaves standing inside it (an ankh's loop) is
+an island in its pocket and a hole cut out of its piece first, as much
+larger.
 """
 
 from __future__ import annotations
@@ -23,7 +25,7 @@ from ..geometry.fretboard import InlayMarker
 from ..geometry.primitives import Point2D
 from .exceptions import ToolpathError
 from .gcode import Setup
-from .operations import profile
+from .operations import pocket, profile
 from .planar import offset_polygon, polygon_bounds, segment_distance
 
 if TYPE_CHECKING:
@@ -124,39 +126,48 @@ def plan_inlay_machining(
     tool = parameters.inlay
     thickness = layout.depth
     pieces = [
-        (marker, _piece_outline(marker, tool.tool_radius)) for marker in layout.markers
+        (
+            marker,
+            _piece_outline(marker, tool.tool_radius),
+            _piece_holes(marker, tool.tool_radius),
+        )
+        for marker in layout.markers
     ]
     spacing = tool.tool_diameter + INLAY_PIECE_GAP
-    placed: list[tuple[InlayMarker, tuple[Point2D, ...]]] = []
+    placed: list[
+        tuple[InlayMarker, tuple[Point2D, ...], tuple[tuple[Point2D, ...], ...]]
+    ] = []
     x = y = row_depth = 0.0
-    for marker, outline in pieces:
+    for marker, outline, holes in pieces:
         min_x, min_y, max_x, max_y = polygon_bounds(outline)
         if x > 0.0 and x + (max_x - min_x) > INLAY_ROW_LENGTH:
             x, y, row_depth = 0.0, y + row_depth + spacing, 0.0
+        dx, dy = x - min_x, y - min_y
         placed.append(
             (
                 marker,
-                tuple(Point2D(p.x - min_x + x, p.y - min_y + y) for p in outline),
+                _shifted(outline, dx, dy),
+                tuple(_shifted(hole, dx, dy) for hole in holes),
             )
         )
         x += max_x - min_x + spacing
         row_depth = max(row_depth, max_y - min_y)
-    all_points = [point for _, outline in placed for point in outline]
+    all_points = [point for _, outline, _ in placed for point in outline]
     min_x, min_y, max_x, max_y = polygon_bounds(all_points)
     centre = Point2D((min_x + max_x) / 2.0, (min_y + max_y) / 2.0)
     through = thickness + tool.through_overshoot
     paths = []
-    for marker, outline in placed:
-        centred = tuple(Point2D(p.x - centre.x, p.y - centre.y) for p in outline)
+    for marker, outline, holes in placed:
         # Named as its pocket is, by where it sits across the board.
         across = sum(p.y for p in marker.outline) / len(marker.outline)
+        name = f"Inlay fret {marker.fret_number} at y={across:.0f}"
+        # Its holes first, while the piece is still held by the sheet.
+        paths += [
+            pocket(f"{name}, hole", _shifted(hole, -centre.x, -centre.y), through, tool)
+            for hole in holes
+        ]
         paths.append(
-            profile(
-                f"Inlay fret {marker.fret_number} at y={across:.0f}",
-                centred,
-                through,
-                tool,
-            )
+            profile(name, _shifted(outline, -centre.x, -centre.y), through, tool)
         )
     sheet_length = max_x - min_x + 2.0 * (tool.tool_diameter + INLAY_SHEET_MARGIN)
     sheet_width = max_y - min_y + 2.0 * (tool.tool_diameter + INLAY_SHEET_MARGIN)
@@ -192,6 +203,23 @@ def plan_inlay_machining(
             ),
         ),
     )
+
+
+def _shifted(points: tuple[Point2D, ...], dx: float, dy: float) -> tuple[Point2D, ...]:
+    """Return ``points`` moved by ``(dx, dy)``."""
+    return tuple(Point2D(p.x + dx, p.y + dy) for p in points)
+
+
+def _piece_holes(
+    marker: InlayMarker, tool_radius: float
+) -> tuple[tuple[Point2D, ...], ...]:
+    """Return one piece's holes: its pocket's islands, plus the fit
+    clearance, so the piece drops over them."""
+    holes = []
+    for hole in marker.holes:
+        fitted = inlay_fit_outline(hole, tool_radius)
+        holes.append(_fine_offset(fitted, INLAY_FIT_CLEARANCE, inward=False))
+    return tuple(holes)
 
 
 def _piece_outline(marker: InlayMarker, tool_radius: float) -> tuple[Point2D, ...]:

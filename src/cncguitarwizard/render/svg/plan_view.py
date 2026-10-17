@@ -125,6 +125,11 @@ def render_plan_view_svg(geometry: Prototype001Geometry) -> str:
         parts.append(line(slot.start.x, slot.start.y, slot.end.x, slot.end.y, fret))
     for marker in geometry.inlay_layout.markers:
         parts.append(path(marker.outline, inlay, f"Inlay, fret {marker.fret_number}"))
+        # The wood left standing inside it (an ankh's loop), the board's.
+        for island in marker.holes:
+            parts.append(
+                path(island, fretboard, f"Inlay hole, fret {marker.fret_number}")
+            )
     # Carbon fibre bars under the fretboard, dashed.
     if geometry.carbon_rods is not None:
         for channel in geometry.carbon_rods.channels():

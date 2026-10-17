@@ -230,6 +230,13 @@ cut round where the piece's would stay full, and the piece is
 `INLAY_FIT_CLEARANCE` (0.1 mm) smaller all round, so each piece drops
 into its pocket. Glue the pieces in and level them with the radius.
 
+A marker that leaves wood standing inside it (`InlayMarker.holes`, an
+ankh's loop) has that wood as an island in its pocket, the pocket cut
+round it, and a hole in its piece, cut out first (``Inlay fret … , hole``)
+while the sheet still holds the piece; both follow the hole rounded both
+ways by the tool radius, the piece's hole `INLAY_FIT_CLEARANCE` larger
+all round, so the piece drops over the island.
+
 With slanted or fanned frets (`fret_slant_angle`, `bass_scale_length`)
 each slot runs along its own line, still following the radius, and the
 outline's nut end and far end lean with the first and last frets.

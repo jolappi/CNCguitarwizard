@@ -19,6 +19,14 @@
   (its length and width the Floyd Rose sheet's). `locking_nut` "auto"
   fits the Floyd Rose R2 with it.
 
+- Ankh fret markers (`inlay_style` "ankh"), traced from a photograph of
+  a cast ankh, upright as the crosses, as large as the fret space allows:
+  one piece with the wood inside its loop left standing. A marker may now
+  leave wood inside it (`InlayMarker.holes`): its pocket is cut round it,
+  its piece has the hole cut out first, FreeCAD, the plan view, the DXF
+  and the inlay editor show it. Where the loop would be too thin for the
+  inlay cutter (the last frets) its hole is drawn smaller.
+
 - A scalloped fretboard (`fretboard_scalloped`): every fret space from
   `fretboard_scallop_from_fret` on (15 by default; 0 from the nut)
   hollowed `fretboard_scallop_depth` (2 mm) at its middle, a circular arc

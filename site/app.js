@@ -5837,6 +5837,10 @@ const inlayEditor = {
     for (const marker of layout.markers) {
       add("path", { d: this.pathData(marker), fill: "#f4efe2", stroke: "none" });
     }
+    // The wood left standing inside a marker (an ankh's loop).
+    for (const hole of layout.holes ?? []) {
+      add("path", { d: this.pathData(hole), fill: "#5b3a24", stroke: "none" });
+    }
   },
 
   startDrag(event, index, handle) {

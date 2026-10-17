@@ -840,7 +840,9 @@ class Prototype001Parameters:
     # sowilo, tiwaz, ehwaz, mannaz, othala; what each stands for in
     # geometry.fretboard.runes), upright with its top toward the bass edge;
     # "cross", a Latin cross, upright too: its long arm across the board,
-    # its head toward the bass edge; or "iron_cross", the cross pattée.
+    # its head toward the bass edge; "iron_cross", the cross pattée; or
+    # "ankh", an Egyptian ankh traced from a photograph, upright as the
+    # cross, one piece with the wood inside its loop left standing.
     inlay_depth: float = 2.0
     inlay_single_marker_frets: tuple[int, ...] = (3, 5, 7, 9, 15, 17, 19, 21)
     inlay_double_marker_frets: tuple[int, ...] = (12, 24)

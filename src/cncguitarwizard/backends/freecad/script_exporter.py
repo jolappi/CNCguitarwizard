@@ -2361,9 +2361,32 @@ class FreeCADScriptExporter:
             for marker in layout.markers
         )
         serialized_outlines = FreeCADScriptExporter._serialize_rows(outlines)
+        # The wood a marker leaves standing inside it (an ankh's loop).
+        holes = [
+            [[(round(p.x, 4), round(p.y, 4)) for p in hole] for hole in marker.holes]
+            for marker in layout.markers
+        ]
+        hole_lines = (
+            (
+                "    for hole in INLAY_MARKER_HOLES[inlay_index - 1]:\n"
+                "        hole_profile = [\n"
+                "            App.Vector(x, y, inlay_surface_z + inlay_overcut)\n"
+                "            for x, y in hole\n"
+                "        ]\n"
+                "        hole_profile.append(hole_profile[0])\n"
+                "        marker_shape = marker_shape.cut(\n"
+                "            Part.Face(Part.makePolygon(hole_profile)).extrude(\n"
+                "                App.Vector(0.0, 0.0, -(inlay_depth + inlay_overcut))\n"
+                "            )\n"
+                "        )\n"
+            )
+            if any(holes)
+            else ""
+        )
         return (
             f"INLAY_MARKER_OUTLINES = {serialized_outlines}\n"
-            f"inlay_depth = {layout.depth}\n"
+            + (f"INLAY_MARKER_HOLES = {holes!r}\n" if any(holes) else "")
+            + f"inlay_depth = {layout.depth}\n"
             f"inlay_surface_z = {layout.fretboard_surface.center_thickness}\n"
             "inlay_overcut = 0.6\n"
             "for inlay_index, outline in enumerate(\n"
@@ -2378,8 +2401,7 @@ class FreeCADScriptExporter:
             "    marker_face = Part.Face(Part.makePolygon(profile))\n"
             "    marker_shape = marker_face.extrude(\n"
             "        App.Vector(0.0, 0.0, -(inlay_depth + inlay_overcut))\n"
-            "    )\n"
-            "    fretboard_shape = require_shape(\n"
+            "    )\n" + hole_lines + "    fretboard_shape = require_shape(\n"
             "        fretboard_shape.cut(marker_shape).removeSplitter(),\n"
             '        f"inlay-marker cut {inlay_index}",\n'
             "    )\n"

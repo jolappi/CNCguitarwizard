@@ -495,6 +495,14 @@ def plan_fretboard_machining(
                 skim + geometry.inlay_layout.depth,
                 parameters.inlay,
                 start_depth=skim,
+                # The wood left inside a marker (an ankh's loop), as its
+                # piece's hole is cut.
+                islands=[
+                    machine_polygon(
+                        inlay_fit_outline(hole, parameters.inlay.tool_radius)
+                    )
+                    for hole in marker.holes
+                ],
             )
         )
     nut_slot_notes: tuple[str, ...] = ()

@@ -75,6 +75,7 @@ def test_schema_lists_every_parameter_with_a_form_type() -> None:
             "runes",
             "cross",
             "iron_cross",
+            "ankh",
             "custom",
         ],
         "labels": prototype_fields["inlay_style"]["labels"],

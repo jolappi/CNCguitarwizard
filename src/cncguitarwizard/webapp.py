@@ -196,6 +196,7 @@ _CHOICE_LABELS: dict[str, dict[str, str]] = {
         "runes": "Runes (the Elder Futhark, one chosen for each fret)",
         "cross": "Crosses (upright Latin crosses)",
         "iron_cross": "Iron crosses (cross pattée)",
+        "ankh": "Ankhs (traced from a photograph, the wood in the loop kept)",
         "custom": "Custom (drawn in the Inlay design window)",
     },
     "body_jack": {
@@ -1418,7 +1419,7 @@ def inlay_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
     Returns:
         ``{"fret", "front", "back", "nut_half", "final_half",
         "final_position", "bass_sign", "mirrored", "custom", "points",
-        "limits", "markers", "frets", "runes", "problem"}`` or
+        "limits", "markers", "holes", "frets", "runes", "problem"}`` or
         ``{"error": message}``: the
         first marker's fret, its fret space from ``front`` to ``back`` (mm
         from the nut), the board's half-width at the nut and at the last
@@ -1426,8 +1427,9 @@ def inlay_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         ``[along, across]`` points (the drawn one, or the style's own at
         that fret), ``limits`` (``along`` from and to, ``across`` either
         side: ``custom_limits``) inside which a drawn corner fits every
-        marker, every marker's outline and every fret's line for the
-        board's preview, ``runes`` each marker fret's rune
+        marker, every marker's outline, the wood left inside any (``holes``,
+        an ankh's loop) and every fret's line for the board's preview,
+        ``runes`` each marker fret's rune
         ``{"fret", "rune"}`` (nut first, ``inlay_runes`` starting over; empty
         but for the ``runes`` style), and ``problem``, why the markers cannot
         be cut as drawn (``None`` when they can).
@@ -1456,6 +1458,7 @@ def inlay_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
     final = positions[surface.fret_count]
     problem: str | None = None
     markers: list[list[list[float]]] = []
+    holes: list[list[list[float]]] = []
     # As drawn, a round corner marked (see InlayLayout.custom_points).
     points: list[list[Any]] = [
         [float(point[0]), float(point[1]), *point[2:]]
@@ -1467,6 +1470,11 @@ def inlay_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         markers = [
             [[round(p.x, 2), round(p.y, 2)] for p in marker.outline]
             for marker in layout.markers
+        ]
+        holes = [
+            [[round(p.x, 2), round(p.y, 2)] for p in hole]
+            for marker in layout.markers
+            for hole in marker.holes
         ]
         points = [list(point) for point in layout.editable_points()]
     except (CNCGuitarWizardError, TypeError, ValueError) as error:
@@ -1514,6 +1522,7 @@ def inlay_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         "points": points,
         "limits": {"along": [low, high], "across": across},
         "markers": markers,
+        "holes": holes,
         "frets": [fret_line(0.0)]
         + [fret_line(positions[n]) for n in range(1, surface.fret_count + 1)],
         "runes": runes,
