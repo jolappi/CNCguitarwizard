@@ -229,7 +229,9 @@ def test_the_battery_box_makes_way_for_the_controls() -> None:
 
 @pytest.mark.parametrize(
     ("controls", "far"),
-    [("superstrat", False), ("active_4", True), ("pickguard", False)],
+    # (The RR's own treble wing leaves no room beside the superstrat's
+    # controls either.)
+    [("superstrat", True), ("active_4", True), ("pickguard", False)],
 )
 def test_the_battery_box_finds_room_beside_any_layout(controls: str, far: bool) -> None:
     parameters = with_battery(body_shape=RR, body_controls=controls)

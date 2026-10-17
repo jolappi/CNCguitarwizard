@@ -27,7 +27,7 @@ ALEXI = replace(
 
 
 def test_the_template_is_the_rr_outline_with_the_hexed_look() -> None:
-    assert LABEL == "ESP LTD Alexi Hexed style (mockup, not the original)"
+    assert LABEL == "ESP LTD Alexi Hexed style (on the RR's outline)"
     rr = YOUR_DESIGN_TEMPLATES["jackson_rr"][1]
     assert HEXED.control_points == rr.control_points
     assert HEXED.pickguard_points == ()
@@ -36,7 +36,7 @@ def test_the_template_is_the_rr_outline_with_the_hexed_look() -> None:
     assert values["body_controls"] == "volume_1"
     assert isinstance(values["body_bridge"], FloydRoseSpec)
     assert values["body_stepped_top"] is True
-    assert values["body_top_step_insets"] == (12.0, 40.0)
+    assert values["body_top_step_insets"] == (12.0, 35.0)
     assert values["body_top_step_height"] == 1.5
     # Only the alexi_hexed template sets anything besides its shape.
     assert set(BODY_TEMPLATE_VALUES) == {"alexi_hexed"}
@@ -107,7 +107,7 @@ def test_undrawn_steps_follow_the_edge() -> None:
     steps = body.stepped_top
     assert steps is not None
     outline = body.outline.points
-    for inset, boundary in zip((12.0, 40.0), steps.boundaries, strict=True):
+    for inset, boundary in zip((12.0, 35.0), steps.boundaries, strict=True):
         for point in boundary[:: len(boundary) // 30]:
             assert distance_to_boundary(point, outline) == pytest.approx(inset, abs=0.3)
     with pytest.raises(BodyGeometryError, match="further in than the last"):
@@ -178,7 +178,7 @@ def test_a_stepped_top_refuses_what_does_not_go_with_it() -> None:
     narrow = replace(
         ALEXI,
         body_shape=replace(HEXED, step_points=()),
-        body_top_step_insets=(2.0, 40.0),
+        body_top_step_insets=(2.0, 35.0),
     ).build()
     with pytest.raises(Exception, match="leaves no band the"):
         plan_body_machining(narrow.body, MachiningParameters())

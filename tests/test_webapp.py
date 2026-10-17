@@ -332,19 +332,20 @@ def test_body_editor_layout_lists_the_fixed_features_relative_to_the_heel() -> N
     )
     assert templates["les_paul"]["label"] == "Les Paul style (mockup, not the original)"
     assert templates["stratocaster"]["label"] == (
-        "Stratocaster style (mockup, not the original)"
+        "Stratocaster style (traced from the original)"
     )
-    # The Stratocaster template is traced from a reference drawing (78
+    # The Stratocaster template is traced from a reference drawing (127
     # points); a new drawing still starts from the 42-point default.
     strat_points = templates["stratocaster"]["shape"]["control_points"]
-    assert len(strat_points) == 78 and strat_points != layout["start_points"]
+    assert len(strat_points) == 127 and strat_points != layout["start_points"]
     assert len(templates["design_by_jone"]["shape"]["control_points"]) == 64
-    # The Jackson RR is a mockup too, its switch moved onto the bass wing.
+    # The Jackson RR is traced from the original too (98 points), its
+    # switch moved onto the bass wing.
     assert templates["jackson_rr"]["label"] == (
-        "Jackson RR style (mockup, not the original)"
+        "Jackson RR style (traced from the original)"
     )
     rr = templates["jackson_rr"]["shape"]
-    assert len(rr["control_points"]) == 64
+    assert len(rr["control_points"]) == 98
     assert rr["switch_cavity_y"] < 0.0 < min(y for _, y in rr["pot_offsets"])
     assert templates["jazz_bass"]["label"] == (
         "Jazz Bass style (mockup, not the original)"

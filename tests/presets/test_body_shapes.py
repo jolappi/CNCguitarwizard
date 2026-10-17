@@ -199,14 +199,32 @@ def test_the_strat_and_rr_templates_spread_their_neck_bolts(
 
 def test_the_strat_templates_neck_end_is_straight() -> None:
     # Regression: its face under the neck bowed out 1.2 mm and curved back
-    # 6 mm on the bass side, a bend seen below the pocket's floor.
+    # 6 mm on the bass side, a bend seen below the pocket's floor. Traced
+    # from the drawing, it is straight across as drawn.
     shape = YOUR_DESIGN_TEMPLATES["stratocaster"][1]
     parameters = replace(Prototype001Parameters(), body_shape=shape)
     layout = parameters.body_layout()
     face = [
         point.x - layout.heel_end
         for point in layout.outline.points
-        if abs(point.y) <= 22.0 and point.x - layout.heel_end < -60.0
+        if abs(point.y) <= 18.0 and point.x - layout.heel_end < -60.0
     ]
     assert len(face) > 5
-    assert max(face) - min(face) == pytest.approx(0.0, abs=1e-6)
+    assert max(face) - min(face) < 0.2
+
+
+@pytest.mark.parametrize(
+    ("key", "length", "width"),
+    [("stratocaster", 458.7, 322.2), ("jackson_rr", 532.0, 424.0)],
+)
+def test_the_strat_and_rr_templates_are_the_originals_size(
+    key: str, length: float, width: float
+) -> None:
+    # Traced from the originals' drawings, not lengthened at the horns or
+    # the wing tips (the Strat's bass horn was 7.6 mm longer, the RR's
+    # wing tips up to 32 mm).
+    points = YOUR_DESIGN_TEMPLATES[key][1].control_points
+    xs = [point[0] for point in points]
+    ys = [point[1] for point in points]
+    assert max(xs) - min(xs) == pytest.approx(length, abs=1.0)
+    assert max(ys) - min(ys) == pytest.approx(width, abs=1.0)

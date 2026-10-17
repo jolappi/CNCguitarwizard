@@ -923,6 +923,18 @@
 
 ### Changed
 
+- The Stratocaster and Jackson RR body templates follow the originals
+  (the ESP LTD Alexi Hexed one is on the RR's outline): they had been
+  reshaped by hand away from them, the Strat's bass horn 7.6 mm longer and
+  its cutaways and neck end moved up to 5 mm, the RR's wing tips up to
+  32 mm longer and its V notch and neck joint moved. The Strat is traced
+  again from its reference drawing (127 control points, within 0.25 mm,
+  its neck end straight across), the RR from its reference render (98
+  points, 532 mm from the neck joint to the bass wing's tip, the jack on
+  the V's edge left out); their labels say "traced from the original".
+  The Alexi Hexed template's undrawn steps are 12 and 35 mm in (40 reaches
+  the pickup on the RR's own outline).
+
 - A gap in an epoxy tray narrower than the cutter (between two walls, or a
   wall and the rim) is left as wood in the FreeCAD model as in the G-code,
   which never reached it: the model cuts the tray only where the body's

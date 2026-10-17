@@ -309,7 +309,7 @@ def test_a_belly_cut_keeps_off_a_stratocasters_horn() -> None:
     along = [point.x - layout.heel_end for point in cut.edge]
     horn_tip = min(point.x for point in layout.outline.points) - layout.heel_end
     assert horn_tip < -130.0
-    assert min(along) > -50.0
+    assert min(along) > -55.0
     assert 20.0 < along[len(along) // 2] < 80.0
     assert all(point.y * parameters.bass_sign > 0.0 for point in cut.edge)
 

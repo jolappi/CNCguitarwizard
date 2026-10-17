@@ -7686,7 +7686,9 @@ BODY_TEMPLATE_VALUES: dict[str, dict[str, Any]] = {
         "body_controls": "volume_1",
         "body_bridge": FloydRoseSpec(),
         "body_stepped_top": True,
-        "body_top_step_insets": (12.0, 40.0),
+        # Undrawn, its steps 12 and 35 mm in: on the RR's own outline, its
+        # V notch near the bridge, 40 reaches the pickup and the bridge.
+        "body_top_step_insets": (12.0, 35.0),
         "body_top_step_height": 1.5,
     },
 }
