@@ -1133,6 +1133,14 @@
 
 ### Fixed
 
+- A crease along the neck's sides just behind the nut in the FreeCAD
+  model (a Stratocaster's, about 15 mm past the nut, up to 1 mm out) is
+  gone. Past the nut the headstock transition's top edge was held at the
+  nut's width, 0.2 mm short of the neck's own next station only 0.03 mm
+  further on, and the loft bent sharply between them. The edge now widens
+  with the neck past the nut, and the neck's own stations pick up again at
+  least `NECK_SPLICE_GAP` (1 mm) past the transition. Only the model had
+  it: the neck's G-code follows the neck's own surface, which was smooth.
 - The Stratocaster neck's back runs straight onto its headstock: a 16 mm
   headstock 4 mm below the glue face under a 17 mm neck stepped 7.7 mm
   down. The template now has a modern C neck (20.8 mm at the first fret,

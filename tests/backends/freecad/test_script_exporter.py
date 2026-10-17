@@ -12,6 +12,7 @@ from cncguitarwizard.backends.freecad import FreeCADScriptExporter
 from cncguitarwizard.backends.freecad.exceptions import FreeCADBackendError
 from cncguitarwizard.backends.freecad.script_exporter import (
     MAX_HEADSTOCK_SECTION_GAP,
+    NECK_SPLICE_GAP,
     TIP_CUT_CLEARANCE,
     TRANSITION_CUT_SAMPLES,
 )
@@ -1332,3 +1333,35 @@ def test_a_hooked_drawn_tip_is_lofted_closely_enough_to_follow_it() -> None:
         distance = -row[0].x
         assert row[0].y == pytest.approx(plan.envelope_y(distance, -1.0))
         assert row[-1].y == pytest.approx(plan.envelope_y(distance, 1.0))
+
+
+def test_the_neck_loft_runs_on_smoothly_past_the_headstock_transition() -> None:
+    # Regression: past the nut the transition's top edge was held at the
+    # nut's width, 0.2 mm short of the neck's own station 0.03 mm past its
+    # last row (a Stratocaster's), and the loft creased the neck's sides.
+    from cncguitarwizard.presets.prototype001 import NECK_TEMPLATES
+
+    geometry = replace(
+        Prototype001Parameters(), **NECK_TEMPLATES["stratocaster"][1]
+    ).build()
+    neck = geometry.neck_surface
+    assert geometry.headstock is not None
+    rows = FreeCADScriptExporter._headstock_transition_sections(
+        geometry.headstock, neck, geometry.joint_fillet_radius
+    )
+    for row in rows:
+        if row[0].x > 0.0:
+            half = neck._width_at(row[0].x) / 2.0
+            assert (row[0].y, row[-1].y) == pytest.approx((-half, half))
+    # The neck's own stations pick up again clear of the last row: the
+    # loft's next station is at least NECK_SPLICE_GAP past it.
+    last = rows[-1][0].x
+    source = FreeCADScriptExporter().render_prototype001(geometry)
+    (line,) = [
+        line
+        for line in source.splitlines()
+        if line.startswith("NECK_SECTION_POINTS = ")
+    ]
+    stations = [row[0][0] for row in ast.literal_eval(line.split("=", 1)[1])]
+    following = min(x for x in stations if x > last + 1e-6)
+    assert following - last >= NECK_SPLICE_GAP

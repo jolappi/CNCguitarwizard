@@ -36,7 +36,11 @@ remains 20 mm of wood as originally specified.
 Prototype001 uses a compact 12 mm headstock-root transition. At the nut, its
 center remains at the rectangular headstock reference while the broad
 D-profile shoulders extend 12 mm toward the headstock. The default local back
-swell is zero; an optional swell can be added only when needed. At the body end,
+swell is zero; an optional swell can be added only when needed. In the FreeCAD
+loft the transition runs on 2 mm past those 12 mm, its top edge widening with
+the neck past the nut, and the neck's own stations pick up again at least
+`NECK_SPLICE_GAP` (1 mm) further on: a station a hair past the transition's
+last row, its edge 0.2 mm wider, creased the loft along the neck's sides. At the body end,
 Prototype001 uses a
 45 mm tangent-controlled blend from the D profile to the heel section. The
 D-shaped sections widen, deepen, and flatten through several superelliptical

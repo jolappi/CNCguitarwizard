@@ -65,6 +65,12 @@ VINTAGE_ROD_STEP = 5.0
 MIN_SECTION_GAP = 0.2
 """Least distance between two loft sections along the neck, in mm."""
 
+NECK_SPLICE_GAP = 1.0
+"""How far past the headstock transition's last loft row, in mm, the
+neck's own rows pick up again: a station of the neck's a hair past it
+(0.03 mm) made the loft bend sharply between the two, a crease along the
+neck's sides behind the nut."""
+
 TIP_CUT_CLEARANCE = 0.3
 """How far inside the lofted headstock's side a shaped tip's cut crosses
 it, in mm. The tip leaves each corner along that side, and a cut grazing
@@ -460,10 +466,13 @@ class FreeCADScriptExporter:
             # the neck's usual rise from the nut to full thickness too, so
             # the splice picks the neck's own stations back up only past
             # that point, not past x = 0.
+            # (At least NECK_SPLICE_GAP past the transition's last row: a
+            # station of the neck's own a hair past it bent the loft
+            # sharply between the two.)
             first_unblended_index = next(
                 index
                 for index, position in enumerate(neck_surface.station_positions)
-                if position > neck_surface.nut_transition_length + 2.0
+                if position > neck_surface.nut_transition_length + 2.0 + NECK_SPLICE_GAP
             )
             neck_rows = transition_sections + tuple(
                 self._close_neck_row(row)
@@ -1863,9 +1872,17 @@ class FreeCADScriptExporter:
                 if headstock.plan.pointed
                 else headstock.plan.edge_y
             )
+            low, high = edge_y(top_distance, -1.0), edge_y(top_distance, 1.0)
+            if position > 0.0:
+                # Past the nut the edge is the neck's own, widening on from
+                # the nut's width as the fretboard does: held at the nut's,
+                # it fell 0.2 mm short of the neck's first station past the
+                # transition, and the loft creased there.
+                half = neck_surface._width_at(position) / 2.0
+                low, high = -half, half
             new_row = list(row)
-            new_row[0] = Point3D(position, edge_y(top_distance, -1.0), top_z)
-            new_row[count - 1] = Point3D(position, edge_y(top_distance, 1.0), top_z)
+            new_row[0] = Point3D(position, low, top_z)
+            new_row[count - 1] = Point3D(position, high, top_z)
             rebuilt.append(tuple(new_row))
         return tuple(rebuilt)
 
