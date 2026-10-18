@@ -200,6 +200,42 @@ def test_every_design_page_has_a_reset_of_its_own() -> None:
     assert 'byId("reset").textContent = "Reset everything";' in layout
 
 
+def stl_triangles(data: bytes) -> int:
+    """Return how many triangles an STL file holds, checking it is whole."""
+    if data.startswith(b"solid") and b"facet" in data[:400]:
+        text = data.decode("ascii")
+        assert text.rstrip().splitlines()[-1].startswith("endsolid")
+        return text.count("endfacet")
+    count = int.from_bytes(data[80:84], "little")
+    assert len(data) == 84 + 50 * count
+    return count
+
+
+def test_the_bonus_offers_its_files_with_english_names() -> None:
+    page = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
+    layout = (ROOT / "site" / "desktop.js").read_text(encoding="utf-8")
+    bonus = ROOT / "site" / "bonus"
+
+    # Every file there is offered, and every link finds its file.
+    links = re.findall(r'href="bonus/([^"]+)"', page)
+    files = sorted(path.name for path in bonus.iterdir())
+    assert sorted(links) == files
+    # The dust shoe's three parts, the hose leaving forward or sideways.
+    for part in ("collar", "housing", "brush_sleeve"):
+        for way in ("hose_forward", "hose_sideways"):
+            stl = bonus / f"dust_shoe_{part}_{way}.stl"
+            assert stl_triangles(stl.read_bytes()) > 1000
+    # The source in English too: its parts and messages.
+    source = (bonus / "dust_shoe_makita_rt0702c_ttc_h40.scad").read_text("utf-8")
+    assert 'part = "assembly"; // [assembly, collar, housing, sleeve]' in source
+    for finnish in ("kaulus", "kotelo", "holkki", "kokoonpano", "sisaan"):
+        assert finnish not in source and finnish not in " ".join(files)
+    # In the application like UI, a page of its own under its own menu.
+    assert '{ id: "bonus", title: "Bonus", parts: ["#bonus"] }' in layout
+    assert '["Bonus", () => [' in layout
+    assert '<a href="#bonus">Bonus</a>' in page
+
+
 def test_dark_mode_is_the_default_set_before_the_page_paints_never_printed() -> None:
     page = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
     layout = (ROOT / "site" / "desktop.js").read_text(encoding="utf-8")

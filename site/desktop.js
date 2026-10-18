@@ -1,8 +1,9 @@
 "use strict";
 // The application like UI, tried beside the Classic UI: a menu bar at
 // the top as in a desktop application (File, Edit, Design, Settings,
-// Build, View, Help) and one page shown at a time — the instrument, an
-// editor, the settings or the result — instead of one long page to
+// Build, View, Bonus, Help) and one page shown at a time — the
+// instrument, an editor, the settings, the result or the bonus (files to
+// print for the machine) — instead of one long page to
 // scroll. Nothing is built twice: the Classic UI's own parts are shown
 // page by page, and the menus press its own buttons, so app.js runs as
 // ever.
@@ -215,6 +216,9 @@
     .find-pop .note { margin: 6px 8px; }
     @media (max-width: 900px) { .menubar .find { flex-basis: 150px; } }
     .desk-page-actions { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; }
+    /* The bonus comes after main, whose pages are all hidden then. */
+    body.desktop-ui .bonus { border-top: 0; }
+    body.desktop-ui:has(#bonus.page-on) main { min-height: 0; }
     .desk-page-actions .desk-reset { padding: 4px 12px; font-size: 13px; }
     .desk-part h2 { margin: 0 0 8px; }
     .desk-part-body { display: grid; gap: 14px; align-items: start; }
@@ -302,6 +306,7 @@
     { id: "inlays", title: "Inlays", parts: ["#inlay-editor"] },
     { id: "settings", title: "Settings", parts: [".aside-form"] },
     { id: "result", title: "Result", parts: ["#desk-build", "#output"] },
+    { id: "bonus", title: "Bonus", parts: ["#bonus"] },
   ];
   const pageOf = new Map(PAGES.map((page) => [page.id, page]));
   for (const page of PAGES) {
@@ -1075,7 +1080,7 @@
         run: () => findBox.focus(),
       },
     ]],
-    ["Design", () => PAGES.filter((page) => page.id !== "settings" && page.id !== "result").map((page) => ({
+    ["Design", () => PAGES.filter((page) => !["settings", "result", "bonus"].includes(page.id)).map((page) => ({
       label: page.id === "design" ? "Instrument and style" : page.title,
       run: () => showPage(page.id),
       enabled: () => available(page.id),
@@ -1106,6 +1111,9 @@
       { label: "Dark mode", run: () => setDark(!isDark()), ticked: isDark },
       "-",
       { label: "Classic UI", run: () => useLayout("classic") },
+    ]],
+    ["Bonus", () => [
+      { label: "A dust shoe to print for the router", run: () => showPage("bonus"), ticked: () => current === "bonus" },
     ]],
     ["Help", () => [
       { label: "Tour", run: click("#start-tour") },

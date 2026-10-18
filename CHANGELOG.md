@@ -20,6 +20,15 @@
 
 ### Added
 
+- A bonus on the web app (*Bonus* in the application like UI's menu
+  bar, under the whole page in the Classic UI): a dust shoe to print for
+  a Makita RT0702C router on a TwoTrees TTC-H40, for a 60 mm vacuum hose
+  — a collar clamped round the router carrying the hose's port, a
+  housing round the bit and a brush sleeve sliding 50 mm on three
+  screws, so the brushes stay down on the work and the chips go up the
+  hose — as STL files with the hose leaving forward or to one side, and
+  their OpenSCAD source (`site/bonus/`).
+
 - *Design › Neck* and *Design › Fretboard* in the application like UI:
   a drawing of each with its settings beside it — the neck from above,
   from the side and in section at the first and twelfth frets; the

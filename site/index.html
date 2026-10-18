@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache">
 <!-- This page's stamp, set by tools/build_site.py (see the loader below). -->
-<meta name="cgw-page" content="f857a2bb6fe7">
+<meta name="cgw-page" content="062013677c2a">
 <title>CNCguitarwizard</title>
 <script>
   // Dark mode, the default; light when chosen in this browser (or
@@ -486,6 +486,15 @@
   #files td.step { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
   a.download { color: var(--accent); font-weight: 600; text-decoration: none; }
   a.download:hover { text-decoration: underline; }
+  /* The bonus: files to print for the machine, under the whole page. */
+  .bonus { padding: 14px 22px 18px; border-top: 1px solid var(--line); }
+  .bonus h2 { margin: 0 0 8px; font-size: 17px; }
+  .bonus h3 { margin: 0 0 4px; font-size: 14.5px; }
+  .bonus p { max-width: 900px; }
+  .bonus ul { margin: 6px 0 0; padding-left: 20px; }
+  .bonus-sets { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px 28px;
+    max-width: 900px; margin: 12px 0; }
+  @media print { .bonus { display: none !important; } }
   .note { color: var(--muted); font-size: 13px; }
   button.simulate { padding: 3px 10px; font-size: 12px; font-weight: 500; margin-left: 8px; }
   .simulator iframe { width: 100%; height: 640px; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
@@ -610,6 +619,7 @@
       <a href="#headstock-editor" data-panel="headstock-editor">Headstock</a>
       <a href="#inlay-editor" data-panel="inlay-editor">Inlays</a>
       <a href="#find-setting" class="jump-settings">Settings</a>
+      <a href="#bonus">Bonus</a>
     </nav>
     <!-- The build's result comes first: at the top of the right-hand
          column, or straight under the build button on a narrow screen. -->
@@ -809,6 +819,43 @@
     </div>
   </section>
 </main>
+<section id="bonus" class="bonus">
+  <h2>Bonus: a dust shoe to print for the router</h2>
+  <p>A dust shoe for a Makita RT0702C router on a TwoTrees TTC-H40, taking a 60 mm vacuum hose. Its brush
+    sleeve slides 50 mm up and down on three screws, so its brushes stay down on the work as the cut goes
+    deeper, and the chips go up the hose, not over the shop. Three parts, each printing without supports
+    as it lies in its file: the <em>collar</em>, clamped round the router's 65 mm body, carrying the hose's
+    port; the <em>housing</em> round the bit, bolted under the collar; and the <em>brush sleeve</em> over the
+    housing. The housing's back is straight, to turn toward the machine's frame (on the TTC-H40, 16 mm
+    from the router's body).</p>
+  <div class="bonus-sets">
+    <div>
+      <h3>Hose forward</h3>
+      <p class="note">The hose leaves to the front, out of the gantry's way along X.</p>
+      <ul>
+        <li><a class="download" href="bonus/dust_shoe_collar_hose_forward.stl" download>Collar</a> (STL)</li>
+        <li><a class="download" href="bonus/dust_shoe_housing_hose_forward.stl" download>Housing</a> (STL)</li>
+        <li><a class="download" href="bonus/dust_shoe_brush_sleeve_hose_forward.stl" download>Brush sleeve</a> (STL)</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Hose to the side</h3>
+      <p class="note">The hose leaves to one side, along the gantry.</p>
+      <ul>
+        <li><a class="download" href="bonus/dust_shoe_collar_hose_sideways.stl" download>Collar</a> (STL)</li>
+        <li><a class="download" href="bonus/dust_shoe_housing_hose_sideways.stl" download>Housing</a> (STL)</li>
+        <li><a class="download" href="bonus/dust_shoe_brush_sleeve_hose_sideways.stl" download>Brush sleeve</a> (STL)</li>
+      </ul>
+    </div>
+  </div>
+  <p>To fit them: an M4 bolt and nut to clamp the collar (the nut sits in its hex pocket), four M4 bolts and
+    nuts through the collar and the housing, three M4 screws into the housing's bosses as the sleeve's pins,
+    and a brush strip with a 3 mm U-channel back, 8 mm tall, snapped into the sleeve's groove.</p>
+  <p>Another router, hose or machine: <a class="download" href="bonus/dust_shoe_makita_rt0702c_ttc_h40.scad"
+    download>the OpenSCAD source</a> has every size as a setting at its top (the router's diameter, the hose
+    and how it fits the port, the room to the frame, the hose's direction, the travel). Choose the
+    <code>part</code>, render it and export it as STL.</p>
+</section>
 <footer>
   <span>CNCguitarwizard — created by yours truly, <a href="https://jounilappi.hopto.org/lsguitars/" target="_blank" rel="noopener" title="LS Guitars">Jouni Lappi</a></span>
   <span>Source, documentation and issues on

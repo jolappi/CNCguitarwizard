@@ -710,7 +710,8 @@ designs, save, print the result), *Edit* (undo, redo, find a setting),
 *Design* (the instrument and style, the body, the neck, the headstock,
 the fretboard, the inlays), *Settings* (each group of the form), *Build* (build, then the
 result's summary, downloads, plan view and toolpaths), *View* (easy
-mode, dark mode, the Classic UI) and *Help* (the tour, the shortcuts, what the
+mode, dark mode, the Classic UI), *Bonus* (files to print for the
+machine) and *Help* (the tour, the shortcuts, what the
 page does, the source) — with *Build* at its right, and a status bar
 along the bottom says which page is shown, the status line and a build's
 progress. One page shows at a time: the instrument (with the intro and
@@ -793,6 +794,34 @@ shows the page an element is on before it scrolls to it or selects it
 finished build opens the result, a setting found or gone to its group,
 the tour's next stop its page.
 
+## Bonus: a dust shoe to print
+
+Under the whole page (the Classic UI's *Bonus* link; the application
+like UI's *Bonus* menu, a page of its own) the page offers files to
+print for the machine rather than for the guitar, served from
+`site/bonus/`: a dust shoe for a Makita RT0702C router on a TwoTrees
+TTC-H40, for a 60 mm vacuum hose. Three parts, each printing without
+supports as it lies in its file:
+
+- the *collar*, clamped round the router's 65 mm body with an M4 bolt
+  (its nut in a hex pocket), carrying the hose's port;
+- the *housing* round the bit, bolted under the collar with four M4
+  bolts, its back straight to turn toward the machine's frame (16 mm
+  from the router's body on the TTC-H40);
+- the *brush sleeve* over the housing, sliding 50 mm up and down on
+  three M4 screws in the housing's bosses, so its brushes (a strip with
+  a 3 mm U-channel back, 8 mm tall, snapped into its groove) stay down
+  on the work as the cut goes deeper, and the chips go up the hose.
+
+Each comes in two sets: the hose leaving forward (`*_hose_forward.stl`,
+out of the gantry's way along X) or to one side
+(`*_hose_sideways.stl`). `dust_shoe_makita_rt0702c_ttc_h40.scad` is
+their OpenSCAD source, every size a setting at its top (the router's
+diameter, the hose and how it fits the port, the room to the frame, the
+hose's direction as `port_angle`: 90 forward, 0 to the side, the
+travel): choose the `part` (`collar`, `housing` or `sleeve`; `assembly`
+shows them together), render it and export it as STL.
+
 ## Building and previewing locally
 
 ```bash
@@ -840,6 +869,7 @@ job prints the page URL.
 | `site/index.html` | Layout and styling; the *Build* button on a row of its own, as wide as the column; the intro heads the left column and a build's result the right one, above the editors; on a narrow screen (≤ 900 px) the intro comes first, then the buttons and instrument choice, the build's result, the editors, and the form last |
 | `site/app.js` | Pyodide bootstrap, form generation, build, downloads, NC Viewer simulator panel |
 | `site/desktop.js` | The application like UI, a trial: a menu bar and one page at a time over the Classic UI; the dark mode switch |
+| `site/bonus/` | The bonus: the dust shoe's STL files and their OpenSCAD source |
 | `src/cncguitarwizard/webapp.py` | Schema and build glue called from the page |
 | `src/cncguitarwizard/render/svg/plan_view.py` | The plan-view SVG |
 | `tools/build_site.py` | Wheel build, manifest and the page's stamp |
