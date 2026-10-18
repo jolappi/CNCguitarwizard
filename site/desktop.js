@@ -191,6 +191,29 @@
     .desk-build li span:last-child { color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; }
     .desk-build li.running span { font-weight: 600; }
     .desk-build li.pending span { color: var(--muted); }
+    .menubar .find { flex: 0 1 240px; min-width: 120px; margin: 5px 10px 5px 0; padding: 0 10px;
+      border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--ink); font: inherit; }
+    .find-pop { position: fixed; z-index: 60; width: min(560px, calc(100vw - 20px)); max-height: 72vh; overflow-y: auto;
+      padding: 6px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(40, 30, 20, 0.22); }
+    .find-pop[hidden] { display: none; }
+    .find-pop .found { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; align-items: center;
+      padding: 7px 8px; border-radius: 6px; }
+    .find-pop .found + .found { border-top: 1px solid var(--line); }
+    .find-pop .found .name { font-weight: 600; }
+    .find-pop .found .name mark { background: var(--mark); color: inherit; border-radius: 2px; }
+    .find-pop .found .meaning { grid-column: 1 / -1; color: var(--muted); font-size: 12px; overflow: hidden;
+      text-overflow: ellipsis; white-space: nowrap; }
+    .find-pop .found .control input[type=text], .find-pop .found .control input[type=number],
+    .find-pop .found .control select { width: 150px; padding: 3px 6px; border: 1px solid var(--line);
+      border-radius: 4px; background: var(--panel); color: var(--ink); font: inherit; font-size: 12.5px; }
+    .find-pop .found .control .changed { border-color: var(--accent); background: var(--tint); }
+    .find-pop .found .places { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12.5px; }
+    .find-pop .found .places button { padding: 0; border: 0; background: none; color: var(--accent);
+      font: inherit; font-weight: 600; cursor: pointer; }
+    .find-pop .found .places button:hover { text-decoration: underline; }
+    .find-pop .note { margin: 6px 8px; }
+    @media (max-width: 900px) { .menubar .find { flex-basis: 150px; } }
     body.desktop-ui #intro { max-width: 760px; }
     body.desktop-ui .aside-top { max-width: 560px; }
   `;
@@ -616,6 +639,190 @@
   document.addEventListener("cgw-build-stages", onStages);
   syncBuild();
 
+  // ---- find a setting, from anywhere ------------------------------------------
+  // The bar's own search: each setting whose name or meaning holds every
+  // word typed (as the form's own search finds them), with its control
+  // to set it there and then — a copy, as an editor's Settings holds one —
+  // and a link to each page it is on: its editor's Settings (Design ›
+  // Body) when one shows it there, else its group (Settings › Body).
+  const FIND_LIMIT = 40;
+  // Where an editor's Settings put their copies, and the page each is on.
+  const EDITOR_PAGES = {
+    "body-editor-options": ["body", "Design › Body"],
+    "headstock-editor-options": ["headstock", "Design › Headstock"],
+    "inlay-editor-options": ["inlays", "Design › Inlays"],
+    "easy-options": ["design", "Instrument"],
+  };
+  const findBox = document.createElement("input");
+  findBox.type = "search";
+  findBox.className = "find";
+  findBox.placeholder = "Find a setting… (/)";
+  findBox.setAttribute("aria-label", "Find a setting");
+  findBox.autocomplete = "off";
+  const findPop = document.createElement("div");
+  findPop.className = "find-pop";
+  findPop.hidden = true;
+
+  // The words typed, as the form's search reads them.
+  const findWords = () => findBox.value.toLowerCase().replace(/_/g, " ").split(/\s+/).filter(Boolean);
+
+  // A form row's text the words are looked for in: its name, field name
+  // and meaning.
+  function rowText(row) {
+    const control = row.querySelector("input, select");
+    const label = row.querySelector("label");
+    return [label?.dataset.label ?? label?.textContent, control?.dataset.name, row.title]
+      .join(" ").toLowerCase().replace(/_/g, " ");
+  }
+
+  // The places a setting is set: each editor's Settings that holds a
+  // copy of it (shown), and its group in the form while its row shows
+  // there (a copy shown in an editor takes it out of the form).
+  function places(row, original) {
+    const found = [];
+    const name = original.dataset.name;
+    for (const [holder, [page, title]] of Object.entries(EDITOR_PAGES)) {
+      const copy = byId(`${holder}.${name}`);
+      if (copy && available(page)) found.push({ title, go: () => goToCopy(page, copy) });
+    }
+    const group = row.closest("#form > details.group");
+    if (group && !row.classList.contains("mirrored")) {
+      found.push({ title: `Settings › ${group.dataset.title}`, go: () => goToField(original) });
+    }
+    return found;
+  }
+
+  function goToCopy(page, copy) {
+    showPage(page);
+    const fold = copy.closest("details");
+    if (fold) fold.open = true;
+    copy.scrollIntoView({ block: "center" });
+    copy.focus();
+  }
+
+  // A control that sets the form's own, as an editor's copy does.
+  function proxy(original) {
+    const copy = original.cloneNode(true);
+    copy.removeAttribute("id");
+    delete copy.dataset.set;
+    delete copy.dataset.name;
+    if (copy.type === "checkbox") copy.checked = original.checked;
+    else copy.value = original.value;
+    const pass = (event) => {
+      if (copy.tagName === "INPUT" && copy.type !== "checkbox") {
+        if (valueProblem(copy)) {
+          if (event.type === "change") copy.classList.add("invalid");
+          return;
+        }
+        copy.classList.remove("invalid");
+      }
+      setControlValue(original, copy.tagName === "SELECT" ? copy.value : readValue(copy));
+      copy.classList.toggle("changed", original.classList.contains("changed"));
+    };
+    copy.addEventListener("change", pass);
+    if (copy.tagName !== "SELECT" && copy.type !== "checkbox") copy.addEventListener("input", pass);
+    return copy;
+  }
+
+  function showFound() {
+    const words = findWords();
+    if (!words.length) {
+      findPop.hidden = true;
+      return;
+    }
+    // The likeliest first: a name that holds the words (the shortest
+    // first), then a field name, then a meaning, the one that says them
+    // soonest first.
+    const rank = (row) => {
+      const label = row.querySelector("label");
+      const name = (label?.dataset.label ?? label?.textContent ?? "").toLowerCase();
+      const field = (row.querySelector("input, select")?.dataset.name ?? "").replace(/_/g, " ");
+      const meaning = (row.title || "").toLowerCase().replace(/_/g, " ").indexOf(words[0]);
+      const where = meaning < 0 ? Infinity : meaning;
+      // Of the names that hold them, the shortest (the closest) first.
+      if (words.every((word) => name.includes(word))) return [0, name.length];
+      if (words.every((word) => field.includes(word))) return [1, field.length];
+      return [2, where];
+    };
+    const rows = [...form.querySelectorAll(".field")]
+      .filter((row) => !row.hidden
+        && row.querySelector("input, select")
+        && words.every((word) => rowText(row).includes(word)))
+      .map((row) => [rank(row), row])
+      .sort(([a], [b]) => a[0] - b[0] || a[1] - b[1])
+      .map(([, row]) => row);
+    findPop.replaceChildren();
+    for (const row of rows.slice(0, FIND_LIMIT)) {
+      const original = row.querySelector("select.kind") || row.querySelector("input, select");
+      const item = document.createElement("div");
+      item.className = "found";
+      const name = document.createElement("span");
+      name.className = "name";
+      const label = row.querySelector("label");
+      name.textContent = label?.dataset.label ?? label?.textContent ?? original.dataset.name;
+      markWords(name, words);
+      const control = document.createElement("span");
+      control.className = "control";
+      control.appendChild(proxy(original));
+      const meaning = document.createElement("span");
+      meaning.className = "meaning";
+      meaning.textContent = (row.title || "").split("\n")[0];
+      meaning.title = row.title || "";
+      const links = document.createElement("span");
+      links.className = "places";
+      for (const place of places(row, original)) {
+        const link = document.createElement("button");
+        link.type = "button";
+        link.textContent = place.title;
+        link.addEventListener("click", () => {
+          findPop.hidden = true;
+          place.go();
+        });
+        links.appendChild(link);
+      }
+      item.append(name, control, meaning, links);
+      findPop.appendChild(item);
+    }
+    const note = document.createElement("p");
+    note.className = "note";
+    note.textContent = rows.length === 0
+      ? "No setting matches."
+      : rows.length > FIND_LIMIT
+        ? `${rows.length - FIND_LIMIT} more: add a word to narrow it down.`
+        : "";
+    if (note.textContent) findPop.appendChild(note);
+    const box = findBox.getBoundingClientRect();
+    findPop.style.top = `${box.bottom + 4}px`;
+    findPop.style.left = `${Math.max(10, Math.min(box.right - 560, window.innerWidth - 570))}px`;
+    findPop.hidden = false;
+  }
+
+  findBox.addEventListener("input", showFound);
+  findBox.addEventListener("focus", showFound);
+  findBox.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      if (findBox.value) findBox.value = "";
+      findPop.hidden = true;
+      findBox.blur();
+    } else if (event.key === "Enter") {
+      // The first setting found, where it is set.
+      findPop.querySelector(".found .places button")?.click();
+    }
+  });
+  document.addEventListener("pointerdown", (event) => {
+    if (!findPop.hidden && !event.target.closest(".find-pop, .menubar .find")) findPop.hidden = true;
+  });
+  // "/" goes to the bar's search (before app.js sends it to the form's).
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "/" || event.ctrlKey || event.metaKey || event.altKey) return;
+    if (event.target.closest?.("input, select, textarea, [contenteditable]")) return;
+    if (document.querySelector("dialog[open]")) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    findBox.focus();
+    findBox.select();
+  }, true);
+
   const click = (selector) => () => document.querySelector(selector)?.click();
   const enabled = (selector) => () => {
     const button = document.querySelector(selector);
@@ -651,7 +858,7 @@
         label: "Find a setting…",
         key: "/",
         plainKey: true,
-        run: () => { showPage("settings"); byId("find-setting").focus(); },
+        run: () => findBox.focus(),
       },
     ]],
     ["Design", () => PAGES.filter((page) => page.id !== "settings" && page.id !== "result").map((page) => ({
@@ -785,9 +992,9 @@
   }
   const spacer = document.createElement("span");
   spacer.className = "spacer";
-  bar.append(spacer, barBuild);
+  bar.append(spacer, findBox, barBuild);
   document.body.prepend(bar);
-  document.body.append(pop, statusBar);
+  document.body.append(pop, findPop, statusBar);
 
   document.addEventListener("pointerdown", (event) => {
     if (openTitle && !event.target.closest(".menu-pop, .menu-title")) closeMenu();

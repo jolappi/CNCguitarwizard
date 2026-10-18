@@ -746,6 +746,19 @@ sets the theme before it paints, so it never flashes light first. The
 drawings (the editors, the plan view, the toolpath plots) stay on light
 paper (`--paper`), their colours being a drawing's.
 
+The menu bar's own search (*Find a setting… (/)*, `/` from anywhere)
+finds settings from any page, as the form's search does (every word in
+a setting's name, field name or meaning), the likeliest first (the
+words in its name, the shortest such name first; then in its field
+name; then in its meaning, said soonest first). Each comes with its own
+control, set right there — a copy, as an editor's Settings holds one,
+passing its value to the form's — and a link to each page it is on: its
+editor's Settings (*Design › Body*, *Design › Headstock*, *Design ›
+Inlays*) when one shows it there, else its group (*Settings › Body*);
+the link opens the page and its fold and selects the setting, Enter the
+first one's. Searching *flame* finds the strap guide's tick box, linked
+to *Design › Body*.
+
 Nothing is built twice: the Classic UI's own parts are shown page by
 page and the menus press its own buttons, so `app.js` runs as ever. It
 shows the page an element is on before it scrolls to it or selects it

@@ -20,6 +20,11 @@
 
 ### Added
 
+- A search in the application like UI's menu bar (`/` from anywhere):
+  each setting found comes with its own control, set right there, and a
+  link to each page it is on (its editor's Settings, *Design › Body*,
+  or its group, *Settings › Body*), the likeliest first.
+
 - An application like UI in the web app (`site/desktop.js`), the
   default for a new visitor, kept as chosen (*View → Classic UI*, and
   *Application like UI* in the Classic UI's header): a menu bar along

@@ -165,6 +165,19 @@ def test_the_app_layout_is_tried_beside_the_classic_page() -> None:
     assert "window.cncgwLayout?.reveal(element)" in script
 
 
+def test_the_app_ui_finds_a_setting_from_anywhere_with_its_pages() -> None:
+    layout = (ROOT / "site" / "desktop.js").read_text(encoding="utf-8")
+
+    # In the menu bar, "/" going to it before app.js sends it to the form.
+    assert 'findBox.placeholder = "Find a setting… (/)"' in layout
+    assert "bar.append(spacer, findBox, barBuild)" in layout
+    assert "event.stopImmediatePropagation();" in layout
+    # A setting's control set right there, and links to its pages.
+    assert "setControlValue(original" in layout
+    assert '"body-editor-options": ["body", "Design › Body"]' in layout
+    assert "`Settings › ${group.dataset.title}`" in layout
+
+
 def test_dark_mode_is_the_default_set_before_the_page_paints_never_printed() -> None:
     page = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
     layout = (ROOT / "site" / "desktop.js").read_text(encoding="utf-8")
