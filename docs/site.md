@@ -698,6 +698,61 @@ the design (*Save design*) and build it all locally from a clone with
 `python -m cncguitarwizard build-prototype001 --design my_guitar.json
 --output build/my_guitar`: the G-code, DXF, FCStd and STEP together.
 
+## Classic UI and application like UI (a trial), dark mode
+
+A new visitor gets the page as a desktop application, the application
+like UI (`site/desktop.js`), in dark mode; *View → Classic UI* goes to
+the Classic UI, the long single page, whose header's *Application like
+UI* comes back. The choice is kept in the browser, so the next visit
+opens the same (`?layout=desktop` or `?layout=classic` in the address
+chooses too). A menu bar runs along the top — *File* (new, open, recent
+designs, save, print the result), *Edit* (undo, redo, find a setting),
+*Design* (the instrument and style, the body, the headstock, the
+inlays), *Settings* (each group of the form), *Build* (build, then the
+result's summary, downloads, plan view and toolpaths), *View* (easy
+mode, dark mode, the Classic UI) and *Help* (the tour, the shortcuts, what the
+page does, the source) — with *Build* at its right, and a status bar
+along the bottom says which page is shown, the status line and a build's
+progress. One page shows at a time: the instrument (with the intro and
+the design file's buttons), each editor, the settings (the groups in a
+list beside them, one group shown, all that match while finding a
+setting) or the result (its summary, downloads, plan view and toolpaths
+as tabs).
+
+Build opens the result page at once, a panel at its head saying what
+the build is doing: *Building …* with a turning ring, a bar and the time
+so far and about how long is left, the step running (*Step 3 of 8:
+Planning the neck toolpaths — about 29 s*), each step passed with its
+time and each to come with its likely time; the menu bar's *Build* says
+*Building… 25%* and goes back to it. A step's likely time is this
+browser's own from its builds so far (kept, the mean of each build's and
+the last), else a typical build's (`TYPICAL_STEPS`), and once a step is
+done all are scaled by how quick this build has been so far: after the
+first the rest are about known. The bar goes by those times, so the
+long steps (the neck's back) count for more. A finished build turns the panel
+green (*… is built*, how long it took, the summary under it); one that
+stops turns it red, saying at which step, the error itself above it. It
+follows app.js's own progress (its label and bar) and its Build button
+(`busy` while it runs).
+
+Dark mode, the default, is a choice of its own, in either UI: *View →
+Dark mode* in the application like UI, *Light mode* (*Dark mode* to go
+back) in the Classic UI's header, kept in the browser (`?theme=light`
+or `?theme=dark` in the address chooses too). The page's colours are
+tokens on `:root` (`--ink`, `--bg`, `--panel`, `--line`, `--accent`,
+`--tint` and the rest) that `:root[data-theme="dark"]` sets afresh, on
+screen only, so a print stays light; a script at the head of the page
+sets the theme before it paints, so it never flashes light first. The
+drawings (the editors, the plan view, the toolpath plots) stay on light
+paper (`--paper`), their colours being a drawing's.
+
+Nothing is built twice: the Classic UI's own parts are shown page by
+page and the menus press its own buttons, so `app.js` runs as ever. It
+shows the page an element is on before it scrolls to it or selects it
+(`reveal`, which the app layout answers as `window.cncgwLayout`): a
+finished build opens the result, a setting found or gone to its group,
+the tour's next stop its page.
+
 ## Building and previewing locally
 
 ```bash
@@ -716,7 +771,8 @@ browser may then keep the page itself for a while. Served by Apache
 instead (MAMP), `site/.htaccess` sets the same header for the page, the
 script and the manifest.
 
-`wheel.json` carries a build id (a hash of the wheel and `app.js`) and the
+`wheel.json` carries a build id (a hash of the wheel, `app.js` and
+`desktop.js`) and the
 page's stamp. The page fetches it past every cache — `cache: "no-store"`
 and a URL of its own each time (`wheel.json?t=…`), so not even a CDN's
 copy (GitHub Pages keeps files 10 minutes) is used — and appends the id
@@ -743,6 +799,7 @@ job prints the page URL.
 | --- | --- |
 | `site/index.html` | Layout and styling; the *Build* button on a row of its own, as wide as the column; the intro heads the left column and a build's result the right one, above the editors; on a narrow screen (≤ 900 px) the intro comes first, then the buttons and instrument choice, the build's result, the editors, and the form last |
 | `site/app.js` | Pyodide bootstrap, form generation, build, downloads, NC Viewer simulator panel |
+| `site/desktop.js` | The application like UI, a trial: a menu bar and one page at a time over the Classic UI; the dark mode switch |
 | `src/cncguitarwizard/webapp.py` | Schema and build glue called from the page |
 | `src/cncguitarwizard/render/svg/plan_view.py` | The plan-view SVG |
 | `tools/build_site.py` | Wheel build, manifest and the page's stamp |

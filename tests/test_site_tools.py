@@ -2,6 +2,7 @@
 build must reach the browser, not a cached copy of the last."""
 
 import importlib.util
+import re
 import threading
 import urllib.request
 from functools import partial
@@ -145,3 +146,53 @@ def test_the_footer_ends_with_the_thanks_in_small_print() -> None:
     assert last.startswith('<small class="thanks">Special thanks to Kai Rankio')
     assert "Claude and GPT for providing the code" in last
     assert "footer .thanks { flex-basis: 100%; font-size: 11px; }" in page
+
+
+def test_the_app_layout_is_tried_beside_the_classic_page() -> None:
+    page = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
+    layout = (ROOT / "site" / "desktop.js").read_text(encoding="utf-8")
+    build = (ROOT / "tools" / "build_site.py").read_text(encoding="utf-8")
+
+    # Laid over the page once app.js runs, versioned with it.
+    assert '"desktop.js?v=" + version' in page
+    assert 'digest.update((SITE / "desktop.js").read_bytes())' in build
+    # A new visitor gets the application like UI: only "classic", asked or
+    # kept, chooses the Classic UI, and its View menu goes there.
+    assert '(asked || stored(LAYOUT) || "desktop") === "classic"' in layout
+    assert '"Classic UI"' in layout and '"Application like UI"' in layout
+    # app.js shows the page what it scrolls to is on.
+    script = (ROOT / "site" / "app.js").read_text(encoding="utf-8")
+    assert "window.cncgwLayout?.reveal(element)" in script
+
+
+def test_dark_mode_is_the_default_set_before_the_page_paints_never_printed() -> None:
+    page = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
+    layout = (ROOT / "site" / "desktop.js").read_text(encoding="utf-8")
+
+    # Set in the head, before the styles, from what this browser kept.
+    assert page.index('localStorage.getItem("cgw-theme")') < page.index("<style>")
+    # Dark unless light is chosen.
+    assert 'if (theme !== "light") document.documentElement' in page
+    # The dark colours are the tokens', on screen only.
+    assert '@media screen {\n    :root[data-theme="dark"] {' in page
+    assert "--panel: #27231f;" in page and "color-scheme: dark;" in page
+    # Its switch, in the Classic UI's header and the View menu.
+    assert '"Dark mode"' in layout and "setDark(!isDark())" in layout
+
+
+def test_a_build_says_its_steps_likely_times() -> None:
+    script = (ROOT / "site" / "app.js").read_text(encoding="utf-8")
+    layout = (ROOT / "site" / "desktop.js").read_text(encoding="utf-8")
+    workflow = (
+        ROOT / "src" / "cncguitarwizard" / "workflows" / "prototype001.py"
+    ).read_text(encoding="utf-8")
+
+    # app.js names every step as the build starts.
+    assert 'new CustomEvent("cgw-build-stages", { detail: stages })' in script
+    # Every step of the build in the browser has a typical time (FreeCAD
+    # runs only in a local build).
+    typical = layout[layout.index("const TYPICAL_STEPS = {") :]
+    typical = typical[: typical.index("};")]
+    for label in re.findall(r'\(\s*"([^"]+)",\s*self\._', workflow):
+        if label != "Running FreeCAD":
+            assert f'"{label}":' in typical, label

@@ -70,10 +70,11 @@ def main() -> None:
     wheels = sorted(WHEELS.glob("cncguitarwizard-*.whl"))
     if len(wheels) != 1:
         raise SystemExit(f"Expected exactly one wheel, found {len(wheels)}")
-    # Hash the wheel together with the page's own script, so a change to
-    # app.js alone also busts the cache.
+    # Hash the wheel together with the page's own scripts, so a change to
+    # app.js (or the app layout's desktop.js) alone also busts the cache.
     digest = hashlib.sha256(wheels[0].read_bytes())
     digest.update((SITE / "app.js").read_bytes())
+    digest.update((SITE / "desktop.js").read_bytes())
     build_id = digest.hexdigest()[:12]
     page = SITE / "index.html"
     text = page.read_text(encoding="utf-8")

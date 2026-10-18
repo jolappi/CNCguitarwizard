@@ -77,15 +77,24 @@ function goToField(field) {
     changedOnly.checked = false;
     applyFormFilter();
   }
+  reveal(control);
   for (let fold = control.closest("details"); fold; fold = fold.parentElement.closest("details")) fold.open = true;
   control.focus();
   if (control.tagName === "INPUT") control.select();
+}
+
+// A layout that shows one page at a time (desktop.js, the app layout)
+// opens the page an element is on before the page scrolls to it or
+// selects it; the classic page shows them all.
+function reveal(element) {
+  window.cncgwLayout?.reveal(element);
 }
 
 // The build's result and errors sit first in the right-hand column (under
 // the build button on a narrow screen): scroll one there if it arrives out
 // of view.
 function bringIntoView(element) {
+  reveal(element);
   const top = element.getBoundingClientRect().top;
   if (top < 0 || top > window.innerHeight - 120) {
     element.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -1033,6 +1042,9 @@ async function build() {
       return;
     }
     const stages = startResult.stages;
+    // The application like UI lists them with their likely times
+    // (desktop.js).
+    document.dispatchEvent(new CustomEvent("cgw-build-stages", { detail: stages }));
     showProgress(0, stages.length, stages[0]);
     await paint();
     for (;;) {
@@ -1317,6 +1329,7 @@ document.querySelector("#summary-programs table").addEventListener("click", (eve
   if (!button || !chooser) return;
   chooser.value = button.dataset.plot;
   chooser.dispatchEvent(new Event("change"));
+  reveal(document.getElementById("tabs"));
   document.getElementById("tabs").scrollIntoView({ behavior: "smooth", block: "start" });
 });
 
@@ -1367,6 +1380,7 @@ async function simulate(name, text, after = document.getElementById("files")) {
   hint.textContent = copied
     ? `${name} is on the clipboard: click into the NC Viewer editor below, select all (Ctrl/Cmd+A), paste (Ctrl/Cmd+V) and press Plot — or drop the downloaded file onto it.`
     : `Could not copy to the clipboard: download ${name} and drop it onto NC Viewer below, or open it there with its file button.`;
+  reveal(panel);
   panel.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
@@ -6291,6 +6305,7 @@ function showTourStep(index) {
   document.getElementById("tour-count").textContent = `${index + 1} / ${tour.steps.length}`;
   tourNext.hidden = last;
   tourSkip.textContent = last ? "Close" : "Skip tour";
+  reveal(step.target());
   step.target().scrollIntoView({ block: "center", behavior: "smooth" });
   (last ? tourSkip : tourNext).focus({ preventScroll: true });
   if (step.demo) {
@@ -6619,6 +6634,7 @@ document.addEventListener("keydown", (event) => {
   if (document.querySelector("dialog[open]")) return;
   event.preventDefault();
   if (easyMode.checked) setEasyMode(false);
+  reveal(findSetting);
   findSetting.focus();
   findSetting.select();
 });

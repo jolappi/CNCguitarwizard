@@ -7,8 +7,24 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache">
 <!-- This page's stamp, set by tools/build_site.py (see the loader below). -->
-<meta name="cgw-page" content="1bf9ad7c3b0d">
+<meta name="cgw-page" content="f857a2bb6fe7">
 <title>CNCguitarwizard</title>
+<script>
+  // Dark mode, the default; light when chosen in this browser (or
+  // ?theme=light / ?theme=dark in the address). Set before the page
+  // paints, so it never flashes the other first; desktop.js offers the
+  // switch.
+  (() => {
+    let theme = new URL(location.href).searchParams.get("theme");
+    try {
+      if (theme) localStorage.setItem("cgw-theme", theme);
+      else theme = localStorage.getItem("cgw-theme");
+    } catch {
+      // No storage (a private window): dark, unless asked in the address.
+    }
+    if (theme !== "light") document.documentElement.dataset.theme = "dark";
+  })();
+</script>
 <style>
   :root {
     --ink: #1f1a14;
@@ -19,6 +35,45 @@
     --ok: #2f7d4a;
     --bad: #a83232;
     --bg: #faf7f1;
+    /* Surfaces: a field, a fold, a menu, a card; the drawings' paper;
+       a changed field's tint; the app UI's bars and their hover. */
+    --panel: #fff;
+    --paper: #fff;
+    --tint: #fff6ec;
+    --invalid-bg: #fff2f2;
+    --warn-bg: #fff3cd;
+    --mark: #ffe2a8;
+    --hint-ink: #3b332b;
+    --chrome: #f3ede2;
+    --hover: #e4d9c4;
+    color-scheme: light;
+  }
+  /* Dark mode (Dark mode in the header, or View > Dark mode): the page in
+     dark tones, the drawings still on light paper (their colours are a
+     drawing's), and a print always light. */
+  @media screen {
+    :root[data-theme="dark"] {
+      --ink: #ece4d8;
+      --muted: #a89e92;
+      --line: #4a4036;
+      --accent: #d08a4e;
+      --ok: #62c283;
+      --bad: #f07272;
+      --bg: #1c1916;
+      --panel: #27231f;
+      --paper: #ece6da;
+      --tint: #3a2e22;
+      --invalid-bg: #3d2424;
+      --warn-bg: #3b3318;
+      --mark: #6b5420;
+      --hint-ink: #e2d6c6;
+      --chrome: #2a2520;
+      --hover: #3d352c;
+      color-scheme: dark;
+    }
+    :root[data-theme="dark"] .tabs button.active { background: var(--accent); border-color: var(--accent); }
+    :root[data-theme="dark"] .stale { border-color: #8a7330; }
+    :root[data-theme="dark"] input, :root[data-theme="dark"] textarea { background: var(--panel); color: var(--ink); }
   }
   * { box-sizing: border-box; }
   body {
@@ -88,19 +143,19 @@
     .jump .jump-settings { display: none; }
   }
   /* The result of a design since changed: said above it. */
-  .stale { margin: 0 0 12px; padding: 8px 12px; background: #fff3cd; border: 1px solid #e3c463; border-radius: 6px; }
+  .stale { margin: 0 0 12px; padding: 8px 12px; background: var(--warn-bg); border: 1px solid #e3c463; border-radius: 6px; }
   .stale button { margin-left: 8px; padding: 4px 12px; }
   .stale:not([hidden]) + h2 { margin-top: 0; }
   /* The result ends where the editors begin. */
   #output { margin-bottom: 22px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
   #error { margin-bottom: 16px; }
-  details { border: 1px solid var(--line); border-radius: 6px; margin: 0 0 8px; background: #fff; }
+  details { border: 1px solid var(--line); border-radius: 6px; margin: 0 0 8px; background: var(--panel); }
   summary { cursor: pointer; padding: 7px 10px; font-weight: 600; }
   .fields { padding: 4px 10px 8px; }
   .field { display: grid; grid-template-columns: 1fr 110px; gap: 8px; align-items: center; padding: 2px 0; }
   .field[hidden] { display: none; }
   /* A field's meaning under it while it is being set. */
-  .field-hint { margin: 2px 0 8px; padding: 6px 9px; background: #fff6ec; border-left: 3px solid var(--accent); border-radius: 4px; font-size: 12px; color: #3b332b; white-space: pre-line; }
+  .field-hint { margin: 2px 0 8px; padding: 6px 9px; background: var(--tint); border-left: 3px solid var(--accent); border-radius: 4px; font-size: 12px; color: var(--hint-ink); white-space: pre-line; }
   .editor-options .field-hint { grid-column: 1 / -1; margin: 0 0 4px; }
   .field-hint .hint-default { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 6px; color: var(--muted); white-space: normal; overflow-wrap: anywhere; }
   .field-hint .hint-default button { padding: 2px 8px; font-size: 11.5px; }
@@ -110,7 +165,7 @@
   details.group > summary .changed-count { color: var(--accent); font-weight: 500; font-size: 13px; }
   /* An open group's title stays in sight while its fields scroll by. */
   details.group[open] > summary {
-    position: sticky; top: 0; z-index: 2; background: #fff; border-radius: 6px 6px 0 0;
+    position: sticky; top: 0; z-index: 2; background: var(--panel); border-radius: 6px 6px 0 0;
     border-bottom: 1px solid var(--line);
   }
   /* In the form's own column (a wide screen), right up to its top edge,
@@ -121,24 +176,24 @@
   .group-reset { display: flex; justify-content: flex-end; margin: 0 0 6px; }
   .group-reset[hidden] { display: none; }
   .group-reset button { padding: 3px 10px; font-size: 12px; font-weight: 500; }
-  #find-setting { width: 100%; padding: 6px 9px; border: 1px solid var(--line); border-radius: 6px; font: inherit; margin: 0 0 10px; background: #fff; }
+  #find-setting { width: 100%; padding: 6px 9px; border: 1px solid var(--line); border-radius: 6px; font: inherit; margin: 0 0 10px; background: var(--panel); color: var(--ink); }
   #form.filtering .field:not(.match) { display: none; }
   #form.filtering .field.mirrored.match:not([hidden]) { display: grid; }
   #form.filtering details.no-match { display: none; }
   /* A field whose meaning shows on hover (its row's title). */
   label.explained { cursor: help; text-decoration: underline dotted #b8a888; text-underline-offset: 3px; }
-  .field label { font-size: 12.5px; color: #3b332b; overflow-wrap: anywhere; }
-  .field label mark { background: #ffe2a8; color: inherit; border-radius: 2px; padding: 0 1px; }
+  .field label { font-size: 12.5px; color: var(--hint-ink); overflow-wrap: anywhere; }
+  .field label mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1px; }
   .field input[type=text], .field input[type=number] {
     width: 100%; padding: 3px 6px; border: 1px solid var(--line); border-radius: 4px; font: inherit; font-size: 12.5px;
   }
-  .field input.changed, .field select.changed { border-color: var(--accent); background: #fff6ec; }
-  .field input.invalid, .editor-options input.invalid { border-color: var(--bad); background: #fff2f2; }
+  .field input.changed, .field select.changed { border-color: var(--accent); background: var(--tint); }
+  .field input.invalid, .editor-options input.invalid { border-color: var(--bad); background: var(--invalid-bg); }
   /* A seed's input with its Reroll button. */
   .with-button { display: flex; gap: 4px; min-width: 0; }
   .with-button input { flex: 1 1 auto; min-width: 0; width: 100%; }
   button.reroll { padding: 2px 6px; font-size: 11px; font-weight: 500; }
-  .field select { width: 100%; padding: 3px 4px; border: 1px solid var(--line); border-radius: 4px; font: inherit; font-size: 12.5px; background: #fff; }
+  .field select { width: 100%; padding: 3px 4px; border: 1px solid var(--line); border-radius: 4px; font: inherit; font-size: 12.5px; background: var(--panel); color: var(--ink); }
   .variant .field:first-child { grid-template-columns: 1fr 180px; }
   .variant .subfields { margin: 2px 0 6px 12px; padding-left: 8px; border-left: 2px solid var(--line); }
   .variant .variant-note { margin: 2px 0 6px; font-size: 12px; line-height: 1.4; color: var(--muted); }
@@ -149,7 +204,7 @@
   details.advanced > .fields { padding-top: 0; }
   .toggle { display: flex; gap: 6px; align-items: center; margin: -4px 0 10px; }
   .instrument { display: flex; gap: 10px; align-items: center; margin: 0 0 12px; font-weight: 600; }
-  .instrument select, .instrument input { flex: 1; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; font: inherit; background: #fff; }
+  .instrument select, .instrument input { flex: 1; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; font: inherit; background: var(--panel); color: var(--ink); }
   .instrument label { min-width: 7em; }
   .instrument .toggle { margin: 0; font-weight: 600; }
   /* Easy mode: the instrument, its style, the drawings and Build; the
@@ -168,7 +223,7 @@
   details.editor-settings > summary.changed::after { content: " · changed"; color: var(--muted); font-weight: 400; }
   details.editor-settings > .editor-options { margin-top: 6px; }
   .body-editor svg { display: block; width: 100%; height: auto; max-height: 75vh; border: 1px solid var(--line);
-    border-radius: 6px; background: #fff; touch-action: none; user-select: none; }
+    border-radius: 6px; background: var(--paper); touch-action: none; user-select: none; }
   .body-editor .actions { margin: 6px 0; flex-wrap: wrap; }
   .editor-options { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 10px; align-items: center; margin: 8px 0; max-width: 520px; }
   .rune-choices { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 4px 12px; margin: 8px 0; }
@@ -188,10 +243,10 @@
      file, or off the body): draw it over the page instead of clipping it. */
   .body-editor svg.dragging { overflow: visible; position: relative; z-index: 5; }
   .nc-drop { border: 2px dashed var(--line); border-radius: 6px; padding: 10px 12px; margin: 8px 0; font-size: 13px; color: var(--muted); text-align: center; }
-  .nc-drop.over { border-color: var(--accent); color: var(--accent); background: #fff7ec; }
+  .nc-drop.over { border-color: var(--accent); color: var(--accent); background: var(--tint); }
   .nc-files { margin: 0 0 8px; padding-left: 18px; font-size: 13px; }
   #body-editor-template, #headstock-editor-template, #inlay-editor-template { min-width: 0; max-width: 100%; flex: 1 1 160px; }
-  .body-editor select { padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; font: inherit; background: #fff; }
+  .body-editor select { padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; font: inherit; background: var(--panel); color: var(--ink); }
   /* An editor's status: an import's notice on its own line, then how the
      drawing stands, a problem in bold red. */
   .editor-status .status-notice { display: block; color: var(--muted); margin-bottom: 2px; }
@@ -271,20 +326,20 @@
     padding: 8px 16px; border-radius: 6px; border: 1px solid var(--accent);
     background: var(--accent); color: #fff; font: inherit; font-weight: 600; cursor: pointer;
   }
-  button.secondary { background: #fff; color: var(--accent); }
+  button.secondary { background: var(--panel); color: var(--accent); }
   /* A menu of buttons behind one (File ▾), opening below it. */
   details.menu { position: relative; border: 0; margin: 0; background: none; }
   details.menu > summary {
     list-style: none; padding: 8px 16px; border: 1px solid var(--accent); border-radius: 6px;
-    background: #fff; color: var(--accent); font-weight: 600;
+    background: var(--panel); color: var(--accent); font-weight: 600;
   }
   details.menu > summary::-webkit-details-marker { display: none; }
   details.menu > summary::after { content: " ▾"; }
-  details.menu[open] > summary { background: #fff6ec; }
+  details.menu[open] > summary { background: var(--tint); }
   details.menu > .menu-items {
     position: absolute; z-index: 10; top: calc(100% + 4px); left: 0; min-width: 160px;
     display: flex; flex-direction: column; gap: 4px; padding: 6px;
-    background: #fff; border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 4px 14px rgba(31, 26, 20, .14);
+    background: var(--panel); border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 4px 14px rgba(31, 26, 20, .14);
   }
   details.menu > .menu-items button { text-align: left; }
   /* What a file dragged onto the page will do, at the top while it is dragged. */
@@ -310,7 +365,7 @@
   }
   .tour-card {
     position: fixed; z-index: 61; width: min(340px, calc(100vw - 24px)); box-sizing: border-box;
-    padding: 14px 16px; background: #fff; border: 1px solid var(--line); border-radius: 10px;
+    padding: 14px 16px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
     box-shadow: 0 8px 28px rgba(31, 26, 20, .25);
   }
   .tour-card h3 { margin: 0 0 6px; font-size: 16px; }
@@ -332,7 +387,7 @@
   /* Save design while the design is changed since it was last saved. */
   #save-design.unsaved::after { content: "•"; margin-left: 6px; }
   .body-editor svg.file-target { outline: 3px dashed var(--accent); outline-offset: -3px; }
-  dialog.confirm { border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px; max-width: min(420px, calc(100vw - 32px)); color: var(--ink); background: #fff; }
+  dialog.confirm { border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px; max-width: min(420px, calc(100vw - 32px)); color: var(--ink); background: var(--panel); }
   dialog.confirm::backdrop { background: rgba(31, 26, 20, .35); }
   dialog.confirm p { margin: 0 0 14px; }
   dialog.confirm .buttons { display: flex; justify-content: flex-end; gap: 8px; }
@@ -343,7 +398,7 @@
   dialog.keys dt { white-space: nowrap; }
   dialog.keys dd { margin: 0; }
   dialog.keys .note { color: var(--muted); font-size: 13px; }
-  kbd { padding: 1px 5px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; background: #fbf8f3; font: inherit; font-size: 12px; }
+  kbd { padding: 1px 5px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; background: var(--panel); font: inherit; font-size: 12px; }
   button:disabled { opacity: .5; cursor: default; }
   button.busy { opacity: 1; background: #b07a4a; border-color: #b07a4a; padding-left: 34px; position: relative; }
   button.busy::before {
@@ -364,11 +419,11 @@
   .progress .bar { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
   .progress .fill { height: 100%; width: 0; background: var(--accent); transition: width .25s ease; }
   .progress .label { display: block; margin-top: 4px; font-size: 12px; color: var(--muted); }
-  .error { border: 1px solid var(--bad); background: #fff2f2; color: var(--bad); padding: 10px 12px; border-radius: 6px; white-space: pre-wrap; }
+  .error { border: 1px solid var(--bad); background: var(--invalid-bg); color: var(--bad); padding: 10px 12px; border-radius: 6px; white-space: pre-wrap; }
   .error button { margin-top: 8px; padding: 4px 12px; font-size: 13px; }
   .hidden { display: none; }
   h2 { font-size: 16px; margin: 18px 0 8px; }
-  .preview { border: 1px solid var(--line); border-radius: 6px; background: #fff; overflow: auto; }
+  .preview { border: 1px solid var(--line); border-radius: 6px; background: var(--paper); overflow: auto; }
   /* A zoomable drawing, with the chip that fits it again while zoomed. */
   .zoom-frame { position: relative; padding-top: 30px; }
   .zoom-chip { position: absolute; top: 2px; right: 0; padding: 2px 9px; font-size: 12px; font-weight: 500; }
@@ -377,14 +432,14 @@
   .frame-tools button[aria-pressed="true"] { background: var(--accent); color: #fff; }
   /* A drawing over the whole window (Full window), under the page's
      banners, readout and tour. */
-  .zoom-frame.full { position: fixed; inset: 0; z-index: 40; box-sizing: border-box; padding: 42px 8px 8px; background: #fff; }
+  .zoom-frame.full { position: fixed; inset: 0; z-index: 40; box-sizing: border-box; padding: 42px 8px 8px; background: var(--paper); }
   .zoom-frame.full > .frame-tools { top: 8px; left: 8px; }
   .frame-tools .full-only, .full-status { display: none; }
   .zoom-frame.full .frame-tools .full-only { display: inline-block; }
   .zoom-frame.full:has(.full-status) { padding-bottom: 46px; }
   .zoom-frame.full .full-status {
     display: block; position: absolute; left: 8px; right: 8px; bottom: 8px; margin: 0;
-    padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px; background: #fffdf9;
+    padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel);
   }
   .zoom-frame.full > .zoom-chip { top: 8px; right: 8px; }
   .zoom-frame.full > svg { width: 100%; height: 100%; max-height: none !important; border: 0; }
@@ -402,7 +457,7 @@
   .tabs button { padding: 5px 10px; font-weight: 500; }
   .tabs button.active { background: var(--ink); border-color: var(--ink); }
   .tabs .toolpath-about { flex-basis: 100%; }
-  #toolpath-choice { flex: 0 1 auto; min-width: 0; max-width: 100%; padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; font: inherit; background: #fff; }
+  #toolpath-choice { flex: 0 1 auto; min-width: 0; max-width: 100%; padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; font: inherit; background: var(--panel); color: var(--ink); }
   table { border-collapse: collapse; font-size: 13px; }
   td, th { text-align: left; padding: 4px 10px 4px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
   th { color: var(--muted); font-weight: 600; }
@@ -838,8 +893,15 @@
         return;
       }
       window.CNCGW_MANIFEST = manifest;
+      const version = encodeURIComponent(manifest.build || Date.now());
       const script = document.createElement("script");
-      script.src = "app.js?v=" + encodeURIComponent(manifest.build || Date.now());
+      script.src = "app.js?v=" + version;
+      // The app layout (desktop.js) is laid over the page once app.js runs.
+      script.addEventListener("load", () => {
+        const layout = document.createElement("script");
+        layout.src = "desktop.js?v=" + version;
+        document.body.appendChild(layout);
+      });
       document.body.appendChild(script);
     })
     .catch((error) => {

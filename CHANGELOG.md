@@ -4,6 +4,25 @@
 
 ### Added
 
+- An application like UI in the web app (`site/desktop.js`), the
+  default for a new visitor, kept as chosen (*View → Classic UI*, and
+  *Application like UI* in the Classic UI's header): a menu bar along
+  the top as in a desktop program (File, Edit, Design, Settings, Build,
+  View, Help), a status bar along the bottom, and one page shown at a
+  time — the instrument, each editor, the settings a group at a time,
+  the result in tabs — instead of one long page to scroll. Build opens
+  the result at once with a panel saying what the build is doing (the
+  step running, those passed with their times, those to come with their
+  likely times — this browser's own from its builds, else a typical
+  build's, scaled by this one's pace after its first step — how far,
+  how long and about how long is left), then how it ended; the menu
+  bar's Build shows its progress.
+
+- Dark mode in the web app, the default, either UI (*View → Dark mode*,
+  *Light mode* in the Classic UI's header), kept in the browser: the
+  page's colours as tokens its dark theme sets afresh on screen, the
+  drawings still on light paper, a print always light.
+
 - The machine's travel as CNC options (`machine_x_travel`,
   `machine_y_travel`, empty by default): every part still runs sideways,
   along X, unless its programs only fit along Y; then all of them are
