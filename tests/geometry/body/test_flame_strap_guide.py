@@ -21,25 +21,30 @@ def spans(points: tuple[Point2D, ...]) -> tuple[float, float]:
     return max(xs) - min(xs), max(ys) - min(ys)
 
 
-def test_the_plate_is_a_bar_with_a_flame_at_either_end() -> None:
+def test_the_guide_is_a_slim_plate_over_two_flames() -> None:
     guide = FlameStrapGuide(CENTRE, 0.0)
 
-    # The channel 27 mm either side of the middle, each flame 43.4 mm past
-    # it; the tongues sweep 29 mm to one side, the bar's edge 13 mm to the
-    # other.
+    # A 25 mm strap: the channel 14.5 mm either side of the middle, each
+    # flame's long tongue 39.4 mm past it, the flames 20.6 mm across.
     length, width = spans(guide.outline)
-    assert length == pytest.approx(2.0 * (guide.channel_half + 43.4), abs=0.5)
-    assert width == pytest.approx(58.0, abs=1.0)
-    assert guide.channel_half == pytest.approx(27.0)
+    assert guide.channel_half == pytest.approx(14.5)
+    assert length == pytest.approx(2.0 * (guide.channel_half + 39.4), abs=0.1)
+    assert width == pytest.approx(20.6, abs=0.3)
+    # The plate: a 10 mm bar, its tongues 20.6 mm past the channel, over
+    # the flames' long tongues.
+    plate_length, plate_width = spans(guide.plate)
+    assert plate_length == pytest.approx(2.0 * (guide.channel_half + 20.6), abs=0.1)
+    assert plate_width == pytest.approx(10.0, abs=0.3)
+    assert all(point_in_polygon(point, guide.outline) for point in guide.plate)
 
 
-def test_the_second_flame_is_the_first_turned_half_round() -> None:
+def test_the_guide_is_the_same_either_side_of_the_strap_mirrored() -> None:
     guide = FlameStrapGuide(CENTRE, 0.0)
-    outline = guide.outline
 
-    for point in outline:
-        turned = (2.0 * CENTRE.x - point.x, 2.0 * CENTRE.y - point.y)
-        assert min(math.dist(turned, (q.x, q.y)) for q in outline) < 1e-6
+    for outline in (guide.outline, guide.plate):
+        for point in outline:
+            mirrored = (2.0 * CENTRE.x - point.x, point.y)
+            assert min(math.dist(mirrored, (q.x, q.y)) for q in outline) < 1e-6
 
 
 def test_the_spacers_stand_either_side_of_the_straps_channel() -> None:
@@ -87,7 +92,7 @@ def test_the_plate_and_spacers_are_cut_from_sheet_for_the_back() -> None:
     ]
     assert all(part.face == "back" and not part.recessed for part in (plate, first))
     assert (plate.thickness, first.thickness, second.thickness) == (4.0, 6.0, 6.0)
-    assert plate.outline == guide.outline
+    assert plate.outline == guide.plate
     assert (first.outline, second.outline) == guide.spacers
     assert [(h.center, h.diameter) for h in plate.holes] == [
         (screw, STRAP_GUIDE_SCREW_CLEARANCE) for screw in guide.screws

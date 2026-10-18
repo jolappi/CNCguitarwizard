@@ -1,5 +1,6 @@
 """Tests for the optional flame strap guide on the body's back."""
 
+import math
 from dataclasses import replace
 
 import pytest
@@ -24,6 +25,14 @@ def with_guide(**overrides: object) -> Prototype001Parameters:
     return replace(Prototype001Parameters(), body_strap_guide=True, **overrides)
 
 
+UNPLACED = replace(
+    DesignByJoneShape(),
+    strap_guide_offset=None,
+    strap_guide_y=None,
+    strap_guide_angle_degrees=None,
+)
+
+
 def placed(x: float, y: float, angle: float) -> DesignByJoneShape:
     return replace(
         DesignByJoneShape(),
@@ -43,12 +52,12 @@ def test_the_strap_guide_is_off_by_default() -> None:
 
 
 def test_the_guide_is_screwed_on_the_back_over_its_spacers() -> None:
-    parameters = with_guide(body_strap_width=40.0, body_strap_guide_gap=6.0)
+    parameters = with_guide(body_strap_width=30.0, body_strap_guide_gap=4.0)
     guide = parameters.body_layout().strap_guide
     geometry = parameters.build()
 
     assert guide is not None
-    assert guide.strap_width == 40.0 and guide.gap == 6.0
+    assert guide.strap_width == 30.0 and guide.gap == 4.0
     assert geometry.body.strap_guide == guide.outline
     names = [cover.name for cover in geometry.covers]
     assert names[-3:] == [
@@ -75,27 +84,70 @@ def test_the_guide_goes_where_the_shape_places_it() -> None:
     parameters.build()
 
 
-def test_an_unplaced_guide_sits_by_the_tail_on_the_picking_hands_side() -> None:
-    parameters = with_guide()
+def tail_button(layout) -> Point2D:  # type: ignore[no-untyped-def]
+    """The strap's usual button: where the tail crosses the centreline."""
+    points = layout.outline.points
+    crossings = [
+        a.x + (b.x - a.x) * (0.0 - a.y) / (b.y - a.y)
+        for a, b in zip(points, (*points[1:], points[0]), strict=True)
+        if a.y * b.y <= 0.0 and a.y != b.y
+    ]
+    return Point2D(max(crossings), 0.0)
+
+
+def strap_leaving(layout, bass_sign: float) -> float:  # type: ignore[no-untyped-def]
+    """The way the strap leaves the guide, square to its bar: in degrees
+    from the neck's axis toward the bass side, toward the neck."""
+    guide = layout.strap_guide
+    bar = math.radians(guide.angle_degrees)
+    # Square to the bar, toward the bass side.
+    across = (-math.sin(bar), math.cos(bar))
+    if across[1] * bass_sign < 0.0:
+        across = (-across[0], -across[1])
+    return math.degrees(math.atan2(abs(across[1]), -across[0]))
+
+
+def test_the_design_by_jone_guide_is_where_the_guitar_has_it() -> None:
+    # Read off a photograph of its back: on the bass side of the tail, on
+    # the strap's way from its button in the tail's middle, turning the
+    # strap nearly straight up over the bass edge.
+    layout = with_guide().body_layout()
+    guide = layout.strap_guide
+
+    assert guide is not None
+    assert guide.centre == Point2D(layout.heel_end + 216.0, -106.0)
+    assert guide.angle_degrees == -10.0
+    assert strap_leaving(layout, -1.0) == pytest.approx(80.0, abs=0.5)
+    assert layout.problems == ()
+    with_guide().build()
+
+
+def test_an_unplaced_guide_sits_on_the_straps_way_from_its_tail_button() -> None:
+    parameters = with_guide(body_shape=UNPLACED)
     layout = parameters.body_layout()
     guide = layout.strap_guide
 
     assert guide is not None
     assert layout.problems == ()
-    # By the middle of the tail, its bar along the tail's edge (across
-    # the neck), so the strap leaves over the tail.
-    tail = max(point.x for point in layout.outline.points)
-    assert tail - 120.0 < guide.centre.x < tail
-    assert abs(guide.centre.y) <= 40.0
-    assert abs(abs(guide.angle_degrees) - 90.0) < 30.0
+    # The strap runs from its button over the back toward the bass edge,
+    # 60 degrees from the neck's axis, to the guide near the edge, which
+    # turns it nearly straight up over it (80 degrees).
+    button = tail_button(layout)
+    assert guide.centre.y * parameters.bass_sign > 100.0
+    assert guide.centre.x < button.x
+    way = math.degrees(
+        math.atan2(abs(guide.centre.y - button.y), button.x - guide.centre.x)
+    )
+    assert way == pytest.approx(60.0, abs=0.5)
+    assert strap_leaving(layout, parameters.bass_sign) == pytest.approx(80.0, abs=0.5)
 
 
 def test_a_guide_placed_only_in_part_is_placed_afresh() -> None:
-    shape = replace(DesignByJoneShape(), strap_guide_offset=90.0)
+    shape = replace(UNPLACED, strap_guide_offset=90.0)
 
     partly = with_guide(body_shape=shape).body_layout().strap_guide
 
-    unplaced = with_guide(body_shape=DesignByJoneShape()).body_layout()
+    unplaced = with_guide(body_shape=UNPLACED).body_layout()
     assert partly == unplaced.strap_guide
 
 
@@ -121,7 +173,8 @@ def test_every_body_has_room_for_its_unplaced_guide(name: str) -> None:
 
 @pytest.mark.parametrize("name", ["design_by_jone_shape", "stratocaster"])
 def test_an_unplaced_guide_keeps_off_a_belly_cut(name: str) -> None:
-    parameters = with_guide(body_shape=BODIES[name], body_belly_cut_depth=10.0)
+    shape = UNPLACED if name == "design_by_jone_shape" else BODIES[name]
+    parameters = with_guide(body_shape=shape, body_belly_cut_depth=10.0)
     layout = parameters.body_layout()
     (belly,) = [c for c in layout.contours if c.name == "Belly cut"]
 
@@ -137,7 +190,7 @@ def test_a_mirrored_or_widened_body_takes_its_guide_with_it() -> None:
     assert mirrored.strap_guide_y == -60.0
     assert mirrored.strap_guide_angle_degrees == -10.0
     assert widened_shape(shape, 12.0).strap_guide_y == pytest.approx(66.0)
-    assert mirrored_shape(DesignByJoneShape()).strap_guide_y is None
+    assert mirrored_shape(UNPLACED).strap_guide_y is None
 
 
 def test_a_guide_off_the_flat_back_is_rejected() -> None:

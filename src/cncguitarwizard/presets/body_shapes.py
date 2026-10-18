@@ -132,7 +132,13 @@ class DesignByJoneShape:
         strap_guide_offset: The flame strap guide's centre X from the heel
             end (used with ``Prototype001Parameters.body_strap_guide``);
             empty (or ``strap_guide_y`` or ``strap_guide_angle_degrees``)
-            for by the tail, on the picking hand's side, along its edge.
+            on the strap's way from its button in the tail's middle.
+            By default where the guide is on the Design by Jone guitar,
+            read off a photograph of its back: on the bass side of the
+            tail near the edge, on the strap's way from the button (61
+            degrees from the neck's axis), its bar nearly along the neck
+            (-10 degrees) so the strap leaves it nearly straight up over
+            the bass edge.
         strap_guide_y: The strap guide's centre Y.
         strap_guide_angle_degrees: The strap guide's bar from the neck's
             axis, counter-clockwise; the strap runs square to it.
@@ -224,9 +230,9 @@ class DesignByJoneShape:
     battery_offset: float = 242.5
     battery_y: float = 2.5
     battery_angle_degrees: float = 85.0
-    strap_guide_offset: float | None = None
-    strap_guide_y: float | None = None
-    strap_guide_angle_degrees: float | None = None
+    strap_guide_offset: float | None = 216.0
+    strap_guide_y: float | None = -106.0
+    strap_guide_angle_degrees: float | None = -10.0
     control_angle_degrees: float = 0.0
     control_stretch: float = 0.0
     control_stretch_across: float = 0.0
@@ -370,7 +376,7 @@ class YourDesignShape:
         strap_guide_offset: The flame strap guide's centre X from the heel
             end (used with ``Prototype001Parameters.body_strap_guide``);
             empty (or ``strap_guide_y`` or ``strap_guide_angle_degrees``)
-            for by the tail, on the picking hand's side, along its edge.
+            on the strap's way from its button in the tail's middle.
         strap_guide_y: The strap guide's centre Y.
         strap_guide_angle_degrees: The strap guide's bar from the neck's
             axis, counter-clockwise; the strap runs square to it.
@@ -2287,6 +2293,9 @@ YOUR_DESIGN_TEMPLATES: dict[str, tuple[str, YourDesignShape]] = {
             battery_offset=_DESIGN_BY_JONE.battery_offset,
             battery_y=_DESIGN_BY_JONE.battery_y,
             battery_angle_degrees=_DESIGN_BY_JONE.battery_angle_degrees,
+            strap_guide_offset=_DESIGN_BY_JONE.strap_guide_offset,
+            strap_guide_y=_DESIGN_BY_JONE.strap_guide_y,
+            strap_guide_angle_degrees=_DESIGN_BY_JONE.strap_guide_angle_degrees,
         ),
     ),
     "les_paul": (

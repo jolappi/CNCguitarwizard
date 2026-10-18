@@ -543,27 +543,40 @@ poistaa), ja tyylin vaihto palauttaa tyylin oman muodon.
 
 Valinnainen liekkikuvioinen hihnanohjain (strap guide, `body_strap_guide`,
 oletuksena pois) ruuvataan rungon taakse: hihna kulkee takapintaa pitkin
-sen alta eikä roiku reunan hihnanapista. Ohjain on kolme levystä
-leikattua osaa (muovia, vaneria tai kovaa puuta), kukin omana
-`Cover_strap_guide_*.nc`-ohjelmanaan: 22 mm leveä palkki, jonka
-kummassakin päässä on kolmikielinen liekki (toinen pää on ensimmäinen
-puoli kierrosta käännettynä), ja kummankin liekin alla välikappale, joka on
-yhtä paksu kuin hihnan tarvitsema tila (`body_strap_guide_gap`, 5 mm).
-Hihna (`body_strap_width`, 50 mm, ja 2 mm väljyys kummallekin puolelle)
-kulkee palkin alta välikappaleiden välistä. Levy on 3 mm
-(`body_strap_guide_thickness`), oletuksena noin 141 × 58 mm. Kumpikin ruuvi menee
-välikappaleen läpi 3,5 mm reiästä, ja niiden 3 × 12 mm esiporaukset
-(`body_strap_guide_screw_diameter`, `_depth`) porataan `Body_back_small_holes`-ohjelmassa.
-Paikka on rungon muodossa (`strap_guide_offset`, `strap_guide_y`,
-`strap_guide_angle_degrees`). Tyhjänä ohjain sijoitetaan rungon häntään
-plektrakäden puolelle, kuten strap guide yleensä on: ensimmäiseen kohtaan
-(hännän keskellä hihnanapin kohdalla, sitten 20, 40 … 80 mm sivuun,
-bassopuoli ensin, 36–116 mm hännän reunasta sisään, palkki reunan
-suuntaisesti, joten hihna lähtee hännän yli kuin hihnanapista; jos
-hännässä ei ole tilaa reunan suuntaan, kuten Jackson RR:n lovessa kahden
-kannen välissä, palkkia käännetään reunasta 30°, 60° ja 90°), jossa se
-pysyy tasaisella takapinnalla erillään takakoloista, kansiupotuksista,
-kaulalevystä ja takapinnan muotoiluista. Editorissa ohjainta voi raahata ja
+sen alta eikä roiku reunan hihnanapista. Tyyli on Design by Jone -kitaran
+ohjaimen, piirretty sen valokuvista: kolme levystä leikattua osaa (muovia,
+vaneria tai kovaa puuta), kukin omana `Cover_strap_guide_*.nc`-ohjelmanaan.
+Päällä on kapea levy, 10 mm leveä palkki, jonka päät kapenevat liekin
+kieleksi (`PLATE_END`), ja sen alla kummassakin päässä välikappale, liekki,
+joka ulottuu palkin pään ohi (`FLAME_END`: pitkä kieli 39 mm hihnan kanavan
+ohi, lyhyt kieli ylös ja ulos ja toinen alas ja ulos). Välikappaleet ovat
+yhtä paksuja kuin hihnan tarvitsema tila (`body_strap_guide_gap`, 3 mm), ja
+ohjain on hihnan molemmin puolin sama, peilattuna. Hihna (`body_strap_width`,
+25 mm kuten kuvatussa, ja 2 mm väljyys kummallekin puolelle) kulkee palkin
+alta välikappaleiden välistä. Levy on 3 mm (`body_strap_guide_thickness`);
+ohjain on oletuksena noin 108 × 21 mm ja levy 70 × 10 mm. Kumpikin ruuvi
+menee välikappaleen läpi 3,5 mm reiästä 3,5 mm kanavan reunasta, ja niiden
+3 × 12 mm esiporaukset (`body_strap_guide_screw_diameter`, `_depth`)
+porataan `Body_back_small_holes`-ohjelmassa.
+Ajatus on, että hihna lähtee tavallisesta napistaan ja kulkee kuten
+aina, mutta ohjaimen läpi: hännän keskeltä (plektrakäden puolelta) se
+kulkee takapinnan yli bassopuolen reunaa kohti, ja ohjain lähellä reunaa
+pitää sen takapintaa vasten ja kääntää sen lähes suoraan ylös reunan yli
+(80° kaulan akselista) soittajan selän taakse; palkki on poikittain
+tähän, lähes kaulan suuntainen. Paikka on rungon muodossa
+(`strap_guide_offset`, `strap_guide_y`, `strap_guide_angle_degrees`).
+Design by Jonessa se on siellä, missä kitarassa (luettu takapuolen
+valokuvasta): 216 mm kannasta taakse, 106 mm bassopuolelle, napista
+lähtevän hihnan linjalla (61° kaulan akselista), palkki −10°. Tyhjänä
+(muut pohjat) ohjain sijoitetaan napista (siitä, missä häntä ylittää
+keskilinjan) lähtevän hihnan linjalle niin lähelle bassoreunaa kuin
+mahtuu: kokeillaan linjan kulmat `STRAP_GUIDE_STRAP_ANGLES` kaulan
+akselista bassopuolelle (60° ensin kuten kitarassa, sitten 50, 70, 40, 80
+ja 30) ja kullakin linjalla kohdat bassoreunalta takaisin nappia kohti
+6 mm välein mutta vähintään 30 mm napista, palkki poikittain hihnan
+lähtösuuntaan (`STRAP_GUIDE_EXIT_ANGLES`, 80° ensin), ja valitaan
+ensimmäinen, jossa ohjain pysyy tasaisella takapinnalla erillään
+takakoloista, kansiupotuksista, kaulalevystä ja takapinnan muotoiluista. Editorissa ohjainta voi raahata ja
 Shift-raahauksella kääntää. Ohjain ei saa ulottua 1 mm lähemmäs takareunan
 pyöristystä tai reunalistaa, eikä se saa olla takamuotoilun, takakolon
 kansiupotuksen tai kaulalevyn päällä.

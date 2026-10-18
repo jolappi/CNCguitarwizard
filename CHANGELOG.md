@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+### Changed
+
+- The flame strap guide in the style of the one on the Design by Jone
+  guitar, traced from photographs of it: a slim plate, a bar tapering to
+  a flame's tongue, over two flame spacers (a long tongue, a short one
+  up and one down), the same either side of the strap, mirrored; sized
+  for its 25 mm strap (3 mm spacers, screws 3.5 mm past the channel).
+  It sits on the strap's own way: the strap hangs from its usual button
+  in the middle of the tail and runs over the back toward the bass edge,
+  and the guide near that edge holds it down and turns it nearly
+  straight up over the edge (80° from the neck's axis), on to the
+  player's back, its bar square to that. Design by Jone places it where
+  the guitar has it (on the strap's way, 61° from the neck's axis, its
+  bar at −10°); every other template, unplaced, as near where the strap
+  leaves the bass edge as there is room.
+
 ### Added
 
 - An application like UI in the web app (`site/desktop.js`), the
@@ -39,17 +55,15 @@
   and the plan drawings show the slots as cut.
 
 - A flame strap guide on the back (`body_strap_guide`,
-  `FlameStrapGuide`): a plate shaped as a bar with a three-tongued flame
-  at either end, screwed over two spacers the strap runs between, all
-  three cut from sheet (`Cover_strap_guide_plate`, `_spacer_1`, `_2`), the
-  two screws' pilots drilled in `Body_back_small_holes`; sized by the
-  strap's width and the spacers' and plate's sheets; placed by the body
-  shape (`strap_guide_offset`, `strap_guide_y`,
-  `strap_guide_angle_degrees`) or, left empty, by the tail, on the
-  picking hand's side, its bar along the tail's edge, wherever it stays
-  on the flat back clear of the back's covers, neck plate and contours
-  (its bar turned from the edge where the tail has no room along it);
-  dragged and turned in the body editor, which says where it does not
+  `FlameStrapGuide`): a plate screwed over two flame spacers the strap
+  runs between (its style under *Changed* above), all three cut from
+  sheet (`Cover_strap_guide_plate`, `_spacer_1`, `_2`), the two screws'
+  pilots drilled in `Body_back_small_holes`; sized by the strap's width
+  and the spacers' and plate's sheets; placed by the body shape
+  (`strap_guide_offset`, `strap_guide_y`, `strap_guide_angle_degrees`)
+  or, left empty, on the strap's way from its button (see *Changed*),
+  wherever it stays on the flat back clear of the back's covers, neck
+  plate and contours; dragged and turned in the body editor, which says where it does not
   fit (and a design put back moves it before anything else).
   `BodySolid` keeps it off the edge's roundover, the back's contours,
   the cover recesses and the neck plate.

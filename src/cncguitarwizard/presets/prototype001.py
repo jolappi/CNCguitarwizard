@@ -282,20 +282,26 @@ much as 7.5 mm."""
 BATTERY_GRID = 10.0
 """The whole-body search's grid, in mm, where nothing near clears."""
 
-STRAP_GUIDE_TAIL_OFFSETS = (0.0, 20.0, -20.0, 40.0, -40.0, 60.0, -60.0, 80.0, -80.0)
-"""Where across the tail an unplaced strap guide may sit, in mm from the
-centreline toward the bass side: tried in turn, the middle first, where
-the tail's strap button would be."""
+STRAP_GUIDE_STRAP_ANGLES = (60.0, 50.0, 70.0, 40.0, 80.0, 30.0)
+"""How the strap runs from the tail's strap button over the back to an
+unplaced strap guide, in degrees from the neck's axis toward the bass
+side (toward the neck and the bass edge): tried in turn, 60 first, as on
+the Design by Jone guitar."""
 
-STRAP_GUIDE_TURNS = (0.0, 30.0, -30.0, 60.0, -60.0, 90.0)
-"""How far an unplaced strap guide's bar may be turned from the tail's
-edge, in degrees: tried in turn, along the edge first, for a tail with
-no room across it (a Jackson RR's notch between two covers)."""
+STRAP_GUIDE_EXIT_ANGLES = (80.0, 70.0, 90.0, 60.0)
+"""How the strap leaves a strap guide toward the player's back, in
+degrees from the neck's axis toward the bass side: the guide's channel
+turns it nearly straight up over the bass edge, its bar square to it;
+tried in turn, 80 first."""
 
-STRAP_GUIDE_EDGE_INSETS = (36.0, 46.0, 56.0, 66.0, 76.0, 86.0, 96.0, 106.0, 116.0)
-"""How far in from the tail's edge an unplaced strap guide's centre may
-sit, in mm: tried in turn at each offset, the nearest first (36: its
-flames' half-width and a few millimetres; further in past a cavity)."""
+STRAP_GUIDE_EDGE_STEP = 6.0
+"""How far apart, in mm along the strap, an unplaced strap guide's spots
+are tried: from where the strap leaves the bass edge back toward its
+button."""
+
+STRAP_GUIDE_BUTTON_CLEAR = 30.0
+"""The least distance, in mm, from the tail's strap button to an unplaced
+strap guide's centre."""
 
 CONTROL_CLEARANCE_SHIFT = 20.0
 """How far, in mm, a generated control cavity may move out from the
@@ -1215,24 +1221,29 @@ class Prototype001Parameters:
     body_battery_cavity_depth: float = 22.0
     body_battery_cover_margin: float = 7.0
     # A flame strap guide on the back (see geometry.body.strap_guide):
-    # body_strap_guide screws a plate shaped as a bar with a flame at
-    # either end to the back over two spacers, one under each flame, the
-    # strap running under the bar between them — so the strap pulls from
-    # further in and the guitar leans toward the player. The plate is cut
-    # from body_strap_guide_thickness sheet, the spacers from
+    # body_strap_guide screws a slim plate, a bar tapering to a flame's
+    # tongue at either end, to the back over two spacers, each a flame
+    # reaching out past the bar's end, the strap running under the bar
+    # between them — so the strap pulls from further in and the guitar
+    # leans toward the player — as on the Design by Jone guitar. The plate
+    # is cut from body_strap_guide_thickness sheet, the spacers from
     # body_strap_guide_gap sheet (the room the strap has: its thickness
     # and some play), plastic or wood, each in its own program; the
     # channel between the spacers is body_strap_width + 4 mm wide. Two
     # screws hold it, through the spacers, into
     # body_strap_guide_screw_diameter pilots body_strap_guide_screw_depth
-    # deep drilled up into the back. The body shape's strap_guide_offset,
-    # strap_guide_y and strap_guide_angle_degrees place it; empty, by the
-    # tail, on the picking hand's side, as it usually is: its bar along
-    # the tail's edge, the strap leaving over the tail as from the strap
-    # button there.
+    # deep drilled up into the back. The strap hangs from its usual button
+    # in the middle of the tail and runs over the back toward the bass
+    # edge: the guide sits on that way near the edge and turns the strap
+    # nearly straight up over it, on to the player's back (its bar square
+    # to that), so the strap runs as it always does but through the
+    # guide. The body shape's strap_guide_offset, strap_guide_y and
+    # strap_guide_angle_degrees place it (Design by Jone's where the
+    # guitar has it); empty, as near where the strap leaves the bass edge
+    # as there is room (see _strap_guide_spot).
     body_strap_guide: bool = False
-    body_strap_width: float = 50.0
-    body_strap_guide_gap: float = 5.0
+    body_strap_width: float = 25.0
+    body_strap_guide_gap: float = 3.0
     body_strap_guide_thickness: float = 3.0
     body_strap_guide_screw_diameter: float = 3.0
     body_strap_guide_screw_depth: float = 12.0
@@ -5982,8 +5993,9 @@ class Prototype001Parameters:
 
         Where its ``strap_guide_offset``, ``strap_guide_y`` and
         ``strap_guide_angle_degrees`` say; with any of them empty, at the
-        first spot by the tail (``_strap_guide_spot``) that ``room`` takes
-        (see ``_strap_guide_room``).
+        first spot on the strap's way from its button at the tail
+        (``_strap_guide_spot``) that ``room`` takes (see
+        ``_strap_guide_room``).
         """
         x = shape.strap_guide_offset
         y = shape.strap_guide_y
@@ -6058,59 +6070,83 @@ class Prototype001Parameters:
         room: Callable[[tuple[Point2D, ...]], bool],
     ) -> tuple[float, float, float]:
         """Return where an unplaced strap guide goes: (X from the heel end,
-        Y, its bar's angle), by the tail, on the picking hand's side.
+        Y, its bar's angle), on the strap's own way from its button.
 
-        Each of ``STRAP_GUIDE_TAIL_OFFSETS`` across the tail is tried in
-        turn, at each of ``STRAP_GUIDE_EDGE_INSETS`` in from its edge, its
-        bar along the edge there so the strap leaves over the tail as from
-        the strap button there: the first that ``room`` takes. Where none
-        does, the same again with the bar turned from the edge by each of
-        ``STRAP_GUIDE_TURNS``.
+        The strap hangs from its usual button, in the middle of the tail
+        (the picking hand's side), and runs from it over the back toward
+        the bass edge; the guide holds it down there and turns it nearly
+        straight up over the edge, on to the player's back. The guide goes
+        on the strap's way from the button (at each of
+        ``STRAP_GUIDE_STRAP_ANGLES`` in turn), as near where it leaves the
+        bass edge as there is room: the spots from that edge back toward
+        the button, ``STRAP_GUIDE_EDGE_STEP`` apart and no nearer it than
+        ``STRAP_GUIDE_BUTTON_CLEAR``; its bar square to the way the strap
+        leaves it (each of ``STRAP_GUIDE_EXIT_ANGLES`` in turn). The first
+        that ``room`` takes.
 
         Raises:
             BodyGeometryError: If no spot fits.
         """
+        edges = list(zip(outline, (*outline[1:], outline[0]), strict=True))
+        # The button: where the tail crosses the centreline.
+        crossings = [
+            a.x + (b.x - a.x) * (0.0 - a.y) / (b.y - a.y)
+            for a, b in edges
+            if (a.y - 0.0) * (b.y - 0.0) <= 0.0 and a.y != b.y
+        ]
+        if not crossings:
+            raise BodyGeometryError(
+                "The body has no tail on its centreline for the strap's button: "
+                "place the strap guide in the body editor."
+            )
+        button = Point2D(max(crossings), 0.0)
 
-        def tail_edge(y: float) -> Point2D | None:
-            # Where the outline crosses y furthest from the neck.
-            crossings = [
-                a.x + (b.x - a.x) * (y - a.y) / (b.y - a.y)
-                for a, b in zip(outline, (*outline[1:], outline[0]), strict=True)
-                if (a.y - y) * (b.y - y) <= 0.0 and a.y != b.y
-            ]
-            if not crossings:
-                return None
-            return Point2D(max(crossings), y)
+        def toward_bass(angle: float) -> float:
+            # The direction ``angle`` degrees from the neck's axis toward
+            # the bass side, toward the neck, in radians.
+            return math.radians(180.0 - angle * self.bass_sign)
 
-        for turn in STRAP_GUIDE_TURNS:
-            for offset in STRAP_GUIDE_TAIL_OFFSETS:
-                y = offset * self.bass_sign
-                edge, before, after = (
-                    tail_edge(y),
-                    tail_edge(y - 5.0),
-                    tail_edge(y + 5.0),
-                )
-                if edge is None or before is None or after is None:
+        def leaves(dx: float, dy: float) -> float | None:
+            # How far along (dx, dy) from the button the strap leaves the
+            # back: the outline's first crossing past the button's own.
+            nearest = None
+            for a, b in edges:
+                ex, ey = b.x - a.x, b.y - a.y
+                den = dx * ey - dy * ex
+                if abs(den) < 1e-12:
                     continue
-                along = math.atan2(after.y - before.y, after.x - before.x)
-                # In from the edge, square to it, toward the neck.
-                normal = (-math.sin(along), math.cos(along))
-                if normal[0] > 0.0:
-                    normal = (-normal[0], -normal[1])
-                for inset in STRAP_GUIDE_EDGE_INSETS:
+                t = ((a.x - button.x) * ey - (a.y - button.y) * ex) / den
+                u = ((a.x - button.x) * dy - (a.y - button.y) * dx) / den
+                if t > 1.0 and 0.0 <= u <= 1.0 and (nearest is None or t < nearest):
+                    nearest = t
+            return nearest
+
+        for exit_angle in STRAP_GUIDE_EXIT_ANGLES:
+            # Square to the strap leaving it, between -90 and 90 degrees.
+            exit_way = math.degrees(toward_bass(exit_angle))
+            bar = round((exit_way - 90.0 + 90.0) % 180.0 - 90.0, 1)
+            for strap_angle in STRAP_GUIDE_STRAP_ANGLES:
+                way = toward_bass(strap_angle)
+                dx, dy = math.cos(way), math.sin(way)
+                reach = leaves(dx, dy)
+                if reach is None:
+                    continue
+                distance = reach - STRAP_GUIDE_EDGE_STEP
+                while distance >= STRAP_GUIDE_BUTTON_CLEAR:
                     spot = (
-                        round(edge.x + normal[0] * inset - heel_end, 1),
-                        round(edge.y + normal[1] * inset, 1),
-                        round(math.degrees(along) + turn, 1),
+                        round(button.x + dx * distance - heel_end, 1),
+                        round(button.y + dy * distance, 1),
+                        bar,
                     )
                     guide = self._flame_strap_guide(
                         Point2D(heel_end + spot[0], spot[1]), spot[2]
                     )
                     if room(guide.outline):
                         return spot
+                    distance -= STRAP_GUIDE_EDGE_STEP
         raise BodyGeometryError(
-            "There is no room for the strap guide by the tail: place it in "
-            "the body editor."
+            "There is no room for the strap guide on the strap's way from its "
+            "button: place it in the body editor."
         )
 
     def _battery_box(self, shape: BodyShapeSpec, heel_end: float) -> ControlFeatures:

@@ -763,43 +763,58 @@ a hole from the back under its cover.
 `body_strap_guide` (off by default) screws a flame strap guide onto the
 back (`geometry.body.FlameStrapGuide`): the strap runs over the back
 under it instead of hanging from the edge's strap button, so it pulls
-from further in. The guide is three parts cut from sheet (plastic, or
-plywood or hardwood), each its own sheet program: a plate shaped as a
-bar 22 mm wide with a flame at either end, three tongues sweeping out of
-each (the other end's flame is the first turned half round), and under
-each flame a spacer as thick as the room the strap needs; the strap runs
-under the bar between the spacers.
+from further in. Its style is the guide's on the Design by Jone guitar,
+traced from photographs of it: three parts cut from sheet (plastic, or
+plywood or hardwood), each its own sheet program — a slim plate, a
+10 mm bar whose ends taper to a flame's tongue (`PLATE_END`), screwed
+over two spacers, each a flame reaching out past the bar's end
+(`FLAME_END`: a long tongue 39 mm past the strap's channel, a short one
+flicking up and out and one down and out). The strap runs under the
+bar between the spacers; the guide is the same either side of it,
+mirrored.
 
 | Parameter | Default | Meaning |
 | --- | --- | --- |
-| `body_strap_width` | 50 mm | The strap: the spacers stand `STRAP_GUIDE_PLAY` (2 mm) clear of it each side, 54 mm apart |
-| `body_strap_guide_gap` | 5 mm | The spacers' sheet: the room the strap has under the bar |
+| `body_strap_width` | 25 mm | The strap where it runs through (the photographed one's): the spacers stand `STRAP_GUIDE_PLAY` (2 mm) clear of it each side, 29 mm apart |
+| `body_strap_guide_gap` | 3 mm | The spacers' sheet: the room the strap has under the bar |
 | `body_strap_guide_thickness` | 3 mm | The plate's sheet |
 | `body_strap_guide_screw_diameter` × `_depth` | 3 × 12 mm | The two screws' pilots up into the back, drilled in `Body_back_small_holes` |
 
-With the default strap the plate is about 141 × 58 mm. A screw goes
-through each spacer, 8 mm past the strap's channel on the bar's middle
-line, in 3.5 mm holes through the plate and the spacer
+With the default strap the guide is about 108 × 21 mm, the plate 70 ×
+10 mm. A screw goes through each spacer, `STRAP_GUIDE_SCREW_INSET`
+(3.5 mm) past the strap's channel on the bar's middle line, close by
+the strap as on the guitar, in 3.5 mm holes through the plate and the
+spacer
 (`Strap guide plate`, `Strap guide spacer 1` / `2`;
 `Cover_strap_guide_plate.nc`, `Cover_strap_guide_spacer_1.nc` /
 `_2.nc`).
 
+The idea is that the strap hangs from its usual button and runs as it
+always does, but through the guide: from the button in the middle of the
+tail (the picking hand's side) it runs over the back toward the bass
+edge, and the guide, near that edge, holds it down to the back and turns
+it nearly straight up over the edge (80° from the neck's axis), on to
+the player's back — its bar square to that, nearly along the neck.
+
 The body shape places it: `strap_guide_offset` (its centre's X from the
 heel end), `strap_guide_y` and `strap_guide_angle_degrees` (the bar from
-the neck's axis; the strap runs square to it). With any of them empty,
-it goes by the tail, on the picking hand's side, as a strap guide usually is: at
-the first of `STRAP_GUIDE_TAIL_OFFSETS` across the tail (the middle,
-where the strap button would be, then 20, 40 … 80 mm either side, the
-bass side first) and of `STRAP_GUIDE_EDGE_INSETS` in from the tail's
-edge (36 mm first, up to 116), its bar along the edge there, where it
-stays on the flat back clear of the back's routes and cover recesses,
-the neck plate and the back's contours — so the strap leaves over the
-tail as from the strap button. Where the tail has no room along its
-edge (a Jackson RR's, its notch between two covers), the bar is turned
-from the edge by each of `STRAP_GUIDE_TURNS` in turn (30°, 60° either
-way, then 90°). The body editor
-drags it, Shift-drag turns it about its centre, and either pins all
-three fields where it is drawn.
+the neck's axis; the strap leaves it square to the bar). Design by
+Jone's are where the guide is on the guitar, read off a photograph of
+its back: 216 mm behind the heel end, 106 mm out on the bass side, on
+the strap's way from the button (61° from the neck's axis), its bar at
+−10°. With any of them empty (every other template), the guide goes on
+the strap's way from the button (where the tail crosses the
+centreline), as near where the strap leaves the bass edge as there is
+room: at each of `STRAP_GUIDE_STRAP_ANGLES` from the neck's axis toward
+the bass side in turn (60° first, as on the guitar, then 50, 70, 40, 80
+and 30), the spots from that edge back toward the button,
+`STRAP_GUIDE_EDGE_STEP` (6 mm) apart and no nearer it than
+`STRAP_GUIDE_BUTTON_CLEAR` (30 mm), its bar square to the way the strap
+leaves it (each of `STRAP_GUIDE_EXIT_ANGLES`, 80° first): the first
+where it stays on the flat back clear of the back's routes and cover
+recesses, the neck plate and the back's contours. The body editor drags
+it, Shift-drag turns it about its centre, and either pins all three
+fields where it is drawn.
 
 `BodySolid` (`strap_guide`) rejects a guide that leaves under
 `NECK_PLATE_EDGE_WALL` (1 mm) of flat back past the back edge's
