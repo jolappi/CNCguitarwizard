@@ -623,7 +623,9 @@ Python.
    *Build again*: `builtFrom`, `markStale`, until the design is as built
    again): the summary with stock size
    (a fretboard blank's carrier on a row of its own, `fretboard_carrier_thickness`;
-   the index pins' places only for a blank that has them) and the
+   the index pins' places only for a blank that has them, along the
+   machine's Y for a blank turned to fit its travel, and a warning for
+   one too big for it either way) and the
    programs in one row — how many, about how long at the set feeds —
    first, each program's tool, time and cutting in the fold *Every
    program* below it (`#summary-programs`), each row's *Plot* showing its

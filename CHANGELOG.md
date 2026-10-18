@@ -4,6 +4,14 @@
 
 ### Added
 
+- The machine's travel as CNC options (`machine_x_travel`,
+  `machine_y_travel`, empty by default): every part still runs sideways,
+  along X, unless its programs only fit along Y; then all of them are
+  turned a quarter about the work zero (`cam.fitted_to_machine`), their
+  notes saying so — on a 750 x 1000 mm machine anything over 750 mm long
+  runs along Y. The report and the web app's summary say which blanks
+  are turned, and which fit neither way.
+
 - Blind fret slots (`fret_slot_end_inset`, 0 to 4 mm, off by default):
   each slot stops that far short of the board's edges along its own line
   (`FretLayout.slot_end_inset`, `cut_slot`), so no slot shows from the

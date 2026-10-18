@@ -1250,9 +1250,16 @@ function showResult(result) {
   const report = result.report;
   const rows = [];
   for (const [part, stock] of Object.entries(report.stock)) {
+    // A part that only fits the machine (machine_x_travel,
+    // machine_y_travel) along Y has its programs turned a quarter.
     const pins = stock.index_pins_machine_xy;
-    const where = pins.length ? `, pins at machine X ${pins.map((p) => p[0]).join(" / ")}` : "";
-    rows.push([`${part} blank`, `${stock.length_mm} × ${stock.width_mm} × ${stock.thickness_mm} mm${where}`]);
+    const axis = stock.machine_turned ? 1 : 0;
+    const where = pins.length ? `, pins at machine ${"XY"[axis]} ${pins.map((p) => p[axis]).join(" / ")}` : "";
+    const turned = stock.machine_turned ? ", turned to run along the machine's Y" : "";
+    const misfit = stock.fits_machine === false
+      ? ` — too big for the machine either way (${stock.machine_span_mm.join(" × ")} mm of travel)`
+      : "";
+    rows.push([`${part} blank`, `${stock.length_mm} × ${stock.width_mm} × ${stock.thickness_mm} mm${turned}${where}${misfit}`]);
     // A bought fretboard blank glued on a carrier that takes the pins.
     const carrier = stock.carrier;
     if (carrier) {

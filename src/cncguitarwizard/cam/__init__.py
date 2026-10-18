@@ -19,6 +19,7 @@ from .fretboard import (
 )
 from .gcode import GCodeWriter, GRBLWriter, Setup
 from .inlays import InlayMachiningPlan, inlay_fit_outline, plan_inlay_machining
+from .machine import MachineFit, fitted_to_machine, program_span
 from .neck import (
     HeadstockBlock,
     NeckMachiningParameters,
@@ -51,6 +52,7 @@ __all__ = [
     "GCodeWriter",
     "HeadstockBlock",
     "InlayMachiningPlan",
+    "MachineFit",
     "GRBLWriter",
     "POST_PROCESSOR_LABELS",
     "MachiningParameters",
@@ -75,6 +77,7 @@ __all__ = [
     "depth_levels",
     "disc_fits",
     "drill",
+    "fitted_to_machine",
     "fretboard_outline_polygon",
     "inlay_fit_outline",
     "neck_plan_polygon",
@@ -91,6 +94,7 @@ __all__ = [
     "plan_nut_jig_machining",
     "pocket",
     "profile",
+    "program_span",
     "raster_finish",
     "raster_rough",
     "render_setup_svg",

@@ -25,6 +25,7 @@ from ..cam import (
     NeckMachiningPlan,
     NutJigMachiningPlan,
     combined_setup,
+    fitted_to_machine,
     nut_jig_tool,
     plan_body_machining,
     plan_cover_machining,
@@ -257,17 +258,19 @@ class Prototype001Build:
         writer = GCodeWriter.for_parameters(self.machining)
         for part, plan in self._plans:
             # Each part's programs are listed, and numbered, in the order
-            # they are run (``plan.setups``); with combine_programs, those
-            # run one after another with the same tool and fixture as one,
-            # previewed on the first one's outline.
-            programs = list(zip(plan.setups, plan.preview_outlines, strict=True))
+            # they are run (``plan.setups``), all turned a quarter when the
+            # part only fits the machine along Y; with combine_programs,
+            # those run one after another with the same tool and fixture as
+            # one, previewed on the first one's outline.
+            fit = fitted_to_machine(plan.setups, plan.preview_outlines, self.machining)
+            programs = list(zip(fit.setups, fit.outlines, strict=True))
             if self.machining.combine_programs:
                 programs = [
                     (
-                        combined_setup([plan.setups[index] for index in run]),
-                        plan.preview_outlines[run[0]],
+                        combined_setup([fit.setups[index] for index in run]),
+                        fit.outlines[run[0]],
                     )
-                    for run in setup_runs(plan.setups, self.machining)
+                    for run in setup_runs(fit.setups, self.machining)
                 ]
             for step, (setup, outline) in enumerate(programs, start=1):
                 gcode_path = self.destination / f"{setup.name}{writer.extension}"
@@ -294,6 +297,7 @@ class Prototype001Build:
                         setup.estimated_minutes(self.machining), 1
                     ),
                 }
+            origin_x, origin_y = plan.origin_x, plan.origin_y
             self._stock_report[part] = {
                 "length_mm": round(plan.stock_length, 1),
                 "width_mm": round(plan.stock_width, 1),
@@ -306,9 +310,17 @@ class Prototype001Build:
                     [round(x, 2), round(y, 2)] for x, y in plan.index_pin_positions
                 ],
                 "index_pins_machine_xy": [
-                    [round(x - plan.origin_x, 2), round(y - plan.origin_y, 2)]
+                    (
+                        [round(origin_y - y, 2), round(x - origin_x, 2)]
+                        if fit.turned
+                        else [round(x - origin_x, 2), round(y - origin_y, 2)]
+                    )
                     for x, y in plan.index_pin_positions
                 ],
+                # Along the machine's Y when only that way fits its travel.
+                "machine_turned": fit.turned,
+                "machine_span_mm": [round(fit.span[0], 1), round(fit.span[1], 1)],
+                "fits_machine": fit.fits,
             }
             if isinstance(plan, NeckMachiningPlan):
                 # The same blank laminated: the neck's own plank with a block

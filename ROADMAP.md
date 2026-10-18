@@ -198,6 +198,9 @@
 - **9 V battery box** — done: `body_battery_box` routes an optional
   battery box in the back with its own sheet-cut cover, placed per body
   shape and dragged in the body editor.
+- **The machine's travel** — done: `machine_x_travel` and
+  `machine_y_travel`; a part too long for X runs along Y, all its
+  programs turned a quarter.
 - **Blind fret slots** — done: `fret_slot_end_inset` stops every slot
   short of the board's edges, in the G-code, the model and the drawings.
 - **Flame strap guide** — done: `body_strap_guide` screws a flame-shaped

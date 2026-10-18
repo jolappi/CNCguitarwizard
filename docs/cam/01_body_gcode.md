@@ -210,6 +210,26 @@ name adds (`_and_controls`); its notes are the first's, then each later
 one's under its own name, and its preview is drawn on the first one's
 face.
 
+## The machine's travel
+
+Every part is planned lying along the machine's X — sideways, its length
+across the operator — and by default stays that way.
+`MachiningParameters.machine_x_travel` and `machine_y_travel` give how
+far the machine reaches (its width and length; empty limits nothing).
+A part whose programs do not fit that way but do along Y has all of them
+turned a quarter counter-clockwise about the work zero
+(`cam.fitted_to_machine`): its X along the machine's Y, its Y along the
+machine's −X, the dowels with it, so the stock is turned the same way on
+the table and nothing else changes. On a 750 × 1000 mm machine a 650 mm
+neck blank still runs sideways and an 850 mm bass neck along Y. What
+counts is how far the tool travels (`cam.program_span`): every position
+the part's programs visit, the work zero and the dowels included. Each
+turned program's notes start by saying so; a part too big either way
+stays sideways, its notes saying how much travel it needs. The build
+report gives each blank's `machine_turned`, `machine_span_mm` and
+`fits_machine`, and its dowels' machine positions as they lie; the web
+app's summary says which blanks are turned.
+
 ## One feature on its own
 
 A feature left out of a body already cut — a battery box, say — can be

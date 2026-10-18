@@ -92,6 +92,14 @@ class MachiningParameters:
             ``Body_back_and_controls``), so nothing is loaded or started
             in between; off (the default) keeps one program per setup, to
             run or rerun apart.
+        machine_x_travel: How far the machine reaches along X (its width),
+            in mm; none (the default) limits nothing. Every part is cut
+            lying along X, sideways; one that does not fit that way but
+            fits along Y has all its programs turned a quarter to run
+            along Y (``cam.fitted_to_machine``): on a 750 x 1000 mm
+            machine, anything over 750 mm long.
+        machine_y_travel: How far the machine reaches along Y (its
+            length), in mm; none (the default) limits nothing.
         neck_blank: The neck blank the build plans for: ``"solid"``, one
             plank as thick as the headstock needs, or ``"laminated"``, the
             neck cut from its own plank first and the headstock after a
@@ -178,6 +186,8 @@ class MachiningParameters:
     post_processor: PostProcessor = "grbl"
     spindle_dwell: float = 0.0
     combine_programs: bool = False
+    machine_x_travel: float | None = None
+    machine_y_travel: float | None = None
     neck_blank: Literal["solid", "laminated"] = "solid"
     neck_back_cut: Literal["rough_and_finish", "ball"] = "rough_and_finish"
     engraving_tool_angle: float = 60.0
@@ -227,6 +237,8 @@ class MachiningParameters:
             ("fretboard_blank_length", self.fretboard_blank_length),
             ("fretboard_blank_width", self.fretboard_blank_width),
             ("fretboard_carrier_thickness", self.fretboard_carrier_thickness),
+            ("machine_x_travel", self.machine_x_travel),
+            ("machine_y_travel", self.machine_y_travel),
         ):
             if value is not None:
                 positive[name] = value

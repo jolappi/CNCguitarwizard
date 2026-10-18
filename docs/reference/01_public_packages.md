@@ -204,6 +204,7 @@ rules, and how Prototype001's body was digitised from a DXF drawing.
 | `pocket()`, `drill()`, `profile()` | 2.5D operations on closed polygons in a machine frame. |
 | `Toolpath`, `Move`, `PathBuilder` | Tool-centre move sequences. |
 | `Setup`, `GCodeWriter` (`GRBLWriter`), `POST_PROCESSOR_LABELS` | One fixturing's toolpaths and its G-code, in the dialect `MachiningParameters.post_processor` names (GRBL by default). |
+| `fitted_to_machine`, `MachineFit`, `program_span` | A part's programs turned a quarter to run along Y when only that way fits the machine's travel (`MachiningParameters.machine_x_travel`, `machine_y_travel`). |
 | `combined_setups`, `combined_setup`, `setup_runs` | Programs run one after another with the same fixture, tool and work zero joined into one (`MachiningParameters.combine_programs`). |
 | `render_setup_svg()` | Toolpath plot over the part outline. |
 | `clear_intervals()`, `offset_polygon()`, `disc_fits()` | Exact planar clearance helpers. |

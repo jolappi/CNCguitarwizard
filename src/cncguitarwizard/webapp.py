@@ -338,6 +338,8 @@ _BASIC_FIELDS: frozenset[str] = frozenset(
         "post_processor",
         "spindle_dwell",
         "combine_programs",
+        "machine_x_travel",
+        "machine_y_travel",
         "neck_blank",
         "neck_back_cut",
         "spindle_speed",
