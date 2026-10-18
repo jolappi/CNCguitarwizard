@@ -1107,7 +1107,14 @@ function showResult(result) {
   const gcode = result.report.gcode;
   const isProgram = (name) => /\.k?nc$/.test(name);
   const stemOf = (name) => name.replace(/\.(nc|knc|svg)$/, "");
-  const programOf = (name) => (/\.(nc|knc|svg)$/.test(name) ? gcode[stemOf(name)] : undefined);
+  // Each program's file and plot, named for it and its tool
+  // (Body_top_6mm_flathead.nc and .svg), to its entry in the report.
+  const byFile = new Map();
+  for (const info of Object.values(gcode)) {
+    byFile.set(info.file, info);
+    byFile.set(info.preview, info);
+  }
+  const programOf = (name) => byFile.get(name);
   // build.json lists the programs alphabetically: order by part, then step.
   const partOrder = ["Model and report", "Body", "Wing bass", "Wing treble", "Neck", "Fretboard", "Inlays", "Nut jig", "Covers"];
   const groups = new Map(partOrder.map((part) => [part, []]));
@@ -1145,9 +1152,10 @@ function showResult(result) {
     fold.appendChild(table);
     files.appendChild(fold);
     // A program's plot goes on its own row, not one of its own.
-    const plots = new Set(members.filter(isProgram).map((name) => `${stemOf(name)}.svg`));
+    const plots = new Set(members.filter(isProgram).map((name) => programOf(name).preview));
     for (const name of members.filter((n) => !plots.has(n)).sort((a, b) => rank(a) - rank(b))) {
-      addFile(name, table, plots.has(`${stemOf(name)}.svg`) ? `${stemOf(name)}.svg` : null);
+      const plot = programOf(name)?.preview;
+      addFile(name, table, plot && plots.has(plot) ? plot : null);
     }
   }
 
@@ -1186,9 +1194,8 @@ function showResult(result) {
   const show = () => {
     toolpath.innerHTML = result.files[chooser.value] || "";
     zoomablePlot(toolpath);
-    const stem = stemOf(chooser.value);
-    const info = gcode[stem];
-    const program = [".nc", ".knc"].map((ext) => stem + ext).find((name) => name in result.files);
+    const info = programOf(chooser.value);
+    const program = info && info.file in result.files ? info.file : null;
     about.textContent = info
       ? `${info.tool}: ${info.estimated_minutes} min, ${(info.cutting_length_mm / 1000).toFixed(1)} m of cutting, ` +
         `${info.operations.length} operation${info.operations.length === 1 ? "" : "s"}`
@@ -1212,7 +1219,9 @@ function showResult(result) {
     return button;
   };
   tabs.append(stepper("‹", "The plot before", -1), chooser, stepper("›", "The next plot", 1), simulateShown, about);
-  const first = ["Body_top.svg", "Neck_block_top.svg", "Neck_body_top.svg"].find((name) => name in result.files);
+  const first = ["Body_top", "Neck_block_top", "Neck_body_top"]
+    .map((name) => gcode[name]?.preview)
+    .find((name) => name in result.files);
   if (first) chooser.value = first;
   show();
 
@@ -1302,8 +1311,8 @@ function showResult(result) {
   perProgram.innerHTML = programs.map(([name, info]) => (
     `<tr><th>${info.step}. ${name}</th><td>${info.tool}: ${info.estimated_minutes} min, ` +
     `${(info.cutting_length_mm / 1000).toFixed(1)} m of cutting, ${info.operations.length} operation${info.operations.length === 1 ? "" : "s"}` +
-    (`${name}.svg` in result.files
-      ? ` <button type="button" class="secondary plot-link" data-plot="${name}.svg" title="Show its toolpaths below">Plot</button>`
+    (info.preview in result.files
+      ? ` <button type="button" class="secondary plot-link" data-plot="${info.preview}" title="Show its toolpaths below">Plot</button>`
       : "") +
     "</td></tr>"
   )).join("");

@@ -19,7 +19,9 @@ sample that grid.
 | 0.6 mm fret-slot cutter | fret slots | `fret_slot_spindle_speed` (30 000 rpm), F300, plunge F100, at most `fret_slot_step_down` (0.2 mm) per pass, so the thin cutter does not snap — both set in the machining form |
 | `nut_jig_tool_diameter` (0.6 mm) cutter | the nut-slot jig, slots and outline | the fret-slot cutter's speed, feeds and step-down |
 
-Every program states its tool in the header. The machine has no tool
+Every program states its tool in the header, and its file name too
+(`Neck_back_finish_6mm_ballnose.nc`, `Fretboard_slots_0.6mm_flathead.nc`;
+the tables below name the programs alone). The machine has no tool
 changer, so after each change the operator re-touches Z on the blank top;
 X/Y zero stays at index pin 1 and every program still starts with the
 pin 1 → pin 2 → pin 1 check.

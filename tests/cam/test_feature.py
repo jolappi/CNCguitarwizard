@@ -81,6 +81,8 @@ def test_the_web_app_makes_a_dragged_features_files() -> None:
 
     battery = feature_programs(payload, "battery")
     assert battery["title"] == "battery box"
-    assert [f["name"] for f in battery["files"]][-1] == "Cover_battery_cavity.nc"
+    assert [f["name"] for f in battery["files"]][
+        -1
+    ] == "Cover_battery_cavity_3mm_flathead.nc"
     assert "G0 X0.000 Y0.000" in battery["files"][0]["text"]
     assert "drill it by hand" in feature_programs(payload, "jack")["error"]

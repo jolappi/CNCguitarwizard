@@ -4,6 +4,13 @@
 
 ### Changed
 
+- Each NC program's file says which cutter to fit: its name is the
+  program's and then the tool's (`Body_top_6mm_flathead.nc`,
+  `Neck_back_finish_6mm_ballnose.nc`, `Fretboard_slots_0.6mm_flathead.nc`,
+  a V-bit by its angle: `Body_top_engraving_60deg_vbit.nc`), its toolpath
+  plot named the same (`cam.program_stem`); in the ZIP too
+  (`Body/02_Body_top_6mm_flathead.nc`).
+
 - The flame strap guide in the style of the one on the Design by Jone
   guitar, traced from photographs of it: a slim plate, a bar tapering to
   a flame's tongue, over two flame spacers (a long tongue, a short one

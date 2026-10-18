@@ -38,9 +38,11 @@ The command creates:
   estimates.
 - `freecad.log`, containing the executed command, exit code, stdout, and
   stderr from FreeCAD.
-- `Body_index_pins.nc`, `Body_top.nc`, `Body_back.nc`: GRBL G-code for the
-  body, generated without FreeCAD — see [Body G-code](../cam/01_body_gcode.md);
-- `Body_index_pins.svg`, `Body_top.svg`, `Body_back.svg`: toolpath plots of
+- `Body_index_pins_6mm_flathead.nc`, `Body_top_6mm_flathead.nc`,
+  `Body_back_6mm_flathead.nc`: GRBL G-code for the body, generated
+  without FreeCAD, each named for its program and the tool it is cut
+  with — see [Body G-code](../cam/01_body_gcode.md);
+- `Body_index_pins_6mm_flathead.svg` and the rest: toolpath plots of
   those programs (cuts coloured from blue at the surface to red at the
   deepest, a bar under the part saying how deep that is: `0 mm`, the
   deepest depth, `cut depth`, drawn larger on a larger part; each

@@ -12,6 +12,7 @@ from cncguitarwizard.cam import (
     MachiningParameters,
     Setup,
     Toolpath,
+    program_stem,
 )
 from cncguitarwizard.cam.exceptions import ToolpathError
 from cncguitarwizard.cam.toolpath import Move, PathBuilder
@@ -321,3 +322,20 @@ def test_a_preview_names_each_toolpath_under_the_pointer() -> None:
     # Every cut and rapid of a toolpath lies in its group.
     for group in groups:
         assert group.getElementsByTagName("path")
+
+
+def test_a_program_is_named_for_its_tool() -> None:
+    setup = make_setup()
+    flat = MachiningParameters()
+
+    assert program_stem(setup, flat) == "Test_6mm_flathead"
+    assert (
+        program_stem(setup, replace(flat, tool_diameter=3.175, tool_tip="ball"))
+        == "Test_3.175mm_ballnose"
+    )
+    # A V-bit by its angle, its width at full depth said in the header.
+    vee = replace(flat, tool_tip="vee", engraving_tool_angle=90.0)
+    assert program_stem(setup, vee) == "Test_90deg_vbit"
+    # A setup's own tool before the parameters'.
+    own = replace(setup, tool=replace(flat, tool_diameter=0.6))
+    assert program_stem(own, flat) == "Test_0.6mm_flathead"

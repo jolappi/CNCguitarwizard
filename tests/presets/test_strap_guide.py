@@ -253,5 +253,5 @@ def test_the_body_editor_draws_and_drags_the_guide() -> None:
     assert body_editor_layout({"prototype": {}})["strap_guide"] is None
     programs = feature_programs(payload, "strap_guide")
     names = [file["name"] for file in programs["files"]]
-    assert "Feature_strap_guide_back_small_holes.nc" in names
-    assert "Cover_strap_guide_plate.nc" in names
+    assert "Feature_strap_guide_back_small_holes_3mm_flathead.nc" in names
+    assert "Cover_strap_guide_plate_3mm_flathead.nc" in names

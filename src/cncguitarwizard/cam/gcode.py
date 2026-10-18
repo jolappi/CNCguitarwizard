@@ -14,7 +14,8 @@ class Setup:
     """Every toolpath cut with one tool while the stock is fixtured one way.
 
     Args:
-        name: Short identifier, also used for the output file stem.
+        name: Short identifier; the program's file name begins with it
+            (``program_stem``).
         description: One line shown in the G-code header.
         toolpaths: Operations in cutting order.
         notes: Operator instructions written as header comments.
@@ -245,6 +246,24 @@ GRBLWriter = GCodeWriter
 """The default writer: ``GCodeWriter()`` writes GRBL."""
 
 
+def program_stem(setup: Setup, parameters: MachiningParameters) -> str:
+    """Return a program's file name without its extension.
+
+    The setup's name and the tool it is cut with, so the file says which
+    cutter to fit: ``Body_top_6mm_flathead``, ``Neck_back_finish_6mm_ballnose``,
+    ``Fretboard_inlays_60deg_vbit``.
+
+    Args:
+        setup: The program's setup.
+        parameters: The machining parameters, whose tool the setup is cut
+            with unless it has one of its own (``setup.tool``).
+
+    Returns:
+        The file name's stem.
+    """
+    return f"{setup.name}_{_tool_tag(setup.tool or parameters)}"
+
+
 class _WordState:
     """Track the last written words so unchanged ones can be omitted.
 
@@ -313,3 +332,12 @@ def _tool_name(parameters: MachiningParameters) -> str:
         )
     kind = "ball nose" if parameters.tool_tip == "ball" else "end mill"
     return f"{parameters.tool_diameter:.3f} mm {kind}"
+
+
+def _tool_tag(parameters: MachiningParameters) -> str:
+    """Return the tool as a file name says it: ``6mm_flathead``,
+    ``3.175mm_ballnose`` or, for a V-bit, its angle: ``60deg_vbit``."""
+    if parameters.tool_tip == "vee":
+        return f"{parameters.engraving_tool_angle:g}deg_vbit"
+    kind = "ballnose" if parameters.tool_tip == "ball" else "flathead"
+    return f"{parameters.tool_diameter:g}mm_{kind}"

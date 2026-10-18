@@ -183,7 +183,7 @@ def test_a_dragged_guard_gets_its_own_programs() -> None:
     names = [f["name"] for f in result["files"]]
     # Its screw spots in the body, zeroed on the guard, and the guard itself.
     assert names[0].startswith("Feature_pickguard_top")
-    assert names[-1] == "Cover_pickguard.nc"
+    assert names[-1] == "Cover_pickguard_3mm_flathead.nc"
 
 
 @pytest.mark.parametrize("name", ["stratocaster", "superstrat"])

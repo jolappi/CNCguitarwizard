@@ -53,14 +53,24 @@ def test_build_writes_gcode_and_toolpath_previews_for_every_part(
     result = build_prototype001(tmp_path / "output", run_freecad=False)
 
     names = [path.name for path in result.gcode_paths]
-    assert names[:3] == ["Body_index_pins.nc", "Body_top.nc", "Body_back.nc"]
-    assert "Neck_back_finish.nc" in names and "Fretboard_slots.nc" in names
+    assert names[:3] == [
+        "Body_index_pins_6mm_flathead.nc",
+        "Body_top_6mm_flathead.nc",
+        "Body_back_6mm_flathead.nc",
+    ]
+    assert (
+        "Neck_back_finish_6mm_ballnose.nc" in names
+        and "Fretboard_slots_0.6mm_flathead.nc" in names
+    )
     # Body 5 (with the electronics program), neck 5, fretboard 5, the
     # inlay pieces, and the control and switch cavity covers.
     assert len(names) == 18
-    assert names[15] == "Fretboard_inlay_pieces.nc"
-    assert "Body_back_small_holes.nc" in names
-    assert names[-2:] == ["Cover_control_cavity.nc", "Cover_switch_cavity.nc"]
+    assert names[15] == "Fretboard_inlay_pieces_1mm_flathead.nc"
+    assert "Body_back_small_holes_3mm_flathead.nc" in names
+    assert names[-2:] == [
+        "Cover_control_cavity_3mm_flathead.nc",
+        "Cover_switch_cavity_3mm_flathead.nc",
+    ]
     assert [path.name for path in result.toolpath_preview_paths] == [
         name.replace(".nc", ".svg") for name in names
     ]
@@ -73,7 +83,7 @@ def test_build_writes_gcode_and_toolpath_previews_for_every_part(
 
     report = json.loads(result.report_path.read_text(encoding="utf-8"))
     assert report["machining"]["tool_diameter"] == 6.0
-    assert report["gcode"]["Body_top"]["file"] == "Body_top.nc"
+    assert report["gcode"]["Body_top"]["file"] == "Body_top_6mm_flathead.nc"
     assert report["gcode"]["Body_top"]["part"] == "Body"
     # Each part's programs are numbered in running order.
     steps = {
@@ -140,7 +150,7 @@ def test_stepwise_build_runs_one_stage_per_advance(tmp_path: Path) -> None:
         build.result
     assert build.advance() is True
     assert build.completed == 1 and build.geometry is not None
-    assert not (tmp_path / "output" / "Body_top.nc").exists()
+    assert not (tmp_path / "output" / "Body_top_6mm_flathead.nc").exists()
     steps = 1
     while build.advance():
         steps += 1
@@ -298,7 +308,7 @@ def test_build_writes_kosy_programs_as_knc_files(tmp_path: Path) -> None:
 
     assert result.gcode_paths
     assert all(path.suffix == ".knc" for path in result.gcode_paths)
-    assert report["gcode"]["Body_top"]["file"] == "Body_top.knc"
+    assert report["gcode"]["Body_top"]["file"] == "Body_top_6mm_flathead.knc"
     first = result.gcode_paths[0].read_text(encoding="utf-8").splitlines()
     assert first[:2] == ["_", "_"] and first[-1] == "G99"
 
@@ -312,8 +322,12 @@ def test_build_writes_the_laminated_neck_programs(tmp_path: Path) -> None:
     names = [path.name for path in result.gcode_paths]
     report = json.loads(result.report_path.read_text(encoding="utf-8"))
 
-    assert names.index("Neck_back_finish.nc") < names.index("Headstock_top.nc")
-    assert names.index("Headstock_back_finish.nc") < names.index("Neck_back_outline.nc")
+    assert names.index("Neck_back_finish_6mm_ballnose.nc") < names.index(
+        "Headstock_top_6mm_flathead.nc"
+    )
+    assert names.index("Headstock_back_finish_6mm_ballnose.nc") < names.index(
+        "Neck_back_outline_6mm_flathead.nc"
+    )
     assert report["stock"]["Neck"]["blank"] == "laminated"
     assert report["stock"]["Neck"]["thickness_mm"] == 40.0
     assert report["gcode"]["Headstock_top"]["part"] == "Neck"
@@ -344,6 +358,6 @@ def test_build_carves_the_neck_back_with_the_ball_nose_alone(tmp_path: Path) -> 
         machining=MachiningParameters(neck_back_cut="ball"),
     )
     names = [path.name for path in result.gcode_paths]
-    assert "Neck_back.nc" in names
-    assert "Neck_back_rough.nc" not in names
-    assert "Neck_back_finish.nc" not in names
+    assert "Neck_back_6mm_ballnose.nc" in names
+    assert "Neck_back_rough_6mm_flathead.nc" not in names
+    assert "Neck_back_finish_6mm_ballnose.nc" not in names

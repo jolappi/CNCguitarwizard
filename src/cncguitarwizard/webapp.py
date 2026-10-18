@@ -33,6 +33,7 @@ from .cam import (
     GCodeWriter,
     MachiningParameters,
     plan_feature_machining,
+    program_stem,
 )
 from .cam.parameters import INDEX_PIN_DIAMETER
 from .cam.planar import simplified
@@ -2565,7 +2566,7 @@ def feature_programs(payload: dict[str, Any], group: str) -> dict[str, Any]:
         "title": title,
         "files": [
             {
-                "name": f"{setup.name}{writer.extension}",
+                "name": f"{program_stem(setup, machining)}{writer.extension}",
                 "text": writer.render(setup, machining),
             }
             for setup in setups
@@ -2681,7 +2682,7 @@ def nc_archive(name: str = "") -> dict[str, str]:
     """Return the last build's NC programs in one ZIP, named for the guitar.
 
     Inside a folder named ``name``, one folder a part, each program
-    numbered in running order (``Neck/02_Neck_top.nc``), and a
+    numbered in running order (``Neck/02_Neck_top_6mm_flathead.nc``), and a
     ``README.txt`` listing them with their tools and run times.
 
     Returns:

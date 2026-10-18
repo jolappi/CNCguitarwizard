@@ -63,6 +63,9 @@ Everything lands in the `build/` directory (git-ignored):
 | `build.json` | Every parameter used, stock size, per-program time estimates, checksums |
 | `freecad.log` | FreeCAD's own output from the run |
 
+Each program's file is named for it and the tool it is cut with, e.g.
+`Body_top_6mm_flathead.nc`, `Neck_back_finish_6mm_ballnose.nc`.
+
 To change a dimension, edit the defaults in
 `src/cncguitarwizard/presets/prototype001.py` (every value is a documented
 field of `Prototype001Parameters`) or build from Python with overrides:

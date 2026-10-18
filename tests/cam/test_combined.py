@@ -136,9 +136,12 @@ def test_the_build_writes_combined_programs_when_asked(tmp_path: Path) -> None:
     )
 
     names = [path.name for path in result.gcode_paths]
-    assert "Body_back_and_controls.nc" in names
-    assert "Body_back.nc" not in names and "Body_back_controls.nc" not in names
-    assert "Body_back_and_controls.svg" in [
+    assert "Body_back_and_controls_6mm_flathead.nc" in names
+    assert (
+        "Body_back_6mm_flathead.nc" not in names
+        and "Body_back_controls_6mm_flathead.nc" not in names
+    )
+    assert "Body_back_and_controls_6mm_flathead.svg" in [
         path.name for path in result.toolpath_preview_paths
     ]
     report = json.loads(result.report_path.read_text(encoding="utf-8"))

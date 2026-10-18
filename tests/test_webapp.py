@@ -223,14 +223,19 @@ def test_run_build_returns_files_report_and_plan_view(tmp_path: Path) -> None:
     )
 
     assert "error" not in result
-    expected = {"Prototype001_freecad.py", "Body_top.nc", "Body_back.svg", "build.json"}
+    expected = {
+        "Prototype001_freecad.py",
+        "Body_top_6mm_flathead.nc",
+        "Body_back_6mm_flathead.svg",
+        "build.json",
+    }
     assert expected <= set(result["files"])
     assert result["report"]["parameters"]["body_thickness"] == 42.0
     assert result["report"]["machining"]["feed_rate"] == 800.0
     assert result["report"]["status"] == "scripts_only"
-    assert "Neck_back_finish.nc" in result["files"]
+    assert "Neck_back_finish_6mm_ballnose.nc" in result["files"]
     assert result["plan_view"].startswith("<svg")
-    assert "Pot 2 shaft hole" not in result["files"]["Body_top.nc"]
+    assert "Pot 2 shaft hole" not in result["files"]["Body_top_6mm_flathead.nc"]
     json.dumps(result)
 
 
@@ -247,7 +252,7 @@ def test_run_build_accepts_a_bridge_spec_as_json(tmp_path: Path) -> None:
     assert "error" not in result
     assert result["report"]["parameters"]["body_bridge"]["kind"] == "tune_o_matic"
     assert result["report"]["parameters"]["body_bridge"]["compensation"] == 2.0
-    assert "(-- Bridge post bass --)" in result["files"]["Body_top.nc"]
+    assert "(-- Bridge post bass --)" in result["files"]["Body_top_6mm_flathead.nc"]
 
 
 def test_run_build_rejects_an_unknown_bridge_kind(tmp_path: Path) -> None:
@@ -274,7 +279,8 @@ def test_stepwise_build_reports_progress_between_stages(tmp_path: Path) -> None:
         step = advance_build()
     assert step["completed"] == 8 and step["next"] is None
     result = finish_build()
-    assert "Body_top.nc" in result["files"] and result["plan_view"].startswith("<svg")
+    assert "Body_top_6mm_flathead.nc" in result["files"]
+    assert result["plan_view"].startswith("<svg")
     # The DXF outlines come with the files.
     assert result["files"]["Prototype001_plan.dxf"].endswith("EOF\n")
     assert "Prototype001_covers.dxf" in result["files"]
@@ -399,10 +405,16 @@ def test_run_build_makes_a_bass(tmp_path: Path) -> None:
 
     assert "error" not in result
     assert result["report"]["parameters"]["string_count"] == 4
-    top = result["files"]["Body_top.nc"]
+    top = result["files"]["Body_top_6mm_flathead.nc"]
     assert "(-- Neck pickup route --)" in top and "(-- Bridge pickup route --)" in top
-    assert "String 4 through hole" in result["files"]["Body_top_small_holes.nc"]
-    assert "String 5 through hole" not in result["files"]["Body_top_small_holes.nc"]
+    assert (
+        "String 4 through hole"
+        in result["files"]["Body_top_small_holes_3mm_flathead.nc"]
+    )
+    assert (
+        "String 5 through hole"
+        not in result["files"]["Body_top_small_holes_3mm_flathead.nc"]
+    )
 
 
 def _bass_overrides() -> dict[str, object]:
@@ -822,11 +834,11 @@ def test_the_nc_programs_download_as_one_zip_named_for_the_guitar(
         # Every program, in a folder a part, numbered in running order.
         assert len(names) == len(programs) + 1
         assert "Jonen Strat/README.txt" in names
-        assert "Jonen Strat/Body/01_Body_index_pins.nc" in names
-        assert "Jonen Strat/Neck/01_Neck_index_pins.nc" in names
+        assert "Jonen Strat/Body/01_Body_index_pins_6mm_flathead.nc" in names
+        assert "Jonen Strat/Neck/01_Neck_index_pins_6mm_flathead.nc" in names
         assert (
-            zipped.read("Jonen Strat/Body/01_Body_index_pins.nc").decode()
-            == (result["files"]["Body_index_pins.nc"])
+            zipped.read("Jonen Strat/Body/01_Body_index_pins_6mm_flathead.nc").decode()
+            == (result["files"]["Body_index_pins_6mm_flathead.nc"])
         )
         readme = zipped.read("Jonen Strat/README.txt").decode()
         assert readme.index("Body:") < readme.index("Neck:")

@@ -668,7 +668,8 @@ Python.
    for the guitar (`<Guitar name>.zip`; `webapp.nc_archive` packs the last
    build's programs in Python): a folder named for the guitar, one folder
    a part inside it, each program numbered in running order
-   (`Neck/02_Neck_top.nc`), and a `README.txt` listing them with their
+   (`Neck/02_Neck_top_6mm_flathead.nc`, a program named for its tool), and
+   a `README.txt` listing them with their
    tools and run times. The name is made safe for a file name
    (`webapp.archive_name`: letters, digits, spaces, dots, dashes and
    underscores stay).

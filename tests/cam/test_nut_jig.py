@@ -119,7 +119,7 @@ def test_the_build_writes_the_jig_program() -> None:
         )
         while build.advance():
             pass
-        gcode = (Path(folder) / "Jig_nut_slots.nc").read_text()
-        assert (Path(folder) / "Jig_nut_slots.svg").exists()
+        gcode = (Path(folder) / "Jig_nut_slots_0.4mm_flathead.nc").read_text()
+        assert (Path(folder) / "Jig_nut_slots_0.4mm_flathead.svg").exists()
     assert "(Tool: 0.400 mm end mill" in gcode
     assert "Nut-slot filing jig" in gcode

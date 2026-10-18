@@ -33,6 +33,7 @@ from ..cam import (
     plan_inlay_machining,
     plan_neck_machining,
     plan_nut_jig_machining,
+    program_stem,
     render_setup_svg,
     setup_runs,
 )
@@ -273,12 +274,15 @@ class Prototype001Build:
                     for run in setup_runs(fit.setups, self.machining)
                 ]
             for step, (setup, outline) in enumerate(programs, start=1):
-                gcode_path = self.destination / f"{setup.name}{writer.extension}"
+                # Each file named for its program and its tool
+                # (Body_top_6mm_flathead.nc), its plot the same.
+                stem = program_stem(setup, self.machining)
+                gcode_path = self.destination / f"{stem}{writer.extension}"
                 gcode_path.write_text(
                     writer.render(setup, self.machining), encoding="utf-8"
                 )
                 self._gcode_paths.append(gcode_path)
-                preview_path = self.destination / f"{setup.name}.svg"
+                preview_path = self.destination / f"{stem}.svg"
                 tool = setup.tool or self.machining
                 preview_path.write_text(
                     render_setup_svg(setup, outline, tool.tool_diameter),

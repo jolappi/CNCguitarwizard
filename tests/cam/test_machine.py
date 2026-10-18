@@ -119,5 +119,5 @@ def test_a_bass_neck_runs_along_y_on_a_750_by_1000_machine(tmp_path: Path) -> No
     (_, far) = neck["index_pins_machine_xy"]
     assert abs(far[0]) < 1.0 and far[1] > 750.0
     assert body["machine_turned"] is False and body["fits_machine"] is True
-    top = (tmp_path / "output" / "Neck_top.nc").read_text(encoding="utf-8")
+    top = (tmp_path / "output" / "Neck_top_6mm_flathead.nc").read_text(encoding="utf-8")
     assert "(Turned a quarter to fit the machine's 750 x 1000 mm travel" in top

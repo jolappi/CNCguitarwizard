@@ -17,7 +17,7 @@ from .fretboard import (
     fretboard_outline_polygon,
     plan_fretboard_machining,
 )
-from .gcode import GCodeWriter, GRBLWriter, Setup
+from .gcode import GCodeWriter, GRBLWriter, Setup, program_stem
 from .inlays import InlayMachiningPlan, inlay_fit_outline, plan_inlay_machining
 from .machine import MachineFit, fitted_to_machine, program_span
 from .neck import (
@@ -95,6 +95,7 @@ __all__ = [
     "pocket",
     "profile",
     "program_span",
+    "program_stem",
     "raster_finish",
     "raster_rough",
     "render_setup_svg",

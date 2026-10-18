@@ -120,7 +120,12 @@ Every program first rapids to `X0 Y0` at the safe height — parked over
 index pin 1 — then over dowel 2 and back, all before the spindle starts,
 so the work zero and the fixture can be checked by eye; it returns to pin 1
 after the last cut. Each `.nc` file starts with
-operator notes as comments. A matching `.svg`
+operator notes as comments. Its name is the program's and then the tool
+it is cut with (`cam.program_stem`), so the file says which cutter to
+fit: `Body_top_6mm_flathead.nc`, `Body_back_small_holes_3mm_flathead.nc`,
+`Body_top_edges_6mm_ballnose.nc`, `Body_top_engraving_60deg_vbit.nc` (a
+V-bit by its angle); the tables here name the programs alone. A matching
+`.svg`, named the same,
 plots every move (rapids dashed, cuts coloured blue → red by depth) over the
 outline in that setup's own frame, so the flipped setup is drawn mirrored.
 
