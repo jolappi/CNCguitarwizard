@@ -28,16 +28,22 @@ class FretLayout:
         zero_fret: Also a slot on the nut line, for a zero fret
             (``zero_fret_slot``; the board must run on past the nut line
             to hold it). It is not one of ``slots``, which stay fret 1 on.
+        slot_end_inset: Blind slots: how far short of the board's edges
+            each slot is cut, along it (``cut_slot``); 0 cuts them out
+            through the edges. ``slots`` stay the fret lines, edge to
+            edge.
 
     Raises:
         FretboardGeometryError: If the fret count or fretboard dimensions
-            cannot produce valid manufacturing geometry.
+            cannot produce valid manufacturing geometry, or blind slots
+            would leave nothing of a slot.
     """
 
     fretboard: Fretboard
     fret_count: int
     skew: FretSkew = field(default_factory=FretSkew)
     zero_fret: bool = False
+    slot_end_inset: float = 0.0
     slots: tuple[Line2D, ...] = field(init=False)
     zero_fret_slot: Line2D | None = field(init=False)
 
@@ -65,6 +71,23 @@ class FretLayout:
             else None
         )
         object.__setattr__(self, "zero_fret_slot", zero)
+        shortest = min(slot.length for slot in (*slots, *((zero,) if zero else ())))
+        if 2.0 * self.slot_end_inset >= shortest:
+            raise FretboardGeometryError(
+                f"Blind fret slots {self.slot_end_inset:g} mm short of each "
+                f"edge leave nothing of a {shortest:.1f} mm slot."
+            )
+
+    def cut_slot(self, slot: Line2D) -> Line2D:
+        """Return a slot as it is cut: ``slot_end_inset`` short of each edge.
+
+        Args:
+            slot: One of ``slots`` or the ``zero_fret_slot``.
+
+        Returns:
+            The slot itself when it is cut through the edges.
+        """
+        return shortened(slot, self.slot_end_inset)
 
     def _validate(self) -> None:
         """Reject dimensions that cannot form a useful fret layout."""
@@ -79,6 +102,10 @@ class FretLayout:
             )
         if self.fret_count <= 0:
             raise FretboardGeometryError("Fret count must be greater than zero.")
+        if not math.isfinite(self.slot_end_inset) or self.slot_end_inset < 0.0:
+            raise FretboardGeometryError(
+                "The fret slots' end inset must be finite and non-negative."
+            )
 
     def _create_slot(self, fret_line: FretLine) -> Line2D:
         """Return one fret line clipped to the tapered fretboard."""
@@ -104,3 +131,32 @@ class FretLayout:
             left = Point2D(left.x + lean * left.y, left.y)
             right = Point2D(right.x + lean * right.y, right.y)
         return Line2D(left, right)
+
+
+def shortened(line: Line2D, amount: float) -> Line2D:
+    """Return ``line`` with ``amount`` taken off each end, along it.
+
+    Args:
+        line: The segment to shorten.
+        amount: How much comes off each end; 0 leaves it as it is.
+
+    Returns:
+        The middle of ``line``.
+
+    Raises:
+        FretboardGeometryError: If that leaves nothing of it.
+    """
+    if amount == 0.0:
+        return line
+    length = line.length
+    if 2.0 * amount >= length:
+        raise FretboardGeometryError(
+            f"Taking {amount:g} mm off each end leaves nothing of a "
+            f"{length:.1f} mm line."
+        )
+    dx = (line.end.x - line.start.x) / length * amount
+    dy = (line.end.y - line.start.y) / length * amount
+    return Line2D(
+        Point2D(line.start.x + dx, line.start.y + dy),
+        Point2D(line.end.x - dx, line.end.y - dy),
+    )

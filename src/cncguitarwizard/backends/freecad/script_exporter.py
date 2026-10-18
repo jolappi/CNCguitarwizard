@@ -513,6 +513,12 @@ class FreeCADScriptExporter:
         fret_surface_rows = fretboard_surface.mesh.rows[
             (0 if zero_fret else 1) : fretboard_surface.fret_count + 1
         ]
+        # Blind slots stop short of the board's edges: their rows with them.
+        if fret_layout is not None and fret_layout.slot_end_inset > 0.0:
+            fret_surface_rows = tuple(
+                _trimmed_row(row, fret_layout.slot_end_inset)
+                for row in fret_surface_rows
+            )
         export_feature_names = ["neck_feature", "fretboard_feature"]
         if carbon_rods is not None:
             export_feature_names.append("carbon_rods_feature")
@@ -2289,15 +2295,20 @@ class FreeCADScriptExporter:
         slot_width: float,
         slot_depth: float,
     ) -> str:
-        """Return FreeCAD commands for radius-following fret-slot cuts."""
+        """Return FreeCAD commands for radius-following fret-slot cuts.
+
+        Each runs 1 mm out past the board's edges, or, blind
+        (``FretLayout.slot_end_inset``), stops on its row's own ends.
+        """
         if layout is None:
             return ""
+        side_overcut = 0.0 if layout.slot_end_inset > 0.0 else 1.0
 
         return (
             f"fret_slot_width = {slot_width}\n"
             f"fret_slot_depth = {slot_depth}\n"
             "fret_slot_surface_overcut = 0.2\n"
-            "fret_slot_side_overcut = 1.0\n"
+            f"fret_slot_side_overcut = {side_overcut}\n"
             "for fret_index, surface_row in enumerate(\n"
             "    FRET_SURFACE_ROWS,\n"
             "    start=1,\n"
@@ -3866,3 +3877,32 @@ def _body_edge_lines(
         ")\n"
     )
     return lines
+
+
+def _trimmed_row(row: tuple[Point3D, ...], amount: float) -> tuple[Point3D, ...]:
+    """Return a surface row with ``amount`` taken off each end, along its plan.
+
+    Raises:
+        FreeCADBackendError: If that leaves nothing of the row.
+    """
+
+    def from_start(points: list[Point3D]) -> list[Point3D]:
+        left = amount
+        for index in range(len(points) - 1):
+            a, b = points[index], points[index + 1]
+            step = math.hypot(b.x - a.x, b.y - a.y)
+            if step > left:
+                t = left / step
+                start = Point3D(
+                    a.x + (b.x - a.x) * t,
+                    a.y + (b.y - a.y) * t,
+                    a.z + (b.z - a.z) * t,
+                )
+                return [start, *points[index + 1 :]]
+            left -= step
+        raise FreeCADBackendError(
+            f"Taking {amount:g} mm off each end leaves nothing of a fret slot."
+        )
+
+    trimmed = from_start(list(row))
+    return tuple(reversed(from_start(list(reversed(trimmed)))))

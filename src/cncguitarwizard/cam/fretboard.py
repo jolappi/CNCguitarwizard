@@ -21,6 +21,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING
 
+from ..geometry.fretboard import shortened
 from ..geometry.primitives import Point2D, rounded_polygon_points
 from .exceptions import ToolpathError
 from .fixturing import StockBounds, resolve_index_pins
@@ -568,8 +569,16 @@ def plan_fretboard_machining(
             for number, slot in enumerate(geometry.fret_layout.slots, start=1)
         ),
     ]
+    inset = geometry.fret_layout.slot_end_inset
     for slot_name, slot in named_slots:
-        half = max(abs(slot.start.y), abs(slot.end.y)) + parameters.slot_overshoot
+        if inset > 0.0:
+            # A blind slot: the cutter's edge stops inset short of each of
+            # the board's edges.
+            cut = shortened(slot, inset + slot_tool.tool_radius)
+            low, high = sorted((cut.start.y, cut.end.y))
+        else:
+            half = max(abs(slot.start.y), abs(slot.end.y)) + parameters.slot_overshoot
+            low, high = -half, half
         builder = PathBuilder(
             slot_name,
             safe_height=slot_tool.safe_height,
@@ -583,7 +592,7 @@ def plan_fretboard_machining(
             if abs(slot.end.y - slot.start.y) > 1e-9
             else 0.0
         )
-        sample_ys = _steps(-half, half, 1.0)
+        sample_ys = _steps(low, high, 1.0)
         for index in range(1, passes + 1):
             depth = geometry.fret_slot_depth * index / passes
             ordered = sample_ys if index % 2 == 1 else list(reversed(sample_ys))
@@ -615,9 +624,15 @@ def plan_fretboard_machining(
         (
             "Same fixture and X/Y zero; change to the fret-slot cutter and " + touch_z,
             f"Each slot follows the radius across the board in {passes} passes "
-            f"of {geometry.fret_slot_depth / passes:.2f} mm: it starts "
-            f"{parameters.slot_overshoot:g} mm past the board's edge, the cutter "
-            "brought down to 1 mm over the radius there and fed in from it.",
+            f"of {geometry.fret_slot_depth / passes:.2f} mm: "
+            + (
+                f"blind, it stops {inset:g} mm short of each of the board's "
+                "edges, the cutter going down into the board at its ends."
+                if inset > 0.0
+                else f"it starts {parameters.slot_overshoot:g} mm past the "
+                "board's edge, the cutter brought down to 1 mm over the radius "
+                "there and fed in from it."
+            ),
             *(
                 (
                     "The first slot is the zero fret's, on the nut line: the "
@@ -627,9 +642,17 @@ def plan_fretboard_machining(
                 if zero is not None
                 else ()
             ),
-            *binding_notes(
-                "The slots run out through the board's edges; nip each fret's "
-                "tang back over the binding before pressing it in."
+            *(
+                (
+                    f"Nip each fret's tang back {inset:g} mm at both ends (a "
+                    "little more does no harm), its crown running on to the "
+                    "edge, before pressing it in.",
+                )
+                if inset > 0.0
+                else binding_notes(
+                    "The slots run out through the board's edges; nip each "
+                    "fret's tang back over the binding before pressing it in."
+                )
             ),
         ),
         reference_points,

@@ -171,6 +171,12 @@ FIELD_HELP: dict[str, str] = {
         "How far the fretboard runs on past the last fret, in mm."
     ),
     "fret_slot_width": "The fret slots' width, in mm, to suit the fret wire's tang.",
+    "fret_slot_end_inset": (
+        "Blind fret slots: how far short of the fretboard's edges each slot "
+        "stops, in mm (2 to 3 is usual; 0 cuts them out through the edges). "
+        "No slot shows from the side; nip each fret's tang back as far at "
+        "both ends, its crown running on to the edge. At most 4 mm."
+    ),
     "fret_slot_depth": (
         "How deep each fret slot is cut below the curved playing surface, in mm."
     ),

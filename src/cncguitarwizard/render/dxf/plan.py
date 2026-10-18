@@ -47,8 +47,11 @@ def render_plan_dxf(geometry: Prototype001Geometry) -> str:
     dxf.polyline(_fretboard_polygon(geometry), dxf.layer("FRETBOARD_OUTLINE", 8))
     dxf.polyline(_nut_polygon(geometry), dxf.layer("NUT", 9))
     slots = dxf.layer("FRET_SLOTS", 2)
-    zero = geometry.fret_layout.zero_fret_slot
-    for slot in (*((zero,) if zero is not None else ()), *geometry.fret_layout.slots):
+    # Each slot as it is cut: blind ones short of the board's edges.
+    layout = geometry.fret_layout
+    zero = layout.zero_fret_slot
+    for fret_line in (*((zero,) if zero is not None else ()), *layout.slots):
+        slot = layout.cut_slot(fret_line)
         dxf.line(slot.start, slot.end, slots)
     inlays = dxf.layer("INLAYS", 6)
     for marker in geometry.inlay_layout.markers:

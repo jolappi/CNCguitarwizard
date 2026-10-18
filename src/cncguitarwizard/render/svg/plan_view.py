@@ -120,8 +120,11 @@ def render_plan_view_svg(geometry: Prototype001Geometry) -> str:
                 'stroke="#7a6040" stroke-width="0.4"',
             )
         )
-    zero = geometry.fret_layout.zero_fret_slot
-    for slot in (*((zero,) if zero is not None else ()), *geometry.fret_layout.slots):
+    # Each slot as it is cut: blind ones short of the board's edges.
+    layout = geometry.fret_layout
+    zero = layout.zero_fret_slot
+    for fret_line in (*((zero,) if zero is not None else ()), *layout.slots):
+        slot = layout.cut_slot(fret_line)
         parts.append(line(slot.start.x, slot.start.y, slot.end.x, slot.end.y, fret))
     for marker in geometry.inlay_layout.markers:
         parts.append(path(marker.outline, inlay, f"Inlay, fret {marker.fret_number}"))

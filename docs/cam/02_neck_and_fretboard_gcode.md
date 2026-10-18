@@ -152,7 +152,10 @@ that lies the skim (`blank_thickness` − the board's thickness, 1 mm) lower
 at the crown, and touched there every cut would go that much too deep.
 Each fret slot starts `slot_overshoot` (1 mm) past the board's edge: the
 cutter rapids down to 1 mm over the radius there and feeds in one pass at
-a time.
+a time. Blind slots (`fret_slot_end_inset`) stop that far short of each
+edge instead, the cutter's edge with them (its centre a further radius
+in), going down into the board at the ends one pass at a time; the
+program's notes say how far to nip each fret's tang back at both ends.
 
 The board is a flat blank `blank_thickness` (7 mm) thick, glue face down,
 on two dowels beyond the nut and beyond the end. Everything is cut from

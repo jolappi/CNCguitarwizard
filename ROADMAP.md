@@ -198,6 +198,8 @@
 - **9 V battery box** — done: `body_battery_box` routes an optional
   battery box in the back with its own sheet-cut cover, placed per body
   shape and dragged in the body editor.
+- **Blind fret slots** — done: `fret_slot_end_inset` stops every slot
+  short of the board's edges, in the G-code, the model and the drawings.
 - **Flame strap guide** — done: `body_strap_guide` screws a flame-shaped
   plate over two spacers onto the back, all three cut from sheet, the
   strap running under it; placed by the tail on the picking hand's side

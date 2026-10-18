@@ -231,6 +231,7 @@ const EDITOR_FIELDS = {
   "inlay-editor-options": [
     "inlay_style", "inlay_single_marker_frets", "inlay_double_marker_frets", "inlay_dot_diameter",
     "inlay_block_length_fraction", "inlay_block_edge_margin", "inlay_depth", "fretboard_binding_width",
+    "fret_slot_end_inset",
   ],
   // Under the style in easy mode, the settings form hidden.
   "easy-options": ["scale_length"],

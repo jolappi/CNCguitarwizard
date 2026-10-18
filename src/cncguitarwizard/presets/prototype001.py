@@ -57,6 +57,7 @@ from ..geometry.body.neck_through import NeckThrough
 from ..geometry.body.wiring import WireSpace, Wiring, plan_wiring
 from ..geometry.exceptions import (
     BodyGeometryError,
+    FretboardGeometryError,
     GeometryException,
     HeadstockGeometryError,
     NeckGeometryError,
@@ -191,6 +192,11 @@ MIN_HEADLESS_LENGTH = 25.0
 
 MAX_FRETBOARD_BINDING = 3.0
 """The thickest fretboard binding accepted, in mm."""
+
+MAX_FRET_SLOT_END_INSET = 4.0
+"""The furthest blind fret slots may stop short of the board's edges, in
+mm: the outer strings run 3 to 4 mm in from them, and each fret's tang
+must still hold it down under its string."""
 
 ENGRAVING_WALL = 3.0
 """Least wood the engraving leaves over a cavity routed from the back, in
@@ -833,6 +839,12 @@ class Prototype001Parameters:
     fretboard_binding_width: float = 0.0
     fret_slot_width: float = 0.6
     fret_slot_depth: float = 2.7
+    # Blind fret slots: fret_slot_end_inset stops each slot that far short
+    # of the board's edges (0 = cut out through them, as usual), so no
+    # slot shows from the side, bound or not; each fret's tang is nipped
+    # back as far at both ends, its crown running on to the edge. At most
+    # MAX_FRET_SLOT_END_INSET.
+    fret_slot_end_inset: float = 0.0
     # Scallops (fretboard_scalloped): every fret space from
     # fretboard_scallop_from_fret on to the last fret (0: from the nut)
     # hollowed fretboard_scallop_depth deep at its middle, a circular arc
@@ -7301,11 +7313,17 @@ class Prototype001Parameters:
             ),
             skew=self.fret_skew,
         )
+        if not 0.0 <= self.fret_slot_end_inset <= MAX_FRET_SLOT_END_INSET:
+            raise FretboardGeometryError(
+                "fret_slot_end_inset must lie between 0 and "
+                f"{MAX_FRET_SLOT_END_INSET:g} mm."
+            )
         fret_layout = FretLayout(
             fretboard,
             self.fret_count,
             self.fret_skew,
             zero_fret=locking_nut is not None and locking_nut.zero_fret,
+            slot_end_inset=self.fret_slot_end_inset,
         )
         inlay_layout = self.inlay_design(fretboard_surface)
         scallops = self.fretboard_scallops(fretboard_surface)

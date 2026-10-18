@@ -1,6 +1,6 @@
 """Fretboard outline geometry."""
 
-from .fret_layout import FretLayout
+from .fret_layout import FretLayout, shortened
 from .fretboard import Fretboard
 from .inlay_layout import InlayLayout, InlayMarker, InlayStyle
 from .profiles import FretboardCrossSection, FretboardSideProfile
@@ -19,4 +19,5 @@ __all__ = [
     "InlayLayout",
     "InlayMarker",
     "InlayStyle",
+    "shortened",
 ]

@@ -4,6 +4,13 @@
 
 ### Added
 
+- Blind fret slots (`fret_slot_end_inset`, 0 to 4 mm, off by default):
+  each slot stops that far short of the board's edges along its own line
+  (`FretLayout.slot_end_inset`, `cut_slot`), so no slot shows from the
+  side, bound or not. `Fretboard_slots` starts and ends each slot inside
+  the board and says how far to nip the tangs back; the FreeCAD model
+  and the plan drawings show the slots as cut.
+
 - A flame strap guide on the back (`body_strap_guide`,
   `FlameStrapGuide`): a plate shaped as a bar with a three-tongued flame
   at either end, screwed over two spacers the strap runs between, all

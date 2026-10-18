@@ -29,6 +29,23 @@ width = nut_width + (bridge_width - nut_width) * fraction
 
 The slot extends half of that width to each side of the centerline.
 
+## Blind slots
+
+`slot_end_inset` (0 by default) makes the slots blind: each is cut that
+far short of the board's edges, along its own line, so no slot shows from
+the side. `slots` stay the fret lines, edge to edge (the frets' crowns
+still run on to the edges); `cut_slot(slot)` returns a slot as it is cut,
+the line with `slot_end_inset` taken off each end (`shortened`), which the
+fretboard's G-code, the FreeCAD model and the plan drawings follow. An
+inset that leaves nothing of the shortest slot is rejected.
+`Prototype001Parameters.fret_slot_end_inset` sets it, from 0 to
+`MAX_FRET_SLOT_END_INSET` (4 mm: the outer strings run 3 to 4 mm in from
+the edges, and each fret's tang must still hold it down under its
+string); 2 to 3 mm is usual. Each fret's tang is nipped back as far at
+both ends before it is pressed in. On a bound board
+(`fretboard_binding_width`) the inset is measured from the board's own
+edge, inside the binding.
+
 ## Example
 
 ```python

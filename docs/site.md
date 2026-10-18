@@ -146,7 +146,7 @@ Python.
    locking nut, which it draws too, the lettering, and the truss rod's
    adjustment, spoke wheel and cover; in the inlay editor the markers'
    style, frets, sizes, depth and edge margin and the fretboard's
-   binding. A list (the marker frets) is passed on once it reads as JSON.
+   binding and blind fret slots. A list (the marker frets) is passed on once it reads as JSON.
    Each editor's long how-to sits folded under its *How to
    edit …* line (`details.editor-help`: the design, the headstock, the
    inlays), closed until clicked. Each is a copy of the
