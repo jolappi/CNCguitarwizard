@@ -473,6 +473,18 @@ is wired straight to the cavity's nearest point.
 The jack's line can be dragged and turned (Shift-drag) in the body editor;
 the bore follows the drawn outline and the cavity.
 
+`body_jack_plate` holds a `side` jack in a Les Paul style jack plate
+(`geometry.body.les_paul_jack_plate`, on in the Les Paul style): Gibson's
+1-11/32 in (34.13 mm) square, its corners rounded (3 mm), its four screws'
+3.2 mm holes on a 1 in (25.4 mm) square and the jack's 3/8 in (9.52 mm)
+hole in its middle, cut from `body_jack_plate_thickness` (2 mm) sheet in
+its own cover program (`Cover_jack_plate.nc`). A cover on the side
+(`CoverPlate.face` "side"), its outline in its own flat frame round the
+jack, seen from outside: cut flat and bent onto the side's curve as it is
+screwed on, its screws' pilots drilled by hand through it, centred on the
+bore. It is not drawn in the plan (nor in the FreeCAD model, as no cover
+is); a body thinner than the plate refuses it.
+
 ### Pickguard
 
 `body_pickguard` puts on a pickguard (`presets.pickguard`), cut from

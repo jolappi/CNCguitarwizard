@@ -114,7 +114,12 @@ higher than half the sheet, all 0.5 mm through. The outline is cut
 0.2 mm inside the recess (`COVER_FIT_CLEARANCE`) so the plate drops in.
 The work zero is the centre of the cover's bounding box on the sheet top
 (the header says so instead of naming index pin 1), and a back cover is
-mirrored so its visible face is up.
+mirrored so its visible face is up. A part screwed onto a face rather
+than into a recess is cut to its own outline, and its notes say where it
+goes: a pickup frame, the strap guide's plate and spacers, a truss-rod
+cover, and a Les Paul style jack plate (`Cover_jack_plate.nc`) on the
+body's side over the jack's bore, its screws' pilots drilled by hand
+through it.
 
 Every program first rapids to `X0 Y0` at the safe height — parked over
 index pin 1 — then over dowel 2 and back, all before the spindle starts,

@@ -27,6 +27,15 @@
 
 ### Added
 
+- A Les Paul style plastic jack plate (`body_jack_plate`, on in the Les
+  Paul style) over a side jack's bore: Gibson's 34.13 mm (1-11/32 in)
+  square with rounded corners, four screws on a 1 in square and the
+  jack's 3/8 in hole, cut from `body_jack_plate_thickness` (2 mm) sheet
+  in its own program (`Cover_jack_plate`) and bent onto the side as it
+  is screwed on, its screws' pilots drilled by hand through it
+  (`geometry.body.les_paul_jack_plate`; a cover's face may now be the
+  side).
+
 - A bonus on the web app (*Bonus* in the application like UI's menu
   bar, under the whole page in the Classic UI): a dust shoe to print for
   a Makita RT0702C router on a TwoTrees TTC-H40, for a 60 mm vacuum hose

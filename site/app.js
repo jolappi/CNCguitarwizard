@@ -225,7 +225,7 @@ const EDITOR_FIELDS = {
   "body-editor-options": [
     "neck_joint", "body_pickups", "body_neck_pickup", "body_middle_pickup", "body_bridge_pickup",
     "body_neck_pickup_offset", "body_middle_pickup_offset", "body_bridge_pickup_offset", "body_pickups_follow_fan",
-    "body_bridge", "body_bridge_follows_fan", "body_controls", "body_switch", "body_jack",
+    "body_bridge", "body_bridge_follows_fan", "body_controls", "body_switch", "body_jack", "body_jack_plate",
     "body_pickguard", "body_pickguard_style", "body_pickup_frame", "body_pickup_frame_direction",
     "body_arm_contour_depth", "body_belly_cut_depth", "body_leg_contour_depth", "body_top_bevel_width", "body_back_bevel_width", "body_heel_relief", "body_heel_relief_depth", "body_heel_relief_line", "body_carved_top", "body_carve_depth", "body_stepped_top", "body_epoxy_tray_depth",
     "body_engraving", "body_engraving_pattern", "body_engraving_seed", "body_battery_box", "body_battery_count",

@@ -435,6 +435,11 @@ FIELD_HELP: dict[str, str] = {
         "style plate on the top, on the Jazz Bass control plate, or in the "
         "top straight into the control cavity, as on an SG."
     ),
+    "body_jack_plate": (
+        "A Les Paul style jack plate over a side jack: a 34 mm square plastic "
+        "plate cut from sheet, screwed onto the body's side with four screws, "
+        "the jack through its middle."
+    ),
     "body_stepped_top": (
         "Steps the top down in bands along the edge, as on an ESP LTD Alexi "
         "Hexed: the middle at full height, each band nearer the edge a step "
@@ -565,6 +570,7 @@ FIELD_HELP: dict[str, str] = {
         "their diameter in mm (10 mm for 3/8 in bushings)."
     ),
     "body_jack_diameter": "The output jack's bore, its diameter in mm.",
+    "body_jack_plate_thickness": "The jack plate's sheet thickness, in mm.",
     "body_neck_bolt_spacing_y": (
         "The neck bolts' spacing across the neck, in mm (bolt-on neck)."
     ),

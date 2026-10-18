@@ -205,6 +205,13 @@ def _face_note(cover: CoverPlate) -> str:
             "(no recess), into the pilots Body_back_small_holes drills; the "
             "strap runs under its bar, between the spacers."
         )
+    if cover.name == "Jack plate":
+        return (
+            "Visible face up: it is screwed onto the body's side over the jack's "
+            "bore (no recess), bent to the side's curve, the jack through its "
+            "middle hole; hold it centred on the bore and drill its four screws' "
+            "pilots by hand through its holes."
+        )
     if cover.name.startswith("Strap guide spacer"):
         return (
             "Either face up: it sits under one of the strap guide plate's "

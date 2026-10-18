@@ -305,6 +305,7 @@ _BASIC_FIELDS: frozenset[str] = frozenset(
         "body_controls",
         "body_switch",
         "body_jack",
+        "body_jack_plate",
         "body_pickguard",
         "body_pickguard_style",
         "body_pickup_frame",

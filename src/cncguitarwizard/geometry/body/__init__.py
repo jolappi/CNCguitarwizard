@@ -37,6 +37,7 @@ from .hardware import (
     ScoopedGrooves,
     TracedCavity,
 )
+from .jack_plate import les_paul_jack_plate
 from .neck_through import (
     BodyPart,
     NeckThrough,
@@ -94,6 +95,7 @@ __all__ = [
     "TuneOMaticSpec",
     "bridge_spec_from_dict",
     "cover_screw_points",
+    "les_paul_jack_plate",
     "mirrored_hardware",
     "turned_hardware",
     "WireHole",

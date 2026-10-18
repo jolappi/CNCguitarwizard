@@ -190,6 +190,7 @@ STYLES: dict[str, InstrumentStyle] = {
             **GIBSON,
             "body_controls": "gibson_4",
             "body_carved_top": True,
+            "body_jack_plate": True,
             "inlay_style": "trapezoid",
         },
     ),

@@ -45,6 +45,7 @@ from ..geometry.body import (
     TracedCavity,
     TracedOutline,
     TuneOMaticSpec,
+    les_paul_jack_plate,
     mirrored_hardware,
     neck_through,
     outlines_overlap,
@@ -1279,6 +1280,14 @@ class Prototype001Parameters:
     body_jack: Literal["side", "cup", "strat", "plate", "top"] = "side"
     body_jack_diameter: float = 12.5
     body_jack_depth: float | None = None
+    # body_jack_plate puts a Les Paul style jack plate over a side jack's
+    # bore (geometry.body.jack_plate): 1-11/32 in square, its four screws
+    # on a 1 in square, the jack through its 3/8 in hole, cut from
+    # body_jack_plate_thickness sheet in its own cover program
+    # (Cover_jack_plate) and bent onto the side as it is screwed on, its
+    # screws' pilots drilled by hand through it.
+    body_jack_plate: bool = False
+    body_jack_plate_thickness: float = 2.0
     # The wire channels (see geometry.body.wiring): every pickup route and
     # a separate switch cavity wired to the controls, nearest first (a row
     # of pickups chains to them), a battery box's lead straight to them,
@@ -4137,6 +4146,17 @@ class Prototype001Parameters:
             controls,
             shape.jack_inset,
         )
+        # A Les Paul style plate over a side jack, cut from sheet.
+        if self.body_jack_plate and self.body_jack == "side":
+            controls = controls.with_covers(
+                ControlFeatures(
+                    covers=(
+                        les_paul_jack_plate(
+                            self.body_jack_plate_thickness, self.body_thickness
+                        ),
+                    )
+                )
+            )
         holes: list[DrilledHole] = [*bridge.holes, *controls.holes]
         # A pickguard's square openings, one per pickup cover.
         pickup_holes: list[tuple[str, tuple[Point2D, ...]]] = []

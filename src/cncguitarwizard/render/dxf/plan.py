@@ -140,8 +140,10 @@ def render_plan_dxf(geometry: Prototype001Geometry) -> str:
             dxf.polyline(shape.outline, layer)
     covers = dxf.layer("COVERS", 30)
     cover_holes = dxf.layer("COVER_HOLES", 30)
+    # A plate on the side (a jack plate) is not seen from above.
     for plate in geometry.covers:
-        _plate(dxf, plate, covers, cover_holes, Point2D(0.0, 0.0))
+        if plate.face != "side":
+            _plate(dxf, plate, covers, cover_holes, Point2D(0.0, 0.0))
     xs = [p.x for p in (*body.outline.points, *geometry.headstock.plan.boundary)]
     dxf.line(
         Point2D(min(xs) - 5.0, 0.0),

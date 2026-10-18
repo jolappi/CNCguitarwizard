@@ -23,8 +23,10 @@ class CoverPlate:
     Args:
         name: Plate name, e.g. ``"Control cavity cover"``.
         face: The body face the plate sits on: ``"back"`` for a rear
-            cavity, ``"top"`` for a top-routed control plate.
-        outline: The plate's outline in the model frame.
+            cavity, ``"top"`` for a top-routed control plate, ``"side"``
+            for one on the body's side (a Les Paul style jack plate).
+        outline: The plate's outline in the model frame; on the side, in
+            the plate's own flat frame (seen from outside the body).
         thickness: Sheet thickness.
         holes: Holes through the plate — screw clearance holes, and pot
             shaft holes for a control plate.
@@ -39,7 +41,7 @@ class CoverPlate:
     """
 
     name: str
-    face: Literal["top", "back"]
+    face: Literal["top", "back", "side"]
     outline: tuple[Point2D, ...]
     thickness: float
     holes: tuple[DrilledHole, ...] = ()
