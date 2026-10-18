@@ -795,6 +795,18 @@ shows the page an element is on before it scrolls to it or selects it
 finished build opens the result, a setting found or gone to its group,
 the tour's next stop its page.
 
+## Tip of the day
+
+One sentence a day from `TIPS` in `site/app.js` — the builder's own
+(EMG actives on 24 V from two V23GA batteries; oil the strings at the nut
+and the bridge), wiring, setup, the workshop and the page's own keys —
+in the Classic UI's footer and at the right of the application like UI's
+status bar (in full on hovering it; not while a build shows its
+progress, nor on a screen narrower than 700 px). It is the same all day
+and another tomorrow: each day steps 7919, a prime, along the list
+(`tipOfTheDay`), so the order looks random and every tip comes round
+once before any comes back. Add one by adding a line to `TIPS`.
+
 ## Bonus: a dust shoe to print
 
 Under the whole page (the Classic UI's *Bonus* link; the application

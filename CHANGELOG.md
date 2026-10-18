@@ -27,6 +27,12 @@
 
 ### Added
 
+- A tip of the day on the web app: one sentence a day — the builder's
+  own (EMG actives on 24 V from two V23GA batteries; oil the strings at
+  the nut and the bridge), wiring, setup, the workshop, the page's keys
+  — in the Classic UI's footer and the application like UI's status
+  bar, the same all day, every tip once before any comes back.
+
 - A Les Paul style plastic jack plate (`body_jack_plate`, on in the Les
   Paul style) over a side jack's bore: Gibson's 34.13 mm (1-11/32 in)
   square with rounded corners, four screws on a 1 in square and the

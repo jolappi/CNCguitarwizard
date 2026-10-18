@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache">
 <!-- This page's stamp, set by tools/build_site.py (see the loader below). -->
-<meta name="cgw-page" content="062013677c2a">
+<meta name="cgw-page" content="4f825e0aa15a">
 <title>CNCguitarwizard</title>
 <script>
   // Dark mode, the default; light when chosen in this browser (or
@@ -105,6 +105,7 @@
     flex-wrap: wrap;
   }
   footer .thanks { flex-basis: 100%; font-size: 11px; }
+  footer .tip { flex-basis: 100%; font-style: italic; }
   #status { margin-left: auto; color: var(--muted); }
   #status.ok { color: var(--ok); }
   #status.bad { color: var(--bad); }
@@ -860,6 +861,7 @@
   <span>CNCguitarwizard — created by yours truly, <a href="https://jounilappi.hopto.org/lsguitars/" target="_blank" rel="noopener" title="LS Guitars">Jouni Lappi</a></span>
   <span>Source, documentation and issues on
     <a href="https://github.com/jolappi/CNCguitarwizard" target="_blank" rel="noopener">GitHub</a></span>
+  <span id="tip-of-the-day" class="tip" hidden></span>
   <small class="thanks">Special thanks to Kai Rankio for fresh ideas and for quality control, and to Claude and GPT for providing the code.</small>
 </footer>
 <!-- Yes/no questions are asked here, not with window.confirm: some

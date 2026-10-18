@@ -200,6 +200,32 @@ def test_every_design_page_has_a_reset_of_its_own() -> None:
     assert 'byId("reset").textContent = "Reset everything";' in layout
 
 
+def test_a_tip_a_day_in_the_footer_or_the_status_bar() -> None:
+    page = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
+    script = (ROOT / "site" / "app.js").read_text(encoding="utf-8")
+    layout = (ROOT / "site" / "desktop.js").read_text(encoding="utf-8")
+
+    tips = script[
+        script.index("const TIPS = [") : script.index("];", script.index("const TIPS"))
+    ]
+    # One sentence each, the builder's own among them.
+    lines = re.findall(r'^  "(.*)",$', tips, re.MULTILINE)
+    assert len(lines) >= 20 and all(line.endswith((".", "?")) for line in lines)
+    assert "always use 24 V: two V23GA batteries in series." in tips
+    assert "Oil your strings, at least where they cross the nut and the bridge." in tips
+    # The same all day: picked by the date, not at random.
+    assert "TIPS[(day * 7919) % TIPS.length]" in script
+    # In the footer, before the thanks; the app layout's status bar.
+    assert (
+        '<span id="tip-of-the-day" class="tip" hidden></span>\n  <small class="thanks">'
+        in page
+    )
+    assert (
+        'statusBar.append(where, status, byId("tip-of-the-day"), progressBox);'
+        in layout
+    )
+
+
 def stl_triangles(data: bytes) -> int:
     """Return how many triangles an STL file holds, checking it is whole."""
     if data.startswith(b"solid") and b"facet" in data[:400]:

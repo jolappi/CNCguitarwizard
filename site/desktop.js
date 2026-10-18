@@ -140,6 +140,10 @@
     .statusbar #progress .bar { flex: 0 0 160px; }
     .statusbar #progress .label { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .statusbar #progress.hidden { display: none; }
+    .statusbar .tip { flex: 0 1 auto; max-width: 55%; min-width: 0; white-space: nowrap; overflow: hidden;
+      text-overflow: ellipsis; font-style: italic; }
+    .statusbar:has(#progress:not(.hidden)) .tip { display: none; }
+    @media (max-width: 700px) { .statusbar .tip { display: none; } }
     @media (max-width: 900px) {
       .menubar .brand { display: none; }
       .menubar .menu-title { padding: 0 8px; }
@@ -484,7 +488,9 @@
   statusBar.className = "statusbar";
   const where = document.createElement("span");
   where.className = "where";
-  statusBar.append(where, status, progressBox);
+  // The tip of the day (app.js's, the footer's in the Classic UI) at its
+  // right, in full on hovering it.
+  statusBar.append(where, status, byId("tip-of-the-day"), progressBox);
 
   // ---- a build, in sight ----------------------------------------------------
   // Build opens the result page at once, a panel at its head saying what

@@ -4503,6 +4503,46 @@ for (const link of jumpLinks) {
 }
 syncJump();
 
+// A tip a day: one sentence, the same all day and another tomorrow, in
+// the footer (the app layout's status bar). Each day steps 7919 (a prime)
+// along the list, so the order looks random and every tip comes round
+// once before any comes back.
+const TIPS = [
+  "With EMG actives (81–89, JH, not JR), always use 24 V: two V23GA batteries in series.",
+  "Oil your strings, at least where they cross the nut and the bridge.",
+  "Active pickups drain their battery while a cable is plugged in: unplug when you stop.",
+  "EMG actives want 25 kΩ pots; passive humbuckers 500 kΩ, single coils 250 kΩ.",
+  "Copper tape in the control cavity, grounded to the pots, cuts the hum.",
+  "Scuff a pot's back before soldering to it, and keep the hot iron there only briefly.",
+  "Soft pencil graphite in the nut slots keeps the strings from binding.",
+  "Intonation: if the 12th fret's note is sharp of its harmonic, move the saddle back.",
+  "Turn the truss rod an eighth to a quarter turn at a time, then let the neck settle.",
+  "Restringing a floating tremolo? A block of wood under it keeps it from tipping.",
+  "Oil rosewood and ebony fretboards now and then, but not a finished maple one.",
+  "Wipe your strings after playing and they last far longer.",
+  "Let wood settle in your shop for a few weeks before you cut it.",
+  "Measure your cutter with calipers and enter its real diameter.",
+  "Air-cut every new program above the stock first.",
+  "Touch off Z again after every tool change; X and Y stay on index pin 1.",
+  "Watch the pin 1 → pin 2 → pin 1 check before the spindle starts: your last chance to catch a wrong zero.",
+  "Fret slot cutters snap easily: high speed, small step-downs.",
+  "Burn marks on maple mean a dull cutter or too slow a feed.",
+  "Run the vacuum while cutting: the Bonus has a dust shoe to print for the router.",
+  "Press / anywhere to find a setting.",
+  "Ctrl/Cmd+Enter builds; Ctrl/Cmd+S saves your design.",
+  "An NC file's name says its cutter: when the name changes, change the cutter.",
+  "Easy mode: choose a style and build, the long list of settings hidden.",
+  "combine_programs runs a part's programs with the same cutter as one.",
+];
+function tipOfTheDay(date = new Date()) {
+  const day = Math.floor(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86400000);
+  return TIPS[(day * 7919) % TIPS.length];
+}
+const tipLine = document.getElementById("tip-of-the-day");
+tipLine.textContent = `Tip of the day: ${tipOfTheDay()}`;
+tipLine.title = tipLine.textContent;
+tipLine.hidden = false;
+
 // The list of shortcuts: from the header, or ? anywhere but a field.
 const keysDialog = document.getElementById("keys-dialog");
 document.getElementById("show-keys").addEventListener("click", () => keysDialog.showModal());
