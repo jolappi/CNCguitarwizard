@@ -20,6 +20,19 @@
 
 ### Added
 
+- *Design › Neck* and *Design › Fretboard* in the application like UI:
+  a drawing of each with its settings beside it — the neck from above,
+  from the side and in section at the first and twelfth frets; the
+  fretboard from above (its slots as cut, its scallops shaded), from the
+  side (the scallops hollowed in it) and in section at the twelfth fret
+  — drawn afresh as a setting changes (`webapp.part_views`,
+  `render.svg.render_neck_svg`, `render_fretboard_svg`).
+
+- A Reset for every page under *Design* in the application like UI
+  (*Reset Body (4)*): its own settings back to their defaults, after
+  asking, Undo taking them back; the instrument's page keeps *Reset
+  everything*.
+
 - A search in the application like UI's menu bar (`/` from anywhere):
   each setting found comes with its own control, set right there, and a
   link to each page it is on (its editor's Settings, *Design › Body*,

@@ -214,6 +214,15 @@
     .find-pop .found .places button:hover { text-decoration: underline; }
     .find-pop .note { margin: 6px 8px; }
     @media (max-width: 900px) { .menubar .find { flex-basis: 150px; } }
+    .desk-page-actions { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; }
+    .desk-page-actions .desk-reset { padding: 4px 12px; font-size: 13px; }
+    .desk-part h2 { margin: 0 0 8px; }
+    .desk-part-body { display: grid; gap: 14px; align-items: start; }
+    @media (min-width: 1100px) { .desk-part-body { grid-template-columns: minmax(0, 1fr) 380px; } }
+    .desk-part .editor-settings { margin: 0; }
+    .desk-part-view { border: 1px solid var(--line); border-radius: 6px; background: var(--paper); padding: 6px; }
+    .desk-part-view svg { display: block; width: 100%; height: auto; }
+    .desk-part-status { min-height: 1.2em; }
     body.desktop-ui #intro { max-width: 760px; }
     body.desktop-ui .aside-top { max-width: 560px; }
   `;
@@ -239,10 +248,57 @@
     </div>`;
   byId("output").before(buildPanel);
 
+  // The neck's and the fretboard's own pages: a drawing of the part (see
+  // "the neck and the fretboard drawn" below) and its settings, copies of
+  // the form's as an editor's Settings hold them. The fretboard's binding
+  // and blind slots come over from the inlay editor's.
+  const PART_FIELDS = {
+    neck: [
+      "nut_width", "final_fret_width", "first_fret_thickness", "twelfth_fret_thickness",
+      "heel_thickness", "heel_width", "heel_mounting_length", "neck_profile_exponent",
+      "headstock_thickness", "neck_carbon_rods", "neck_carbon_rod_size",
+    ],
+    fretboard: [
+      "fret_count", "bass_scale_length", "perpendicular_fret", "fret_slant_angle",
+      "fretboard_radius", "fretboard_thickness", "fretboard_end_extension",
+      "fretboard_nut_corner_radius", "fret_slot_width", "fret_slot_depth", "fret_slot_end_inset",
+      "fretboard_binding_width", "fretboard_scalloped", "fretboard_scallop_from_fret",
+      "fretboard_scallop_depth", "fretboard_scallop_land",
+    ],
+  };
+  const moved = new Set(PART_FIELDS.fretboard);
+  EDITOR_FIELDS["inlay-editor-options"] = EDITOR_FIELDS["inlay-editor-options"]
+    .filter((name) => !moved.has(name));
+  // A field has one copy at most (app.js keeps one per field).
+  const taken = new Set(Object.values(EDITOR_FIELDS).flat());
+  const partPages = {};
+  for (const [id, title] of [["neck", "Neck"], ["fretboard", "Fretboard"]]) {
+    const page = document.createElement("div");
+    page.id = `desk-${id}`;
+    page.className = "desk-part";
+    // The drawing first, its settings beside it on a wide screen, under it
+    // on a narrow one.
+    page.innerHTML = `
+      <h2>${title}</h2>
+      <p class="note desk-part-status"></p>
+      <div class="desk-part-body">
+        <div class="desk-part-view"></div>
+        <details class="editor-settings" open>
+          <summary>Settings</summary>
+          <div id="${id}-page-options" class="editor-options"></div>
+        </details>
+      </div>`;
+    byId("body-editor").before(page);
+    EDITOR_FIELDS[`${id}-page-options`] = PART_FIELDS[id].filter((name) => !taken.has(name));
+    partPages[id] = page;
+  }
+
   const PAGES = [
     { id: "design", title: "Instrument", parts: ["#intro", ".aside-top", "body > footer"] },
     { id: "body", title: "Body", parts: ["#body-editor"] },
+    { id: "neck", title: "Neck", parts: ["#desk-neck"] },
     { id: "headstock", title: "Headstock", parts: ["#headstock-editor"] },
+    { id: "fretboard", title: "Fretboard", parts: ["#desk-fretboard"] },
     { id: "inlays", title: "Inlays", parts: ["#inlay-editor"] },
     { id: "settings", title: "Settings", parts: [".aside-form"] },
     { id: "result", title: "Result", parts: ["#desk-build", "#output"] },
@@ -274,6 +330,7 @@
     }
     where.textContent = pageOf.get(id).title;
     store(PAGE, id);
+    if (id in partPages) drawPartsSoon();
     window.scrollTo({ top: 0 });
     // A drawing laid out while hidden fits itself again once shown.
     window.dispatchEvent(new Event("resize"));
@@ -639,6 +696,161 @@
   document.addEventListener("cgw-build-stages", onStages);
   syncBuild();
 
+  // ---- each design page's own Reset ---------------------------------------------
+  // Every page under Design puts its own settings back to their defaults:
+  // those of its groups in the form and those it shows (its Settings'
+  // copies) — the body's its drawing too (body_shape) — asking first, as
+  // a group's Reset does; Undo takes them back as one step. The
+  // instrument's page keeps the Reset of everything as well.
+  const NOT_FRETBOARD = new Set(["string_count", "scale_length"]);
+
+  function groupNames(title) {
+    const group = groups().find((each) => each.dataset.title === title);
+    if (!group) return [];
+    return [
+      ...group.querySelectorAll(':is(input, select)[data-set="prototype"], .variant[data-set="prototype"]'),
+    ].map((control) => control.dataset.name);
+  }
+
+  function pageNames(id) {
+    const shown = (holder) => EDITOR_FIELDS[holder] ?? [];
+    const board = groupNames("Scale and fretboard");
+    if (id === "design") return [...groupNames("Instrument"), ...groupNames("Other"), ...NOT_FRETBOARD];
+    if (id === "body") return [...groupNames("Body"), ...shown("body-editor-options")];
+    if (id === "neck") {
+      return [...groupNames("Neck"), ...groupNames("Heel"), ...groupNames("Fillets and sampling"),
+        ...shown("neck-page-options")];
+    }
+    if (id === "headstock") return [...groupNames("Headstock and tuners"), ...shown("headstock-editor-options")];
+    if (id === "fretboard") {
+      return [...board.filter((name) => !name.startsWith("inlay_") && !NOT_FRETBOARD.has(name)),
+        ...shown("fretboard-page-options")];
+    }
+    if (id === "inlays") return [...board.filter((name) => name.startsWith("inlay_")), ...shown("inlay-editor-options")];
+    return [];
+  }
+
+  // A page's changed settings: each plain field's control, a variant's
+  // kind and its own fields.
+  function changedOnPage(id) {
+    const found = new Set();
+    for (const name of pageNames(id)) {
+      const variant = form.querySelector(`.variant[data-set="prototype"][data-name="${name}"]`);
+      const controls = variant
+        ? variant.querySelectorAll("input, select")
+        : form.querySelectorAll(`:is(input, select)[data-set="prototype"][data-name="${name}"]`);
+      for (const control of controls) {
+        if (control.classList.contains("changed") || control.classList.contains("invalid")) found.add(control);
+      }
+    }
+    return [...found];
+  }
+
+  async function resetPage(id) {
+    const changed = changedOnPage(id);
+    if (!changed.length) return;
+    const one = changed.length === 1;
+    const which = one ? "the changed setting" : `the ${changed.length} changed settings`;
+    const title = pageOf.get(id).title;
+    const back = one ? "back to its default? (Undo takes it back.)" : "back to their defaults? (Undo takes them back.)";
+    if (!(await askConfirm(`Put ${which} of ${title} ${back}`))) return;
+    // A variant's kind first, which puts its own fields back with it.
+    for (const control of changed.filter((each) => each.matches("select.kind"))) {
+      setControlValue(control, defaultValue(control));
+    }
+    for (const control of changedOnPage(id)) setControlValue(control, defaultValue(control));
+    redrawEditors();
+    syncResets();
+  }
+
+  const resetButtons = new Map();
+  for (const [id, anchor] of [
+    ["design", byId("reset")],
+    ["body", byId("body-editor").querySelector(":scope > h2")],
+    ["neck", byId("desk-neck").querySelector(":scope > h2")],
+    ["headstock", byId("headstock-editor").querySelector(":scope > h2")],
+    ["fretboard", byId("desk-fretboard").querySelector(":scope > h2")],
+    ["inlays", byId("inlay-editor").querySelector(":scope > h2")],
+  ]) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "secondary desk-reset";
+    button.addEventListener("click", () => resetPage(id));
+    if (id === "design") {
+      anchor.after(button);
+    } else {
+      const row = document.createElement("div");
+      row.className = "desk-page-actions";
+      row.appendChild(button);
+      anchor.after(row);
+    }
+    resetButtons.set(id, button);
+  }
+  // The instrument's page's Reset of everything says so.
+  byId("reset").textContent = "Reset everything";
+
+  function syncResets() {
+    for (const [id, button] of resetButtons) {
+      const count = changedOnPage(id).length;
+      const title = pageOf.get(id).title;
+      button.textContent = count ? `Reset ${title} (${count})` : `Reset ${title}`;
+      button.disabled = count === 0;
+      button.title = count
+        ? `Put the ${count} changed setting${count === 1 ? "" : "s"} of ${title} back to their defaults`
+        : `Every setting of ${title} is at its default`;
+    }
+  }
+  let resetTimer = null;
+  const syncResetsSoon = () => {
+    clearTimeout(resetTimer);
+    resetTimer = setTimeout(syncResets, 200);
+  };
+  form.addEventListener("change", syncResetsSoon);
+  form.addEventListener("input", syncResetsSoon);
+  new MutationObserver(syncResetsSoon).observe(form, { childList: true });
+
+  // ---- the neck and the fretboard drawn -----------------------------------------
+  // Their pages show the part from above, from the side and in section
+  // (webapp.part_views), drawn afresh a moment after a setting changes
+  // while one of them is shown — not during a build, which has Python.
+  let partTimer = null;
+
+  function drawPartsSoon(delay = 350) {
+    clearTimeout(partTimer);
+    partTimer = setTimeout(drawParts, delay);
+  }
+
+  async function drawParts() {
+    if (!(current in partPages)) return;
+    const status = partPages[current].querySelector(".desk-part-status");
+    if (!pyodide || buildButton.classList.contains("busy")) {
+      status.textContent = pyodide ? "Drawn again once the build is done…" : "Loading Python…";
+      drawPartsSoon(1000);
+      return;
+    }
+    let payload;
+    try {
+      payload = collectValues();
+    } catch (error) {
+      status.textContent = error.message;
+      return;
+    }
+    pyodide.globals.set("part_views_json", JSON.stringify(payload));
+    const views = await runPython(
+      "import json\nfrom cncguitarwizard.webapp import part_views\n" +
+      "json.dumps(part_views(json.loads(part_views_json)))"
+    );
+    for (const [id, page] of Object.entries(partPages)) {
+      const note = page.querySelector(".desk-part-status");
+      note.textContent = views.error ? `The design does not build: ${views.error}` : "";
+      note.classList.toggle("bad", Boolean(views.error));
+      if (!views.error) page.querySelector(".desk-part-view").innerHTML = views[id];
+    }
+  }
+
+  form.addEventListener("change", () => drawPartsSoon());
+  form.addEventListener("input", () => drawPartsSoon());
+
   // ---- find a setting, from anywhere ------------------------------------------
   // The bar's own search: each setting whose name or meaning holds every
   // word typed (as the form's own search finds them), with its control
@@ -651,6 +863,8 @@
     "body-editor-options": ["body", "Design › Body"],
     "headstock-editor-options": ["headstock", "Design › Headstock"],
     "inlay-editor-options": ["inlays", "Design › Inlays"],
+    "neck-page-options": ["neck", "Design › Neck"],
+    "fretboard-page-options": ["fretboard", "Design › Fretboard"],
     "easy-options": ["design", "Instrument"],
   };
   const findBox = document.createElement("input");

@@ -103,7 +103,7 @@ from .presets.prototype001 import (
 )
 from .presets.styles import STYLES
 from .presets.truss_rod_covers import editable_cover_points, truss_rod_cover_shape
-from .render.svg import render_plan_view_svg
+from .render.svg import render_fretboard_svg, render_neck_svg, render_plan_view_svg
 from .workflows import Prototype001Build
 
 _VARIANT_LABELS: dict[str, str] = {**BRIDGE_LABELS, **BODY_SHAPE_LABELS}
@@ -2501,6 +2501,31 @@ def _group_title(group: str) -> str:
         "battery": "battery box",
         "strap_guide": "strap guide",
     }.get(group, group)
+
+
+def part_views(payload: dict[str, Any]) -> dict[str, Any]:
+    """Return the neck's and the fretboard's drawings for their own pages.
+
+    The application like UI's Design › Neck and Design › Fretboard show
+    them (see ``render.svg.neck_views``): the part from above, from the
+    side and in section, a scalloped board's scallops with it.
+
+    Args:
+        payload: ``{"prototype": {...}}`` as for ``start_build``.
+
+    Returns:
+        ``{"neck", "fretboard"}``, each an SVG document, or ``{"error":
+        message}`` when the design does not build.
+    """
+    try:
+        parameters = Prototype001Parameters(**_coerce(payload.get("prototype", {})))
+        geometry = parameters.build()
+    except (CNCGuitarWizardError, TypeError, ValueError) as error:
+        return {"error": f"{type(error).__name__}: {error}"}
+    return {
+        "neck": render_neck_svg(geometry),
+        "fretboard": render_fretboard_svg(geometry),
+    }
 
 
 def feature_programs(payload: dict[str, Any], group: str) -> dict[str, Any]:

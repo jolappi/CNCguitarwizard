@@ -178,6 +178,28 @@ def test_the_app_ui_finds_a_setting_from_anywhere_with_its_pages() -> None:
     assert "`Settings › ${group.dataset.title}`" in layout
 
 
+def test_the_app_ui_has_pages_for_the_neck_and_the_fretboard() -> None:
+    layout = (ROOT / "site" / "desktop.js").read_text(encoding="utf-8")
+
+    assert '{ id: "neck", title: "Neck", parts: ["#desk-neck"] }' in layout
+    assert '{ id: "fretboard", title: "Fretboard", parts: ["#desk-fretboard"] }' in (
+        layout
+    )
+    # Their drawings from Python, their settings copies of the form's.
+    assert "from cncguitarwizard.webapp import part_views" in layout
+    assert "EDITOR_FIELDS[`${id}-page-options`]" in layout
+
+
+def test_every_design_page_has_a_reset_of_its_own() -> None:
+    layout = (ROOT / "site" / "desktop.js").read_text(encoding="utf-8")
+
+    for page in ("design", "body", "neck", "headstock", "fretboard", "inlays"):
+        assert f'["{page}", ' in layout[layout.index("const resetButtons") :]
+    # As a group's Reset does: asking first, a variant's kind first.
+    assert "await askConfirm(`Put ${which} of ${title} ${back}`)" in layout
+    assert 'byId("reset").textContent = "Reset everything";' in layout
+
+
 def test_dark_mode_is_the_default_set_before_the_page_paints_never_printed() -> None:
     page = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
     layout = (ROOT / "site" / "desktop.js").read_text(encoding="utf-8")

@@ -707,8 +707,8 @@ UI* comes back. The choice is kept in the browser, so the next visit
 opens the same (`?layout=desktop` or `?layout=classic` in the address
 chooses too). A menu bar runs along the top — *File* (new, open, recent
 designs, save, print the result), *Edit* (undo, redo, find a setting),
-*Design* (the instrument and style, the body, the headstock, the
-inlays), *Settings* (each group of the form), *Build* (build, then the
+*Design* (the instrument and style, the body, the neck, the headstock,
+the fretboard, the inlays), *Settings* (each group of the form), *Build* (build, then the
 result's summary, downloads, plan view and toolpaths), *View* (easy
 mode, dark mode, the Classic UI) and *Help* (the tour, the shortcuts, what the
 page does, the source) — with *Build* at its right, and a status bar
@@ -745,6 +745,33 @@ screen only, so a print stays light; a script at the head of the page
 sets the theme before it paints, so it never flashes light first. The
 drawings (the editors, the plan view, the toolpath plots) stay on light
 paper (`--paper`), their colours being a drawing's.
+
+*Design › Neck* and *Design › Fretboard* are pages of their own there:
+a drawing of the part (`webapp.part_views`, `render.svg.neck_views`)
+with its settings beside it (under it on a narrow screen), copies of the
+form's as an editor's Settings hold them. The neck from above — the
+headstock and its tuner holes, the board, frets, markers and nut — from
+the side (its height stretched three times: the neck's depth under the
+board, the heel) and in section at the first and twelfth frets, its
+width and depth said; the fretboard from above — its slots as cut
+(blind ones short of the edges), markers, fret numbers and, scalloped,
+its scallops shaded between their lands — from the side along its middle
+(the scallops hollowed in it, the slots down into it) and in section at
+the twelfth fret, its radius said. Both are drawn afresh a moment after
+a setting changes while either page shows (not during a build); a design
+that does not build says why there instead. The fretboard's binding and
+blind slots move there from the inlay editor's Settings.
+
+Every page under *Design* has a Reset of its own (*Reset Body (4)*, the
+number its settings changed from their defaults, off when there are
+none): it puts back, after asking, the settings of its groups in the
+form and those it shows (its Settings' copies; the body's drawing,
+`body_shape`, with the body's) — the instrument's page the instrument's
+own (handedness, strings, scale and *Other*), the neck's the *Neck*,
+*Heel* and *Fillets* groups, the fretboard's and the inlays' their halves
+of *Scale and fretboard* — a variant's kind first, as a group's Reset
+does; Undo takes them back as one step. The instrument's page keeps the
+Reset of everything, there called *Reset everything*.
 
 The menu bar's own search (*Find a setting… (/)*, `/` from anywhere)
 finds settings from any page, as the form's search does (every word in
