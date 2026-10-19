@@ -168,8 +168,11 @@ inlay editor and the drawings (the nut on the left) it is upside down.
 Every style but the barbed wires, dots and symbols spans the board between its frets
 (`BOARD_STYLES`): one per listed fret, `inlay_block_length_fraction`
 (60 %) of the fret spacing long, `inlay_block_edge_margin` (5 mm) inside
-each board edge with the board's taper, its corners rounded 1 mm. The
-bass side comes from `headstock_bass_side` (`bass_sign`). With slanted or
+each board edge with the board's taper, its corners rounded 1 mm. Their
+bass edge is -Y as drawn right-handed and +Y left-handed, mirrored with
+the rest, whatever `headstock_bass_side` says
+(`Prototype001Parameters.marker_bass_sign`): turning the headstock round
+leaves the markers as drawn. With slanted or
 fanned frets these lean point by point with the frets; barbed wire turns
 to their angle and dots move onto the line between them. Every style but
 dots gets the sheet program for its pieces (`Fretboard_inlay_pieces.nc`).

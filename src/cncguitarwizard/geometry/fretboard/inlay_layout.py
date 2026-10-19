@@ -218,10 +218,12 @@ class InlayLayout:
         block_edge_margin: Wood left between a ``block`` and each board
             edge.
         block_corner_radius: Corner rounding of the board-spanning shapes.
-        bass_sign: Which side the bass strings are on (-1: -Y, +1: +Y),
+        bass_sign: Which side is the markers' bass edge (-1: -Y, +1: +Y),
             for the shapes that differ side to side; a rune stands with its
             top toward the bass edge (read from the front, the guitar
-            played).
+            played). The preset keeps it as drawn, whichever side the
+            headstock puts the bass strings on
+            (``Prototype001Parameters.marker_bass_sign``).
         custom_points: The ``custom`` marker's corners, straight lines
             between them (rounded by ``block_corner_radius``; curving
             through one marked ``"round"``, ``(along, across, "round")``),

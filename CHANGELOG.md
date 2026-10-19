@@ -1317,6 +1317,12 @@
 
 ### Fixed
 
+- Turning the headstock's bass side round (`headstock_bass_side`) no
+  longer turns the fret markers: those that differ side to side (the
+  trapezoids, sharkteeth, split blocks, a drawn marker, the runes) stay
+  as drawn, the inlay editor with them; a left-handed build still
+  mirrors them with the rest (`Prototype001Parameters.marker_bass_sign`).
+
 - A Stratocaster headstock's round end is round in the FreeCAD model: it
   was lofted through two sections 2.5 mm apart, 6 and 32 mm wide, leaving
   a flat face and a lip. The headstock's loft sections now close in where

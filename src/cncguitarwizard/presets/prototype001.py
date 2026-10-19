@@ -1743,6 +1743,16 @@ class Prototype001Parameters:
         return -drawn if self.left_handed else drawn
 
     @property
+    def marker_bass_sign(self) -> float:
+        """Return the side the fret markers' bass edge is on: -1.0 for -Y.
+
+        -Y as drawn right-handed, +Y left-handed (mirrored with the rest),
+        whatever ``headstock_bass_side`` says: turning the headstock round
+        leaves the markers as drawn.
+        """
+        return 1.0 if self.left_handed else -1.0
+
+    @property
     def built_body_shape(self) -> BodyShapeSpec:
         """Return the body shape as built: ``body_shape``, mirrored when left-handed."""
         return mirrored_shape(self.body_shape) if self.left_handed else self.body_shape
@@ -5772,7 +5782,7 @@ class Prototype001Parameters:
             dot_diameter=self.inlay_dot_diameter,
             block_length_fraction=self.inlay_block_length_fraction,
             block_edge_margin=self.inlay_block_edge_margin,
-            bass_sign=self.bass_sign,
+            bass_sign=self.marker_bass_sign,
             # (Checked by the layout: a pair of numbers each.)
             custom_points=tuple(
                 cast(DrawnPoint, tuple(point)) for point in self.inlay_points

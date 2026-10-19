@@ -158,3 +158,24 @@ def test_the_web_form_and_editors() -> None:
     # mirrored view shows it reading the right way round.
     assert headstock["lettering"]["centre"] == drawn["lettering"]["centre"]
     assert headstock["lettering"]["lines"] != drawn["lettering"]["lines"]
+
+
+def test_turning_the_headstock_round_leaves_the_fret_markers_as_drawn() -> None:
+    drawn = Prototype001Parameters(inlay_style="trapezoid")
+    turned = replace(drawn, headstock_bass_side="+y")
+    left = replace(drawn, handedness="left")
+
+    def corners(parameters: Prototype001Parameters) -> list[list[tuple[float, float]]]:
+        return [
+            sorted((round(p.x, 6), round(p.y, 6)) for p in marker.outline)
+            for marker in parameters.inlay_design().markers
+        ]
+
+    # The strings' bass side turns with the headstock; the markers, long
+    # on their bass edge, stay as drawn.
+    assert turned.bass_sign == -drawn.bass_sign
+    assert corners(turned) == corners(drawn)
+    # A left-handed build mirrors them with the rest.
+    assert corners(left) == [
+        sorted((x, round(-y, 6) + 0.0) for x, y in marker) for marker in corners(drawn)
+    ]
