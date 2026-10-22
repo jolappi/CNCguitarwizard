@@ -570,8 +570,9 @@
     };
     buildPanel.className = "desk-build desk-page running";
     buildPanel.classList.toggle("page-on", true);
-    const name = byId("guitar-name").value.trim() || "Prototype001";
-    panelPart(".title").textContent = `Building ${name}…`;
+    // The guitar's own name, or "your guitar" while it has none.
+    const name = byId("guitar-name").value.trim();
+    panelPart(".title").textContent = `Building ${name || "your guitar"}…`;
     panelPart(".now").textContent = "Reading the design…";
     panelPart(".about").textContent = "The FreeCAD script, the G-code for every part, their plots and "
       + "the drawings are made here in your browser, step by step.";
@@ -674,7 +675,7 @@
   function endWatch() {
     clearInterval(ticker);
     const built = status.className === "ok";
-    const name = byId("guitar-name").value.trim() || "Prototype001";
+    const name = byId("guitar-name").value.trim();
     buildPanel.classList.remove("running");
     buildPanel.classList.add(built ? "done" : "failed");
     panelPart(".icon").textContent = built ? "✓" : "✕";
@@ -682,7 +683,7 @@
     panelPart(".left").textContent = "";
     if (built) {
       learnTimes();
-      panelPart(".title").textContent = `${name} is built`;
+      panelPart(".title").textContent = name ? `${name} is built` : "Your guitar is built";
       panelPart(".meter .fill").style.width = "100%";
       panelPart(".now").textContent = `${status.textContent}: the summary is below, every file under Downloads.`;
       panelPart(".about").textContent = "Build again after a change: the result then says it is no longer the design's.";
