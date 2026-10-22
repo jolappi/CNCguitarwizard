@@ -34,6 +34,8 @@ from ...geometry.neck import (
     TrussRodChannel,
     TunerLayout,
     VintageTrussRod,
+    Volute,
+    side_share,
 )
 from ...geometry.neck.outline import heel_end_curve
 from ...geometry.primitives import Point2D, Point3D, point_in_polygon
@@ -210,6 +212,7 @@ class FreeCADScriptExporter:
             step_path=step_path,
             tray_tool_radius=tray_tool_radius,
             fretboard_scallops=geometry.fretboard_scallops,
+            volute=geometry.volute,
         )
 
     def render_fretboard(
@@ -281,6 +284,7 @@ class FreeCADScriptExporter:
         step_path: Path | None = None,
         tray_tool_radius: float = 0.0,
         fretboard_scallops: FretboardScallops | None = None,
+        volute: Volute | None = None,
     ) -> str:
         """Return a FreeCAD script containing neck and fretboard solids.
 
@@ -332,6 +336,9 @@ class FreeCADScriptExporter:
             fretboard_scallops: The playing surface hollowed between the
                 frets, lofted through its own rows (and the binding with
                 it), or ``None``.
+            volute: The volute carved into the headstock's back behind the
+                nut, lofted with the neck and headstock (``_with_volute``),
+                or ``None``.
 
         Returns:
             Standalone Python source for execution inside FreeCAD.
@@ -461,49 +468,17 @@ class FreeCADScriptExporter:
                 "greater than half the nut width."
             )
 
-        neck_rows = tuple(self._close_neck_row(row) for row in neck_surface.mesh.rows)
-        headstock_join_extension = neck_surface.nut_root_side_extension
         headstock_joins_neck_loft = (
             join_headstock_to_neck
             and headstock is not None
-            and headstock_join_extension > 0.0
+            and neck_surface.nut_root_side_extension > 0.0
         )
-        if headstock_joins_neck_loft:
-            assert headstock is not None  # narrowed by headstock_joins_neck_loft
-            # Splice the headstock-root transition directly into the neck's
-            # own loft, in place of its stations for x <= 0, rather than
-            # building it as a separate shape boolean-fused in afterwards.
-            # A separate transition shape — however well its boundaries are
-            # matched — is still a second, differently-built surface meeting
-            # neck_shape at a real seam; graft the transition rows into the
-            # same ordered station list as the rest of the neck and there is
-            # only one loft, so nothing reads as an inserted third piece
-            # between the neck and the headstock.
-            transition_sections = self._headstock_transition_sections(
-                headstock,
-                neck_surface,
-                joint_fillet_radius,
-            )
-            # The transition's own last row is built 2 mm past
-            # nut_transition_length (see _headstock_transition_sections's
-            # blend_end — the small margin keeps this loft's internal seam
-            # clear of the truss-rod channel, which starts its cut exactly
-            # at nut_transition_length), not at the nut — it now carries
-            # the neck's usual rise from the nut to full thickness too, so
-            # the splice picks the neck's own stations back up only past
-            # that point, not past x = 0.
-            # (At least NECK_SPLICE_GAP past the transition's last row: a
-            # station of the neck's own a hair past it bent the loft
-            # sharply between the two.)
-            first_unblended_index = next(
-                index
-                for index, position in enumerate(neck_surface.station_positions)
-                if position > neck_surface.nut_transition_length + 2.0 + NECK_SPLICE_GAP
-            )
-            neck_rows = transition_sections + tuple(
-                self._close_neck_row(row)
-                for row in neck_surface.mesh.rows[first_unblended_index:]
-            )
+        neck_rows = self.neck_loft_rows(
+            neck_surface,
+            headstock if headstock_joins_neck_loft else None,
+            joint_fillet_radius,
+            volute,
+        )
         heel_transition_x = (
             neck_surface.neck_outline.last_fret_position
             - neck_surface.heel_flat_start_offset
@@ -3301,6 +3276,94 @@ class FreeCADScriptExporter:
                 "FreeCAD scripts must use a .py or .FCMacro suffix."
             )
         path.write_text(source, encoding="utf-8")
+
+    @classmethod
+    def neck_loft_rows(
+        cls,
+        neck_surface: NeckBackSurface,
+        headstock: HeadstockSolid | None,
+        joint_fillet_radius: float,
+        volute: Volute | None = None,
+    ) -> tuple[tuple[Point3D, ...], ...]:
+        """Return the rows the neck is lofted through, nut to heel.
+
+        With a ``headstock`` joined to the neck, its own rows and the blend
+        from them come first, spliced into the neck's own stations, so the
+        two are one loft; a ``volute`` lies under them all.
+
+        Args:
+            neck_surface: The neck's back.
+            headstock: The headstock lofted with the neck, or ``None``.
+            joint_fillet_radius: The headstock's edge rounding.
+            volute: The volute behind the nut, or ``None``.
+
+        Returns:
+            The loft's rows, ordered along the neck.
+        """
+        neck_rows = tuple(cls._close_neck_row(row) for row in neck_surface.mesh.rows)
+        if headstock is not None:
+            # Splice the headstock-root transition directly into the neck's
+            # own loft, in place of its stations for x <= 0, rather than
+            # building it as a separate shape boolean-fused in afterwards.
+            # A separate transition shape — however well its boundaries are
+            # matched — is still a second, differently-built surface meeting
+            # neck_shape at a real seam; graft the transition rows into the
+            # same ordered station list as the rest of the neck and there is
+            # only one loft, so nothing reads as an inserted third piece
+            # between the neck and the headstock.
+            transition_sections = cls._headstock_transition_sections(
+                headstock,
+                neck_surface,
+                joint_fillet_radius,
+            )
+            # The transition's own last row is built 2 mm past
+            # nut_transition_length (see _headstock_transition_sections's
+            # blend_end — the small margin keeps this loft's internal seam
+            # clear of the truss-rod channel, which starts its cut exactly
+            # at nut_transition_length), not at the nut — it now carries
+            # the neck's usual rise from the nut to full thickness too, so
+            # the splice picks the neck's own stations back up only past
+            # that point, not past x = 0.
+            # (At least NECK_SPLICE_GAP past the transition's last row: a
+            # station of the neck's own a hair past it bent the loft
+            # sharply between the two.)
+            first_unblended_index = next(
+                index
+                for index, position in enumerate(neck_surface.station_positions)
+                if position > neck_surface.nut_transition_length + 2.0 + NECK_SPLICE_GAP
+            )
+            neck_rows = transition_sections + tuple(
+                cls._close_neck_row(row)
+                for row in neck_surface.mesh.rows[first_unblended_index:]
+            )
+        if volute is not None:
+            neck_rows = tuple(cls._with_volute(row, volute) for row in neck_rows)
+        return neck_rows
+
+    @staticmethod
+    def _with_volute(row: tuple[Point3D, ...], volute: Volute) -> tuple[Point3D, ...]:
+        """Return one loft row with the volute's wood under its back.
+
+        Only the back's points move down, each its share of the volute's
+        wood (``side_share``: how deep it is below the row's top edges
+        against the deepest), so the volute's sides come down evenly to
+        the edges; the two top edges (the row's first and last points)
+        stay, so the face is never touched.
+        """
+        last = len(row) - 1
+        top = max(row[0].z, row[last].z)
+        middle = top - min(point.z for point in row)
+        return tuple(
+            point
+            if index in (0, last)
+            else Point3D(
+                point.x,
+                point.y,
+                point.z
+                - volute.extra(point.x, point.y) * side_share(top - point.z, middle),
+            )
+            for index, point in enumerate(row)
+        )
 
     @staticmethod
     def _close_neck_row(row: tuple[Point3D, ...]) -> tuple[Point3D, ...]:

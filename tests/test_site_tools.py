@@ -293,3 +293,20 @@ def test_a_build_says_its_steps_likely_times() -> None:
     for label in re.findall(r'\(\s*"([^"]+)",\s*self\._', workflow):
         if label != "Running FreeCAD":
             assert f'"{label}":' in typical, label
+
+
+def test_the_volute_is_drawn_in_the_headstock_editor() -> None:
+    script = (ROOT / "site" / "app.js").read_text(encoding="utf-8")
+
+    assert "if (layout.volute) this.drawVolute(layout.volute);" in script
+    # Its three lines (crest and both ends), each into its own setting.
+    assert 'headstock: "Where the volute ends in the headstock\'s back"' in script
+    assert "[data-name='${this.layout.volute.lines[name].field}']" in script
+    # Its ends stay on the centre line; the other half mirrors the drawn.
+    assert "const ny = onCentre ? 0 : Math.max(0, y0 + y - start[1]);" in script
+    editor = script[script.index('"headstock-editor-options": [') :]
+    assert '"headstock_pointed_volute"' in editor[: editor.index("],")]
+    # Seen from behind and above as it is drawn, a moment after the editor.
+    assert "from cncguitarwizard.webapp import volute_view" in script
+    page = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
+    assert 'id="headstock-editor-volute" class="volute-view-box" hidden' in page

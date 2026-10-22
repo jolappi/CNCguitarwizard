@@ -28,6 +28,7 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
 
+from .backends.freecad.script_exporter import FreeCADScriptExporter
 from .cam import (
     POST_PROCESSOR_LABELS,
     GCodeWriter,
@@ -104,7 +105,12 @@ from .presets.prototype001 import (
 )
 from .presets.styles import STYLES
 from .presets.truss_rod_covers import editable_cover_points, truss_rod_cover_shape
-from .render.svg import render_fretboard_svg, render_neck_svg, render_plan_view_svg
+from .render.svg import (
+    render_fretboard_svg,
+    render_neck_svg,
+    render_plan_view_svg,
+    render_volute_view_svg,
+)
 from .workflows import Prototype001Build
 
 _VARIANT_LABELS: dict[str, str] = {**BRIDGE_LABELS, **BODY_SHAPE_LABELS}
@@ -176,6 +182,10 @@ _CHOICE_LABELS: dict[str, dict[str, str]] = {
         "camo": "Camo (woodland relief, four levels)",
         "pinstripe": "Pinstripe (round the edge, Jackson RR / Alexi Hexed)",
         "drawn": "Drawn (lines from the body editor's Import SVG)",
+    },
+    "headstock_volute_style": {
+        "arrow": "Rounded arrow",
+        "drawn": "Drawn: its crest and both ends (in the headstock editor)",
     },
     "truss_rod_cover_style": {
         "bell": "Gibson bell (3 screws)",
@@ -297,6 +307,7 @@ _BASIC_FIELDS: frozenset[str] = frozenset(
         "headstock_length",
         "headstock_angle",
         "headstock_thickness",
+        "headstock_pointed_volute",
         "tuner_hole_diameter",
         "body_thickness",
         "body_shape",
@@ -1579,7 +1590,8 @@ def headstock_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         between two of them ``hole_clearance``; ``lettering``
         the headstock's lettering (see ``_headstock_lettering``), or ``None``;
         ``engraving`` the lines drawn on its face (see
-        ``_headstock_drawn_engraving``), or ``None``.
+        ``_headstock_drawn_engraving``), or ``None``; ``volute`` the volute
+        on its back to draw (see ``_volute_drawing``), or ``None``.
     """
     try:
         built = Prototype001Parameters(**_coerce(payload.get("prototype", {})))
@@ -1602,6 +1614,7 @@ def headstock_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         lettering = _headstock_lettering(built)
         engraving = _headstock_drawn_engraving(built)
         truss_cover = _truss_cover_drawing(parameters)
+        volute = _volute_drawing(parameters)
     except (CNCGuitarWizardError, TypeError, ValueError) as error:
         return {"error": f"{type(error).__name__}: {error}"}
     root = parameters.headstock_root_length
@@ -1619,6 +1632,7 @@ def headstock_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         "lettering": lettering,
         "engraving": engraving,
         "truss_cover": truss_cover,
+        "volute": volute,
         "nut": nut,
         "mirrored": built.left_handed,
         "nut_half_width": parameters.nut_width / 2.0,
@@ -1637,6 +1651,114 @@ def headstock_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
             for side, x, y in centres
         ],
     }
+
+
+VOLUTE_LINE_FIELDS = {
+    "crest": "headstock_volute_points",
+    "headstock": "headstock_volute_headstock_points",
+    "neck": "headstock_volute_neck_points",
+}
+"""The setting each of a drawn volute's lines is kept in."""
+
+
+def _volute_drawing(parameters: Prototype001Parameters) -> dict[str, Any] | None:
+    """Return the volute for the headstock editor to draw, or ``None``.
+
+    ``{"style", "lines", "outline"}``: its style; for a drawn one its three
+    lines, ``{"crest", "headstock", "neck"}`` each ``{"field", "points",
+    "drawn", "line"}`` (the setting it is kept in; the points it holds,
+    half the line seen from behind, ``[behind the nut, across]`` from the
+    centre line out, a ``"corner"`` mark kept, where drawing starts while
+    none are drawn; whether they are drawn; the whole line in the model
+    frame); for the rounded arrow its outline seen from behind (where it
+    adds a tenth of a millimetre or more), to show, no handles. ``None``
+    without a volute.
+    """
+    volute = parameters.volute(parameters.neck_outline())
+    if volute is None:
+        return None
+    if parameters.headstock_volute_style == "drawn":
+        halves = parameters.volute_lines(volute.half_width)
+        whole = {
+            "crest": volute.crest,
+            "headstock": volute.headstock_end,
+            "neck": volute.neck_end,
+        }
+        return {
+            "style": "drawn",
+            "lines": {
+                name: {
+                    "field": field,
+                    "points": [list(point) for point in halves[name]],
+                    "drawn": bool(getattr(parameters, field)),
+                    "line": [[round(p.x, 2), round(p.y, 2)] for p in whole[name]],
+                }
+                for name, field in VOLUTE_LINE_FIELDS.items()
+            },
+            "outline": None,
+        }
+    # The arrow's edge: down each side, where it adds a tenth of a mm.
+    edge: list[list[float]] = []
+    for step in range(81):
+        x = volute.point - (volute.point + volute.length) * step / 80.0
+        across = [
+            y / 4.0
+            for y in range(round(volute.half_width * 4) + 1)
+            if volute.extra(x, y / 4.0) >= 0.1
+        ]
+        if across:
+            edge.append([round(x, 2), max(across)])
+    outline = edge + [[x, -y] for x, y in reversed(edge)]
+    return {"style": "arrow", "lines": None, "outline": outline}
+
+
+VOLUTE_VIEW_PAST = 12.0
+"""How far past either end of the volute its view runs, in mm."""
+
+
+def volute_view(payload: dict[str, Any]) -> dict[str, Any]:
+    """Return the volute as it is lofted, seen from behind and above.
+
+    For the headstock editor, to see while drawing what the volute looks
+    like: the back round the nut as FreeCAD lofts it (the headstock's
+    rows, their blend into the neck's and the volute's wood under them,
+    ``FreeCADScriptExporter.neck_loft_rows``), from a little past the
+    volute's end in the headstock to a little past its nose on the neck
+    (``render.svg.render_volute_view_svg``).
+
+    Args:
+        payload: ``{"prototype": {...}}`` as for ``start_build``.
+
+    Returns:
+        ``{"svg": ...}``, ``{"svg": None}`` without a volute, or
+        ``{"error": message}``.
+    """
+    try:
+        built = Prototype001Parameters(**_coerce(payload.get("prototype", {})))
+        # As drawn (right-handed), as the editor shows it.
+        geometry = dataclasses.replace(built, handedness="right").build()
+    except (CNCGuitarWizardError, TypeError, ValueError) as error:
+        return {"error": f"{type(error).__name__}: {error}"}
+    volute = geometry.volute
+    if volute is None:
+        return {"svg": None}
+    if volute.drawn:
+        start = min(point.x for point in volute.headstock_end)
+        end = max(point.x for point in volute.neck_end)
+    else:
+        start, end = -volute.length, volute.point
+    rows = FreeCADScriptExporter.neck_loft_rows(
+        geometry.neck_surface,
+        geometry.headstock,
+        geometry.joint_fillet_radius,
+        volute,
+    )
+    near = [
+        row
+        for row in rows
+        if start - VOLUTE_VIEW_PAST <= row[0].x <= end + VOLUTE_VIEW_PAST
+    ]
+    return {"svg": render_volute_view_svg(near)}
 
 
 def _truss_cover_drawing(parameters: Prototype001Parameters) -> dict[str, Any] | None:

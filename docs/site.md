@@ -748,6 +748,22 @@ sets the theme before it paints, so it never flashes light first. The
 drawings (the editors, the plan view, the toolpath plots) stay on light
 paper (`--paper`), their colours being a drawing's.
 
+The headstock editor draws the volute (`headstock_pointed_volute`) on
+the back behind the nut: a drawn one (`headstock_volute_style` "drawn",
+the default) as its three lines, its
+crest solid and where it ends in the headstock and in the neck dashed,
+half of each line's points as handles, the other half mirroring them, its
+first point on the centre line; the rounded arrow (`"arrow"`) dashed, to
+see where it is. Dragging a handle draws that line (its own setting, from
+where drawing starts while none is drawn); a click on a line adds a
+point, a right-click or Alt-click removes one, a double-click makes it a
+sharp bend. Under the drawing the volute is shown as it is lofted, seen from
+behind and above with the headstock at the top, shaded
+(`webapp.volute_view`: the loft's rows round the nut,
+`FreeCADScriptExporter.neck_loft_rows`, drawn by
+`render.svg.render_volute_view_svg`), redrawn a moment after each change
+so dragging stays quick.
+
 *Design › Neck* and *Design › Fretboard* are pages of their own there:
 a drawing of the part (`webapp.part_views`, `render.svg.neck_views`)
 with its settings beside it (under it on a narrow screen), copies of the

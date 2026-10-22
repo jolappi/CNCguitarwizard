@@ -28,6 +28,7 @@ from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING, Literal
 
 from ..geometry.body import body_part
+from ..geometry.neck import side_share
 from ..geometry.primitives import Point2D, point_in_polygon
 from .body import plan_body_machining
 from .engraving import engraving_path, engraving_tool
@@ -653,8 +654,10 @@ def plan_neck_machining(
     back_plane_offset = headstock.thickness / math.cos(angle)
     tip_x = -headstock.plan.reach
     headstock_lowest = headstock.face_z(tip_x) - back_plane_offset
+    # The neck's deepest point, a volute behind the nut included.
     neck_lowest = min(
-        point.z for row in geometry.neck_surface.mesh.rows for point in row
+        min(point.z for row in geometry.neck_surface.mesh.rows for point in row),
+        _volute_lowest(geometry),
     )
     through = geometry.neck_through
     plank = _round_up(-neck_lowest)
@@ -1520,12 +1523,29 @@ class _Frame:
         return (min(low, high), max(low, high))
 
 
+def _volute_lowest(geometry: Prototype001Geometry) -> float:
+    """Return a volute's deepest point below the glue face (a model ``z``),
+    0 without one: down its middle, where it is fullest across."""
+    volute = geometry.volute
+    if volute is None:
+        return 0.0
+    # Only its model frame is read here: no blank, skin or fixture.
+    back = _BackSurface(geometry, 0.0, 0.0, _Frame(0.0, 0.0, mirror_y=False))
+    steps = 60
+    span = volute.point + volute.length
+    return min(
+        back.model_z(volute.point - span * index / steps, 0.0)
+        for index in range(steps + 1)
+    )
+
+
 class _BackSurface:
     """The neck's back as a machine-frame height function for the flipped setup.
 
     Inside the neck it is the lofted back-surface mesh; over the
     headstock it is the angled back plane; wherever both exist the
-    deeper wins. Outside the plan outline, and anywhere the true surface
+    deeper wins, and a volute behind the nut lies under that
+    (``Volute.extra``). Outside the plan outline, and anywhere the true surface
     comes closer than ``skin`` to the glue plane, the height is clamped
     so a skin of wood remains.
     """
@@ -1552,18 +1572,35 @@ class _BackSurface:
         self._headstock_back = tuple(
             Point2D(point.x, point.y) for point in headstock.bottom_boundary
         )
+        self._volute = geometry.volute
 
     def model_z(self, x: float, y: float) -> float:
         """Return the part's back height in the model frame (glue plane = 0)."""
+        plain = self._plain_z(x, y)
+        if plain is None:
+            return -self._skin
+        volute = 0.0
+        if self._volute is not None:
+            volute = self._volute.extra(x, y)
+            if volute > 0.0:
+                # Its share there: all down the middle, none at the edges.
+                face = min(0.0, self._headstock.face_z(x))
+                middle = self._plain_z(x, 0.0)
+                volute *= side_share(
+                    face - plain, face - (plain if middle is None else middle)
+                )
+        return min(plain - volute, -self._skin)
+
+    def _plain_z(self, x: float, y: float) -> float | None:
+        """Return the plain back's height there, the deeper of the neck's
+        mesh and the headstock's back plane; ``None`` off both."""
         candidates = []
         mesh_z = interpolate_rows(self._stations, self._rows, x, y)
         if mesh_z is not None:
             candidates.append(mesh_z)
         if point_in_polygon(Point2D(x, y), self._headstock_back):
             candidates.append(self._headstock.face_z(x) - self._plane_offset)
-        if not candidates:
-            return -self._skin
-        return min(min(candidates), -self._skin)
+        return min(candidates) if candidates else None
 
     def machine_z(self, xm: float, ym: float) -> float:
         """Return the back height in the flipped machine frame."""

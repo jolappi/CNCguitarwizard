@@ -235,7 +235,8 @@ const EDITOR_FIELDS = {
     "headstock_style", "headstock_bass_side", "headstock_length", "tuner_hole_diameter", "nut_style", "locking_nut",
     "headstock_engraving_text", "headstock_engraving_font", "headstock_engraving_height", "headstock_engraving_angle",
     "truss_rod_adjustment", "truss_rod_spoke_wheel", "truss_rod_cover_style", "truss_rod_cover_length",
-    "truss_rod_cover_width",
+    "truss_rod_cover_width", "headstock_pointed_volute", "headstock_volute_style",
+    "headstock_pointed_volute_depth", "headstock_pointed_volute_length",
   ],
   "inlay-editor-options": [
     "inlay_style", "inlay_single_marker_frets", "inlay_double_marker_frets", "inlay_dot_diameter",
@@ -4731,6 +4732,39 @@ const headstockEditor = {
       this.tip = [];
     }
     this.draw();
+    this.drawVoluteViewSoon();
+  },
+
+  // The volute seen from behind and above, as it is lofted
+  // (webapp.volute_view), drawn a moment after the editor so dragging
+  // stays quick; only while there is a volute.
+  drawVoluteViewSoon() {
+    clearTimeout(this.voluteTimer);
+    const box = document.getElementById("headstock-editor-volute");
+    box.hidden = !this.layout?.volute;
+    if (box.hidden) return;
+    this.voluteTimer = setTimeout(() => this.drawVoluteView(box), 400);
+  },
+
+  async drawVoluteView(box) {
+    const ticket = (this.voluteTicket = (this.voluteTicket || 0) + 1);
+    let payload;
+    try {
+      payload = collectValues();
+    } catch (error) {
+      return;
+    }
+    box.classList.add("busy");
+    pyodide.globals.set("volute_view_json", JSON.stringify(payload));
+    const view = await runPython(
+      "import json\nfrom cncguitarwizard.webapp import volute_view\n" +
+      "json.dumps(volute_view(json.loads(volute_view_json)))"
+    );
+    if (ticket !== this.voluteTicket) return;
+    box.classList.remove("busy");
+    const picture = box.querySelector(".volute-picture");
+    if (view.error) picture.textContent = view.error;
+    else picture.innerHTML = view.svg || "";
   },
 
   untouched() {
@@ -4973,6 +5007,8 @@ const headstockEditor = {
     // The truss-rod cover over the adjuster's trough (an adjuster at the
     // headstock), with its handles.
     if (layout.truss_cover) this.drawCover(layout.truss_cover);
+    // The volute on the back behind the nut, with its handles.
+    if (layout.volute) this.drawVolute(layout.volute);
     this.edgeHandles = { bass: [], treble: [] };
     for (const side of ["bass", "treble"]) {
       const sign = this.sign(side);
@@ -5091,6 +5127,142 @@ const headstockEditor = {
       this.element("title", {}, handle).textContent = title;
       handle.addEventListener("pointerdown", (event) => this.startCoverStretch(event, kind, handle));
     }
+  },
+
+  // The volute (headstock_pointed_volute), on the back behind the nut.
+  // The rounded arrow is shown dashed, to see where it is. A drawn one
+  // (headstock_volute_style "drawn") is three lines across the back: its
+  // crest (solid) and where it ends in the headstock and in the neck
+  // (dashed), half of each line's points as handles (the other half
+  // mirrors them, its first point on the centre line). Dragging one draws
+  // that line (its setting), from where drawing starts while none is.
+  drawVolute(volute) {
+    const group = this.element("g", { class: "volute" });
+    if (volute.style !== "drawn") {
+      const outline = this.element("path", { class: "volute-outline", d: this.pathData(volute.outline) + " Z" }, group);
+      this.element("title", {}, outline).textContent =
+        "The volute (the rounded arrow), on the back behind the nut — a drawn one (headstock_volute_style) is its crest and both its ends, drawn";
+      return;
+    }
+    const titles = {
+      crest: "The volute's crest, its highest line",
+      headstock: "Where the volute ends in the headstock's back",
+      neck: "Where the volute ends in the neck's back",
+    };
+    for (const [name, line] of Object.entries(volute.lines)) {
+      this.element("path", { class: name === "crest" ? "volute-line" : "volute-line end", d: this.pathData(line.line) }, group);
+      const hit = this.element("path", { class: "outline-hit", d: this.pathData(line.line), "stroke-width": 3 }, group);
+      hit.addEventListener("click", (event) => {
+        if (event.detail <= 1) this.addVolutePoint(event, name);
+      });
+      this.element("title", {}, hit).textContent = `${titles[name]} — click the line to add a point`;
+      line.points.forEach((point, index) => {
+        const [behind, across] = point;
+        const handle = this.element("circle", {
+          class: isCorner(point) ? "volute-handle corner" : "volute-handle", cx: -behind, cy: -across, r: 1.4,
+        }, group);
+        this.element("title", {}, handle).textContent = index === 0
+          ? `${titles[name]}: its middle, on the centre line — drag it along the neck`
+          : `${titles[name]} — drag the point to draw the line, double-click for a sharp bend (or round again), Alt/Option-click or right-click to remove it`;
+        handle.addEventListener("pointerdown", (event) => {
+          if (event.altKey) {
+            this.removeVolutePoint(name, index);
+            return;
+          }
+          this.startVoluteDrag(event, name, index, handle);
+        });
+        handle.addEventListener("dblclick", (event) => {
+          event.preventDefault();
+          const points = line.points.map((p) => [...p]);
+          points[index] = toggledCorner(points[index]);
+          this.commitVolute(name, points);
+        });
+        handle.addEventListener("contextmenu", (event) => {
+          event.preventDefault();
+          this.removeVolutePoint(name, index);
+        });
+      });
+    }
+  },
+
+  // A line's whole length in the model frame from half its points
+  // ([behind the nut, across], from the centre line out) and their
+  // mirror, as Python's drawn_volute_line.
+  voluteLine(points) {
+    const model = points.map((point) => movedPoint(point, [-point[0], point[1]]));
+    const mirror = [...model].reverse()
+      .filter((point) => Math.abs(point[1]) > 1e-9)
+      .map((point) => movedPoint(point, [point[0], -point[1]]));
+    return openCatmullRom([...mirror, ...model], 8);
+  },
+
+  // Drag a point of one of the volute's lines; its middle slides along
+  // the centre line.
+  startVoluteDrag(event, name, index, handle) {
+    event.preventDefault();
+    event.stopPropagation();
+    const points = this.layout.volute.lines[name].points.map((p) => [...p]);
+    const onCentre = index === 0;
+    const start = this.toModel(event);
+    const [x0, y0] = [-points[index][0], points[index][1]];
+    let moved = false;
+    const preview = this.element("path", { class: "cover-preview" });
+    const move = (moveEvent) => {
+      moved ||= stirred(event, moveEvent);
+      if (!moved) return;
+      const [x, y] = this.toModel(moveEvent);
+      const nx = x0 + x - start[0];
+      const ny = onCentre ? 0 : Math.max(0, y0 + y - start[1]);
+      points[index] = movedPoint(points[index], [-nx, ny]);
+      handle.setAttribute("cx", nx);
+      handle.setAttribute("cy", -ny);
+      preview.setAttribute("d", this.pathData(this.voluteLine(points)));
+    };
+    const end = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", end);
+      window.removeEventListener("pointercancel", end);
+      if (moved) this.commitVolute(name, points);
+      else preview.remove();
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", end);
+    window.addEventListener("pointercancel", end);
+  },
+
+  // A click on a line adds a point between the two drawn ones nearest it
+  // (on the drawn half, whichever side was clicked).
+  addVolutePoint(event, name) {
+    const points = this.layout.volute.lines[name].points.map((p) => [...p]);
+    const [x, y] = this.toModel(event);
+    const across = Math.abs(y);
+    let best = points.length - 1, bestDistance = Infinity;
+    for (let i = 0; i + 1 < points.length; i++) {
+      const [ax, ay] = [-points[i][0], points[i][1]];
+      const [bx, by] = [-points[i + 1][0], points[i + 1][1]];
+      const dx = bx - ax, dy = by - ay;
+      const t = Math.max(0, Math.min(1, ((x - ax) * dx + (across - ay) * dy) / (dx * dx + dy * dy || 1)));
+      const distance = (ax + t * dx - x) ** 2 + (ay + t * dy - across) ** 2;
+      if (distance < bestDistance) { bestDistance = distance; best = i; }
+    }
+    points.splice(best + 1, 0, [-x, across]);
+    this.commitVolute(name, points);
+  },
+
+  // A line's middle stays, and two points at least.
+  removeVolutePoint(name, index) {
+    const points = this.layout.volute.lines[name].points.map((p) => [...p]);
+    if (index === 0 || points.length <= 2) return;
+    points.splice(index, 1);
+    this.commitVolute(name, points);
+  },
+
+  // Write a line's points, to the tenth of a millimetre, into its setting.
+  commitVolute(name, points) {
+    const field = form.querySelector(`[data-set='prototype'][data-name='${this.layout.volute.lines[name].field}']`);
+    const tenth = (value) => Math.round(value * 10) / 10;
+    setControlValue(field, points.map((point) => movedPoint(point, [tenth(point[0]), tenth(point[1])])));
+    syncMirrors();
   },
 
   // A cover corner or screw, (along, across) as truss_rod_cover_points

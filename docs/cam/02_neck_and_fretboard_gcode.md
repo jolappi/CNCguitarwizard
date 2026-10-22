@@ -95,7 +95,9 @@ leaves a 0.5 mm centre mark at each position on the milled face for a
 drill press with an 8° wedge. Other simplifications: the nut shelf is a
 straight 5 mm ledge (the model's U-shaped trim is not machined), the
 headstock-root volute follows the mesh/plane union rather than the
-FreeCAD fillets, and the spoke-wheel access pocket is not modelled.
+FreeCAD fillets (a pointed volute, `headstock_pointed_volute`, lies under
+that union, so the back's programs cut it, and the blank is as thick as it
+needs), and the spoke-wheel access pocket is not modelled.
 
 ### Vintage truss rod
 

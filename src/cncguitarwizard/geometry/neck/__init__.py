@@ -22,6 +22,7 @@ from .side_profile import (
 )
 from .truss_rod import TrussRodChannel
 from .vintage_rod import VintageTrussRod
+from .volute import Volute, default_volute_lines, drawn_volute_line, side_share
 
 __all__ = [
     "CarbonRods",
@@ -45,4 +46,8 @@ __all__ = [
     "TunerLayout",
     "TrussRodChannel",
     "VintageTrussRod",
+    "Volute",
+    "default_volute_lines",
+    "drawn_volute_line",
+    "side_share",
 ]

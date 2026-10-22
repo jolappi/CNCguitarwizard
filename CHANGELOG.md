@@ -34,6 +34,28 @@
 
 ### Added
 
+- A volute carved into the back of the headstock behind the nut
+  (`headstock_pointed_volute`, on *Design › Neck*), where an angled
+  headstock's short grain is weakest: seen from behind a rounded arrow
+  whose nose reaches a little onto the neck, widening to the neck's width
+  and `headstock_pointed_volute_depth` (4 mm) more wood than the plain
+  back just behind the nut, then fading into the headstock's back
+  `headstock_pointed_volute_length` (30 mm) behind it, its crest rounded
+  (`geometry.neck.Volute`). The FreeCAD loft carries it under the back,
+  the neck's back programs cut it, and the blank is thick enough for it.
+  That is its `headstock_volute_style` "arrow"; by default ("drawn") it
+  is three lines drawn across the back in the headstock editor, its crest
+  and where it ends in the headstock's back and in the neck's
+  (`headstock_volute_points`, `_headstock_points`, `_neck_points`, half of
+  each, mirrored, starting as sketched: the crest bulging onto the neck
+  down the middle), sharp on the crest (`headstock_pointed_volute_depth`
+  proud) and falling away on a logarithmic curve to each end, level
+  there; shown under the drawing as it is lofted, seen from behind and
+  above. Down the back's sides it gets its share of the wood, as deep as
+  the back is there against its middle (`side_share`), so its sides come
+  down evenly to the fretboard's level with no fins standing out. The
+  volute's settings are on *Design › Headstock*.
+
 - A tip of the day on the web app: one sentence a day — the builder's
   own (EMG actives on 24 V from two V23GA batteries; oil the strings at
   the nut and the bridge), wiring, setup, the workshop, the page's keys

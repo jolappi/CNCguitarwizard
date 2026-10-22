@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache">
 <!-- This page's stamp, set by tools/build_site.py (see the loader below). -->
-<meta name="cgw-page" content="4f825e0aa15a">
+<meta name="cgw-page" content="556fca0505b0">
 <title>CNCguitarwizard</title>
 <script>
   // Dark mode, the default; light when chosen in this browser (or
@@ -292,6 +292,14 @@
   #headstock-editor .cover-stretch { fill: #1f6fb2; stroke: #fff; stroke-width: 0.3; }
   #headstock-editor .cover-stretch.length { cursor: ew-resize; }
   #headstock-editor .cover-stretch.width { cursor: ns-resize; }
+  .volute-view-box .volute-picture svg { display: block; width: 100%; max-width: 380px; height: auto; border-radius: 6px; }
+  .volute-view-box.busy .volute-picture { opacity: 0.55; }
+  #headstock-editor .volute-outline { fill: #8a5a2b; fill-opacity: 0.2; stroke: #8a5a2b; stroke-width: 0.4; stroke-dasharray: 1.6,0.8; pointer-events: none; }
+  #headstock-editor .volute-line { fill: none; stroke: #8a5a2b; stroke-width: 1.2; stroke-linecap: round; stroke-opacity: 0.85; pointer-events: none; }
+  #headstock-editor .volute-line.end { stroke-width: 0.6; stroke-dasharray: 2,1.2; }
+  #headstock-editor .volute-handle { fill: #fff; stroke: #8a5a2b; stroke-width: 0.3; cursor: grab; }
+  #headstock-editor .volute-handle:hover { fill: #8a5a2b; }
+  #headstock-editor .volute-handle.corner { fill: #e9d7bf; }
   #headstock-editor .cover-preview { fill: none; stroke: #1f6fb2; stroke-width: 0.3; stroke-dasharray: 1,0.6; pointer-events: none; }
   .body-editor .engraving { fill: none; stroke: #1f6fb2; stroke-width: 1.2; stroke-linecap: round; pointer-events: none; }
   .body-editor .relief { fill: #2f4a1e; stroke: #1f6fb2; stroke-width: 0.6; pointer-events: none; }
@@ -772,6 +780,11 @@
       </div>
       <p id="headstock-editor-status" class="note"></p>
       <svg id="headstock-editor-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+      <!-- The volute seen from behind and above while it is drawn. -->
+      <div id="headstock-editor-volute" class="volute-view-box" hidden>
+        <p class="note">The volute seen from behind and above, as it is lofted (the headstock at the top)</p>
+        <div class="volute-picture"></div>
+      </div>
     </div>
     <div id="inlay-editor" class="body-editor">
       <h2>Inlay design <span id="inlay-editor-size" class="note"></span></h2>

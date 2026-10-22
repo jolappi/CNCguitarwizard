@@ -304,6 +304,41 @@ FIELD_HELP: dict[str, str] = {
         "Where along the headstock-to-neck transition its volute (the thicker "
         "ridge behind the nut) is fullest, as a fraction of its length."
     ),
+    "headstock_pointed_volute": (
+        "A volute carved into the back of the headstock behind the nut, "
+        "where an angled headstock's short grain is weakest: seen from "
+        "behind a rounded arrow whose nose reaches a little onto the neck, "
+        "widening to the neck's width and fading into the headstock's back."
+    ),
+    "headstock_pointed_volute_depth": (
+        "How much more wood the volute leaves than the plain back at its "
+        "fullest, behind the nut, in mm: a drawn one's ridge height on its "
+        "line (2 to 4 mm)."
+    ),
+    "headstock_pointed_volute_length": (
+        "How far behind the nut the volute reaches into the headstock, in "
+        "mm; its point reaches a third of that onto the neck."
+    ),
+    "headstock_volute_style": (
+        "The volute's kind: drawn in the headstock editor as its crest and "
+        "the lines where it ends in the headstock and in the neck, sharp on "
+        "the crest and falling away on a logarithmic curve to each; or the "
+        "rounded arrow."
+    ),
+    "headstock_volute_points": (
+        "A drawn volute's crest, its highest line, as drawn in the headstock "
+        "editor: half of it seen from behind, [mm behind the nut, mm across] "
+        "from the centre line out to one side, mirrored. Empty: bulging 7 mm "
+        "onto the neck down the middle."
+    ),
+    "headstock_volute_headstock_points": (
+        "Where a drawn volute ends in the headstock's back, drawn as its crest "
+        "is. Empty: about 30 mm behind the nut."
+    ),
+    "headstock_volute_neck_points": (
+        "Where a drawn volute ends in the neck's back, drawn as its crest is. "
+        "Empty: 13 to 22 mm past the nut."
+    ),
     "headstock_root_swell": (
         "Extra depth of the continuous surface joining the headstock to the "
         "neck, in mm (0: a plain join)."

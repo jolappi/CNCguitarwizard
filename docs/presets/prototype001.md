@@ -149,6 +149,41 @@ Building the preset creates and cross-validates:
   smooth 30 mm headstock-to-neck transition;
 - a zero-depth `headstock_volute_depth` by default, leaving no outward swell
   below the thumb unless one is explicitly requested;
+- on request (`headstock_pointed_volute`), a volute carved into the back
+  of the headstock behind the nut, where an angled headstock's short grain
+  is weakest (`geometry.neck.Volute`): seen from behind a rounded arrow
+  whose nose reaches a third of its length onto the neck (10 mm), its
+  sides curving out (`VOLUTE_NOSE`) to the neck's whole width at its
+  fullest, 0.3 of its length behind the nut (9 mm), where it leaves
+  `headstock_pointed_volute_depth` (4 mm) more wood than the plain back
+  down the middle; from there it fades into the headstock's back, the
+  whole width still, `headstock_pointed_volute_length` (30 mm) behind the
+  nut. Across, two faces fall away from a rounded crest and ease into the
+  back at its outline. The FreeCAD loft lowers its rows' back points by it
+  (never the top edges, so never the face), the neck's back programs cut
+  it under the headstock's back, and the blank is thick enough for it; a
+  headless neck has none. That is `headstock_volute_style` "arrow"; by
+  default ("drawn") the volute is three lines drawn across the back (in
+  the headstock editor): its crest (`headstock_volute_points`),
+  `headstock_pointed_volute_depth` proud of the plain back along it (2 to
+  4 mm), and where it ends in the headstock's back
+  (`headstock_volute_headstock_points`) and in the neck's
+  (`headstock_volute_neck_points`). Each holds half its line seen from
+  behind, `[behind the nut, across]` from the centre line out, mirrored, a
+  smooth curve through them; empty, where drawing starts
+  (`default_volute_lines`: the crest bulging 7 mm onto the neck down the
+  middle and meeting the neck's edges at the nut, its ends 30 mm into the
+  headstock across its shoulders and 13 to 22 mm onto the neck). It is
+  sharp along its crest and falls away from it on a logarithmic curve to
+  each end, `1 - log(1 + 9t) / log 10` of the way `t` there (steep from
+  the crest, flattening out), corrected to meet the back level at the end
+  lines, with no edge (`VOLUTE_LOG_STEEPNESS`, `drawn_volute_line`,
+  `Volute.crest`, `headstock_end`, `neck_end`). Either style puts all its
+  wood down the middle of the back and less up its sides, in proportion
+  to how deep the plain back is there against its middle, none at the
+  edges (`side_share`): its sides come down evenly to the fretboard's
+  level, and on the neck's rounded back it deepens the profile, the same
+  shape;
 - a separate 15 mm `heel_root_center_extension`, which makes the center of
   the heel runout lead smoothly into the neck while the full 54 mm mounting
   block stays planar and intact;

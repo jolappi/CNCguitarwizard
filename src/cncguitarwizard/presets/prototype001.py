@@ -87,6 +87,9 @@ from ..geometry.neck import (
     TunerHole,
     TunerLayout,
     VintageTrussRod,
+    Volute,
+    default_volute_lines,
+    drawn_volute_line,
 )
 from ..geometry.neck.nut_jig import (
     NutSlotJig,
@@ -587,6 +590,9 @@ class Prototype001Geometry:
     and plug, or ``None`` for one routed from the top."""
     fretboard_scallops: FretboardScallops | None = None
     """The playing surface hollowed between the frets, or ``None``."""
+    volute: Volute | None = None
+    """The volute carved into the headstock's back behind the nut, or
+    ``None``."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -1683,6 +1689,38 @@ class Prototype001Parameters:
     headstock_volute_depth: float = 0.0
     headstock_volute_peak_fraction: float = 0.25
     headstock_root_swell: float = 0.0
+    # headstock_pointed_volute carves a volute into the back of the
+    # headstock, behind the nut, where an angled headstock's short grain
+    # is weakest (geometry.neck.Volute): drawn by default (below), or
+    # (headstock_volute_style "arrow") seen from behind a rounded arrow
+    # whose nose reaches a third of headstock_pointed_volute_length onto
+    # the neck, widening to the neck's whole width and
+    # headstock_pointed_volute_depth more wood than the plain back at its
+    # fullest, 0.3 of its length behind the nut, then fading into the
+    # headstock's back headstock_pointed_volute_length behind the nut. The
+    # FreeCAD model and the neck's back programs both carry it (the blank
+    # thick enough for it). No headless neck has one.
+    headstock_pointed_volute: bool = False
+    headstock_pointed_volute_depth: float = 4.0
+    headstock_pointed_volute_length: float = 30.0
+    # headstock_volute_style "drawn" (the default; "arrow" the rounded
+    # arrow above) draws it as three lines across the back (in the
+    # headstock editor; geometry.neck.Volute): its crest,
+    # headstock_pointed_volute_depth proud of the plain back along it
+    # (headstock_volute_points), and where it ends in the headstock's back
+    # (headstock_volute_headstock_points) and in the neck's
+    # (headstock_volute_neck_points): sharp on the crest, falling away from
+    # it on a logarithmic curve to each, level there. Each holds half its
+    # line seen from behind, (behind the nut, across) from the centre line
+    # out to one side, mirrored, a smooth curve through them (a point
+    # marked "corner" a sharp bend); empty, where drawing one starts
+    # (default_volute_lines: the crest bulging 7 mm onto the neck down the
+    # middle, the ends 30 mm into the headstock and 13 to 22 mm onto the
+    # neck).
+    headstock_volute_style: Literal["arrow", "drawn"] = "drawn"
+    headstock_volute_points: tuple[DrawnPoint, ...] = ()
+    headstock_volute_headstock_points: tuple[DrawnPoint, ...] = ()
+    headstock_volute_neck_points: tuple[DrawnPoint, ...] = ()
     # A real reference Stratocaster neck (measured from an actual STEP
     # model) has an instant depth step and a separately, gradually
     # tapering plan-view width. The depth step in our own model is now a
@@ -7491,7 +7529,57 @@ class Prototype001Parameters:
                 outline, neck_surface, headstock
             ),
             fretboard_scallops=scallops,
+            volute=self.volute(outline),
         )
+
+    def volute(self, outline: NeckOutline) -> Volute | None:
+        """Return the volute carved behind the nut, or ``None``.
+
+        Args:
+            outline: The neck's outline, whose width at the nut it spans.
+
+        Returns:
+            ``headstock_pointed_volute``'s volute, or ``None`` without one
+            or on a headless neck.
+        """
+        if not self.headstock_pointed_volute or self.headless:
+            return None
+        if self.headstock_volute_style not in ("arrow", "drawn"):
+            raise NeckGeometryError(
+                f"Unknown volute {self.headstock_volute_style!r}: choose arrow "
+                "or drawn."
+            )
+        half_width = outline.nut_width / 2.0
+        lines = (
+            self.volute_lines(half_width)
+            if self.headstock_volute_style == "drawn"
+            else {}
+        )
+        return Volute(
+            self.headstock_pointed_volute_depth,
+            self.headstock_pointed_volute_length,
+            half_width,
+            *(
+                drawn_volute_line(lines[name]) if lines else ()
+                for name in ("crest", "headstock", "neck")
+            ),
+        )
+
+    def volute_lines(self, half_width: float) -> dict[str, tuple[DrawnPoint, ...]]:
+        """Return half of each of a drawn volute's lines as drawn, or where
+        drawing one starts (``default_volute_lines``).
+
+        Returns:
+            ``{"crest", "headstock", "neck"}``: ``headstock_volute_points``,
+            ``headstock_volute_headstock_points`` and
+            ``headstock_volute_neck_points``, each the default when empty.
+        """
+        start = default_volute_lines(half_width)
+        return {
+            "crest": self.headstock_volute_points or start["crest"],
+            "headstock": self.headstock_volute_headstock_points or start["headstock"],
+            "neck": self.headstock_volute_neck_points or start["neck"],
+        }
 
     def fretboard_scallops(self, surface: FretboardSurface) -> FretboardScallops | None:
         """Return the playing surface's scallops, or ``None`` without them.
