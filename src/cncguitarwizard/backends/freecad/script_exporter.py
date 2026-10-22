@@ -58,6 +58,14 @@ HEADSTOCK_FACE_EASE_LENGTH = 8.0
 TRANSITION_CUT_SAMPLES = 12
 """Points along the Stratocaster-style seat-to-face transition in the face cut."""
 
+FACE_CUT_SEAT_DROP = 0.05
+"""How far below the nut's seat the face cut starts at the seat's end, in
+mm, easing back up to the transition's own line along it. The transition
+leaves the seat level, so a cutter starting on the seat itself only
+touches the loft's flat top there, and FreeCAD's boolean then skipped the
+whole transition, leaving the loft's own rough step behind the seat; a
+cutter crossing the top cuts clean."""
+
 TRUSS_ROD_POCKET_PIECE_LENGTH = 5.0
 """Longest box a truss-rod nut pocket or trough is cut with (mm)."""
 
@@ -1466,7 +1474,10 @@ class FreeCADScriptExporter:
         leaning (slanted or fanned) nut line is followed: the seat stays a
         strip of even length behind it, and the cutter is clipped to the
         plan area behind that. The cutter's faces all cross
-        the loft rather than touching it, so the cut stays a clean boolean.
+        the loft rather than touching it, so the cut stays a clean boolean:
+        it starts ``FACE_CUT_SEAT_DROP`` below the seat at the seat's end,
+        where the transition would otherwise leave the seat's flat top
+        only touched.
 
         Args:
             headstock: Headstock whose face is cut.
@@ -1490,10 +1501,11 @@ class FreeCADScriptExporter:
             # Down the seat's back edge, along the transition curve onto the
             # face, out past the tip, and back over the top.
             seat_end = headstock.face_start_x(y)
-            points = [(seat_end, y, 10.0), (seat_end, y, 0.0)]
+            points = [(seat_end, y, 10.0), (seat_end, y, -FACE_CUT_SEAT_DROP)]
             for index in range(1, samples + 1):
                 x = seat_end - length * index / samples
-                points.append((x, y, headstock.top_z(x, y)))
+                drop = FACE_CUT_SEAT_DROP * (1.0 - index / samples)
+                points.append((x, y, headstock.top_z(x, y) - drop))
             if samples == 0:
                 points.append((seat_end, y, headstock.face_z(seat_end)))
             points += [(far_x, y, headstock.face_z(far_x)), (far_x, y, 10.0)]

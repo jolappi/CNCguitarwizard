@@ -11,6 +11,7 @@ import pytest
 from cncguitarwizard.backends.freecad import FreeCADScriptExporter
 from cncguitarwizard.backends.freecad.exceptions import FreeCADBackendError
 from cncguitarwizard.backends.freecad.script_exporter import (
+    FACE_CUT_SEAT_DROP,
     MAX_HEADSTOCK_SECTION_GAP,
     MAX_HEADSTOCK_WIDTH_STEP,
     MIN_SECTION_GAP,
@@ -1118,11 +1119,15 @@ def test_the_headstock_face_is_cut_from_the_end_of_the_nut_seat(
     assert len(profiles) == 2 and len(profiles[0]) == len(profiles[1])
     for profile in profiles:
         # Each side profile runs down the seat's back edge (5 mm behind the
-        # nut line there), along the transition onto the face, which it
-        # meets at the face's own height, then out past the tip.
+        # nut line there), a hair below the seat so the cutter crosses the
+        # loft's flat top rather than touching it (touching, FreeCAD's cut
+        # skipped the transition and left a step behind the seat), along
+        # the transition onto the face, which it meets at the face's own
+        # height, then out past the tip.
         (x0, y, z0), (x1, _, z1) = profile[0], profile[1]
         assert x0 == x1 == pytest.approx(headstock.face_start_x(y), abs=1e-5)
-        assert (z0, z1) == (10.0, 0.0)
+        assert (z0, z1) == (10.0, -FACE_CUT_SEAT_DROP)
+        assert 0.0 < FACE_CUT_SEAT_DROP <= 0.1
         end_x, _, end_z = profile[1 + TRANSITION_CUT_SAMPLES]
         assert end_x == pytest.approx(x0 - headstock.face_transition_length)
         assert end_z == pytest.approx(min(headstock.face_z(end_x), 0.0), abs=1e-5)

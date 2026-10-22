@@ -1317,6 +1317,15 @@
 
 ### Fixed
 
+- No step on the headstock's face behind the nut: the FreeCAD face cut,
+  which carves the face down from the nut's seat along its transition,
+  started level with the seat and only touched the loft's flat top there,
+  and FreeCAD's boolean then skipped the whole transition, leaving the
+  loft's rough drop 17 to 24 mm behind the nut and the face 0.5 mm proud
+  all the way out. It now starts `FACE_CUT_SEAT_DROP` (0.05 mm) below the
+  seat at the seat's end, easing up to the transition's own line, so it
+  crosses the top and cuts clean.
+
 - Turning the headstock's bass side round (`headstock_bass_side`) no
   longer turns the fret markers: those that differ side to side (the
   trapezoids, sharkteeth, split blocks, a drawn marker, the runes) stay
