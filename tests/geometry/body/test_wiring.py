@@ -276,7 +276,7 @@ def test_the_default_guitar_is_wired_by_drilled_holes() -> None:
     assert all(hole.note() in top.notes for hole in body.wire_holes)
     source = FreeCADScriptExporter().render_prototype001(geometry)
     assert source.count("wire_hole = Part.makeCylinder(") == 4
-    assert "'neck pickup wire hole cut'" in source
+    assert "BODY_CUTTERS.append(wire_hole)  # neck pickup wire hole\n" in source
     assert 'stroke="#c0392b"' in render_plan_view_svg(geometry)
 
 
@@ -299,7 +299,7 @@ def test_strat_pickups_are_routed_under_the_guard() -> None:
     names = [path.name for path in top.toolpaths]
     assert any("Neck pickup wire channel" in name for name in names)
     source = FreeCADScriptExporter().render_prototype001(geometry)
-    assert "'neck pickup wire channel cut'" in source
+    assert "# neck pickup wire channel cut\n" in source
 
 
 @pytest.mark.parametrize(

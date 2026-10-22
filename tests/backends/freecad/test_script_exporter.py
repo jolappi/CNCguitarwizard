@@ -185,13 +185,13 @@ def test_complete_prototype_can_be_rendered_with_one_export_call(
     # for the U trim's own coverage on a build where it still applies.
     assert "NUT_END_U_TRIM_RADIUS = " not in source
     assert '"nut-end U trim"' not in source
-    assert "fretboard_shape.cut(slot_shape)" in source
+    assert "fretboard_shape.cut(fret_slot_shapes)" in source
     # The whole headstock — tip through the join — is now stations inside
     # neck_shape's own single loft (see render_neck_assembly and
     # _headstock_transition_sections), not a separate solid built and
     # fused here, so tuner holes cut straight into neck_shape and there is
     # no "headstock root trim" boolean step or fuse of two pieces.
-    assert "neck_shape.cut(cutter)" in source
+    assert "neck_shape.cut(tuner_cutters)" in source
     assert '"headstock root trim"' not in source
     assert "HEADSTOCK_TIP_SECTION_POINTS = " not in source
     assert "headstock_tip_shape" not in source
@@ -495,13 +495,14 @@ def test_neck_assembly_can_cut_radius_following_fret_slots() -> None:
     assert "fret_slot_depth = 2.7" in source
     assert "fret_slot_surface_overcut = 0.2" in source
     assert "fret_slot_side_overcut = 1.0" in source
-    assert "for fret_index, surface_row in enumerate(" in source
+    assert "for surface_row in FRET_SURFACE_ROWS:" in source
     assert "for x, y, z in reversed(extended_row)" in source
     assert "slope = (last[0] - first[0]) / (last[1] - first[1])" in source
     assert "slot_face = Part.Face(Part.makePolygon(profile))" in source
-    assert "slot_shape = slot_face.extrude(" in source
-    assert "fretboard_shape.cut(slot_shape)" in source
-    assert 'f"fret-slot cut {fret_index}"' in source
+    # Every slot gathered, then cut in one go.
+    assert "fret_slot_shapes.append(slot_face.extrude(" in source
+    assert "fretboard_shape.cut(fret_slot_shapes)" in source
+    assert '"fret-slot cut"' in source
 
 
 def test_neck_assembly_omits_fret_slot_cuts_by_default() -> None:
@@ -528,8 +529,10 @@ def test_neck_assembly_can_cut_barbed_wire_inlay_markers() -> None:
     assert "for inlay_index, outline in enumerate(" in source
     assert "marker_face = Part.Face(Part.makePolygon(profile))" in source
     assert "marker_shape = marker_face.extrude(" in source
-    assert "fretboard_shape.cut(marker_shape)" in source
-    assert 'f"inlay-marker cut {inlay_index}"' in source
+    # Every marker's pocket gathered, then cut in one go.
+    assert "inlay_marker_shapes.append(marker_shape)" in source
+    assert "fretboard_shape.cut(inlay_marker_shapes)" in source
+    assert '"inlay-marker cut"' in source
     assert source.index("marker_face") < source.index(
         "fretboard_feature.Shape = fretboard_shape"
     )
@@ -562,18 +565,17 @@ def test_neck_assembly_can_cut_a_solid_body_with_its_cavities() -> None:
 
     assert "BODY_OUTLINE_POINTS = " in source
     assert "body_thickness = 44.0" in source
-    assert (
-        "def cavity_cut(shape, outline_points, depth, label, from_back=False):"
-        in source
-    )
-    assert "body_shape = cavity_cut(body_shape, " in source
-    assert "'neck pocket cut'" in source
-    assert "'control cavity cut', from_back=True)" in source
-    assert "'control cavity cover recess cut', from_back=True)" in source
-    assert "'switch cavity cut'" not in source
+    # The routes and holes gathered, then cut in one go.
+    assert "def cavity_tool(outline_points, depth, from_back=False):" in source
+    assert "BODY_CUTTERS.append(cavity_tool(" in source
+    assert "# neck pocket cut\n" in source
+    assert "# control cavity cut\n" in source and "from_back=True))" in source
+    assert "# control cavity cover recess cut\n" in source
+    assert "# switch cavity cut\n" not in source
     assert "pivot_hole = Part.makeCylinder(" in source
     assert "jack_bore = Part.makeCylinder(" in source
-    assert "body_shape.cut(jack_bore)" in source
+    assert "BODY_CUTTERS.append(jack_bore)  # jack bore\n" in source
+    assert source.count("body_shape.cut(BODY_CUTTERS)") == 1
     assert 'document.addObject(\n    "Part::Feature", "Body"\n)' in source
     assert "body_feature.Shape = body_shape" in source
     assert source.index("body_shape = Part.Face(") < source.index(
@@ -588,7 +590,7 @@ def test_neck_assembly_omits_the_control_cavity_cut_when_absent() -> None:
         body=replace(make_body(), control_cavity=None),
     )
 
-    assert "'control cavity cut'" not in source
+    assert "# control cavity cut\n" not in source
     assert "BODY_OUTLINE_POINTS = " in source
 
 
@@ -603,9 +605,9 @@ def test_neck_assembly_cuts_a_rear_switch_cavity_with_its_cover() -> None:
         body=replace(make_body(), switch_cavity=switch),
     )
 
-    assert "'switch cavity cut', from_back=True)" in source
-    assert "'switch cavity cover recess cut', from_back=True)" in source
-    assert "'battery cavity cut'" not in source
+    assert "# switch cavity cut\n" in source
+    assert "# switch cavity cover recess cut\n" in source
+    assert "# battery cavity cut\n" not in source
 
 
 def test_neck_assembly_cuts_a_rear_battery_cavity_with_its_cover() -> None:
@@ -619,8 +621,8 @@ def test_neck_assembly_cuts_a_rear_battery_cavity_with_its_cover() -> None:
         body=replace(make_body(), battery_cavity=battery),
     )
 
-    assert "'battery cavity cut', from_back=True)" in source
-    assert "'battery cavity cover recess cut', from_back=True)" in source
+    assert "# battery cavity cut\n" in source
+    assert "# battery cavity cover recess cut\n" in source
 
 
 def test_neck_assembly_omits_pivot_holes_for_a_flat_mount_bridge() -> None:
@@ -634,7 +636,7 @@ def test_neck_assembly_omits_pivot_holes_for_a_flat_mount_bridge() -> None:
     )
 
     assert "pivot_hole = Part.makeCylinder(" not in source
-    assert "'sustain-block cavity cut'" in source
+    assert "# sustain-block cavity cut\n" in source
 
 
 def test_neck_assembly_drills_body_holes_from_the_top_face() -> None:
@@ -650,7 +652,7 @@ def test_neck_assembly_drills_body_holes_from_the_top_face() -> None:
     assert "drilled_hole = Part.makeCylinder(" in source
     assert "    5.0,\n    44.0 + 2.0 * body_overcut,\n" in source
     assert "App.Vector(610.0, 90.0, body_overcut)" in source
-    assert "'pot 1 shaft hole cut'" in source
+    assert "# pot 1 shaft hole\n" in source
 
 
 def test_neck_assembly_cuts_through_routes_and_extra_rear_cavities() -> None:
@@ -672,9 +674,9 @@ def test_neck_assembly_cuts_through_routes_and_extra_rear_cavities() -> None:
         ),
     )
 
-    assert "'sustain-block route through cut')" in source
-    assert "'tremolo spring cavity cut', from_back=True)" in source
-    assert "'tremolo spring cavity cover recess cut', from_back=True)" in source
+    assert "# sustain-block route through cut\n" in source
+    assert "# tremolo spring cavity cut\n" in source
+    assert "# tremolo spring cavity cover recess cut\n" in source
 
 
 def test_neck_assembly_omits_the_sustain_block_cut_for_a_fixed_bridge() -> None:
@@ -687,8 +689,8 @@ def test_neck_assembly_omits_the_sustain_block_cut_for_a_fixed_bridge() -> None:
         ),
     )
 
-    assert "'sustain-block cavity cut'" not in source
-    assert "'bridge pickup route cut'" in source
+    assert "# sustain-block cavity cut\n" not in source
+    assert "# bridge pickup route cut\n" in source
 
 
 def test_neck_assembly_omits_body_by_default() -> None:
@@ -876,15 +878,14 @@ def test_headstock_can_receive_six_normal_tuner_holes() -> None:
     )
     assert isinstance(assignment.value, ast.List)
     assert len(assignment.value.elts) == 6
-    assert "cutter = Part.makeCylinder(" in source
+    # Every hole and its chamfer gathered, then cut in one go.
+    assert "tuner_cutters.append(Part.makeCylinder(" in source
     assert "diameter / 2.0" in source
-    assert "headstock_shape.cut(cutter)" in source
-    assert '"tuner-hole cut"' in source
     assert "tuner_chamfer_depth = 0.2" in source
-    assert "chamfer = Part.makeCone(" in source
+    assert "tuner_cutters.append(Part.makeCone(" in source
     assert "diameter / 2.0 + tuner_chamfer_depth" in source
-    assert "headstock_shape.cut(chamfer)" in source
-    assert '"tuner chamfer cut"' in source
+    assert "headstock_shape.cut(tuner_cutters)" in source
+    assert '"tuner-hole cut"' in source
 
 
 def test_tuner_chamfer_can_be_disabled() -> None:
@@ -1404,3 +1405,21 @@ def test_a_round_headstock_end_is_lofted_closely_round() -> None:
             abs(width(after) - width(before)) <= MAX_HEADSTOCK_WIDTH_STEP + 1e-9
             or gap < 2.0 * MIN_SECTION_GAP + 0.1
         )
+
+
+def test_each_family_of_cuts_is_one_boolean_and_the_neck_drawn_once() -> None:
+    source = FreeCADScriptExporter().render_prototype001(
+        Prototype001Parameters().build()
+    )
+
+    # Every tuner hole with its chamfer, every fret slot and every marker
+    # cut in one go: each cut runs against the whole neck or board.
+    assert source.count("neck_shape.cut(tuner_cutters)") == 1
+    assert source.count("fretboard_shape.cut(fret_slot_shapes)") == 1
+    assert source.count("fretboard_shape.cut(inlay_marker_shapes)") == 1
+    assert ".cut(cutter)" not in source and ".cut(chamfer)" not in source
+    # Hidden in FreeCAD's window while it is cut, shown once finished.
+    assert "neck_feature = hidden_while_built(document.addObject(" in source
+    shown = source.index("for feature in HIDDEN_WHILE_BUILT:")
+    assert shown < source.index("document.recompute()", shown)
+    assert "if App.GuiUp:" in source

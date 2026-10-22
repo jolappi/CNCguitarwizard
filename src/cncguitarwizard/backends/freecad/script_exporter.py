@@ -667,6 +667,15 @@ class FreeCADScriptExporter:
             "    if not shape.isValid():\n"
             '        raise RuntimeError(f"{operation} produced an invalid shape")\n'
             "    return shape\n\n"
+            "HIDDEN_WHILE_BUILT = []\n\n"
+            "def hidden_while_built(feature):\n"
+            '    """Hide a feature in FreeCAD\'s window while the script still\n'
+            "    changes its shape, so it is drawn once, finished (headless, there\n"
+            '    is nothing to draw)."""\n'
+            "    if App.GuiUp:\n"
+            "        feature.ViewObject.Visibility = False\n"
+            "        HIDDEN_WHILE_BUILT.append(feature)\n"
+            "    return feature\n\n"
             "def side_joint_edges(shape, joint_x, minimum_abs_y, x_tolerance):\n"
             '    """Return lateral edges local to one solid joint."""\n'
             "    return [\n"
@@ -895,8 +904,8 @@ class FreeCADScriptExporter:
             "    )\n"
             f"{truss_rod_source}"
             f"{heel_trim_source}"
-            "neck_feature = document.addObject("
-            f'"Part::Feature", "{neck_object_name}")\n'
+            "neck_feature = hidden_while_built(document.addObject("
+            f'"Part::Feature", "{neck_object_name}"))\n'
             "neck_feature.Shape = neck_shape\n"
             f"{self._render_carbon_rods(carbon_rods)}"
             "fretboard_feature = document.addObject("
@@ -929,6 +938,8 @@ class FreeCADScriptExporter:
             f"{self._render_nut_jig(nut_jig)}"
             f"{self._render_neck_tilt(neck_tilt)}"
             f"{body_source}"
+            "for feature in HIDDEN_WHILE_BUILT:\n"
+            "    feature.ViewObject.Visibility = True\n"
             "document.recompute()\n"
             f"{output_commands}"
         )
@@ -2274,31 +2285,31 @@ class FreeCADScriptExporter:
             f"tuner_axis = App.Vector({axis_x}, {axis_y}, {axis_z})\n"
             "tuner_overcut = 1.0\n"
             f"tuner_chamfer_depth = {chamfer_depth}\n"
+            "# Every hole and its chamfer in one cut: each cut runs against\n"
+            "# the whole neck, so one is far quicker than one a hole.\n"
+            "tuner_cutters = []\n"
             "for x, y, z, diameter in TUNER_HOLES:\n"
             "    top_center = App.Vector(x, y, z)\n"
             "    cutter_start = top_center - tuner_axis * tuner_overcut\n"
-            "    cutter = Part.makeCylinder(\n"
+            "    tuner_cutters.append(Part.makeCylinder(\n"
             "        diameter / 2.0,\n"
             f"        {headstock.thickness} + 2.0 * tuner_overcut,\n"
             "        cutter_start,\n"
             "        tuner_axis,\n"
-            "    )\n"
-            f"    {shape_variable} = require_shape(\n"
-            f"        {shape_variable}.cut(cutter),\n"
-            '        "tuner-hole cut",\n'
-            "    )\n"
+            "    ))\n"
             "    if tuner_chamfer_depth > 0.0:\n"
-            "        chamfer = Part.makeCone(\n"
+            "        tuner_cutters.append(Part.makeCone(\n"
             "            diameter / 2.0 + tuner_chamfer_depth,\n"
             "            diameter / 2.0,\n"
             "            tuner_chamfer_depth,\n"
             "            top_center,\n"
             "            tuner_axis,\n"
-            "        )\n"
-            f"        {shape_variable} = require_shape(\n"
-            f"            {shape_variable}.cut(chamfer),\n"
-            '            "tuner chamfer cut",\n'
-            "        )\n"
+            "        ))\n"
+            "if tuner_cutters:\n"
+            f"    {shape_variable} = require_shape(\n"
+            f"        {shape_variable}.cut(tuner_cutters),\n"
+            '        "tuner-hole cut",\n'
+            "    )\n"
         )
 
     @staticmethod
@@ -2321,10 +2332,9 @@ class FreeCADScriptExporter:
             f"fret_slot_depth = {slot_depth}\n"
             "fret_slot_surface_overcut = 0.2\n"
             f"fret_slot_side_overcut = {side_overcut}\n"
-            "for fret_index, surface_row in enumerate(\n"
-            "    FRET_SURFACE_ROWS,\n"
-            "    start=1,\n"
-            "):\n"
+            "# Every slot in one cut, far quicker than one a slot.\n"
+            "fret_slot_shapes = []\n"
+            "for surface_row in FRET_SURFACE_ROWS:\n"
             "    first = surface_row[0]\n"
             "    last = surface_row[-1]\n"
             "    # A slanted slot's row runs along X as Y changes; the slot\n"
@@ -2355,12 +2365,13 @@ class FreeCADScriptExporter:
             "    profile = flattened(profile)\n"
             "    profile.append(profile[0])\n"
             "    slot_face = Part.Face(Part.makePolygon(profile))\n"
-            "    slot_shape = slot_face.extrude(\n"
+            "    fret_slot_shapes.append(slot_face.extrude(\n"
             "        App.Vector(fret_slot_width, 0.0, 0.0)\n"
-            "    )\n"
+            "    ))\n"
+            "if fret_slot_shapes:\n"
             "    fretboard_shape = require_shape(\n"
-            "        fretboard_shape.cut(slot_shape).removeSplitter(),\n"
-            '        f"fret-slot cut {fret_index}",\n'
+            "        fretboard_shape.cut(fret_slot_shapes).removeSplitter(),\n"
+            '        "fret-slot cut",\n'
             "    )\n"
         )
 
@@ -2412,6 +2423,8 @@ class FreeCADScriptExporter:
             + f"inlay_depth = {layout.depth}\n"
             f"inlay_surface_z = {layout.fretboard_surface.center_thickness}\n"
             "inlay_overcut = 0.6\n"
+            "# Every marker's pocket in one cut, far quicker than one each.\n"
+            "inlay_marker_shapes = []\n"
             "for inlay_index, outline in enumerate(\n"
             "    INLAY_MARKER_OUTLINES,\n"
             "    start=1,\n"
@@ -2424,9 +2437,11 @@ class FreeCADScriptExporter:
             "    marker_face = Part.Face(Part.makePolygon(profile))\n"
             "    marker_shape = marker_face.extrude(\n"
             "        App.Vector(0.0, 0.0, -(inlay_depth + inlay_overcut))\n"
-            "    )\n" + hole_lines + "    fretboard_shape = require_shape(\n"
-            "        fretboard_shape.cut(marker_shape).removeSplitter(),\n"
-            '        f"inlay-marker cut {inlay_index}",\n'
+            "    )\n" + hole_lines + "    inlay_marker_shapes.append(marker_shape)\n"
+            "if inlay_marker_shapes:\n"
+            "    fretboard_shape = require_shape(\n"
+            "        fretboard_shape.cut(inlay_marker_shapes).removeSplitter(),\n"
+            '        "inlay-marker cut",\n'
             "    )\n"
         )
 
@@ -2475,7 +2490,11 @@ class FreeCADScriptExporter:
             f"BODY_OUTLINE_POINTS = {outline_literal(body.outline.points)}\n",
             f"body_thickness = {body.thickness}\n",
             f"body_overcut = {overcut}\n",
-            "def cavity_cut(shape, outline_points, depth, label, from_back=False):\n",
+            "# The body's routes and holes, gathered and cut in one go before\n",
+            "# its edges are finished: each cut runs against the whole body,\n",
+            "# so one is far quicker than one each.\n",
+            "BODY_CUTTERS = []\n",
+            "def cavity_tool(outline_points, depth, from_back=False):\n",
             "    if from_back:\n",
             "        start_z = -body_thickness - body_overcut\n",
             "        direction = 1.0\n",
@@ -2487,10 +2506,9 @@ class FreeCADScriptExporter:
             "    ]\n",
             "    profile.append(profile[0])\n",
             "    face = Part.Face(Part.makePolygon(profile))\n",
-            "    cavity_shape = face.extrude(\n",
+            "    return face.extrude(\n",
             "        App.Vector(0.0, 0.0, direction * (depth + body_overcut))\n",
             "    )\n",
-            "    return require_shape(shape.cut(cavity_shape), label)\n",
             (
                 "body_shape = Part.Face(\n"
                 "    Part.makePolygon(\n"
@@ -2661,8 +2679,8 @@ class FreeCADScriptExporter:
                 continue
             outline = outline_literal(cavity.outline)
             lines.append(
-                f"body_shape = cavity_cut(body_shape, {outline}, "
-                f"{cavity.depth}, {label!r})\n"
+                f"# {label}\n"
+                f"BODY_CUTTERS.append(cavity_tool({outline}, {cavity.depth}))\n"
             )
         if body.engraving is not None and body.engraving.pockets:
             # A relief's shapes, each cleared to its level (below a stepped
@@ -2730,8 +2748,9 @@ class FreeCADScriptExporter:
             ):
                 outline = outline_literal(cavity.outline)
                 lines.append(
-                    f"body_shape = cavity_cut(body_shape, {outline}, "
-                    f"{cavity.depth}, {label + ' ' + suffix!r}, from_back=True)\n"
+                    f"# {label} {suffix}\n"
+                    f"BODY_CUTTERS.append(cavity_tool({outline}, {cavity.depth}, "
+                    "from_back=True))\n"
                 )
         for index, hole in enumerate(body.bridge_mounting.pivot_holes, start=1):
             lines.append(
@@ -2741,10 +2760,7 @@ class FreeCADScriptExporter:
                 f"    App.Vector({hole.x}, {hole.y}, body_overcut),\n"
                 "    App.Vector(0.0, 0.0, -1.0),\n"
                 ")\n"
-                "body_shape = require_shape(\n"
-                "    body_shape.cut(pivot_hole),\n"
-                f'    "bridge pivot hole {index} cut",\n'
-                ")\n"
+                f"BODY_CUTTERS.append(pivot_hole)  # bridge pivot hole {index}\n"
             )
         for drilled in (*body.holes, *body.control_top_marks):
             # A through hole (depth == thickness) gets the overcut at both
@@ -2757,10 +2773,7 @@ class FreeCADScriptExporter:
                 "body_overcut),\n"
                 "    App.Vector(0.0, 0.0, -1.0),\n"
                 ")\n"
-                "body_shape = require_shape(\n"
-                "    body_shape.cut(drilled_hole),\n"
-                f"    {drilled.name.lower() + ' cut'!r},\n"
-                ")\n"
+                f"BODY_CUTTERS.append(drilled_hole)  # {drilled.name.lower()}\n"
             )
         for drilled in (*body.rear_holes, *body.control_back_marks):
             # Drilled up from the back face (Z = -thickness).
@@ -2772,10 +2785,7 @@ class FreeCADScriptExporter:
                 "-body_thickness - body_overcut),\n"
                 "    App.Vector(0.0, 0.0, 1.0),\n"
                 ")\n"
-                "body_shape = require_shape(\n"
-                "    body_shape.cut(drilled_hole),\n"
-                f"    {drilled.name.lower() + ' cut'!r},\n"
-                ")\n"
+                f"BODY_CUTTERS.append(drilled_hole)  # {drilled.name.lower()}\n"
             )
         jack = body.jack_hole
         # None with the jack on a control plate.
@@ -2804,10 +2814,7 @@ class FreeCADScriptExporter:
                     f"    App.Vector{jack_start},\n"
                     f"    App.Vector{jack_direction},\n"
                     ")\n"
-                    "body_shape = require_shape(\n"
-                    "    body_shape.cut(jack_bore),\n"
-                    f'    "{label} cut",\n'
-                    ")\n"
+                    f"BODY_CUTTERS.append(jack_bore)  # {label}\n"
                 )
         # The wire holes, drilled by hand from cavity to cavity: each from
         # 1 mm inside the cavity it is drilled from to 1 mm into the other
@@ -2832,10 +2839,7 @@ class FreeCADScriptExporter:
                 f"    App.Vector{wire_start},\n"
                 f"    App.Vector{direction},\n"
                 ")\n"
-                "body_shape = require_shape(\n"
-                "    body_shape.cut(wire_hole),\n"
-                f"    {wire.name.lower() + ' cut'!r},\n"
-                ")\n"
+                f"BODY_CUTTERS.append(wire_hole)  # {wire.name.lower()}\n"
             )
         # The holes drilled by hand at an angle (a tremolo claw's screws
         # sideways into a cavity's wall, a tilted neck plate's bolts): each
@@ -2861,13 +2865,18 @@ class FreeCADScriptExporter:
                 f"    App.Vector{side_start},\n"
                 f"    App.Vector{direction},\n"
                 ")\n"
-                "body_shape = require_shape(\n"
-                "    body_shape.cut(side_hole),\n"
-                f"    {side.name.lower() + ' cut'!r},\n"
-                ")\n"
+                f"BODY_CUTTERS.append(side_hole)  # {side.name.lower()}\n"
             )
-        # The edge finishes come last: the cavities cut quicker into the
+        # Every route and hole gathered so far in one cut, before the edge
+        # finishes, which come last: the cavities cut quicker into the
         # plain slab.
+        lines.append(
+            "if BODY_CUTTERS:\n"
+            "    body_shape = require_shape(\n"
+            '        body_shape.cut(BODY_CUTTERS), "routes and holes cut"\n'
+            "    )\n"
+            "    BODY_CUTTERS.clear()\n"
+        )
         if carve is not None and carve.edge_rim > 0.0:
             # The surface is held up where the top falls too sharply to
             # follow, which would leave wood over a binding's channel by

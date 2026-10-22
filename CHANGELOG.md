@@ -4,6 +4,13 @@
 
 ### Changed
 
+- The FreeCAD script runs several times as fast: the tuner holes and
+  their chamfers, the fret slots, the markers and the body's routes,
+  cavities, recesses and drilled holes are each cut in one boolean with
+  every cutter at once (each cut runs against the whole neck, board or
+  body), and the neck is hidden in FreeCAD's window while it is cut, so
+  it is drawn once, finished (`hidden_while_built`).
+
 - Each NC program's file says which cutter to fit: its name is the
   program's and then the tool's (`Body_top_6mm_flathead.nc`,
   `Neck_back_finish_6mm_ballnose.nc`, `Fretboard_slots_0.6mm_flathead.nc`,

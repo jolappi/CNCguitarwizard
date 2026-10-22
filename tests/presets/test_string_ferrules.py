@@ -42,7 +42,7 @@ def test_every_string_through_hole_gets_a_ferrule_counterbore() -> None:
     assert "String 1 ferrule" in cut
     assert min(move.z for move in cut["String 1 ferrule"].moves) == pytest.approx(-6.0)
     source = FreeCADScriptExporter().render_prototype001(geometry)
-    assert "'string 1 ferrule cut'" in source
+    assert "BODY_CUTTERS.append(drilled_hole)  # string 1 ferrule\n" in source
 
 
 def test_a_bass_takes_wider_ferrules_and_single_string_bridges_too() -> None:

@@ -83,7 +83,7 @@ def test_the_trem_claw_screws_are_modelled_in_the_spring_cavitys_wall() -> None:
         assert hole.diameter == 3.5
     assert any("trem claw" in note for note in body.bridge_notes)
     source = FreeCADScriptExporter().render_prototype001(geometry)
-    assert "'trem claw screw 1 hole cut'" in source
+    assert "BODY_CUTTERS.append(side_hole)  # trem claw screw 1 hole\n" in source
     assert render_plan_view_svg(geometry).count('stroke="#7d3c98"') == 2
     assert "SIDE_HOLES" in render_plan_dxf(geometry)
     # Left-handed, they are still in the wall.

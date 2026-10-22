@@ -135,7 +135,7 @@ def test_the_tilted_bolts_are_modelled_and_drawn() -> None:
 
     source = FreeCADScriptExporter().render_prototype001(geometry)
     ast.parse(source)
-    assert source.count("neck bolt 1 hole cut") == 1
+    assert source.count("BODY_CUTTERS.append(side_hole)  # neck bolt 1 hole\n") == 1
     assert "Neck bolt 1 hole" in render_plan_view_svg(geometry)
 
 

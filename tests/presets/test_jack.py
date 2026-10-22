@@ -46,7 +46,9 @@ def test_a_cup_jack_gets_its_counterbore() -> None:
 
     assert (jack.cup_diameter, jack.cup_depth) == (22.2, 25.0)
     assert jack.depth > jack.cup_depth
-    assert "jack cup cut" in FreeCADScriptExporter().render_prototype001(geometry)
+    assert "BODY_CUTTERS.append(jack_bore)  # jack cup\n" in (
+        FreeCADScriptExporter().render_prototype001(geometry)
+    )
 
 
 def test_a_strat_jack_is_a_cavity_from_the_top() -> None:
