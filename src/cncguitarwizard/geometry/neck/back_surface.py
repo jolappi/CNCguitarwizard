@@ -79,13 +79,12 @@ class NeckBackSurface:
         """Validate parameters and construct all mesh rows and faces."""
         self._validate()
 
-        fret_positions = FretCalculator.calculate(
-            self.neck_outline.scale_length,
-            self.neck_outline.fret_count,
-        )
-        first_position = fret_positions[0].distance_from_nut
-        twelfth_position = fret_positions[11].distance_from_nut
-        final_position = fret_positions[-1].distance_from_nut
+        # The final fret is the neck's own; its 1st and 12th fret
+        # stations stay where a semitone and the octave are, whatever the
+        # fretting (see station_positions_reference).
+        final_position = self.neck_outline.last_fret_position
+        first_position = self.station_positions_reference(1)
+        twelfth_position = self.station_positions_reference(12)
         heel_end_position = final_position + self.neck_outline.heel_length
         heel_flat_start = final_position - self.heel_flat_start_offset
         heel_transition_start = heel_flat_start - self.heel_transition_length
@@ -685,7 +684,12 @@ class NeckBackSurface:
         )
 
     def station_positions_reference(self, fret_number: int) -> float:
-        """Return the calculated longitudinal position of one fret."""
+        """Return where fret ``fret_number`` of a 12-per-octave neck lies.
+
+        The neck's carving is set at its 1st and 12th frets' places, a
+        semitone and the octave up: a microtonal neck's frets fall
+        elsewhere, the places stay.
+        """
         return FretCalculator.calculate(
             self.neck_outline.scale_length,
             fret_number,

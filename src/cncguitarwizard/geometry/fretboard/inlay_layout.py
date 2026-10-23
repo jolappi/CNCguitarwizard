@@ -267,6 +267,7 @@ class InlayLayout:
             for fret in FretCalculator.calculate(
                 self.fretboard_surface.scale_length,
                 self.fretboard_surface.fret_count,
+                self.fretboard_surface.frets_per_octave,
             )
         }
         final_fret_position = fret_positions[self.fretboard_surface.fret_count]
@@ -614,6 +615,7 @@ class InlayLayout:
             for fret in FretCalculator.calculate(
                 self.fretboard_surface.scale_length,
                 self.fretboard_surface.fret_count,
+                self.fretboard_surface.frets_per_octave,
             )
         }
         final = positions[self.fretboard_surface.fret_count]
@@ -1117,7 +1119,9 @@ def custom_limits(
         raise FretboardGeometryError("No fret has a marker.")
     positions = {
         fret.number: fret.distance_from_nut
-        for fret in FretCalculator.calculate(surface.scale_length, surface.fret_count)
+        for fret in FretCalculator.calculate(
+            surface.scale_length, surface.fret_count, surface.frets_per_octave
+        )
     }
     if not all(1 <= fret <= surface.fret_count for fret in marker_frets):
         raise FretboardGeometryError("A marker fret lies off the fretboard.")

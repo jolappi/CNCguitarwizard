@@ -139,7 +139,7 @@ assert centerline.length == 609.6
 
 | API | Purpose |
 | --- | --- |
-| `FretCalculator` | Equal-temperament fret position calculator. |
+| `FretCalculator` | Equal-temperament fret position calculator: 12 frets to the octave, or `frets_per_octave` for a microtonal neck; `nearest_fret` for a semitone's fret. |
 | `FretPosition` | Immutable calculated fret distance. |
 | `FretLine` | Infinite fret line represented by location and direction. |
 

@@ -15,8 +15,11 @@ useful input for drawings, renderers, and later CAM operations.
 The distance from the nut to fret `n` is:
 
 ```text
-distance = scale_length - scale_length / 2^(n / 12)
+distance = scale_length - scale_length / 2^(n / frets_per_octave)
 ```
+
+`frets_per_octave` is 12 but on a microtonal board (24 quarter tones, 19,
+22, 31...): the layout's `frets_per_octave`, the preset's own.
 
 ## Width
 
@@ -81,6 +84,19 @@ front and back stay parallel to the frets either side; barbed wire turns
 about its own centre to the frets' angle there; a dot keeps its shape and
 moves onto the line between its two frets (so a double dot's pair lies
 along the frets).
+
+**Microtonal frets** — `Prototype001Parameters.frets_per_octave` (12 by
+default, `MIN_FRETS_PER_OCTAVE` = 5 to `MAX_FRETS_PER_OCTAVE` = 72) divides
+each octave into that many equal steps: 24 quarter tones, 19, 22 or 31 for
+other microtonal tunings, fret `frets_per_octave` always at half the scale.
+`fret_count` counts the neck's own frets (48 for two octaves of quarter
+tones), so the board and the heel end at its last one; `perpendicular_fret`
+is one of them too. The markers stay at the usual pitches: the marker frets
+are counted in semitones, each on the fret nearest that pitch
+(`Prototype001Parameters.marker_frets`), and the fretboard view numbers
+those frets. The neck's carving stays set at its 1st and 12th frets' places,
+a semitone and the octave up (`NeckBackSurface.station_positions_reference`),
+whatever the fretting.
 
 **Slanted frets** — `Prototype001Parameters.fret_slant_angle` (degrees,
 0 by default, at most `MAX_FRET_SLANT_ANGLE` = 10°): a constant lean; a

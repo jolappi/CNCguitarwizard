@@ -135,8 +135,12 @@ assert mirror_x(point) == Point2D(2.0, -3.0)
 ## Fret geometry
 
 `FretCalculator` uses equal temperament. For a scale length `S` and one-based
-fret number `n`, the remaining scale length is `S / 2^(n / 12)` and the fret
-distance from the nut is `S - S / 2^(n / 12)`.
+fret number `n`, the remaining scale length is `S / 2^(n / N)` and the fret
+distance from the nut is `S - S / 2^(n / N)`, `N` the frets per octave: 12,
+or more on a microtonal neck (`frets_per_octave`; see
+[Fret calculation](../math/fret_calculation.md)). `nearest_fret(s, N)` is
+the fret nearest `s` semitones up, where a marker listed for semitone `s`
+goes.
 
 `FretLine` places that distance along a `Centerline`. Its direction is the
 normalized perpendicular of the centerline direction `(dx, dy)`, namely

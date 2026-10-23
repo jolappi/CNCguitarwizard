@@ -63,6 +63,7 @@ from ..geometry.exceptions import (
     HeadstockGeometryError,
     NeckGeometryError,
 )
+from ..geometry.fret import FretCalculator
 from ..geometry.fretboard import (
     Fretboard,
     FretboardScallops,
@@ -226,6 +227,13 @@ Instrument = Literal[
 
 MAX_FRET_SLANT_ANGLE = 10.0
 """The largest fret slant accepted, in degrees."""
+
+MIN_FRETS_PER_OCTAVE = 5
+"""The fewest equal steps an octave may be divided into (``frets_per_octave``)."""
+
+MAX_FRETS_PER_OCTAVE = 72
+"""The most equal steps an octave may be divided into: 72, a twelfth-tone
+neck's (its frets still some 1.5 mm apart two octaves up a 25 in scale)."""
 
 NECK_FERRULE_BODY_WALL = 1.0
 """Least wood, in mm, between a neck-bolt ferrule and the body's edge, and
@@ -808,6 +816,16 @@ class Prototype001Parameters:
     string_count: int = 6
     scale_length: float = 609.6
     fret_count: int = 24
+    # frets_per_octave divides each octave into that many equal steps:
+    # 12, semitones, for an ordinary neck; more for a microtonal one (24
+    # quarter tones; 19, 22 or 31 for other tunings), each fret 2^(1/N)
+    # up the string, the octave always at half the scale. fret_count counts
+    # its frets (48 for two octaves of quarter tones), perpendicular_fret
+    # one of them; the markers (inlay_single_marker_frets and _double_)
+    # are still counted in semitones, each on the fret nearest that pitch
+    # (marker_frets), and the neck's carving stays set at its 1st and 12th
+    # frets' places (a semitone and the octave up), whatever the fretting.
+    frets_per_octave: int = 12
     # fret_slant_angle tilts every fret, and the fretboard's nut and far
     # ends with them, about the centerline (degrees; positive moves each
     # fret's treble end toward the bridge). Fret spacing stays exact on
@@ -3118,6 +3136,21 @@ class Prototype001Parameters:
         return (self.scale_length + self.bass_scale_length) / 2.0
 
     @property
+    def checked_frets_per_octave(self) -> int:
+        """Return ``frets_per_octave``, checked.
+
+        Raises:
+            NeckGeometryError: Outside ``MIN_FRETS_PER_OCTAVE`` to
+                ``MAX_FRETS_PER_OCTAVE``.
+        """
+        if not MIN_FRETS_PER_OCTAVE <= self.frets_per_octave <= MAX_FRETS_PER_OCTAVE:
+            raise NeckGeometryError(
+                f"frets_per_octave must lie between {MIN_FRETS_PER_OCTAVE} and "
+                f"{MAX_FRETS_PER_OCTAVE} (12 for an ordinary neck)."
+            )
+        return self.frets_per_octave
+
+    @property
     def fret_skew(self) -> FretSkew:
         """Return how the frets lean: slant and multiscale fan together."""
         bass_sign = self.bass_sign
@@ -3130,7 +3163,7 @@ class Prototype001Parameters:
         return FretSkew(
             self.fret_slant,
             fan,
-            1.0 - 2.0 ** (-self.perpendicular_fret / 12.0),
+            1.0 - 2.0 ** (-self.perpendicular_fret / self.checked_frets_per_octave),
             self.centre_scale,
             outer * self.nut_string_spacing,
             outer * self.bridge_string_spacing,
@@ -3780,7 +3813,9 @@ class Prototype001Parameters:
         # s along it and t toward the bridge lies at u = (s - t * lean) / k.
         lean = self.fret_skew.at(0.0) * self.bass_sign
         k = math.hypot(1.0, lean)
-        final = self.centre_scale * (1.0 - math.pow(2.0, -self.fret_count / 12.0))
+        final = self.centre_scale * (
+            1.0 - math.pow(2.0, -self.fret_count / self.checked_frets_per_octave)
+        )
         taper = (self.final_fret_width - self.nut_width) / 2.0 / final
         corner = self.fretboard_nut_corner_radius if self.nut_style == "shelf" else 0.0
 
@@ -3884,6 +3919,7 @@ class Prototype001Parameters:
             self.heel_length,
             FENDER_HEEL_END_RADIUS if round_end else 0.0,
             FENDER_HEEL_CORNER_RADIUS if round_end else 0.0,
+            self.frets_per_octave,
         )
 
     def _body_layout(
@@ -5852,27 +5888,48 @@ class Prototype001Parameters:
             end_extension=self.fretboard_end_extension,
             profile_sample_count=self.profile_sample_count,
             skew=self.fret_skew,
+            frets_per_octave=self.frets_per_octave,
         )
+
+    def marker_frets(self) -> tuple[tuple[int, ...], tuple[int, ...]]:
+        """Return the frets with one marker and with two, as cut.
+
+        ``inlay_single_marker_frets`` and ``_double_``, counted in
+        semitones, each on the fret nearest that pitch
+        (``FretCalculator.nearest_fret``: the fret itself on an ordinary
+        neck); those past the last fret left out (the 24th-fret pair on a
+        22-fret neck, say). A fret both lists reach takes the pair.
+        """
+
+        def on_the_neck(semitones: tuple[int, ...]) -> list[int]:
+            frets = (
+                FretCalculator.nearest_fret(step, self.frets_per_octave)
+                for step in semitones
+            )
+            return [fret for fret in frets if 1 <= fret <= self.fret_count]
+
+        double = tuple(dict.fromkeys(on_the_neck(self.inlay_double_marker_frets)))
+        single = tuple(
+            dict.fromkeys(
+                fret
+                for fret in on_the_neck(self.inlay_single_marker_frets)
+                if fret not in double
+            )
+        )
+        return single, double
 
     def inlay_design(self, surface: FretboardSurface | None = None) -> InlayLayout:
         """Return the fret markers (cheap: the web app's inlay editor uses it).
 
         Markers listed beyond the last fret (the 24th-fret pair on a
-        22-fret neck, say) are simply not cut.
+        22-fret neck, say) are simply not cut (``marker_frets``).
         """
+        single, double = self.marker_frets()
         return InlayLayout(
             surface or self.fretboard_surface(),
             self.inlay_depth,
-            single_marker_frets=tuple(
-                fret
-                for fret in self.inlay_single_marker_frets
-                if fret <= self.fret_count
-            ),
-            double_marker_frets=tuple(
-                fret
-                for fret in self.inlay_double_marker_frets
-                if fret <= self.fret_count
-            ),
+            single_marker_frets=single,
+            double_marker_frets=double,
             style=self.inlay_style,
             dot_diameter=self.inlay_dot_diameter,
             block_length_fraction=self.inlay_block_length_fraction,
@@ -7456,7 +7513,9 @@ class Prototype001Parameters:
         fretboard_surface = self.fretboard_surface()
         board_nut_width = fretboard_surface.nut_width
         board_final_width = fretboard_surface.last_fret_width
-        final_fret_fraction = 1.0 - 2.0 ** (-self.fret_count / 12.0)
+        final_fret_fraction = 1.0 - 2.0 ** (
+            -self.fret_count / self.checked_frets_per_octave
+        )
         width_at_scale_end = (
             board_nut_width
             + (board_final_width - board_nut_width) / final_fret_fraction
@@ -7487,6 +7546,7 @@ class Prototype001Parameters:
             self.fret_skew,
             zero_fret=locking_nut is not None and locking_nut.zero_fret,
             slot_end_inset=self.fret_slot_end_inset,
+            frets_per_octave=self.frets_per_octave,
         )
         inlay_layout = self.inlay_design(fretboard_surface)
         scallops = self.fretboard_scallops(fretboard_surface)

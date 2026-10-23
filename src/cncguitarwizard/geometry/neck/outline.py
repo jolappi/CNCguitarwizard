@@ -152,6 +152,8 @@ class NeckOutline:
             end (see ``heel_end_curve``).
         heel_corner_radius: A round heel end's corners, blending its arc
             into the sides.
+        frets_per_octave: Equal steps in each octave (12; more for a
+            microtonal neck): where the final fret, and so the heel, lies.
 
     Raises:
         NeckGeometryError: If dimensions cannot form a valid neck outline.
@@ -165,6 +167,7 @@ class NeckOutline:
     heel_length: float
     heel_end_radius: float = 0.0
     heel_corner_radius: float = 0.0
+    frets_per_octave: int = 12
     centerline: Centerline = field(init=False)
     last_fret_position: float = field(init=False)
     nut_line: Line2D = field(init=False)
@@ -184,6 +187,7 @@ class NeckOutline:
         last_fret_position = FretCalculator.calculate(
             self.scale_length,
             self.fret_count,
+            self.frets_per_octave,
         )[-1].distance_from_nut
         heel_end = last_fret_position + self.heel_length
 

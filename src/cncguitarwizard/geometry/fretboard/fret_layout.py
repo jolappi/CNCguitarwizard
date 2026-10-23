@@ -32,6 +32,8 @@ class FretLayout:
             each slot is cut, along it (``cut_slot``); 0 cuts them out
             through the edges. ``slots`` stay the fret lines, edge to
             edge.
+        frets_per_octave: Equal steps in each octave (12; more for a
+            microtonal board, see ``FretCalculator``).
 
     Raises:
         FretboardGeometryError: If the fret count or fretboard dimensions
@@ -44,6 +46,7 @@ class FretLayout:
     skew: FretSkew = field(default_factory=FretSkew)
     zero_fret: bool = False
     slot_end_inset: float = 0.0
+    frets_per_octave: int = 12
     slots: tuple[Line2D, ...] = field(init=False)
     zero_fret_slot: Line2D | None = field(init=False)
 
@@ -54,6 +57,7 @@ class FretLayout:
         positions = FretCalculator.calculate(
             self.fretboard.scale_length,
             self.fret_count,
+            self.frets_per_octave,
         )
         slots = tuple(
             self._create_slot(FretLine(self.fretboard.centerline, position))

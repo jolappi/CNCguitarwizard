@@ -39,7 +39,16 @@ FIELD_HELP: dict[str, str] = {
     ),
     "fret_count": (
         "How many frets (22 or 24 on a guitar, 20 to 24 on a bass); the "
-        "fretboard ends fretboard_end_extension past the last one."
+        "fretboard ends fretboard_end_extension past the last one. On a "
+        "microtonal neck count its own frets: 48 for two octaves of quarter "
+        "tones."
+    ),
+    "frets_per_octave": (
+        "Microtonal frets: how many equal steps each octave is divided into. "
+        "12 is an ordinary guitar (semitones); 24 gives quarter tones, and "
+        "19, 22 or 31 other microtonal tunings. The octave stays at half the "
+        "scale; raise fret_count to match (48 for two octaves at 24). The "
+        "markers stay at the usual pitches, on the nearest frets."
     ),
     "fret_slant_angle": (
         "Tilts every fret, and both ends of the fretboard, by this many "
@@ -216,10 +225,14 @@ FIELD_HELP: dict[str, str] = {
         "half-width toward the bass edge. Every marker is this shape fitted "
         "to its own fret space; empty is a block."
     ),
-    "inlay_single_marker_frets": "The frets that get one position marker.",
+    "inlay_single_marker_frets": (
+        "The frets that get one position marker, counted in semitones: on a "
+        "microtonal neck each goes on the fret nearest that pitch."
+    ),
     "inlay_double_marker_frets": (
-        "The frets that get two position markers (the octaves); block styles "
-        "mark them like the others."
+        "The frets that get two position markers (the octaves), counted in "
+        "semitones as the single ones; block styles mark them like the "
+        "others."
     ),
     "inlay_dot_diameter": "A dot marker's diameter, in mm.",
     # Heel

@@ -44,6 +44,18 @@
 
 ### Added
 
+- Microtonal frets: `frets_per_octave` (12 by default, 5 to 72; on
+  *Design › Fretboard* beside the fret count) divides each octave into
+  that many equal steps — 24 quarter tones, 19, 22 or 31 for other
+  microtonal tunings — the octave still at half the scale. `fret_count`
+  counts the neck's own frets (48 for two octaves of quarter tones), and
+  the fret slots, the board's and the heel's length, the fanned frets'
+  square fret, the CAM and the FreeCAD model all follow. The markers stay
+  at the usual pitches: the marker frets are counted in semitones, each
+  on the fret nearest that pitch (`FretCalculator.nearest_fret`, quarter
+  tones' 6, 10, 14, 18 and 24); the neck's carving stays set at its 1st
+  and 12th frets' places, whatever the fretting.
+
 - What the body's and the headstock's drawings' colours mean: *What the
   colours mean* above each editor's drawing opens a list of the colours
   drawn now, each a swatch as the drawing draws it and its meaning — on

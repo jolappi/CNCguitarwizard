@@ -1492,16 +1492,12 @@ def inlay_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         return {"error": f"{type(error).__name__}: {error}"}
     positions = {
         fret.number: fret.distance_from_nut
-        for fret in FretCalculator.calculate(surface.scale_length, surface.fret_count)
-    }
-    frets = sorted(
-        fret
-        for fret in (
-            *parameters.inlay_single_marker_frets,
-            *parameters.inlay_double_marker_frets,
+        for fret in FretCalculator.calculate(
+            surface.scale_length, surface.fret_count, surface.frets_per_octave
         )
-        if 1 <= fret <= surface.fret_count
-    )
+    }
+    single, double = parameters.marker_frets()
+    frets = sorted((*single, *double))
     if not frets:
         return {"error": "No fret has a marker (inlay_single_marker_frets)."}
     first = frets[0]

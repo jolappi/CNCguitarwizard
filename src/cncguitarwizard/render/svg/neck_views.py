@@ -12,6 +12,7 @@ from __future__ import annotations
 import math
 from collections.abc import Iterable, Sequence
 
+from ...geometry.fret import FretCalculator
 from ...geometry.primitives import Point2D, Point3D
 from ...presets import Prototype001Geometry
 from .plan_view import _fretboard_polygon, _nut_polygon
@@ -342,8 +343,11 @@ def render_fretboard_svg(geometry: Prototype001Geometry) -> str:
             )
         )
     parts.append(plan.polygon(_plan(_nut_polygon(geometry)), NUT, "The nut"))
-    for fret in (3, 5, 7, 9, 12, 15, 17, 19, 21, 24):
-        if fret <= surface.fret_count:
+    # The usual marker frets' numbers: on a microtonal board the frets
+    # nearest those pitches.
+    for semitones in (3, 5, 7, 9, 12, 15, 17, 19, 21, 24):
+        fret = FretCalculator.nearest_fret(semitones, surface.frets_per_octave)
+        if 1 <= fret <= surface.fret_count:
             middle = (positions[fret - 1] + positions[fret]) / 2.0
             sx, sy = map(float, plan.point(middle, -y_reach).split(","))
             parts.append(

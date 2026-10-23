@@ -33,6 +33,8 @@ class FretboardSurface:
             point ``y`` off the centerline moving ``skew.at(x) * y`` along
             the neck (see ``FretSkew``); ``station_positions`` stay on the
             centerline.
+        frets_per_octave: Equal steps in each octave (12; more for a
+            microtonal board, see ``FretCalculator``).
 
     Raises:
         FretboardGeometryError: If dimensions cannot form a valid surface.
@@ -47,6 +49,7 @@ class FretboardSurface:
     profile_sample_count: int = 33
     end_extension: float = 0.0
     skew: FretSkew = field(default_factory=FretSkew)
+    frets_per_octave: int = 12
     station_positions: tuple[float, ...] = field(init=False)
     mesh: SurfaceMesh = field(init=False)
 
@@ -57,6 +60,7 @@ class FretboardSurface:
         fret_positions = FretCalculator.calculate(
             self.scale_length,
             self.fret_count,
+            self.frets_per_octave,
         )
         station_positions = (
             0.0,

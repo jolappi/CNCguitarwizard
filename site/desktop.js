@@ -275,7 +275,7 @@
       "headstock_thickness", "neck_carbon_rods", "neck_carbon_rod_size",
     ],
     fretboard: [
-      "fret_count", "bass_scale_length", "perpendicular_fret", "fret_slant_angle",
+      "fret_count", "frets_per_octave", "bass_scale_length", "perpendicular_fret", "fret_slant_angle",
       "fretboard_radius", "fretboard_thickness", "fretboard_end_extension",
       "fretboard_nut_corner_radius", "fret_slot_width", "fret_slot_depth", "fret_slot_end_inset",
       "fretboard_binding_width", "fretboard_scalloped", "fretboard_scallop_from_fret",
