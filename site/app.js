@@ -143,6 +143,9 @@ async function boot() {
     undoHistory.start();
     const changed = restored && undoHistory.current !== defaults;
     const repaired = changed ? await repairDesign() : [];
+    // Undo starts from the design as repaired (its snapshot taken before,
+    // with a field not yet valid, would be none).
+    if (repaired.length) undoHistory.start();
     setStatus(`Ready — ${manifest.wheel} (build ${manifest.build || "dev"})` +
       (changed ? " · your last design is back (Reset starts afresh)" : "") + repairNote(repaired), "ok");
     // The first visit begins with the tour, once the drawings are laid out.
@@ -1981,13 +1984,20 @@ const undoHistory = {
   flush() {
     clearTimeout(this.timer);
     this.timer = null;
-    if (this.restoring || this.current === null) return;
+    if (this.restoring) return;
     if (this.pointerDown) {
       this.note();
       return;
     }
     const now = this.snapshot();
     if (now === null || now === this.current) return;
+    // Started on values that could not be read (a field not yet valid):
+    // these are the first, nothing to undo to.
+    if (this.current === null) {
+      this.current = now;
+      this.update();
+      return;
+    }
     this.undo.push(this.current);
     if (this.undo.length > HISTORY_LIMIT) this.undo.shift();
     this.redo = [];

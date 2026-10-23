@@ -374,3 +374,13 @@ def test_a_flat_headstocks_root_and_the_heel_are_drawn_as_two_lines() -> None:
     assert '"heel_root_style"' in layout
     assert 'id="heel-editor" class="body-editor hidden"' in page
     assert 'id="heel-editor-view" class="volute-view-box" hidden' in page
+
+
+def test_undo_starts_once_a_restored_design_can_be_read() -> None:
+    script = (ROOT / "site" / "app.js").read_text(encoding="utf-8")
+
+    # A design repaired on load starts the history afresh, and one begun
+    # on values not yet readable takes the first it can read: else every
+    # build looked out of date and nothing could be undone.
+    assert "if (repaired.length) undoHistory.start();" in script
+    assert "if (this.current === null) {\n      this.current = now;" in script

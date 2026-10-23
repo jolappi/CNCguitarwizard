@@ -1433,6 +1433,12 @@
 
 ### Fixed
 
+- A design restored on opening the page that had a setting put back to
+  its default (it showed an error) left the page without a first state:
+  every build then said the design had changed since it, and nothing
+  could be undone. Undo now starts from the repaired design, and from the
+  first values it can read.
+
 - The FreeCAD script cuts the tuner holes' chamfers in a cut of their own
   after the holes: cut with them in one, a chamfer's narrow end on its
   hole's wall, a headstock (the Fantomen's) came out as no shape at all.
