@@ -71,10 +71,11 @@ from .geometry.fretboard.inlay_layout import (
 )
 from .geometry.fretboard.runes import DEFAULT_RUNES, RUNES
 from .geometry.lettering import text_lines
-from .geometry.neck import LOCKING_NUT_SPECS, TunerLayout
+from .geometry.neck import LOCKING_NUT_SPECS, TunerLayout, drawn_back_line
 from .geometry.primitives import (
     CORNER,
     ROUND,
+    DrawnPoint,
     Point2D,
     closed_catmull_rom_spans,
     drawn_points,
@@ -99,9 +100,12 @@ from .presets.pickup_frames import PickupFrame
 from .presets.pickups import PICKUP_CONFIGURATIONS
 from .presets.prototype001 import (
     BODY_TEMPLATE_VALUES,
+    DRAWN_JOINT_TIP_CLEARANCE,
+    HEEL_LINE_SETTINGS,
     INSTRUMENT_OVERRIDES,
     NECK_TEMPLATE_RESETS,
     NECK_TEMPLATES,
+    ROOT_LINE_SETTINGS,
 )
 from .presets.styles import STYLES
 from .presets.truss_rod_covers import editable_cover_points, truss_rod_cover_shape
@@ -186,6 +190,14 @@ _CHOICE_LABELS: dict[str, dict[str, str]] = {
     "headstock_volute_style": {
         "arrow": "Rounded arrow",
         "drawn": "Drawn: its crest and both ends (in the headstock editor)",
+    },
+    "headstock_root_style": {
+        "smooth": "Smooth",
+        "drawn": "Drawn: two lines (in the headstock editor, flat headstock)",
+    },
+    "heel_root_style": {
+        "smooth": "Smooth",
+        "drawn": "Drawn: two lines (on Design › Neck)",
     },
     "truss_rod_cover_style": {
         "bell": "Gibson bell (3 screws)",
@@ -1591,7 +1603,8 @@ def headstock_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         the headstock's lettering (see ``_headstock_lettering``), or ``None``;
         ``engraving`` the lines drawn on its face (see
         ``_headstock_drawn_engraving``), or ``None``; ``volute`` the volute
-        on its back to draw (see ``_volute_drawing``), or ``None``.
+        on its back to draw (see ``_volute_drawing``), or ``None``; ``root``
+        a flat headstock's drawn root (see ``_root_drawing``), or ``None``.
     """
     try:
         built = Prototype001Parameters(**_coerce(payload.get("prototype", {})))
@@ -1615,6 +1628,7 @@ def headstock_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         engraving = _headstock_drawn_engraving(built)
         truss_cover = _truss_cover_drawing(parameters)
         volute = _volute_drawing(parameters)
+        root_drawing = _root_drawing(parameters)
     except (CNCGuitarWizardError, TypeError, ValueError) as error:
         return {"error": f"{type(error).__name__}: {error}"}
     root = parameters.headstock_root_length
@@ -1633,6 +1647,7 @@ def headstock_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         "engraving": engraving,
         "truss_cover": truss_cover,
         "volute": volute,
+        "root": root_drawing,
         "nut": nut,
         "mirrored": built.left_handed,
         "nut_half_width": parameters.nut_width / 2.0,
@@ -1660,6 +1675,35 @@ VOLUTE_LINE_FIELDS = {
 }
 """The setting each of a drawn volute's lines is kept in."""
 
+DRAWN_LINE_ROOM = 1.0
+"""How far, in mm, the editors keep a drawn line's point inside its limits
+and clear of the lines either side of it."""
+
+
+def _line_drawing(
+    parameters: Prototype001Parameters,
+    fields: dict[str, str],
+    halves: dict[str, tuple[DrawnPoint, ...]],
+    whole: dict[str, tuple[Point2D, ...]],
+) -> dict[str, dict[str, Any]]:
+    """Return lines drawn across the neck's back, for an editor to draw.
+
+    Each ``{"field", "points", "drawn", "line"}``: the setting it is kept
+    in; the points it holds, half the line seen from behind, ``[along,
+    across]`` from the centre line out (along from its origin toward the
+    headstock), a ``"corner"`` mark kept, where drawing starts while none
+    are drawn; whether they are drawn; the whole line in the model frame.
+    """
+    return {
+        name: {
+            "field": field,
+            "points": [list(point) for point in halves[name]],
+            "drawn": bool(getattr(parameters, field)),
+            "line": [[round(p.x, 2), round(p.y, 2)] for p in whole[name]],
+        }
+        for name, field in fields.items()
+    }
+
 
 def _volute_drawing(parameters: Prototype001Parameters) -> dict[str, Any] | None:
     """Return the volute for the headstock editor to draw, or ``None``.
@@ -1678,7 +1722,6 @@ def _volute_drawing(parameters: Prototype001Parameters) -> dict[str, Any] | None
     if volute is None:
         return None
     if parameters.headstock_volute_style == "drawn":
-        halves = parameters.volute_lines(volute.half_width)
         whole = {
             "crest": volute.crest,
             "headstock": volute.headstock_end,
@@ -1686,16 +1729,19 @@ def _volute_drawing(parameters: Prototype001Parameters) -> dict[str, Any] | None
         }
         return {
             "style": "drawn",
-            "lines": {
-                name: {
-                    "field": field,
-                    "points": [list(point) for point in halves[name]],
-                    "drawn": bool(getattr(parameters, field)),
-                    "line": [[round(p.x, 2), round(p.y, 2)] for p in whole[name]],
-                }
-                for name, field in VOLUTE_LINE_FIELDS.items()
-            },
+            "origin": 0.0,
+            "lines": _line_drawing(
+                parameters,
+                VOLUTE_LINE_FIELDS,
+                parameters.volute_lines(volute.half_width),
+                whole,
+            ),
             "outline": None,
+            # Each point kept clear of the lines either side (see
+            # _transition_drawing).
+            "limits": list(_root_limits(parameters)),
+            "order": ["neck", "crest", "headstock"],
+            "toward": -1.0,
         }
     # The arrow's edge: down each side, where it adds a tenth of a mm.
     edge: list[list[float]] = []
@@ -1712,52 +1758,212 @@ def _volute_drawing(parameters: Prototype001Parameters) -> dict[str, Any] | None
     return {"style": "arrow", "lines": None, "outline": outline}
 
 
-VOLUTE_VIEW_PAST = 12.0
-"""How far past either end of the volute its view runs, in mm."""
+def _transition_drawing(
+    parameters: Prototype001Parameters,
+    style_field: str,
+    fields: dict[str, str],
+    halves: dict[str, tuple[DrawnPoint, ...]],
+    origin: float,
+    limits: tuple[float, float],
+    toward: float,
+) -> dict[str, Any]:
+    """Return a joint drawn as two lines for an editor to draw.
+
+    ``{"origin", "style", "style_field", "lines", "limits", "order",
+    "toward"}``: where its lines' points are measured from (see
+    ``_line_drawing``), its style setting's value ("smooth" until a line
+    is drawn, which makes it "drawn") and name, its two lines, ``{"flat",
+    "neck"}``, and where along the neck their points may go (``limits``,
+    the model's ``x``), the lines in order from the neck's side to the
+    block's, which ``toward`` is along the neck (1 the body, -1 the
+    headstock), so an editor keeps each point clear of the line either
+    side of it.
+    """
+    whole = {name: drawn_back_line(points, origin) for name, points in halves.items()}
+    return {
+        "origin": round(origin, 4),
+        "style": getattr(parameters, style_field),
+        "style_field": style_field,
+        "lines": _line_drawing(parameters, fields, halves, whole),
+        "limits": [round(limits[0], 2), round(limits[1], 2)],
+        "order": ["neck", "flat"],
+        "toward": toward,
+    }
 
 
-def volute_view(payload: dict[str, Any]) -> dict[str, Any]:
-    """Return the volute as it is lofted, seen from behind and above.
+def _root_limits(parameters: Prototype001Parameters) -> tuple[float, float]:
+    """Return where a line drawn on the back behind the nut may go along
+    the neck, a little inside the model's own limits: short of the
+    headstock's tip (``DRAWN_JOINT_TIP_CLEARANCE``) and of the first fret.
+    A drawing that does not stand yet (its edges dragged across each
+    other) is as long as ``headstock_length`` meanwhile, so the editor
+    still opens on it.
+    """
+    scale = parameters.neck_outline().scale_length
+    first = FretCalculator.calculate(scale, 1)[-1].distance_from_nut
+    try:
+        length = parameters.headstock_plan().length
+    except CNCGuitarWizardError:
+        length = parameters.headstock_length
+    reach = length - DRAWN_JOINT_TIP_CLEARANCE
+    return -reach + DRAWN_LINE_ROOM, first - DRAWN_LINE_ROOM
 
-    For the headstock editor, to see while drawing what the volute looks
-    like: the back round the nut as FreeCAD lofts it (the headstock's
-    rows, their blend into the neck's and the volute's wood under them,
-    ``FreeCADScriptExporter.neck_loft_rows``), from a little past the
-    volute's end in the headstock to a little past its nose on the neck
-    (``render.svg.render_volute_view_svg``).
+
+def _root_drawing(parameters: Prototype001Parameters) -> dict[str, Any] | None:
+    """Return the headstock's root, how the neck's back runs into it, for
+    the headstock editor; ``None`` with the volute on (its lines are drawn
+    instead) or no headstock.
+
+    Its two lines, drawn or (smooth) where drawing them starts: see
+    ``_transition_drawing``.
+    """
+    if parameters.headstock_pointed_volute or parameters.headless:
+        return None
+    half_width = parameters.neck_outline().nut_width / 2.0
+    return _transition_drawing(
+        parameters,
+        "headstock_root_style",
+        ROOT_LINE_SETTINGS,
+        parameters.root_lines(half_width),
+        0.0,
+        _root_limits(parameters),
+        -1.0,
+    )
+
+
+HEEL_EDITOR_REACH = 130.0
+"""How far ahead of the heel's block the heel editor shows the neck, in mm."""
+
+
+def heel_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
+    """Describe the heel's back for the web app's heel editor.
+
+    Coordinates are the model's: X from the nut toward the body, Y from
+    the centre line. The neck's back is seen from behind, from
+    ``HEEL_EDITOR_REACH`` ahead of the heel's block to the heel's end.
 
     Args:
         payload: ``{"prototype": {...}}`` as for ``start_build``.
 
     Returns:
-        ``{"svg": ...}``, ``{"svg": None}`` without a volute, or
-        ``{"error": message}``.
+        ``{"outline", "block", "heel_end", "twelfth", "heel", "problem"}``
+        or ``{"error": message}``: the back's outline there (a closed list
+        of ``[x, y]``), where the block's flat begins (the drawn lines'
+        origin), the heel's end and the 12th fret's X (the drawn lines lie
+        between the fret and the block), the heel's two lines, drawn or
+        (smooth) where drawing them starts (see ``_transition_drawing``),
+        and why the design does not build, or ``None``: the lines are
+        drawn as they are set even so (the neck as with a smooth heel), so
+        they can be mended.
     """
     try:
         built = Prototype001Parameters(**_coerce(payload.get("prototype", {})))
-        # As drawn (right-handed), as the editor shows it.
+        parameters = dataclasses.replace(built, handedness="right")
+    except (CNCGuitarWizardError, TypeError, ValueError) as error:
+        return {"error": f"{type(error).__name__}: {error}"}
+    problem = None
+    try:
+        geometry = parameters.build()
+    except (CNCGuitarWizardError, TypeError, ValueError) as error:
+        problem = f"{type(error).__name__}: {error}"
+        try:
+            geometry = dataclasses.replace(parameters, heel_root_style="smooth").build()
+        except (CNCGuitarWizardError, TypeError, ValueError):
+            return {"error": problem}
+    surface = geometry.neck_surface
+    neck = surface.neck_outline
+    block = neck.last_fret_position - surface.heel_flat_start_offset
+    rows = [row for row in surface.mesh.rows if row[0].x >= block - HEEL_EDITOR_REACH]
+    outline = [[round(row[0].x, 2), round(row[0].y, 2)] for row in rows] + [
+        [round(row[-1].x, 2), round(row[-1].y, 2)] for row in reversed(rows)
+    ]
+    twelfth = surface.station_positions_reference(12)
+    try:
+        drawing = _transition_drawing(
+            parameters,
+            "heel_root_style",
+            HEEL_LINE_SETTINGS,
+            parameters.heel_lines(neck.heel_width / 2.0),
+            block,
+            (twelfth + DRAWN_LINE_ROOM, block),
+            1.0,
+        )
+    except (CNCGuitarWizardError, TypeError, ValueError) as error:
+        return {"error": f"{type(error).__name__}: {error}"}
+    return {
+        "outline": outline,
+        "block": round(block, 2),
+        "heel_end": round(neck.last_fret_position + neck.heel_length, 2),
+        "twelfth": round(twelfth, 2),
+        "heel": drawing,
+        "problem": problem,
+    }
+
+
+BACK_VIEW_PAST = 12.0
+"""How far past either end of what is drawn on the back its view runs, in
+mm."""
+
+
+def back_view(payload: dict[str, Any], where: str = "nut") -> dict[str, Any]:
+    """Return the back as it is lofted, seen from behind and above.
+
+    To see while drawing on the back what it looks like: round the nut
+    the volute, or the headstock's root with the volute off (the
+    headstock editor), round the heel its runout (Design › Neck). The back
+    as FreeCAD lofts it (``FreeCADScriptExporter.neck_loft_rows``), from a
+    little past one end of the lines to a little past the other (the
+    heel's end), drawn by ``render.svg.render_volute_view_svg``.
+
+    Args:
+        payload: ``{"prototype": {...}}`` as for ``start_build``.
+        where: ``"nut"`` or ``"heel"``.
+
+    Returns:
+        ``{"svg": ...}``, ``{"svg": None}`` with nothing to draw there (no
+        headstock), or ``{"error": message}``.
+    """
+    try:
+        built = Prototype001Parameters(**_coerce(payload.get("prototype", {})))
+        # As drawn (right-handed), as the editors show it.
         geometry = dataclasses.replace(built, handedness="right").build()
     except (CNCGuitarWizardError, TypeError, ValueError) as error:
         return {"error": f"{type(error).__name__}: {error}"}
+    surface = geometry.neck_surface
+    neck = surface.neck_outline
     volute = geometry.volute
-    if volute is None:
+    if where == "heel":
+        block = neck.last_fret_position - surface.heel_flat_start_offset
+        lines = built.heel_lines(neck.heel_width / 2.0)
+        xs = [p.x for points in lines.values() for p in drawn_back_line(points, block)]
+        span = (min(xs), neck.last_fret_position + neck.heel_length - BACK_VIEW_PAST)
+    elif volute is not None and volute.drawn:
+        span = (
+            min(point.x for point in volute.headstock_end),
+            max(point.x for point in volute.neck_end),
+        )
+    elif volute is not None:
+        span = (-volute.length, volute.point)
+    elif built.headless:
         return {"svg": None}
-    if volute.drawn:
-        start = min(point.x for point in volute.headstock_end)
-        end = max(point.x for point in volute.neck_end)
     else:
-        start, end = -volute.length, volute.point
+        lines = built.root_lines(neck.nut_width / 2.0)
+        xs = [p.x for points in lines.values() for p in drawn_back_line(points)]
+        span = (min(xs), max(xs))
+    start, end = span[0] - BACK_VIEW_PAST, span[1] + BACK_VIEW_PAST
     rows = FreeCADScriptExporter.neck_loft_rows(
-        geometry.neck_surface,
+        surface,
         geometry.headstock,
         geometry.joint_fillet_radius,
-        volute,
+        geometry.volute,
     )
-    near = [
-        row
-        for row in rows
-        if start - VOLUTE_VIEW_PAST <= row[0].x <= end + VOLUTE_VIEW_PAST
-    ]
+    near = [row for row in rows if start <= row[0].x <= end]
+    if where == "heel":
+        return {
+            "svg": render_volute_view_svg(
+                near, 1.0, "The heel seen from behind and above, as it is lofted"
+            )
+        }
     return {"svg": render_volute_view_svg(near)}
 
 

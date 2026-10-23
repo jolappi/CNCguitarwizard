@@ -301,13 +301,13 @@ def test_the_volute_is_drawn_in_the_headstock_editor() -> None:
     assert "if (layout.volute) this.drawVolute(layout.volute);" in script
     # Its three lines (crest and both ends), each into its own setting.
     assert 'headstock: "Where the volute ends in the headstock\'s back"' in script
-    assert "[data-name='${this.layout.volute.lines[name].field}']" in script
+    assert "setControlValue(setting(set.lines[name].field)," in script
     # Its ends stay on the centre line; the other half mirrors the drawn.
     assert "const ny = onCentre ? 0 : Math.max(0, y0 + y - start[1]);" in script
     editor = script[script.index('"headstock-editor-options": [') :]
     assert '"headstock_pointed_volute"' in editor[: editor.index("],")]
     # Seen from behind and above as it is drawn, a moment after the editor.
-    assert "from cncguitarwizard.webapp import volute_view" in script
+    assert "from cncguitarwizard.webapp import back_view" in script
     page = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
     assert 'id="headstock-editor-volute" class="volute-view-box" hidden' in page
 
@@ -328,3 +328,33 @@ def test_the_volutes_depth_is_refused_at_0_while_the_volute_is_on() -> None:
     assert "copy.dataset.copyOf = name;" in script
     assert "copy.dataset.copyOf = original.dataset.name;" in layout
     assert "if (event.target.dataset.name !== switchName) continue;" in script
+
+
+def test_a_flat_headstocks_root_and_the_heel_are_drawn_as_two_lines() -> None:
+    script = (ROOT / "site" / "app.js").read_text(encoding="utf-8")
+    layout = (ROOT / "site" / "desktop.js").read_text(encoding="utf-8")
+    page = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
+
+    # The root in the headstock editor, as the volute's lines are drawn;
+    # a smooth joint's lines lighter, drawing one makes it drawn.
+    assert 'backLines.draw.call(this, "root", {' in script
+    assert 'if (set.style_field && set.style !== "drawn")' in script
+    assert ".back-lines.smooth .volute-line" in page
+    editor = script[script.index('"headstock-editor-options": [') :]
+    assert '"headstock_root_style"' in editor[: editor.index("],")]
+    # The heel's on the neck's page, under its drawing, with its view.
+    assert 'backLines.draw.call(this, "heel", {' in script
+    assert "from cncguitarwizard.webapp import heel_editor_layout" in script
+    assert 'drawBackView(this, box, "heel")' in script
+    assert 'if (id === "neck") page.appendChild(byId("heel-editor"));' in layout
+    # A point stops at the limits and short of the line either side, a
+    # drag's leftover line goes, and each joint can start over.
+    allowed = "const [low, high] = backLines.allowed.call(this, kind, name, ny);"
+    leftover = 'this.svg.querySelectorAll(".cover-preview")) old.remove();'
+    reset = 'resetJoint("heel_root_style", ["heel_root_flat_points",'
+    assert allowed in script and leftover in script and reset in script
+    assert 'id="heel-editor-reset"' in page
+    assert 'id="headstock-editor-reset-root"' in page
+    assert '"heel_root_style"' in layout
+    assert 'id="heel-editor" class="body-editor hidden"' in page
+    assert 'id="heel-editor-view" class="volute-view-box" hidden' in page

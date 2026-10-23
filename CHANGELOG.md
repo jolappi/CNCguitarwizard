@@ -34,6 +34,29 @@
 
 ### Added
 
+- The heel and the neck's joint with the headstock drawn: where the
+  neck's rounded back runs into the heel's block (`heel_root_style`, on
+  *Design › Neck*) or into the headstock's back (`headstock_root_style`,
+  in the headstock editor while the volute is off) is drawn as two lines
+  across the back, seen from behind: where the block's back begins, its
+  rounding's shape (`heel_root_flat_points`, `headstock_root_flat_points`),
+  and where the neck's own profile does, how far the rounding runs onto
+  the neck (`heel_root_neck_points`, `headstock_root_neck_points`). The
+  same as the volute's lines but with no crest: never proud of either, so
+  two lines are enough; between them the back turns evenly from the one
+  into the other (`geometry.neck.BackTransition`), meeting each with no
+  edge, into a flat headstock's level back or an angled one's falling
+  away. The lines are shown smooth, lighter, where the runouts run now,
+  and drawing one makes the joint drawn; "smooth", the default, keeps the
+  runouts as they were; *Start over* (the heel) and *Reset joint* (the
+  headstock) put a drawn one back. A point dragged stops at the lines'
+  limits (the 12th fret and the heel's block; the first fret and short of
+  the headstock's tip) and short of the other line, so the two never
+  cross; the heel's drawing shows its lines as set even where the design
+  does not build, the reason beside it. The neck's mesh, the FreeCAD loft
+  and the neck's back programs all carry it, and each editor shows it as
+  lofted, seen from behind and above.
+
 - A volute carved into the back of the headstock behind the nut
   (`headstock_pointed_volute`, on *Design › Neck*), where an angled
   headstock's short grain is weakest: seen from behind a rounded arrow

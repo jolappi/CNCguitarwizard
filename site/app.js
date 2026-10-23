@@ -209,6 +209,7 @@ function renderForm() {
   foldsBeforeFinding = null;
   applyFormFilter();
   setTimeout(() => headstockEditor.sync(), 0);
+  setTimeout(() => heelEditor.sync(), 0);
   setTimeout(() => inlayEditor.refresh(), 0);
   undoHistory.note();
 }
@@ -236,7 +237,7 @@ const EDITOR_FIELDS = {
     "headstock_engraving_text", "headstock_engraving_font", "headstock_engraving_height", "headstock_engraving_angle",
     "truss_rod_adjustment", "truss_rod_spoke_wheel", "truss_rod_cover_style", "truss_rod_cover_length",
     "truss_rod_cover_width", "headstock_pointed_volute", "headstock_volute_style",
-    "headstock_pointed_volute_depth", "headstock_pointed_volute_length",
+    "headstock_pointed_volute_depth", "headstock_pointed_volute_length", "headstock_root_style",
   ],
   "inlay-editor-options": [
     "inlay_style", "inlay_single_marker_frets", "inlay_double_marker_frets", "inlay_dot_diameter",
@@ -1771,6 +1772,7 @@ function applyDesign(design) {
   ];
   applyStringLimits();
   headstockEditor.sync();
+  heelEditor.sync();
   inlayEditor.scheduleRefresh();
   // The body editor draws the loaded outline, not the start shape it was
   // shown while the form was being filled in.
@@ -1921,6 +1923,7 @@ function redrawEditors() {
   applyStringLimits();
   syncMirrors();
   headstockEditor.sync();
+  heelEditor.sync();
   inlayEditor.scheduleRefresh();
   bodyEditor.reloadPoints();
   bodyEditor.scheduleRefresh();
@@ -4679,6 +4682,216 @@ function smoothCurve(points) {
 const HEADSTOCK_TIP_POINT = 1.0;
 const HEADSTOCK_POINT_SNAP = 3.0;
 
+// The back as it is lofted, seen from behind and above (webapp.back_view,
+// "nut" or "heel"), drawn into an editor's view box; only the latest
+// asked for is shown.
+async function drawBackView(editor, box, where) {
+  const ticket = (editor.viewTicket = (editor.viewTicket || 0) + 1);
+  let payload;
+  try {
+    payload = collectValues();
+  } catch (error) {
+    return;
+  }
+  box.classList.add("busy");
+  pyodide.globals.set("back_view_json", JSON.stringify(payload));
+  const view = await runPython(
+    "import json\nfrom cncguitarwizard.webapp import back_view\n" +
+    `json.dumps(back_view(json.loads(back_view_json), ${JSON.stringify(where)}))`
+  );
+  if (ticket !== editor.viewTicket) return;
+  box.classList.remove("busy");
+  const picture = box.querySelector(".volute-picture");
+  if (view.error) picture.textContent = view.error;
+  else picture.innerHTML = view.svg || "";
+}
+
+// Where a line drawn across the back ([x, y] points in the model frame,
+// from one side to the other) is along the neck at y: where it crosses
+// y, or past its ends, its nearest end's x.
+function lineXAt(line, y) {
+  for (let i = 0; i + 1 < line.length; i++) {
+    const [x1, y1] = line[i], [x2, y2] = line[i + 1];
+    if (y1 !== y2 && (y1 - y) * (y2 - y) <= 0) return x1 + (x2 - x1) * (y - y1) / (y2 - y1);
+  }
+  let best = line[0][0], gap = Infinity;
+  for (const [x, yy] of line) {
+    if (Math.abs(yy - y) < gap) [best, gap] = [x, Math.abs(yy - y)];
+  }
+  return best;
+}
+
+// Lines drawn across the neck's back, seen from behind: a drawn volute's
+// (headstock_volute_style), the headstock's root with the volute off
+// (headstock_root_style) and the heel's (heel_root_style). Each editor's
+// layout holds a kind's {origin, lines} (a joint's with its style and
+// style_field too), each line {field, points, drawn, line}: half its
+// points as handles, [along from origin toward the headstock, across]
+// from the centre line out (the other half mirrors them, the first on the
+// centre line), and the whole line in the model frame. Dragging a handle
+// draws that line (its setting, from where drawing starts while none is);
+// a click on a line adds a point, a right-click or Alt-click removes one,
+// a double-click makes it a sharp bend. A point stays inside the kind's
+// limits along the neck and clear of the lines either side of it (its
+// order, from the neck's side toward the block's), so the lines never
+// cross. A joint still smooth is drawn lighter, where its lines start,
+// and drawing one makes it drawn. Called on the editor (this): its
+// element, pathData, toModel and layout.
+const backLines = {
+  draw(kind, titles, solid) {
+    const set = this.layout[kind];
+    const smooth = set.style === "smooth";
+    const group = this.element("g", { class: `back-lines ${kind}${smooth ? " smooth" : ""}` });
+    if (smooth) {
+      titles = Object.fromEntries(Object.entries(titles)
+        .map(([name, title]) => [name, `${title} (smooth: drag a point to draw your own)`]));
+    }
+    for (const [name, line] of Object.entries(set.lines)) {
+      this.element("path", { class: solid.includes(name) ? "volute-line" : "volute-line end", d: this.pathData(line.line) }, group);
+      const hit = this.element("path", { class: "outline-hit", d: this.pathData(line.line), "stroke-width": 3 }, group);
+      hit.addEventListener("click", (event) => {
+        if (event.detail <= 1) backLines.addPoint.call(this, event, kind, name);
+      });
+      this.element("title", {}, hit).textContent = `${titles[name]} — click the line to add a point`;
+      line.points.forEach((point, index) => {
+        const handle = this.element("circle", {
+          class: isCorner(point) ? "volute-handle corner" : "volute-handle",
+          cx: set.origin - point[0], cy: -point[1], r: 1.4,
+        }, group);
+        this.element("title", {}, handle).textContent = index === 0
+          ? `${titles[name]}: its middle, on the centre line — drag it along the neck`
+          : `${titles[name]} — drag the point to draw the line, double-click for a sharp bend (or round again), Alt/Option-click or right-click to remove it`;
+        handle.addEventListener("pointerdown", (event) => {
+          if (event.altKey) {
+            backLines.removePoint.call(this, kind, name, index);
+            return;
+          }
+          backLines.startDrag.call(this, event, kind, name, index, handle);
+        });
+        handle.addEventListener("dblclick", (event) => {
+          event.preventDefault();
+          const points = line.points.map((p) => [...p]);
+          points[index] = toggledCorner(points[index]);
+          backLines.commit.call(this, kind, name, points);
+        });
+        handle.addEventListener("contextmenu", (event) => {
+          event.preventDefault();
+          backLines.removePoint.call(this, kind, name, index);
+        });
+      });
+    }
+  },
+
+  // A line's whole length in the model frame from half its points and
+  // their mirror, as Python's drawn_back_line.
+  whole(points, origin) {
+    const model = points.map((point) => movedPoint(point, [origin - point[0], point[1]]));
+    const mirror = [...model].reverse()
+      .filter((point) => Math.abs(point[1]) > 1e-9)
+      .map((point) => movedPoint(point, [point[0], -point[1]]));
+    return openCatmullRom([...mirror, ...model], 8);
+  },
+
+  // Where along the neck a point of a line may go, at across: [least,
+  // most] model x.
+  allowed(kind, name, across) {
+    const set = this.layout[kind];
+    let [low, high] = set.limits || [-Infinity, Infinity];
+    const order = set.order || [];
+    const at = order.indexOf(name);
+    const room = 1;
+    const neighbour = (other) => lineXAt(set.lines[other].line, across);
+    // The line before it, toward the neck, and after it, toward the block.
+    if (at > 0) {
+      const x = neighbour(order[at - 1]);
+      if (set.toward > 0) low = Math.max(low, x + room);
+      else high = Math.min(high, x - room);
+    }
+    if (at >= 0 && at + 1 < order.length) {
+      const x = neighbour(order[at + 1]);
+      if (set.toward > 0) high = Math.min(high, x - room);
+      else low = Math.max(low, x + room);
+    }
+    return [low, high];
+  },
+
+  // Drag a point of a line; its middle slides along the centre line.
+  startDrag(event, kind, name, index, handle) {
+    event.preventDefault();
+    event.stopPropagation();
+    // A drag's line shown until the drawing is redrawn: none left over.
+    for (const old of this.svg.querySelectorAll(".cover-preview")) old.remove();
+    const origin = this.layout[kind].origin;
+    const points = this.layout[kind].lines[name].points.map((p) => [...p]);
+    const onCentre = index === 0;
+    const start = this.toModel(event);
+    const [x0, y0] = [origin - points[index][0], points[index][1]];
+    let moved = false;
+    const preview = this.element("path", { class: "cover-preview" });
+    const move = (moveEvent) => {
+      moved ||= stirred(event, moveEvent);
+      if (!moved) return;
+      const [x, y] = this.toModel(moveEvent);
+      const ny = onCentre ? 0 : Math.max(0, y0 + y - start[1]);
+      const [low, high] = backLines.allowed.call(this, kind, name, ny);
+      const nx = Math.min(high, Math.max(low, x0 + x - start[0]));
+      points[index] = movedPoint(points[index], [origin - nx, ny]);
+      handle.setAttribute("cx", nx);
+      handle.setAttribute("cy", -ny);
+      preview.setAttribute("d", this.pathData(backLines.whole(points, origin)));
+    };
+    const end = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", end);
+      window.removeEventListener("pointercancel", end);
+      if (moved) backLines.commit.call(this, kind, name, points);
+      else preview.remove();
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", end);
+    window.addEventListener("pointercancel", end);
+  },
+
+  // A click on a line adds a point between the two drawn ones nearest it
+  // (on the drawn half, whichever side was clicked).
+  addPoint(event, kind, name) {
+    const origin = this.layout[kind].origin;
+    const points = this.layout[kind].lines[name].points.map((p) => [...p]);
+    const [x, y] = this.toModel(event);
+    const across = Math.abs(y);
+    let best = points.length - 1, bestDistance = Infinity;
+    for (let i = 0; i + 1 < points.length; i++) {
+      const [ax, ay] = [origin - points[i][0], points[i][1]];
+      const [bx, by] = [origin - points[i + 1][0], points[i + 1][1]];
+      const dx = bx - ax, dy = by - ay;
+      const t = Math.max(0, Math.min(1, ((x - ax) * dx + (across - ay) * dy) / (dx * dx + dy * dy || 1)));
+      const distance = (ax + t * dx - x) ** 2 + (ay + t * dy - across) ** 2;
+      if (distance < bestDistance) { bestDistance = distance; best = i; }
+    }
+    points.splice(best + 1, 0, [origin - x, across]);
+    backLines.commit.call(this, kind, name, points);
+  },
+
+  // A line's middle stays, and two points at least.
+  removePoint(kind, name, index) {
+    const points = this.layout[kind].lines[name].points.map((p) => [...p]);
+    if (index === 0 || points.length <= 2) return;
+    points.splice(index, 1);
+    backLines.commit.call(this, kind, name, points);
+  },
+
+  // Write a line's points, to the tenth of a millimetre, into its setting
+  // (a smooth joint drawn from then on).
+  commit(kind, name, points) {
+    const set = this.layout[kind];
+    const setting = (fieldName) => form.querySelector(`[data-set='prototype'][data-name='${fieldName}']`);
+    if (set.style_field && set.style !== "drawn") setControlValue(setting(set.style_field), "drawn");
+    const tenth = (value) => Math.round(value * 10) / 10;
+    setControlValue(setting(set.lines[name].field), points.map((point) => movedPoint(point, [tenth(point[0]), tenth(point[1])])));
+    syncMirrors();
+  },
+};
+
 const headstockEditor = {
   panel: document.getElementById("headstock-editor"),
   svg: document.getElementById("headstock-editor-svg"),
@@ -4754,36 +4967,15 @@ const headstockEditor = {
     this.drawVoluteViewSoon();
   },
 
-  // The volute seen from behind and above, as it is lofted
-  // (webapp.volute_view), drawn a moment after the editor so dragging
-  // stays quick; only while there is a volute.
+  // The back behind the nut seen from behind and above, as it is lofted
+  // (webapp.back_view), drawn a moment after the editor so dragging stays
+  // quick; only while there is a volute or a drawn root on it.
   drawVoluteViewSoon() {
     clearTimeout(this.voluteTimer);
     const box = document.getElementById("headstock-editor-volute");
-    box.hidden = !this.layout?.volute;
+    box.hidden = !this.layout?.volute && !this.layout?.root;
     if (box.hidden) return;
-    this.voluteTimer = setTimeout(() => this.drawVoluteView(box), 400);
-  },
-
-  async drawVoluteView(box) {
-    const ticket = (this.voluteTicket = (this.voluteTicket || 0) + 1);
-    let payload;
-    try {
-      payload = collectValues();
-    } catch (error) {
-      return;
-    }
-    box.classList.add("busy");
-    pyodide.globals.set("volute_view_json", JSON.stringify(payload));
-    const view = await runPython(
-      "import json\nfrom cncguitarwizard.webapp import volute_view\n" +
-      "json.dumps(volute_view(json.loads(volute_view_json)))"
-    );
-    if (ticket !== this.voluteTicket) return;
-    box.classList.remove("busy");
-    const picture = box.querySelector(".volute-picture");
-    if (view.error) picture.textContent = view.error;
-    else picture.innerHTML = view.svg || "";
+    this.voluteTimer = setTimeout(() => drawBackView(this, box, "nut"), 400);
   },
 
   untouched() {
@@ -5026,8 +5218,17 @@ const headstockEditor = {
     // The truss-rod cover over the adjuster's trough (an adjuster at the
     // headstock), with its handles.
     if (layout.truss_cover) this.drawCover(layout.truss_cover);
-    // The volute on the back behind the nut, with its handles.
+    // The volute on the back behind the nut, with its handles; with the
+    // volute off, the root's two lines (headstock_root_style): how the
+    // neck's back runs into the headstock's.
     if (layout.volute) this.drawVolute(layout.volute);
+    if (layout.root) {
+      backLines.draw.call(this, "root", {
+        flat: "Where the headstock's back begins, the joint's rounding",
+        neck: "Where the neck's own profile begins: how far the rounding runs onto the neck",
+      }, ["flat"]);
+    }
+    document.getElementById("headstock-editor-reset-root").hidden = layout.root?.style !== "drawn";
     this.edgeHandles = { bass: [], treble: [] };
     for (const side of ["bass", "treble"]) {
       const sign = this.sign(side);
@@ -5152,136 +5353,20 @@ const headstockEditor = {
   // The rounded arrow is shown dashed, to see where it is. A drawn one
   // (headstock_volute_style "drawn") is three lines across the back: its
   // crest (solid) and where it ends in the headstock and in the neck
-  // (dashed), half of each line's points as handles (the other half
-  // mirrors them, its first point on the centre line). Dragging one draws
-  // that line (its setting), from where drawing starts while none is.
+  // (dashed), drawn with their handles (backLines).
   drawVolute(volute) {
-    const group = this.element("g", { class: "volute" });
     if (volute.style !== "drawn") {
+      const group = this.element("g", { class: "volute" });
       const outline = this.element("path", { class: "volute-outline", d: this.pathData(volute.outline) + " Z" }, group);
       this.element("title", {}, outline).textContent =
         "The volute (the rounded arrow), on the back behind the nut — a drawn one (headstock_volute_style) is its crest and both its ends, drawn";
       return;
     }
-    const titles = {
+    backLines.draw.call(this, "volute", {
       crest: "The volute's crest, its highest line",
       headstock: "Where the volute ends in the headstock's back",
       neck: "Where the volute ends in the neck's back",
-    };
-    for (const [name, line] of Object.entries(volute.lines)) {
-      this.element("path", { class: name === "crest" ? "volute-line" : "volute-line end", d: this.pathData(line.line) }, group);
-      const hit = this.element("path", { class: "outline-hit", d: this.pathData(line.line), "stroke-width": 3 }, group);
-      hit.addEventListener("click", (event) => {
-        if (event.detail <= 1) this.addVolutePoint(event, name);
-      });
-      this.element("title", {}, hit).textContent = `${titles[name]} — click the line to add a point`;
-      line.points.forEach((point, index) => {
-        const [behind, across] = point;
-        const handle = this.element("circle", {
-          class: isCorner(point) ? "volute-handle corner" : "volute-handle", cx: -behind, cy: -across, r: 1.4,
-        }, group);
-        this.element("title", {}, handle).textContent = index === 0
-          ? `${titles[name]}: its middle, on the centre line — drag it along the neck`
-          : `${titles[name]} — drag the point to draw the line, double-click for a sharp bend (or round again), Alt/Option-click or right-click to remove it`;
-        handle.addEventListener("pointerdown", (event) => {
-          if (event.altKey) {
-            this.removeVolutePoint(name, index);
-            return;
-          }
-          this.startVoluteDrag(event, name, index, handle);
-        });
-        handle.addEventListener("dblclick", (event) => {
-          event.preventDefault();
-          const points = line.points.map((p) => [...p]);
-          points[index] = toggledCorner(points[index]);
-          this.commitVolute(name, points);
-        });
-        handle.addEventListener("contextmenu", (event) => {
-          event.preventDefault();
-          this.removeVolutePoint(name, index);
-        });
-      });
-    }
-  },
-
-  // A line's whole length in the model frame from half its points
-  // ([behind the nut, across], from the centre line out) and their
-  // mirror, as Python's drawn_volute_line.
-  voluteLine(points) {
-    const model = points.map((point) => movedPoint(point, [-point[0], point[1]]));
-    const mirror = [...model].reverse()
-      .filter((point) => Math.abs(point[1]) > 1e-9)
-      .map((point) => movedPoint(point, [point[0], -point[1]]));
-    return openCatmullRom([...mirror, ...model], 8);
-  },
-
-  // Drag a point of one of the volute's lines; its middle slides along
-  // the centre line.
-  startVoluteDrag(event, name, index, handle) {
-    event.preventDefault();
-    event.stopPropagation();
-    const points = this.layout.volute.lines[name].points.map((p) => [...p]);
-    const onCentre = index === 0;
-    const start = this.toModel(event);
-    const [x0, y0] = [-points[index][0], points[index][1]];
-    let moved = false;
-    const preview = this.element("path", { class: "cover-preview" });
-    const move = (moveEvent) => {
-      moved ||= stirred(event, moveEvent);
-      if (!moved) return;
-      const [x, y] = this.toModel(moveEvent);
-      const nx = x0 + x - start[0];
-      const ny = onCentre ? 0 : Math.max(0, y0 + y - start[1]);
-      points[index] = movedPoint(points[index], [-nx, ny]);
-      handle.setAttribute("cx", nx);
-      handle.setAttribute("cy", -ny);
-      preview.setAttribute("d", this.pathData(this.voluteLine(points)));
-    };
-    const end = () => {
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", end);
-      window.removeEventListener("pointercancel", end);
-      if (moved) this.commitVolute(name, points);
-      else preview.remove();
-    };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", end);
-    window.addEventListener("pointercancel", end);
-  },
-
-  // A click on a line adds a point between the two drawn ones nearest it
-  // (on the drawn half, whichever side was clicked).
-  addVolutePoint(event, name) {
-    const points = this.layout.volute.lines[name].points.map((p) => [...p]);
-    const [x, y] = this.toModel(event);
-    const across = Math.abs(y);
-    let best = points.length - 1, bestDistance = Infinity;
-    for (let i = 0; i + 1 < points.length; i++) {
-      const [ax, ay] = [-points[i][0], points[i][1]];
-      const [bx, by] = [-points[i + 1][0], points[i + 1][1]];
-      const dx = bx - ax, dy = by - ay;
-      const t = Math.max(0, Math.min(1, ((x - ax) * dx + (across - ay) * dy) / (dx * dx + dy * dy || 1)));
-      const distance = (ax + t * dx - x) ** 2 + (ay + t * dy - across) ** 2;
-      if (distance < bestDistance) { bestDistance = distance; best = i; }
-    }
-    points.splice(best + 1, 0, [-x, across]);
-    this.commitVolute(name, points);
-  },
-
-  // A line's middle stays, and two points at least.
-  removeVolutePoint(name, index) {
-    const points = this.layout.volute.lines[name].points.map((p) => [...p]);
-    if (index === 0 || points.length <= 2) return;
-    points.splice(index, 1);
-    this.commitVolute(name, points);
-  },
-
-  // Write a line's points, to the tenth of a millimetre, into its setting.
-  commitVolute(name, points) {
-    const field = form.querySelector(`[data-set='prototype'][data-name='${this.layout.volute.lines[name].field}']`);
-    const tenth = (value) => Math.round(value * 10) / 10;
-    setControlValue(field, points.map((point) => movedPoint(point, [tenth(point[0]), tenth(point[1])])));
-    syncMirrors();
+    }, ["crest"]);
   },
 
   // A cover corner or screw, (along, across) as truss_rod_cover_points
@@ -5889,6 +5974,121 @@ const headstockEditor = {
 // nut and 1 at the marker's fret, across the share of the board's
 // half-width toward the bass edge), every other marker the same shape
 // fitted to its own fret space (shown below it on the whole board).
+// The heel's runout (heel_root_style): the neck's back near the heel seen
+// from behind (webapp.heel_editor_layout), its two lines with their
+// handles (backLines; smooth until one is drawn) and, under the drawing,
+// the heel as it is lofted (webapp.back_view). On Design › Neck, drawn
+// only while it is shown (a page shown again draws it afresh).
+const heelEditor = {
+  panel: document.getElementById("heel-editor"),
+  svg: document.getElementById("heel-editor-svg"),
+  status: document.getElementById("heel-editor-status"),
+  layout: null,
+  refreshTimer: null,
+  viewTimer: null,
+  stale: false,
+
+  sync() {
+    this.panel.classList.remove("hidden");
+    this.scheduleRefresh();
+  },
+
+  scheduleRefresh() {
+    clearTimeout(this.refreshTimer);
+    this.refreshTimer = setTimeout(() => this.refresh(), 400);
+  },
+
+  async refresh() {
+    if (!pyodide) return;
+    // Not shown: drawn when its page is (showPage fires a resize).
+    this.stale = !this.panel.offsetParent;
+    if (this.stale) return;
+    let payload;
+    try {
+      payload = collectValues();
+    } catch (error) {
+      this.status.textContent = error.message;
+      return;
+    }
+    pyodide.globals.set("heel_payload_json", JSON.stringify(payload));
+    const layout = await runPython(
+      "import json\nfrom cncguitarwizard.webapp import heel_editor_layout\n" +
+      "json.dumps(heel_editor_layout(json.loads(heel_payload_json)))"
+    );
+    // A design that does not build has its lines drawn as they are set
+    // even so (layout.problem), to be mended.
+    const problem = layout.error || layout.problem;
+    this.status.textContent = problem ? `The design does not build: ${problem}` : "";
+    this.status.classList.toggle("bad", Boolean(problem));
+    if (layout.error) {
+      for (const old of this.svg.querySelectorAll(".cover-preview")) old.remove();
+      return;
+    }
+    this.layout = layout;
+    this.draw();
+    const box = document.getElementById("heel-editor-view");
+    box.hidden = false;
+    clearTimeout(this.viewTimer);
+    this.viewTimer = setTimeout(() => drawBackView(this, box, "heel"), 400);
+  },
+
+  element(name, attributes, parent) {
+    return bodyEditor.element.call(this, name, attributes, parent);
+  },
+
+  toModel(event) {
+    return bodyEditor.toModel.call(this, event);
+  },
+
+  pathData(points) {
+    return points.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(2)},${(-y).toFixed(2)}`).join(" ");
+  },
+
+  // Start over: the heel back to its smooth runout, its lines where
+  // drawing them starts.
+  async reset() {
+    if (!(await askConfirm("Put the heel back to its smooth runout? (Undo takes it back.)"))) return;
+    resetJoint("heel_root_style", ["heel_root_flat_points", "heel_root_neck_points"]);
+  },
+
+  draw() {
+    const layout = this.layout;
+    const xs = layout.outline.map((p) => p[0]), ys = layout.outline.map((p) => p[1]);
+    const margin = 8;
+    const minX = Math.min(...xs) - margin, maxX = Math.max(...xs) + margin;
+    const minY = Math.min(...ys) - margin, maxY = Math.max(...ys) + margin;
+    bodyEditor.begin.call(this, false, minX, minY, maxX, maxY);
+    const grid = this.element("g", { stroke: "#eee6d8", "stroke-width": 0.3 });
+    for (let x = Math.ceil(minX / 10) * 10; x <= maxX; x += 10) this.element("line", { x1: x, y1: -maxY, x2: x, y2: -minY }, grid);
+    for (let y = Math.ceil(minY / 10) * 10; y <= maxY; y += 10) this.element("line", { x1: minX, y1: -y, x2: maxX, y2: -y }, grid);
+    this.element("path", { class: "heel-back", d: this.pathData(layout.outline) + " Z" });
+    // The 12th fret and where the block's flat begins: the lines lie
+    // between them.
+    for (const [x, label] of [[layout.twelfth, "12th fret"], [layout.block, "heel block"]]) {
+      if (x < minX) continue;
+      this.element("line", { class: "heel-mark", x1: x, y1: -maxY, x2: x, y2: -minY });
+      this.element("text", { class: "heel-label", x: x + 1, y: -maxY + 4 }).textContent = label;
+    }
+    backLines.draw.call(this, "heel", {
+      flat: "Where the heel's flat block begins: the heel's rounding, its shape",
+      neck: "Where the neck's own profile begins: how far the rounding runs onto the neck",
+    }, ["flat"]);
+  },
+};
+window.addEventListener("resize", () => {
+  if (heelEditor.stale) heelEditor.scheduleRefresh();
+});
+document.getElementById("heel-editor-reset").addEventListener("click", () => heelEditor.reset());
+
+// A drawn joint (the heel's, the headstock's root) back to smooth, its
+// lines where drawing them starts.
+function resetJoint(styleField, lineFields) {
+  const setting = (name) => form.querySelector(`[data-set='prototype'][data-name='${name}']`);
+  for (const name of lineFields) setControlValue(setting(name), []);
+  setControlValue(setting(styleField), "smooth");
+  syncMirrors();
+}
+
 const inlayEditor = {
   panel: document.getElementById("inlay-editor"),
   runeChoices: document.getElementById("inlay-editor-runes"),
@@ -6259,6 +6459,10 @@ form.addEventListener("change", (event) => {
 });
 
 document.getElementById("headstock-editor-reset").addEventListener("click", () => headstockEditor.reset());
+document.getElementById("headstock-editor-reset-root").addEventListener("click", async () => {
+  if (!(await askConfirm("Put the neck's joint with the headstock back to the smooth one? (Undo takes it back.)"))) return;
+  resetJoint("headstock_root_style", ["headstock_root_flat_points", "headstock_root_neck_points"]);
+});
 document.getElementById("headstock-editor-load").addEventListener("click", () => headstockEditor.loadTemplate());
 document.getElementById("headstock-editor-template").addEventListener("change", () => headstockEditor.loadTemplate());
 // A frame style chosen draws every frame as that style's own again.
@@ -6295,8 +6499,10 @@ form.addEventListener("change", (event) => {
 form.addEventListener("change", (event) => {
   if (["headstock_outline", "headless"].includes(event.target.dataset.name)) headstockEditor.sync();
   else if (!/^headstock_(bass_edge|treble_edge|tip_points)$/.test(event.target.dataset.name || "")) headstockEditor.scheduleRefresh();
+  heelEditor.scheduleRefresh();
 });
 form.addEventListener("input", (event) => {
+  heelEditor.scheduleRefresh();
   if (/^headstock_(treble_edge|bass_edge|tip_points)$/.test(event.target.dataset.name || "")) return;
   headstockEditor.scheduleRefresh();
 });

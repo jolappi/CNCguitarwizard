@@ -12,11 +12,11 @@ neck's, falling away from the crest to each.
 from __future__ import annotations
 
 import math
-from collections.abc import Sequence
 from dataclasses import dataclass, field
 
 from ..exceptions import NeckGeometryError
-from ..primitives import DrawnPoint, Point2D, drawn_points, open_catmull_rom
+from ..primitives import DrawnPoint, Point2D
+from .drawn_lines import nearest, side_toward, smootherstep
 
 VOLUTE_LEAD = 1.0 / 3.0
 """How far onto the neck, ahead of the nut, a volute's nose reaches, as a
@@ -95,7 +95,7 @@ class Volute:
         init=False, repr=False, compare=False
     )
     """Which side of each drawn line (crest, headstock end, neck end) the
-    headstock is: the sign of ``_nearest``'s side there."""
+    headstock is: the sign of ``nearest``'s side there."""
 
     def __post_init__(self) -> None:
         """Reject a volute that cannot be carved; find which side of each
@@ -114,7 +114,7 @@ class Volute:
         object.__setattr__(
             self,
             "headstock_sides",
-            tuple(_headstock_side(line) for line in lines),
+            tuple(side_toward(line, -1.0) for line in lines),
         )
 
     @property
@@ -154,20 +154,20 @@ class Volute:
         across = abs(y) / self.half_width
         if across >= 1.0:
             return 0.0
-        return self.depth * (1.0 - _smootherstep(fade)) * (1.0 - across**2) ** 2
+        return self.depth * (1.0 - smootherstep(fade)) * (1.0 - across**2) ** 2
 
     def _drawn_extra(self, point: Point2D) -> float:
         """Return a drawn volute's wood at ``point``: ``depth`` on its
         crest, falling away to nothing at the end on that side of it."""
         crest_side, headstock_end_side, neck_end_side = self.headstock_sides
-        to_crest, side = _nearest(point, self.crest)
+        to_crest, side = nearest(point, self.crest)
         toward_headstock = side * crest_side >= 0.0
         end, end_side = (
             (self.headstock_end, headstock_end_side)
             if toward_headstock
             else (self.neck_end, neck_end_side)
         )
-        to_end, side = _nearest(point, end)
+        to_end, side = nearest(point, end)
         past_end = (side * end_side >= 0.0) == toward_headstock
         if past_end or to_crest + to_end == 0.0:
             return 0.0
@@ -200,8 +200,8 @@ def default_volute_lines(half_width: float) -> dict[str, tuple[DrawnPoint, ...]]
     """Return a drawn volute's three lines where drawing one starts.
 
     Each half of it seen from behind, ``(behind the nut, across)`` from the
-    centre line out to one side, as ``drawn_volute_line`` takes them
-    (``DEFAULT_VOLUTE_LINES``, across scaled by the neck's half-width).
+    centre line out to one side (``DEFAULT_VOLUTE_LINES``, across scaled by
+    the neck's half-width), as ``drawn_back_line`` takes them.
 
     Returns:
         ``{"crest", "headstock", "neck"}``.
@@ -210,36 +210,6 @@ def default_volute_lines(half_width: float) -> dict[str, tuple[DrawnPoint, ...]]
         name: tuple((behind, round(share * half_width, 1)) for behind, share in line)
         for name, line in DEFAULT_VOLUTE_LINES.items()
     }
-
-
-def drawn_volute_line(points: Sequence[DrawnPoint]) -> tuple[Point2D, ...]:
-    """Return one of a drawn volute's lines across the back, model frame.
-
-    Args:
-        points: Half of it seen from behind, ``(behind the nut, across)``
-            from the centre line out to one side (a point marked
-            ``"corner"`` a sharp bend); the other half mirrors it.
-
-    Returns:
-        A smooth line through them and their mirror, from one side to the
-        other; empty for none.
-
-    Raises:
-        NeckGeometryError: For fewer than two points, mirrored.
-    """
-    if not points:
-        return ()
-    half, corners = drawn_points(points)
-    model = [Point2D(-point.x, point.y) for point in half]
-    mirror = [
-        (Point2D(point.x, -point.y), corner)
-        for point, corner in zip(reversed(model), reversed(corners), strict=True)
-        if abs(point.y) > 1e-9
-    ]
-    whole = (*(point for point, _ in mirror), *model)
-    if len(whole) < 2:
-        raise NeckGeometryError("A drawn volute's line needs two points.")
-    return open_catmull_rom(whole, 8, (*(corner for _, corner in mirror), *corners))
 
 
 def _fall(fraction: float) -> float:
@@ -260,45 +230,3 @@ def _fall(fraction: float) -> float:
         - math.log(1.0 + k * fraction) / math.log(1.0 + k)
         + end_slope * fraction * (1.0 - fraction)
     )
-
-
-def _headstock_side(line: tuple[Point2D, ...]) -> float:
-    """Return which side of ``line`` the headstock is, as ``_nearest``'s
-    side sign: tried a millimetre toward it from the line's middle."""
-    if not line:
-        return 1.0
-    middle = line[len(line) // 2]
-    _, side = _nearest(Point2D(middle.x - 1.0, middle.y), line)
-    return 1.0 if side >= 0.0 else -1.0
-
-
-def _nearest(point: Point2D, line: tuple[Point2D, ...]) -> tuple[float, float]:
-    """Return how far ``point`` is from the open ``line``, and which side
-    of it it is on (the sign of the turn from the line's way to it)."""
-    best, side = math.inf, 0.0
-    for start, end in zip(line, line[1:], strict=False):
-        dx, dy = end.x - start.x, end.y - start.y
-        length_squared = dx * dx + dy * dy
-        along = (
-            0.0
-            if length_squared == 0.0
-            else max(
-                0.0,
-                min(
-                    1.0,
-                    ((point.x - start.x) * dx + (point.y - start.y) * dy)
-                    / length_squared,
-                ),
-            )
-        )
-        off_x = point.x - start.x - along * dx
-        off_y = point.y - start.y - along * dy
-        distance = math.hypot(off_x, off_y)
-        if distance < best:
-            best, side = distance, dx * off_y - dy * off_x
-    return best, side
-
-
-def _smootherstep(fraction: float) -> float:
-    """Return the quintic ease from 0 to 1, flat at both ends."""
-    return fraction**3 * (fraction * (fraction * 6.0 - 15.0) + 10.0)

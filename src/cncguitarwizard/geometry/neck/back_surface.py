@@ -9,11 +9,16 @@ from itertools import pairwise
 from ..exceptions import NeckGeometryError
 from ..fret.calculator import FretCalculator
 from ..primitives import Point3D, QuadFace, SurfaceMesh
+from .back_transition import BackTransition
 from .outline import NeckOutline
 
 HEEL_SUPERELLIPSE_EXPONENT = 32.0
 """The squarish superellipse a section passes through on its way from the
 playing D to the heel's rectangle."""
+
+DRAWN_STATION_MERGE = 0.5
+"""How close two of a drawn transition's station references may come, in
+mm, before they are taken as one: a hair apart they would loft a sliver."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,6 +39,14 @@ class NeckBackSurface:
         segments_per_region: Longitudinal segments between reference stations.
         preserve_d_profile_at_heel: Keep the rounded playing profile through
             the heel instead of flattening it into the mounting block.
+        heel_drawn: The heel's transition drawn as two lines (its flat
+            block's start and where the neck's profile begins), in place
+            of the smooth lead-in ``heel_transition_length`` sets; the
+            block is its ``depth_at`` deep. ``None`` for the smooth one.
+        root_drawn: The headstock's root drawn likewise, into its back (a
+            flat one's level, an angled one's falling away), in place of
+            the smooth nut transition and shelf; ``None`` for the smooth
+            one.
 
     Raises:
         NeckGeometryError: If dimensions or mesh resolution are invalid.
@@ -54,6 +67,8 @@ class NeckBackSurface:
     heel_scoop_depth: float = 0.0
     heel_root_center_extension: float = 0.0
     preserve_d_profile_at_heel: bool = False
+    heel_drawn: BackTransition | None = None
+    root_drawn: BackTransition | None = None
     exponent: float = 3.5
     profile_sample_count: int = 33
     segments_per_region: int = 8
@@ -74,22 +89,36 @@ class NeckBackSurface:
         heel_end_position = final_position + self.neck_outline.heel_length
         heel_flat_start = final_position - self.heel_flat_start_offset
         heel_transition_start = heel_flat_start - self.heel_transition_length
+        references: tuple[float, ...] = (
+            self.headstock_root_start_position,
+            0.0,
+            self.nut_transition_length,
+            first_position,
+            twelfth_position,
+            heel_transition_start,
+            heel_flat_start,
+            final_position,
+            heel_end_position,
+        )
+        drawn = [
+            transition
+            for transition in (self.root_drawn, self.heel_drawn)
+            if transition is not None
+        ]
+        if drawn:
+            # Stations where the drawn lines begin and end too, so the
+            # rows follow them, but none a hair from another: the fixed
+            # references stay exactly where they are.
+            extra: list[float] = []
+            for position in (x for each in drawn for x in each.span):
+                if all(
+                    abs(position - other) > DRAWN_STATION_MERGE
+                    for other in (*references, *extra)
+                ):
+                    extra.append(position)
+            references = tuple(sorted((*references, *extra)))
         station_positions = self._build_station_positions(
-            tuple(
-                dict.fromkeys(
-                    (
-                        self.headstock_root_start_position,
-                        0.0,
-                        self.nut_transition_length,
-                        first_position,
-                        twelfth_position,
-                        heel_transition_start,
-                        heel_flat_start,
-                        final_position,
-                        heel_end_position,
-                    )
-                )
-            )
+            tuple(dict.fromkeys(references))
         )
         rows = tuple(
             self._build_profile_row(position) for position in station_positions
@@ -220,6 +249,19 @@ class NeckBackSurface:
                 "than half the heel thickness."
             )
         heel_flat_start = final_position - self.heel_flat_start_offset
+        if self.heel_drawn is not None:
+            start, end = self.heel_drawn.span
+            if start <= twelfth_position or end > heel_flat_start + 1e-9:
+                raise NeckGeometryError(
+                    "The heel's drawn lines must lie between the 12th fret and "
+                    "the heel's flat block."
+                )
+        if self.root_drawn is not None:
+            _, end = self.root_drawn.span
+            if end >= first_position:
+                raise NeckGeometryError(
+                    "The headstock's drawn root must end before the first fret."
+                )
         transition_start = heel_flat_start - self.heel_transition_length
         if (
             not math.isfinite(self.heel_root_center_extension)
@@ -263,6 +305,27 @@ class NeckBackSurface:
             for index in range(self.profile_sample_count)
         )
 
+    def plain_profile_row(self, position: float) -> tuple[Point3D, ...]:
+        """Return the rounded profile's row at a station, nothing squared.
+
+        The D at the neck's width and depth there (``_depth_at``: under a
+        drawn root or heel the playing profile's own), with neither the
+        headstock's root nor the heel's block squaring it off: what a
+        drawn root turns from (``root_drawn``).
+        """
+        width = self._width_at(position)
+        depth = self._depth_at(position)
+        half_width = width / 2.0
+        step = width / (self.profile_sample_count - 1)
+        points = []
+        for index in range(self.profile_sample_count):
+            lateral = -half_width + index * step
+            fill = (1.0 - (abs(lateral) / half_width) ** self.exponent) ** (
+                1.0 / self.exponent
+            )
+            points.append(Point3D(position, lateral, -depth * fill))
+        return tuple(points)
+
     def _surface_point(
         self,
         position: float,
@@ -279,8 +342,15 @@ class NeckBackSurface:
         nut_blend = self._nut_transition_blend_at(
             position,
             nut_root_side_weight,
+            lateral,
         )
-        heel_blend = self._heel_transition_blend_at(position, center_weight)
+        heel_blend = self._heel_transition_blend_at(position, center_weight, lateral)
+        # A drawn transition deepens (or shallows) the plain profile to its
+        # block's depth by the same blend that squares it off.
+        if self.heel_drawn is not None and heel_blend > 0.0:
+            depth += (self.heel_drawn.depth_at(position) - depth) * heel_blend
+        elif self.root_drawn is not None and nut_blend > 0.0:
+            depth += (self.root_drawn.depth_at(position) - depth) * nut_blend
         normalized_depth = (1.0 - normalized_lateral**self.exponent) ** (
             1.0 / self.exponent
         )
@@ -387,6 +457,9 @@ class NeckBackSurface:
         final_position = self.neck_outline.last_fret_position
         heel_flat_start = final_position - self.heel_flat_start_offset
 
+        if self.root_drawn is not None and position < first_position:
+            # The plain profile: the drawn root deepens it point by point.
+            return self.first_fret_thickness + self._nut_volute_depth_at(position)
         if position <= 0.0:
             if self.nut_transition_thickness is None:
                 return self.first_fret_thickness
@@ -422,7 +495,9 @@ class NeckBackSurface:
         playing_slope = (self.twelfth_fret_thickness - self.first_fret_thickness) / (
             twelfth_position - first_position
         )
-        if self.heel_transition_length <= 0.0:
+        if self.heel_transition_length <= 0.0 or self.heel_drawn is not None:
+            # No lead-in (a drawn heel deepens the plain profile point by
+            # point): the playing taper runs on.
             return self.twelfth_fret_thickness + playing_slope * (
                 position - twelfth_position
             )
@@ -457,6 +532,7 @@ class NeckBackSurface:
         self,
         position: float,
         side_weight: float = 0.0,
+        lateral: float = 0.0,
     ) -> float:
         """Return the laterally tapered headstock-root blend.
 
@@ -464,8 +540,11 @@ class NeckBackSurface:
         the same-length D-profile transition begins farther toward the
         headstock. This forms a rear-facing U-shaped root: the side profiles
         continue past the nut while the centre remains at the nut reference,
-        without adding an outward material swell.
+        without adding an outward material swell. A drawn root
+        (``root_drawn``) is its lines' instead, at ``lateral``.
         """
+        if self.root_drawn is not None:
+            return self.root_drawn.share(position, lateral)
         if self.nut_shelf_length > 0.0:
             # The fixed nut shelf stays exactly 5 mm long at the centerline.
             # Only the side rows lead into the D profile earlier, so the
@@ -533,16 +612,21 @@ class NeckBackSurface:
 
     @property
     def headstock_root_start_position(self) -> float:
-        """Return the earliest station needed by the joined headstock root."""
-        return -max(
+        """Return the earliest station needed by the joined headstock root:
+        a drawn root's furthest point behind the nut, if further."""
+        start = -max(
             self.nut_shelf_length,
             self.nut_root_side_extension,
         )
+        if self.root_drawn is not None:
+            start = min(start, self.root_drawn.span[0])
+        return start
 
     def _heel_transition_blend_at(
         self,
         position: float,
         center_weight: float = 0.0,
+        lateral: float = 0.0,
     ) -> float:
         """Return the laterally tapered D-to-flat bolt-on heel blend.
 
@@ -550,6 +634,7 @@ class NeckBackSurface:
         flat-start station. The centre of its lead-in begins farther toward
         the neck than the two side edges, forming the broad, rounded
         Strat-style triangular root without reducing the flat mounting area.
+        A drawn heel (``heel_drawn``) is its lines' instead, at ``lateral``.
         """
         final_position = self.neck_outline.last_fret_position
         heel_flat_start = final_position - self.heel_flat_start_offset
@@ -557,6 +642,8 @@ class NeckBackSurface:
             return 0.0
         if position >= heel_flat_start:
             return 1.0
+        if self.heel_drawn is not None:
+            return self.heel_drawn.share(position, lateral)
         if self.heel_transition_length <= 0.0:
             return 0.0
         transition_start = (

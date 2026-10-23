@@ -263,7 +263,7 @@
   const PART_FIELDS = {
     neck: [
       "nut_width", "final_fret_width", "first_fret_thickness", "twelfth_fret_thickness",
-      "heel_thickness", "heel_width", "heel_mounting_length", "neck_profile_exponent",
+      "heel_thickness", "heel_width", "heel_mounting_length", "heel_root_style", "neck_profile_exponent",
       "headstock_thickness", "neck_carbon_rods", "neck_carbon_rod_size",
     ],
     fretboard: [
@@ -297,6 +297,8 @@
         </details>
       </div>`;
     byId("body-editor").before(page);
+    // The heel's runout is drawn on the neck's page, under the neck.
+    if (id === "neck") page.appendChild(byId("heel-editor"));
     EDITOR_FIELDS[`${id}-page-options`] = PART_FIELDS[id].filter((name) => !taken.has(name));
     partPages[id] = page;
   }

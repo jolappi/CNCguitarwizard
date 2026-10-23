@@ -1,7 +1,14 @@
 """Geometry models specific to guitar neck construction."""
 
 from .back_surface import NeckBackSurface
+from .back_transition import (
+    DEFAULT_HEEL_LINES,
+    DEFAULT_ROOT_LINES,
+    BackTransition,
+    default_transition_lines,
+)
 from .centerline import Centerline
+from .drawn_lines import drawn_back_line
 from .headstock import (
     HeadstockAngleReference,
     HeadstockPlan,
@@ -22,11 +29,14 @@ from .side_profile import (
 )
 from .truss_rod import TrussRodChannel
 from .vintage_rod import VintageTrussRod
-from .volute import Volute, default_volute_lines, drawn_volute_line, side_share
+from .volute import Volute, default_volute_lines, side_share
 
 __all__ = [
+    "BackTransition",
     "CarbonRods",
     "Centerline",
+    "DEFAULT_HEEL_LINES",
+    "DEFAULT_ROOT_LINES",
     "HeadstockAngleReference",
     "HeadstockPlan",
     "HeadstockSolid",
@@ -47,7 +57,8 @@ __all__ = [
     "TrussRodChannel",
     "VintageTrussRod",
     "Volute",
+    "default_transition_lines",
     "default_volute_lines",
-    "drawn_volute_line",
+    "drawn_back_line",
     "side_share",
 ]

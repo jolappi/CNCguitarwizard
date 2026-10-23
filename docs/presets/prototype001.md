@@ -178,7 +178,7 @@ Building the preset creates and cross-validates:
   sharp along its crest and falls away from it on a logarithmic curve to
   each end, `1 - log(1 + 9t) / log 10` of the way `t` there (steep from
   the crest, flattening out), corrected to meet the back level at the end
-  lines, with no edge (`VOLUTE_LOG_STEEPNESS`, `drawn_volute_line`,
+  lines, with no edge (`VOLUTE_LOG_STEEPNESS`, `drawn_back_line`,
   `Volute.crest`, `headstock_end`, `neck_end`). Either style puts all its
   wood down the middle of the back and less up its sides, in proportion
   to how deep the plain back is there against its middle, none at the
@@ -188,6 +188,41 @@ Building the preset creates and cross-validates:
 - a separate 15 mm `heel_root_center_extension`, which makes the center of
   the heel runout lead smoothly into the neck while the full 54 mm mounting
   block stays planar and intact;
+- on request (`heel_root_style` "drawn"), the heel's runout drawn instead
+  as two lines across the back on *Design › Neck*
+  (`geometry.neck.BackTransition`): where the block's flat begins, the
+  heel's rounding (`heel_root_flat_points`), and where the neck's own
+  profile does (`heel_root_neck_points`), each half its line seen from
+  behind, `(ahead of the block, across)` from the centre line out,
+  mirrored (`drawn_back_line`). The heel is never proud of the block or
+  the neck, so two lines say it all: between them the back turns from the
+  neck's rounded profile into the block's square one and deepens to the
+  block's depth by one share, 0 at the neck line and 1 at the flat line,
+  the way from the one to the other eased so it meets each with no edge
+  (`BackTransition.share`). Empty, the lines start much as the smooth
+  heel (`DEFAULT_HEEL_LINES`: the block straight across, the neck's
+  profile 45 mm ahead of it at the sides and 60 mm down the middle); they
+  lie between the 12th fret and the block, which stays flat (a point
+  past either is refused, naming its setting; where the smooth curve
+  through the points swings a hair past, it is kept to them,
+  `DRAWN_JOINT_SWING`). The mesh carries it (`NeckBackSurface.heel_drawn`),
+  so the FreeCAD loft and the neck's back programs do too;
+- likewise where the neck's back runs into the headstock's behind the nut
+  (`headstock_root_style` "drawn", in the headstock editor while the
+  volute is off: the volute is the same with a crest, standing proud, and
+  its own lines shape the back while it is on): where the headstock's
+  back begins (`headstock_root_flat_points`) and where the neck's own
+  profile does (`headstock_root_neck_points`), `(behind the nut,
+  across)`; empty, where the smooth root runs, 20 mm behind the nut to
+  14 mm onto the neck, straight across (`DEFAULT_ROOT_LINES`). The back
+  turns from the neck's profile into the headstock's back plane, its
+  thickness below its face's plane (`BackTransition.depth_at`, its
+  `slope`): level on a flat headstock, its face's drop and its thickness
+  (20 mm) below the glue face, falling away behind the nut on an angled
+  one; in place of the smooth root and its nut shelf
+  (`NeckBackSurface.root_drawn`). Its lines lie between the first fret
+  and `DRAWN_JOINT_TIP_CLEARANCE` (10 mm) short of the headstock's tip,
+  kept there as the heel's are;
 - the tuner layout chosen by `headstock_style` — 3+3 by default, or a
   6-in-line row (either side) or 4+2 / 2+4 — with at least about 8 mm of
   side-edge wood; a row of tuners lengthens the headstock as needed, every

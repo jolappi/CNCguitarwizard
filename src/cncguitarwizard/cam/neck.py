@@ -1573,6 +1573,7 @@ class _BackSurface:
             Point2D(point.x, point.y) for point in headstock.bottom_boundary
         )
         self._volute = geometry.volute
+        self._root = geometry.neck_surface.root_drawn
 
     def model_z(self, x: float, y: float) -> float:
         """Return the part's back height in the model frame (glue plane = 0)."""
@@ -1593,13 +1594,21 @@ class _BackSurface:
 
     def _plain_z(self, x: float, y: float) -> float | None:
         """Return the plain back's height there, the deeper of the neck's
-        mesh and the headstock's back plane; ``None`` off both."""
+        mesh and the headstock's back plane; ``None`` off both.
+
+        A drawn root (``root_drawn``) is the mesh's alone up to its flat
+        line, the headstock's back plane only past it.
+        """
         candidates = []
         mesh_z = interpolate_rows(self._stations, self._rows, x, y)
         if mesh_z is not None:
             candidates.append(mesh_z)
         if point_in_polygon(Point2D(x, y), self._headstock_back):
-            candidates.append(self._headstock.face_z(x) - self._plane_offset)
+            plane = self._headstock.face_z(x) - self._plane_offset
+            if self._root is None:
+                candidates.append(plane)
+            elif mesh_z is None or self._root.share(x, y) >= 1.0:
+                candidates.append(plane)
         return min(candidates) if candidates else None
 
     def machine_z(self, xm: float, ym: float) -> float:

@@ -74,7 +74,10 @@ from ..geometry.fretboard import (
 )
 from ..geometry.lettering import FontName, text_lines
 from ..geometry.neck import (
+    DEFAULT_HEEL_LINES,
+    DEFAULT_ROOT_LINES,
     LOCKING_NUT_SPECS,
+    BackTransition,
     Centerline,
     HeadstockAngleReference,
     HeadstockPlan,
@@ -88,8 +91,9 @@ from ..geometry.neck import (
     TunerLayout,
     VintageTrussRod,
     Volute,
+    default_transition_lines,
     default_volute_lines,
-    drawn_volute_line,
+    drawn_back_line,
 )
 from ..geometry.neck.nut_jig import (
     NutSlotJig,
@@ -263,6 +267,14 @@ micro (mini) toggle's 1/4 in."""
 
 SCALLOP_INLAY_KEEP = 1.0
 """How much of an inlay, in mm, a scallop over it must leave."""
+
+DRAWN_JOINT_TIP_CLEARANCE = 10.0
+"""How far short of the headstock's tip, in mm, its drawn root's lines
+must stay: the headstock's own rows run on from there to the tip."""
+
+DRAWN_JOINT_SWING = 0.5
+"""How far inside its limits, in mm, a drawn joint's line is kept where
+the smooth curve through its points swings past them."""
 
 FLAT_HEADSTOCK_FACE_DROP = 4.0
 """How far a flat headstock's face is set below the glue face, in mm: its
@@ -542,6 +554,16 @@ own edge follows its posts, which sit on the strings' lines and so run
 diagonally across the centreline), a Music Man's root lobe and narrow tip
 around 4+2. A 3+3 has no reserve; its edges follow the holes exactly.
 """
+
+
+HEEL_LINE_SETTINGS = {"flat": "heel_root_flat_points", "neck": "heel_root_neck_points"}
+"""The setting each of the heel's drawn lines is kept in."""
+
+ROOT_LINE_SETTINGS = {
+    "flat": "headstock_root_flat_points",
+    "neck": "headstock_root_neck_points",
+}
+"""The setting each of the headstock's drawn root lines is kept in."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -1721,6 +1743,26 @@ class Prototype001Parameters:
     headstock_volute_points: tuple[DrawnPoint, ...] = ()
     headstock_volute_headstock_points: tuple[DrawnPoint, ...] = ()
     headstock_volute_neck_points: tuple[DrawnPoint, ...] = ()
+    # headstock_root_style "drawn" draws where the neck's rounded back runs
+    # into the headstock's back (in the headstock editor while the volute is
+    # off; geometry.neck.BackTransition): two lines across the back, where
+    # the headstock's back begins (headstock_root_flat_points: its
+    # rounding's shape) and where the neck's own profile does
+    # (headstock_root_neck_points: how far the rounding runs out onto the
+    # neck), the back turning evenly from the one into the other between
+    # them, never proud of either (a volute is: its own three lines shape
+    # the back while it is on). The headstock's back is its back plane,
+    # level on a flat headstock, falling away behind the nut on an angled
+    # one. Each holds half its line seen from behind, (behind the nut,
+    # across) from the centre line out to one side, mirrored, as a drawn
+    # volute's; empty, where drawing starts (DEFAULT_ROOT_LINES: where the
+    # smooth root runs, 20 mm behind the nut to 14 mm onto the neck,
+    # straight across). "smooth" (the default) is the root the nut shelf
+    # and headstock_volute_length shape; drawing a line in the editor
+    # makes it "drawn".
+    headstock_root_style: Literal["smooth", "drawn"] = "smooth"
+    headstock_root_flat_points: tuple[DrawnPoint, ...] = ()
+    headstock_root_neck_points: tuple[DrawnPoint, ...] = ()
     # A real reference Stratocaster neck (measured from an actual STEP
     # model) has an instant depth step and a separately, gradually
     # tapering plan-view width. The depth step in our own model is now a
@@ -1737,6 +1779,21 @@ class Prototype001Parameters:
     heel_root_length: float = 45.0
     heel_scoop_depth: float = 1.5
     heel_root_center_extension: float = 15.0
+    # heel_root_style "drawn" draws where the neck's back runs into the
+    # heel's block likewise (on Design › Neck; geometry.neck.BackTransition):
+    # where the block's flat begins (heel_root_flat_points: the heel's
+    # rounding) and where the neck's own profile does
+    # (heel_root_neck_points), each half its line seen from behind, (ahead
+    # of the heel's block, across) from the centre line out, mirrored;
+    # empty, where drawing starts (DEFAULT_HEEL_LINES, much as the smooth
+    # heel: the block flat from its start straight across, the neck's
+    # profile 45 mm ahead of it at the sides and 60 mm down the middle).
+    # They lie between the 12th fret and the block. "smooth" (the default)
+    # is the lead-in heel_root_length, heel_scoop_depth and
+    # heel_root_center_extension shape.
+    heel_root_style: Literal["smooth", "drawn"] = "smooth"
+    heel_root_flat_points: tuple[DrawnPoint, ...] = ()
+    heel_root_neck_points: tuple[DrawnPoint, ...] = ()
     neck_profile_exponent: float = 2.0
     profile_sample_count: int = 33
     segments_per_region: int = 12
@@ -7390,6 +7447,8 @@ class Prototype001Parameters:
             heel_scoop_depth=self.heel_scoop_depth,
             heel_root_center_extension=self.heel_root_center_extension,
             preserve_d_profile_at_heel=False,
+            heel_drawn=self.heel_drawn(outline, heel_flat_start_offset, heel_depth),
+            root_drawn=self.root_drawn(outline, headstock_plan),
             exponent=self.neck_profile_exponent,
             profile_sample_count=self.profile_sample_count,
             segments_per_region=self.segments_per_region,
@@ -7570,10 +7629,138 @@ class Prototype001Parameters:
             self.headstock_pointed_volute_length,
             half_width,
             *(
-                drawn_volute_line(lines[name]) if lines else ()
+                drawn_back_line(lines[name]) if lines else ()
                 for name in ("crest", "headstock", "neck")
             ),
         )
+
+    def heel_drawn(
+        self, outline: NeckOutline, flat_start_offset: float, depth: float
+    ) -> BackTransition | None:
+        """Return the heel's transition as drawn, or ``None`` for the
+        smooth one.
+
+        Args:
+            outline: The neck's outline.
+            flat_start_offset: How far before the last fret its block's
+                flat begins, which the lines are measured from.
+            depth: The block's depth below the glue face.
+
+        Returns:
+            ``heel_root_style`` "drawn"'s transition, or ``None``.
+
+        Raises:
+            NeckGeometryError: For an unknown style, or a line's point not
+                between the block and the 12th fret (the smooth curve
+                through them is kept there, where it swings a hair past).
+        """
+        if self.heel_root_style not in ("smooth", "drawn"):
+            raise NeckGeometryError(
+                f"Unknown heel root {self.heel_root_style!r}: choose smooth or drawn."
+            )
+        if self.heel_root_style == "smooth":
+            return None
+        block = outline.last_fret_position - flat_start_offset
+        reach = block - outline.scale_length / 2.0
+        lines = self.heel_lines(outline.heel_width / 2.0)
+        for name, field_name in HEEL_LINE_SETTINGS.items():
+            if any(not 0.0 <= point[0] < reach for point in lines[name]):
+                raise NeckGeometryError(
+                    f"{field_name} must lie between the heel's block and the "
+                    f"12th fret: 0 to {reach:.0f} mm ahead of the block."
+                )
+        low, high = block - reach + DRAWN_JOINT_SWING, block
+        return BackTransition(
+            _kept_within(drawn_back_line(lines["flat"], block), low, high),
+            _kept_within(drawn_back_line(lines["neck"], block), low, high),
+            depth,
+            1.0,
+        )
+
+    def heel_lines(self, half_width: float) -> dict[str, tuple[DrawnPoint, ...]]:
+        """Return half of each of the heel's lines as drawn, or where
+        drawing them starts (``DEFAULT_HEEL_LINES``).
+
+        Returns:
+            ``{"flat", "neck"}``: ``heel_root_flat_points`` and
+            ``heel_root_neck_points``, each the default when empty.
+        """
+        start = default_transition_lines(DEFAULT_HEEL_LINES, half_width)
+        return {
+            "flat": self.heel_root_flat_points or start["flat"],
+            "neck": self.heel_root_neck_points or start["neck"],
+        }
+
+    def root_drawn(
+        self, outline: NeckOutline, plan: HeadstockPlan
+    ) -> BackTransition | None:
+        """Return the headstock's root as drawn, or ``None``.
+
+        Args:
+            outline: The neck's outline, whose width at the nut the lines
+                start from.
+            plan: The headstock's plan, its solid's (``headstock_solid``)
+                back the root turns into.
+
+        Returns:
+            ``headstock_root_style`` "drawn"'s transition into the
+            headstock's back: its back plane, its thickness below its
+            face's own plane (level on a flat headstock, its face's drop
+            below the glue face too; falling away behind the nut on an
+            angled one). ``None`` for the smooth one, with the volute on
+            (its own lines shape the back there) or with no headstock.
+
+        Raises:
+            NeckGeometryError: For an unknown style, or a line's point not
+                between the first fret and ``DRAWN_JOINT_TIP_CLEARANCE``
+                short of the headstock's tip (the smooth curve through them
+                is kept there, where it swings a hair past).
+        """
+        if self.headstock_root_style not in ("smooth", "drawn"):
+            raise NeckGeometryError(
+                f"Unknown headstock root {self.headstock_root_style!r}: choose "
+                "smooth or drawn."
+            )
+        if (
+            self.headstock_root_style == "smooth"
+            or self.headstock_pointed_volute
+            or self.headless
+        ):
+            return None
+        headstock = self.headstock_solid(plan)
+        radians = math.radians(headstock.angle.angle_degrees)
+        first = outline.scale_length * (1.0 - 2.0 ** (-1.0 / 12.0))
+        reach = plan.length - DRAWN_JOINT_TIP_CLEARANCE
+        lines = self.root_lines(outline.nut_width / 2.0)
+        for name, field_name in ROOT_LINE_SETTINGS.items():
+            if any(not -first < point[0] <= reach for point in lines[name]):
+                raise NeckGeometryError(
+                    f"{field_name} must lie between the first fret and the "
+                    f"headstock's tip: {first:.0f} mm onto the neck to {reach:.0f} "
+                    "mm behind the nut."
+                )
+        low, high = -reach, first - DRAWN_JOINT_SWING
+        return BackTransition(
+            _kept_within(drawn_back_line(lines["flat"]), low, high),
+            _kept_within(drawn_back_line(lines["neck"]), low, high),
+            headstock.thickness / math.cos(radians) - headstock.face_z(0.0),
+            -1.0,
+            -math.tan(radians),
+        )
+
+    def root_lines(self, half_width: float) -> dict[str, tuple[DrawnPoint, ...]]:
+        """Return half of each of a flat headstock's root lines as drawn,
+        or where drawing them starts (``DEFAULT_ROOT_LINES``).
+
+        Returns:
+            ``{"flat", "neck"}``: ``headstock_root_flat_points`` and
+            ``headstock_root_neck_points``, each the default when empty.
+        """
+        start = default_transition_lines(DEFAULT_ROOT_LINES, half_width)
+        return {
+            "flat": self.headstock_root_flat_points or start["flat"],
+            "neck": self.headstock_root_neck_points or start["neck"],
+        }
 
     def volute_lines(self, half_width: float) -> dict[str, tuple[DrawnPoint, ...]]:
         """Return half of each of a drawn volute's lines as drawn, or where
@@ -7613,6 +7800,17 @@ class Prototype001Parameters:
             self.fretboard_scallop_depth,
             self.fretboard_scallop_land,
         )
+
+
+def _kept_within(
+    line: tuple[Point2D, ...], low: float, high: float
+) -> tuple[Point2D, ...]:
+    """Return a drawn line kept between ``low`` and ``high`` along the neck.
+
+    Its points lie there already; the smooth curve through them can swing
+    a hair past, where it runs along the limit instead.
+    """
+    return tuple(Point2D(min(high, max(low, point.x)), point.y) for point in line)
 
 
 def _inlays_under_scallops(

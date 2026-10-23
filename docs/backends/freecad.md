@@ -52,7 +52,15 @@ section against its flat underside.
 ## Neck assembly
 
 `render_neck_assembly()` places the neck back and fretboard in one FreeCAD
-document as separate `Part::Feature` objects:
+document as separate `Part::Feature` objects. The neck and a joined
+headstock are one loft through `neck_loft_rows()`: the headstock's own
+rows, their blend into the neck's (`_headstock_transition_sections`) and
+the neck's mesh rows, which carry a drawn heel. On a flat headstock with
+a drawn root (`NeckBackSurface.root_drawn`) the blend runs from behind
+its flat line to past its neck line (`_headstock_blend_span`), and
+between each row's top edges the back lies its share of the way from the
+neck's own profile (`plain_profile_row`) to the headstock's flat back
+(`_drawn_root_row`), each row kept in order across. It is called as:
 
 ```python
 source = exporter.render_neck_assembly(

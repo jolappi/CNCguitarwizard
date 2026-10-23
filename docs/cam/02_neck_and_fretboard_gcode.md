@@ -97,7 +97,10 @@ straight 5 mm ledge (the model's U-shaped trim is not machined), the
 headstock-root volute follows the mesh/plane union rather than the
 FreeCAD fillets (a pointed volute, `headstock_pointed_volute`, lies under
 that union, so the back's programs cut it, and the blank is as thick as it
-needs), and the spoke-wheel access pocket is not modelled.
+needs; a flat headstock's drawn root, `headstock_root_style`, is the
+mesh's alone up to its flat line and the headstock's flat back only past
+it, so the back's programs cut the drawn transition, and a drawn heel is
+in the mesh), and the spoke-wheel access pocket is not modelled.
 
 ### Vintage truss rod
 

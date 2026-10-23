@@ -37,6 +37,7 @@ from ...geometry.neck import (
     Volute,
     side_share,
 )
+from ...geometry.neck.back_transition import BackTransition
 from ...geometry.neck.outline import heel_end_curve
 from ...geometry.primitives import Point2D, Point3D, point_in_polygon
 from ...presets import Prototype001Geometry
@@ -56,6 +57,10 @@ neck G-code: the cutter crosses the loft cleanly instead of touching it.
 
 HEADSTOCK_FACE_EASE_LENGTH = 8.0
 """Length over which the lofted top edge eases from the shelf down (mm)."""
+
+HEADSTOCK_BLEND_LENGTH = 20.0
+"""How far behind the nut, in mm, the headstock's rows begin blending into
+the neck's (see ``_headstock_transition_sections``)."""
 
 TRANSITION_CUT_SAMPLES = 12
 """Points along the Stratocaster-style seat-to-face transition in the face cut."""
@@ -1705,11 +1710,14 @@ class FreeCADScriptExporter:
         # at there — nut clearance has to be solved some other way (the
         # nut's own seat, not this surface's shape).
         #
-        # It does not start at root_start: it starts a fixed ``blend_length``
-        # back from the nut itself, so the rounded portion is a fixed, known
-        # span measured from x = 0.
-        blend_length = 20.0
-        blend_start = max(-blend_length, -headstock.plan.length + 10.0)
+        # It does not start at root_start: it starts a fixed
+        # HEADSTOCK_BLEND_LENGTH back from the nut itself, so the rounded
+        # portion is a fixed, known span measured from x = 0 (a drawn
+        # root's runs from behind its flat line to past its neck line:
+        # _headstock_blend_span).
+        blend_start, blend_end = FreeCADScriptExporter._headstock_blend_span(
+            headstock, neck_surface
+        )
         # A couple of millimetres past nut_transition_length, not exactly
         # at it: the surface is flat there either way (see below), but
         # the truss-rod channel happens to start its cut at exactly
@@ -1721,7 +1729,6 @@ class FreeCADScriptExporter:
         # tangent are unchanged, since the neck's own taper is already
         # flat by nut_transition_length) and keeps the cut's boundary
         # clear of it.
-        blend_end = neck_surface.nut_transition_length + 2.0
         end_row = neck_surface._build_profile_row(blend_end)
         sections: list[tuple[Point3D, ...]] = []
         if root_start < 0.0:
@@ -1826,9 +1833,98 @@ class FreeCADScriptExporter:
                     ),
                 )
             )
+            root = neck_surface.root_drawn
+            if root is not None:
+                # A drawn root: between the blend's rows' edges, the back
+                # turns from the headstock's back into the neck's own
+                # profile by the drawn lines.
+                sections = [
+                    FreeCADScriptExporter._drawn_root_row(
+                        row, headstock, neck_surface, root, lateral_edge_fillet_radius
+                    )
+                    if row[0].x > blend_start
+                    else row
+                    for row in sections
+                ]
         elif not sections:
             sections.append(end_row)
         return tuple(sections)
+
+    @staticmethod
+    def _headstock_blend_span(
+        headstock: HeadstockSolid, neck_surface: NeckBackSurface
+    ) -> tuple[float, float]:
+        """Return where the headstock's rows blend into the neck's.
+
+        ``HEADSTOCK_BLEND_LENGTH`` behind the nut (less on a short
+        headstock) to 2 mm past the neck's nut transition (see
+        ``_headstock_transition_sections``); a drawn root's from behind
+        its furthest point to 2 mm past its neck line's, if further.
+
+        Returns:
+            ``(start, end)`` along the neck.
+        """
+        nearest_tip = -headstock.plan.length + 10.0
+        start = max(-HEADSTOCK_BLEND_LENGTH, nearest_tip)
+        end = neck_surface.nut_transition_length + 2.0
+        root = neck_surface.root_drawn
+        if root is not None:
+            first, last = root.span
+            start = max(min(start, first - 1.0), nearest_tip)
+            end = max(end, last + 2.0)
+        return start, end
+
+    @staticmethod
+    def _drawn_root_row(
+        row: tuple[Point3D, ...],
+        headstock: HeadstockSolid,
+        neck_surface: NeckBackSurface,
+        root: BackTransition,
+        lateral_edge_fillet_radius: float,
+    ) -> tuple[Point3D, ...]:
+        """Return one loft row of the headstock's drawn root.
+
+        Its two top edges stay as lofted; between them each point lies its
+        share (``root.share``) of the way from the neck's own profile there
+        (``plain_profile_row``) to the headstock's back (its section there,
+        its back plane level or falling away, rounded up its sides),
+        across and down, each spread over the row's own width, none above
+        the top edges; kept in order across it (a point beside one a
+        little more turned could fall a hair past it, folding the row).
+        """
+        position = row[0].x
+        plain = neck_surface.plain_profile_row(position)
+        block = FreeCADScriptExporter._angled_headstock_root_section(
+            headstock, neck_surface, position, lateral_edge_fillet_radius
+        )
+        last = len(row) - 1
+        left, right = row[0].y, row[last].y
+        centre, half = (left + right) / 2.0, (right - left) / 2.0
+        top = min(row[0].z, row[last].z)
+
+        def across(section: tuple[Point3D, ...], index: int) -> float:
+            """Where a section's point is across it, -1 to 1."""
+            first, final = section[0].y, section[-1].y
+            return (2.0 * section[index].y - first - final) / (final - first)
+
+        points = [row[0]]
+        for index in range(1, last):
+            neck_across = across(plain, index)
+            share = root.share(position, centre + neck_across * half)
+            point_across = neck_across + (across(block, index) - neck_across) * share
+            z = plain[index].z + (block[index].z - plain[index].z) * share
+            points.append(Point3D(position, centre + point_across * half, min(z, top)))
+        points.append(row[last])
+        # In order from each edge in to the middle: none past the one
+        # before it.
+        middle = last // 2
+        for index in range(1, middle + 1):
+            if points[index].y < points[index - 1].y:
+                points[index] = Point3D(position, points[index - 1].y, points[index].z)
+        for index in range(last - 1, middle, -1):
+            if points[index].y > points[index + 1].y:
+                points[index] = Point3D(position, points[index + 1].y, points[index].z)
+        return tuple(points)
 
     @staticmethod
     def _offset_edge_pivot(
@@ -3327,10 +3423,11 @@ class FreeCADScriptExporter:
             # (At least NECK_SPLICE_GAP past the transition's last row: a
             # station of the neck's own a hair past it bent the loft
             # sharply between the two.)
+            _, blend_end = cls._headstock_blend_span(headstock, neck_surface)
             first_unblended_index = next(
                 index
                 for index, position in enumerate(neck_surface.station_positions)
-                if position > neck_surface.nut_transition_length + 2.0 + NECK_SPLICE_GAP
+                if position > blend_end + NECK_SPLICE_GAP
             )
             neck_rows = transition_sections + tuple(
                 cls._close_neck_row(row)

@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache">
 <!-- This page's stamp, set by tools/build_site.py (see the loader below). -->
-<meta name="cgw-page" content="556fca0505b0">
+<meta name="cgw-page" content="4dfafef3e914">
 <title>CNCguitarwizard</title>
 <script>
   // Dark mode, the default; light when chosen in this browser (or
@@ -295,12 +295,23 @@
   .volute-view-box .volute-picture svg { display: block; width: 100%; max-width: 380px; height: auto; border-radius: 6px; }
   .volute-view-box.busy .volute-picture { opacity: 0.55; }
   #headstock-editor .volute-outline { fill: #8a5a2b; fill-opacity: 0.2; stroke: #8a5a2b; stroke-width: 0.4; stroke-dasharray: 1.6,0.8; pointer-events: none; }
-  #headstock-editor .volute-line { fill: none; stroke: #8a5a2b; stroke-width: 1.2; stroke-linecap: round; stroke-opacity: 0.85; pointer-events: none; }
-  #headstock-editor .volute-line.end { stroke-width: 0.6; stroke-dasharray: 2,1.2; }
-  #headstock-editor .volute-handle { fill: #fff; stroke: #8a5a2b; stroke-width: 0.3; cursor: grab; }
-  #headstock-editor .volute-handle:hover { fill: #8a5a2b; }
-  #headstock-editor .volute-handle.corner { fill: #e9d7bf; }
-  #headstock-editor .cover-preview { fill: none; stroke: #1f6fb2; stroke-width: 0.3; stroke-dasharray: 1,0.6; pointer-events: none; }
+  :is(#headstock-editor, #heel-editor) .volute-line { fill: none; stroke: #8a5a2b; stroke-width: 1.2; stroke-linecap: round; stroke-opacity: 0.85; pointer-events: none; }
+  :is(#headstock-editor, #heel-editor) .volute-line.end { stroke-width: 0.6; stroke-dasharray: 2,1.2; }
+  :is(#headstock-editor, #heel-editor) .volute-handle { fill: #fff; stroke: #8a5a2b; stroke-width: 0.3; cursor: grab; }
+  :is(#headstock-editor, #heel-editor) .volute-handle:hover { fill: #8a5a2b; }
+  :is(#headstock-editor, #heel-editor) .volute-handle.corner { fill: #e9d7bf; }
+  /* A flat headstock's drawn root and the heel's lines, in blue-green. */
+  :is(#headstock-editor .root, #heel-editor) .volute-line { stroke: #2d6b7f; }
+  :is(#headstock-editor .root, #heel-editor) .volute-handle { stroke: #2d6b7f; }
+  :is(#headstock-editor .root, #heel-editor) .volute-handle:hover { fill: #2d6b7f; }
+  :is(#headstock-editor .root, #heel-editor) .volute-handle.corner { fill: #c9e0e6; }
+  /* A joint still smooth: its lines lighter, where drawing them starts. */
+  .back-lines.smooth .volute-line { stroke-opacity: 0.45; stroke-dasharray: 2,1.2; }
+  .back-lines.smooth .volute-handle { fill-opacity: 0.7; stroke-opacity: 0.6; }
+  :is(#headstock-editor, #heel-editor) .cover-preview { fill: none; stroke: #1f6fb2; stroke-width: 0.3; stroke-dasharray: 1,0.6; pointer-events: none; }
+  #heel-editor .heel-back { fill: #f1e4c8; stroke: #6b4a1f; stroke-width: 0.6; }
+  #heel-editor .heel-mark { stroke: #8a7a5a; stroke-width: 0.4; stroke-dasharray: 2,1.5; }
+  #heel-editor .heel-label { font: 3.2px sans-serif; fill: #6b5a3a; }
   .body-editor .engraving { fill: none; stroke: #1f6fb2; stroke-width: 1.2; stroke-linecap: round; pointer-events: none; }
   .body-editor .relief { fill: #2f4a1e; stroke: #1f6fb2; stroke-width: 0.6; pointer-events: none; }
   .body-editor .contour-line { fill: none; stroke-width: 0.9; pointer-events: none; }
@@ -755,7 +766,7 @@
           style redraws it); <em>Start over</em> goes back to it; <em>Undo</em> steps back a change, <em>Redo</em> forward again. A neck chosen in <em>Start from</em> is loaded whole (<em>Load</em> loads it again), its tuners' places with it: the
           Telecaster neck sets a slotted nut (the fretboard running on under it), a flat six-in-line headstock
           drawn as a Telecaster's (its heel's end square) and a truss rod adjusted at the heel (set <code>truss_rod_adjustment</code> to
-          headstock for the modern way, reached behind the nut; <code>truss_rod_spoke_wheel</code> says whether the adjuster is a spoke wheel); the Stratocaster neck rounds the heel's end (<code>neck_heel_end</code>), its pocket and the fretboard's end with it. Lettering typed in <code>headstock_engraving_text</code> is drawn in blue: drag it to move it (it must keep 2 mm from the edge, the nut's seat, the tuner holes and the truss-rod cover). With the truss rod adjusted at the headstock (<code>truss_rod_adjustment</code>) its cover is drawn over the dashed trough, in the style chosen (<code>truss_rod_cover_style</code>: a Gibson bell, Ibanez / ESP, a PRS teardrop or a rounded rectangle): drag one of its square corners to draw your own cover (click its edge to add a corner, Alt/Option-click or right-click one to remove it), or a round handle past its far end or beside its widest side to make it longer or wider; choosing a style again goes back to it. It must cover the trough and keep its screws in wood and clear of the edges and the tuner holes. <em>File ▸ Export SVG</em> saves the outline as a template, 1:1 in millimetres, to edit in another program: the black path in its Outline layer runs from the nut on one side round the tip to the nut on the other, round the locked Reference layer's nut, tuner holes (dashed, the edge's clearance round them), truss-rod cover and lettering; keep the three red registration marks, and <em>Import SVG</em> reads it back as edges and tip handles (each edge running away from the nut, the tip across from one edge's end to the other's). Lines drawn in its Pattern layer, shapes drawn beside the outline and pictures pasted in (a PNG kept in the file: its dark shapes are traced) are engraved on the face with the lettering, <code>headstock_engraving_depth</code> deep (1 mm), and drawn in blue; empty the layer to take them off. <em>Export DXF</em> and <em>Import DXF</em> do the same for a CAD program: the outline on layer <code>cgwOutline</code> (a point on <code>cgwHandles</code> at every handle), what it is drawn round on <code>cgwReference</code>, the marks on <code>cgwMarkA</code>–<code>C</code>, the engraving on <code>cgwPatternLayer</code>; any ASCII DXF is read (lines, arcs, circles, ellipses, polylines and splines, joined end to end). Ctrl/Cmd+wheel (or a trackpad's pinch) zooms about the pointer; zoomed in, drag the background to move the drawing, and double-click it to fit the whole drawing again. The grid is 10 mm.</p>
+          headstock for the modern way, reached behind the nut; <code>truss_rod_spoke_wheel</code> says whether the adjuster is a spoke wheel); the Stratocaster neck rounds the heel's end (<code>neck_heel_end</code>), its pocket and the fretboard's end with it. With the volute off, two blue-green lines behind the nut say how the neck's back runs into the headstock's: the solid one where the headstock's back begins, the dashed one where the neck's own profile begins, the back turning evenly from the one into the other, with no bump (the volute, <code>headstock_pointed_volute</code>, is the same with a crest). They are lighter while the joint is smooth: drag a point to draw your own (<code>headstock_root_style</code> becomes drawn), click a line to add a point, Alt/Option-click or right-click one to remove it, double-click one for a sharp bend; a point stops short of the other line, so they never cross, and <em>Reset joint</em> puts the joint back to the smooth one. Lettering typed in <code>headstock_engraving_text</code> is drawn in blue: drag it to move it (it must keep 2 mm from the edge, the nut's seat, the tuner holes and the truss-rod cover). With the truss rod adjusted at the headstock (<code>truss_rod_adjustment</code>) its cover is drawn over the dashed trough, in the style chosen (<code>truss_rod_cover_style</code>: a Gibson bell, Ibanez / ESP, a PRS teardrop or a rounded rectangle): drag one of its square corners to draw your own cover (click its edge to add a corner, Alt/Option-click or right-click one to remove it), or a round handle past its far end or beside its widest side to make it longer or wider; choosing a style again goes back to it. It must cover the trough and keep its screws in wood and clear of the edges and the tuner holes. <em>File ▸ Export SVG</em> saves the outline as a template, 1:1 in millimetres, to edit in another program: the black path in its Outline layer runs from the nut on one side round the tip to the nut on the other, round the locked Reference layer's nut, tuner holes (dashed, the edge's clearance round them), truss-rod cover and lettering; keep the three red registration marks, and <em>Import SVG</em> reads it back as edges and tip handles (each edge running away from the nut, the tip across from one edge's end to the other's). Lines drawn in its Pattern layer, shapes drawn beside the outline and pictures pasted in (a PNG kept in the file: its dark shapes are traced) are engraved on the face with the lettering, <code>headstock_engraving_depth</code> deep (1 mm), and drawn in blue; empty the layer to take them off. <em>Export DXF</em> and <em>Import DXF</em> do the same for a CAD program: the outline on layer <code>cgwOutline</code> (a point on <code>cgwHandles</code> at every handle), what it is drawn round on <code>cgwReference</code>, the marks on <code>cgwMarkA</code>–<code>C</code>, the engraving on <code>cgwPatternLayer</code>; any ASCII DXF is read (lines, arcs, circles, ellipses, polylines and splines, joined end to end). Ctrl/Cmd+wheel (or a trackpad's pinch) zooms about the pointer; zoomed in, drag the background to move the drawing, and double-click it to fit the whole drawing again. The grid is 10 mm.</p>
       </details>
       <details class="editor-settings">
         <summary>Settings</summary>
@@ -766,6 +777,7 @@
         <select id="headstock-editor-template"></select>
         <button id="headstock-editor-load" class="secondary" type="button">Load</button>
         <button id="headstock-editor-reset" class="secondary" type="button">Start over</button>
+        <button id="headstock-editor-reset-root" class="secondary" type="button" hidden title="Put the neck's joint with the headstock back to the smooth one, its lines where drawing them starts">Reset joint</button>
         <details class="menu">
           <summary title="Export the drawing as a template for another program, or import one">File</summary>
           <div class="menu-items">
@@ -780,9 +792,35 @@
       </div>
       <p id="headstock-editor-status" class="note"></p>
       <svg id="headstock-editor-svg" xmlns="http://www.w3.org/2000/svg"></svg>
-      <!-- The volute seen from behind and above while it is drawn. -->
+      <!-- The volute or a drawn root seen from behind and above while it is drawn. -->
       <div id="headstock-editor-volute" class="volute-view-box" hidden>
-        <p class="note">The volute seen from behind and above, as it is lofted (the headstock at the top)</p>
+        <p class="note">The back behind the nut seen from behind and above, as it is lofted (the headstock at the top)</p>
+        <div class="volute-picture"></div>
+      </div>
+    </div>
+    <!-- The heel's runout (heel_root_style), drawn on Design › Neck. -->
+    <div id="heel-editor" class="body-editor hidden">
+      <h3>Heel</h3>
+      <details class="editor-help">
+        <summary>How to draw the heel</summary>
+        <p class="note">The neck's back near the heel, seen from behind, the heel's end at the right. Two lines say how
+          its rounded back runs into the heel's flat block: the solid one where the block's flat begins (the heel's
+          rounding: its shape), the dashed one where the neck's own profile begins (how far the rounding runs out onto
+          the neck). Between them the back turns evenly from the one into the other, never proud of either. While the
+          heel is smooth (<code>heel_root_style</code>) its lines are drawn lighter, about where its runout lies; drag a
+          point to draw your own line (half of it: the other half mirrors it, its first point on the centre line), and
+          the heel is drawn from then on. Click a line to add a point, Alt/Option-click or right-click a point to remove
+          it, double-click one for a sharp bend. A point stops at the 12th fret and the block (dotted) and short of the
+          other line, so the two never cross; <em>Start over</em> puts the heel back to its smooth runout. Under the
+          drawing the heel is shown as it is lofted, seen from behind and above.</p>
+      </details>
+      <div class="actions">
+        <button id="heel-editor-reset" class="secondary" type="button" title="Put the heel back to its smooth runout, its lines where drawing them starts">Start over</button>
+      </div>
+      <p id="heel-editor-status" class="note"></p>
+      <svg id="heel-editor-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+      <div id="heel-editor-view" class="volute-view-box" hidden>
+        <p class="note">The heel seen from behind and above, as it is lofted (the heel at the top)</p>
         <div class="volute-picture"></div>
       </div>
     </div>

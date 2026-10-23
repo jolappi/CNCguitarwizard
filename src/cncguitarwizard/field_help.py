@@ -248,6 +248,24 @@ FIELD_HELP: dict[str, str] = {
         "How much earlier the heel's runout starts on the neck's centre than "
         "at its sides, in mm, so it leads smoothly out of the neck."
     ),
+    "heel_root_style": (
+        "How the neck's rounded back runs into the heel's block: smooth (the "
+        "runout above), or drawn on Design › Neck as two lines across the "
+        "back, where the block's flat begins and where the neck's own "
+        "profile does, the back turning evenly from the one into the other. "
+        "Drawing a line there makes it drawn."
+    ),
+    "heel_root_flat_points": (
+        "A drawn heel: where its flat block begins (its rounding's shape), "
+        "half of it seen from behind, [mm ahead of the block, mm across] "
+        "from the centre line out to one side, mirrored. Empty: straight "
+        "across at the block."
+    ),
+    "heel_root_neck_points": (
+        "A drawn heel: where the neck's own profile begins, drawn as the flat "
+        "line is. Empty: 45 mm ahead of the block at the sides, 60 mm down "
+        "the middle."
+    ),
     # Headstock and tuners
     "headstock_style": (
         "The tuners' layout: 3+3, six (or four, five, seven, eight) in line on "
@@ -339,6 +357,24 @@ FIELD_HELP: dict[str, str] = {
     "headstock_volute_neck_points": (
         "Where a drawn volute ends in the neck's back, drawn as its crest is. "
         "Empty: 13 to 22 mm past the nut."
+    ),
+    "headstock_root_style": (
+        "How the neck's rounded back runs into the headstock's back: smooth, "
+        "or drawn in the headstock editor (with the volute off) as two lines "
+        "across the back, where the headstock's back begins and where the "
+        "neck's own profile does, the back turning evenly from the one into "
+        "the other, with no bump (that is the volute). Drawing a line there "
+        "makes it drawn."
+    ),
+    "headstock_root_flat_points": (
+        "A drawn root: where the headstock's back begins (the joint's "
+        "rounding), half of it seen from behind, [mm behind the nut, mm "
+        "across] from the centre line out to one side, mirrored. Empty: "
+        "20 mm behind the nut, straight across."
+    ),
+    "headstock_root_neck_points": (
+        "A drawn root: where the neck's own profile begins, drawn as the flat "
+        "line is. Empty: 14 mm past the nut, straight across."
     ),
     "headstock_root_swell": (
         "Extra depth of the continuous surface joining the headstock to the "

@@ -6,7 +6,7 @@ from cncguitarwizard.geometry.exceptions import NeckGeometryError
 from cncguitarwizard.geometry.neck import (
     Volute,
     default_volute_lines,
-    drawn_volute_line,
+    drawn_back_line,
     side_share,
 )
 from cncguitarwizard.geometry.neck.volute import _fall
@@ -68,7 +68,7 @@ def drawn(half_width: float = 21.0) -> Volute:
         3.0,
         30.0,
         half_width,
-        *(drawn_volute_line(lines[name]) for name in ("crest", "headstock", "neck")),
+        *(drawn_back_line(lines[name]) for name in ("crest", "headstock", "neck")),
     )
 
 

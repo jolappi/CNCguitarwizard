@@ -1,10 +1,11 @@
-"""The volute seen from behind and above, shaded, for drawing it.
+"""The back seen from behind and above, shaded, for drawing on it.
 
-The back round the nut is drawn as lofted (its rows, the volute's wood
-under them): seen at a slant from behind the neck, from the body's side
-and above, the headstock at the top, lit from over the viewer's
-shoulder, so the volute's crest and outline read as they would on the
-guitar.
+The back round the nut (a volute's wood under it, a flat headstock's
+drawn root) or round the heel is drawn as lofted (its rows): seen at a
+slant from behind the neck and above, from the body's side with the
+headstock at the top, or from the nut's with the heel at the top, lit
+from over the viewer's shoulder, so what is drawn there reads as it
+would on the guitar.
 """
 
 from __future__ import annotations
@@ -21,11 +22,13 @@ VIEW_MARGIN = 12.0
 """Paper left round the drawing."""
 
 VIEW_EYE = (0.55, -0.35, -0.76)
-"""Toward the viewer, in the model frame: behind the neck (the back is
-at negative ``z``), toward the body and the bass side."""
+"""Toward the viewer, in the model frame, the headstock at the top: behind
+the neck (the back is at negative ``z``), toward the body and the bass
+side (its ``x`` turned round with the heel at the top)."""
 
 VIEW_LIGHT = (0.75, -0.5, -0.45)
-"""Toward the light, in the model frame."""
+"""Toward the light, in the model frame, the headstock at the top (its
+``x`` turned round with the heel at the top)."""
 
 VIEW_WOOD = (233, 211, 168)
 """The wood's colour, fully lit."""
@@ -34,21 +37,29 @@ VIEW_WOOD = (233, 211, 168)
 Vector = tuple[float, float, float]
 
 
-def render_volute_view_svg(rows: Sequence[Sequence[Point3D]]) -> str:
+def render_volute_view_svg(
+    rows: Sequence[Sequence[Point3D]],
+    top: float = -1.0,
+    title: str = "The volute seen from behind and above, as it is lofted",
+) -> str:
     """Return the back through ``rows`` seen from behind and above.
 
     Args:
-        rows: The loft's rows round the nut, ordered along the neck, each
-            across the back from one top edge to the other.
+        rows: The loft's rows, ordered along the neck, each across the back
+            from one top edge to the other.
+        top: Which way along the neck is at the top of the paper: -1.0 the
+            headstock (seen from the body's side), 1.0 the heel (seen from
+            the nut's).
+        title: The drawing's title.
 
     Returns:
-        A standalone SVG, the headstock at the top.
+        A standalone SVG.
     """
-    eye = _unit(VIEW_EYE)
-    # Up on the paper is toward the headstock (the model's -x).
-    up = _unit(_minus((-1.0, 0.0, 0.0), _scaled(eye, -eye[0])))
+    turn = -top
+    eye = _unit((VIEW_EYE[0] * turn, VIEW_EYE[1], VIEW_EYE[2]))
+    up = _unit(_minus((top, 0.0, 0.0), _scaled(eye, top * eye[0])))
     right = _cross(up, eye)
-    light = _unit(VIEW_LIGHT)
+    light = _unit((VIEW_LIGHT[0] * turn, VIEW_LIGHT[1], VIEW_LIGHT[2]))
     faces: list[tuple[float, list[tuple[float, float]], float]] = []
     for near, far in zip(rows, rows[1:], strict=False):
         for index in range(len(near) - 1):
@@ -79,7 +90,7 @@ def render_volute_view_svg(rows: Sequence[Sequence[Point3D]]) -> str:
     parts = [
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {VIEW_WIDTH:g} '
         f'{height:.1f}" class="volute-view">',
-        "<title>The volute seen from behind and above, as it is lofted</title>",
+        f"<title>{title}</title>",
         f'<rect width="{VIEW_WIDTH:g}" height="{height:.1f}" fill="#f4efe4"/>',
     ]
     for _, flat, shade in sorted(faces, key=lambda face: face[0]):

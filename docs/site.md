@@ -764,10 +764,37 @@ where drawing starts while none is drawn); a click on a line adds a
 point, a right-click or Alt-click removes one, a double-click makes it a
 sharp bend. Under the drawing the volute is shown as it is lofted, seen from
 behind and above with the headstock at the top, shaded
-(`webapp.volute_view`: the loft's rows round the nut,
+(`webapp.back_view`: the loft's rows round the nut,
 `FreeCADScriptExporter.neck_loft_rows`, drawn by
 `render.svg.render_volute_view_svg`), redrawn a moment after each change
-so dragging stays quick.
+so dragging stays quick. With the volute off the root's two lines are
+drawn there the same way instead, in blue-green (`headstock_root_style`;
+`webapp._root_drawing`): where the headstock's back begins (solid) and
+where the neck's own profile does (dashed), the same as the volute's but
+with no crest, so no bump; shown under the drawing as lofted too. While
+the root is smooth its lines are drawn lighter, where the smooth root
+runs, and drawing one makes it "drawn"; *Reset joint* puts it back to
+smooth. The editors share the drawing and dragging of such lines
+(`backLines` in `app.js`): a point stops inside the lines' limits along
+the neck (the layout's `limits`: a millimetre short of the first fret
+and of the headstock's tip, of the 12th fret and of the heel's block)
+and a millimetre short of the line either side of it (`order`, from the
+neck's side toward the block's, `toward`), so the lines never cross; a
+drag's line, shown until the drawing is redrawn, never stays behind.
+
+*Design › Neck* draws the heel's runout (`heel_root_style`) under the
+neck's drawing (`#heel-editor`, `webapp.heel_editor_layout`): the neck's
+back from 130 mm ahead of the heel's block to its end seen from behind,
+the 12th fret and the block's start dotted (the lines lie between them),
+and its two lines with their handles as above, the block's flat (solid)
+and where the neck's profile begins (dashed), lighter while the heel is
+smooth (drawing one makes it drawn; *Start over* puts it back to
+smooth); under it the heel as lofted, seen from behind and above with
+the heel at the top (`webapp.back_view(payload, "heel")`). It is drawn
+only while its page is shown, afresh when the page is shown again, and
+drawn even where the design does not build (a line set past the block in
+a saved design): its lines as set, the reason in its status, to be
+mended.
 
 *Design › Neck* and *Design › Fretboard* are pages of their own there:
 a drawing of the part (`webapp.part_views`, `render.svg.neck_views`)
