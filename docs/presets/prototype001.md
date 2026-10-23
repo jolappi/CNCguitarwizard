@@ -55,6 +55,8 @@ not the makers' own.
 | ESP LTD Alexi Hexed | 6-, 7-string | Alexi Hexed (its stepped top, one humbucker, one volume, Floyd Rose) / the instrument's | neck-through, sharkteeth |
 | B.C. Rich Mockingbird | 6-string | Mockingbird / Mockingbird | neck-through, HH, Tune-o-matic, diamonds |
 | Music Man Axis | 6-string | Music Man Axis / Music Man | 647.7 mm, 22 frets, HH where the photographed one's sit, Floyd Rose (its R2 locking nut), one volume with the toggle beside it, dots |
+| Dean Razorback | 6-string | Razorback / Dean V | 628.65 mm, 22 frets, set neck, 43 mm nut, 12 in radius, HH where the photographed Razorback X's sit, Tune-o-matic (a stop tail for its string-through V plate), volume, volume and tone down the treble wing with the toggle on the treble horn, a top jack, chevron markers (`inlay_style` "custom", `RAZORBACK_CHEVRON`); made neck-through, a 30 mm ramp into the body |
+| Hagström Fantomen | 6-string | Fantomen / Fantomen | 647.7 mm, 22 frets, set neck, 43 mm nut, 15 in radius, a 35 mm body, HH where the photographed one's sit, Tune-o-matic, two volumes and two tones in a diamond on the lower treble bout with the toggle on the bass shoulder, the jack in the treble edge at the tail's corner, blocks |
 | Fender Jazz Bass | 4-, 5-string bass | Jazz Bass / the instrument's | JJ, Jazz Bass control plate, its drawn guard, Fender plate, dots |
 
 The web app offers them under the instrument (*Style*): `webapp.style_design`

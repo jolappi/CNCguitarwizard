@@ -151,8 +151,10 @@ def test_the_web_form_offers_every_neck_template() -> None:
         "jackson",
         "alexi",
         "music_man",
+        "dean_v",
+        "fantomen",
     ]
-    for key in NEW_NECKS:
+    for key in (*NEW_NECKS, "dean_v", "fantomen"):
         assert templates[key]["label"] == NECK_TEMPLATES[key][0]
         assert set(templates[key]["values"]) <= fields
 

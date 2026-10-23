@@ -34,6 +34,21 @@
 
 ### Added
 
+- A Dean Razorback and a Hagström Fantomen style (*Style*, under the
+  instrument), each a body template and a neck template traced from a
+  straight-on product photo (scaled from its frets), their switch, pots,
+  jack and pickups where the photographed ones are — mockups, not the
+  original outlines. The Razorback: the ML's horn and V tail with its
+  razor notch and tail teeth as sharp corners, a Dean V headstock (its
+  points and V cut), 24.75 in scale, set neck, HH, Tune-o-matic, volume,
+  volume and tone down the treble wing with the toggle on the treble
+  horn, a top jack and chevron markers (`RAZORBACK_CHEVRON`). The
+  Fantomen: its asymmetric single cut, its asymmetric three-a-side
+  headstock with the posts where the photo's are, 25.5 in scale, set
+  neck, a 35 mm body, HH, Tune-o-matic, two volumes and two tones in a
+  diamond with the toggle on the bass shoulder, the jack in the treble
+  edge and block markers.
+
 - The heel and the neck's joint with the headstock drawn: where the
   neck's rounded back runs into the heel's block (`heel_root_style`, on
   *Design › Neck*) or into the headstock's back (`headstock_root_style`,

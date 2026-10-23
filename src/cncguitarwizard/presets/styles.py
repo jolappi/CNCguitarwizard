@@ -139,6 +139,19 @@ GIBSON = {
 """What a Gibson style shares: its scale, 22 frets, a glued neck, two
 humbuckers and a Tune-o-matic."""
 
+RAZORBACK_CHEVRON: tuple[tuple[float, float], ...] = (
+    (0.35, 0.22),
+    (0.62, 0.0),
+    (0.35, -0.22),
+    (0.35, -0.12),
+    (0.5, 0.0),
+    (0.35, 0.12),
+)
+"""A Razorback's position marker, a chevron pointing toward the body: its
+corners as ``inlay_points`` takes them (along the fret space from the nut
+side, across as a share of the board's half-width toward the bass edge),
+about as large as the photographed ones in the middle of their spaces."""
+
 STYLES: dict[str, InstrumentStyle] = {
     "design_by_jone": InstrumentStyle("Design by Jone", GUITARS, "design_by_jone"),
     "stratocaster": InstrumentStyle(
@@ -334,6 +347,69 @@ STYLES: dict[str, InstrumentStyle] = {
             "body_top_edge_radius": 5.0,
             "body_back_edge_radius": 5.0,
             "inlay_style": "diamond",
+        },
+    ),
+    "razorback": InstrumentStyle(
+        "Dean Razorback style",
+        GUITAR,
+        "razorback",
+        "dean_v",
+        {
+            # As on Dimebag Darrell's: a glued neck, 22 frets on a 24.75 in
+            # scale and a 12 in radius, two humbuckers (where the
+            # photographed Razorback X's sit: the neck one's centre 29 mm
+            # behind the heel end, the bridge one's 40.8 mm ahead of the
+            # saddles), a Tune-o-matic (a stop tail standing in for the X's
+            # string-through V plate), volume, volume and tone with a
+            # toggle, and its V markers drawn as a chevron each.
+            "scale_length": GIBSON_SCALE,
+            "fret_count": 22,
+            "neck_joint": "set",
+            "nut_width": 43.0,
+            "fretboard_radius": 304.8,
+            "body_pickups": "HH",
+            "body_neck_pickup_offset": 29.0,
+            "body_bridge_pickup_offset": 40.8,
+            "body_bridge": TuneOMaticSpec(),
+            "body_controls": "rear_3",
+            # The jack in the top beyond the pots, as photographed.
+            "body_shape": replace(
+                YOUR_DESIGN_TEMPLATES["razorback"][1], jack_offset=380.6, jack_y=123.8
+            ),
+            "body_jack": "top",
+            # Made neck-through, its back ramps to the body over 30 mm, not
+            # 40: the bass shoulder meets the neck 93 mm ahead of the heel
+            # end, which leaves the longer ramp no room past the 12th fret.
+            "neck_through_heel_ramp": 30.0,
+            "inlay_style": "custom",
+            "inlay_points": RAZORBACK_CHEVRON,
+        },
+    ),
+    "fantomen": InstrumentStyle(
+        "Hagström Fantomen style",
+        GUITAR,
+        "fantomen",
+        "fantomen",
+        {
+            # As the original: a glued mahogany neck, 22 frets on a
+            # 25.5 in scale and a 15 in radius, a 1 1/4 in body, two
+            # humbuckers (the neck one's centre 31.7 mm behind the heel
+            # end, the bridge one's 37.5 mm ahead of the saddles), a
+            # Tune-o-matic, two volumes and two tones with a toggle, and
+            # block markers.
+            "scale_length": FENDER_SCALE,
+            "fret_count": 22,
+            "neck_joint": "set",
+            "nut_width": 43.0,
+            "fretboard_radius": 381.0,
+            "body_thickness": 35.0,
+            "body_pickups": "HH",
+            "body_neck_pickup_offset": 31.7,
+            "body_bridge_pickup_offset": 37.5,
+            "body_bridge": TuneOMaticSpec(),
+            "body_controls": "gibson_4",
+            "body_jack": "side",
+            "inlay_style": "block",
         },
     ),
     "jazz_bass": InstrumentStyle(

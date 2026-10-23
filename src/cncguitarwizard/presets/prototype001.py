@@ -8449,6 +8449,127 @@ of an Axis, flat (0 degrees), traced from a straight-on product photo
 photo's are, and the truss rod turned by a spoke wheel at the heel, as on
 the original — a mockup, not the original outline."""
 
+_DEAN_V_EDGE: tuple[DrawnPoint, ...] = (
+    (12.0, 28.5),
+    (25.2, 34.4),
+    (52.7, 42.5),
+    (87.1, 53.7),
+    (121.5, 59.1),
+    (149.1, 63.4),
+    (193.0, 72.3, "corner"),
+)
+
+DEAN_V_NECK: dict[str, Any] = {
+    "headstock_style": "3+3",
+    "headstock_angle": 12.0,
+    "headstock_outline": "drawn",
+    # Each side's edge flaring out from the nut, almost straight up to
+    # its point.
+    "headstock_bass_edge": _DEAN_V_EDGE,
+    "headstock_treble_edge": _DEAN_V_EDGE,
+    # The V cut down between the two points, its corners sharp.
+    "headstock_tip_points": (
+        (-35.2, -34.4, "corner"),
+        (-71.3, 0.0, "corner"),
+        (-35.2, 34.4, "corner"),
+    ),
+    # The posts in a line along each edge, as photographed.
+    "tuner_station_distances": (43.7, 76.4, 108.4),
+    "tuner_side_offsets": (24.7, 32.7, 41.3),
+    "truss_rod_adjustment": "headstock",
+}
+"""A Dean V neck (see ``NECK_TEMPLATES``): a 12 degree three-a-side
+headstock, its two points either side of a deep V cut, measured off a
+straight-on product photo of a Razorback (scaled from its frets, the
+photo's slant evened out side to side) — a mockup, not the original
+outline."""
+
+FANTOMEN_NECK: dict[str, Any] = {
+    "headstock_style": "3+3",
+    "headstock_angle": 14.0,
+    "headstock_outline": "drawn",
+    # The posts where the photographed ones are: the treble row further
+    # out than the bass, each row curving in at its middle post with the
+    # edge.
+    "tuner_hole_points": (
+        (47.0, 22.7),
+        (47.1, 26.0),
+        (79.7, 18.0),
+        (79.7, 22.8),
+        (112.4, 19.1),
+        (110.1, 26.3),
+    ),
+    "tuner_edge_offset": 11.0,
+    "tuner_edge_clearance": 6.0,
+    # The shoulder flaring out from the nut, the edge waisted past it and
+    # out again to the sharp top corner.
+    "headstock_bass_edge": (
+        (12.3, 22.8),
+        (17.7, 24.9),
+        (22.3, 29.0),
+        (26.1, 33.8),
+        (29.9, 38.7),
+        (32.9, 40.0),
+        (38.8, 38.4),
+        (46.7, 36.5),
+        (54.5, 33.5),
+        (64.2, 31.9),
+        (81.0, 30.8),
+        (93.4, 31.8),
+        (103.2, 32.9),
+        (115.6, 34.5),
+        (128.0, 36.1),
+        (140.5, 37.1),
+        (155.3, 38.7, "corner"),
+    ),
+    # The same up the treble side to its lower top corner, then in along
+    # the top's concave sweep.
+    "headstock_treble_edge": (
+        (12.3, 24.5),
+        (16.9, 27.2),
+        (21.5, 30.8),
+        (26.1, 34.8),
+        (29.9, 39.7),
+        (35.0, 42.7),
+        (38.3, 42.2),
+        (46.9, 39.5),
+        (53.4, 38.4),
+        (62.9, 37.1),
+        (85.3, 36.8),
+        (95.0, 37.9),
+        (101.5, 38.5),
+        (110.7, 40.7),
+        (119.4, 43.4),
+        (128.3, 45.9),
+        (134.5, 46.1, "corner"),
+        (139.7, 42.6),
+        (144.0, 38.3),
+        (144.5, 31.8),
+        (147.2, 22.6),
+        (150.7, 17.5),
+        (155.3, 13.0),
+    ),
+    # From the bass corner up over the peak and down into the sweep.
+    "headstock_tip_points": (
+        (1.9, -34.9),
+        (3.8, -29.2),
+        (7.1, -24.4),
+        (11.9, -20.6),
+        (17.3, -17.9),
+        (16.3, -11.9),
+        (14.1, -6.5),
+        (11.4, -1.1),
+        (7.9, 4.0),
+        (4.1, 8.9),
+    ),
+    "truss_rod_adjustment": "headstock",
+}
+"""A Fantomen neck (see ``NECK_TEMPLATES``): a 14 degree three-a-side
+headstock, asymmetric, its bass corner reaching past the treble one to a
+peak over the bass posts, traced from a straight-on product photo of a
+Hagström Fantomen (scaled from its frets) — a mockup, not the original
+outline."""
+
 NECK_TEMPLATES: dict[str, tuple[str, dict[str, Any]]] = {
     "telecaster": ("Telecaster neck", TELECASTER_NECK),
     "stratocaster": (
@@ -8465,6 +8586,8 @@ NECK_TEMPLATES: dict[str, tuple[str, dict[str, Any]]] = {
     "jackson": ("Jackson pointed neck (mockup, not the original)", JACKSON_NECK),
     "alexi": ("ESP Alexi neck (mockup, not the original)", ALEXI_NECK),
     "music_man": ("Music Man neck (mockup, not the original)", MUSIC_MAN_NECK),
+    "dean_v": ("Dean V neck (mockup, not the original)", DEAN_V_NECK),
+    "fantomen": ("Fantomen neck (mockup, not the original)", FANTOMEN_NECK),
 }
 """Neck and headstock starting points the headstock editor can load: each
 a label and the values it sets (for a six-string guitar; the truss rod can

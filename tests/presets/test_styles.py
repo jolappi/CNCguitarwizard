@@ -48,6 +48,33 @@ def test_a_style_sets_its_body_neck_and_the_rest() -> None:
     assert seven.body_bridge.string_count == 7  # type: ignore[union-attr]
 
 
+def test_a_razorback_and_a_fantomen_as_photographed() -> None:
+    razorback = load_design(style_design("electric_guitar", "razorback")).parameters
+    fantomen = load_design(style_design("electric_guitar", "fantomen")).parameters
+
+    # The Razorback: a glued neck on a 24.75 in scale, its three pots
+    # down the treble wing, the toggle on the treble horn, chevrons, and
+    # the Dean V's two points either side of its V cut.
+    assert razorback.scale_length == 628.65 and razorback.neck_joint == "set"
+    assert razorback.body_controls == "rear_3"
+    assert len(razorback.body_shape.rear_pots) == 3
+    assert razorback.body_shape.switch_cavity_y > 0.0
+    assert razorback.inlay_style == "custom" and razorback.inlay_points
+    v_cut = razorback.headstock_tip_points
+    assert len(v_cut) == 3 and all(point[2] == "corner" for point in v_cut)
+    assert v_cut[1][0] < 0.0  # cut in, behind the points' tip line
+    # The Fantomen: 25.5 in, a 35 mm body, four pots, the toggle on the
+    # bass shoulder, blocks, and its posts where the photo's are.
+    assert fantomen.scale_length == 647.7 and fantomen.body_thickness == 35.0
+    assert fantomen.body_controls == "gibson_4"
+    assert len(fantomen.body_shape.rear_pots) == 4
+    assert fantomen.body_shape.switch_cavity_y < 0.0
+    assert fantomen.inlay_style == "block"
+    assert len(fantomen.tuner_hole_points) == 6
+    geometry = fantomen.build()
+    assert geometry.headstock.plan.length == 155.3
+
+
 def test_styles_are_offered_by_instrument_and_others_refused() -> None:
     styles = parameter_schema()["styles"]
 

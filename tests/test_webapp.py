@@ -334,6 +334,8 @@ def test_body_editor_layout_lists_the_fixed_features_relative_to_the_heel() -> N
         "sg",
         "explorer",
         "flying_v",
+        "razorback",
+        "fantomen",
         "jazz_bass",
     ]
     assert templates["mockingbird"]["label"] == (

@@ -1617,6 +1617,219 @@ notch. 76 control points. A genre starting point, free to use and
 change, not a reproduction of any maker's body."""
 
 
+_RAZORBACK_POINTS: tuple[DrawnPoint, ...] = (
+    (-92.8, -28.1, "corner"),
+    (-77.4, -33.3, "corner"),
+    (-68.2, -40.4),
+    (-57.9, -39.7),
+    (-40.1, -46.1),
+    (-21.8, -62.5),
+    (-15.0, -72.7),
+    (-4.0, -86.2),
+    (15.9, -92.5),
+    (40.7, -100.5),
+    (67.1, -109.2),
+    (106.0, -121.5),
+    (136.8, -130.4, "corner"),
+    (139.2, -121.4),
+    (131.9, -113.8),
+    (111.4, -95.3),
+    (98.6, -85.1, "corner"),
+    (115.2, -89.0),
+    (146.2, -100.0),
+    (187.5, -114.0),
+    (209.5, -121.3),
+    (234.2, -129.3),
+    (272.8, -142.3),
+    (296.6, -150.1),
+    (321.9, -159.1),
+    (348.4, -167.6),
+    (385.3, -180.2),
+    (409.9, -188.4),
+    (442.0, -199.1),
+    (467.5, -207.6),
+    (497.9, -217.7),
+    (515.1, -223.3),
+    (538.0, -230.7),
+    (547.5, -223.8, "corner"),
+    (538.7, -214.7),
+    (517.9, -198.5),
+    (495.8, -181.8),
+    (482.7, -171.4),
+    (471.2, -162.6),
+    (446.4, -142.2, "corner"),
+    (450.5, -142.7),
+    (457.5, -142.8),
+    (463.5, -135.4, "corner"),
+    (442.1, -116.1),
+    (429.3, -106.0),
+    (403.0, -85.0),
+    (376.3, -63.7),
+    (365.5, -54.9),
+    (345.2, -38.8),
+    (327.5, -24.9),
+    (316.9, -13.5),
+    (315.5, 4.3),
+    (334.4, 21.8),
+    (361.1, 45.0),
+    (387.2, 68.1),
+    (400.8, 80.2),
+    (433.1, 108.9),
+    (450.1, 123.7),
+    (457.2, 136.6, "corner"),
+    (444.2, 133.4),
+    (438.2, 137.1, "corner"),
+    (465.7, 160.6),
+    (500.0, 189.9),
+    (509.9, 205.4, "corner"),
+    (481.8, 197.2),
+    (456.4, 188.5),
+    (426.5, 178.8),
+    (394.0, 167.9),
+    (364.9, 158.7),
+    (332.4, 147.9),
+    (306.1, 139.1),
+    (276.7, 129.1),
+    (256.0, 122.3),
+    (218.2, 110.0),
+    (192.8, 101.4),
+    (172.4, 95.2),
+    (143.0, 86.4),
+    (129.8, 90.6),
+    (93.4, 103.2),
+    (69.0, 111.9),
+    (42.2, 120.8),
+    (22.6, 127.8),
+    (-8.6, 138.3),
+    (-45.1, 151.6),
+    (-76.2, 162.4),
+    (-107.5, 172.6, "corner"),
+    (-108.5, 161.8),
+    (-96.4, 150.5),
+    (-69.3, 129.3),
+    (-39.9, 105.0, "corner"),
+    (-49.0, 105.6, "corner"),
+    (-49.4, 93.4),
+    (-22.9, 71.6),
+    (-8.1, 54.5),
+    (-8.2, 38.7),
+    (-19.0, 29.3, "corner"),
+)
+"""A Razorback genre mockup — not the original outline.
+
+Traced from a straight-on product photo of a Dean Razorback X (its edge
+as photographed, the strap button on the bass wing's inner edge left
+out), scaled from its frets (24.75 in) and placed with its 22nd fret
+4 mm ahead of the heel end; the neck crossed off from where the bass
+shoulder meets it, 93 mm ahead of the heel end, to where the treble horn
+does, 19 mm ahead. The ML's long treble horn and V tail, a razor notch
+in the bass shoulder and a tooth on each tail wing's inner edge, their
+points sharp (14 of the 96 control points corners). A genre
+starting point, free to use and change, not a reproduction of any
+maker's body."""
+
+
+_FANTOMEN_POINTS: tuple[DrawnPoint, ...] = (
+    (-51.9, -28.7, "corner"),
+    (-47.7, -40.0),
+    (-45.9, -51.3),
+    (-44.8, -63.8),
+    (-41.6, -84.5),
+    (-34.6, -106.1),
+    (-28.4, -115.5),
+    (-10.7, -129.5),
+    (13.2, -134.6),
+    (31.4, -131.3),
+    (43.9, -126.5),
+    (71.4, -113.3),
+    (94.7, -104.4),
+    (114.2, -100.7),
+    (134.4, -100.2),
+    (152.5, -101.3),
+    (174.7, -105.7),
+    (191.5, -109.8),
+    (206.9, -114.9),
+    (219.9, -119.8),
+    (235.4, -126.9),
+    (257.0, -138.7),
+    (280.9, -153.5),
+    (304.3, -169.4),
+    (329.6, -185.5),
+    (351.8, -199.6),
+    (377.0, -212.6),
+    (390.1, -215.8),
+    (404.2, -213.7),
+    (416.1, -205.0),
+    (421.2, -197.1),
+    (425.6, -187.4),
+    (430.8, -166.6),
+    (433.7, -144.8),
+    (434.2, -133.0),
+    (434.2, -108.0),
+    (433.7, -80.7),
+    (432.0, -59.4),
+    (431.5, -49.1),
+    (429.9, -28.8),
+    (428.3, -12.0),
+    (425.2, 8.9),
+    (421.8, 33.1),
+    (418.9, 48.4),
+    (415.8, 65.1),
+    (411.8, 82.0),
+    (406.1, 103.6),
+    (401.2, 119.1),
+    (394.7, 136.4),
+    (389.4, 148.2),
+    (376.8, 169.0),
+    (367.3, 180.1),
+    (353.8, 189.7),
+    (339.4, 194.6),
+    (328.4, 194.7),
+    (303.8, 187.7),
+    (276.4, 175.3),
+    (251.7, 161.3),
+    (228.0, 147.3),
+    (213.4, 139.2),
+    (202.2, 133.5),
+    (178.3, 122.5),
+    (160.1, 115.8),
+    (143.6, 112.3),
+    (123.2, 110.7),
+    (95.9, 112.4),
+    (66.6, 118.9),
+    (43.9, 126.8),
+    (15.1, 139.4),
+    (-7.0, 148.8),
+    (-26.3, 154.2),
+    (-38.3, 155.3),
+    (-51.9, 154.3),
+    (-69.6, 147.7),
+    (-81.7, 138.3),
+    (-86.2, 130.6),
+    (-87.0, 125.5),
+    (-82.1, 118.8),
+    (-60.9, 113.2),
+    (-43.3, 102.7),
+    (-35.4, 94.8),
+    (-28.1, 80.8),
+    (-27.1, 65.2),
+    (-31.9, 51.7),
+    (-42.7, 37.7),
+    (-52.9, 28.6, "corner"),
+)
+"""A Fantomen genre mockup — not the original outline.
+
+Traced from a straight-on product photo of a Hagström Fantomen (its edge
+and binding as photographed, the strap button at the tail left out),
+scaled from its frets (25.5 in) and placed with its 22nd fret 4 mm ahead
+of the heel end; the neck crossed off where the bass shoulder and the
+treble cutaway meet it, 52 mm ahead of the heel end. An asymmetric
+single cut: the pointed treble horn over a deep cutaway, the bass
+shoulder's corner, the waist and the wide, flat-cut tail. 86 control
+points. A genre starting point, free to use and change, not a
+reproduction of any maker's body."""
+
+
 _JAZZ_BASS_POINTS: tuple[tuple[float, float], ...] = (
     (-161.3, -103.5),
     (-163.6, -90.4),
@@ -2556,6 +2769,79 @@ YOUR_DESIGN_TEMPLATES: dict[str, tuple[str, YourDesignShape]] = {
             battery_angle_degrees=30.0,
         ),
     ),
+    "razorback": (
+        "Razorback style (traced from a product photo)",
+        YourDesignShape(
+            control_points=_RAZORBACK_POINTS,
+            # As photographed: the toggle on the treble horn and the three
+            # pots down the treble wing (rear_3, their cavity routed round
+            # them).
+            switch_cavity_offset=11.5,
+            switch_cavity_y=100.7,
+            switch_cover_offset=11.5,
+            switch_cover_y=100.7,
+            # A Gibson toggle's 38 mm cavity under a 50 mm cover: the
+            # horn is too narrow for the default ones.
+            switch_cavity_diameter=38.0,
+            switch_cover_diameter=50.0,
+            rear_pots=((224.2, 66.3), (265.6, 84.6), (306.9, 103.6)),
+            # The almond and its two pots (the other layouts) behind the
+            # bridge, clear of the wing's edge; a pickguard's switch and
+            # three pots in a row up the wing beside and behind the bridge,
+            # where the guard reaches past it.
+            pot_offsets=((210.8, 70.0), (250.8, 71.0)),
+            control_shift=(30.0, -16.0),
+            pickguard_controls=(
+                (286.5, 65.5),
+                (315.0, 75.0),
+                (343.4, 84.6),
+                (371.8, 94.2),
+            ),
+            pickguard_switch_degrees=18.6,
+            # A bolt-on neck's bolts: the treble horn meets the neck only
+            # 19 mm ahead of the heel end, so the treble front bolt sits
+            # back and in, its ferrule 1 mm or more inside the edge across
+            # the neck.
+            neck_bolts=((-50.0, -20.0), (-7.5, -20.0), (-28.0, 10.0), (-7.5, 20.0)),
+            # A jack in the edge: in from the treble wing's edge beside
+            # the almond, square to it (the Razorback style mounts it in
+            # the top beyond the pots, as photographed).
+            jack_offset=240.0,
+            jack_y=117.0,
+            jack_direction_degrees=288.0,
+            # The battery box behind the almond on the treble wing, turned
+            # along it, so its lead's channel to the controls stays short.
+            battery_offset=310.0,
+            battery_y=40.0,
+            battery_angle_degrees=24.0,
+        ),
+    ),
+    "fantomen": (
+        "Fantomen style (traced from a product photo)",
+        YourDesignShape(
+            control_points=_FANTOMEN_POINTS,
+            # As photographed: the toggle on the bass shoulder, the four
+            # pots in a diamond on the lower treble bout (gibson_4, the
+            # cavity routed round them) and the jack in the treble edge at
+            # the tail's corner, aimed at them.
+            switch_cavity_offset=12.7,
+            switch_cavity_y=-84.5,
+            switch_cover_offset=12.7,
+            switch_cover_y=-84.5,
+            rear_pots=((282.5, 105.0), (312.3, 52.2), (308.2, 152.5), (339.3, 99.5)),
+            jack_offset=341.9,
+            jack_y=194.0,
+            jack_direction_degrees=251.1,
+            # The almond and its two pots (the other layouts) on the jack's
+            # way in too, and the battery box beside them, clear of the
+            # almond's cover.
+            pot_offsets=((298.3, 131.0), (338.3, 132.0)),
+            control_shift=(117.5, 45.0),
+            battery_offset=300.0,
+            battery_y=82.0,
+            battery_angle_degrees=0.0,
+        ),
+    ),
     "jazz_bass": ("Jazz Bass style (mockup, not the original)", BASS_BODY),
 }
 """Starting points for a drawn body: a label and a complete shape each.
@@ -2575,7 +2861,9 @@ pot, a Floyd Rose and its graphic as a top stepped down in two bands
 along the edge). The Mockingbird, Telecaster, SG, Explorer and Flying V
 style ones are traced from straight-on product photos, scaled from their
 frets and placed with their last fret 4 mm ahead of the heel end, as the
-default neck's is — genre mockups, the Mockingbird reshaped by hand at
+default neck's is (and the Razorback and Fantomen style ones, their
+switches, pots and jacks where the photographed ones' are) — genre
+mockups, the Mockingbird reshaped by hand at
 its horn, beak and bass lobe, the Explorer at its shoulder, bottom
 corner and wing tip; the Flying V's switch,
 controls (turned along the wing) and battery box all on its treble
