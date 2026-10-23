@@ -28,6 +28,11 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
 
+from .backends.freecad import (
+    EXPORT_FORMATS,
+    export_script_name,
+    render_format_export,
+)
 from .backends.freecad.script_exporter import FreeCADScriptExporter
 from .cam import (
     POST_PROCESSOR_LABELS,
@@ -489,7 +494,9 @@ def parameter_schema() -> dict[str, Any]:
         "fields"}}`` (the string counts a bridge kind is made for, ``None``
         for any). ``advanced`` is
         true for the rarely changed fields the form folds away.
-        ``locking_nut_widths`` maps each locking nut to its width, the
+        ``export_formats`` the other 3D formats the built model is
+        exported to (``format_export``), each by extension to what it is
+        for. ``locking_nut_widths`` maps each locking nut to its width, the
         least ``nut_width`` it fits (the form widens the neck to it);
         ``neck_templates`` each neck template (``NECK_TEMPLATES``) to
         ``{"label", "values", "resets"}``, the values the headstock editor
@@ -530,6 +537,7 @@ def parameter_schema() -> dict[str, Any]:
             {"name": rune.name, "glyph": rune.glyph, "meaning": rune.meaning}
             for rune in RUNES.values()
         ],
+        "export_formats": dict(EXPORT_FORMATS),
         "styles": {
             key: {"label": style.label, "instruments": list(style.instruments)}
             for key, style in STYLES.items()
@@ -3015,6 +3023,21 @@ def archive_name(name: str) -> str:
     # "Jone / #1" gives "Jone-1", not "Jone - -1".
     safe = re.sub(r"[\s-]*-[\s-]*", "-", safe).strip(" .-")
     return safe[:80] or "cncguitarwizard"
+
+
+def format_export(name: str) -> dict[str, str]:
+    """Return the FreeCAD script that exports the built model to one
+    other 3D format (``backends.freecad.formats``), to run beside it.
+
+    Returns:
+        ``{"name": "Prototype001_export_stl.py", "text": source}``, or
+        ``{"error": message}`` for an unknown format.
+    """
+    try:
+        source = render_format_export([name])
+    except CNCGuitarWizardError as error:
+        return {"error": str(error)}
+    return {"name": export_script_name([name]), "text": source}
 
 
 def nc_archive(name: str = "") -> dict[str, str]:

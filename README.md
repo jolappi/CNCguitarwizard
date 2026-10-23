@@ -49,6 +49,19 @@ else:
 python -m cncguitarwizard build-prototype001 --design my_guitar.json --output build/my_guitar
 ```
 
+The finished model goes into other common 3D formats on its own, without
+building it again: STL, 3MF and OBJ (meshes within 0.05 mm of the
+surface, for 3D printing, slicers, CAM and Blender), GLB (glTF, for 3D
+viewers on the web and phones, in colour), IGES and BREP (exact surfaces,
+for other CAD and CAM). Each part is a file of its own
+(`Prototype001_Body.stl`), and the whole guitar one more
+(`Prototype001.stl`); `--format` again for more formats, `all` for every
+one:
+
+```bash
+python -m cncguitarwizard export-prototype001 --output build/my_guitar --format stl --format glb
+```
+
 Everything lands in the `build/` directory (git-ignored):
 
 | File | What it is |

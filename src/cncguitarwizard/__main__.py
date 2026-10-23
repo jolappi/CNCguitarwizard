@@ -7,6 +7,7 @@ import json
 from collections.abc import Sequence
 from pathlib import Path
 
+from cncguitarwizard.backends.freecad import EXPORT_FORMATS
 from cncguitarwizard.exceptions import CNCGuitarWizardError
 from cncguitarwizard.version import (
     MOTTO,
@@ -15,7 +16,11 @@ from cncguitarwizard.version import (
     __version__,
 )
 from cncguitarwizard.webapp import LoadedDesign, load_design
-from cncguitarwizard.workflows import FreeCADExecutionError, build_prototype001
+from cncguitarwizard.workflows import (
+    FreeCADExecutionError,
+    build_prototype001,
+    export_prototype001_formats,
+)
 
 
 def _create_parser() -> argparse.ArgumentParser:
@@ -46,6 +51,36 @@ def _create_parser() -> argparse.ArgumentParser:
         help="Create FreeCAD scripts without executing FreeCAD.",
     )
     build_parser.add_argument(
+        "--freecad-command",
+        type=Path,
+        help="Explicit path to freecadcmd or FreeCADCmd.",
+    )
+    export_parser = subparsers.add_parser(
+        "export-prototype001",
+        help=(
+            "Export a finished build's FreeCAD model to other 3D formats, each "
+            "part a file and the whole model one, without building again."
+        ),
+    )
+    export_parser.add_argument(
+        "--output",
+        type=Path,
+        default=Path("build"),
+        help="The build's folder, its Prototype001.FCStd made (default: ./build).",
+    )
+    export_parser.add_argument(
+        "--format",
+        dest="formats",
+        action="append",
+        choices=[*EXPORT_FORMATS, "all"],
+        required=True,
+        help=(
+            "A format to export to, again for more: "
+            + "; ".join(EXPORT_FORMATS.values())
+            + "; all for every one."
+        ),
+    )
+    export_parser.add_argument(
         "--freecad-command",
         type=Path,
         help="Explicit path to freecadcmd or FreeCADCmd.",
@@ -121,6 +156,24 @@ def main(argv: Sequence[str] | None = None) -> None:
         else:
             print(f"FCStd:  {result.fcstd_path.name}")
             print(f"STEP:   {result.step_path.name}")
+    elif arguments.command == "export-prototype001":
+        formats = (
+            list(EXPORT_FORMATS)
+            if "all" in arguments.formats
+            else list(dict.fromkeys(arguments.formats))
+        )
+        try:
+            written = export_prototype001_formats(
+                arguments.output,
+                formats,
+                freecad_command=arguments.freecad_command,
+            )
+        except (FreeCADExecutionError, CNCGuitarWizardError) as error:
+            parser.error(str(error))
+        print(f"Prototype001 exported to {', '.join(formats)}.")
+        print(f"Output: {arguments.output}")
+        for path in written:
+            print(f"        {path.name}")
 
 
 if __name__ == "__main__":

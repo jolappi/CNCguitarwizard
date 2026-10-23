@@ -81,3 +81,16 @@ def test_build_prototype001_refuses_a_file_that_is_not_a_design(
         main(["build-prototype001", "--design", str(other), "--scripts-only"])
 
     assert "not a CNCguitarwizard design file" in capsys.readouterr().err
+
+
+def test_export_prototype001_command_needs_a_finished_model(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # Built with scripts only: no model yet to export.
+    main(["build-prototype001", "--output", str(tmp_path), "--scripts-only"])
+    with pytest.raises(SystemExit):
+        main(["export-prototype001", "--output", str(tmp_path), "--format", "stl"])
+    assert "build the model with FreeCAD first" in capsys.readouterr().err
+    with pytest.raises(SystemExit):
+        main(["export-prototype001", "--output", str(tmp_path), "--format", "dwg"])
+    assert "invalid choice: 'dwg'" in capsys.readouterr().err

@@ -121,6 +121,7 @@ async function boot() {
       "import json\nfrom cncguitarwizard.webapp import parameter_schema\njson.dumps(parameter_schema())"
     );
     schema = JSON.parse(schemaJson);
+    showExportFormats();
     for (const [key, instrument] of Object.entries(schema.instruments)) {
       const option = document.createElement("option");
       option.value = key;
@@ -1538,6 +1539,42 @@ async function downloadNcZip() {
   } finally {
     ncZipButton.disabled = false;
   }
+}
+
+// A button for each other 3D format the built model is exported to
+// (webapp.format_export): each downloads the FreeCAD script that writes
+// it, to run beside the model FreeCAD made.
+function showExportFormats() {
+  const holder = document.getElementById("export-formats");
+  for (const [format, meaning] of Object.entries(schema.export_formats || {})) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "secondary";
+    button.textContent = meaning.split(":")[0];
+    button.title = `${meaning} — a FreeCAD script that writes the finished model in this format, a file a part and one of the whole`;
+    button.addEventListener("click", () => downloadFormatScript(format));
+    holder.appendChild(button);
+  }
+}
+
+async function downloadFormatScript(format) {
+  pyodide.globals.set("export_format", format);
+  const script = await runPython(
+    "import json\nfrom cncguitarwizard.webapp import format_export\n" +
+    "json.dumps(format_export(export_format))"
+  );
+  if (script.error) {
+    showError(script.error);
+    return;
+  }
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(new Blob([script.text], { type: "text/x-python" }));
+  link.download = script.name;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+  setStatus(`Saved ${script.name}: run it in FreeCAD beside Prototype001.FCStd`, "ok");
 }
 
 // A file name from the guitar's name, as Python makes the ZIP's.

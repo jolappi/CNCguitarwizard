@@ -7,12 +7,16 @@ import json
 import os
 import shutil
 import subprocess
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict, dataclass, replace
 from datetime import UTC, datetime
 from pathlib import Path
 
-from ..backends.freecad import FreeCADScriptExporter
+from ..backends.freecad import (
+    FreeCADScriptExporter,
+    export_script_name,
+    render_format_export,
+)
 from ..cam import (
     BodyMachiningPlan,
     CoverMachiningPlan,
@@ -424,8 +428,7 @@ class Prototype001Build:
             _execute_freecad(
                 executable,
                 self._python_path,
-                self._fcstd_path,
-                self._step_path,
+                (self._fcstd_path, self._step_path),
                 self._freecad_log_path,
             )
         except FreeCADExecutionError as error:
@@ -467,6 +470,59 @@ def build_prototype001(
     return build.result
 
 
+def export_prototype001_formats(
+    output_directory: Path,
+    formats: Sequence[str],
+    *,
+    freecad_command: Path | None = None,
+) -> tuple[Path, ...]:
+    """Export a finished build's model to other 3D formats, on its own.
+
+    Writes the format export script (``backends.freecad.formats``) into
+    the build's folder and runs it in FreeCAD on the ``Prototype001.FCStd``
+    there: each solid part, and the whole model, a file in each format,
+    beside it. Nothing is built again.
+
+    Args:
+        output_directory: A finished build's folder, its model made.
+        formats: ``EXPORT_FORMATS`` keys.
+        freecad_command: The FreeCAD command-line executable, else found
+            as for a build.
+
+    Returns:
+        The files written, in the order FreeCAD wrote them.
+
+    Raises:
+        FreeCADExecutionError: Without the model (no build, or one made
+            with scripts only), or when FreeCAD fails or writes nothing.
+        FreeCADBackendError: For no format or an unknown one.
+    """
+    source = render_format_export(formats)
+    fcstd_path = output_directory / "Prototype001.FCStd"
+    if not fcstd_path.is_file():
+        raise FreeCADExecutionError(
+            f"{fcstd_path} was not found: build the model with FreeCAD first."
+        )
+    script_path = output_directory / export_script_name(formats)
+    script_path.write_text(source, encoding="utf-8")
+    executable = freecad_command or _find_freecad_command()
+    # Every whole model's file at least; each part's is listed as written.
+    expected = [output_directory / f"Prototype001.{name}" for name in formats]
+    for path in expected:
+        path.unlink(missing_ok=True)
+    stdout = _execute_freecad(
+        executable,
+        script_path,
+        expected,
+        output_directory / "freecad_export.log",
+    )
+    return tuple(
+        output_directory / line.removeprefix("WROTE ").strip()
+        for line in stdout.splitlines()
+        if line.startswith("WROTE ")
+    )
+
+
 def _write_report(path: Path, report: Mapping[str, object]) -> None:
     """Write the current build state as formatted JSON."""
     path.write_text(
@@ -504,11 +560,11 @@ def _find_freecad_command() -> Path:
 def _execute_freecad(
     executable: Path,
     script_path: Path,
-    fcstd_path: Path,
-    step_path: Path,
+    expected: Sequence[Path],
     log_path: Path,
-) -> None:
-    """Run FreeCAD and verify that both requested model files exist."""
+) -> str:
+    """Run FreeCAD on a script and return what it printed, every
+    ``expected`` file made."""
     command = [str(executable), str(script_path)]
     try:
         completed = subprocess.run(
@@ -541,8 +597,9 @@ def _execute_freecad(
             f"FreeCAD exited with code {completed.returncode}: {details}"
         )
 
-    missing = [path.name for path in (fcstd_path, step_path) if not path.is_file()]
+    missing = [path.name for path in expected if not path.is_file()]
     if missing:
         raise FreeCADExecutionError(
             "FreeCAD finished without creating: " + ", ".join(missing)
         )
+    return completed.stdout

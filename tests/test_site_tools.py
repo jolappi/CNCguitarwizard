@@ -376,6 +376,17 @@ def test_a_flat_headstocks_root_and_the_heel_are_drawn_as_two_lines() -> None:
     assert 'id="heel-editor-view" class="volute-view-box" hidden' in page
 
 
+def test_other_3d_formats_are_buttons_under_downloads() -> None:
+    script = (ROOT / "site" / "app.js").read_text(encoding="utf-8")
+    page = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
+
+    assert '<div id="export-formats" class="actions no-print">' in page
+    assert "for (const [format, meaning] of Object.entries(schema.export_formats" in (
+        script
+    )
+    assert "from cncguitarwizard.webapp import format_export" in script
+
+
 def test_undo_starts_once_a_restored_design_can_be_read() -> None:
     script = (ROOT / "site" / "app.js").read_text(encoding="utf-8")
 

@@ -720,6 +720,15 @@ the design (*Save design*) and build it all locally from a clone with
 `python -m cncguitarwizard build-prototype001 --design my_guitar.json
 --output build/my_guitar`: the G-code, DXF, FCStd and STEP together.
 
+Under *Downloads*, *Other 3D formats* has a button for each format the
+finished model goes into besides STEP (STL, 3MF, OBJ, GLB, IGES, BREP:
+`webapp.format_export`, the schema's `export_formats`): each downloads a
+small FreeCAD script (`Prototype001_export_stl.py`) that, run beside the
+`Prototype001.FCStd` FreeCAD made (or as a macro with it open), writes
+each part, and the whole guitar, in that format in seconds, without
+building it again (`backends.freecad.formats`; locally
+`python -m cncguitarwizard export-prototype001 --format stl`).
+
 ## Classic UI and application like UI (a trial), dark mode
 
 A new visitor gets the page as a desktop application, the application

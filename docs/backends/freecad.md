@@ -276,6 +276,31 @@ the loft's own top at z = 0, tangentially just behind the nut, and
 FreeCAD's fuse then silently drops the block (it reports it as already
 inside the neck). The face cut's faces all cross the loft instead.
 
+## Other 3D formats
+
+`backends.freecad.render_format_export(formats)` writes a script of its
+own that turns the finished model into other 3D formats, run in FreeCAD
+beside `Prototype001.FCStd` after the build's script has made it (it uses
+the model open in FreeCAD, else the file beside the script or in the
+working folder): nothing is built again, so it takes seconds. Each solid
+part shown in the model (`NeckBack`, `Fretboard`, `Body`) is a file of
+its own, `Prototype001_<part>.<format>`, and the whole model one more,
+`Prototype001.<format>`, as the STEP holds them:
+
+| Format | Written as | For |
+| --- | --- | --- |
+| `stl`, `3mf`, `obj` | a mesh (`MeshPart.meshFromShape`, within `MESH_LINEAR_DEFLECTION` = 0.05 mm and `MESH_ANGULAR_DEFLECTION` = 0.25 rad) | 3D printing, slicers, most CAM; Blender |
+| `glb` | glTF binary (`Import.export`, in metres as glTF has it) | 3D viewers on the web and phones, in colour |
+| `iges` | exact surfaces (`Part.export`) | older CAD and CAM |
+| `brep` | OpenCascade's own exact shapes (`exportBrep`) | FreeCAD, OpenCascade |
+
+`workflows.export_prototype001_formats(output_directory, formats)` writes
+the script into a build's folder and runs it in `freecadcmd`, its output
+in `freecad_export.log`, returning the files written (its `WROTE` lines);
+`python -m cncguitarwizard export-prototype001 --output build --format
+stl` does so from the command line, and the web app's *Other 3D
+formats* buttons download the script.
+
 ## Current limitations
 
 - The generated loft uses sampled polygon sections rather than exact B-spline

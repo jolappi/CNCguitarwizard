@@ -44,6 +44,17 @@
 
 ### Added
 
+- The finished model in other common 3D formats, exported on its own
+  after the build: STL, 3MF and OBJ (meshes within 0.05 mm, for 3D
+  printing, slicers, CAM and Blender), GLB (glTF, for 3D viewers on the
+  web and phones, in colour), IGES and BREP (exact surfaces, for other
+  CAD and CAM), each part a file of its own and the whole guitar one
+  more. A small FreeCAD script does it beside `Prototype001.FCStd`, in
+  seconds, without building again (`backends.freecad.render_format_export`):
+  `python -m cncguitarwizard export-prototype001 --format stl` locally,
+  and in the web app a button for each format under *Downloads › Other
+  3D formats* downloads the script.
+
 - The heel and the back behind the nut (the volute, or the neck's joint
   with the headstock while the volute is off) may differ from side to
   side: each line drawn across the back is drawn half and mirrored at

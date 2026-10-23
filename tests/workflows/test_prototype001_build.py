@@ -14,6 +14,7 @@ from cncguitarwizard.workflows import (
     FreeCADExecutionError,
     Prototype001Build,
     build_prototype001,
+    export_prototype001_formats,
 )
 
 
@@ -361,3 +362,44 @@ def test_build_carves_the_neck_back_with_the_ball_nose_alone(tmp_path: Path) -> 
     assert "Neck_back_6mm_ballnose.nc" in names
     assert "Neck_back_rough_6mm_flathead.nc" not in names
     assert "Neck_back_finish_6mm_ballnose.nc" not in names
+
+
+def test_a_finished_model_is_exported_to_other_formats_on_its_own(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    command = tmp_path / "freecadcmd"
+    command.touch()
+    with pytest.raises(FreeCADExecutionError, match="build the model"):
+        export_prototype001_formats(tmp_path, ["stl"], freecad_command=command)
+    (tmp_path / "Prototype001.FCStd").touch()
+    ran: list[list[str]] = []
+
+    def fake_run(
+        arguments: list[str],
+        **kwargs: object,
+    ) -> subprocess.CompletedProcess[str]:
+        ran.append(arguments)
+        for name in ("Prototype001_Body.stl", "Prototype001.stl"):
+            (tmp_path / name).touch()
+        stdout = "WROTE Prototype001_Body.stl\nWROTE Prototype001.stl\n"
+        return subprocess.CompletedProcess(arguments, 0, stdout, "")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    written = export_prototype001_formats(tmp_path, ["stl"], freecad_command=command)
+
+    # Only the export script runs: nothing is built again.
+    assert ran == [[str(command), str(tmp_path / "Prototype001_export_stl.py")]]
+    assert [path.name for path in written] == [
+        "Prototype001_Body.stl",
+        "Prototype001.stl",
+    ]
+    assert (tmp_path / "freecad_export.log").is_file()
+    # A format FreeCAD did not write is a failure.
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        lambda arguments, **kwargs: subprocess.CompletedProcess(arguments, 0, "", ""),
+    )
+    with pytest.raises(FreeCADExecutionError, match=r"Prototype001\.glb"):
+        export_prototype001_formats(tmp_path, ["glb"], freecad_command=command)

@@ -5,6 +5,7 @@ from .prototype001 import (
     Prototype001Build,
     Prototype001BuildResult,
     build_prototype001,
+    export_prototype001_formats,
 )
 
 __all__ = [
@@ -13,4 +14,5 @@ __all__ = [
     "Prototype001Build",
     "Prototype001BuildResult",
     "build_prototype001",
+    "export_prototype001_formats",
 ]
