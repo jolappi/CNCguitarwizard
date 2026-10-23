@@ -28,6 +28,7 @@ from cncguitarwizard.presets.truss_rod_covers import (
     truss_rod_cover_shape,
 )
 from cncguitarwizard.webapp import (
+    _jsonable,
     body_editor_layout,
     headstock_editor_layout,
     import_outline,
@@ -246,6 +247,29 @@ def test_a_drawn_headstock_tip_takes_corners() -> None:
     assert left.built_tip_points() == ((4.5, -33.0), (3.5, -27.0, CORNER))
     with pytest.raises(HeadstockGeometryError, match="Headstock tip points"):
         replace(sharp, headstock_tip_points=((3.5, 27.0, "round"),)).headstock_design()
+
+
+def test_a_template_read_back_unchanged_keeps_its_corners() -> None:
+    shape = replace(DRAWN, control_points=cornered(DRAWN.control_points, 5, 20, 21))
+    payload = {"prototype": {"body_shape": _jsonable(shape)}}
+    svg = outline_template(payload, "body")["svg"]
+    back = import_outline(payload, "body", svg)["values"]
+    assert back["control_points"] == [list(p) for p in shape.control_points]
+
+    # A sharp tip corner, beside a sharp tip point or a smooth one.
+    drawn = replace(Prototype001Parameters(), **DRAWN_HEADSTOCK)
+    *edge, end = drawn.headstock_bass_edge
+    for first in ((3.5, 27.0, CORNER), (3.5, 27.0)):
+        values = {
+            **DRAWN_HEADSTOCK,
+            "headstock_bass_edge": (*edge, (*end, CORNER)),
+            "headstock_tip_points": (first, (4.5, 33.0)),
+        }
+        payload = {"prototype": _jsonable(values)}
+        svg = outline_template(payload, "headstock")["svg"]
+        back = import_outline(payload, "headstock", svg)["values"]
+        assert back["headstock_bass_edge"][-1] == [*end, CORNER]
+        assert back["headstock_tip_points"] == [list(first), [4.5, 33.0]]
 
 
 def test_a_drawn_step_line_is_rounded_through_its_round_point() -> None:

@@ -2385,11 +2385,14 @@ def _import_body(payload: dict[str, Any], svg: str) -> dict[str, Any]:
     widening = float(layout["widening"] or 0.0)
     frame = TemplateFrame(_BODY_MARKS, bool(layout["mirrored"]))
     read = read_template_outline(svg, frame)
-    fit = fit_closed_spline(read.points, read.nodes)
-    points = [
+    fit = fit_closed_spline(read.points, read.nodes, corners=read.corners)
+    points: list[list[float | str]] = [
         [round(point.x, 2), round(narrow_y(point.y, widening), 2)]
         for point in fit.points
     ]
+    for point, sharp in zip(points, fit.corners):
+        if sharp:
+            point.append(CORNER)
     values: dict[str, Any] = {"control_points": points}
     message = _import_message(len(points), fit.deviation, read)
     # The pattern, where it was changed: the top's engraving drawn from now

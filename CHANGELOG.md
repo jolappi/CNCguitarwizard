@@ -1369,6 +1369,14 @@
 
 ### Fixed
 
+- An outline template read back keeps its sharp corners: a body's
+  (`fit_closed_spline` takes the drawing's `corners` and gives them back
+  in `BodyFit.corners`), and a headstock's at its tip, a sharp tip corner
+  (its edge's last point marked) and sharp tip points, as a Dean V cut
+  has (`fit_headstock`); they came back rounded, with handles added to
+  draw the corner. A tip corner the drawing turns only a little at is
+  kept sharp only where the tip fits closer so.
+
 - The volute's depth (`headstock_pointed_volute_depth`) can no longer be
   0 while the volute is on: none would be no volute, so it is turned off
   for that. The form marks the depth red as soon as it is 0 or less with

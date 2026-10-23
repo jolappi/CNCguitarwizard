@@ -137,12 +137,15 @@ pictures to trace.
 
 ## Fitting the editor's handles
 
-`fit_closed_spline(outline, nodes)` gives a body's control points: the
-drawing's nodes first (a polyline's, closer than 8 mm on average, are
-not), else 16 evenly spread; every span straying more than 0.25 mm from
-the outline is halved, and its neighbours too when they would be left
-more than 2.5 times as long, up to 240 points. Every point lies on the
-drawn line; an outline read back unchanged gives the same points.
+`fit_closed_spline(outline, nodes, corners=...)` gives a body's control
+points: the drawing's nodes first (a polyline's, closer than 8 mm on
+average, are not), else 16 evenly spread; every span straying more than
+0.25 mm from the outline is halved, and its neighbours too when they
+would be left more than 2.5 times as long, up to 240 points. The nodes
+that `corners` names (`ReadOutline.corners`) are sharp corners
+(`BodyFit.corners`, written `"corner"` by the import). Every point lies
+on the drawn line; an outline read back unchanged gives the same points
+and corners.
 
 `fit_headstock(outline, nut_half_width, bass_sign, nodes)` gives the
 drawn edges and tip points. From the point furthest from the nut it
@@ -157,7 +160,12 @@ points where it strays most, sharp (`"corner"`) at the nodes short of
 the tip that `corners` names (`ReadOutline.corners`), so a pointed
 headstock's template comes back with its corners; the tip a Hermite
 curve through its nodes
-and the like (`tip_tangents`, as `HeadstockPlan.tip_outline`). An edge
+and the like (`tip_tangents`, as `HeadstockPlan.tip_outline`), sharp at
+the tip's nodes that `corners` names (a Dean V cut's). A tip corner that
+`corners` names is sharp (its edge's last point marked) where the tip
+then fits with fewer points, or as many closer on average: a straight
+cut's corners, or a smooth tip's that turns a degree or two where it
+leaves its edge, stay as they were. An edge
 turning back toward the nut, or a tip turning back across the headstock
 (a hook), cannot be drawn and is refused.
 

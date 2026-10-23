@@ -10,6 +10,7 @@ move it.
 
 from __future__ import annotations
 
+import itertools
 import math
 from collections.abc import Callable, Collection, Sequence
 from dataclasses import dataclass
@@ -149,10 +150,12 @@ class BodyFit:
     Attributes:
         points: The closed loop's control points, in the drawing's order.
         deviation: How far the loop strays from the drawing at most (mm).
+        corners: Which of ``points`` are sharp corners (one a point).
     """
 
     points: tuple[Point2D, ...]
     deviation: float
+    corners: tuple[bool, ...] = ()
 
 
 def fit_closed_spline(
@@ -160,12 +163,15 @@ def fit_closed_spline(
     nodes: Sequence[int] = (),
     tolerance: float = FIT_TOLERANCE,
     max_points: int = MAX_BODY_POINTS,
+    corners: Sequence[int] = (),
 ) -> BodyFit:
     """Return control points whose closed Catmull-Rom loop is the outline.
 
     The points start at the drawing's own ``nodes`` (indices into
     ``outline``; an outline from the template has one at every handle it
     was drawn with), or evenly spread along it with fewer than eight.
+    Those of the nodes in ``corners`` (its sharp nodes) are the loop's
+    sharp corners.
     Every span that strays more than ``tolerance`` from the outline is
     halved, as are the spans beside a halved one left more than two and a
     half times as long (a uniform Catmull-Rom loop wants its points evenly
@@ -178,8 +184,12 @@ def fit_closed_spline(
     )
     spacing = max(0.75, perimeter / 2000.0)
     # A polyline's (a traced or converted drawing's) nodes are no handles.
+    sharp: set[int] = set()
     if 8 <= len(node_set) <= perimeter / MIN_NODE_SPACING:
-        dense, indices = _resample_through(loop, sorted(node_set), spacing)
+        anchors = sorted(node_set)
+        dense, indices = _resample_through(loop, anchors, spacing)
+        corner_nodes = set(corners)
+        sharp = {index for node, index in zip(anchors, indices) if node in corner_nodes}
     else:
         dense = resample_closed(loop, spacing)
         indices = [round(step * len(dense) / 16) for step in range(16)]
@@ -197,8 +207,9 @@ def fit_closed_spline(
             drawn = [dense[(start + i) % count] for i in range(gap(k) + 1)]
             control = [dense[index] for index in key]
             samples = max(8, len(drawn) // 2)
+            marks = [index in sharp for index in key]
             curve = [
-                *closed_catmull_rom(control, samples)[samples : 2 * samples],
+                *closed_catmull_rom(control, samples, marks)[samples : 2 * samples],
                 control[2],
             ]
             cache[key] = _deviation(drawn, curve, local=True)
@@ -232,7 +243,11 @@ def fit_closed_spline(
             if k in split:
                 inserted.append((start + gap(k) // 2) % count)
         indices = sorted(set(inserted))
-    return BodyFit(tuple(dense[i] for i in indices), max(deviations, default=0.0))
+    return BodyFit(
+        tuple(dense[i] for i in indices),
+        max(deviations, default=0.0),
+        tuple(i in sharp for i in indices),
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -245,14 +260,15 @@ class HeadstockFit:
             drawing has a sharp corner is marked ``"corner"``.
         treble_edge: ``headstock_treble_edge`` likewise.
         tip_points: ``headstock_tip_points``: (how far past the tip line,
-            y) across the tip from -Y to +Y.
+            y) across the tip from -Y to +Y, a sharp one marked
+            ``"corner"``.
         deviation: How far the fitted outline strays from the drawing at
             most (mm), the nut's own end left out.
     """
 
     bass_edge: tuple[DrawnPoint, ...]
     treble_edge: tuple[DrawnPoint, ...]
-    tip_points: tuple[tuple[float, float], ...]
+    tip_points: tuple[DrawnPoint, ...]
     deviation: float
 
 
@@ -280,9 +296,10 @@ def fit_headstock(
     tip. The drawing's own ``nodes`` (indices into ``outline``) on an edge
     or the tip are its first points there (from the template, every handle
     the editor had), and points are added where it strays. Those of them
-    in ``corners`` (its sharp nodes) along an edge, short of the tip, are
-    the edge's sharp corners (``"corner"``), as a Jackson style point's
-    are.
+    in ``corners`` (its sharp nodes) along an edge are the edge's sharp
+    corners (``"corner"``), as a Jackson style point's are; at an edge's
+    end, a sharp tip corner; and on the tip, sharp tip points, as a Dean
+    style V notch has.
 
     Raises:
         DrawingError: If the outline does not reach back to the nut on
@@ -415,7 +432,7 @@ def _fit_at(
 
     ``None`` where the tip, from the -Y side's end at ``length`` round to
     the +Y side's, does not run across the headstock. The ``sharp``
-    nodes are the edges' corners.
+    nodes are the edges' and the tip's corners.
     """
     low_edge, low_rest = _cut(low, length)
     high_edge, high_rest = _cut(high, length)
@@ -439,12 +456,37 @@ def _fit_at(
             )
             edges["bass" if y_sign * bass_sign > 0 else "treble"] = points
             deviation = max(deviation, error)
-        tip_points: tuple[tuple[float, float], ...] = ()
+        tip_points: tuple[DrawnPoint, ...] = ()
         if not pointed and len(tip) > 2:
-            tip_points, error = _fit_tip(
-                tip, length, edges, bass_sign, nut_half_width, tolerance, seeds[2]
-            )
+            # A tip corner sharp in the drawing may only turn a little
+            # where the tip leaves its edge (as a smooth one may too): it
+            # is sharp, its edge's last point marked, where the tip fits
+            # with fewer points so, or with as many closer on average.
+            options = [
+                [False, True] if _is_sharp(edge[-1], sharp) else [False]
+                for edge in (low_edge, high_edge)
+            ]
+            fits = []
+            for ends in itertools.product(*options):
+                points, error, mean = _fit_tip(
+                    tip,
+                    length,
+                    edges,
+                    bass_sign,
+                    nut_half_width,
+                    tolerance,
+                    seeds[2],
+                    sharp,
+                    (ends[0], ends[1]),
+                )
+                fits.append((len(points), mean, sum(ends), error, points, ends))
+            *_, error, tip_points, ends = min(fits, key=lambda fit: fit[:3])
             deviation = max(deviation, error)
+            for y_sign, sharp_end in zip((-1.0, 1.0), ends):
+                side = "bass" if y_sign * bass_sign > 0 else "treble"
+                if sharp_end:
+                    d, h = edges[side][-1][:2]
+                    edges[side] = (*edges[side][:-1], (d, h, CORNER))
     except DrawingError:
         return None
     return HeadstockFit(edges["bass"], edges["treble"], tip_points, deviation)
@@ -571,10 +613,15 @@ def _fit_tip(
     nut_half_width: float,
     tolerance: float,
     seeds: Sequence[tuple[float, float]] = (),
-) -> tuple[tuple[tuple[float, float], ...], float]:
-    """Return the tip points shaping the tip, and how far it strays.
+    sharp: Collection[tuple[float, float]] = (),
+    sharp_ends: tuple[bool, bool] = (False, False),
+) -> tuple[tuple[DrawnPoint, ...], float, float]:
+    """Return the tip points shaping the tip, how far it strays at most,
+    and how far the drawing is from it on average.
 
-    The ``seeds`` (nodes on the tip) are its first points.
+    The ``seeds`` (nodes on the tip) are its first points, sharp at those
+    of them that are ``sharp``; the tip leaves its -Y and +Y corners
+    sharp as ``sharp_ends`` has them.
     """
     drawn = [Point2D(-d, y) for d, y in tip]
     for a, b in zip(drawn, drawn[1:]):
@@ -602,15 +649,20 @@ def _fit_tip(
     )
     inner = drawn[1:-1]
     chosen: list[Point2D] = []
+    corners: set[Point2D] = set()
     for d, y in sorted(seeds, key=lambda seed: seed[1]):
         if low.y + 0.5 < y < high.y - 0.5 and all(abs(y - c.y) >= 0.5 for c in chosen):
             chosen.append(Point2D(-d, y))
+            if (d, y) in sharp:
+                corners.add(chosen[-1])
     error = 0.0
     for _ in range(MAX_TIP_POINTS + 1):
         nodes = (low, *chosen, high)
+        marks = (sharp_ends[0], *(p in corners for p in chosen), sharp_ends[1])
         curve = [nodes[0]]
         if chosen:
-            for span in hermite_spans(nodes, *tip_tangents(nodes, *directions)):
+            tangents = tip_tangents(nodes, *directions, marks)
+            for span in hermite_spans(nodes, *tangents):
                 curve.extend(flatten_span(span, 0.02))
         else:
             curve.append(high)
@@ -628,7 +680,18 @@ def _fit_tip(
             break
         worst = max(candidates, key=lambda p: _distance_to_polyline(p, curve))
         chosen = sorted([*chosen, worst], key=lambda p: p.y)
-    return (
-        tuple((round(-p.x - length, 2), round(p.y, 2)) for p in chosen),
-        error,
-    )
+    tip_points: list[DrawnPoint] = [
+        (round(-p.x - length, 2), round(p.y, 2), CORNER)
+        if p in corners
+        else (round(-p.x - length, 2), round(p.y, 2))
+        for p in chosen
+    ]
+    mean = sum(_distance_to_polyline(p, curve) for p in drawn) / len(drawn)
+    return tuple(tip_points), error, mean
+
+
+def _is_sharp(
+    point: tuple[float, float], sharp: Collection[tuple[float, float]]
+) -> bool:
+    """Return whether ``point`` (distance, y) is one of the ``sharp`` nodes."""
+    return any(abs(point[0] - d) < 0.05 and abs(point[1] - y) < 0.05 for d, y in sharp)

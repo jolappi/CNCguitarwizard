@@ -22,6 +22,7 @@ from cncguitarwizard.geometry.primitives import (
     bezier_point,
     closed_catmull_rom,
     closed_catmull_rom_spans,
+    drawn_points,
     smooth_curve_spans,
 )
 from cncguitarwizard.presets import Prototype001Parameters
@@ -33,8 +34,8 @@ BODY = TemplateFrame((Point2D(0, 0), Point2D(100, 0), Point2D(0, 100)))
 HEADSTOCK = TemplateFrame((Point2D(0, 0), Point2D(-100, 0), Point2D(0, 50)))
 
 
-def _body_svg(points: list[Point2D]) -> str:
-    return template_svg("body", BODY, closed_catmull_rom_spans(points), [])
+def _body_svg(points: list[Point2D], corners: tuple[bool, ...] = ()) -> str:
+    return template_svg("body", BODY, closed_catmull_rom_spans(points, corners), [])
 
 
 def _wrapped(svg: str, transform: str) -> str:
@@ -69,17 +70,19 @@ def test_the_curves_are_exact_bezier_spans() -> None:
 
 @pytest.mark.parametrize("key", list(YOUR_DESIGN_TEMPLATES))
 def test_a_body_template_read_back_unchanged_is_the_same_body(key: str) -> None:
-    points = [Point2D(x, y) for x, y in YOUR_DESIGN_TEMPLATES[key][1].control_points]
+    drawn, corners = drawn_points(YOUR_DESIGN_TEMPLATES[key][1].control_points)
+    points = list(drawn)
     # Moved and scaled to 72 pixels to the inch, as Illustrator saves it.
     for svg in (
-        _body_svg(points),
-        _wrapped(_body_svg(points), "translate(30 40) scale(0.75)"),
+        _body_svg(points, corners),
+        _wrapped(_body_svg(points, corners), "translate(30 40) scale(0.75)"),
     ):
         read = read_template_outline(svg, BODY)
-        fit = fit_closed_spline(read.points, read.nodes)
+        fit = fit_closed_spline(read.points, read.nodes, corners=read.corners)
         assert [(round(p.x, 6), round(p.y, 6)) for p in fit.points] == [
             (round(p.x, 6), round(p.y, 6)) for p in points
         ]
+        assert fit.corners == corners
     assert read.scale == pytest.approx(0.75)
 
 
