@@ -7541,6 +7541,10 @@ class Prototype001Parameters:
         Returns:
             ``headstock_pointed_volute``'s volute, or ``None`` without one
             or on a headless neck.
+
+        Raises:
+            NeckGeometryError: For an unknown style, or a depth of 0 or
+                less while the volute is on.
         """
         if not self.headstock_pointed_volute or self.headless:
             return None
@@ -7548,6 +7552,12 @@ class Prototype001Parameters:
             raise NeckGeometryError(
                 f"Unknown volute {self.headstock_volute_style!r}: choose arrow "
                 "or drawn."
+            )
+        depth = self.headstock_pointed_volute_depth
+        if not math.isfinite(depth) or depth <= 0.0:
+            raise NeckGeometryError(
+                "headstock_pointed_volute_depth must be more than 0 mm while "
+                "headstock_pointed_volute is on: turn the volute off for none."
             )
         half_width = outline.nut_width / 2.0
         lines = (

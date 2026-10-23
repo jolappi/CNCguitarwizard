@@ -68,8 +68,13 @@ Python.
    JSON. A value that cannot be read (not a number, broken JSON) is marked
    red once it is given — Enter, or leaving the field — not while it is
    still being typed, the reason in its hint (`valueProblem`), and the mark
-   goes as soon as it reads again; an editor's copy passes only a value
-   that reads on to its form field, and Build names the field it stops
+   goes as soon as it reads again. So is one that cannot stand beside a
+   switch (`POSITIVE_WHILE_ON`, `settingProblem`): the volute's depth
+   (`headstock_pointed_volute_depth`) at 0 or less while the volute is on
+   — none would be no volute, so it is turned off for that — checked
+   again as the switch is turned on or off. An editor's copy is checked as
+   the field it copies (`data-copy-of`) and passes only a value that reads
+   and stands on to its form field, and Build names the field it stops
    at (*Thickness (body_thickness): Needs a number*), marks it, and
    offers *Go to Thickness* (`FieldError`, `goToField`: its group and
    folds opened, a search that leaves it out cleared, or its copy in an

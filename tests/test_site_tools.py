@@ -310,3 +310,21 @@ def test_the_volute_is_drawn_in_the_headstock_editor() -> None:
     assert "from cncguitarwizard.webapp import volute_view" in script
     page = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
     assert 'id="headstock-editor-volute" class="volute-view-box" hidden' in page
+
+
+def test_the_volutes_depth_is_refused_at_0_while_the_volute_is_on() -> None:
+    script = (ROOT / "site" / "app.js").read_text(encoding="utf-8")
+    layout = (ROOT / "site" / "desktop.js").read_text(encoding="utf-8")
+
+    rules = script[script.index("const POSITIVE_WHILE_ON = {") :]
+    rules = rules[: rules.index("};")]
+    assert 'headstock_pointed_volute_depth: "headstock_pointed_volute"' in rules
+    # Every field's check asks it, an editor's copy as the field it copies,
+    # and turning the volute on or off checks the depth again.
+    assert (
+        "return settingProblem(input.dataset.name || input.dataset.copyOf, value);"
+        in script
+    )
+    assert "copy.dataset.copyOf = name;" in script
+    assert "copy.dataset.copyOf = original.dataset.name;" in layout
+    assert "if (event.target.dataset.name !== switchName) continue;" in script

@@ -155,7 +155,8 @@ Building the preset creates and cross-validates:
   whose nose reaches a third of its length onto the neck (10 mm), its
   sides curving out (`VOLUTE_NOSE`) to the neck's whole width at its
   fullest, 0.3 of its length behind the nut (9 mm), where it leaves
-  `headstock_pointed_volute_depth` (4 mm) more wood than the plain back
+  `headstock_pointed_volute_depth` (4 mm; more than 0 while the volute is
+  on, which is turned off for none) more wood than the plain back
   down the middle; from there it fades into the headstock's back, the
   whole width still, `headstock_pointed_volute_length` (30 mm) behind the
   nut. Across, two faces fall away from a rounded crest and ease into the

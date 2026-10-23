@@ -1346,6 +1346,15 @@
 
 ### Fixed
 
+- The volute's depth (`headstock_pointed_volute_depth`) can no longer be
+  0 while the volute is on: none would be no volute, so it is turned off
+  for that. The form marks the depth red as soon as it is 0 or less with
+  the volute on (or the volute is turned on with it so), in its editor's
+  copy too, which passes no such value on, and Build stops at it naming
+  it; a design loaded so has it put back to its default, and the model
+  says which setting it is (it said only "The volute's depth must be
+  finite and positive").
+
 - No step on the headstock's face behind the nut: the FreeCAD face cut,
   which carves the face down from the nut's seat along its transition,
   started level with the seat and only touched the loft's flat top there,

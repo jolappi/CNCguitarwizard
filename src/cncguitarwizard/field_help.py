@@ -313,7 +313,8 @@ FIELD_HELP: dict[str, str] = {
     "headstock_pointed_volute_depth": (
         "How much more wood the volute leaves than the plain back at its "
         "fullest, behind the nut, in mm: a drawn one's ridge height on its "
-        "line (2 to 4 mm)."
+        "line (2 to 4 mm). More than 0 while the volute is on: turn it off "
+        "for none."
     ),
     "headstock_pointed_volute_length": (
         "How far behind the nut the volute reaches into the headstock, in "

@@ -266,6 +266,7 @@ function mirrorEditorFields() {
       const row = original.closest(".field");
       const copy = original.cloneNode(true);
       copy.id = `${id}.${name}`;
+      copy.dataset.copyOf = name;
       delete copy.dataset.set;
       delete copy.dataset.name;
       const label = document.createElement("label");
@@ -928,7 +929,23 @@ class FieldError extends Error {
   }
 }
 
-// Why a field's value cannot be read, or null when it can.
+// Settings that must be more than 0 while a switch is on: the volute's
+// depth while the volute is (none would be no volute: turn it off).
+const POSITIVE_WHILE_ON = {
+  headstock_pointed_volute_depth: "headstock_pointed_volute",
+};
+
+// Why a setting's value cannot stand beside the others, or null.
+function settingProblem(name, value) {
+  const switchName = POSITIVE_WHILE_ON[name];
+  if (!switchName || value > 0) return null;
+  const on = form.querySelector(`[data-set='prototype'][data-name='${switchName}']`);
+  if (!on?.checked) return null;
+  return `More than 0 while ${fieldLabel(switchName)} is on (${switchName}): turn that off for none`;
+}
+
+// Why a field's value cannot be read, or cannot stand, or null when it
+// can (an editor's copy of a field is checked as the field it copies).
 function valueProblem(input) {
   let value;
   try {
@@ -936,8 +953,10 @@ function valueProblem(input) {
   } catch (error) {
     return `Not valid JSON (${error.message})`;
   }
-  if (typeof value !== "number" || !Number.isNaN(value)) return null;
-  return input.validity.badInput || input.value.trim() !== "" ? "Not a number" : "Needs a number";
+  if (typeof value === "number" && Number.isNaN(value)) {
+    return input.validity.badInput || input.value.trim() !== "" ? "Not a number" : "Needs a number";
+  }
+  return settingProblem(input.dataset.name || input.dataset.copyOf, value);
 }
 
 function collectValues() {
@@ -6261,6 +6280,17 @@ form.addEventListener("change", (event) => {
     if (input && input.value !== "") setControlValue(input, null);
   }
   syncMirrors();
+});
+// A switch turned on or off checks the settings it holds above 0 again
+// (POSITIVE_WHILE_ON), in the form and in an editor's copy.
+form.addEventListener("change", (event) => {
+  for (const [name, switchName] of Object.entries(POSITIVE_WHILE_ON)) {
+    if (event.target.dataset.name !== switchName) continue;
+    const field = form.querySelector(`[data-set='prototype'][data-name='${name}']`);
+    for (const control of [field, mirrors.get(field)]) {
+      control?.classList.toggle("invalid", valueProblem(control) !== null);
+    }
+  }
 });
 form.addEventListener("change", (event) => {
   if (["headstock_outline", "headless"].includes(event.target.dataset.name)) headstockEditor.sync();

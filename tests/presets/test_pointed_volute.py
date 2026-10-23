@@ -7,6 +7,7 @@ import pytest
 from cncguitarwizard.backends.freecad.script_exporter import FreeCADScriptExporter
 from cncguitarwizard.cam import NeckMachiningParameters, plan_neck_machining
 from cncguitarwizard.cam.neck import _BackSurface, _Frame
+from cncguitarwizard.geometry.exceptions import NeckGeometryError
 from cncguitarwizard.geometry.neck import Volute
 from cncguitarwizard.geometry.primitives import Point3D
 from cncguitarwizard.presets import Prototype001Geometry, Prototype001Parameters
@@ -34,6 +35,16 @@ def test_the_guitar_carries_it_behind_the_nut_the_neck_as_wide() -> None:
     )
     # Drawn, by default: its three lines.
     assert with_volute().build().volute.drawn
+
+
+def test_its_depth_is_more_than_0_while_it_is_on() -> None:
+    # None at all would be no volute: it is turned off for that.
+    with pytest.raises(NeckGeometryError, match="headstock_pointed_volute_depth"):
+        with_volute(headstock_pointed_volute_depth=0.0).build()
+    with pytest.raises(NeckGeometryError, match="more than 0"):
+        with_arrow(headstock_pointed_volute_depth=-1.0).build()
+    off = replace(Prototype001Parameters(), headstock_pointed_volute_depth=0.0)
+    assert off.build().volute is None
 
 
 def test_a_headless_neck_has_none() -> None:

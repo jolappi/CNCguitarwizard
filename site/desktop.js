@@ -930,6 +930,7 @@
   function proxy(original) {
     const copy = original.cloneNode(true);
     copy.removeAttribute("id");
+    copy.dataset.copyOf = original.dataset.name;
     delete copy.dataset.set;
     delete copy.dataset.name;
     if (copy.type === "checkbox") copy.checked = original.checked;
