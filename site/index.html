@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache">
 <!-- This page's stamp, set by tools/build_site.py (see the loader below). -->
-<meta name="cgw-page" content="a5c3b00e3950">
+<meta name="cgw-page" content="5a63c0e81c99">
 <title>CNCguitarwizard</title>
 <script>
   // Dark mode, the default; light when chosen in this browser (or
@@ -220,6 +220,15 @@
   /* An editor's settings, folded by default like its how-to; marked
      when one of them is changed, so a folded change still shows. */
   details.editor-settings { border: 0; background: none; margin: 0 0 6px; }
+  /* A drawing's colour key (fillLegend): a swatch drawn as the drawing
+     draws that colour, on the body's wood, and what it means. */
+  details.legend { border: 0; background: none; margin: 0 0 6px; }
+  details.legend > summary { padding: 2px 0; font-weight: 500; font-size: 13px; color: var(--accent); }
+  details.legend ul { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 4px 16px;
+    margin: 6px 0 8px; padding: 0; list-style: none; font-size: 13px; }
+  details.legend li { display: flex; align-items: center; gap: 8px; }
+  details.legend li svg { flex: none; width: 28px; height: 16px; border: 0; border-radius: 0; background: none; }
+  details.legend .ground { fill: var(--wood); stroke: var(--line); stroke-width: 1; }
   details.editor-settings > summary { padding: 2px 0; font-weight: 500; font-size: 13px; color: var(--accent); }
   details.editor-settings > summary.changed::after { content: " · changed"; color: var(--muted); font-weight: 400; }
   details.editor-settings > .editor-options { margin-top: 6px; }
@@ -756,6 +765,10 @@
         <button class="secondary redo-button" type="button" disabled>Redo</button>
       </div>
       <p id="body-editor-status" class="note"></p>
+      <details id="body-editor-legend" class="legend" hidden>
+        <summary>What the colours mean</summary>
+        <ul></ul>
+      </details>
       <svg id="body-editor-svg" xmlns="http://www.w3.org/2000/svg"></svg>
     </div>
     <div id="headstock-editor" class="body-editor hidden">
@@ -803,6 +816,10 @@
         <button class="secondary redo-button" type="button" disabled>Redo</button>
       </div>
       <p id="headstock-editor-status" class="note"></p>
+      <details id="headstock-editor-legend" class="legend" hidden>
+        <summary>What the colours mean</summary>
+        <ul></ul>
+      </details>
       <svg id="headstock-editor-svg" xmlns="http://www.w3.org/2000/svg"></svg>
       <!-- The volute or a drawn root seen from behind and above while it is drawn. -->
       <div id="headstock-editor-volute" class="volute-view-box" hidden>

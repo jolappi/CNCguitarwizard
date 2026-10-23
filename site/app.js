@@ -2315,6 +2315,151 @@ function splineSegment(p0, p1, p2, p3, samples, out) {
   }
 }
 
+// How the body editor draws each kind of feature (a layout polygon's
+// role): routed from the top in salmon, from the back in purple and
+// dashed, a cover's recess paler, the contours green (top) and blue
+// (back). The colour key (bodyLegend) says the same in words.
+const BODY_FEATURE_STYLES = {
+  neck: { fill: "#3b2a1a", "fill-opacity": 0.85, stroke: "none" },
+  pocket: { fill: "#f2c4b3", "fill-opacity": 0.9, stroke: "#7a3a1a", "stroke-width": 0.5 },
+  pickup: { fill: "#f2c4b3", stroke: "#7a3a1a", "stroke-width": 0.5 },
+  bridge: { fill: "#f2c4b3", stroke: "#7a3a1a", "stroke-width": 0.5 },
+  bridge_plate: { fill: "#d8d0c2", "fill-opacity": 0.5, stroke: "#6b625a", "stroke-width": 0.5, "stroke-dasharray": "2,2" },
+  top_control: { fill: "#c9b7e6", "fill-opacity": 0.55, stroke: "#5a3a8a", "stroke-width": 0.6 },
+  plateau: { fill: "none", stroke: "#8a6a3a", "stroke-width": 0.8, "stroke-dasharray": "6,3" },
+  contour_top: { fill: "#9cc79a", "fill-opacity": 0.45, stroke: "#3d6b3a", "stroke-width": 0.5 },
+  contour_back: { fill: "#9aa9d6", "fill-opacity": 0.35, stroke: "#34457a", "stroke-width": 0.5, "stroke-dasharray": "3,2" },
+  cover: { fill: "#c9b7e6", "fill-opacity": 0.35, stroke: "#5a3a8a", "stroke-width": 0.5, "stroke-dasharray": "3,2" },
+  rear: { fill: "#c9b7e6", "fill-opacity": 0.55, stroke: "#5a3a8a", "stroke-width": 0.6, "stroke-dasharray": "3,2" },
+  neck_plate: { fill: "#c8ccd2", "fill-opacity": 0.55, stroke: "#4a5058", "stroke-width": 0.6, "stroke-dasharray": "3,2" },
+  strap_guide: { fill: "#d9a066", "fill-opacity": 0.5, stroke: "#8a4a1a", "stroke-width": 0.6, "stroke-dasharray": "3,2" },
+  tray: { fill: "#e8b04a", "fill-opacity": 0.3, stroke: "#a8721a", "stroke-width": 0.5 },
+  tray_wall: { fill: "#f1e4c8", stroke: "#a8721a", "stroke-width": 0.3 },
+};
+
+// A hole's look in the body editor: drilled from the top, from the back
+// (dashed), or a cover's screw (small, solid, to stand out on its ledge).
+const BODY_HOLE_STYLES = {
+  top: { fill: "#fff", stroke: "#222", "stroke-width": 0.5 },
+  back: { fill: "#fff", "fill-opacity": 0.5, stroke: "#5a3a8a", "stroke-width": 0.5, "stroke-dasharray": "2,1.5" },
+  screw: { fill: "#fff", stroke: "#3b2366", "stroke-width": 0.7 },
+};
+
+function holeKind(circle) {
+  if (!circle.rear) return "top";
+  return circle.name.includes("cover screw") ? "screw" : "back";
+}
+
+// The body editor's colour key: what each colour drawn now means, in the
+// order a builder reads the drawing (the top, then the back, then the
+// lines to drag), as [meaning, look, "area" or "line"].
+function bodyLegend(layout) {
+  const styles = BODY_FEATURE_STYLES;
+  const roles = new Set(layout.polygons.map((polygon) => polygon.role));
+  const holes = new Set(layout.circles.map(holeKind));
+  const has = (...names) => names.some((name) => roles.has(name));
+  const entries = [];
+  const add = (shown, meaning, look, kind = "area") => {
+    if (shown) entries.push([meaning, look, kind]);
+  };
+  add(has("neck"), "The neck", styles.neck);
+  add(Boolean(layout.neck_through), "The neck-through centre block, the wings glued to its sides",
+    { fill: "#e2cc9f", stroke: "#6b4a1f" });
+  add(has("pocket", "pickup", "bridge"), "Routed from the top: the neck pocket, the pickups, the bridge", styles.pickup);
+  add(has("top_control"), "Control cavity routed from the top, under a pickguard or plate", styles.top_control);
+  add(has("bridge_plate"), "What the bridge's plate covers on the top (not cut)", styles.bridge_plate);
+  add(holes.has("top"), "Holes drilled from the top: pots, switch, bridge studs", BODY_HOLE_STYLES.top, "dot");
+  add(has("plateau"), "A carved top's flat plateau, where the carving starts", styles.plateau, "line");
+  add(has("tray"), "Epoxy tray, routed into the top", styles.tray);
+  add(has("tray_wall"), "Walls left standing in the epoxy tray", styles.tray_wall);
+  add(has("contour_top"), "A contour on the top (the arm contour)", styles.contour_top);
+  add(Boolean(layout.engraving?.length), "Engraving on the top", { stroke: "#1f6fb2" }, "line");
+  add(Boolean(layout.relief?.length), "A relief's shapes, cut into the top (darker: deeper)", { fill: "#2f4a1e", "fill-opacity": 0.5 });
+  add(Boolean(layout.pickguard), "The pickguard (dashed while it is the automatic one)",
+    { fill: "#ffffff", "fill-opacity": 0.55, stroke: "#333" });
+  add(Boolean(layout.frames?.length), "Pickup frames", { fill: "#1b1b1b", "fill-opacity": 0.8, stroke: "#000" });
+  add(has("rear"), "Routed from the back: the control and switch cavities, the battery box", styles.rear);
+  add(has("cover"), "A back cavity's cover and the recess it sits in", styles.cover);
+  add(holes.has("back"), "Holes drilled from the back: neck bolts and their ferrules", BODY_HOLE_STYLES.back, "dot");
+  add(holes.has("screw"), "A cover's screws", BODY_HOLE_STYLES.screw, "dot");
+  add(has("neck_plate"), "The neck plate, on the back", styles.neck_plate);
+  add(has("strap_guide"), "The strap guide's plate, on the back", styles.strap_guide);
+  add(has("contour_back"), "A contour on the back (belly cut, leg contour, heel relief)", styles.contour_back);
+  add(Boolean(layout.jack), "The output jack's bore, in from the body's edge",
+    { stroke: "#222", "stroke-opacity": 0.25, "stroke-width": 6 }, "line");
+  add(Boolean(layout.steps), "A stepped top's step lines", { stroke: "#6a4a8a" }, "line");
+  add(Boolean(layout.arm_contour), "Where the arm contour starts (on the top)", { stroke: "#3d6b3a" }, "line");
+  add(Boolean(layout.belly_cut), "Where the belly cut starts (on the back)", { stroke: "#34457a" }, "line");
+  add(Boolean(layout.leg_contour), "Where the leg contour starts (on the back)", { stroke: "#2f6f7a" }, "line");
+  add(Boolean(layout.heel_relief), "Where the heel relief starts (on the back)", { stroke: "#8a3a6a" }, "line");
+  add(true, "The outline's handles (dark: a sharp corner)", { fill: "#fff", stroke: "#8a4b1e" }, "dot");
+  return entries;
+}
+
+// The headstock editor's colour key, as bodyLegend's.
+function headstockLegend(layout) {
+  const entries = [];
+  const add = (shown, meaning, look, kind = "area") => {
+    if (shown) entries.push([meaning, look, kind]);
+  };
+  add(true, "The neck and the fretboard, toward the body", { fill: "#3b2a1a", "fill-opacity": 0.85 });
+  add(Boolean(layout.nut && !layout.nut.locking), "The nut", { fill: "#efe8d6", stroke: "#8a7a5a" });
+  add(Boolean(layout.nut?.locking), "The locking nut", { fill: "#3c3c3c", stroke: "#111" });
+  add(Boolean(layout.nut?.zero_fret), "The zero fret, on the nut line", { stroke: "#d9c9a8" }, "line");
+  add(true, "The headstock's edges, to drag into shape", { stroke: "#6b4a1f" }, "line");
+  add(layout.holes.length > 0, "Tuner holes, drilled through", { fill: "#fff", stroke: "#222" }, "dot");
+  add(layout.holes.length > 0, "How close a tuner hole may come to the edge (dashed)",
+    { fill: "none", stroke: "#8a4b1e", "stroke-dasharray": "2,1.5" }, "dot");
+  add(Boolean(layout.truss_cover), "The truss-rod cover, over its trough (dashed)",
+    { fill: "#2b2b2b", "fill-opacity": 0.55, stroke: "#111" });
+  add(Boolean(layout.lettering || layout.engraving), "Lettering and lines engraved into the face",
+    { stroke: "#1f6fb2" }, "line");
+  add(Boolean(layout.volute && layout.volute.style !== "drawn"), "The volute, on the back behind the nut",
+    { fill: "#8a5a2b", "fill-opacity": 0.2, stroke: "#8a5a2b", "stroke-dasharray": "2,1" });
+  add(Boolean(layout.volute && layout.volute.style === "drawn"),
+    "The volute's crest (solid) and where it ends (dashed), on the back", { stroke: "#8a5a2b" }, "line");
+  add(Boolean(layout.root), "The neck's joint with the headstock, on the back: where the headstock's back begins (solid) and where the neck's profile does (dashed); paler while smooth",
+    { stroke: "#2d6b7f" }, "line");
+  add(true, "Handles (dark: a sharp corner)", { fill: "#fff", stroke: "#8a4b1e" }, "dot");
+  return entries;
+}
+
+// A drawing's colour key, the <details> holding its list: each colour as
+// a swatch drawn the way the drawing draws it, on the body's wood, and
+// what it means; the fold hidden with nothing to say.
+function fillLegend(holder, entries) {
+  const list = holder.querySelector("ul");
+  list.replaceChildren();
+  for (const [meaning, look, kind] of entries) {
+    const item = document.createElement("li");
+    const swatch = document.createElementNS(SVG_NS, "svg");
+    swatch.setAttribute("viewBox", "0 0 28 16");
+    swatch.setAttribute("aria-hidden", "true");
+    const ground = document.createElementNS(SVG_NS, "rect");
+    for (const [name, value] of Object.entries({ class: "ground", x: 0.5, y: 0.5, width: 27, height: 15, rx: 3 })) {
+      ground.setAttribute(name, value);
+    }
+    const shapes = {
+      area: ["rect", { x: 4, y: 3.5, width: 20, height: 9, rx: 2 }],
+      line: ["line", { x1: 4, y1: 8, x2: 24, y2: 8 }],
+      dot: ["circle", { cx: 14, cy: 8, r: 4.5 }],
+    };
+    const [tag, place] = shapes[kind];
+    const mark = document.createElementNS(SVG_NS, tag);
+    // Drawn in mm, the drawing's strokes are hairlines at this size.
+    const width = kind === "line" ? 2.4 : 1.2;
+    for (const [name, value] of Object.entries({ ...look, "stroke-width": width, ...place })) {
+      mark.setAttribute(name, value);
+    }
+    if (look["stroke-width"] > 2) mark.setAttribute("stroke-width", 7);
+    if (kind === "line") mark.setAttribute("fill", "none");
+    swatch.append(ground, mark);
+    item.append(swatch, meaning);
+    list.appendChild(item);
+  }
+  holder.hidden = entries.length === 0;
+}
+
 // The contour lines drawn in the body editor: where the arm contour (on
 // the top) and the belly cut (on the back) start.
 const CONTOUR_LINES = [
@@ -2643,23 +2788,7 @@ const bodyEditor = {
       this.element("title", {}, block).textContent = "Neck-through block: the wings are glued to its sides";
     }
 
-    const styles = {
-      neck: { fill: "#3b2a1a", "fill-opacity": 0.85, stroke: "none" },
-      pocket: { fill: "#f2c4b3", "fill-opacity": 0.9, stroke: "#7a3a1a", "stroke-width": 0.5 },
-      pickup: { fill: "#f2c4b3", stroke: "#7a3a1a", "stroke-width": 0.5 },
-      bridge: { fill: "#f2c4b3", stroke: "#7a3a1a", "stroke-width": 0.5 },
-      bridge_plate: { fill: "#d8d0c2", "fill-opacity": 0.5, stroke: "#6b625a", "stroke-width": 0.5, "stroke-dasharray": "2,2" },
-      top_control: { fill: "#c9b7e6", "fill-opacity": 0.55, stroke: "#5a3a8a", "stroke-width": 0.6 },
-      plateau: { fill: "none", stroke: "#8a6a3a", "stroke-width": 0.8, "stroke-dasharray": "6,3" },
-      contour_top: { fill: "#9cc79a", "fill-opacity": 0.45, stroke: "#3d6b3a", "stroke-width": 0.5 },
-      contour_back: { fill: "#9aa9d6", "fill-opacity": 0.35, stroke: "#34457a", "stroke-width": 0.5, "stroke-dasharray": "3,2" },
-      cover: { fill: "#c9b7e6", "fill-opacity": 0.35, stroke: "#5a3a8a", "stroke-width": 0.5, "stroke-dasharray": "3,2" },
-      rear: { fill: "#c9b7e6", "fill-opacity": 0.55, stroke: "#5a3a8a", "stroke-width": 0.6, "stroke-dasharray": "3,2" },
-      neck_plate: { fill: "#c8ccd2", "fill-opacity": 0.55, stroke: "#4a5058", "stroke-width": 0.6, "stroke-dasharray": "3,2" },
-      strap_guide: { fill: "#d9a066", "fill-opacity": 0.5, stroke: "#8a4a1a", "stroke-width": 0.6, "stroke-dasharray": "3,2" },
-      tray: { fill: "#e8b04a", "fill-opacity": 0.3, stroke: "#a8721a", "stroke-width": 0.5 },
-      tray_wall: { fill: "#f1e4c8", stroke: "#a8721a", "stroke-width": 0.3 },
-    };
+    const styles = BODY_FEATURE_STYLES;
     // Features with a group can be dragged; the rest (neck, pocket,
     // bridge) follow the neck and scale and stay put.
     const features = this.element("g", {});
@@ -2680,11 +2809,7 @@ const bodyEditor = {
     }
     for (const circle of layout.circles) {
       // A cover's screws, small on its ledge, drawn solid to stand out.
-      const look = circle.rear && circle.name.includes("cover screw")
-        ? { fill: "#fff", stroke: "#3b2366", "stroke-width": 0.7 }
-        : circle.rear
-          ? { fill: "#fff", "fill-opacity": 0.5, stroke: "#5a3a8a", "stroke-width": 0.5, "stroke-dasharray": "2,1.5" }
-          : { fill: "#fff", stroke: "#222", "stroke-width": 0.5 };
+      const look = BODY_HOLE_STYLES[holeKind(circle)];
       const node = this.element("circle", { cx: circle.x, cy: -circle.y, r: circle.r, ...look }, features);
       place(node, circle.group, circle.name);
     }
@@ -2985,6 +3110,7 @@ const bodyEditor = {
     for (const handle of this.frameHandleNodes) handle.parentNode.appendChild(handle);
     this.check();
     this.showTemplate();
+    fillLegend(document.getElementById("body-editor-legend"), bodyLegend(layout));
   },
 
   toModel(event) {
@@ -5300,6 +5426,7 @@ const headstockEditor = {
         "Engraved on the face, drawn in another program — Export SVG to change it";
     }
     this.check();
+    fillLegend(document.getElementById("headstock-editor-legend"), headstockLegend(layout));
   },
 
   // The truss-rod cover: its trough dashed, the plate and its screws;

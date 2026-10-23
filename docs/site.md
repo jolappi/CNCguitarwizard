@@ -538,6 +538,17 @@ Python.
    show only with a pickguard, an arm contour, a stepped top or a belly
    cut on, *New pattern* only with an engraving laid out at random (not
    a drawn one; `syncBodyButtons`).
+   Above the body and the headstock editor's drawing, *What the colours
+   mean* opens the drawing's colour key (`fillLegend`; `bodyLegend`,
+   `headstockLegend`): a swatch drawn as the drawing draws each colour,
+   on the body's wood, and what it means — on the body, salmon routed
+   from the top (the neck pocket, the pickups, the bridge), purple and
+   dashed routed from the back (the control and switch cavities, the
+   battery box) and paler the covers' recesses, white holes drilled from
+   the top and dashed ones from the back, green a contour on the top and
+   blue one on the back; on the headstock the tuner holes and the edge
+   clearance round them, the truss-rod cover, the engraving, the volute
+   and the joint's lines. It lists only the colours in the drawing now.
    **Export SVG** and **Import SVG** in the body and headstock editors
    take an outline to another drawing program (Inkscape, Illustrator,
    Affinity Designer, a CAD program) and back; **Export DXF** and

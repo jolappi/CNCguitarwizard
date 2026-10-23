@@ -44,6 +44,16 @@
 
 ### Added
 
+- What the body's and the headstock's drawings' colours mean: *What the
+  colours mean* above each editor's drawing opens a list of the colours
+  drawn now, each a swatch as the drawing draws it and its meaning — on
+  the body, salmon routed from the top, purple and dashed routed from the
+  back, paler a cover's recess, dashed holes drilled from the back, the
+  contours green on the top and blue on the back, the jack's bore, the
+  pickguard and the lines to drag; on the headstock the tuner holes and
+  their clearance, the truss-rod cover, the engraving, the volute and
+  the neck's joint.
+
 - Every setting explained in plain words: the 139 settings whose help was
   still the code's own documentation got a sentence or two in
   `field_help.FIELD_HELP` saying what it does to the guitar, in mm and
