@@ -191,9 +191,11 @@ source = exporter.render_neck_assembly(
 
 Each slot follows the sampled 430 mm playing-surface radius instead of using
 a single flat-bottomed box. Every slot is cut in one boolean with all the
-slots at once, as every marker's pocket is, every tuner hole with its
-chamfer, and the body's routes, cavities, recesses and drilled holes
-(`BODY_CUTTERS`, cut once before its edges are finished): each cut runs
+slots at once, as every marker's pocket is, every tuner hole (then
+every chamfer, in a second cut: a chamfer's narrow end lies on its hole's
+wall, and cut with it the two can leave no shape at all, as on a
+Fantomen's headstock), and the body's routes, cavities, recesses and
+drilled holes (`BODY_CUTTERS`, cut once before its edges are finished): each cut runs
 against the whole board, neck or body, so one cut is far quicker than one
 each. The neck's document object is hidden in FreeCAD's window while it is
 still being cut (`hidden_while_built`) and shown when the script finishes,

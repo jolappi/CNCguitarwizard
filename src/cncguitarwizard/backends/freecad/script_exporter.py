@@ -2356,9 +2356,12 @@ class FreeCADScriptExporter:
             f"tuner_axis = App.Vector({axis_x}, {axis_y}, {axis_z})\n"
             "tuner_overcut = 1.0\n"
             f"tuner_chamfer_depth = {chamfer_depth}\n"
-            "# Every hole and its chamfer in one cut: each cut runs against\n"
-            "# the whole neck, so one is far quicker than one a hole.\n"
+            "# Every hole in one cut, then every chamfer in another: each\n"
+            "# cut runs against the whole neck, so one is far quicker than\n"
+            "# one a hole; but a chamfer's narrow end lies on its hole's wall,\n"
+            "# and the two cut together can leave no shape at all.\n"
             "tuner_cutters = []\n"
+            "tuner_chamfers = []\n"
             "for x, y, z, diameter in TUNER_HOLES:\n"
             "    top_center = App.Vector(x, y, z)\n"
             "    cutter_start = top_center - tuner_axis * tuner_overcut\n"
@@ -2369,7 +2372,7 @@ class FreeCADScriptExporter:
             "        tuner_axis,\n"
             "    ))\n"
             "    if tuner_chamfer_depth > 0.0:\n"
-            "        tuner_cutters.append(Part.makeCone(\n"
+            "        tuner_chamfers.append(Part.makeCone(\n"
             "            diameter / 2.0 + tuner_chamfer_depth,\n"
             "            diameter / 2.0,\n"
             "            tuner_chamfer_depth,\n"
@@ -2380,6 +2383,11 @@ class FreeCADScriptExporter:
             f"    {shape_variable} = require_shape(\n"
             f"        {shape_variable}.cut(tuner_cutters),\n"
             '        "tuner-hole cut",\n'
+            "    )\n"
+            "if tuner_chamfers:\n"
+            f"    {shape_variable} = require_shape(\n"
+            f"        {shape_variable}.cut(tuner_chamfers),\n"
+            '        "tuner chamfer cut",\n'
             "    )\n"
         )
 

@@ -878,14 +878,15 @@ def test_headstock_can_receive_six_normal_tuner_holes() -> None:
     )
     assert isinstance(assignment.value, ast.List)
     assert len(assignment.value.elts) == 6
-    # Every hole and its chamfer gathered, then cut in one go.
+    # Every hole gathered and cut in one go, then every chamfer.
     assert "tuner_cutters.append(Part.makeCylinder(" in source
     assert "diameter / 2.0" in source
     assert "tuner_chamfer_depth = 0.2" in source
-    assert "tuner_cutters.append(Part.makeCone(" in source
+    assert "tuner_chamfers.append(Part.makeCone(" in source
     assert "diameter / 2.0 + tuner_chamfer_depth" in source
     assert "headstock_shape.cut(tuner_cutters)" in source
-    assert '"tuner-hole cut"' in source
+    assert "headstock_shape.cut(tuner_chamfers)" in source
+    assert '"tuner-hole cut"' in source and '"tuner chamfer cut"' in source
 
 
 def test_tuner_chamfer_can_be_disabled() -> None:
@@ -1412,9 +1413,11 @@ def test_each_family_of_cuts_is_one_boolean_and_the_neck_drawn_once() -> None:
         Prototype001Parameters().build()
     )
 
-    # Every tuner hole with its chamfer, every fret slot and every marker
+    # Every tuner hole, then every chamfer (a chamfer cut with its hole
+    # can leave no shape: a Fantomen's), every fret slot and every marker
     # cut in one go: each cut runs against the whole neck or board.
     assert source.count("neck_shape.cut(tuner_cutters)") == 1
+    assert source.count("neck_shape.cut(tuner_chamfers)") == 1
     assert source.count("fretboard_shape.cut(fret_slot_shapes)") == 1
     assert source.count("fretboard_shape.cut(inlay_marker_shapes)") == 1
     assert ".cut(cutter)" not in source and ".cut(chamfer)" not in source

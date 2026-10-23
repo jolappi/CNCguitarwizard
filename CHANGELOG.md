@@ -1369,6 +1369,10 @@
 
 ### Fixed
 
+- The FreeCAD script cuts the tuner holes' chamfers in a cut of their own
+  after the holes: cut with them in one, a chamfer's narrow end on its
+  hole's wall, a headstock (the Fantomen's) came out as no shape at all.
+
 - An outline template read back keeps its sharp corners: a body's
   (`fit_closed_spline` takes the drawing's `corners` and gives them back
   in `BodyFit.corners`), and a headstock's at its tip, a sharp tip corner
