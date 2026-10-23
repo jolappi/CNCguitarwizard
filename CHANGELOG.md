@@ -34,6 +34,11 @@
 
 ### Added
 
+- Every setting explained in plain words: the 139 settings whose help was
+  still the code's own documentation got a sentence or two in
+  `field_help.FIELD_HELP` saying what it does to the guitar, in mm and
+  with the usual values, so every field in the form has one.
+
 - A Dean Razorback and a Hagström Fantomen style (*Style*, under the
   instrument), each a body template and a neck template traced from a
   straight-on product photo (scaled from its frets), their switch, pots,

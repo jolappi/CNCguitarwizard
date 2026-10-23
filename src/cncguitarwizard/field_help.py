@@ -1,10 +1,11 @@
 """What the web form's fields mean, where the code's own words fall short.
 
-``webapp`` shows every field's meaning as a tooltip, taken from the code's
+``webapp`` shows every field's meaning as its hint, taken from the code's
 documentation (docstrings and the comments above the parameters); the
-entries here come first. They cover the settings shown up front, in a
-sentence or two for someone new to guitar making, and the advanced ones
-the code leaves unexplained.
+entries here come first. They cover every setting in plain words, a
+sentence or two for someone new to guitar making: what it does on the
+instrument, in what unit, and what leaving it empty does — not in the
+code's own terms (the names of other settings, constants or modules).
 """
 
 from __future__ import annotations
@@ -670,6 +671,467 @@ FIELD_HELP: dict[str, str] = {
     "body_carve_depth": (
         "How far the carved top falls from its flat plateau to the rim, in "
         "mm (9.5 on a Les Paul)."
+    ),
+    # Scale and fretboard (the rest)
+    "fretboard_nut_corner_radius": (
+        "Rounds the fretboard's two corners at the nut end, in mm (0: square corners)."
+    ),
+    "inlay_depth": (
+        "How deep the position markers' pockets are cut into the fretboard, in mm."
+    ),
+    "inlay_block_length_fraction": (
+        "For markers that fill a fret space (blocks, trapezoids, sharkteeth"
+        " and the like): how much of the space between two frets each one "
+        "covers, 0.6 being 60 %."
+    ),
+    "inlay_block_edge_margin": (
+        "For those markers: how much fretboard is left between a marker and"
+        " the board's edges, in mm."
+    ),
+    "inlay_runes": (
+        "With rune markers: which runes, by name (fehu, uruz, thurisaz…), "
+        "one per marker from the nut, starting over when there are more "
+        "markers. Empty: the default set."
+    ),
+    "fret_height": (
+        "How high the frets stand above the fretboard, in mm. A locking "
+        "nut's shelf is set from the frets' tops."
+    ),
+    # Neck (the rest)
+    "neck_through_width": (
+        "On a neck-through guitar: how wide the neck's centre block running"
+        " through the body is, in mm. Empty: just wide enough for the "
+        "pickups, the bridge and their holes."
+    ),
+    "neck_through_heel_ramp": (
+        "On a neck-through guitar: over how long the neck's back slopes "
+        "down to the body's full thickness, ending where the body begins, "
+        "in mm."
+    ),
+    "neck_heel_end": (
+        "The shape of the neck's end: square across, as on a Telecaster, or"
+        " round, as on a Stratocaster. The neck pocket (and a fretboard "
+        "reaching the end) follows it. Not for a neck-through."
+    ),
+    "truss_rod_start": (
+        "Where the truss rod's channel starts, measured from the nut toward"
+        " the body, in mm."
+    ),
+    "truss_rod_stock_lengths": (
+        "The truss rod lengths you can buy, in mm: unless you set a length,"
+        " the longest one that fits the neck is used."
+    ),
+    "truss_rod_length": (
+        "The truss rod channel's length, in mm. Empty: the longest stock rod that fits."
+    ),
+    "truss_rod_width": "How wide the truss rod's channel is, in mm: your rod's width.",
+    "truss_rod_depth": "How deep the truss rod's channel is cut into the neck, in mm.",
+    "truss_rod_step_length": (
+        "At the adjusting end the channel steps wider and deeper for the "
+        "rod's anchor: that step's length, in mm."
+    ),
+    "truss_rod_step_width": "That step's width, in mm.",
+    "truss_rod_step_depth": "That step's depth, in mm.",
+    "truss_rod_pocket_length": (
+        "Past the step, a larger pocket for the adjusting nut: its length, in mm."
+    ),
+    "truss_rod_pocket_width": "That pocket's width, in mm.",
+    "truss_rod_pocket_depth": "That pocket's depth, in mm.",
+    "truss_rod_sleeve_length": (
+        "With the rod adjusted at the heel: how far before the neck's end "
+        "the channel stops, the adjuster's sleeve running on in a hole, in "
+        "mm."
+    ),
+    "truss_rod_sleeve_diameter": (
+        "The hole for the heel adjuster's sleeve: its diameter, in mm."
+    ),
+    "truss_rod_axis_depth": (
+        "How deep below the neck's top the rod's centre lies, in mm; the "
+        "heel adjuster's hole is centred on it."
+    ),
+    "truss_rod_nut_diameter": (
+        "The heel adjuster's round head, the nut you turn: its diameter, in"
+        " mm. The body gets a notch for it past the neck pocket."
+    ),
+    "truss_rod_nut_length": "That head's length along the neck, in mm.",
+    "truss_rod_access_length": (
+        "How long the opening is where you reach the adjuster: a notch in "
+        "the body past the neck pocket (adjusted at the heel) or a trough "
+        "in the headstock face (adjusted at the headstock), in mm. Empty: "
+        "sized for the adjuster."
+    ),
+    "truss_rod_cover": (
+        "Cuts a cover plate for the truss rod's trough in the headstock, "
+        "from thin sheet, with its screw holes."
+    ),
+    "truss_rod_cover_style": (
+        "The truss rod cover's shape: a Gibson bell, Ibanez / ESP style, a "
+        "PRS teardrop, a rounded rectangle, or your own, drawn in the "
+        "headstock editor."
+    ),
+    "truss_rod_cover_length": (
+        "The truss rod cover's length, in mm. Empty: the style's own."
+    ),
+    "truss_rod_cover_width": (
+        "The truss rod cover's width, in mm. Empty: the style's own."
+    ),
+    "truss_rod_cover_points": (
+        "Your own truss rod cover's corners, as drawn in the headstock "
+        "editor (in proportion to the cover's length and width)."
+    ),
+    "truss_rod_cover_screws": (
+        "Your own truss rod cover's screws, as drawn in the headstock editor."
+    ),
+    "truss_rod_key_hole_diameter": (
+        "With no cover, behind a slotted (Fender style) nut: how wide the "
+        "notch is that your truss rod key goes through, in mm."
+    ),
+    "truss_rod_low_profile_width": (
+        "A low-profile truss rod's straight channel: its width, in mm (1/4 in)."
+    ),
+    "truss_rod_low_profile_depth": "That channel's depth, in mm (3/8 in).",
+    "truss_rod_sleeve_bore": (
+        "Makes the hole for the heel adjuster's sleeve in the neck."
+    ),
+    "truss_rod_sleeve_routed": (
+        "Routs that hole from the top as a slot, which the fretboard then "
+        "covers (a router cannot drill along the neck); off, the hole is "
+        "left for you to drill by hand."
+    ),
+    "truss_rod_trough": (
+        "Routs the trough in the headstock face where you reach a headstock"
+        " adjuster, and cuts its cover."
+    ),
+    "neck_carbon_rods": (
+        "Adds two carbon fibre bars, glued into channels either side of the"
+        " truss rod under the fretboard, to stiffen the neck against "
+        "bending and twisting."
+    ),
+    "neck_carbon_rod_size": (
+        "The carbon bars' size, width by height: 3.2 by 6.35 mm, 4 by 4 mm,"
+        " 3.2 by 9.5 mm (it needs a thicker neck), or your own."
+    ),
+    "neck_carbon_rod_width": "Your own carbon bars' width, in mm.",
+    "neck_carbon_rod_depth": "Your own carbon bars' height, in mm.",
+    "neck_carbon_rod_start": (
+        "Where the carbon bars start, measured from the nut toward the body, in mm."
+    ),
+    "neck_carbon_rod_length": (
+        "How long the carbon bars are, in mm. Empty: to where the heel "
+        "flattens, clear of the neck screws."
+    ),
+    "neck_carbon_rod_offset": (
+        "How far out from the neck's centre line each carbon bar sits, in "
+        "mm. Empty: right beside the truss rod, a little wood between."
+    ),
+    "nut_shelf_length": (
+        "With the nut standing on a shelf: how long the flat seat it stands"
+        " on is, in front of the fretboard's end, in mm."
+    ),
+    "nut_thickness": (
+        "With a slotted (Fender style) nut: the slot's width, which is the "
+        "nut's thickness, in mm."
+    ),
+    "nut_slot_depth": "How deep that slot is cut below the fretboard's top, in mm.",
+    "nut_slot_lip": (
+        "Behind the slot the fretboard carries on at full height this far "
+        "before it slopes away, in mm."
+    ),
+    "nut_slot_taper": "Then it slopes down to the neck over this length, in mm.",
+    "locking_nut_screw_diameter": (
+        "A locking nut's two mounting screws: the diameter of their pilot "
+        "holes, drilled by hand through the nut, in mm."
+    ),
+    "locking_nut_screw_depth": "How deep those pilot holes go, in mm.",
+    # Headstock and tuners (the rest)
+    "headstock_bass_side": (
+        "Which side of the drawn headstock the bass strings' tuners are on."
+        " Change it to swap the headstock's shape and tuners side for side."
+    ),
+    "headstock_tip_points": (
+        "A drawn headstock's tip, shaped in the headstock editor. Empty: a "
+        "straight cut across."
+    ),
+    "headstock_face_drop": (
+        "How far the headstock's face is set down below the neck's top, in "
+        "mm. Empty: 4 mm on a flat headstock, so the strings still press "
+        "down on the nut; none on an angled one."
+    ),
+    "headstock_face_transition": (
+        "Behind the nut, over how long the top curves down onto the "
+        "headstock's face, in mm (0: a sharp step)."
+    ),
+    "headstock_engraving_text": (
+        "Text engraved into the headstock's face: a name, or a logo's "
+        "words. Empty: none."
+    ),
+    "headstock_engraving_font": (
+        "The lettering's font: a plain single-line sans, a script or a gothic."
+    ),
+    "headstock_engraving_height": "How tall the lettering's capitals are, in mm.",
+    "headstock_engraving_x": (
+        "Where along the headstock the lettering is centred, in mm from the"
+        " nut (negative: toward the tip). Empty: a little behind the nut."
+    ),
+    "headstock_engraving_y": (
+        "How far across the headstock the lettering is centred from the middle, in mm."
+    ),
+    "headstock_engraving_angle": (
+        "Which way the lettering runs, in degrees (90: across the "
+        "headstock, read with its tip pointing up)."
+    ),
+    "headstock_engraving_depth": (
+        "How deep the lettering and lines are engraved with the V-bit, in mm."
+    ),
+    "headstock_engraving_lines": (
+        "Lines engraved on the headstock's face, drawn in another program "
+        "and read back from the headstock editor's SVG template."
+    ),
+    "tuner_station_distances": (
+        "On a three-a-side headstock: how far from the nut each pair of "
+        "tuners sits, nearest first, in mm."
+    ),
+    "tuner_side_offsets": (
+        "On a three-a-side headstock: how far out from the centre line each"
+        " pair of tuners sits, nearest first, in mm."
+    ),
+    "tuner_inline_first_distance": (
+        "On a six-in-line (or 4+2) headstock: how far from the nut the "
+        "first tuner sits, in mm."
+    ),
+    "tuner_inline_spacing": "The spacing between tuners along the row, in mm.",
+    "tuner_edge_offset": (
+        "How far the headstock's edge stays out from the tuner holes, in mm."
+    ),
+    "tuner_post_diameter": (
+        "The tuners' string posts' diameter, in mm: each string runs past "
+        "its post's side, which places the holes in a row."
+    ),
+    "tuner_edge_clearance": (
+        "The least wood left between a tuner hole and the headstock's edge, in mm."
+    ),
+    "headstock_volute_length": (
+        "Behind the nut, over how long the neck's back eases into the headstock, in mm."
+    ),
+    "headstock_volute_depth": (
+        "Extra wood left on the back where the neck meets the headstock, in"
+        " mm (0: none). For a proper volute, turn on Headstock pointed "
+        "volute."
+    ),
+    "headstock_root_side_extension": (
+        "How far behind the nut the neck's sides keep their rounded shape "
+        "before they flatten into the headstock, in mm."
+    ),
+    # Body (the rest)
+    "body_neck_pocket_length": (
+        "How long the neck pocket is, from the neck's end toward the nut, "
+        "in mm. It always opens through the body's front edge."
+    ),
+    "body_neck_pocket_clearance": (
+        "Extra room each side of the neck in its pocket, in mm (0.1 to 0.2 "
+        "for a snug fit)."
+    ),
+    "body_bridge_pickup_clearance": (
+        "The least wood kept between the bridge pickup's route and the "
+        "bridge's routes and holes, in mm; the pickup moves forward if it "
+        "must."
+    ),
+    "body_neck_pickup": "With your own pickup layout: the neck pickup's type, or none.",
+    "body_middle_pickup": (
+        "With your own pickup layout: the middle pickup's type, or none."
+    ),
+    "body_bridge_pickup": (
+        "With your own pickup layout: the bridge pickup's type, or none."
+    ),
+    "body_middle_pickup_offset": (
+        "Where the middle pickup's centre sits past the neck's end, in mm. "
+        "Empty: halfway between the neck and bridge pickups."
+    ),
+    "body_bridge_single_coil_angle": (
+        "How much a bridge single coil slants, its treble end toward the "
+        "bridge, in degrees (10 on a Stratocaster)."
+    ),
+    "body_pickup_screw_spacing": (
+        "How far apart each pickup's two height screws are, in mm: their "
+        "tips get holes below the route."
+    ),
+    "body_widening": (
+        "Widens the body along its middle for a wider neck, in mm: each "
+        "half moves out by half of it. Empty: 12 mm for every string past "
+        "six."
+    ),
+    "body_top_binding_depth": (
+        "A binding channel round the top's edge: its depth, in mm."
+    ),
+    "body_back_binding_width": (
+        "A binding channel round the back's edge: its width, in mm (0: none)."
+    ),
+    "body_back_binding_depth": "That binding channel's depth, in mm.",
+    "body_arm_contour_width": (
+        "The arm contour on the top: how far in from the edge it reaches, in mm."
+    ),
+    "body_arm_contour_length": "How long the arm contour runs along the edge, in mm.",
+    "body_arm_contour_position": (
+        "Where the arm contour is deepest, along the body from the neck's "
+        "end, in mm. Empty: where the bout is widest."
+    ),
+    "body_belly_cut_width": (
+        "The belly cut on the back: how far in from the edge it reaches, in mm."
+    ),
+    "body_belly_cut_length": "How long the belly cut runs along the edge, in mm.",
+    "body_belly_cut_position": (
+        "Where the belly cut is deepest, along the body from the neck's "
+        "end, in mm. Empty: where the bout is widest."
+    ),
+    "body_leg_contour_width": (
+        "The leg contour on the back of the treble side's waist, where the "
+        "guitar rests on your leg: how far in it reaches, in mm."
+    ),
+    "body_leg_contour_length": "How long the leg contour runs along the edge, in mm.",
+    "body_leg_contour_position": (
+        "Where the leg contour is deepest, along the body from the neck's "
+        "end, in mm. Empty: where the waist is narrowest."
+    ),
+    "body_epoxy_tray_depth": (
+        "Routs the whole top this deep for an epoxy pour, leaving a wooden "
+        "rim at the edge and walls round every opening, in mm (0: none)."
+    ),
+    "body_epoxy_tray_rim": "How wide the epoxy tray's wooden rim and walls are, in mm.",
+    "body_rear_cavity_top_wall": (
+        "How thick the top is left over the electronics cavities routed "
+        "from the back, in mm: the pots and the switch go through it."
+    ),
+    "body_cover_recess_depth": (
+        "How deep the ledges for the back's cover plates are, in mm: the "
+        "plates' thickness."
+    ),
+    "body_pickguard_thickness": "The pickguard sheet's thickness, in mm.",
+    "body_pickguard_margin": (
+        "How far in from the body's edge an automatic pickguard stays, in mm."
+    ),
+    "body_neck_frame_points": (
+        "The neck pickup's frame, as drawn in the body editor. Empty: the "
+        "frame style's own shape."
+    ),
+    "body_middle_frame_points": (
+        "The middle pickup's frame, as drawn in the body editor. Empty: the"
+        " frame style's own shape."
+    ),
+    "body_bridge_frame_points": (
+        "The bridge pickup's frame, as drawn in the body editor. Empty: the"
+        " frame style's own shape."
+    ),
+    "body_carve_rim": "A carved top's flat rim round the edge: its width, in mm.",
+    "body_carve_margin": (
+        "How far the carved top's flat middle reaches round the pickups, "
+        "the bridge and the neck pocket, in mm."
+    ),
+    "body_top_step_insets": (
+        "A stepped top's bands: how far in from the edge each step is, in mm."
+    ),
+    "body_top_step_height": (
+        "How much lower each band of a stepped top is than the one inside it, in mm."
+    ),
+    "body_engraving_depth": (
+        "How deep the pattern on the top is engraved with the V-bit, in mm."
+    ),
+    "body_engraving_spacing": (
+        "The engraved pattern's scale: about how far apart its repeats are, in mm."
+    ),
+    "body_engraving_margin": (
+        "How far in from the body's edge the engraved pattern stays, in mm."
+    ),
+    "body_engraving_clearance": (
+        "How far the engraved pattern stays from the cavities, holes, "
+        "bridge and pickguard, in mm."
+    ),
+    "body_engraving_lines": (
+        "The drawn pattern's lines, drawn in another program and read back "
+        "with the body editor's Import SVG."
+    ),
+    "body_battery_cavity_length": (
+        "The 9 V battery box's length, in mm (a battery is 48.5 mm long; "
+        "the rest is room for its clip and wires)."
+    ),
+    "body_battery_cavity_depth": (
+        "How deep the battery box is routed from the back, in mm (a battery"
+        " is 17.5 mm thick)."
+    ),
+    "body_battery_cover_margin": (
+        "How much larger than the battery box its cover plate is all round, in mm."
+    ),
+    "body_strap_guide": (
+        "Adds a flame-shaped strap guide on the back: the strap runs under "
+        "its bar, so the guitar hangs leaning toward you, as on the Design "
+        "by Jone guitar."
+    ),
+    "body_strap_width": "Your strap's width, in mm: the guide's channel is 4 mm wider.",
+    "body_strap_guide_gap": (
+        "The room under the strap guide's bar for the strap, its thickness "
+        "and a little play, in mm: the spacers' sheet thickness."
+    ),
+    "body_strap_guide_thickness": "The strap guide plate's sheet thickness, in mm.",
+    "body_strap_guide_screw_diameter": (
+        "The strap guide screws' pilot holes: their diameter, in mm."
+    ),
+    "body_strap_guide_screw_depth": "How deep those pilot holes go, in mm.",
+    "body_switch_shaft_hole_diameter": (
+        "The selector switch's hole through the top: its diameter, in mm. "
+        "Empty: the switch's own size."
+    ),
+    "body_jack_depth": (
+        "How long the output jack's hole is, in mm. Empty: through to the "
+        "control cavity it aims at (55 mm when it aims at none)."
+    ),
+    "body_neck_bolt_spacing_x": (
+        "The neck bolts' spacing along the neck, in mm (a bolt-on neck)."
+    ),
+    "body_neck_bolt_center_offset": (
+        "How far ahead of the neck's end the bolts' pattern is centred, in "
+        "mm. Empty: the rear bolts as close to the pocket's end as they can"
+        " be."
+    ),
+    "body_neck_bolt_end_wall": (
+        "The least wood between the rear bolts' holes and the neck's end, in mm."
+    ),
+    "body_neck_bolt_edge_wall": (
+        "With the bolts moved outward: the least wood beside each bolt hole"
+        " to the neck's edge, in mm."
+    ),
+    "body_neck_bolts_outward": (
+        "Moves each neck bolt out across the neck, as far from the truss "
+        "rod as the wood allows, for a firmer joint."
+    ),
+    "body_neck_plate": (
+        "What the neck bolts pull against on the back: a ferrule each, a "
+        "Fender style four-bolt plate, or that plate with one corner "
+        "clipped, as on a contoured heel."
+    ),
+    "body_neck_plate_length": (
+        "The neck plate's length along the neck, in mm (Fender's: 63.5)."
+    ),
+    "body_neck_plate_width": (
+        "The neck plate's width across the neck, in mm (Fender's: 50.8)."
+    ),
+    "body_neck_plate_hole_inset": (
+        "How far in from the neck plate's edges its holes are, in mm."
+    ),
+    "body_neck_plate_clip": (
+        "With the clipped plate: how much of each edge its corner cut takes, in mm."
+    ),
+    # Other (the rest)
+    "set_neck_glue_gap": (
+        "With a glued (set) neck: the gap left each side round the heel in "
+        "its pocket for the glue, in mm."
+    ),
+    "headless": (
+        "A headless neck: no headstock and no tuners; the strings are tuned"
+        " at the bridge and anchored at a short headpiece behind the nut."
+    ),
+    "headless_length": "How long a headless neck's headpiece is behind the nut, in mm.",
+    "zero_fret_gap": (
+        "With a zero fret: how far behind it the nut, only a string guide "
+        "then, sits, in mm."
     ),
 }
 """Each field's meaning, by name (``webapp._field_help`` prefers these)."""
