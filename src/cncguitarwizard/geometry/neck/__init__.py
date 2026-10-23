@@ -8,7 +8,7 @@ from .back_transition import (
     default_transition_lines,
 )
 from .centerline import Centerline
-from .drawn_lines import drawn_back_line
+from .drawn_lines import drawn_back_line, drawn_whole, mirrored_line
 from .headstock import (
     HeadstockAngleReference,
     HeadstockPlan,
@@ -60,5 +60,7 @@ __all__ = [
     "default_transition_lines",
     "default_volute_lines",
     "drawn_back_line",
+    "drawn_whole",
+    "mirrored_line",
     "side_share",
 ]

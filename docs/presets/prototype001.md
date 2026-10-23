@@ -173,7 +173,10 @@ Building the preset creates and cross-validates:
   (`headstock_volute_headstock_points`) and in the neck's
   (`headstock_volute_neck_points`). Each holds half its line seen from
   behind, `[behind the nut, across]` from the centre line out, mirrored, a
-  smooth curve through them; empty, where drawing starts
+  smooth curve through them — or, its two sides differing, the whole line
+  from the -Y side across to the +Y side (a point across below 0:
+  `drawn_whole`), mirrored with the rest on a left-handed neck
+  (`mirrored_line`); empty, where drawing starts
   (`default_volute_lines`: the crest bulging 7 mm onto the neck down the
   middle and meeting the neck's edges at the nut, its ends 30 mm into the
   headstock across its shoulders and 13 to 22 mm onto the neck). It is
@@ -196,7 +199,9 @@ Building the preset creates and cross-validates:
   heel's rounding (`heel_root_flat_points`), and where the neck's own
   profile does (`heel_root_neck_points`), each half its line seen from
   behind, `(ahead of the block, across)` from the centre line out,
-  mirrored (`drawn_back_line`). The heel is never proud of the block or
+  mirrored (`drawn_back_line`), or, its sides differing, the whole line as
+  a volute's may be (the heel carved further back on the treble side for
+  the top frets, say). The heel is never proud of the block or
   the neck, so two lines say it all: between them the back turns from the
   neck's rounded profile into the block's square one and deepens to the
   block's depth by one share, 0 at the neck line and 1 at the flat line,

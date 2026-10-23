@@ -778,7 +778,16 @@ first point on the centre line; the rounded arrow (`"arrow"`) dashed, to
 see where it is. Dragging a handle draws that line (its own setting, from
 where drawing starts while none is drawn); a click on a line adds a
 point, a right-click or Alt-click removes one, a double-click makes it a
-sharp bend. Under the drawing the volute is shown as it is lofted, seen from
+sharp bend. The mirrored side's points are paler handles: dragging one
+parts the line's two sides, the line held whole from then on, from the
+-Y side across to the +Y side (`drawn_whole`), each point dragged on its
+own, kept between its neighbours across, its ends one on each side. A
+half line's middle point moves across as well as along: dragged off the
+centre line it parts the sides too, the line dragged whole, and let go
+on the centre line (within half a millimetre) it stays half;
+*Sides alike* gives a whole line's two sides its treble side's shape
+again (`backLines.sidesAlike`). The heel editor's lines (on *Design ›
+Neck*) work the same way, its two sides labelled bass and treble. Under the drawing the volute is shown as it is lofted, seen from
 behind and above with the headstock at the top, shaded
 (`webapp.back_view`: the loft's rows round the nut,
 `FreeCADScriptExporter.neck_loft_rows`, drawn by

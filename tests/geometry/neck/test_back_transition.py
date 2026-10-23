@@ -8,6 +8,8 @@ from cncguitarwizard.geometry.neck import (
     BackTransition,
     default_transition_lines,
     drawn_back_line,
+    drawn_whole,
+    mirrored_line,
 )
 from cncguitarwizard.geometry.primitives import Point2D
 
@@ -30,6 +32,19 @@ def test_drawn_lines_are_measured_from_their_origin_and_mirrored() -> None:
     assert Point2D(400.0, 0.0) in line
     with pytest.raises(NeckGeometryError, match="two points"):
         drawn_back_line(((10.0, 0.0),))
+
+
+def test_a_line_whose_sides_differ_is_drawn_whole() -> None:
+    # A point across on the -Y side: the whole line, as drawn, no mirror.
+    points = ((20.0, -30.0), (10.0, 0.0), (0.0, 30.0))
+    line = drawn_back_line(points, 410.0)
+
+    assert drawn_whole(points) and not drawn_whole(((10.0, 0.0), (0.0, 30.0)))
+    assert line[0] == Point2D(390.0, -30.0) and line[-1] == Point2D(410.0, 30.0)
+    # A left-handed neck has its sides swapped, still -Y first; a half line
+    # mirrors itself.
+    assert mirrored_line(points) == ((0.0, -30.0), (10.0, 0.0), (20.0, 30.0))
+    assert mirrored_line(((10.0, 0.0), (0.0, 30.0))) == ((10.0, 0.0), (0.0, 30.0))
 
 
 def test_the_back_turns_from_the_neck_line_to_the_flat_one() -> None:

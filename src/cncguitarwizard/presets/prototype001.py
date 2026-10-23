@@ -95,6 +95,7 @@ from ..geometry.neck import (
     default_transition_lines,
     default_volute_lines,
     drawn_back_line,
+    mirrored_line,
 )
 from ..geometry.neck.nut_jig import (
     NutSlotJig,
@@ -1753,7 +1754,10 @@ class Prototype001Parameters:
     # it on a logarithmic curve to each, level there. Each holds half its
     # line seen from behind, (behind the nut, across) from the centre line
     # out to one side, mirrored, a smooth curve through them (a point
-    # marked "corner" a sharp bend); empty, where drawing one starts
+    # marked "corner" a sharp bend); or, its sides differing, the whole
+    # line from the -Y side across to the +Y side (a point across below 0,
+    # mirrored with the rest on a left-handed neck); empty, where drawing
+    # one starts
     # (default_volute_lines: the crest bulging 7 mm onto the neck down the
     # middle, the ends 30 mm into the headstock and 13 to 22 mm onto the
     # neck).
@@ -1772,8 +1776,9 @@ class Prototype001Parameters:
     # the back while it is on). The headstock's back is its back plane,
     # level on a flat headstock, falling away behind the nut on an angled
     # one. Each holds half its line seen from behind, (behind the nut,
-    # across) from the centre line out to one side, mirrored, as a drawn
-    # volute's; empty, where drawing starts (DEFAULT_ROOT_LINES: where the
+    # across) from the centre line out to one side, mirrored, or the whole
+    # line, its sides differing, as a drawn volute's; empty, where drawing
+    # starts (DEFAULT_ROOT_LINES: where the
     # smooth root runs, 20 mm behind the nut to 14 mm onto the neck,
     # straight across). "smooth" (the default) is the root the nut shelf
     # and headstock_volute_length shape; drawing a line in the editor
@@ -1802,7 +1807,9 @@ class Prototype001Parameters:
     # where the block's flat begins (heel_root_flat_points: the heel's
     # rounding) and where the neck's own profile does
     # (heel_root_neck_points), each half its line seen from behind, (ahead
-    # of the heel's block, across) from the centre line out, mirrored;
+    # of the heel's block, across) from the centre line out, mirrored, or
+    # the whole line, its sides differing (as a drawn volute's: the heel
+    # carved further back on the treble side for the top frets, say);
     # empty, where drawing starts (DEFAULT_HEEL_LINES, much as the smooth
     # heel: the block flat from its start straight across, the neck's
     # profile 45 mm ahead of it at the sides and 60 mm down the middle).
@@ -7689,10 +7696,15 @@ class Prototype001Parameters:
             self.headstock_pointed_volute_length,
             half_width,
             *(
-                drawn_back_line(lines[name]) if lines else ()
+                drawn_back_line(self._built_line(lines[name])) if lines else ()
                 for name in ("crest", "headstock", "neck")
             ),
         )
+
+    def _built_line(self, points: Sequence[DrawnPoint]) -> tuple[DrawnPoint, ...]:
+        """Return a line drawn across the back as built: its sides
+        swapped on a left-handed neck (``mirrored_line``)."""
+        return mirrored_line(points) if self.left_handed else tuple(points)
 
     def heel_drawn(
         self, outline: NeckOutline, flat_start_offset: float, depth: float
@@ -7731,8 +7743,12 @@ class Prototype001Parameters:
                 )
         low, high = block - reach + DRAWN_JOINT_SWING, block
         return BackTransition(
-            _kept_within(drawn_back_line(lines["flat"], block), low, high),
-            _kept_within(drawn_back_line(lines["neck"], block), low, high),
+            _kept_within(
+                drawn_back_line(self._built_line(lines["flat"]), block), low, high
+            ),
+            _kept_within(
+                drawn_back_line(self._built_line(lines["neck"]), block), low, high
+            ),
             depth,
             1.0,
         )
@@ -7801,8 +7817,8 @@ class Prototype001Parameters:
                 )
         low, high = -reach, first - DRAWN_JOINT_SWING
         return BackTransition(
-            _kept_within(drawn_back_line(lines["flat"]), low, high),
-            _kept_within(drawn_back_line(lines["neck"]), low, high),
+            _kept_within(drawn_back_line(self._built_line(lines["flat"])), low, high),
+            _kept_within(drawn_back_line(self._built_line(lines["neck"])), low, high),
             headstock.thickness / math.cos(radians) - headstock.face_z(0.0),
             -1.0,
             -math.tan(radians),

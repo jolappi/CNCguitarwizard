@@ -4867,11 +4867,15 @@ function lineXAt(line, y) {
 // Lines drawn across the neck's back, seen from behind: a drawn volute's
 // (headstock_volute_style), the headstock's root with the volute off
 // (headstock_root_style) and the heel's (heel_root_style). Each editor's
-// layout holds a kind's {origin, lines} (a joint's with its style and
-// style_field too), each line {field, points, drawn, line}: half its
-// points as handles, [along from origin toward the headstock, across]
-// from the centre line out (the other half mirrors them, the first on the
-// centre line), and the whole line in the model frame. Dragging a handle
+// layout holds a kind's {origin, lines, treble} (a joint's with its style
+// and style_field too), each line {field, points, whole, drawn, line}:
+// its points as handles, [along from origin toward the headstock,
+// across], half of it from the centre line out (the other half mirrors
+// them, the first on the centre line, the mirrored ones paler handles) or,
+// its sides differing (whole), all of it from the -Y side to the +Y side;
+// and the whole line in the model frame. Dragging a mirrored handle parts
+// the two sides, the line drawn whole from then on; Sides alike puts the
+// treble side's shape on both again (sidesAlike). Dragging a handle
 // draws that line (its setting, from where drawing starts while none is);
 // a click on a line adds a point, a right-click or Alt-click removes one,
 // a double-click makes it a sharp bend. A point stays inside the kind's
@@ -4896,13 +4900,14 @@ const backLines = {
         if (event.detail <= 1) backLines.addPoint.call(this, event, kind, name);
       });
       this.element("title", {}, hit).textContent = `${titles[name]} — click the line to add a point`;
+      const whole = line.whole;
       line.points.forEach((point, index) => {
         const handle = this.element("circle", {
           class: isCorner(point) ? "volute-handle corner" : "volute-handle",
           cx: set.origin - point[0], cy: -point[1], r: 1.4,
         }, group);
-        this.element("title", {}, handle).textContent = index === 0
-          ? `${titles[name]}: its middle, on the centre line — drag it along the neck`
+        this.element("title", {}, handle).textContent = index === 0 && !whole
+          ? `${titles[name]}: its middle, on the centre line — drag it along the neck, or across to move it off the centre line (the two sides then differ)`
           : `${titles[name]} — drag the point to draw the line, double-click for a sharp bend (or round again), Alt/Option-click or right-click to remove it`;
         handle.addEventListener("pointerdown", (event) => {
           if (event.altKey) {
@@ -4922,17 +4927,61 @@ const backLines = {
           backLines.removePoint.call(this, kind, name, index);
         });
       });
+      if (whole) continue;
+      // The mirrored side's points, paler: dragging one parts the sides.
+      const both = backLines.bothSides(line.points);
+      both.forEach((point, at) => {
+        if (point[1] >= 0) return;
+        const ghost = this.element("circle", {
+          class: "volute-handle mirror", cx: set.origin - point[0], cy: -point[1], r: 1.4,
+        }, group);
+        this.element("title", {}, ghost).textContent =
+          `${titles[name]} — this side mirrors the other: drag the point to shape this side on its own`;
+        ghost.addEventListener("pointerdown", (event) => {
+          backLines.startDrag.call(this, event, kind, name, at, ghost, both);
+        });
+      });
+    }
+  },
+
+  // Whether a line's points are all of it, its sides differing (a point
+  // across on the -Y side), rather than half, mirrored.
+  isWhole(points) {
+    return points.some((point) => point[1] < 0);
+  },
+
+  // A half line's points and their mirror: all of it, the -Y side first,
+  // as a whole line holds them (Python's drawn_back_line).
+  bothSides(points) {
+    if (backLines.isWhole(points)) return points.map((p) => [...p]);
+    const mirror = [...points].reverse()
+      .filter((point) => Math.abs(point[1]) > 1e-9)
+      .map((point) => movedPoint(point, [point[0], -point[1]]));
+    return [...mirror, ...points.map((p) => [...p])];
+  },
+
+  // Sides alike again: each line drawn whole (its sides differing) takes
+  // its treble side's shape on both sides, half of it kept from the
+  // centre line out.
+  sidesAlike(kind) {
+    const set = this.layout[kind];
+    for (const [name, line] of Object.entries(set.lines)) {
+      if (!line.whole) continue;
+      const middle = set.origin - lineXAt(line.line, 0);
+      const side = line.points
+        .filter((point) => point[1] * set.treble > 1e-9)
+        .map((point) => movedPoint(point, [point[0], Math.abs(point[1])]))
+        .sort((a, b) => a[1] - b[1]);
+      backLines.commit.call(this, kind, name, [[middle, 0], ...side]);
     }
   },
 
   // A line's whole length in the model frame from half its points and
   // their mirror, as Python's drawn_back_line.
   whole(points, origin) {
-    const model = points.map((point) => movedPoint(point, [origin - point[0], point[1]]));
-    const mirror = [...model].reverse()
-      .filter((point) => Math.abs(point[1]) > 1e-9)
-      .map((point) => movedPoint(point, [point[0], -point[1]]));
-    return openCatmullRom([...mirror, ...model], 8);
+    return openCatmullRom(
+      backLines.bothSides(points).map((point) => movedPoint(point, [origin - point[0], point[1]])), 8,
+    );
   },
 
   // Where along the neck a point of a line may go, at across: [least,
@@ -4958,15 +5007,38 @@ const backLines = {
     return [low, high];
   },
 
-  // Drag a point of a line; its middle slides along the centre line.
-  startDrag(event, kind, name, index, handle) {
+  // Drag a point of a line. A whole line's (``wholePoints``: a mirrored
+  // point's line made whole) stays between its neighbours across, its ends
+  // each on its own side. A half line's middle moves along the neck and
+  // across too: dragged as the whole line, its sides parting off the
+  // centre line, half again when let go on it.
+  startDrag(event, kind, name, index, handle, wholePoints = null) {
     event.preventDefault();
     event.stopPropagation();
     // A drag's line shown until the drawing is redrawn: none left over.
     for (const old of this.svg.querySelectorAll(".cover-preview")) old.remove();
     const origin = this.layout[kind].origin;
-    const points = this.layout[kind].lines[name].points.map((p) => [...p]);
-    const onCentre = index === 0;
+    let points = wholePoints || this.layout[kind].lines[name].points.map((p) => [...p]);
+    let middle = -1;
+    if (index === 0 && !backLines.isWhole(points)) {
+      const both = backLines.bothSides(points);
+      middle = both.length - points.length;
+      [points, index] = [both, middle];
+    }
+    const whole = backLines.isWhole(points);
+    const across = (y) => {
+      if (!whole) return Math.max(0, y);
+      const last = points.length - 1;
+      const low = index > 0 ? points[index - 1][1] + 0.5 : -Infinity;
+      const high = index < last ? points[index + 1][1] - 0.5 : Infinity;
+      const kept = Math.min(high, Math.max(low, y));
+      // Its ends stay one on each side, so it stays whole.
+      if (index === 0) return Math.min(kept, -0.5);
+      if (index === last) return Math.max(kept, 0.5);
+      // A half line's middle comes back onto the centre line near it.
+      if (index === middle && Math.abs(kept) < 0.5) return 0;
+      return kept;
+    };
     const start = this.toModel(event);
     const [x0, y0] = [origin - points[index][0], points[index][1]];
     let moved = false;
@@ -4975,7 +5047,7 @@ const backLines = {
       moved ||= stirred(event, moveEvent);
       if (!moved) return;
       const [x, y] = this.toModel(moveEvent);
-      const ny = onCentre ? 0 : Math.max(0, y0 + y - start[1]);
+      const ny = across(y0 + y - start[1]);
       const [low, high] = backLines.allowed.call(this, kind, name, ny);
       const nx = Math.min(high, Math.max(low, x0 + x - start[0]));
       points[index] = movedPoint(points[index], [origin - nx, ny]);
@@ -4987,8 +5059,13 @@ const backLines = {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", end);
       window.removeEventListener("pointercancel", end);
-      if (moved) backLines.commit.call(this, kind, name, points);
-      else preview.remove();
+      if (!moved) {
+        preview.remove();
+        return;
+      }
+      // A half line's middle let go on the centre line: still half.
+      const half = middle >= 0 && points[middle][1] === 0;
+      backLines.commit.call(this, kind, name, half ? points.slice(middle) : points);
     };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", end);
@@ -5001,7 +5078,8 @@ const backLines = {
     const origin = this.layout[kind].origin;
     const points = this.layout[kind].lines[name].points.map((p) => [...p]);
     const [x, y] = this.toModel(event);
-    const across = Math.abs(y);
+    // On a half line, on the drawn half whichever side was clicked.
+    const across = backLines.isWhole(points) ? y : Math.abs(y);
     let best = points.length - 1, bestDistance = Infinity;
     for (let i = 0; i + 1 < points.length; i++) {
       const [ax, ay] = [origin - points[i][0], points[i][1]];
@@ -5015,10 +5093,12 @@ const backLines = {
     backLines.commit.call(this, kind, name, points);
   },
 
-  // A line's middle stays, and two points at least.
+  // A half line's middle stays, a whole line's ends, and two points at
+  // least.
   removePoint(kind, name, index) {
     const points = this.layout[kind].lines[name].points.map((p) => [...p]);
-    if (index === 0 || points.length <= 2) return;
+    const ends = backLines.isWhole(points) ? [0, points.length - 1] : [0];
+    if (ends.includes(index) || points.length <= 2) return;
     points.splice(index, 1);
     backLines.commit.call(this, kind, name, points);
   },
@@ -5372,6 +5452,11 @@ const headstockEditor = {
       }, ["flat"]);
     }
     document.getElementById("headstock-editor-reset-root").hidden = layout.root?.style !== "drawn";
+    // Sides alike: the volute's lines, or the root's with the volute off.
+    const backKind = layout.volute?.lines ? "volute" : layout.root ? "root" : null;
+    this.backKind = backKind;
+    document.getElementById("headstock-editor-alike").hidden =
+      !backKind || !Object.values(layout[backKind].lines).some((line) => line.whole);
     this.edgeHandles = { bass: [], treble: [] };
     for (const side of ["bass", "treble"]) {
       const sign = this.sign(side);
@@ -6213,16 +6298,25 @@ const heelEditor = {
       this.element("line", { class: "heel-mark", x1: x, y1: -maxY, x2: x, y2: -minY });
       this.element("text", { class: "heel-label", x: x + 1, y: -maxY + 4 }).textContent = label;
     }
+    // Which side is which: the two may be drawn differently.
+    const treble = layout.heel.treble;
+    for (const [sign, label] of [[treble, "treble side"], [-treble, "bass side"]]) {
+      const y = sign > 0 ? maxY - 3 : minY + 1;
+      this.element("text", { class: "heel-label", x: minX + 2, y: -y }).textContent = label;
+    }
     backLines.draw.call(this, "heel", {
       flat: "Where the heel's flat block begins: the heel's rounding, its shape",
       neck: "Where the neck's own profile begins: how far the rounding runs onto the neck",
     }, ["flat"]);
+    document.getElementById("heel-editor-alike").hidden =
+      !Object.values(layout.heel.lines).some((line) => line.whole);
   },
 };
 window.addEventListener("resize", () => {
   if (heelEditor.stale) heelEditor.scheduleRefresh();
 });
 document.getElementById("heel-editor-reset").addEventListener("click", () => heelEditor.reset());
+document.getElementById("heel-editor-alike").addEventListener("click", () => backLines.sidesAlike.call(heelEditor, "heel"));
 
 // A drawn joint (the heel's, the headstock's root) back to smooth, its
 // lines where drawing them starts.
@@ -6603,6 +6697,9 @@ form.addEventListener("change", (event) => {
 });
 
 document.getElementById("headstock-editor-reset").addEventListener("click", () => headstockEditor.reset());
+document.getElementById("headstock-editor-alike").addEventListener("click", () => {
+  if (headstockEditor.backKind) backLines.sidesAlike.call(headstockEditor, headstockEditor.backKind);
+});
 document.getElementById("headstock-editor-reset-root").addEventListener("click", async () => {
   if (!(await askConfirm("Put the neck's joint with the headstock back to the smooth one? (Undo takes it back.)"))) return;
   resetJoint("headstock_root_style", ["headstock_root_flat_points", "headstock_root_neck_points"]);

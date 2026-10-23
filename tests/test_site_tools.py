@@ -302,8 +302,24 @@ def test_the_volute_is_drawn_in_the_headstock_editor() -> None:
     # Its three lines (crest and both ends), each into its own setting.
     assert 'headstock: "Where the volute ends in the headstock\'s back"' in script
     assert "setControlValue(setting(set.lines[name].field)," in script
-    # Its ends stay on the centre line; the other half mirrors the drawn.
-    assert "const ny = onCentre ? 0 : Math.max(0, y0 + y - start[1]);" in script
+    # A half line's other half mirrors the drawn; its mirrored points are
+    # paler handles that part the two sides, the line drawn whole from then
+    # on (its points kept in order across, its ends one on each side), and
+    # Sides alike joins them. Its middle moves across too, the sides
+    # parting off the centre line, half again let go on it.
+    assert "if (!whole) return Math.max(0, y);" in script
+    assert "if (index === middle && Math.abs(kept) < 0.5) return 0;" in script
+    assert "half ? points.slice(middle) : points" in script
+    assert "const ny = across(y0 + y - start[1]);" in script
+    assert 'class: "volute-handle mirror"' in script
+    assert (
+        "backLines.startDrag.call(this, event, kind, name, at, ghost, both);" in script
+    )
+    assert "if (index === 0) return Math.min(kept, -0.5);" in script
+    assert 'backLines.sidesAlike.call(heelEditor, "heel")' in script
+    assert (
+        "backLines.sidesAlike.call(headstockEditor, headstockEditor.backKind)" in script
+    )
     editor = script[script.index('"headstock-editor-options": [') :]
     assert '"headstock_pointed_volute"' in editor[: editor.index("],")]
     # Seen from behind and above as it is drawn, a moment after the editor.

@@ -71,7 +71,12 @@ from .geometry.fretboard.inlay_layout import (
 )
 from .geometry.fretboard.runes import DEFAULT_RUNES, RUNES
 from .geometry.lettering import text_lines
-from .geometry.neck import LOCKING_NUT_SPECS, TunerLayout, drawn_back_line
+from .geometry.neck import (
+    LOCKING_NUT_SPECS,
+    TunerLayout,
+    drawn_back_line,
+    drawn_whole,
+)
 from .geometry.primitives import (
     CORNER,
     ROUND,
@@ -1684,16 +1689,19 @@ def _line_drawing(
 ) -> dict[str, dict[str, Any]]:
     """Return lines drawn across the neck's back, for an editor to draw.
 
-    Each ``{"field", "points", "drawn", "line"}``: the setting it is kept
-    in; the points it holds, half the line seen from behind, ``[along,
-    across]`` from the centre line out (along from its origin toward the
-    headstock), a ``"corner"`` mark kept, where drawing starts while none
-    are drawn; whether they are drawn; the whole line in the model frame.
+    Each ``{"field", "points", "whole", "drawn", "line"}``: the setting it
+    is kept in; the points it holds, ``[along, across]`` seen from behind
+    (along from its origin toward the headstock), half the line from the
+    centre line out or, its sides differing, the whole of it from the -Y
+    side to the +Y side (``"whole"``, see ``drawn_whole``), a ``"corner"``
+    mark kept, where drawing starts while none are drawn; whether they are
+    drawn; the whole line in the model frame.
     """
     return {
         name: {
             "field": field,
             "points": [list(point) for point in halves[name]],
+            "whole": drawn_whole(halves[name]),
             "drawn": bool(getattr(parameters, field)),
             "line": [[round(p.x, 2), round(p.y, 2)] for p in whole[name]],
         }
@@ -1738,6 +1746,7 @@ def _volute_drawing(parameters: Prototype001Parameters) -> dict[str, Any] | None
             "limits": list(_root_limits(parameters)),
             "order": ["neck", "crest", "headstock"],
             "toward": -1.0,
+            "treble": -parameters.bass_sign,
         }
     # The arrow's edge: down each side, where it adds a tenth of a mm.
     edge: list[list[float]] = []
@@ -1766,14 +1775,15 @@ def _transition_drawing(
     """Return a joint drawn as two lines for an editor to draw.
 
     ``{"origin", "style", "style_field", "lines", "limits", "order",
-    "toward"}``: where its lines' points are measured from (see
+    "toward", "treble"}``: where its lines' points are measured from (see
     ``_line_drawing``), its style setting's value ("smooth" until a line
     is drawn, which makes it "drawn") and name, its two lines, ``{"flat",
     "neck"}``, and where along the neck their points may go (``limits``,
     the model's ``x``), the lines in order from the neck's side to the
     block's, which ``toward`` is along the neck (1 the body, -1 the
     headstock), so an editor keeps each point clear of the line either
-    side of it.
+    side of it; and which side the treble is (1 the +Y side, -1 the -Y),
+    the side a line's two sides are made alike as.
     """
     whole = {name: drawn_back_line(points, origin) for name, points in halves.items()}
     return {
@@ -1784,6 +1794,7 @@ def _transition_drawing(
         "limits": [round(limits[0], 2), round(limits[1], 2)],
         "order": ["neck", "flat"],
         "toward": toward,
+        "treble": -parameters.bass_sign,
     }
 
 

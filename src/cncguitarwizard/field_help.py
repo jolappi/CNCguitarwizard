@@ -272,8 +272,10 @@ FIELD_HELP: dict[str, str] = {
     "heel_root_flat_points": (
         "A drawn heel: where its flat block begins (its rounding's shape), "
         "half of it seen from behind, [mm ahead of the block, mm across] "
-        "from the centre line out to one side, mirrored. Empty: straight "
-        "across at the block."
+        "from the centre line out to one side, mirrored; or, the sides "
+        "differing (carved further on the treble side, say), the whole line "
+        "from one side across to the other. Empty: straight across at the "
+        "block."
     ),
     "heel_root_neck_points": (
         "A drawn heel: where the neck's own profile begins, drawn as the flat "
@@ -361,8 +363,9 @@ FIELD_HELP: dict[str, str] = {
     "headstock_volute_points": (
         "A drawn volute's crest, its highest line, as drawn in the headstock "
         "editor: half of it seen from behind, [mm behind the nut, mm across] "
-        "from the centre line out to one side, mirrored. Empty: bulging 7 mm "
-        "onto the neck down the middle."
+        "from the centre line out to one side, mirrored; or, the sides "
+        "differing, the whole line from one side across to the other. Empty: "
+        "bulging 7 mm onto the neck down the middle."
     ),
     "headstock_volute_headstock_points": (
         "Where a drawn volute ends in the headstock's back, drawn as its crest "
@@ -383,8 +386,9 @@ FIELD_HELP: dict[str, str] = {
     "headstock_root_flat_points": (
         "A drawn root: where the headstock's back begins (the joint's "
         "rounding), half of it seen from behind, [mm behind the nut, mm "
-        "across] from the centre line out to one side, mirrored. Empty: "
-        "20 mm behind the nut, straight across."
+        "across] from the centre line out to one side, mirrored; or, the "
+        "sides differing, the whole line from one side across to the other. "
+        "Empty: 20 mm behind the nut, straight across."
     ),
     "headstock_root_neck_points": (
         "A drawn root: where the neck's own profile begins, drawn as the flat "

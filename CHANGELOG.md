@@ -44,6 +44,18 @@
 
 ### Added
 
+- The heel and the back behind the nut (the volute, or the neck's joint
+  with the headstock while the volute is off) may differ from side to
+  side: each line drawn across the back is drawn half and mirrored at
+  first, its mirrored side's points paler handles; dragging one parts the
+  two sides, the line kept whole from then on, from one side across to
+  the other (a point across below 0, `drawn_whole`), each point anywhere
+  across between its neighbours — the heel carved further back on the
+  treble side for the top frets, say. *Sides alike* gives both sides the
+  treble side's shape again; the heel editor labels its bass and treble
+  sides, and a left-handed neck mirrors a whole line with the rest
+  (`mirrored_line`).
+
 - Microtonal frets: `frets_per_octave` (12 by default, 5 to 72; on
   *Design › Fretboard* beside the fret count) divides each octave into
   that many equal steps — 24 quarter tones, 19, 22 or 31 for other
