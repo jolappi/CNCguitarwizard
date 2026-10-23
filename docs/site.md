@@ -115,8 +115,13 @@ Python.
    hover text. While a field is selected its meaning shows under it too
    (`fieldHint`, the same text: for a touch screen, and help too long to
    hover over), in the form or an editor's *Settings*, gone when the
-   focus leaves the fields; a field changed from its default shows the
-   default there too, with *Reset to default* (`defaultLine`; an
+   focus leaves the fields; it is the field's description
+   (`aria-describedby`), so a screen reader reads it with the field. On a
+   touch screen (`pointer: coarse`) the fields and the hint's button are
+   44 px tall to tap, Apple's least touch target, the hint's text 14 px,
+   and every field's text 16 px: iOS Safari zooms the whole page into a
+   field whose text is any smaller as soon as it is tapped. A field
+   changed from its default shows the default there too, with *Reset to default* (`defaultLine`; an
    editor's copy passes the reset on to its form field as any change, so
    Undo takes it back). The wheel over a selected number field scrolls
    the page (or the column it is in) and leaves its value alone
@@ -827,9 +832,12 @@ The menu bar's own search (*Find a setting… (/)*, `/` from anywhere)
 finds settings from any page, as the form's search does (every word in
 a setting's name, field name or meaning), the likeliest first (the
 words in its name, the shortest such name first; then in its field
-name; then in its meaning, said soonest first). Each comes with its own
-control, set right there — a copy, as an editor's Settings holds one,
-passing its value to the form's — and a link to each page it is on: its
+name; then in its meaning, said soonest first). Each comes with its
+meaning, wrapped to three lines (all of it while the pointer is on it or
+its control is selected: never only on hover), and its own control,
+read out by the setting's name and meaning, set right there — a copy,
+as an editor's Settings holds one, passing its value to the form's —
+and a link to each page it is on: its
 editor's Settings (*Design › Body*, *Design › Headstock*, *Design ›
 Inlays*) when one shows it there, else its group (*Settings › Body*);
 the link opens the page and its fold and selects the setting, Enter the

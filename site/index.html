@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache">
 <!-- This page's stamp, set by tools/build_site.py (see the loader below). -->
-<meta name="cgw-page" content="4dfafef3e914">
+<meta name="cgw-page" content="a5c3b00e3950">
 <title>CNCguitarwizard</title>
 <script>
   // Dark mode, the default; light when chosen in this browser (or
@@ -536,6 +536,18 @@
     #files td.step { white-space: nowrap; }
     #files td.links { white-space: normal; }
     #files details.file-part > table { display: block; overflow-x: auto; }
+  }
+  /* A touch screen: the settings' fields and their hint's button 44 px
+     tall to tap (Apple's least touch target), every field's text 16 px
+     (iOS Safari zooms the whole page into a field whose text is any
+     smaller as soon as it is tapped), and the hint's explanation large
+     enough to read at arm's length. */
+  @media (pointer: coarse) {
+    input:not([type=checkbox], [type=radio], [type=range]), select, textarea { font-size: 16px !important; }
+    .field-hint { font-size: 14px; }
+    :is(.field, .editor-options) :is(input[type=text], input[type=number], select) { min-height: 44px; }
+    :is(.field, .editor-options) input[type=checkbox] { width: 24px; height: 24px; }
+    .field-hint .hint-default button { min-height: 44px; padding: 0 14px; font-size: 14px; }
   }
 </style>
 </head>

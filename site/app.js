@@ -656,13 +656,29 @@ function explain(row, field) {
 // that puts it back.
 const fieldHint = document.createElement("p");
 fieldHint.className = "field-hint";
+fieldHint.id = "field-hint";
 const FIELD_CONTROLS = "#form input, #form select, .editor-options input, .editor-options select";
+// The field the hint describes: a screen reader reads the hint with it.
+let describedControl = null;
+
+function describeWithHint(control) {
+  if (describedControl && describedControl !== control) {
+    describedControl.removeAttribute("aria-describedby");
+  }
+  describedControl = control;
+  control?.setAttribute("aria-describedby", fieldHint.id);
+}
+
+function hideFieldHint() {
+  fieldHint.remove();
+  describeWithHint(null);
+}
 
 function showFieldHint(control) {
   const inEditor = control.closest(".editor-options");
   const text = inEditor ? control.title : control.closest(".field")?.title;
   if (!text) {
-    fieldHint.remove();
+    hideFieldHint();
     return;
   }
   fieldHint.replaceChildren(text);
@@ -675,6 +691,7 @@ function showFieldHint(control) {
   if (control.classList.contains("changed")) fieldHint.append(defaultLine(control));
   if (inEditor) (control.closest(".with-button") || control).after(fieldHint);
   else control.closest(".field").after(fieldHint);
+  describeWithHint(control);
 }
 
 // "Default: 44 [Reset to default]" for a changed field (an editor's copy
@@ -736,7 +753,7 @@ for (const type of ["input", "change"]) {
 document.addEventListener("focusout", () => {
   setTimeout(() => {
     const focused = document.activeElement;
-    if (!focused?.matches(FIELD_CONTROLS) && !fieldHint.contains(focused)) fieldHint.remove();
+    if (!focused?.matches(FIELD_CONTROLS) && !fieldHint.contains(focused)) hideFieldHint();
   }, 0);
 });
 

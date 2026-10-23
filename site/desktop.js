@@ -207,8 +207,12 @@
     .find-pop .found + .found { border-top: 1px solid var(--line); }
     .find-pop .found .name { font-weight: 600; }
     .find-pop .found .name mark { background: var(--mark); color: inherit; border-radius: 2px; }
+    /* A setting's meaning wraps to three lines, all of it while the
+       pointer is on it or its control has the focus (a tap on a touch
+       screen): never only on hover. */
     .find-pop .found .meaning { grid-column: 1 / -1; color: var(--muted); font-size: 12px; overflow: hidden;
-      text-overflow: ellipsis; white-space: nowrap; }
+      display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; }
+    .find-pop .found:is(:hover, :focus-within) .meaning { -webkit-line-clamp: unset; line-clamp: none; }
     .find-pop .found .control input[type=text], .find-pop .found .control input[type=number],
     .find-pop .found .control select { width: 150px; padding: 3px 6px; border: 1px solid var(--line);
       border-radius: 4px; background: var(--panel); color: var(--ink); font: inherit; font-size: 12.5px; }
@@ -217,6 +221,10 @@
     .find-pop .found .places button { padding: 0; border: 0; background: none; color: var(--accent);
       font: inherit; font-weight: 600; cursor: pointer; }
     .find-pop .found .places button:hover { text-decoration: underline; }
+    @media (pointer: coarse) {
+      .find-pop .found .control :is(input[type=text], input[type=number], select),
+      .find-pop .found .places button { min-height: 44px; }
+    }
     .find-pop .note { margin: 6px 8px; }
     @media (max-width: 900px) { .menubar .find { flex-basis: 150px; } }
     .desk-page-actions { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; }
@@ -992,11 +1000,16 @@
       markWords(name, words);
       const control = document.createElement("span");
       control.className = "control";
-      control.appendChild(proxy(original));
+      const copy = proxy(original);
+      control.appendChild(copy);
       const meaning = document.createElement("span");
       meaning.className = "meaning";
+      meaning.id = `found-meaning-${findPop.children.length}`;
       meaning.textContent = (row.title || "").split("\n")[0];
       meaning.title = row.title || "";
+      // Read out by its name and meaning, as the form's own field is.
+      copy.setAttribute("aria-label", name.textContent);
+      copy.setAttribute("aria-describedby", meaning.id);
       const links = document.createElement("span");
       links.className = "places";
       for (const place of places(row, original)) {

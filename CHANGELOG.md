@@ -4,6 +4,16 @@
 
 ### Changed
 
+- On a touch screen the settings are easier to set (as Apple's
+  guidelines have it): the fields and the hint's *Reset to default* 44 px
+  tall, the hint's text 14 px, and every field's text 16 px, so iOS
+  Safari no longer zooms the page into a field as it is tapped. The hint
+  under a selected field is its description to a screen reader
+  (`aria-describedby`); *Find a setting* wraps each setting's meaning to
+  three lines (all of it while the pointer is on it or its control is
+  selected) instead of cutting it to one, its controls read out by their
+  setting's name and meaning.
+
 - The FreeCAD script runs several times as fast: the tuner holes and
   their chamfers, the fret slots, the markers and the body's routes,
   cavities, recesses and drilled holes are each cut in one boolean with
