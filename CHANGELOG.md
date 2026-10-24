@@ -105,6 +105,14 @@
   It records the design and drives no solid; the STEP and the other 3D
   formats leave it out.
 
+- *Design › Fretboard*'s *Radius only (NC)*: a board already made given
+  another radius, its radius alone as one program
+  (`Fretboard_radius_only.nc`, `cam.plan_fretboard_radius`). The board
+  lies along X with no index pins, its work zero and first pass at the
+  centre of its end at the body (Z on its top), the passes run 10 mm past
+  it every way; the crown comes down by `fretboard_blank_thickness` (the
+  board now) less `fretboard_thickness`.
+
 - A big flat end mill for a carved top's flat parts
   (`carve_flat_tool_diameter`, 25.4 mm say, an inch; none by default): in
   a program of its own before the carve's (`Body_top_carve_flats`), it

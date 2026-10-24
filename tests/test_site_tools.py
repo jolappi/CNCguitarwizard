@@ -244,6 +244,14 @@ def test_the_neck_page_holds_the_truss_rod_settings() -> None:
     assert ".filter((name) => !SHARED_WITH_PAGES.has(name))" in layout
 
 
+def test_the_fretboard_page_saves_the_radius_alone() -> None:
+    layout = (ROOT / "site" / "desktop.js").read_text(encoding="utf-8")
+
+    assert 'radiusOnly.textContent = "Radius only (NC)";' in layout
+    assert 'radiusOnly.addEventListener("click", () => saveRadiusOnly());' in layout
+    assert "json.dumps(fretboard_radius_program(json.loads(radius_json)))" in layout
+
+
 def test_every_design_page_has_a_reset_of_its_own() -> None:
     layout = (ROOT / "site" / "desktop.js").read_text(encoding="utf-8")
 

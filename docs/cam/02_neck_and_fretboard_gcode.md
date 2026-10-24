@@ -201,6 +201,19 @@ blank down, for the tabs are not all that holds the board.
 | `Fretboard_scallops.nc` | ball | Only with `fretboard_scalloped`: the fret spaces from `fretboard_scallop_from_fret` on hollowed (`FretboardScallops`), the ball nose rastering along the neck over them on a grid `SCALLOP_GRID_SPACING` (0.5 mm) along it, drop-cutter (never below the surface), roughed first if deeper than the ball's step-down; after the inlays are glued in and levelled (it cuts through them) and the slots cut. A scallop tighter than the ball comes out shallower, and the program's notes say so |
 | `Fretboard_outline.nc` | flat | A locking nut's shelf first, when the board runs on under it; then the tapered outline with square nut corners (`fretboard_nut_corner_radius`, 0 by default) and tabs |
 
+A board already made is given another radius with
+`Fretboard_radius_only.nc` (`plan_fretboard_radius`, *Radius only (NC)*
+on the web app's *Design › Fretboard*): the radius alone, the board
+frets out on the bed along X, with no index pins. Its work zero is the
+centre of the board's end at the body, Z on the board's top there, the
+nut end toward +X; the first pass starts there along the centre line,
+then the passes run out to one side and to the other, every one
+`RERADIUS_OVERRUN` (10 mm) past the board every way, past its edges at
+the edges' depth. The crown comes down by `fretboard_blank_thickness`
+(the board's thickness now) less `fretboard_thickness` (the thickness it
+is cut to), the edges as the radius falls; deeper than the ball nose's
+step-down, it is roughed in layers first.
+
 Under an R2 locking nut (see [Headstock](../geometry/06_headstock.md#locking-nut))
 the outline runs 16 mm on past the nut line and a pocket mills that end
 down to the nut's shelf, reaching past the board's sides and end so only

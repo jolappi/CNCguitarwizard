@@ -322,6 +322,18 @@
     byId("body-editor").before(page);
     // The heel's runout is drawn on the neck's page, under the neck.
     if (id === "neck") page.appendChild(byId("heel-editor"));
+    // A board already made given another radius: its radius alone.
+    if (id === "fretboard") {
+      const radiusOnly = document.createElement("button");
+      radiusOnly.type = "button";
+      radiusOnly.className = "secondary";
+      radiusOnly.textContent = "Radius only (NC)";
+      radiusOnly.title = "One program cutting only this radius, for a board already made: its passes run 10 mm "
+        + "past the board every way, the work zero and the first pass at the centre of the board's end at the "
+        + "body (Z on its top); the crown comes down by the blank's thickness less the fretboard's";
+      radiusOnly.addEventListener("click", () => saveRadiusOnly());
+      page.querySelector(".desk-part-status").before(radiusOnly);
+    }
     EDITOR_FIELDS[`${id}-page-options`] = PART_FIELDS[id].filter((name) => !taken.has(name));
     partPages[id] = page;
   }
@@ -887,6 +899,45 @@
 
   form.addEventListener("change", () => drawPartsSoon());
   form.addEventListener("input", () => drawPartsSoon());
+
+  // The fretboard's radius alone, as one program, saved
+  // (webapp.fretboard_radius_program): to give a board already made
+  // another radius.
+  async function saveRadiusOnly() {
+    const status = partPages.fretboard.querySelector(".desk-part-status");
+    status.classList.remove("bad");
+    if (!pyodide || buildButton.classList.contains("busy")) {
+      status.textContent = pyodide ? "Once the build is done…" : "Loading Python…";
+      return;
+    }
+    let payload;
+    try {
+      payload = collectValues();
+    } catch (error) {
+      status.textContent = error.message;
+      status.classList.add("bad");
+      return;
+    }
+    pyodide.globals.set("radius_json", JSON.stringify(payload));
+    const result = await runPython(
+      "import json\nfrom cncguitarwizard.webapp import fretboard_radius_program\n" +
+      "json.dumps(fretboard_radius_program(json.loads(radius_json)))"
+    );
+    if (result.error) {
+      status.textContent = result.error;
+      status.classList.add("bad");
+      return;
+    }
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(new Blob([result.text], { type: "text/plain" }));
+    link.download = result.name;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    status.textContent = `Saved ${result.name}: X/Y zero at the centre of the board's end at the body, `
+      + "Z on its top there, the nut end toward +X.";
+  }
 
   // ---- find a setting, from anywhere ------------------------------------------
   // The bar's own search: each setting whose name or meaning holds every

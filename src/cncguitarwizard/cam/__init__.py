@@ -16,6 +16,7 @@ from .fretboard import (
     FretboardMachiningPlan,
     fretboard_outline_polygon,
     plan_fretboard_machining,
+    plan_fretboard_radius,
 )
 from .gcode import GCodeWriter, GRBLWriter, Setup, program_stem
 from .inlays import InlayMachiningPlan, inlay_fit_outline, plan_inlay_machining
@@ -89,6 +90,7 @@ __all__ = [
     "pin_fits",
     "plan_body_machining",
     "plan_fretboard_machining",
+    "plan_fretboard_radius",
     "plan_inlay_machining",
     "plan_neck_machining",
     "plan_nut_jig_machining",

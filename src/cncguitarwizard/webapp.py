@@ -37,9 +37,11 @@ from .backends.freecad.script_exporter import FreeCADScriptExporter
 from .backends.occt.model import FORMATS as MODEL_FORMATS
 from .cam import (
     POST_PROCESSOR_LABELS,
+    FretboardMachiningParameters,
     GCodeWriter,
     MachiningParameters,
     plan_feature_machining,
+    plan_fretboard_radius,
     program_stem,
 )
 from .cam.parameters import INDEX_PIN_DIAMETER
@@ -3083,6 +3085,32 @@ def _variations(name: str, current: Any) -> list[Any]:
             return [value for value in dict.fromkeys(whole) if value != current]
         return [round(value, 2) for value in values]
     return []
+
+
+def fretboard_radius_program(payload: dict[str, Any]) -> dict[str, Any]:
+    """Return the NC program cutting only the fretboard's radius, for a
+    board already made (``cam.plan_fretboard_radius``): Design ›
+    Fretboard's *Radius only (NC)*.
+
+    Args:
+        payload: ``{"prototype": {...}, "machining": {...}}`` as for
+            ``start_build``.
+
+    Returns:
+        ``{"name", "text"}`` or ``{"error": message}``.
+    """
+    try:
+        parameters = Prototype001Parameters(**_coerce(payload.get("prototype", {})))
+        machining = MachiningParameters(**_coerce(payload.get("machining", {})))
+        fretboard = FretboardMachiningParameters().with_form_settings(machining)
+        setup = plan_fretboard_radius(parameters.build(), fretboard)
+    except (CNCGuitarWizardError, TypeError, ValueError) as error:
+        return {"error": f"{type(error).__name__}: {error}"}
+    writer = GCodeWriter.for_parameters(machining)
+    return {
+        "name": f"{program_stem(setup, machining)}{writer.extension}",
+        "text": writer.render(setup, machining),
+    }
 
 
 def feature_programs(payload: dict[str, Any], group: str) -> dict[str, Any]:

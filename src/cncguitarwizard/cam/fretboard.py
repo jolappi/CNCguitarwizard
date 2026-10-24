@@ -809,6 +809,132 @@ def plan_fretboard_machining(
     )
 
 
+RERADIUS_OVERRUN = 10.0
+"""How far past a board already made, every way, its radius program's
+passes run (``plan_fretboard_radius``), in mm."""
+
+
+def plan_fretboard_radius(
+    geometry: Prototype001Geometry,
+    parameters: FretboardMachiningParameters,
+) -> Setup:
+    """Return a program cutting only the fretboard's radius, for a board
+    already made: to give it another radius.
+
+    Its work zero is the centre of the board's end at the body, on the
+    board's top, X running from there toward the nut; the passes run
+    along the board ``RERADIUS_OVERRUN`` past it every way (past its
+    edges at the edges' depth), the first from the end along the centre
+    line, then out to one side and the other. The crown ends
+    ``blank_thickness`` less the design's board thickness under the top:
+    the blank is the board as it is now. Roughed first in layers when it
+    goes down deeper than the ball nose's step-down.
+
+    Raises:
+        ToolpathError: If the board is not as thick now as the design's.
+    """
+    surface = geometry.fretboard_surface
+    skim = parameters.blank_thickness - surface.center_thickness
+    if skim < 0.0:
+        raise ToolpathError(
+            "The board must be at least as thick now (fretboard_blank_thickness) "
+            "as the fretboard's thickness it is cut to."
+        )
+    ball = parameters.ball
+    outline = fretboard_outline_polygon(geometry)
+    nut_x = min(point.x for point in outline)
+    end_x = _centre_line_end(outline)
+
+    def depth(x: float, y: float) -> float:
+        """How far under the board's top the radius lies, held past its
+        edges and ends at theirs."""
+        along = min(max(x, nut_x), end_x)
+        lateral = min(abs(y), surface.half_width_at(along))
+        drop = surface.radius - math.sqrt(max(0.0, surface.radius**2 - lateral**2))
+        return skim + drop
+
+    # X from the end toward the nut (the radius is alike either side of
+    # the centre line, so the cut is the same turned round).
+    half = max(abs(point.y) for point in outline) + RERADIUS_OVERRUN
+    x_range = (-RERADIUS_OVERRUN, end_x - nut_x + RERADIUS_OVERRUN)
+    grid = build_offset_grid(
+        lambda x, y: -depth(end_x - x, y),
+        x_range,
+        (-half, half),
+        ball,
+        spacing_x=parameters.grid_spacing_x,
+        spacing_y=parameters.grid_spacing_y,
+    )
+    # Each pass type from the centre line out, one side and then the other.
+    deepest = max(depth(x, half) for x in (nut_x, end_x))
+    toolpaths: list[Toolpath] = []
+    if deepest > ball.step_down:
+        for name, y_range in (
+            ("Radius roughing, +Y side", (0.0, half)),
+            ("Radius roughing, -Y side", (-half, -ball.raster_spacing)),
+        ):
+            toolpaths.append(
+                raster_rough(
+                    name,
+                    grid,
+                    ball,
+                    x_range=x_range,
+                    y_range=y_range,
+                    step_over=ball.raster_spacing,
+                )
+            )
+    for name, y_range in (
+        ("Radius surface, +Y side", (0.0, half)),
+        ("Radius surface, -Y side", (-half, -parameters.finishing_step_over)),
+    ):
+        toolpaths.append(
+            raster_finish(
+                name,
+                grid,
+                ball,
+                x_range=x_range,
+                y_range=y_range,
+                step_over=parameters.finishing_step_over,
+            )
+        )
+    return Setup(
+        "Fretboard_radius_only",
+        f"Fretboard playing surface only - {surface.radius:g} mm radius on a "
+        "board already made, ball nose",
+        tuple(toolpaths),
+        (
+            "A board already made, frets out, along X: its end at the body at "
+            "X 0, its nut end toward +X, its centre line on Y 0.",
+            f"The passes run {RERADIUS_OVERRUN:g} mm past the board every way.",
+            f"The crown ends {skim:g} mm under the board's top, the edges "
+            f"{depth(end_x, half):.2f} mm at the end: the board's thickness now "
+            "is fretboard_blank_thickness, the one it is cut to the "
+            "fretboard's thickness.",
+            *(
+                (
+                    f"Roughed first in layers of at most {ball.step_down:g} mm: "
+                    f"the surface goes down to {deepest:.1f} mm.",
+                )
+                if deepest > ball.step_down
+                else ()
+            ),
+        ),
+        tool=ball,
+        work_zero="the centre of the fretboard's end at the body, Z on its top there",
+    )
+
+
+def _centre_line_end(outline: tuple[Point2D, ...]) -> float:
+    """Return the X where the board's centre line (Y 0) leaves it at its
+    far end: the centre of the end, square, slanted or round."""
+    crossings = [
+        a.x + (b.x - a.x) * (0.0 - a.y) / (b.y - a.y)
+        for a, b in zip(outline, (*outline[1:], outline[0]), strict=True)
+        if (a.y <= 0.0 < b.y) or (b.y <= 0.0 < a.y)
+    ]
+    return max(crossings)
+
+
 def _scallop_setup(
     geometry: Prototype001Geometry,
     parameters: FretboardMachiningParameters,

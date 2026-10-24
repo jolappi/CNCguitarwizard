@@ -888,7 +888,11 @@ opens with the neck's type (`neck_joint`: bolt-on, set, neck-through or
 one-piece, on the body's page as well), and holds the truss rod's
 settings too: how it is installed, its profile and its length, and
 where it is adjusted and with what (those two on the headstock's page as
-well, which draws the cover; `SHARED_WITH_PAGES`).
+well, which draws the cover; `SHARED_WITH_PAGES`). The fretboard's page
+has *Radius only (NC)*: the board's radius alone as one program, for a
+board already made to be given another radius
+(`webapp.fretboard_radius_program`, see
+[Neck and fretboard G-code](cam/02_neck_and_fretboard_gcode.md)).
 
 Only the settings that do something are shown, on every page. A setting
 that matters only beside other settings' values

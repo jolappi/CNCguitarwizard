@@ -11,12 +11,14 @@ from cncguitarwizard.cam import (
     ToolpathError,
     fretboard_outline_polygon,
     plan_fretboard_machining,
+    plan_fretboard_radius,
 )
+from cncguitarwizard.cam.fretboard import RERADIUS_OVERRUN
 from cncguitarwizard.cam.gcode import GCodeWriter
 from cncguitarwizard.cam.inlays import plan_inlay_machining
 from cncguitarwizard.geometry.primitives import Point2D, point_in_polygon
 from cncguitarwizard.presets import Prototype001Parameters
-from cncguitarwizard.webapp import parameter_schema
+from cncguitarwizard.webapp import fretboard_radius_program, parameter_schema
 
 
 @pytest.fixture(scope="module")
@@ -330,3 +332,43 @@ def test_the_form_sets_the_blank() -> None:
     assert fields["fretboard_blank_length"]["type"] == "optional_float"
     with pytest.raises(ToolpathError, match="fretboard_blank_width"):
         MachiningParameters(fretboard_blank_width=-1.0)
+
+
+def test_a_board_already_made_gets_its_radius_alone(geometry, parameters) -> None:  # type: ignore[no-untyped-def]
+    setup = plan_fretboard_radius(geometry, parameters)
+    outline = fretboard_outline_polygon(geometry)
+    length = max(p.x for p in outline) - min(p.x for p in outline)
+    half = max(abs(p.y) for p in outline)
+    surface = geometry.fretboard_surface
+    skim = parameters.blank_thickness - surface.center_thickness
+
+    assert setup.name == "Fretboard_radius_only"
+    assert setup.tool is parameters.ball and setup.reference_points == ()
+    assert "centre of the fretboard's end" in (setup.work_zero or "")
+    # From the centre of the board's end, along the centre line toward the
+    # nut first; run 10 mm past the board every way.
+    first = next(path for path in setup.toolpaths if path.moves)
+    start = next(move for move in first.moves if not move.rapid)
+    assert (start.x, start.y) == (-RERADIUS_OVERRUN, 0.0)
+    moves = [move for path in setup.toolpaths for move in path.moves]
+    cut = [move for move in moves if not move.rapid]
+    assert min(move.x for move in cut) == pytest.approx(-RERADIUS_OVERRUN)
+    assert max(move.x for move in cut) == pytest.approx(length + RERADIUS_OVERRUN)
+    assert max(abs(move.y) for move in cut) == pytest.approx(half + RERADIUS_OVERRUN)
+    # The crown its skim down, nothing deeper than the edges' depth.
+    crown = [move.z for move in cut if move.y == 0.0]
+    assert max(crown) == pytest.approx(-skim, abs=0.01)
+    edge = skim + surface.radius - math.sqrt(surface.radius**2 - half**2)
+    assert min(move.z for move in cut) >= -edge - 0.01
+    # A board thinner now than the design's cannot be cut to it.
+    with pytest.raises(ToolpathError, match="at least as thick"):
+        plan_fretboard_radius(geometry, replace(parameters, blank_thickness=3.0))
+
+
+def test_the_page_gets_the_radius_alone_as_a_program() -> None:
+    result = fretboard_radius_program({"prototype": {}, "machining": {}})
+
+    assert result["name"] == "Fretboard_radius_only_6mm_ballnose.nc"
+    assert "(Work zero: the centre of the fretboard's end at the body" in result["text"]
+    thin = {"machining": {"fretboard_blank_thickness": 3.0}}
+    assert "at least as thick" in fretboard_radius_program(thin)["error"]
