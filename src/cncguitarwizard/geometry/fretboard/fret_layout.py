@@ -34,6 +34,10 @@ class FretLayout:
             edge.
         frets_per_octave: Equal steps in each octave (12; more for a
             microtonal board, see ``FretCalculator``).
+        end_x: Where a board cut square at the heel's end ends along the
+            neck (``fretboard_end`` "heel"): a slot leaning past it is cut
+            short there (a fanned board's last frets, on its long side);
+            ``None`` for a board ending past its last fret.
 
     Raises:
         FretboardGeometryError: If the fret count or fretboard dimensions
@@ -47,6 +51,7 @@ class FretLayout:
     zero_fret: bool = False
     slot_end_inset: float = 0.0
     frets_per_octave: int = 12
+    end_x: float | None = None
     slots: tuple[Line2D, ...] = field(init=False)
     zero_fret_slot: Line2D | None = field(init=False)
 
@@ -134,6 +139,13 @@ class FretLayout:
         if lean:
             left = Point2D(left.x + lean * left.y, left.y)
             right = Point2D(right.x + lean * right.y, right.y)
+        # A board cut square at the heel's end: a slot leaning past it ends
+        # where it crosses the board's end.
+        if self.end_x is not None and max(left.x, right.x) > self.end_x:
+            inside, outside = (left, right) if left.x <= right.x else (right, left)
+            t = (self.end_x - inside.x) / (outside.x - inside.x)
+            crossing = Point2D(self.end_x, inside.y + (outside.y - inside.y) * t)
+            left, right = (inside, crossing) if left is inside else (crossing, inside)
         return Line2D(left, right)
 
 

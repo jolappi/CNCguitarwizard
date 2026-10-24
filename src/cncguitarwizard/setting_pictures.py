@@ -60,6 +60,7 @@ SETTING_PICTURES: dict[str, SettingPicture] = {
     **_same("fretboard", "fret_slot_depth fret_height", _SIDE_SLOTS),
     "fretboard_end_extension": ("fretboard", (r"^The fretboard from the side$",)),
     "fretboard_nut_corner_radius": ("fretboard", (_BEHIND_NUT,)),
+    "fretboard_end": ("plan", (r"^Fretboard$|^Neck pocket$",)),
     **_same(
         "fretboard",
         "fretboard_radius fretboard_thickness",

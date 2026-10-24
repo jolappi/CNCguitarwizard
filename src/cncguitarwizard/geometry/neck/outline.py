@@ -80,19 +80,26 @@ def clip_to_heel_end(
     half_width: float,
     end_radius: float,
     corner_radius: float,
+    square_too: bool = False,
 ) -> tuple[Point2D, ...]:
     """Return a plan polygon cut back to a round heel end.
 
     Whatever lies past the end (``heel_end_curve``) is cut away; the
     polygon must lie within ``half_width`` of the centre. It is the
-    polygon itself for a square end.
+    polygon itself for a square end, or, ``square_too``, cut square at
+    ``end_x``.
     """
-    if end_radius == 0.0:
-        return tuple(polygon)
-    end = heel_end_curve(end_x, half_width, end_radius, corner_radius)
-    # Convex: back along each side from the end, counter-clockwise.
     far = min(p.x for p in polygon) - 1.0
-    region = (Point2D(far, -half_width), *end, Point2D(far, half_width))
+    if end_radius == 0.0:
+        if not square_too:
+            return tuple(polygon)
+        reach = half_width + max(abs(p.y) for p in polygon)
+        end: Sequence[Point2D] = (Point2D(end_x, -reach), Point2D(end_x, reach))
+        region = (Point2D(far, -reach), *end, Point2D(far, reach))
+    else:
+        end = heel_end_curve(end_x, half_width, end_radius, corner_radius)
+        # Convex: back along each side from the end, counter-clockwise.
+        region = (Point2D(far, -half_width), *end, Point2D(far, half_width))
     points = list(polygon)
     for a, b in zip(region, (*region[1:], region[0]), strict=True):
 
@@ -152,6 +159,10 @@ class NeckOutline:
             end (see ``heel_end_curve``).
         heel_corner_radius: A round heel end's corners, blending its arc
             into the sides.
+        fretboard_to_heel_end: The fretboard runs on past the heel's end
+            and is cut back to it (``trimmed``), square or round, so it
+            covers the heel and goes no further (``fretboard_end``
+            "heel"); else a square end leaves it as it is.
         frets_per_octave: Equal steps in each octave (12; more for a
             microtonal neck): where the final fret, and so the heel, lies.
 
@@ -168,6 +179,7 @@ class NeckOutline:
     heel_end_radius: float = 0.0
     heel_corner_radius: float = 0.0
     frets_per_octave: int = 12
+    fretboard_to_heel_end: bool = False
     centerline: Centerline = field(init=False)
     last_fret_position: float = field(init=False)
     nut_line: Line2D = field(init=False)
@@ -262,14 +274,21 @@ class NeckOutline:
 
     def trimmed(self, polygon: Sequence[Point2D]) -> tuple[Point2D, ...]:
         """Return a plan polygon (the fretboard's) cut back to a round heel
-        end; itself for a square end."""
+        end; itself for a square end, or cut square at it when the board
+        runs on to it (``fretboard_to_heel_end``)."""
         return clip_to_heel_end(
             polygon,
-            self.last_fret_position + self.heel_length,
+            self.heel_end_position,
             self.heel_width / 2.0,
             self.heel_end_radius,
             self.heel_corner_radius,
+            square_too=self.fretboard_to_heel_end,
         )
+
+    @property
+    def heel_end_position(self) -> float:
+        """Return where the heel ends along the neck, from the nut."""
+        return self.last_fret_position + self.heel_length
 
     def _validate(self) -> None:
         """Reject non-manufacturable outline dimensions."""

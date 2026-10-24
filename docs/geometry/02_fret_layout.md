@@ -105,6 +105,20 @@ side `headstock_bass_side` puts the bass on (`fret_slant`). The bridge and
 pickups are unchanged, so only the centerline string keeps its exact
 scale; the others are set at the saddles.
 
+**The board's end** — `Prototype001Parameters.fretboard_end`: `"fret"`
+ends the board leaning with its last fret, `fretboard_end_extension` past
+it; on leaning frets its two ends then lie apart, past the neck pocket on
+one side and short of the heel's end on the other, the heel bare in front
+there. `"heel"` ends it square at the neck's own end (the heel's, square
+or round): the board's surface runs past it on both sides
+(`board_end_extension`, `BOARD_HEEL_OVERRUN` = 2 mm more) and is cut back
+to it (`NeckOutline.fretboard_to_heel_end`, `trimmed`; in FreeCAD the
+board and its binding by the heel end's trim), so it covers the heel and
+goes no further than the neck pocket; a slot leaning past the end is cut
+short there (`FretLayout.end_x`), its program too. `"auto"`, the default,
+is `"heel"` while the frets lean (`bass_scale_length`, `fret_slant_angle`)
+and `"fret"` while they are square, where the two are the same.
+
 **Multiscale** — with `bass_scale_length` set, `scale_length` is the treble
 (outermost string's) scale and `bass_scale_length` the bass one (longer,
 at most `MAX_MULTISCALE_RATIO` = 1.15 times). `perpendicular_fret` (7 by

@@ -49,13 +49,23 @@ def test_fret_spacing_stays_exact_on_the_centreline(slanted) -> None:  # type: i
     for slot, straight in zip(
         geometry.fret_layout.slots, plain.fret_layout.slots, strict=True
     ):
-        assert (slot.start.x + slot.end.x) / 2.0 == pytest.approx(straight.start.x)
-    assert geometry.fretboard_surface.station_positions == (
-        plain.fretboard_surface.station_positions
+        # Where it crosses the centreline (the last one may be cut short
+        # at the board's end, squared at the heel: fretboard_end "auto").
+        crossing = slot.start.x + (slot.end.x - slot.start.x) * (
+            -slot.start.y / (slot.end.y - slot.start.y)
+        )
+        assert crossing == pytest.approx(straight.start.x)
+    frets = plain.fretboard_surface.fret_count + 1
+    assert (
+        geometry.fretboard_surface.station_positions[:frets]
+        == (plain.fretboard_surface.station_positions[:frets])
     )
-    # The bridge, pickups and neck are untouched.
+    # The bridge, pickups and neck are untouched, the board only running
+    # on to the heel's end.
     assert geometry.body == plain.body
-    assert geometry.neck_outline == plain.neck_outline
+    assert replace(geometry.neck_outline, fretboard_to_heel_end=False) == (
+        plain.neck_outline
+    )
 
 
 def test_block_inlays_follow_the_frets_and_dots_keep_their_shape(slanted) -> None:  # type: ignore[no-untyped-def]

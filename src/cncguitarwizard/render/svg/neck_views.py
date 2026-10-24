@@ -172,12 +172,16 @@ def _neck_side(
     heel_end = depths[-1][0]
     stations = [x for x, _ in depths]
     samples = sorted({*stations, *(heel_end * k / 400.0 for k in range(401))})
-    tops = [
-        (x, _board_top(geometry, x))
-        for x in samples
-        if x <= geometry.fretboard_surface.station_positions[-1]
-    ]
+    tops = [(x, _board_top(geometry, x)) for x in samples if x <= _board_end(geometry)]
     return depths, tops
+
+
+def _board_end(geometry: Prototype001Geometry) -> float:
+    """Return where the board ends down its middle: its last row's, or the
+    heel's end where it is cut back to it."""
+    end = geometry.fretboard_surface.station_positions[-1]
+    outline = geometry.neck_outline
+    return min(end, outline.heel_end_position) if outline.fretboard_to_heel_end else end
 
 
 def _board_side(
@@ -185,7 +189,7 @@ def _board_side(
 ) -> tuple[float, list[tuple[float, float]]]:
     """Return where the board ends and its top along its middle, as
     (along, height)."""
-    end = geometry.fretboard_surface.station_positions[-1]
+    end = _board_end(geometry)
     count = int(end * SCALLOP_SAMPLES)
     return end, [
         (end * k / count, _board_top(geometry, end * k / count))

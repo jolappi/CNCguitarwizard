@@ -229,6 +229,10 @@ Instrument = Literal[
 MAX_FRET_SLANT_ANGLE = 10.0
 """The largest fret slant accepted, in degrees."""
 
+BOARD_HEEL_OVERRUN = 2.0
+"""How far past the heel's end, in mm, a board running on to it is made
+before it is cut back to it (``fretboard_end`` "heel")."""
+
 MIN_FRETS_PER_OCTAVE = 5
 """The fewest equal steps an octave may be divided into (``frets_per_octave``)."""
 
@@ -877,6 +881,15 @@ class Prototype001Parameters:
     # end. Not for a neck run through the body.
     neck_heel_end: Literal["square", "round"] = "square"
     fretboard_end_extension: float = 4.0
+    # fretboard_end: where the board ends toward the body. "fret": leaning
+    # with the last fret, fretboard_end_extension past it (a fanned or
+    # slanted board's end then lies past the neck pocket on one side and
+    # leaves the heel's end bare in front on the other); "heel": square at
+    # the neck's own end (its heel's, square or round), covering the heel
+    # and as far as the neck pocket goes, no further, a fret leaning past
+    # it cut short there; "auto" (the default): "heel" while the frets
+    # lean (bass_scale_length or fret_slant_angle), else "fret".
+    fretboard_end: Literal["auto", "fret", "heel"] = "auto"
     # Square nut-end corners: the board meets the nut with no rounding.
     fretboard_nut_corner_radius: float = 0.0
     first_fret_thickness: float = 17.0
@@ -3143,6 +3156,39 @@ class Prototype001Parameters:
         return (self.scale_length + self.bass_scale_length) / 2.0
 
     @property
+    def board_to_heel_end(self) -> bool:
+        """Return whether the fretboard ends at the heel's end
+        (``fretboard_end``), cut back to it.
+
+        Raises:
+            FretboardGeometryError: For an unknown ``fretboard_end``.
+        """
+        if self.fretboard_end not in ("auto", "fret", "heel"):
+            raise FretboardGeometryError(
+                f"Unknown fretboard end {self.fretboard_end!r}: choose auto, "
+                "fret or heel."
+            )
+        if self.fretboard_end == "auto":
+            return self.bass_scale_length is not None or self.fret_slant_angle != 0.0
+        return self.fretboard_end == "heel"
+
+    def board_end_extension(self) -> float:
+        """Return how far past the last fret the board's surface runs.
+
+        ``fretboard_end_extension``; or, running on to the heel's end
+        (``board_to_heel_end``), past it on both sides however the last
+        fret leans, ``BOARD_HEEL_OVERRUN`` more, the board then cut back
+        to it (``NeckOutline.trimmed``).
+        """
+        if not self.board_to_heel_end:
+            return self.fretboard_end_extension
+        outline = self.neck_outline()
+        lean = abs(self.fret_skew.at(outline.heel_end_position))
+        return (
+            outline.heel_length + lean * outline.heel_width / 2.0 + BOARD_HEEL_OVERRUN
+        )
+
+    @property
     def checked_frets_per_octave(self) -> int:
         """Return ``frets_per_octave``, checked.
 
@@ -3927,6 +3973,7 @@ class Prototype001Parameters:
             FENDER_HEEL_END_RADIUS if round_end else 0.0,
             FENDER_HEEL_CORNER_RADIUS if round_end else 0.0,
             self.frets_per_octave,
+            fretboard_to_heel_end=self.board_to_heel_end,
         )
 
     def _body_layout(
@@ -4376,7 +4423,12 @@ class Prototype001Parameters:
                         p
                         for p in outline.boundary
                         if p.x
-                        <= outline.last_fret_position + self.fretboard_end_extension
+                        <= (
+                            outline.heel_end_position
+                            if self.board_to_heel_end
+                            else outline.last_fret_position
+                            + self.fretboard_end_extension
+                        )
                     )
                     if self.neck_runs_through
                     else neck_pocket.outline,
@@ -5892,7 +5944,7 @@ class Prototype001Parameters:
             self.final_fret_width - 2.0 * binding,
             self.fretboard_radius,
             self.fretboard_thickness,
-            end_extension=self.fretboard_end_extension,
+            end_extension=self.board_end_extension(),
             profile_sample_count=self.profile_sample_count,
             skew=self.fret_skew,
             frets_per_octave=self.frets_per_octave,
@@ -7554,6 +7606,7 @@ class Prototype001Parameters:
             zero_fret=locking_nut is not None and locking_nut.zero_fret,
             slot_end_inset=self.fret_slot_end_inset,
             frets_per_octave=self.frets_per_octave,
+            end_x=outline.heel_end_position if self.board_to_heel_end else None,
         )
         inlay_layout = self.inlay_design(fretboard_surface)
         scallops = self.fretboard_scallops(fretboard_surface)

@@ -985,10 +985,28 @@ class FreeCADScriptExporter:
         height; the fretboard and its binding are cut by it too. It lies
         ``HEEL_TRIM_SLACK`` out past the heel's sides and end, so its faces
         cross the neck's instead of touching them (where a boolean cut
-        fails).
+        fails). A square end cuts only a board run on to it
+        (``fretboard_to_heel_end``): all past it, the neck left as it is.
         """
         if outline.heel_end_radius == 0.0:
-            return ""
+            if not outline.fretboard_to_heel_end:
+                return ""
+            end_x, far = outline.heel_end_position, 30.0
+            half = outline.heel_width / 2.0 + far
+            square = [
+                (end_x, half),
+                (end_x + far, half),
+                (end_x + far, -half),
+                (end_x, -half),
+            ]
+            return (
+                "# The board run on to the heel's end: what lies past it cut off.\n"
+                f"HEEL_END_TRIM_POINTS = {square!r}\n"
+                "heel_end_trim = Part.Face(Part.makePolygon(\n"
+                "    [App.Vector(x, y, -100.0) for x, y in HEEL_END_TRIM_POINTS]\n"
+                "    + [App.Vector(*HEEL_END_TRIM_POINTS[0], -100.0)]\n"
+                ")).extrude(App.Vector(0.0, 0.0, 200.0))\n"
+            )
         end_x = outline.last_fret_position + outline.heel_length
         half = outline.heel_width / 2.0 + HEEL_TRIM_SLACK
         end = heel_end_curve(
@@ -3703,8 +3721,16 @@ class FreeCADScriptExporter:
                 "Fret layout and fretboard surface must share a fret count."
             )
         surface_positions = surface.station_positions[1 : surface.fret_count + 1]
+        # Where each slot crosses the centreline (a slot cut short at a
+        # board's end there is no longer centred on it).
         layout_positions = tuple(
-            (slot.start.x + slot.end.x) / 2.0 for slot in layout.slots
+            slot.start.x
+            + (slot.end.x - slot.start.x)
+            * (0.0 - slot.start.y)
+            / (slot.end.y - slot.start.y)
+            if abs(slot.end.y - slot.start.y) > 1e-9
+            else (slot.start.x + slot.end.x) / 2.0
+            for slot in layout.slots
         )
         if any(
             not math.isclose(surface_position, layout_position)

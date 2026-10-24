@@ -44,6 +44,15 @@
 
 ### Added
 
+- Where the fretboard ends at the body (`fretboard_end`, on *Design ›
+  Fretboard*): "heel" ends it square at the neck's own end, covering the
+  heel and going no further than the neck pocket, a fret that leans past
+  it cut short there; "fret" leans it with the last fret as before. The
+  default, "auto", is "heel" while the frets lean: a fanned or slanted
+  board no longer runs past the pocket on one side and leaves the heel's
+  end bare in front on the other (its outline, its FreeCAD solid, its
+  slots and their programs all end there).
+
 - A picture of each setting: in front of its name, in the form and in
   the editors' *Settings*, a small drawing of the guitar being designed
   shows where the setting is, the parts it shapes outlined in red (the

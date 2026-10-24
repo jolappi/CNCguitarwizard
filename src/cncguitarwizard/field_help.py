@@ -180,6 +180,15 @@ FIELD_HELP: dict[str, str] = {
     "fretboard_end_extension": (
         "How far the fretboard runs on past the last fret, in mm."
     ),
+    "fretboard_end": (
+        "Where the fretboard ends at the body. heel: square at the neck's "
+        "own end, covering the heel and going no further than the neck "
+        "pocket, a fret that leans past it cut short there (fanned frets' "
+        "last ones on the long side). fret: leaning with the last fret, "
+        "fretboard_end_extension past it, as a fanned board's end does "
+        "(past the pocket on one side, the heel bare on the other). auto: "
+        "heel while the frets lean, else fret."
+    ),
     "fret_slot_width": "The fret slots' width, in mm, to suit the fret wire's tang.",
     "fret_slot_end_inset": (
         "Blind fret slots: how far short of the fretboard's edges each slot "

@@ -22,7 +22,7 @@ from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING
 
 from ..geometry.fretboard import shortened
-from ..geometry.primitives import Point2D, rounded_polygon_points
+from ..geometry.primitives import Line2D, Point2D, rounded_polygon_points
 from .exceptions import ToolpathError
 from .fixturing import StockBounds, resolve_index_pins
 from .gcode import Setup
@@ -577,21 +577,27 @@ def plan_fretboard_machining(
             cut = shortened(slot, inset + slot_tool.tool_radius)
             low, high = sorted((cut.start.y, cut.end.y))
         else:
-            half = max(abs(slot.start.y), abs(slot.end.y)) + parameters.slot_overshoot
-            low, high = -half, half
+            # Out past the board's edges (and its end, where a board cut at
+            # the heel's end ends a leaning slot short).
+            low = min(slot.start.y, slot.end.y) - parameters.slot_overshoot
+            high = max(slot.start.y, slot.end.y) + parameters.slot_overshoot
         builder = PathBuilder(
             slot_name,
             safe_height=slot_tool.safe_height,
             feed_rate=slot_tool.feed_rate,
             plunge_rate=slot_tool.plunge_rate,
         )
-        # A slanted slot runs along its own line: X follows Y.
-        centre_x = (slot.start.x + slot.end.x) / 2.0
+        # A slanted slot runs along its own line: X follows Y (from its
+        # own end: one cut short at a board's end is off the centre).
         slope = (
             (slot.end.x - slot.start.x) / (slot.end.y - slot.start.y)
             if abs(slot.end.y - slot.start.y) > 1e-9
             else 0.0
         )
+
+        def x_at(y: float, slot: Line2D = slot, slope: float = slope) -> float:
+            return slot.start.x + slope * (y - slot.start.y)
+
         sample_ys = _steps(low, high, 1.0)
         for index in range(1, passes + 1):
             depth = geometry.fret_slot_depth * index / passes
@@ -599,14 +605,12 @@ def plan_fretboard_machining(
             start_y = ordered[0]
             start_z = -(surface_depth(start_y) + depth)
             if index == 1:
-                builder.rapid_to(
-                    centre_x + slope * start_y - origin_x, start_y - origin_y
-                )
+                builder.rapid_to(x_at(start_y) - origin_x, start_y - origin_y)
                 builder.rapid_down_to(-surface_depth(start_y))
             builder.plunge_to(start_z)
             for y in ordered[1:]:
                 builder.cut_to(
-                    centre_x + slope * y - origin_x,
+                    x_at(y) - origin_x,
                     y - origin_y,
                     -(surface_depth(y) + depth),
                 )
