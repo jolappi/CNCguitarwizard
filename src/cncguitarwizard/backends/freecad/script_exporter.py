@@ -87,6 +87,13 @@ VINTAGE_ROD_STEP = 5.0
 MIN_SECTION_GAP = 0.2
 """Least distance between two loft sections along the neck, in mm."""
 
+LOFT_POINT_GAP = 0.001
+"""Least distance between neighbouring points of a loft section, in mm:
+FreeCAD's polygon drops a point on top of the one before it, and a section
+with fewer edges than the others stalls the loft, matching them (a
+locking nut, a zero fret and a drawn root behind an angled headstock's
+nut met so in three sections)."""
+
 NECK_SPLICE_GAP = 1.0
 """How far past the headstock transition's last loft row, in mm, the
 neck's own rows pick up again: a station of the neck's a hair past it
@@ -505,7 +512,9 @@ class FreeCADScriptExporter:
             if fretboard_scallops is not None
             else fretboard_surface.mesh.rows
         )
-        fretboard_rows = tuple(self._close_fretboard_row(row) for row in surface_rows)
+        fretboard_rows = tuple(
+            self._points_apart(self._close_fretboard_row(row)) for row in surface_rows
+        )
         # A zero fret's slot is cut on the nut-end row too.
         zero_fret = fret_layout is not None and fret_layout.zero_fret_slot is not None
         fret_surface_rows = fretboard_surface.mesh.rows[
@@ -3522,7 +3531,37 @@ class FreeCADScriptExporter:
             )
         if volute is not None:
             neck_rows = tuple(cls._with_volute(row, volute) for row in neck_rows)
-        return neck_rows
+        return tuple(cls._points_apart(row) for row in neck_rows)
+
+    @staticmethod
+    def _points_apart(row: tuple[Point3D, ...]) -> tuple[Point3D, ...]:
+        """Return a closed loft section with no point on top of the one
+        before it: such a point moved ``LOFT_POINT_GAP`` on toward the next
+        point apart from it, so every section keeps its edges."""
+
+        def gap(a: Point3D, b: Point3D) -> float:
+            return math.dist((a.x, a.y, a.z), (b.x, b.y, b.z))
+
+        points = list(row)
+        count = len(points)
+        for index in range(count):
+            point = points[index]
+            if gap(points[index - 1], point) >= LOFT_POINT_GAP:
+                continue
+            ahead = [
+                points[(index + step) % count]
+                for step in range(1, count)
+                if gap(points[(index + step) % count], point) >= LOFT_POINT_GAP
+            ]
+            if not ahead:
+                continue
+            share = LOFT_POINT_GAP / gap(ahead[0], point)
+            points[index] = Point3D(
+                point.x + (ahead[0].x - point.x) * share,
+                point.y + (ahead[0].y - point.y) * share,
+                point.z + (ahead[0].z - point.z) * share,
+            )
+        return tuple(points)
 
     @staticmethod
     def _with_volute(row: tuple[Point3D, ...], volute: Volute) -> tuple[Point3D, ...]:

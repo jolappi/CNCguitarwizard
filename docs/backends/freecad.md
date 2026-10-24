@@ -164,6 +164,14 @@ is halved until the width changes by at most `MAX_HEADSTOCK_WIDTH_STEP`
 round end lofted through two sections 2.5 mm apart, 6 and 32 mm wide,
 came out a flat face and a lip.
 
+No section of the neck's or the fretboard's loft gives a point on top of
+the one before it (`_points_apart`: such a point moves `LOFT_POINT_GAP`,
+1 µm, on toward the next). FreeCAD's polygon drops a repeated point, and
+a section with fewer edges than the others sends the loft into matching
+them, which never finished: a locking nut, a zero fret and a drawn root
+behind a 10° headstock's nut put two points on one another in three of
+the neck's sections.
+
 An existing `TrussRodChannel` can be applied as a rectangular subtraction
 from the neck solid:
 

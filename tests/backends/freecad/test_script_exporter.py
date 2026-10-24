@@ -12,6 +12,7 @@ from cncguitarwizard.backends.freecad import FreeCADScriptExporter
 from cncguitarwizard.backends.freecad.exceptions import FreeCADBackendError
 from cncguitarwizard.backends.freecad.script_exporter import (
     FACE_CUT_SEAT_DROP,
+    LOFT_POINT_GAP,
     MAX_HEADSTOCK_SECTION_GAP,
     MAX_HEADSTOCK_WIDTH_STEP,
     MIN_SECTION_GAP,
@@ -28,7 +29,7 @@ from cncguitarwizard.geometry.body import (
     RearCavity,
     RectangularCavity,
 )
-from cncguitarwizard.geometry.body.bridges import TuneOMaticSpec
+from cncguitarwizard.geometry.body.bridges import FloydRoseSpec, TuneOMaticSpec
 from cncguitarwizard.geometry.fretboard import (
     Fretboard,
     FretboardSurface,
@@ -1515,3 +1516,47 @@ def test_the_spreadsheet_is_made_after_the_neck_is_tilted() -> None:
     assert geometry.neck_tilt[0] > 0.0
     tilt = source.index("for neck_object in document.Objects:")
     assert tilt < source.index('"Spreadsheet::Sheet"')
+
+
+def test_a_loft_section_never_gives_a_point_twice() -> None:
+    # Regression: a locking nut (the Floyd Rose's), a zero fret and a drawn
+    # root behind a 10 degree headstock's nut put two of the neck's points
+    # on one another in three sections; FreeCAD's polygon dropped one, and
+    # the neck's loft stalled for good matching them with the others.
+    design = replace(
+        Prototype001Parameters(),
+        body_bridge=FloydRoseSpec(),
+        nut_style="zero_fret",
+        headstock_angle=10.0,
+        headstock_root_style="drawn",
+        headstock_root_flat_points=((-2.0, 0.0), (-2.4, 2.0), (4.4, 23.1)),
+        headstock_root_neck_points=((-15.0, 0.0), (-14.0, 23.1)),
+    )
+    source = FreeCADScriptExporter().render_prototype001(
+        design.build(), fcstd_path=Path("/m/P.FCStd"), step_path=Path("/m/P.step")
+    )
+
+    for name in ("NECK_SECTION_POINTS", "FRETBOARD_SECTION_POINTS"):
+        line = next(line for line in source.splitlines() if line.startswith(name))
+        sections = ast.literal_eval(line.split("=", 1)[1].strip())
+        assert len({len(section) for section in sections}) == 1
+        for section in sections:
+            ring = [*section, section[0]]
+            for a, b in zip(ring, ring[1:]):
+                assert math.dist(a, b) >= LOFT_POINT_GAP * 0.9
+
+
+def test_a_point_on_top_of_the_one_before_moves_on_a_hair() -> None:
+    row = (
+        Point3D(0.0, 0.0, 0.0),
+        Point3D(0.0, 0.0, 0.0),
+        Point3D(0.0, 10.0, 0.0),
+        Point3D(5.0, 10.0, 0.0),
+    )
+    apart = FreeCADScriptExporter._points_apart(row)
+
+    assert apart[0] == row[0] and apart[2:] == row[2:]
+    assert (apart[1].x, apart[1].y, apart[1].z) == pytest.approx(
+        (0.0, LOFT_POINT_GAP, 0.0)
+    )
+    assert FreeCADScriptExporter._points_apart(apart) == apart

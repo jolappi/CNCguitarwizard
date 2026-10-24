@@ -1585,6 +1585,13 @@
 
 ### Fixed
 
+- A design whose neck behind the nut had two points on one another in
+  some of its loft sections (a locking nut, a zero fret and a drawn root
+  behind a 10 degree headstock's nut) made a FreeCAD model that never
+  finished: FreeCAD's polygon dropped the repeated point and the neck's
+  loft stalled matching that section with the others. No loft section
+  gives a point twice now (`LOFT_POINT_GAP`, 1 µm).
+
 - A heel wider than the final fret with a round end (`heel_width` 58,
   `neck_heel_end` "round") cut the fretboard's outline out to 762 mm
   either side of the board: cut round, the heel's outline had its tip on
