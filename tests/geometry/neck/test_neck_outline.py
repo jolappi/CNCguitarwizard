@@ -174,6 +174,27 @@ def test_a_heel_wider_than_the_taper_flares_out_to_it() -> None:
         assert abs(point.y) == pytest.approx(outline.half_width_at(point.x))
 
 
+def test_a_flared_round_heel_gives_no_point_twice() -> None:
+    # Regression: cut round, a flared heel had its tip on the centre twice,
+    # 2e-16 mm apart; the edge between them had no direction, and its
+    # offset, the fretboard's outline toolpath, spiked out 762 mm.
+    outline = NeckOutline(
+        scale_length=609.6,
+        fret_count=22,
+        nut_width=42.0,
+        last_fret_width=56.0,
+        heel_width=58.0,
+        heel_length=4.0,
+        heel_end_radius=127.0,
+        heel_corner_radius=6.35,
+        heel_flare_length=54.0,
+    )
+    boundary = outline.boundary
+
+    for here, after in zip(boundary, (*boundary[1:], boundary[0]), strict=True):
+        assert math.dist((here.x, here.y), (after.x, after.y)) > 1e-6
+
+
 def test_a_heel_as_wide_as_the_taper_does_not_flare() -> None:
     outline = NeckOutline(
         scale_length=609.6,

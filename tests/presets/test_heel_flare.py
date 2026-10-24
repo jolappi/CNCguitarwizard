@@ -6,7 +6,11 @@ from dataclasses import replace
 
 import pytest
 
-from cncguitarwizard.cam.fretboard import fretboard_outline_polygon
+from cncguitarwizard.cam.fretboard import (
+    FretboardMachiningParameters,
+    fretboard_outline_polygon,
+    plan_fretboard_machining,
+)
 from cncguitarwizard.presets import Prototype001Parameters
 
 
@@ -43,6 +47,32 @@ def test_a_wider_heel_flares_the_neck_and_its_board_together() -> None:
             assert abs(point.y) - outline.half_width_at(point.x) == pytest.approx(
                 clearance
             )
+
+
+def test_a_flared_round_heel_is_cut_round_its_board_and_pocket() -> None:
+    # Regression: heel_width 58 with a round heel end cut the fretboard's
+    # outline out to Y 762 mm (the cut-round end gave its tip twice, a
+    # hair apart), and the epoxy tray's wall round the neck pocket spiked
+    # as far, FreeCAD's tray cut with it.
+    geometry = replace(
+        Prototype001Parameters(),
+        heel_width=58.0,
+        neck_heel_end="round",
+        body_epoxy_tray_depth=3.0,
+    ).build()
+    plan = plan_fretboard_machining(geometry, FretboardMachiningParameters())
+
+    # Within a cutter's width of the 58 mm board.
+    for toolpath in plan.outline.toolpaths:
+        assert max(abs(move.y) for move in toolpath.moves) < 29.0 + 6.0
+    pocket = geometry.body.neck_pocket
+    tray = geometry.body.epoxy_tray
+    assert pocket is not None and tray is not None
+    reach = (
+        max(abs(p.y) for p in pocket.outline)
+        + Prototype001Parameters().body_epoxy_tray_rim
+    )
+    assert max(abs(p.y) for p in tray.walls[0]) == pytest.approx(reach, abs=0.1)
 
 
 def test_a_heel_as_wide_as_the_final_fret_does_not_flare() -> None:

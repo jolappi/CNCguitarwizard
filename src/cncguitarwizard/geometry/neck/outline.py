@@ -24,6 +24,9 @@ its end arc."""
 HEEL_FLARE_SAMPLES = 16
 """Points along each side of a flaring heel (``HeelFlare``)."""
 
+SAME_POINT = 1e-6
+"""Clipped points nearer each other than this, in mm, are one point."""
+
 
 @dataclass(frozen=True, slots=True)
 class HeelFlare:
@@ -121,7 +124,10 @@ def clip_to_heel_end(
     Whatever lies past the end (``heel_end_curve``) is cut away; the
     polygon must lie within ``half_width`` of the centre. It is the
     polygon itself for a square end, or, ``square_too``, cut square at
-    ``end_x``.
+    ``end_x``. A point is never given twice: a corner on a clipping line
+    comes out of the clip once more where its edge crosses the line, a
+    hair away, and the edge between the two would have no direction to
+    offset along (an offset of it, a toolpath, would spike).
     """
     far = min(p.x for p in polygon) - 1.0
     if end_radius == 0.0:
@@ -152,7 +158,18 @@ def clip_to_heel_end(
                 ) / denominator
                 clipped.append(Point2D(here.x + ex * t, here.y + ey * t))
         points = clipped
-    return tuple(points)
+    kept: list[Point2D] = []
+    for point in points:
+        if (
+            not kept
+            or math.dist((point.x, point.y), (kept[-1].x, kept[-1].y)) >= SAME_POINT
+        ):
+            kept.append(point)
+    if len(kept) > 1 and (
+        math.dist((kept[0].x, kept[0].y), (kept[-1].x, kept[-1].y)) < SAME_POINT
+    ):
+        kept.pop()
+    return tuple(kept)
 
 
 def heel_end_inset(

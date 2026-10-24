@@ -256,8 +256,23 @@ def offset_polygon(
     requested side. What remains is the true offset contour, in order,
     with any region too narrow for the disc left out. An empty tuple
     means the whole polygon is too narrow.
+
+    A point within a micrometre of the one before it is passed over: the
+    edge between them has no true direction, and shifted along a
+    rounding error's it would add a corner far out (a spike in the
+    toolpath).
     """
-    points = oriented(polygon, clockwise=False)
+    points: list[Point2D] = []
+    for point in oriented(polygon, clockwise=False):
+        if (
+            not points
+            or math.hypot(point.x - points[-1].x, point.y - points[-1].y) >= 1e-6
+        ):
+            points.append(point)
+    if len(points) > 1 and (
+        math.hypot(points[0].x - points[-1].x, points[0].y - points[-1].y) < 1e-6
+    ):
+        points.pop()
     count = len(points)
     sign = 1.0 if inward else -1.0
     raw: list[Point2D] = []

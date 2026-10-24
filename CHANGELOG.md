@@ -1565,6 +1565,16 @@
 
 ### Fixed
 
+- A heel wider than the final fret with a round end (`heel_width` 58,
+  `neck_heel_end` "round") cut the fretboard's outline out to 762 mm
+  either side of the board: cut round, the heel's outline had its tip on
+  the centre twice, 2e-16 mm apart, and the toolpath round it took the
+  edge between them for a corner and ran out along it. The epoxy tray's
+  wall round the neck pocket spiked as far (a strip across the body left
+  out of the tray, FreeCAD's tray cut with it). `clip_to_heel_end` gives
+  no point twice now, and `offset_polygon` passes over a point within a
+  micrometre of the one before it, whatever outline it is given.
+
 - A carved top with a bevel round the top's edge (the Mockingbird style's)
   did not build: every contour on the top was taken for an arm contour,
   and the error said to set `body_arm_contour_depth` to 0, which did

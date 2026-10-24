@@ -129,6 +129,25 @@ def test_offset_polygon_outward_grows_a_rectangle_with_rounded_corners() -> None
     assert signed_area(contour) > signed_area(square)
 
 
+def test_offset_polygon_passes_over_a_point_given_twice() -> None:
+    # Regression: a pointed end's tip given twice, a rounding error apart
+    # and back the way it came, offset outward to a corner 762 mm out (a
+    # fretboard's outline toolpath).
+    pointed = (
+        Point2D(0.0, -10.0),
+        Point2D(20.0, -10.0),
+        Point2D(24.0, 2.220446049250313e-16),
+        Point2D(24.0, 0.0),
+        Point2D(20.0, 10.0),
+        Point2D(0.0, 10.0),
+    )
+    contour = offset_polygon(pointed, 3.0, inward=False)
+
+    assert max(point.x for point in contour) < 24.0 + 3.5
+    assert max(abs(point.y) for point in contour) < 10.0 + 3.5
+    assert all(disc_fits(point, pointed, 3.0, inside=False) for point in contour)
+
+
 def test_offset_polygon_keeps_every_contour_segment_clear_on_an_l_shape() -> None:
     polygon = l_shape()
     contour = offset_polygon(polygon, 2.5, inward=True)
