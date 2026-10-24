@@ -26,7 +26,7 @@ def test_an_export_script_writes_each_part_and_the_whole_in_each_format() -> Non
     assert 'print(f"WROTE {os.path.basename(path)}")' in source
     assert export_script_name(["stl"]) == "Prototype001_export_stl.py"
     assert export_script_name(["stl", "glb"]) == "Prototype001_export.py"
-    assert set(EXPORT_FORMATS) == {"stl", "3mf", "obj", "glb", "iges", "brep"}
+    assert set(EXPORT_FORMATS) == {"step", "stl", "3mf", "obj", "glb", "iges", "brep"}
 
 
 @pytest.mark.parametrize(

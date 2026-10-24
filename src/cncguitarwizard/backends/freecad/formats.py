@@ -17,6 +17,7 @@ from collections.abc import Sequence
 from .exceptions import FreeCADBackendError
 
 EXPORT_FORMATS: dict[str, str] = {
+    "step": "STEP: CAD and CAM, its surfaces exact, each part on its own too",
     "stl": "STL: 3D printing, slicers and most CAM",
     "3mf": "3MF: 3D printing, its units kept",
     "obj": "OBJ: Blender and rendering",
@@ -131,7 +132,7 @@ def render_format_export(formats: Sequence[str]) -> str:
         "        mesh(shapes).write(path)\n"
         '    elif extension == "brep":\n'
         "        Part.Compound(shapes).exportBrep(path)\n"
-        '    elif extension == "iges":\n'
+        '    elif extension in ("iges", "step"):\n'
         "        Part.export(objects, path)\n"
         "    else:\n"
         "        Import.export(objects, path)\n"

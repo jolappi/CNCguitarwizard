@@ -1181,7 +1181,7 @@ def test_the_built_model_is_offered_in_other_3d_formats() -> None:
     from cncguitarwizard.webapp import format_export, parameter_schema
 
     formats = parameter_schema()["export_formats"]
-    assert list(formats) == ["stl", "3mf", "obj", "glb", "iges", "brep"]
+    assert list(formats) == ["step", "stl", "3mf", "obj", "glb", "iges", "brep"]
     assert formats["stl"].startswith("STL: ")
     script = format_export("glb")
     assert script["name"] == "Prototype001_export_glb.py"

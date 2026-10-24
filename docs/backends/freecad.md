@@ -291,7 +291,7 @@ its own, `Prototype001_<part>.<format>`, and the whole model one more,
 | --- | --- | --- |
 | `stl`, `3mf`, `obj` | a mesh (`MeshPart.meshFromShape`, within `MESH_LINEAR_DEFLECTION` = 0.05 mm and `MESH_ANGULAR_DEFLECTION` = 0.25 rad) | 3D printing, slicers, most CAM; Blender |
 | `glb` | glTF binary (`Import.export`, in metres as glTF has it) | 3D viewers on the web and phones, in colour |
-| `iges` | exact surfaces (`Part.export`) | older CAD and CAM |
+| `step`, `iges` | exact surfaces (`Part.export`) | any CAD and CAM, each part on its own (the build's STEP holds them all); older CAD and CAM |
 | `brep` | OpenCascade's own exact shapes (`exportBrep`) | FreeCAD, OpenCascade |
 
 `workflows.export_prototype001_formats(output_directory, formats)` writes

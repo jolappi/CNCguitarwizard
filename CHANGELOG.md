@@ -69,7 +69,8 @@
   several editors' Settings (easy mode's and a page's), all kept in step.
 
 - The finished model in other common 3D formats, exported on its own
-  after the build: STL, 3MF and OBJ (meshes within 0.05 mm, for 3D
+  after the build: STEP for each part on its own (the build's own STEP
+  holds them all), STL, 3MF and OBJ (meshes within 0.05 mm, for 3D
   printing, slicers, CAM and Blender), GLB (glTF, for 3D viewers on the
   web and phones, in colour), IGES and BREP (exact surfaces, for other
   CAD and CAM), each part a file of its own and the whole guitar one

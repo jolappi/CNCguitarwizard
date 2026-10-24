@@ -748,7 +748,8 @@ the design (*Save design*) and build it all locally from a clone with
 --output build/my_guitar`: the G-code, DXF, FCStd and STEP together.
 
 Under *Downloads*, *Other 3D formats* has a button for each format the
-finished model goes into besides STEP (STL, 3MF, OBJ, GLB, IGES, BREP:
+finished model goes into (STEP, each part on its own as well as the
+whole, STL, 3MF, OBJ, GLB, IGES, BREP:
 `webapp.format_export`, the schema's `export_formats`): each downloads a
 small FreeCAD script (`Prototype001_export_stl.py`) that, run beside the
 `Prototype001.FCStd` FreeCAD made (or as a macro with it open), writes
