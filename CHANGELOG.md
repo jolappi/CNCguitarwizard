@@ -1599,6 +1599,12 @@
   `slab_outside` now, kept only when the outline's prism came out, a
   little fuzz tried when not.
 
+- `headstock_bass_side`'s help said it only swapped the headstock side for
+  side; it sets the whole instrument's bass side (the tuners, the
+  pickups' slant, the contours, a fan and the heel relief, which stays on
+  the treble side), and now says so, pointing a headstock with its tuners
+  on the treble side to a reverse `headstock_style`.
+
 - A heel wider than the final fret with a round end (`heel_width` 58,
   `neck_heel_end` "round") cut the fretboard's outline out to 762 mm
   either side of the board: cut round, the heel's outline had its tip on

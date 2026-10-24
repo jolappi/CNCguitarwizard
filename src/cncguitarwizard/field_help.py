@@ -875,8 +875,11 @@ FIELD_HELP: dict[str, str] = {
     "locking_nut_screw_depth": "How deep those pilot holes go, in mm.",
     # Headstock and tuners (the rest)
     "headstock_bass_side": (
-        "Which side of the drawn headstock the bass strings' tuners are on."
-        " Change it to swap the headstock's shape and tuners side for side."
+        "Which side the bass strings are on, the whole instrument's: their "
+        "tuners, the pickups' slant, the contours, a heel relief (on the "
+        "treble side) and a fan follow it. For a headstock with its tuners "
+        "on the treble side, choose a reverse style in headstock_style "
+        "instead."
     ),
     "headstock_tip_points": (
         "A drawn headstock's tip, shaped in the headstock editor. Empty: a "
