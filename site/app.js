@@ -7150,6 +7150,40 @@ form.addEventListener("change", (event) => {
   }
   syncMirrors();
 });
+// A vintage truss rod (truss_rod_install "back") is a Fender's: adjusted
+// at the heel with a plain nut, the standard rod, behind a flat headstock.
+// For each of those, whether a value fits it and the value it is given.
+// The last choice wins: choosing the vintage rod sets them, and choosing
+// otherwise for one of them while it is chosen goes back to a rod routed
+// from the top.
+const VINTAGE_ROD = {
+  truss_rod_adjustment: [(value) => value === "heel", "heel"],
+  truss_rod_spoke_wheel: [(value) => value !== "yes", "auto"],
+  truss_rod_profile: [(value) => value === "standard", "standard"],
+  headstock_angle: [(value) => Number(value) === 0, 0],
+};
+form.addEventListener("change", (event) => {
+  const name = event.target.dataset.name;
+  const field = (other) => form.querySelector(`[data-set='prototype'][data-name='${other}']`);
+  const install = field("truss_rod_install");
+  if (!install) return;
+  const changed = [];
+  if (name === "truss_rod_install" && install.value === "back") {
+    for (const [other, [fits, value]] of Object.entries(VINTAGE_ROD)) {
+      const control = field(other);
+      if (!control || fits(control.value)) continue;
+      setControlValue(control, value);
+      changed.push(`${fieldLabel(other)} ${value}`);
+    }
+  } else if (name in VINTAGE_ROD && install.value === "back"
+    && !VINTAGE_ROD[name][0](event.target.value)) {
+    setControlValue(install, "top");
+    changed.push(`${fieldLabel("truss_rod_install")} top`);
+  }
+  if (!changed.length) return;
+  syncMirrors();
+  setStatus(`For the truss rod chosen: ${changed.join(", ")}`, "ok");
+});
 // A switch turned on or off checks the settings it holds above 0 again
 // (POSITIVE_WHILE_ON), in the form and in an editor's copy.
 form.addEventListener("change", (event) => {

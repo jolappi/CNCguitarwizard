@@ -190,6 +190,40 @@ def test_the_app_ui_has_pages_for_the_neck_and_the_fretboard() -> None:
     assert "EDITOR_FIELDS[`${id}-page-options`]" in layout
 
 
+def test_choosing_the_vintage_truss_rod_sets_what_it_needs() -> None:
+    # Regression: choosing truss_rod_install "back" with a spoke wheel on
+    # (or an angled headstock) left a design that did not build.
+    from dataclasses import replace
+
+    from cncguitarwizard.presets import Prototype001Parameters
+
+    script = (ROOT / "site" / "app.js").read_text(encoding="utf-8")
+    start = script.index("const VINTAGE_ROD = {")
+    table = script[start : script.index("};", start)]
+    given = dict(
+        re.findall(r'^  (\w+): \[\(value\) => [^,]+, "?(\w+)"?\],$', table, re.M)
+    )
+
+    assert given == {
+        "truss_rod_adjustment": "heel",
+        "truss_rod_spoke_wheel": "auto",
+        "truss_rod_profile": "standard",
+        "headstock_angle": "0",
+    }
+    # They are what the vintage rod needs: the guitar builds with them.
+    replace(
+        Prototype001Parameters(),
+        truss_rod_install="back",
+        truss_rod_adjustment="heel",
+        truss_rod_spoke_wheel="auto",
+        truss_rod_profile="standard",
+        headstock_angle=0.0,
+    ).build()
+    # The last choice wins either way.
+    assert 'if (name === "truss_rod_install" && install.value === "back")' in script
+    assert 'setControlValue(install, "top");' in script
+
+
 def test_the_neck_page_holds_the_truss_rod_settings() -> None:
     layout = (ROOT / "site" / "desktop.js").read_text(encoding="utf-8")
     neck = layout[layout.index("    neck: [") : layout.index("    fretboard: [")]

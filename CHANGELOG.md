@@ -1483,6 +1483,12 @@
 
 ### Fixed
 
+- Choosing the vintage truss rod (`truss_rod_install` "back") sets what it
+  needs instead of leaving a design that does not build: the adjustment
+  at the heel, the spoke wheel to auto, the standard rod and a flat
+  headstock (the status says which changed). Setting one of those
+  otherwise while it is chosen goes back to the rod routed from the top.
+
 - *Design › Neck* draws a neck run through the body (the Mockingbird
   style's) paler inside the body, a dashed line where the body begins:
   drawn whole in the neck's colour, the body's centre block looked like a

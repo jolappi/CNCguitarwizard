@@ -225,7 +225,11 @@ heel, its nut at the heel's end face, turned with the neck off.
 (`truss_rod_adjustment` must be `"heel"`), a spoke wheel
 (`truss_rod_spoke_wheel` `"yes"`; `"auto"` fits none), a low-profile rod,
 an angled headstock (it is a Fender's, behind a flat one), a headless neck
-or a neck run through the body. The build checks it against the carved
+or a neck run through the body. The web app sets the first four for it as
+it is chosen (`VINTAGE_ROD` in `site/app.js`: the adjustment at the heel,
+the spoke wheel to auto, the standard rod, the headstock flat), and goes
+back to the rod routed from the top when one of them is set otherwise:
+the last choice wins. The build checks it against the carved
 neck (`_checked_vintage_rod`): at least `VINTAGE_ROD_WALL` (1.5 mm) of
 wood over its anchor end, and at least `VINTAGE_STRIP_MIN` (3 mm) of
 walnut over the rod everywhere, once the back is carved; a thinner neck is
