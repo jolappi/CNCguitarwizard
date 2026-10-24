@@ -136,3 +136,67 @@ def test_interpolate_rows_blends_between_stations_and_across_a_row() -> None:
     assert interpolate_rows(stations, rows, 0.0, 0.5) == pytest.approx(-1.0)
     assert interpolate_rows(stations, rows, 11.0, 0.0) is None
     assert interpolate_rows(stations, rows, 5.0, 2.0) is None
+
+
+def ramp_to_floor(x: float, y: float) -> float:
+    """Down from the blank top to a floor 5 mm deep over the first 10 mm."""
+    return -min(5.0, 0.5 * max(0.0, x))
+
+
+def test_rest_roughing_cuts_only_what_a_bigger_tool_left() -> None:
+    span, across = (0.0, 60.0), (-15.0, 15.0)
+    small = MachiningParameters(step_down=3.0)
+    big = MachiningParameters(step_down=3.0, tool_diameter=25.4)
+    small_grid = build_offset_grid(ramp_to_floor, span, across, small)
+    big_grid = build_offset_grid(ramp_to_floor, span, across, big)
+    full = raster_rough(
+        "Rough", small_grid, small, x_range=span, y_range=across, step_over=2.4
+    )
+    rest = raster_rough(
+        "Rough",
+        small_grid,
+        small,
+        x_range=span,
+        y_range=across,
+        step_over=2.4,
+        stock=big_grid,
+    )
+
+    # The big cutter reaches the floor once its whole width is on it, 12.7
+    # mm past the ramp's foot: from there on there is nothing left to cut.
+    assert cuts(rest.moves)
+    assert all(move.x < 10.0 + 12.7 + 2.0 for move in cuts(rest.moves))
+    assert any(move.x > 30.0 for move in cuts(full.moves))
+    assert rest.cutting_length() < full.cutting_length() / 2.0
+    for move in cuts(rest.moves):
+        assert move.z >= small_grid.tip_at(move.x, move.y) - 1e-6
+    assert rest.deepest_z() == pytest.approx(-5.0)
+
+
+def test_rest_finishing_runs_only_where_it_takes_wood_off() -> None:
+    span, across = (0.0, 60.0), (-15.0, 15.0)
+    flat = MachiningParameters()
+    ball = MachiningParameters(tool_tip="ball")
+    flat_grid = build_offset_grid(ramp_to_floor, span, across, flat)
+    ball_grid = build_offset_grid(ramp_to_floor, span, across, ball)
+    full = raster_finish(
+        "Finish", ball_grid, ball, x_range=span, y_range=across, step_over=2.0
+    )
+    rest = raster_finish(
+        "Finish",
+        ball_grid,
+        ball,
+        x_range=span,
+        y_range=across,
+        step_over=2.0,
+        rest=flat_grid,
+    )
+
+    # Only over the ramp and its foot, where the flat tool left wood the
+    # ball takes; the floor, flat already, is crossed at the safe height.
+    assert cuts(rest.moves)
+    assert all(move.x < 10.0 + 3.0 + 2.0 for move in cuts(rest.moves))
+    assert any(move.x > 30.0 for move in cuts(full.moves))
+    for move in cuts(rest.moves):
+        assert move.z >= ball_grid.tip_at(move.x, move.y) - 0.003
+    assert rest.cutting_length() < full.cutting_length() / 3.0

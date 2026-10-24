@@ -1403,6 +1403,7 @@ def plan_neck_machining(
         top_names = {
             setup.name
             for setup in (
+                block_plan.top_carve_flats,
                 block_plan.top_carve,
                 block_plan.top,
                 block_plan.top_controls,

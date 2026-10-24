@@ -374,7 +374,7 @@ SETTING_PICTURES: dict[str, SettingPicture] = {
     "nut_jig_tool_diameter": ("neck", (_BEHIND_NUT,)),
     **_same(
         "plan",
-        "carve_tool_diameter carve_finish",
+        "carve_tool_diameter carve_finish carve_flat_tool_diameter",
         r"^Carved top's plateau$",
         _BODY,
     ),

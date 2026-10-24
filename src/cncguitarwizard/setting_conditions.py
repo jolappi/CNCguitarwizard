@@ -348,7 +348,10 @@ APPLIES_WHEN: dict[str, tuple[Condition, ...]] = {
         {"body_strap_guide": (True,)},
     ),
     # Machining: a feature's own cutter, when the design has the feature.
-    **_when("carve_tool_diameter carve_finish", {"body_carved_top": (True,)}),
+    **_when(
+        "carve_tool_diameter carve_finish carve_flat_tool_diameter",
+        {"body_carved_top": (True,)},
+    ),
     **_when("nut_jig_tool_diameter", {"nut_jig": (True,)}),
 }
 

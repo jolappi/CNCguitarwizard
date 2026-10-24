@@ -214,12 +214,19 @@ def raster_finish(
     step_over: float,
     sample_spacing: float = 1.0,
     tolerance: float = 0.002,
+    rest: OffsetGrid | None = None,
 ) -> Toolpath:
     """Follow the offset surface with parallel passes along X.
 
     Passes alternate direction. The link between neighbouring passes is
     a feed move at the higher of the two end heights, since the surface
     in between has already been cut to within a scallop.
+
+    With a ``rest``, the surface an earlier tool left (a flat end mill's
+    tip surface over the same part), a pass runs only where it takes off
+    more than ``REST_TOLERANCE`` below it, a sample on into the rest at
+    either end; between its runs the tool goes over at the safe height
+    (the rest may stand higher than either end: a plateau).
     """
     ys = _steps(y_range[0], y_range[1], step_over)
     builder = _builder(name, tool)
@@ -228,19 +235,53 @@ def raster_finish(
         xs = _steps(x_range[0], x_range[1], sample_spacing)
         if not forward:
             xs.reverse()
-        points = _simplify([(x, grid.tip_at(x, y)) for x in xs], tolerance)
-        start_x, start_z = points[0]
-        if not builder.positioned:
-            builder.rapid_to(start_x, y)
-            builder.rapid_down_to(start_z)
-            builder.plunge_to(start_z)
-        else:
-            builder.cut_to(start_x, y, max(builder.z, start_z))
-            builder.cut_to(start_x, y, start_z)
-        for x, z in points[1:]:
-            builder.cut_to(x, y, z)
         forward = not forward
+        tips = [(x, grid.tip_at(x, y)) for x in xs]
+        if rest is None:
+            runs = [tips]
+        else:
+            runs = _runs_below(tips, [rest.tip_at(x, y) for x in xs])
+        for run in runs:
+            points = _simplify(run, tolerance)
+            start_x, start_z = points[0]
+            if not builder.positioned or rest is not None:
+                builder.rapid_to(start_x, y)
+                builder.rapid_down_to(start_z)
+                builder.plunge_to(start_z)
+            else:
+                builder.cut_to(start_x, y, max(builder.z, start_z))
+                builder.cut_to(start_x, y, start_z)
+            for x, z in points[1:]:
+                builder.cut_to(x, y, z)
     return builder.build()
+
+
+REST_TOLERANCE = 0.01
+"""How much deeper than an earlier tool's surface (``rest``) a pass must
+cut to be run there, in mm."""
+
+
+def _runs_below(
+    tips: list[tuple[float, float]], rest: list[float]
+) -> list[list[tuple[float, float]]]:
+    """Split a pass's ``(x, tip)`` samples into the runs where the tip lies
+    more than ``REST_TOLERANCE`` below ``rest``, each a sample longer at
+    either end (where it meets the rest)."""
+    below = [
+        tip < left - REST_TOLERANCE for (_, tip), left in zip(tips, rest, strict=True)
+    ]
+    runs: list[list[tuple[float, float]]] = []
+    index = 0
+    while index < len(tips):
+        if not below[index]:
+            index += 1
+            continue
+        end = index
+        while end + 1 < len(tips) and below[end + 1]:
+            end += 1
+        runs.append(tips[max(index - 1, 0) : min(end + 2, len(tips))])
+        index = end + 1
+    return runs
 
 
 def raster_rough(
@@ -254,6 +295,7 @@ def raster_rough(
     sample_spacing: float = 1.0,
     tolerance: float = 0.01,
     link_distance: float = 0.0,
+    stock: OffsetGrid | None = None,
 ) -> Toolpath:
     """Remove the stock above the offset surface in Z-limited layers.
 
@@ -268,6 +310,9 @@ def raster_rough(
     fed straight across at the layer (or the surface, where higher)
     instead of up at the safe height: the wood there stands no higher
     than the previous layer, so the link cuts no deeper than a pass.
+
+    With a ``stock``, the wood's top as an earlier, bigger tool left it
+    (its tip surface), a layer cuts only where that stands above it.
     """
     floor = grid.floor()
     if floor >= 0.0:
@@ -283,6 +328,15 @@ def raster_rough(
         for y in ys:
             xs = xs_forward if forward else list(reversed(xs_forward))
             tips = [grid.tip_at(x, y) for x in xs]
+            # Where the wood already stands no higher than this layer's
+            # cut, nothing is left for it.
+            if stock is not None:
+                tips = [
+                    previous_level
+                    if stock.tip_at(x, y) <= max(tip, level) + 1e-6
+                    else tip
+                    for x, tip in zip(xs, tips, strict=True)
+                ]
             for segment in _segments(xs, tips, previous_level):
                 points = _simplify(
                     [(x, max(tip, level)) for x, tip in segment], tolerance

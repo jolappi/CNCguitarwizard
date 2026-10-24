@@ -139,6 +139,12 @@ class MachiningParameters:
             roughing tool, in fine passes; off (the default) leaves the
             roughing's rows, the flat tool following the arch, to sand
             smooth by hand, as a carve routed in steps is.
+        carve_flat_tool_diameter: A big flat end mill (25.4 mm, an inch)
+            that takes a carved top's flat parts first, in a program of
+            its own: the rim along the edge cut flat to its level and the
+            bulk of the wood off the fall; the roughing tool then cuts
+            only what it left, and the ball nose only the fall, never the
+            flat plateau and rim. ``0`` (the default) for none.
         fretboard_blank_length: The fretboard blank's length, in mm, the
             board centred on it (a bought blank, 540 mm say); none (the
             default) cuts it from stock 35 mm longer at each end, longer
@@ -201,6 +207,7 @@ class MachiningParameters:
     nut_jig_tool_diameter: float = 0.6
     carve_tool_diameter: float = 0.0
     carve_finish: bool = False
+    carve_flat_tool_diameter: float = 0.0
     fretboard_blank_length: float | None = None
     fretboard_blank_width: float | None = None
     fretboard_blank_thickness: float = 7.0
@@ -252,6 +259,7 @@ class MachiningParameters:
             "index_pin_wall": self.index_pin_wall,
             "spindle_dwell": self.spindle_dwell,
             "carve_tool_diameter": self.carve_tool_diameter,
+            "carve_flat_tool_diameter": self.carve_flat_tool_diameter,
         }
         for name, value in non_negative.items():
             if not math.isfinite(value) or value < 0.0:

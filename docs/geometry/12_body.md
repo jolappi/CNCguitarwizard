@@ -1236,7 +1236,21 @@ tool needs, its radius and `CARVE_EDGE_REACH` (3 mm), within the `band`
 6 mm main tool that is about 92 minutes (315 with the old ball finish
 everywhere), with a 10 mm roughing tool about 55 and 12 mm about 47.
 `carve_finish` still finishes it with a ball nose as wide as the
-roughing tool, in passes `CARVE_FINISH_STEP` (1 mm) apart. The FreeCAD
+roughing tool, in passes `CARVE_FINISH_STEP` (1 mm) apart.
+
+With `carve_flat_tool_diameter` (25.4 mm, an inch, say) a big flat end
+mill takes the flat parts first, in a program of its own,
+`Body_top_carve_flats.nc`: it roughs the whole carve the same way,
+quickly, the rim along the edge cut flat to its level and the bulk of
+the wood off the fall, its width riding over the arch where it does not
+fit. `Body_top_carve` then roughs only the wood it left (`raster_rough`'s
+`stock`, the big cutter's tip surface), and the ball nose finishes only
+where it takes off more than the roughing tool left
+(`raster_finish`'s `rest`, more than `REST_TOLERANCE`, 0.01 mm): the
+fall, never the flat plateau and rim, going over them at the safe
+height. For the Les Paul with the 6 mm tools: 19 minutes for the inch
+cutter, then 54 of roughing (73 in all against 94), or with the ball
+finish 177 against 251, its passes 80 m against 157. The FreeCAD
 model cuts the top under a cubic B-spline surface whose control points
 are the carve's heights every `CARVE_SURFACE_SPACING` (4 mm: held up
 where the top falls sharply, by a Les Paul's cutaway, 6 mm left it up to

@@ -378,6 +378,48 @@ def test_the_carve_roughs_quickly_to_sand() -> None:
     assert max(machine_xs) - min(machine_xs) <= max(xs) - min(xs) + 2 * reach + 1e-6
 
 
+def test_a_big_flat_end_mill_takes_the_flats_and_spares_the_ball_nose() -> None:
+    body = LES_PAUL.build().body
+    carve = body.carved_top
+    assert carve is not None
+    finished = MachiningParameters(carve_finish=True)
+    inch = replace(finished, carve_flat_tool_diameter=25.4)
+    before = plan_body_machining(body, finished)
+    plan = plan_body_machining(body, inch)
+    assert before.top_carve is not None and before.top_carve_flats is None
+
+    # Its own program first, with its own tool.
+    names = [setup.name for setup in plan.setups]
+    assert names[:4] == [
+        "Body_index_pins",
+        "Body_top_carve_flats",
+        "Body_top_carve",
+        "Body_top",
+    ]
+    flats, carve_setup = plan.top_carve_flats, plan.top_carve
+    assert flats is not None and carve_setup is not None
+    assert flats.tool is not None and flats.tool.tool_diameter == 25.4
+    assert len(plan.preview_outlines) == len(plan.setups)
+    # Down to the rim's level, never into the arch.
+    (path,) = flats.toolpaths
+    assert path.deepest_z() == pytest.approx(-carve.height, abs=0.05)
+    outline = body.outline.points
+    for move in path.moves:
+        model = Point2D(move.x + plan.origin_x, move.y + plan.origin_y)
+        if not move.rapid and point_in_polygon(model, outline):
+            assert move.z >= -carve.drop_at(model.x, model.y) - 0.05
+    # The roughing tool cuts only what it left, the ball nose only the
+    # fall: well under half its passes, and the whole far quicker.
+    rough, finish = carve_setup.toolpaths
+    old_rough, old_finish = before.top_carve.toolpaths
+    assert rough.cutting_length() < 0.7 * old_rough.cutting_length()
+    assert finish.cutting_length() < 0.6 * old_finish.cutting_length()
+    assert finish.deepest_z() == pytest.approx(old_finish.deepest_z(), abs=0.05)
+    minutes = flats.estimated_minutes(inch) + carve_setup.estimated_minutes(inch)
+    assert minutes < 0.8 * before.top_carve.estimated_minutes(finished)
+    assert any("only over the fall" in note for note in carve_setup.notes)
+
+
 def test_the_model_never_dips_under_the_carve() -> None:
     import math
 

@@ -105,6 +105,14 @@
   It records the design and drives no solid; the STEP and the other 3D
   formats leave it out.
 
+- A big flat end mill for a carved top's flat parts
+  (`carve_flat_tool_diameter`, 25.4 mm say, an inch; none by default): in
+  a program of its own before the carve's (`Body_top_carve_flats`), it
+  cuts the rim along the edge flat to its level and takes the bulk of the
+  wood off the fall; the roughing tool then cuts only what it left and the
+  ball nose only the fall, not the flat plateau and rim. A Les Paul's
+  carve with the ball finish takes about 177 minutes instead of 251.
+
 - The other 3D formats made in the browser as files, no FreeCAD needed:
   *Other 3D formats* gives STEP, STL, 3MF, OBJ, GLB or BREP as a ZIP, each
   part a file of its own and the whole guitar one more. The build's own
