@@ -103,12 +103,9 @@ SETTING_PICTURES: dict[str, SettingPicture] = {
         "heel_root_style heel_root_flat_points heel_root_neck_points",
         _POCKET,
     ),
-    **_same(
-        "plan",
-        "neck_through_width neck_through_heel_ramp",
-        r"^Neck-through block$",
-        _POCKET,
-    ),
+    "neck_through_width": ("plan", (r"^Neck-through block$", _POCKET)),
+    # The neck's back falling to the body's thickness ahead of the body.
+    "neck_through_heel_ramp": ("neck", (r"^The neck from the side$",)),
     "first_fret_thickness": ("neck", (r"^Fret 1: the neck$",)),
     "twelfth_fret_thickness": ("neck", (r"^Fret 12: the neck$",)),
     "neck_profile_exponent": ("neck", (r"^Fret (1|12): the neck$",)),

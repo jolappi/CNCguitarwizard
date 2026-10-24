@@ -24,6 +24,8 @@ MARGIN = 16.0
 """Room round each view, in drawing units."""
 
 WOOD = 'fill="#e9d3a8" stroke="#8a6a3a" stroke-width="0.8"'
+IN_BODY = 'fill="#e9d3a8" fill-opacity="0.35" stroke="#8a6a3a" stroke-width="0.5"'
+BODY_FRONT = 'stroke="#8a6a3a" stroke-width="0.8" stroke-dasharray="4 3"'
 BOARD = 'fill="#3b2a1a" stroke="#1f150c" stroke-width="0.6"'
 FRET = 'stroke="#d8d8d8" stroke-width="1.2"'
 SLOT = 'stroke="#d8d8d8" stroke-width="0.9"'
@@ -176,6 +178,14 @@ def _neck_side(
     return depths, tops
 
 
+def _depth_at(depths: Sequence[tuple[float, float]], x: float) -> float:
+    """Return the neck's back's height at ``x``, between its stations."""
+    for (x1, z1), (x2, z2) in zip(depths, depths[1:], strict=False):
+        if x1 <= x <= x2:
+            return z1 if x2 == x1 else z1 + (z2 - z1) * (x - x1) / (x2 - x1)
+    return depths[-1][1]
+
+
 def _board_end(geometry: Prototype001Geometry) -> float:
     """Return where the board ends down its middle: its last row's, or the
     heel's end where it is cut back to it."""
@@ -258,15 +268,47 @@ def render_neck_svg(
     frame_depths, frame_tops = _neck_side(frame) if frame_of else (depths, tops)
     v_low = min(z for _, z in frame_depths)
     v_high = max(z for _, z in frame_tops)
-    parts.append(_caption(top, f"From the side (height x{SIDE_EXAGGERATION:g})"))
+    # A neck-through (or one-piece) neck runs on through the body, as deep
+    # as the body: the part inside it is drawn paler, so the heel seen is
+    # only the ramp down to it ahead of the body.
+    through = geometry.neck_through
+    body_x = through.front_x if through is not None else None
+    if body_x is not None and not 0.0 < body_x < heel_end:
+        body_x = None
+    caption = f"From the side (height x{SIDE_EXAGGERATION:g})"
+    if body_x is not None:
+        caption += ", paler inside the body"
+    parts.append(_caption(top, caption))
     side = _View(
         top + 10.0, (x_range[0], x_range[1]), (v_low, v_high), SIDE_EXAGGERATION
     )
-    parts.append(
-        side.polygon(
-            depths + [(heel_end, 0.0), (0.0, 0.0)], WOOD, "The neck from the side"
+    if body_x is None:
+        parts.append(
+            side.polygon(
+                depths + [(heel_end, 0.0), (0.0, 0.0)], WOOD, "The neck from the side"
+            )
         )
-    )
+    else:
+        cut = (body_x, _depth_at(depths, body_x))
+        ahead = [p for p in depths if p[0] < body_x] + [cut]
+        inside = [cut] + [p for p in depths if p[0] > body_x]
+        parts.append(
+            side.polygon(
+                ahead + [(body_x, 0.0), (0.0, 0.0)], WOOD, "The neck from the side"
+            )
+        )
+        parts.append(
+            side.polygon(
+                inside + [(heel_end, 0.0), (body_x, 0.0)],
+                IN_BODY,
+                "Inside the body: the neck runs on through it, as deep as it",
+            )
+        )
+        parts.append(
+            side.line(
+                (body_x, v_low), (body_x, v_high), BODY_FRONT, "Where the body begins"
+            )
+        )
     parts.append(
         side.polygon(
             tops + [(tops[-1][0], 0.0), (tops[0][0], 0.0)],

@@ -29,6 +29,30 @@ def test_the_neck_is_drawn_from_above_from_the_side_and_in_section() -> None:
     assert "From the side (height x3)" in svg
 
 
+def test_a_neck_through_neck_is_drawn_paler_inside_the_body() -> None:
+    # Regression: a neck-through neck (the Mockingbird style's) runs on
+    # through the body as deep as it; drawn whole in the neck's colour it
+    # looked like a huge heel.
+    through = replace(Prototype001Parameters(), neck_joint="neck_through").build()
+    assert through.neck_through is not None
+
+    svg = render_neck_svg(through)
+
+    named = titles(svg)
+    assert "The neck from the side" in named
+    assert "Inside the body: the neck runs on through it, as deep as it" in named
+    assert "Where the body begins" in named
+    assert "From the side (height x3), paler inside the body" in svg
+    # The paler part starts where the body begins.
+    line = re.search(r'<line x1="([\d.]+)"[^>]*><title>Where the body begins', svg)
+    inside = re.search(r'<polygon points="([\d.]+),[^>]*><title>Inside the body', svg)
+    assert line is not None and inside is not None
+    assert line.group(1) == inside.group(1)
+    # A bolt-on neck is drawn whole, as before.
+    bolt_on = titles(render_neck_svg(Prototype001Parameters().build()))
+    assert "Where the body begins" not in bolt_on
+
+
 def test_a_scalloped_board_shows_its_scallops_from_above_and_hollowed() -> None:
     plain = render_fretboard_svg(Prototype001Parameters().build())
     scalloped_geometry = replace(

@@ -868,7 +868,10 @@ while a bass scale is set, `nameScaleLabels`). The neck from above — the
 headstock and its tuner holes, the board, frets, markers and nut — from
 the side (its height stretched three times: the neck's depth under the
 board, the heel) and in section at the first and twelfth frets, its
-width and depth said; the fretboard from above — its slots as cut
+width and depth said (a neck run through the body paler inside it, a
+dashed line where the body begins: the heel seen is only the ramp down
+to the body's thickness, `neck_through_heel_ramp`, ahead of it); the
+fretboard from above — its slots as cut
 (blind ones short of the edges), markers, fret numbers and, scalloped,
 its scallops shaded between their lands — from the side along its middle
 (the scallops hollowed in it, the slots down into it) and in section at

@@ -1483,6 +1483,12 @@
 
 ### Fixed
 
+- *Design › Neck* draws a neck run through the body (the Mockingbird
+  style's) paler inside the body, a dashed line where the body begins:
+  drawn whole in the neck's colour, the body's centre block looked like a
+  huge heel. The ramp's setting (`neck_through_heel_ramp`) has its
+  picture there.
+
 - Rune inlays come out the same in every build, and never crossing
   themselves. A rune's outline started wherever a set's order put it,
   which changes from run to run; and as the runes are drawn on round
