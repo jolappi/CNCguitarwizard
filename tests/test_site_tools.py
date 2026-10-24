@@ -426,6 +426,19 @@ def test_a_picture_or_the_shortcuts_close_on_a_click_beside_them() -> None:
     assert 'closeOnBackdrop(document.getElementById("confirm-dialog"))' not in script
 
 
+def test_the_treble_scale_is_on_the_fretboards_page_too() -> None:
+    script = (ROOT / "site" / "app.js").read_text(encoding="utf-8")
+    layout = (ROOT / "site" / "desktop.js").read_text(encoding="utf-8")
+
+    # Beside the bass scale, named the treble side's while one is set; easy
+    # mode keeps its own copy, every copy kept in step.
+    assert '"frets_per_octave", "scale_length", "bass_scale_length",' in layout
+    assert '.filter(([id]) => id !== "easy-options")' in layout
+    assert '? "Treble scale length" : "Scale length"' in script
+    assert "mirrors.set(original, [...(mirrors.get(original) || []), copy]);" in script
+    assert "for (const [original, copy] of mirrorPairs()) {" in script
+
+
 def test_a_settings_picture_shows_what_changing_it_does_and_steps_on() -> None:
     script = (ROOT / "site" / "app.js").read_text(encoding="utf-8")
     page = (ROOT / "site" / "index.html").read_text(encoding="utf-8")

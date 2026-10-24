@@ -275,7 +275,7 @@
       "headstock_thickness", "neck_carbon_rods", "neck_carbon_rod_size",
     ],
     fretboard: [
-      "fret_count", "frets_per_octave", "bass_scale_length", "perpendicular_fret", "fret_slant_angle",
+      "fret_count", "frets_per_octave", "scale_length", "bass_scale_length", "perpendicular_fret", "fret_slant_angle",
       "fretboard_radius", "fretboard_thickness", "fretboard_end_extension",
       "fretboard_nut_corner_radius", "fret_slot_width", "fret_slot_depth", "fret_slot_end_inset",
       "fretboard_binding_width", "fretboard_scalloped", "fretboard_scallop_from_fret",
@@ -285,8 +285,11 @@
   const moved = new Set(PART_FIELDS.fretboard);
   EDITOR_FIELDS["inlay-editor-options"] = EDITOR_FIELDS["inlay-editor-options"]
     .filter((name) => !moved.has(name));
-  // A field has one copy at most (app.js keeps one per field).
-  const taken = new Set(Object.values(EDITOR_FIELDS).flat());
+  // A field has one copy in an editor's Settings at most; easy mode's
+  // copies stand beside them (the scale, on the fretboard's page too).
+  const taken = new Set(
+    Object.entries(EDITOR_FIELDS).filter(([id]) => id !== "easy-options").flatMap(([, names]) => names),
+  );
   const partPages = {};
   for (const [id, title] of [["neck", "Neck"], ["fretboard", "Fretboard"]]) {
     const page = document.createElement("div");

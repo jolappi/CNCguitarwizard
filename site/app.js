@@ -71,7 +71,9 @@ function goToField(field) {
   let control = field;
   if (row.classList.contains("mirrored") && mirrors.has(field)) {
     syncMirrors();  // the copy shows the field's value and mark
-    control = mirrors.get(field);
+    // The copy in an editor shown (easy mode's stands beside the form).
+    const copies = mirrors.get(field);
+    control = copies.find((copy) => copy.closest(".body-editor:not(.hidden)")) || copies[0];
   } else if (form.classList.contains("filtering") && !row.classList.contains("match")) {
     findSetting.value = "";
     changedOnly.checked = false;
@@ -251,7 +253,16 @@ const EDITOR_FIELDS = {
   // Under the style in easy mode, the settings form hidden.
   "easy-options": ["scale_length"],
 };
+// Each form field's copies in the editors' Settings (easy mode's and a
+// page's may both hold one): field -> [copies].
 const mirrors = new Map();
+
+// Every copy with its form field, a field with copies in two places once
+// for each.
+function* mirrorPairs() {
+  for (const [original, copies] of mirrors) for (const copy of copies) yield [original, copy];
+}
+
 // A variant kind's setup note under its copy in an editor's Settings (the
 // Kahler 7300's), kept to the kind chosen: [copy, note, variant field].
 const mirroredNotes = [];
@@ -297,7 +308,7 @@ function mirrorEditorFields() {
       copy.addEventListener("change", pass);
       if (copy.tagName !== "SELECT") copy.addEventListener("input", pass);
       holder.append(label, name.endsWith("_seed") ? withReroll(copy, original) : copy);
-      mirrors.set(original, copy);
+      mirrors.set(original, [...(mirrors.get(original) || []), copy]);
       const variant = variantFields[name];
       if (variant && Object.values(variant.variants).some((kind) => kind.note)) {
         const note = document.createElement("p");
@@ -312,21 +323,39 @@ function mirrorEditorFields() {
   syncMirrors();
   showMirroredRows();
   attachSettingPictures(document);
+  nameScaleLabels();
 }
+
+// With fanned frets scale_length is the treble side's scale: its name
+// says so wherever it is shown while a bass scale is set.
+function nameScaleLabels() {
+  const bass = form.querySelector('[data-set="prototype"][data-name="bass_scale_length"]');
+  const text = bass && bass.value.trim() ? "Treble scale length" : "Scale length";
+  for (const label of document.querySelectorAll('label[for$=".scale_length"]')) {
+    if ((label.dataset.label ?? label.textContent) === text) continue;
+    const picture = label.querySelector(".setting-picture");
+    label.dataset.label = text;
+    label.replaceChildren(...(picture ? [picture] : []), text);
+  }
+}
+form.addEventListener("input", nameScaleLabels);
+form.addEventListener("change", nameScaleLabels);
 
 // A hidden pane (a fitted or headless headstock has no editor) gives its
 // settings back to the form, where they can still be seen and changed.
 function showMirroredRows() {
-  for (const [original, copy] of mirrors) {
+  for (const [original, copies] of mirrors) {
     // Easy mode's copies stand beside the form's rows, not for them.
-    const editor = copy.closest(".body-editor");
-    if (!editor) continue;
-    original.closest(".field")?.classList.toggle("mirrored", !editor.classList.contains("hidden"));
+    const editors = copies.map((copy) => copy.closest(".body-editor")).filter(Boolean);
+    if (!editors.length) continue;
+    original.closest(".field")?.classList.toggle(
+      "mirrored", editors.some((editor) => !editor.classList.contains("hidden")),
+    );
   }
 }
 
 function syncMirrors() {
-  for (const [original, copy] of mirrors) {
+  for (const [original, copy] of mirrorPairs()) {
     if (copy.type === "checkbox") copy.checked = original.checked;
     else if (document.activeElement !== copy) {
       copy.value = original.value;
@@ -706,7 +735,7 @@ function showFieldHint(control) {
 // "Default: 44 [Reset to default]" for a changed field (an editor's copy
 // reads its form field's default, and passes the reset on as any change).
 function defaultLine(control) {
-  const original = [...mirrors].find(([, copy]) => copy === control)?.[0] || control;
+  const original = [...mirrorPairs()].find(([, copy]) => copy === control)?.[0] || control;
   const value = defaultValue(original);
   const line = document.createElement("span");
   line.className = "hint-default";
@@ -7127,7 +7156,7 @@ form.addEventListener("change", (event) => {
   for (const [name, switchName] of Object.entries(POSITIVE_WHILE_ON)) {
     if (event.target.dataset.name !== switchName) continue;
     const field = form.querySelector(`[data-set='prototype'][data-name='${name}']`);
-    for (const control of [field, mirrors.get(field)]) {
+    for (const control of [field, ...(mirrors.get(field) || [])]) {
       control?.classList.toggle("invalid", valueProblem(control) !== null);
     }
   }
@@ -7238,7 +7267,7 @@ const TUNER_LAYOUT_FIELDS = new Set([
 ]);
 document.addEventListener("change", (event) => {
   if (!event.isTrusted) return;
-  const original = [...mirrors].find(([, copy]) => copy === event.target)?.[0] || event.target;
+  const original = [...mirrorPairs()].find(([, copy]) => copy === event.target)?.[0] || event.target;
   // The heel relief's line chosen by hand (round the heel, or past a neck
   // plate's corner) is drawn as that automatic line again; a loaded design
   // or an undo keeps a line drawn by hand.

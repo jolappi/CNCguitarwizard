@@ -63,6 +63,11 @@
   arrow keys step to the settings before and after; it and the
   *Shortcuts* list close on a click beside them.
 
+- *Design › Fretboard* has the scale too, beside the bass scale, and
+  names it the treble scale length wherever it is shown while a bass
+  scale is set (fanned frets). A setting may now have its copies in
+  several editors' Settings (easy mode's and a page's), all kept in step.
+
 - The finished model in other common 3D formats, exported on its own
   after the build: STL, 3MF and OBJ (meshes within 0.05 mm, for 3D
   printing, slicers, CAM and Blender), GLB (glTF, for 3D viewers on the

@@ -860,7 +860,10 @@ mended.
 *Design › Neck* and *Design › Fretboard* are pages of their own there:
 a drawing of the part (`webapp.part_views`, `render.svg.neck_views`)
 with its settings beside it (under it on a narrow screen), copies of the
-form's as an editor's Settings hold them. The neck from above — the
+form's as an editor's Settings hold them (the fretboard's the scale too,
+beside the bass scale: easy mode's copy of it stands beside the page's,
+`mirrors` keeping a field's every copy; the scale's name says treble
+while a bass scale is set, `nameScaleLabels`). The neck from above — the
 headstock and its tuner holes, the board, frets, markers and nut — from
 the side (its height stretched three times: the neck's depth under the
 board, the heel) and in section at the first and twelfth frets, its
