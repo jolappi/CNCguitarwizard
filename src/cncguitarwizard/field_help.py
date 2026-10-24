@@ -80,7 +80,11 @@ FIELD_HELP: dict[str, str] = {
         "The fretboard's width at the last fret, in mm; the neck tapers from "
         "nut_width to this."
     ),
-    "heel_width": "The neck's width at the heel, past the last fret, in mm.",
+    "heel_width": (
+        "The neck's width at the heel's end, in mm. Wider than the final "
+        "fret, the neck and its fretboard flare out to it together along "
+        "the heel (heel_mounting_length)."
+    ),
     "first_fret_thickness": (
         "The neck's whole thickness at the first fret, from the fretboard's "
         "playing surface to the back of the neck, in mm."

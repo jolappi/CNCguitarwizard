@@ -394,15 +394,7 @@ class TrussRodChannel:
 
     def _neck_width_at(self, position: float) -> float:
         """Return the neck width at a centerline position."""
-        if position >= self.neck_outline.last_fret_position:
-            return self.neck_outline.heel_width
-
-        fraction = position / self.neck_outline.last_fret_position
-        return (
-            self.neck_outline.nut_width
-            + (self.neck_outline.last_fret_width - self.neck_outline.nut_width)
-            * fraction
-        )
+        return 2.0 * self.neck_outline.half_width_at(position)
 
 
 def _rectangle(front: float, back: float, half: float) -> tuple[Point2D, ...]:

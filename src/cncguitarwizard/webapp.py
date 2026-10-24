@@ -1551,11 +1551,7 @@ def inlay_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         points = [[along, across] for along, across in DEFAULT_CUSTOM_POINTS]
     skew = surface.skew
 
-    def half_at(position: float) -> float:
-        return (
-            surface.nut_width
-            + (surface.last_fret_width - surface.nut_width) * position / final
-        ) / 2.0
+    half_at = surface.half_width_at
 
     (low, high), across = custom_limits(surface, frets)
     # Each marker fret's rune, nut first (inlay_runes, starting over), for

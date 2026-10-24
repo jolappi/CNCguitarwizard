@@ -155,10 +155,4 @@ class FretboardScallops:
 
     def _half_width(self, number: int) -> float:
         """Return the board's half-width at fret ``number``."""
-        surface = self.surface
-        final = surface.station_positions[surface.fret_count]
-        fraction = surface.station_positions[number] / final
-        width = (
-            surface.nut_width + (surface.last_fret_width - surface.nut_width) * fraction
-        )
-        return width / 2.0
+        return self.surface.half_width_at(self.surface.station_positions[number])

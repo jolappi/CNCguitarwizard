@@ -286,10 +286,13 @@ class NeckProfileStations:
         )
 
     def _width_at(self, position: float) -> float:
-        """Return the linearly tapered neck width at a position."""
+        """Return the linearly tapered neck width at a position, flaring
+        out with a wider heel (``NeckOutline.heel_flare``)."""
         fraction = position / self.neck_outline.last_fret_position
+        flare = self.neck_outline.heel_flare
         return (
             self.neck_outline.nut_width
             + (self.neck_outline.last_fret_width - self.neck_outline.nut_width)
             * fraction
+            + (flare.extra_at(position) if flare is not None else 0.0)
         )

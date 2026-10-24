@@ -136,3 +136,55 @@ def test_a_round_heel_ends_short_of_its_end_beside_the_centre() -> None:
     trimmed = outline.trimmed(board)
     assert all(p.x <= end - outline.heel_end_inset(p.y) + 1e-6 for p in trimmed)
     assert square.trimmed(board) == board
+
+
+def test_a_heel_wider_than_the_taper_flares_out_to_it() -> None:
+    # Regression: a heel_width wider than the final fret stepped out at the
+    # final fret, the heel only its short stub past it.
+    outline = NeckOutline(
+        scale_length=609.6,
+        fret_count=22,
+        nut_width=42.0,
+        last_fret_width=56.0,
+        heel_width=58.0,
+        heel_length=4.0,
+        heel_flare_length=54.0,
+    )
+    flare = outline.heel_flare
+    assert flare is not None
+    heel_end = outline.heel_end_position
+    last_fret = outline.last_fret_position
+
+    # The taper up to where it begins, the heel's width at the heel end.
+    assert flare.start == pytest.approx(heel_end - 54.0)
+    taper = 42.0 + 14.0 * flare.start / last_fret
+    assert 2.0 * outline.half_width_at(flare.start) == pytest.approx(taper)
+    assert 2.0 * outline.half_width_at(heel_end) == pytest.approx(58.0)
+    # No step at the final fret, and none where the flare begins either:
+    # it grows from nothing.
+    step = 1e-6
+    assert outline.half_width_at(last_fret - step) == pytest.approx(
+        outline.half_width_at(last_fret + step), abs=1e-5
+    )
+    assert flare.extra_at(flare.start + 1.0) < 0.001
+    # Its sides follow it, in the outline drawn.
+    sides = [p for p in outline.boundary if p.x > flare.start]
+    assert len(sides) >= 2 * 8
+    for point in sides:
+        assert abs(point.y) == pytest.approx(outline.half_width_at(point.x))
+
+
+def test_a_heel_as_wide_as_the_taper_does_not_flare() -> None:
+    outline = NeckOutline(
+        scale_length=609.6,
+        fret_count=22,
+        nut_width=42.0,
+        last_fret_width=56.0,
+        heel_width=56.0,
+        heel_length=4.0,
+        heel_flare_length=54.0,
+    )
+
+    assert outline.heel_flare is None
+    assert len(outline.boundary) == 8
+    assert 2.0 * outline.half_width_at(outline.heel_end_position) == 56.0

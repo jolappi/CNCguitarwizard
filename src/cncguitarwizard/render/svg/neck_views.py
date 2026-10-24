@@ -397,14 +397,7 @@ def render_fretboard_svg(
         )
     parts.append(plan.polygon(_plan(board), BOARD, "The fretboard"))
     if scallops is not None:
-        final = positions[surface.fret_count]
-
-        def half_width(x: float) -> float:
-            fraction = x / final
-            return (
-                surface.nut_width
-                + (surface.last_fret_width - surface.nut_width) * fraction
-            ) / 2.0
+        half_width = surface.half_width_at
 
         for number in scallops.fret_numbers:
             start, end = positions[number], positions[number + 1]

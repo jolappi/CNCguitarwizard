@@ -437,17 +437,7 @@ class NeckBackSurface:
 
     def _width_at(self, position: float) -> float:
         """Return the fretboard-following taper through the heel."""
-        if position <= 0.0:
-            return self.neck_outline.nut_width
-        final_position = self.neck_outline.last_fret_position
-        if position >= final_position:
-            return self.neck_outline.heel_width
-        fraction = position / final_position
-        return (
-            self.neck_outline.nut_width
-            + (self.neck_outline.last_fret_width - self.neck_outline.nut_width)
-            * fraction
-        )
+        return 2.0 * self.neck_outline.half_width_at(position)
 
     def _depth_at(self, position: float) -> float:
         """Return piecewise-linear depth through the locked references."""

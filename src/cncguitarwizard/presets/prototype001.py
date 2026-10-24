@@ -103,7 +103,7 @@ from ..geometry.neck.nut_jig import (
     nut_slot_jig,
     resolved_gauges,
 )
-from ..geometry.neck.outline import clip_to_heel_end
+from ..geometry.neck.outline import HEEL_FLARE_SAMPLES, clip_to_heel_end
 from ..geometry.neck.reinforcement import CLEARANCE as CARBON_ROD_CLEARANCE
 from ..geometry.neck.reinforcement import CarbonRods
 from ..geometry.primitives import (
@@ -853,6 +853,9 @@ class Prototype001Parameters:
     perpendicular_fret: float = 7.0
     nut_width: float = 42.0
     final_fret_width: float = 56.0
+    # heel_width: the neck's width at the heel's end; wider than the taper
+    # reaches there, the neck and its fretboard flare out to it together
+    # along the heel's mounting block (heel_mounting_length).
     heel_width: float = 56.0
     heel_mounting_length: float = 54.0
     # neck_joint: "bolt_on" screws the neck's heel into a pocket in the
@@ -1968,14 +1971,24 @@ class Prototype001Parameters:
             ) / 2.0
 
         stations: list[tuple[float, float]] = []
-        if start < last_fret:
-            stations.append((start, taper_half_width(start)))
-            stations.append((last_fret, outline.last_fret_width / 2.0))
-            if outline.heel_width != outline.last_fret_width:
-                stations.append((last_fret, outline.heel_width / 2.0))
+        flare = outline.heel_flare
+        if flare is not None:
+            # Along the neck's flare out to its wider heel.
+            along = (
+                flare.start + flare.length * k / HEEL_FLARE_SAMPLES
+                for k in range(HEEL_FLARE_SAMPLES + 1)
+            )
+            xs = [start, *(x for x in along if start < x < heel_end), heel_end]
+            stations = [(x, outline.half_width_at(x)) for x in xs]
         else:
-            stations.append((start, outline.heel_width / 2.0))
-        stations.append((heel_end, outline.heel_width / 2.0))
+            if start < last_fret:
+                stations.append((start, taper_half_width(start)))
+                stations.append((last_fret, outline.last_fret_width / 2.0))
+                if outline.heel_width != outline.last_fret_width:
+                    stations.append((last_fret, outline.heel_width / 2.0))
+            else:
+                stations.append((start, outline.heel_width / 2.0))
+            stations.append((heel_end, outline.heel_width / 2.0))
         lower = [Point2D(x, -(half + clearance)) for x, half in stations]
         upper = [Point2D(x, half + clearance) for x, half in reversed(stations)]
         # Round, its end the heel's offset by the clearance, held at the
@@ -2699,14 +2712,7 @@ class Prototype001Parameters:
         wall = self.body_neck_bolt_edge_wall
         ferrule_reach = self.body_neck_ferrule_diameter / 2.0 + NECK_FERRULE_BODY_WALL
 
-        def neck_half_width(x: float) -> float:
-            if x >= outline.last_fret_position:
-                return outline.heel_width / 2.0
-            fraction = x / outline.last_fret_position
-            return (
-                outline.nut_width
-                + (outline.last_fret_width - outline.nut_width) * fraction
-            ) / 2.0
+        neck_half_width = outline.half_width_at
 
         keep_clear = self.truss_rod(outline).keep_clear()
 
@@ -3974,6 +3980,9 @@ class Prototype001Parameters:
             FENDER_HEEL_CORNER_RADIUS if round_end else 0.0,
             self.frets_per_octave,
             fretboard_to_heel_end=self.board_to_heel_end,
+            # A heel wider than the taper: the neck and its board flare
+            # out to it along the heel's mounting block.
+            heel_flare_length=self.heel_mounting_length,
         )
 
     def _body_layout(
@@ -5082,12 +5091,7 @@ class Prototype001Parameters:
     @staticmethod
     def _neck_half_width_at(outline: NeckOutline, x: float) -> float:
         """Return the neck's half width ``x`` from the nut."""
-        if x >= outline.last_fret_position:
-            return outline.heel_width / 2.0
-        fraction = max(0.0, x) / outline.last_fret_position
-        return (
-            outline.nut_width + (outline.last_fret_width - outline.nut_width) * fraction
-        ) / 2.0
+        return outline.half_width_at(x)
 
     def neck_through_block_width(self, layout: BodyLayout) -> float:
         """Return a neck-through block's width.
@@ -5948,6 +5952,7 @@ class Prototype001Parameters:
             profile_sample_count=self.profile_sample_count,
             skew=self.fret_skew,
             frets_per_octave=self.frets_per_octave,
+            heel_flare=self.neck_outline().heel_flare,
         )
 
     def marker_frets(self) -> tuple[tuple[int, ...], tuple[int, ...]]:
@@ -7607,6 +7612,7 @@ class Prototype001Parameters:
             slot_end_inset=self.fret_slot_end_inset,
             frets_per_octave=self.frets_per_octave,
             end_x=outline.heel_end_position if self.board_to_heel_end else None,
+            heel_flare=outline.heel_flare,
         )
         inlay_layout = self.inlay_design(fretboard_surface)
         scallops = self.fretboard_scallops(fretboard_surface)

@@ -8,6 +8,7 @@ from itertools import pairwise
 
 from ..exceptions import FretboardGeometryError
 from ..fret import FretCalculator
+from ..neck.outline import HeelFlare
 from ..primitives import Point3D, QuadFace, SurfaceMesh
 from .skew import FretSkew
 
@@ -17,8 +18,9 @@ class FretboardSurface:
     """Generate a loft-ready constant-radius fretboard surface.
 
     A cross-section row is generated at the nut and at every fret. Width is
-    interpolated from the nut to the final fret while radius and center
-    thickness remain constant.
+    interpolated from the nut to the final fret (and on past it), flaring
+    out with a heel wider than that (``heel_flare``), while radius and
+    center thickness remain constant.
 
     Args:
         scale_length: Nut-to-bridge scale length in millimetres.
@@ -35,6 +37,9 @@ class FretboardSurface:
             centerline.
         frets_per_octave: Equal steps in each octave (12; more for a
             microtonal board, see ``FretCalculator``).
+        heel_flare: The neck's flare out to a heel wider than its taper
+            (``NeckOutline.heel_flare``): the board flares with it, flush
+            with the neck's sides; ``None`` for none.
 
     Raises:
         FretboardGeometryError: If dimensions cannot form a valid surface.
@@ -50,6 +55,7 @@ class FretboardSurface:
     end_extension: float = 0.0
     skew: FretSkew = field(default_factory=FretSkew)
     frets_per_octave: int = 12
+    heel_flare: HeelFlare | None = None
     station_positions: tuple[float, ...] = field(init=False)
     mesh: SurfaceMesh = field(init=False)
 
@@ -123,7 +129,10 @@ class FretboardSurface:
             raise FretboardGeometryError(
                 "Final-fret width must not be narrower than the nut."
             )
-        if self.radius <= self.last_fret_width / 2.0:
+        widest = self.last_fret_width + (
+            self.heel_flare.extra if self.heel_flare is not None else 0.0
+        )
+        if self.radius <= widest / 2.0:
             raise FretboardGeometryError(
                 "Fretboard radius must exceed half of the widest section."
             )
@@ -131,9 +140,7 @@ class FretboardSurface:
             raise FretboardGeometryError(
                 "Profile sample count must be an odd integer of at least three."
             )
-        widest_sagitta = self.radius - math.sqrt(
-            self.radius**2 - (self.last_fret_width / 2.0) ** 2
-        )
+        widest_sagitta = self.radius - math.sqrt(self.radius**2 - (widest / 2.0) ** 2)
         if self.center_thickness <= widest_sagitta:
             raise FretboardGeometryError(
                 "Fretboard surface leaves no material at its widest edges."
@@ -153,14 +160,41 @@ class FretboardSurface:
             position, self.station_positions[self.fret_count]
         )
 
+    def outline_rows(self) -> tuple[tuple[Point3D, ...], ...]:
+        """Return the rows whose ends trace the board's edges in plan: its
+        first and last, and every row along a heel's flare (its edges are
+        straight between them otherwise)."""
+        rows = self.mesh.rows
+        if self.heel_flare is None:
+            return (rows[0], rows[-1])
+        flaring = (
+            row
+            for position, row in zip(self.station_positions, rows, strict=True)
+            if self.heel_flare.start < position < self.station_positions[-1]
+        )
+        return (rows[0], *flaring, rows[-1])
+
+    def half_width_at(self, position: float) -> float:
+        """Return the board's half-width ``position`` from the nut, along
+        its centreline: its taper, flaring out with a wider heel."""
+        return self._width(position, self.station_positions[self.fret_count]) / 2.0
+
+    def _width(self, position: float, final_position: float) -> float:
+        """Return the board's width at a station, the final fret's given."""
+        width = self.nut_width + (self.last_fret_width - self.nut_width) * (
+            position / final_position
+        )
+        if self.heel_flare is not None:
+            width += self.heel_flare.extra_at(position)
+        return width
+
     def _build_profile_row(
         self,
         position: float,
         final_position: float,
     ) -> tuple[Point3D, ...]:
         """Return one circular-arc row at a longitudinal station."""
-        fraction = position / final_position
-        width = self.nut_width + (self.last_fret_width - self.nut_width) * fraction
+        width = self._width(position, final_position)
         half_width = width / 2.0
         step = width / (self.profile_sample_count - 1)
 

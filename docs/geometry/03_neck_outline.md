@@ -17,6 +17,30 @@ For Prototype001 the locked dimensions are:
 The taper ends at the calculated position of the final fret. The heel then
 continues at a constant width for the requested length.
 
+## A heel wider than the taper
+
+A `heel_width` wider than the taper reaches at the heel end, given
+`heel_flare_length`, flares the neck out to it over that length ahead of
+the heel end (`heel_flare`, a `HeelFlare`): the extra width grows as the
+square of the way along, from nothing where it begins (so the side has no
+kink there) to all of it at the heel end, and the outline's sides follow
+it (`HEEL_FLARE_SAMPLES` points each). `half_width_at(x)` gives the
+neck's half-width anywhere along it, flare and all; the neck's back, its
+truss rod's clearance, its side profile, the neck pocket and the neck
+bolts' walls all take it from there. The fretboard flares with it, flush
+with the neck's sides (`FretboardSurface(heel_flare=...)`,
+`half_width_at`): its rows, its plan outline (through the rows along the
+flare, `outline_rows`), its binding, its slots (`FretLayout(heel_flare=...)`),
+its markers and scallops. The Prototype001 preset flares over the heel's
+mounting block (`heel_mounting_length`, 54 mm); a heel as wide as the
+final fret (every instrument's default) does not flare at all.
+
+```python
+outline = NeckOutline(609.6, 22, 42.0, 56.0, 58.0, 4.0, heel_flare_length=54.0)
+assert round(2 * outline.half_width_at(outline.heel_end_position), 6) == 58.0
+assert outline.heel_flare.start == outline.heel_end_position - 54.0
+```
+
 ## A round heel end
 
 The heel ends square across the neck (a Telecaster's), or round as a

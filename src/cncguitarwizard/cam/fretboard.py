@@ -273,26 +273,25 @@ def fretboard_outline_polygon(geometry: Prototype001Geometry) -> tuple[Point2D, 
     """Return the board's plan outline with its rounded nut corners.
 
     The corners are the surface's own end rows, so slanted frets give a
-    slanted nut end and board end. A board that runs on under a locking
-    nut ends the nut's seat behind the nut line instead; one reaching a
-    round heel's end is rounded with it (``NeckOutline.trimmed``).
+    slanted nut end and board end; its edges run through the rows along
+    a heel's flare (``FretboardSurface.outline_rows``). A board that runs
+    on under a locking nut ends the nut's seat behind the nut line
+    instead; one reaching a round heel's end is rounded with it
+    (``NeckOutline.trimmed``).
     """
-    surface = geometry.fretboard_surface
-    first = surface.mesh.rows[0]
-    last = surface.mesh.rows[-1]
+    first, *rest = geometry.fretboard_surface.outline_rows()
     radius = geometry.fret_layout.fretboard.nut_corner_radius
     nut = geometry.locking_nut
     back = nut.seat_length if nut is not None and nut.on_fretboard else 0.0
     vertices = [
         Point2D(first[0].x - back, first[0].y),
-        Point2D(last[0].x, last[0].y),
-        Point2D(last[-1].x, last[-1].y),
+        *(Point2D(row[0].x, row[0].y) for row in rest),
+        *(Point2D(row[-1].x, row[-1].y) for row in reversed(rest)),
         Point2D(first[-1].x - back, first[-1].y),
     ]
+    radii = [radius, *[0.0] * (len(vertices) - 2), radius]
     return geometry.neck_outline.trimmed(
-        rounded_polygon_points(
-            vertices, [radius, 0.0, 0.0, radius], samples_per_corner=8
-        )
+        rounded_polygon_points(vertices, radii, samples_per_corner=8)
     )
 
 

@@ -270,20 +270,12 @@ class InlayLayout:
                 self.fretboard_surface.frets_per_octave,
             )
         }
-        final_fret_position = fret_positions[self.fretboard_surface.fret_count]
 
         def midpoint(fret_number: int) -> float:
             previous = 0.0 if fret_number == 1 else fret_positions[fret_number - 1]
             return (previous + fret_positions[fret_number]) / 2.0
 
-        def half_width_at(position: float) -> float:
-            fraction = position / final_fret_position
-            surface = self.fretboard_surface
-            width = (
-                surface.nut_width
-                + (surface.last_fret_width - surface.nut_width) * fraction
-            )
-            return width / 2.0
+        half_width_at = self.fretboard_surface.half_width_at
 
         markers: list[InlayMarker] = []
         if self.style == "custom":
@@ -618,16 +610,9 @@ class InlayLayout:
                 self.fretboard_surface.frets_per_octave,
             )
         }
-        final = positions[self.fretboard_surface.fret_count]
         surface = self.fretboard_surface
 
-        def half_width_at(position: float) -> float:
-            fraction = position / final
-            width = (
-                surface.nut_width
-                + (surface.last_fret_width - surface.nut_width) * fraction
-            )
-            return width / 2.0
+        half_width_at = surface.half_width_at
 
         front = 0.0 if fret_number == 1 else positions[fret_number - 1]
         back = positions[fret_number]
@@ -1131,12 +1116,7 @@ def custom_limits(
     )
     first = min(marker_frets)
     front = 0.0 if first == 1 else positions[first - 1]
-    half = (
-        surface.nut_width
-        + (surface.last_fret_width - surface.nut_width)
-        * front
-        / positions[surface.fret_count]
-    ) / 2.0
+    half = surface.half_width_at(front)
     margin = CUSTOM_CLEARANCE / shortest
     return (
         (math.ceil(margin * 1e4) / 1e4, math.floor((1.0 - margin) * 1e4) / 1e4),

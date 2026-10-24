@@ -4,6 +4,16 @@
 
 ### Changed
 
+- A `heel_width` wider than the final fret flares the neck and its
+  fretboard out to it together along the heel's mounting block
+  (`heel_mounting_length`), from nothing where it begins to the heel's
+  width at its end: it stepped out at the last fret, widening only the
+  short stub past it. The board stays flush with the neck (its rows, its
+  plan outline as cut, its binding, slots, markers and scallops), and the
+  neck pocket, the neck bolts' walls, the neck's back and its truss rod's
+  clearance follow it (`NeckOutline.heel_flare`, `half_width_at`). A heel
+  as wide as the final fret, every instrument's default, is as it was.
+
 - *Design › Neck* holds the truss rod's settings too: how it is
   installed, its profile and its length, and where it is adjusted and
   with what (those two still on *Design › Headstock* as well, which draws

@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 
 from ..exceptions import FretboardGeometryError
 from ..fret import FretCalculator, FretLine, FretPosition
+from ..neck.outline import HeelFlare
 from ..primitives import Line2D, Point2D
 from .fretboard import Fretboard
 from .skew import FretSkew
@@ -38,6 +39,9 @@ class FretLayout:
             neck (``fretboard_end`` "heel"): a slot leaning past it is cut
             short there (a fanned board's last frets, on its long side);
             ``None`` for a board ending past its last fret.
+        heel_flare: The neck's flare out to a heel wider than its taper
+            (``NeckOutline.heel_flare``): the slots there reach the board's
+            edges as it flares with the neck; ``None`` for none.
 
     Raises:
         FretboardGeometryError: If the fret count or fretboard dimensions
@@ -52,6 +56,7 @@ class FretLayout:
     slot_end_inset: float = 0.0
     frets_per_octave: int = 12
     end_x: float | None = None
+    heel_flare: HeelFlare | None = None
     slots: tuple[Line2D, ...] = field(init=False)
     zero_fret_slot: Line2D | None = field(init=False)
 
@@ -123,9 +128,11 @@ class FretLayout:
             self.fretboard.nut_width
             + (self.fretboard.bridge_width - self.fretboard.nut_width) * fraction
         )
+        location = fret_line.location
+        if self.heel_flare is not None:
+            width += self.heel_flare.extra_at(location.x)
         half_width = width / 2.0
         direction = fret_line.direction
-        location = fret_line.location
 
         left = Point2D(
             location.x + direction.x * half_width,

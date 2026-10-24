@@ -21,6 +21,40 @@ HEEL_END_SAMPLES = 12
 """Points along each corner of a round heel end, and twice as many along
 its end arc."""
 
+HEEL_FLARE_SAMPLES = 16
+"""Points along each side of a flaring heel (``HeelFlare``)."""
+
+
+@dataclass(frozen=True, slots=True)
+class HeelFlare:
+    """A heel wider than the neck's taper: the neck and the fretboard on it
+    flare out together to its width at the heel end.
+
+    Args:
+        heel_end: Where the heel ends, from the nut, in mm.
+        length: How far ahead of ``heel_end`` the flare begins, in mm.
+        extra: How much wider than the taper the heel end is, in mm.
+    """
+
+    heel_end: float
+    length: float
+    extra: float
+
+    @property
+    def start(self) -> float:
+        """Return where the flare begins, from the nut."""
+        return self.heel_end - self.length
+
+    def extra_at(self, x: float) -> float:
+        """Return how much wider than the taper the neck is ``x`` from the
+        nut: nothing ahead of the flare, then growing as the square of the
+        way along it (so there is no kink where it begins), all of
+        ``extra`` from the heel end on."""
+        along = (x - self.start) / self.length
+        if along <= 0.0:
+            return 0.0
+        return self.extra * min(1.0, along) ** 2
+
 
 def heel_end_curve(
     end_x: float, half_width: float, end_radius: float, corner_radius: float
@@ -146,14 +180,19 @@ class NeckOutline:
     """Represent the top-view neck taper and parallel heel.
 
     The tapered section runs from the nut to the final fret. The heel begins
-    at the final fret and continues at a constant width.
+    at the final fret and continues at a constant width; or, where
+    ``heel_width`` is wider than the taper reaches at the heel end and
+    ``heel_flare_length`` is set, the neck flares out to it over that
+    length ahead of the heel end (``heel_flare``), the fretboard on it
+    with it.
 
     Args:
         scale_length: Nut-to-bridge scale length in millimetres.
         fret_count: Number of frets.
         nut_width: Neck width at the nut in millimetres.
         last_fret_width: Neck width at the final fret in millimetres.
-        heel_width: Constant heel width in millimetres.
+        heel_width: The heel's width (at its end, where it flares) in
+            millimetres.
         heel_length: Heel length after the final fret in millimetres.
         heel_end_radius: The heel end's arc across it, or 0 for a square
             end (see ``heel_end_curve``).
@@ -165,6 +204,9 @@ class NeckOutline:
             "heel"); else a square end leaves it as it is.
         frets_per_octave: Equal steps in each octave (12; more for a
             microtonal neck): where the final fret, and so the heel, lies.
+        heel_flare_length: How far ahead of the heel end a heel wider
+            than the taper flares out to it, in millimetres (0: it steps
+            out at the final fret).
 
     Raises:
         NeckGeometryError: If dimensions cannot form a valid neck outline.
@@ -180,6 +222,8 @@ class NeckOutline:
     heel_corner_radius: float = 0.0
     frets_per_octave: int = 12
     fretboard_to_heel_end: bool = False
+    heel_flare_length: float = 0.0
+    heel_flare: HeelFlare | None = field(init=False)
     centerline: Centerline = field(init=False)
     last_fret_position: float = field(init=False)
     nut_line: Line2D = field(init=False)
@@ -243,7 +287,20 @@ class NeckOutline:
             "right_heel",
             Line2D(heel_start_right, heel_end_right),
         )
-        square = (
+        # A heel wider than the taper reaches at its end flares out to it.
+        taper_at_heel_end = (
+            self.nut_width
+            + (self.last_fret_width - self.nut_width) * heel_end / last_fret_position
+        )
+        flare = None
+        if self.heel_flare_length > 0.0 and self.heel_width > taper_at_heel_end:
+            flare = HeelFlare(
+                heel_end,
+                min(self.heel_flare_length, heel_end),
+                self.heel_width - taper_at_heel_end,
+            )
+        object.__setattr__(self, "heel_flare", flare)
+        square: tuple[Point2D, ...] = (
             nut_left,
             nut_right,
             last_fret_right,
@@ -253,6 +310,18 @@ class NeckOutline:
             heel_start_left,
             last_fret_left,
         )
+        if flare is not None:
+            # Each side straight to where the flare begins, then along it.
+            stations = (
+                0.0,
+                *(
+                    flare.start + flare.length * k / HEEL_FLARE_SAMPLES
+                    for k in range(HEEL_FLARE_SAMPLES + 1)
+                ),
+            )
+            right = [Point2D(x, -self.half_width_at(x)) for x in stations]
+            left = [Point2D(x, self.half_width_at(x)) for x in reversed(stations)]
+            square = (*left[-1:], *right, *left[:-1])
         object.__setattr__(
             self,
             "boundary",
@@ -264,6 +333,18 @@ class NeckOutline:
                 self.heel_corner_radius,
             ),
         )
+
+    def half_width_at(self, x: float) -> float:
+        """Return the neck's half-width ``x`` from the nut: its taper, then
+        the heel's width; or the taper flaring out to a wider heel."""
+        taper = (
+            self.nut_width
+            + (self.last_fret_width - self.nut_width)
+            * (max(0.0, x) / self.last_fret_position)
+        ) / 2.0
+        if self.heel_flare is not None:
+            return taper + self.heel_flare.extra_at(x) / 2.0
+        return taper if x < self.last_fret_position else self.heel_width / 2.0
 
     def heel_end_inset(self, y: float) -> float:
         """Return how far short of the heel end, on the centre, it ends at
@@ -313,3 +394,5 @@ class NeckOutline:
             raise NeckGeometryError(
                 "Heel width must not be narrower than the final fret."
             )
+        if not math.isfinite(self.heel_flare_length) or self.heel_flare_length < 0.0:
+            raise NeckGeometryError("The heel's flare must not be negative.")
