@@ -701,7 +701,8 @@ Python.
    changed since; the form, editors, downloads and toolpaths are left
    out (`print-result`, set on `beforeprint`, and the page's print CSS). The downloads come in one fold per part, closed
    until opened (its title says how many programs) — the
-   model and report first, then body, neck, fretboard, the inlay pieces, the nut jig and covers — each
+   model and report first (the [parameter sheet](workflows/parameter_sheet.md),
+   `Prototype001_parameters.csv`, among them), then body, neck, fretboard, the inlay pieces, the nut jig and covers — each
    program numbered in the order it is run (`build.json` gives it as the
    program's `step`), its toolpath plot a *Plot* link on its row; on a
    narrow screen a row's links wrap, its name breaks after an underscore

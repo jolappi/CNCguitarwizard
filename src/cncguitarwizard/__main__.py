@@ -148,6 +148,7 @@ def main(argv: Sequence[str] | None = None) -> None:
         print(f"Macro:  {result.macro_path.name}")
         print(f"Python: {result.python_path.name}")
         print(f"Report: {result.report_path.name}")
+        print(f"Sheet:  {result.parameter_sheet_path.name}")
         print(f"Log:    {result.freecad_log_path.name}")
         print("G-code: " + ", ".join(path.name for path in result.gcode_paths))
         print("DXF:    " + ", ".join(path.name for path in result.dxf_paths))

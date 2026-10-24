@@ -46,6 +46,7 @@ from ..presets import Prototype001Geometry, Prototype001Parameters
 from ..render.dxf import render_covers_dxf, render_plan_dxf
 from ..version import PROJECT_MARK, PROJECT_NAME, __version__
 from .exceptions import BuildWorkflowError, FreeCADExecutionError
+from .parameter_sheet import parameter_sheet
 
 
 @dataclass(frozen=True, slots=True)
@@ -59,6 +60,7 @@ class Prototype001BuildResult:
     step_path: Path
     report_path: Path
     freecad_log_path: Path
+    parameter_sheet_path: Path
     gcode_paths: tuple[Path, ...] = ()
     toolpath_preview_paths: tuple[Path, ...] = ()
     dxf_paths: tuple[Path, ...] = ()
@@ -126,6 +128,7 @@ class Prototype001Build:
         self._step_path = self.destination / "Prototype001.step"
         self._report_path = self.destination / "build.json"
         self._freecad_log_path = self.destination / "freecad.log"
+        self._parameter_sheet_path = self.destination / "Prototype001_parameters.csv"
         self._stages: list[tuple[str, Callable[[], None]]] = [
             ("Building the geometry", self._build_geometry),
             ("Planning the body toolpaths", self._plan_body),
@@ -177,6 +180,7 @@ class Prototype001Build:
             self._step_path,
             self._report_path,
             self._freecad_log_path,
+            self._parameter_sheet_path,
             gcode_paths=tuple(self._gcode_paths),
             toolpath_preview_paths=tuple(self._preview_paths),
             dxf_paths=tuple(self._dxf_paths),
@@ -383,6 +387,8 @@ class Prototype001Build:
         )
         exporter.write_script(self._macro_path, source)
         exporter.write_script(self._python_path, source)
+        sheet = parameter_sheet(self.parameters, self.geometry)
+        self._parameter_sheet_path.write_text(sheet.as_csv(), encoding="utf-8")
         self._report = {
             "project": PROJECT_NAME,
             "mark": PROJECT_MARK,
@@ -396,6 +402,7 @@ class Prototype001Build:
                 "freecad_macro": self._macro_path.name,
                 "freecad_python": self._python_path.name,
                 "dxf": [path.name for path in self._dxf_paths],
+                "parameter_sheet": self._parameter_sheet_path.name,
             },
             "freecad_targets": {
                 "document": self._fcstd_path.name,
@@ -406,6 +413,7 @@ class Prototype001Build:
             "gcode": self._gcode_report,
             "stock": self._stock_report,
             "truss_rod": self._truss_rod_report(),
+            "parameter_sheet": sheet.as_dict(),
         }
         _write_report(self._report_path, self._report)
 

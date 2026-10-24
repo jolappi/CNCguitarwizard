@@ -3187,6 +3187,7 @@ def finish_build() -> dict[str, Any]:
         result.python_path,
         result.macro_path,
         result.report_path,
+        result.parameter_sheet_path,
         *result.gcode_paths,
         *result.toolpath_preview_paths,
         *result.dxf_paths,

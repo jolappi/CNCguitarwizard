@@ -33,7 +33,8 @@ where = ["src"]
 target-version = "py312"
 line-length = 88
 # Generated font data (tools/import_svg_font.py): one long line a glyph.
-extend-exclude = ["src/cncguitarwizard/geometry/fonts/script.py", "src/cncguitarwizard/geometry/fonts/gothic.py"]
+# .claude holds Claude Code's skills and worktrees, not project code.
+extend-exclude = ["src/cncguitarwizard/geometry/fonts/script.py", "src/cncguitarwizard/geometry/fonts/gothic.py", ".claude"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "W"]

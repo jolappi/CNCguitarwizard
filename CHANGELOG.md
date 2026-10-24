@@ -85,6 +85,20 @@
 
 ### Added
 
+- A parameter sheet with every build (`workflows.parameter_sheet`,
+  [Parameter sheet](docs/workflows/parameter_sheet.md)): the design's key
+  dimensions in millimetres and degrees, each with its source (the
+  default, the instrument's default or the design's own value), values
+  derived from the built geometry (centre scale, last fret, fretboard
+  end, nominal saddle line, neck angle, body length and width), checks of
+  the built fret slots against the equal-tempered formula (the octave
+  fret at half the scale, every fret within 0.01 mm of its place) and a
+  status, `READY FOR HUMAN REVIEW` or `REVIEW REQUIRED`, with what a
+  person must still confirm. It is written as
+  `Prototype001_parameters.csv` beside the build's files (in the web app
+  among *Model and report* in the downloads) and under `parameter_sheet`
+  in `build.json`.
+
 - Where the fretboard ends at the body (`fretboard_end`, on *Design ›
   Fretboard*): "heel" ends it square at the neck's own end, covering the
   heel and going no further than the neck pocket, a fret that leans past

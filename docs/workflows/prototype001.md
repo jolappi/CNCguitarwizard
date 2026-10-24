@@ -35,7 +35,10 @@ The command creates:
 - `build.json`, containing parameters, version, timestamp, target names, and
   the generated script's SHA-256 checksum, plus the machining parameters,
   stock size, and per-program operation lists, cutting lengths, and time
-  estimates.
+  estimates, and the parameter sheet (`parameter_sheet`).
+- `Prototype001_parameters.csv`, the [parameter sheet](parameter_sheet.md):
+  the design's key dimensions with units and their sources, values
+  derived from the geometry, the fret checks and the review status.
 - `freecad.log`, containing the executed command, exit code, stdout, and
   stderr from FreeCAD.
 - `Body_index_pins_6mm_flathead.nc`, `Body_top_6mm_flathead.nc`,
