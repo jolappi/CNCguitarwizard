@@ -125,6 +125,7 @@ from .render.svg import (
     render_plan_view_svg,
     render_volute_view_svg,
 )
+from .setting_pictures import SETTING_PICTURES
 from .workflows import Prototype001Build
 
 _VARIANT_LABELS: dict[str, str] = {**BRIDGE_LABELS, **BODY_SHAPE_LABELS}
@@ -496,8 +497,12 @@ def parameter_schema() -> dict[str, Any]:
         true for the rarely changed fields the form folds away.
         ``export_formats`` the other 3D formats the built model is
         exported to (``format_export``), each by extension to what it is
-        for. ``locking_nut_widths`` maps each locking nut to its width, the
-        least ``nut_width`` it fits (the form widens the neck to it);
+        for; ``setting_pictures`` each setting's picture
+        (``setting_pictures.SETTING_PICTURES``), ``{"view", "parts"}``: the
+        view of ``setting_views`` it is drawn on and the parts picked out
+        there, the first pattern that finds one. ``locking_nut_widths``
+        maps each locking nut to its width, the least ``nut_width`` it fits
+        (the form widens the neck to it);
         ``neck_templates`` each neck template (``NECK_TEMPLATES``) to
         ``{"label", "values", "resets"}``, the values the headstock editor
         loads and the settings it puts back to their defaults
@@ -538,6 +543,10 @@ def parameter_schema() -> dict[str, Any]:
             for rune in RUNES.values()
         ],
         "export_formats": dict(EXPORT_FORMATS),
+        "setting_pictures": {
+            name: {"view": view, "parts": list(parts)}
+            for name, (view, parts) in SETTING_PICTURES.items()
+        },
         "styles": {
             key: {"label": style.label, "instruments": list(style.instruments)}
             for key, style in STYLES.items()
@@ -2874,6 +2883,192 @@ def part_views(payload: dict[str, Any]) -> dict[str, Any]:
         "neck": render_neck_svg(geometry),
         "fretboard": render_fretboard_svg(geometry),
     }
+
+
+def setting_views(payload: dict[str, Any]) -> dict[str, Any]:
+    """Return the design's drawings the settings' pictures are made from.
+
+    Each part in them carries its name (``<title>``), the parts a
+    setting's picture picks out (``setting_pictures``): the instrument
+    from the front, and the neck and the fretboard from above, from the
+    side and in section, as on their own pages.
+
+    Args:
+        payload: ``{"prototype": {...}}`` as for ``start_build``.
+
+    Returns:
+        ``{"plan", "neck", "fretboard"}``, each an SVG document, or
+        ``{"error": message}`` when the design does not build.
+    """
+    try:
+        parameters = Prototype001Parameters(**_coerce(payload.get("prototype", {})))
+        geometry = parameters.build()
+    except (CNCGuitarWizardError, TypeError, ValueError) as error:
+        return {"error": f"{type(error).__name__}: {error}"}
+    return {
+        "plan": render_plan_view_svg(geometry),
+        "neck": render_neck_svg(geometry),
+        "fretboard": render_fretboard_svg(geometry),
+    }
+
+
+_PICTURE_VIEWS: dict[str, Callable[..., str]] = {
+    "plan": render_plan_view_svg,
+    "neck": render_neck_svg,
+    "fretboard": render_fretboard_svg,
+}
+"""Each setting picture's view (``setting_views``) by its name."""
+
+
+def setting_variation(payload: dict[str, Any], name: str) -> dict[str, Any]:
+    """Return a setting's view of the design with the setting changed.
+
+    What a setting does, for its picture: the setting's view of the design
+    (``setting_pictures``) with the setting at another value, drawn on the
+    design's own view's frame so the two lie one over the other — a number
+    20 % larger (or smaller, or from 0 to its default or a little), and
+    further while its parts move too little to be seen (a fretboard's
+    radius: ``PICTURE_LEAST_MOVE`` of their size), a tick box the other
+    way, a choice the next one that builds: the first that builds and
+    moves them enough, else the one that moves them most.
+
+    Args:
+        payload: ``{"prototype": {...}}`` as for ``start_build``.
+        name: The setting, a ``Prototype001Parameters`` field.
+
+    Returns:
+        ``{"now", "value", "view"}``: the setting's value now and the one
+        drawn (as the form holds them), and the view; ``{"same": True}``
+        when no value tried changes the drawing (a machining setting, say:
+        it changes how a part is cut, not its shape); or ``{"error":
+        message}`` for a design that does not build.
+    """
+    try:
+        parameters = Prototype001Parameters(**_coerce(payload.get("prototype", {})))
+        geometry = parameters.build()
+    except (CNCGuitarWizardError, TypeError, ValueError) as error:
+        return {"error": f"{type(error).__name__}: {error}"}
+    if name not in SETTING_PICTURES or not hasattr(parameters, name):
+        return {"same": True}
+    view_name, patterns = SETTING_PICTURES[name]
+    render = _PICTURE_VIEWS[view_name]
+    now = render(geometry)
+    current = getattr(parameters, name)
+    best: tuple[float, Any, str] | None = None
+    for value in _variations(name, current):
+        try:
+            varied = dataclasses.replace(parameters, **{name: value}).build()
+            view = render(varied, frame_of=geometry)
+        except (CNCGuitarWizardError, TypeError, ValueError):
+            continue
+        if view == now:
+            continue
+        moved = _picture_move(now, view, patterns)
+        if best is None or moved > best[0]:
+            best = (moved, value, view)
+        if moved >= PICTURE_LEAST_MOVE:
+            break
+    # Its parts not moved at all: what it changes lies elsewhere.
+    if best is None or best[0] == 0.0:
+        return {"same": True}
+    _, value, view = best
+    return {"now": _jsonable(current), "value": _jsonable(value), "view": view}
+
+
+PICTURE_LEAST_MOVE = 0.03
+"""How far a setting's parts must move in its picture to be seen there, a
+share of their size: a change that moves them less is tried further."""
+
+
+def _picture_move(now: str, varied: str, patterns: Sequence[str]) -> float:
+    """Return how far a picture's parts moved, a share of their size.
+
+    The parts the first of ``patterns`` that finds one picks out (by their
+    ``<title>``), each compared point by point with its own size (its box,
+    where it is drawn with more or fewer points), the most any moved; 1
+    where their number changed.
+    """
+    for pattern in patterns:
+        before, after = _named_parts(now, pattern), _named_parts(varied, pattern)
+        if before or after:
+            break
+    if len(before) != len(after) or not before:
+        return 1.0
+    most = 0.0
+    for (numbers, size, box), (others, _, other_box) in zip(before, after, strict=True):
+        if len(numbers) != len(others):
+            numbers, others = list(box), list(other_box)
+        if numbers:
+            moved = max(abs(a - b) for a, b in zip(numbers, others, strict=True))
+            most = max(most, moved / (size or 1.0))
+    return most
+
+
+_SHAPE_NUMBERS = re.compile(r'\b(d|points|cx|cy|r|x1|y1|x2|y2)="([^"]*)"')
+"""A drawn part's attributes that place it, and their values."""
+
+
+def _named_parts(
+    svg: str, pattern: str
+) -> list[tuple[list[float], float, tuple[float, ...]]]:
+    """Return a drawing's parts whose name ``pattern`` finds, in order:
+    the numbers that place each, how large it is across (its box's
+    longer side) and its box (left, top, right, bottom)."""
+    found = re.compile(pattern)
+    parts: list[tuple[list[float], float, tuple[float, ...]]] = []
+    for attributes, title in re.findall(r"<\w+\b([^>]*)><title>([^<]*)</title>", svg):
+        if not found.search(title):
+            continue
+        values = {
+            key: [float(v) for v in re.findall(r"-?\d+(?:\.\d+)?", value)]
+            for key, value in _SHAPE_NUMBERS.findall(attributes)
+        }
+        numbers = [
+            number
+            for key in ("d", "points", "cx", "cy", "r", "x1", "y1", "x2", "y2")
+            for number in values.get(key, [])
+        ]
+        pairs = values.get("d", []) or values.get("points", [])
+        xs, ys = pairs[0::2], pairs[1::2]
+        if "cx" in values:
+            r = values.get("r", [0.0])[0]
+            xs = [values["cx"][0] - r, values["cx"][0] + r]
+            ys = [values["cy"][0] - r, values["cy"][0] + r]
+        if "x1" in values:
+            xs = values["x1"] + values.get("x2", [])
+            ys = values.get("y1", []) + values.get("y2", [])
+        box = (min(xs), min(ys), max(xs), max(ys)) if xs and ys else ()
+        size = max(box[2] - box[0], box[3] - box[1]) if box else 0.0
+        parts.append((numbers, size, box))
+    return parts
+
+
+def _variations(name: str, current: Any) -> list[Any]:
+    """Return the values a setting's picture tries it at, in turn."""
+    annotation = typing.get_type_hints(Prototype001Parameters)[name]
+    if isinstance(current, bool):
+        return [not current]
+    options = [
+        option for option in typing.get_args(annotation) if isinstance(option, str)
+    ]
+    if options:
+        # The ones after the current one, then round from the first.
+        at = options.index(current) if current in options else -1
+        return [*options[at + 1 :], *options[: max(at, 0)]]
+    if isinstance(current, int | float):
+        default = getattr(Prototype001Parameters(), name)
+        if current:
+            values: list[float] = [
+                current * factor for factor in (1.2, 0.8, 1.5, 0.6, 2.0, 0.5, 3.0)
+            ]
+        else:
+            values = [*([default] if default else []), 1.0, 5.0, 10.0]
+        # Whole numbers by the setting's kind (a design may hold 4 for 4.0).
+        if annotation is int:
+            whole = [round(value) for value in values] + [current + 1, current - 1]
+            return [value for value in dict.fromkeys(whole) if value != current]
+        return [round(value, 2) for value in values]
+    return []
 
 
 def feature_programs(payload: dict[str, Any], group: str) -> dict[str, Any]:

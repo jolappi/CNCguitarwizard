@@ -44,6 +44,25 @@
 
 ### Added
 
+- A picture of each setting: in front of its name, in the form and in
+  the editors' *Settings*, a small drawing of the guitar being designed
+  shows where the setting is, the parts it shapes outlined in red (the
+  tuner holes for a tuner's size, the neck's section at the first fret
+  for its thickness there, the slots for the frets); clicked, it opens
+  large with the setting's meaning. It is one of the design's own
+  drawings, made again a moment after a change, so it always shows the
+  guitar as it is (`setting_pictures`, `webapp.setting_views`). The
+  front view now draws the truss rod's channel, dashed, and names every
+  fret slot; the fretboard's view names its slots and its section at the
+  12th fret. The picture's window shows what changing the setting does:
+  the same parts with it changed laid over them, blue and dashed (20 %
+  larger or smaller, further where that would not show, as a radius; a
+  tick box the other way, a choice the next one), a key saying both
+  values (`webapp.setting_variation`; the views take another design's
+  frame, `frame_of`, so the two lie one over the other); ‹ › and the
+  arrow keys step to the settings before and after; it and the
+  *Shortcuts* list close on a click beside them.
+
 - The finished model in other common 3D formats, exported on its own
   after the build: STL, 3MF and OBJ (meshes within 0.05 mm, for 3D
   printing, slicers, CAM and Blender), GLB (glTF, for 3D viewers on the

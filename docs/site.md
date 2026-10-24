@@ -115,8 +115,35 @@ Python.
    hover text. While a field is selected its meaning shows under it too
    (`fieldHint`, the same text: for a touch screen, and help too long to
    hover over), in the form or an editor's *Settings*, gone when the
-   focus leaves the fields; it is the field's description
-   (`aria-describedby`), so a screen reader reads it with the field. On a
+   focus leaves the fields. In front of each setting's name (in the form
+   and in an editor's *Settings*) a small picture shows where it is on
+   the guitar being designed: one of the design's own drawings
+   (`webapp.setting_views`: the whole instrument from the front, the
+   neck or the fretboard from above, from the side and in section),
+   its parts named, the ones the setting shapes outlined in red and the
+   rest faded, cropped to them (`setting_pictures.SETTING_PICTURES`, in
+   the schema's `setting_pictures`: a view and the parts' names as
+   patterns, the first that finds one in the design, so the battery
+   box's setting shows the body until there is a battery box; the
+   machine's own settings, the same for every part, have none,
+   `NO_PICTURE`). Strung-out parts (every fret slot) show a close-up of
+   the first few. Clicked, the picture opens large in a dialog with the
+   setting's meaning (`settingPictures.open`) and what changing it does:
+   the same parts with the setting at another value laid over them, blue
+   and dashed, a key under it saying both values
+   (`webapp.setting_variation`: the design built again with it 20 %
+   larger or smaller, further while its parts move less than
+   `PICTURE_LEAST_MOVE` of their size, a tick box the other way, a choice
+   the next one that builds, drawn on the design's own view's frame,
+   `frame_of`; one that moves nothing drawn, as the body's thickness or a
+   machining setting, says so). The arrows beside its name (and ← →) step
+   to the settings before and after it where it was opened. It closes by
+   *Close*, Escape or a click beside it (`closeOnBackdrop`, as the
+   *Shortcuts* list; a question waits for its answer); the drawings are
+   made again
+   a moment after the design changes, while a picture is in sight
+   (`settingPictures`, drawn as they come into view). The hint is the
+   field's description (`aria-describedby`), so a screen reader reads it with the field. On a
    touch screen (`pointer: coarse`) the fields and the hint's button are
    44 px tall to tap, Apple's least touch target, the hint's text 14 px,
    and every field's text 16 px: iOS Safari zooms the whole page into a

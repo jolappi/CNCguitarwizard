@@ -22,8 +22,9 @@ def test_plan_view_draws_every_feature_once() -> None:
     assert svg.count('fill="#e8e2d0"') == 12
     assert svg.count("<circle") == 6 + 7 + 1 + 8 + 7
     # Body outline, headstock, neck, fretboard, the nut, 4 top cavities
-    # and the truss-rod access notch, 2 rear cavities with their covers.
-    assert svg.count("<path") == 5 + 12 + 4 + 4 + 1
+    # and the truss-rod access notch, 2 rear cavities with their covers,
+    # and the truss rod's channel under the board.
+    assert svg.count("<path") == 5 + 12 + 4 + 4 + 1 + 1
 
 
 def test_plan_view_draws_the_nut_and_the_board_under_a_slotted_one() -> None:
@@ -60,11 +61,13 @@ def test_every_part_of_the_plan_view_says_what_it_is() -> None:
         "Neck pocket",
         "Control cavity (back)",
         "Output jack",
+        "Fret slot 12",
+        "Truss rod channel",
     ):
         assert name in names
-    # Every drawn part but the frets and the centreline carries a name.
+    # Every drawn part but the centreline carries a name.
     shapes = svg.count("<path") + svg.count("<circle")
-    assert len(names) == shapes + svg.count("<line") - 24 - 1
+    assert len(names) == shapes + svg.count("<line") - 1
 
 
 def test_plan_view_draws_cover_screws_solid() -> None:

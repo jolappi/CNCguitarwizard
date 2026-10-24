@@ -311,6 +311,7 @@ function mirrorEditorFields() {
   }
   syncMirrors();
   showMirroredRows();
+  attachSettingPictures(document);
 }
 
 // A hidden pane (a fitted or headless headstock has no editor) gives its
@@ -560,13 +561,17 @@ function applyFormFilter() {
 function markWords(label, words) {
   label.dataset.label ??= label.textContent;
   const text = label.dataset.label;
+  // A setting's picture stays in front of its name.
+  const picture = label.querySelector(".setting-picture");
   if (!words.length) {
-    if (label.textContent !== text || label.children.length) label.textContent = text;
+    if (label.textContent !== text || label.children.length > (picture ? 1 : 0)) {
+      label.replaceChildren(...(picture ? [picture] : []), text);
+    }
     return;
   }
   const escaped = words.map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
   const parts = text.split(new RegExp(`(${escaped.join("|")})`, "gi"));
-  label.replaceChildren(...parts.map((part, index) => {
+  label.replaceChildren(...(picture ? [picture] : []), ...parts.map((part, index) => {
     if (index % 2 === 0) return part;
     const mark = document.createElement("mark");
     mark.textContent = part;
@@ -760,6 +765,323 @@ document.addEventListener("focusout", () => {
     if (!focused?.matches(FIELD_CONTROLS) && !fieldHint.contains(focused)) hideFieldHint();
   }, 0);
 });
+
+// ---- Each setting's picture -------------------------------------------
+// Beside a setting (in the form and in an editor's Settings) a small
+// picture of the guitar being designed, the parts it shapes picked out in
+// red: one of the design's own drawings (webapp.setting_views, the whole
+// instrument from the front or the neck or the fretboard from above, the
+// side and in section) cropped to them (the schema's setting_pictures:
+// the first pattern that finds one of its parts by name). Clicked, it
+// opens large with the setting's meaning. The drawings are made again a
+// moment after the design changes, while a picture is in sight.
+const settingPictures = {
+  views: null,        // {plan, neck, fretboard}: parsed SVG documents
+  drawnFor: null,     // the design snapshot they show
+  timer: null,
+  busy: false,
+  shown: new Set(),   // the pictures in sight
+  observer: null,
+
+  // A picture button for a setting, or null for one without.
+  button(name) {
+    if (!schema.setting_pictures?.[name]) return null;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "setting-picture";
+    button.dataset.picture = name;
+    button.setAttribute("aria-label", `Picture: where ${fieldLabel(name)} is on the guitar`);
+    button.title = "Where it is on your guitar (click to see it larger)";
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      settingPictures.sequence = settingPictures.around(button);
+      settingPictures.open(name);
+    });
+    settingPictures.watch(button);
+    return button;
+  },
+
+  // Put a setting's picture in front of its label's text.
+  attach(label, name) {
+    if (label.querySelector(".setting-picture")) return;
+    const button = settingPictures.button(name);
+    if (button) label.prepend(button);
+  },
+
+  watch(button) {
+    settingPictures.observer ??= new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) settingPictures.shown.add(entry.target);
+        else settingPictures.shown.delete(entry.target);
+      }
+      settingPictures.drawShown();
+    });
+    settingPictures.observer.observe(button);
+  },
+
+  // The design changed: its drawings are made again a moment after.
+  changed() {
+    if (settingPictures.shown.size) settingPictures.schedule();
+  },
+
+  schedule() {
+    clearTimeout(settingPictures.timer);
+    settingPictures.timer = setTimeout(() => settingPictures.refresh(), 1200);
+  },
+
+  current() {
+    return settingPictures.views && settingPictures.drawnFor === undoHistory.current;
+  },
+
+  async refresh() {
+    if (!pyodide || settingPictures.busy) {
+      settingPictures.schedule();
+      return;
+    }
+    const snapshot = undoHistory.current;
+    if (!snapshot) return;
+    settingPictures.busy = true;
+    try {
+      pyodide.globals.set("pictures_payload_json", snapshot);
+      const views = await runPython(
+        "import json\nfrom cncguitarwizard.webapp import setting_views\n" +
+        "json.dumps(setting_views(json.loads(pictures_payload_json)))"
+      );
+      // A design that does not build keeps the pictures it had.
+      if (!views.error) {
+        const parser = new DOMParser();
+        settingPictures.views = Object.fromEntries(Object.entries(views)
+          .map(([view, svg]) => [view, parser.parseFromString(svg, "image/svg+xml").documentElement]));
+      }
+      settingPictures.drawnFor = snapshot;
+    } finally {
+      settingPictures.busy = false;
+    }
+    settingPictures.drawShown();
+  },
+
+  // Draw the pictures in sight that do not show the design as it is.
+  drawShown() {
+    if (!settingPictures.current()) {
+      if (settingPictures.shown.size) settingPictures.schedule();
+      if (!settingPictures.views) return;
+    }
+    for (const button of settingPictures.shown) {
+      if (button.dataset.drawnFor === settingPictures.drawnFor) continue;
+      const picture = settingPictures.compose(button.dataset.picture, 0.25, true);
+      if (picture) button.replaceChildren(picture);
+      button.dataset.drawnFor = settingPictures.drawnFor;
+    }
+  },
+
+  // A setting's picture: its view with its parts picked out, cropped to
+  // them with ``margin`` (a share of their size) round them; a small one
+  // square, without the captions, a large one at least ``least`` of the
+  // whole view across, so a small part shows where it is. ``changed``,
+  // the view drawn with the setting changed (setting_variation), lays its
+  // same parts over them, dashed.
+  compose(name, margin, small, least = 0, changed = null) {
+    const spec = schema.setting_pictures[name];
+    const base = settingPictures.views?.[spec.view];
+    if (!base) return null;
+    const svg = base.cloneNode(true);
+    const named = (root) => [...root.querySelectorAll("title")].map((title) => [title.parentElement, title.textContent]);
+    const parts = named(svg);
+    let picked = [], found = null;
+    for (const pattern of spec.parts) {
+      found = new RegExp(pattern);
+      picked = parts.filter(([, partName]) => found.test(partName)).map(([part]) => part);
+      if (picked.length) break;
+    }
+    for (const part of picked) part.classList.add("picked");
+    const moved = changed && found
+      ? named(changed).filter(([, partName]) => found.test(partName)).map(([part]) => {
+        const copy = part.cloneNode(true);
+        copy.classList.add("changed");
+        copy.querySelector("title")?.remove();
+        svg.appendChild(copy);
+        return copy;
+      })
+      : [];
+    picked = [...picked, ...moved];
+    svg.classList.add("setting-picture-drawing");
+    if (small) {
+      // No tooltips or text in the label: its text stays its name.
+      for (const title of svg.querySelectorAll("title")) title.remove();
+      for (const text of svg.querySelectorAll("text")) text.remove();
+    }
+    let box = pictureExtent(picked.length ? picked : [svg]);
+    // Many parts strung out (the fret slots, the markers): a small one is
+    // a close-up of the first few, the large one shows them all.
+    if (small && box && picked.length > 3) {
+      const [x0, y0, x1, y1] = box;
+      const long = Math.max(x1 - x0, y1 - y0), short = Math.min(x1 - x0, y1 - y0);
+      if (long > 3 * Math.max(short, 1)) box = pictureExtent(picked.slice(0, 3));
+    }
+    if (box) {
+      let [x0, y0, x1, y1] = box;
+      const size = Math.max(x1 - x0, y1 - y0, 1);
+      const pad = Math.max(size * margin, small ? 4 : 8);
+      [x0, y0, x1, y1] = [x0 - pad, y0 - pad, x1 + pad, y1 + pad];
+      const [, , viewWidth, viewHeight] = (base.getAttribute("viewBox") || "0 0 0 0").split(/[ ,]+/).map(Number);
+      const reach = least * Math.max(viewWidth, viewHeight);
+      for (const [low, high] of [[0, 2], [1, 3]]) {
+        const coordinates = [x0, y0, x1, y1];
+        const grow = (reach - (coordinates[high] - coordinates[low])) / 2;
+        if (grow > 0) {
+          coordinates[low] -= grow;
+          coordinates[high] += grow;
+          [x0, y0, x1, y1] = coordinates;
+        }
+      }
+      if (small) {
+        // Square, about the parts' middle.
+        const side = Math.max(x1 - x0, y1 - y0);
+        const [cx, cy] = [(x0 + x1) / 2, (y0 + y1) / 2];
+        [x0, y0, x1, y1] = [cx - side / 2, cy - side / 2, cx + side / 2, cy + side / 2];
+      }
+      svg.setAttribute("viewBox", `${x0} ${y0} ${x1 - x0} ${y1 - y0}`);
+    }
+    svg.removeAttribute("width");
+    svg.removeAttribute("height");
+    svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+    return svg;
+  },
+
+  // The setting's picture large, its meaning under it, and what changing
+  // it does: the same parts with it at another value laid over them
+  // (webapp.setting_variation); the arrows step to the settings before
+  // and after it where it was opened (``sequence``).
+  open(name) {
+    const dialog = document.getElementById("setting-picture-dialog");
+    const figure = dialog.querySelector(".picture");
+    const change = dialog.querySelector(".change");
+    settingPictures.name = name;
+    dialog.querySelector("h2").textContent = fieldLabel(name);
+    const row = form.querySelector(`[data-name="${name}"]`)?.closest(".field");
+    dialog.querySelector(".meaning").textContent = (row?.title || "").split("\n")[0];
+    const steps = settingPictures.sequence.length > 1;
+    for (const arrow of dialog.querySelectorAll(".picture-step")) arrow.hidden = !steps;
+    let changed = null;
+    const draw = () => {
+      if (settingPictures.name !== name) return;
+      // The whole guitar shows a part where it is; the neck's and the
+      // board's views, stacked, need less of themselves round it.
+      const least = schema.setting_pictures[name].view === "plan" ? 0.4 : 0.12;
+      const picture = settingPictures.compose(name, 0.08, false, least, changed);
+      figure.replaceChildren(picture || "The picture is being drawn…");
+      dialog.querySelector(".stale").hidden = settingPictures.current();
+    };
+    draw();
+    change.textContent = "Working out what changing it does…";
+    const variation = async () => {
+      if (!settingPictures.current()) await settingPictures.refresh();
+      draw();
+      pyodide.globals.set("variation_payload_json", undoHistory.current);
+      pyodide.globals.set("variation_name", name);
+      const result = await runPython(
+        "import json\nfrom cncguitarwizard.webapp import setting_variation\n" +
+        "json.dumps(setting_variation(json.loads(variation_payload_json), variation_name))"
+      );
+      if (settingPictures.name !== name) return;
+      if (result.view) {
+        changed = new DOMParser().parseFromString(result.view, "image/svg+xml").documentElement;
+        draw();
+        change.replaceChildren(
+          pictureKey("picked"), ` As set now (${shownValue(name, result.now)}). `,
+          pictureKey("changed"), ` At ${shownValue(name, result.value)}: what changing it does.`,
+        );
+      } else if (result.same) {
+        change.replaceChildren(pictureKey("picked"), " Where it is. Changing it moves nothing in this drawing: " +
+          "it shapes the part in depth, or how it is cut.");
+      } else {
+        change.replaceChildren(pictureKey("picked"), " Where it is.");
+      }
+    };
+    variation();
+    if (!dialog.open) dialog.showModal();
+  },
+
+  sequence: [],
+
+  // The settings with pictures where ``button``'s is (an editor's Settings,
+  // or the form's rows shown), in order.
+  around(button) {
+    const holder = button.closest(".editor-options") || form;
+    const names = [...holder.querySelectorAll("button.setting-picture")]
+      .filter((each) => {
+        const row = each.closest(".field");
+        return !row || (!row.hidden && !row.classList.contains("mirrored"));
+      })
+      .map((each) => each.dataset.picture);
+    return [...new Set(names)];
+  },
+
+  step(by) {
+    const names = settingPictures.sequence;
+    if (names.length < 2) return;
+    const at = names.indexOf(settingPictures.name);
+    settingPictures.open(names[(at + by + names.length) % names.length]);
+  },
+};
+
+// A colour's swatch for the picture's key: as set now (red), changed
+// (blue, dashed).
+function pictureKey(kind) {
+  const swatch = document.createElement("span");
+  swatch.className = `picture-key ${kind}`;
+  swatch.setAttribute("aria-hidden", "true");
+  return swatch;
+}
+
+// A setting's value as its field shows it: a choice by its label, a tick
+// box on or off.
+function shownValue(name, value) {
+  const control = form.querySelector(`[data-set][data-name="${name}"]`);
+  if (control?.tagName === "SELECT") {
+    return [...control.options].find((option) => option.value === String(value))?.textContent ?? String(value);
+  }
+  if (typeof value === "boolean") return value ? "on" : "off";
+  return String(value);
+}
+
+// Where drawn parts lie: [left, top, right, bottom] of their points (a
+// path's, a polygon's, a circle's, a line's), or null for none.
+function pictureExtent(parts) {
+  const xs = [], ys = [];
+  const add = (x, y) => {
+    if (Number.isFinite(x) && Number.isFinite(y)) { xs.push(x); ys.push(y); }
+  };
+  for (const part of parts) {
+    const elements = part.tagName === "svg" ? part.querySelectorAll("path, polygon, circle, line") : [part];
+    for (const element of elements) {
+      const number = (name) => parseFloat(element.getAttribute(name));
+      if (element.tagName === "circle") {
+        const [cx, cy, r] = ["cx", "cy", "r"].map(number);
+        add(cx - r, cy - r);
+        add(cx + r, cy + r);
+      } else if (element.tagName === "line") {
+        add(number("x1"), number("y1"));
+        add(number("x2"), number("y2"));
+      } else {
+        const values = (element.getAttribute("d") || element.getAttribute("points") || "")
+          .match(/-?\d*\.?\d+(?:e-?\d+)?/g) || [];
+        for (let i = 0; i + 1 < values.length; i += 2) add(parseFloat(values[i]), parseFloat(values[i + 1]));
+      }
+    }
+  }
+  if (!xs.length) return null;
+  return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+}
+
+// Each setting's label gets its picture (see settingPictures): the form's
+// and an editor's copies' alike.
+function attachSettingPictures(root) {
+  for (const label of root.querySelectorAll("label[for]")) {
+    const name = label.htmlFor.split(".")[1];
+    if (name) settingPictures.attach(label, name);
+  }
+}
 
 // The wheel over a selected number field scrolls the page, as it does
 // everywhere else, and leaves the value alone: the browser would step it
@@ -2126,6 +2448,7 @@ const undoHistory = {
     markStale();
     countChanged();
     markUnsaved();
+    settingPictures.changed();
   },
 };
 guitarName.addEventListener("input", () => {
@@ -4758,6 +5081,31 @@ tipLine.hidden = false;
 
 // The list of shortcuts: from the header, or ? anywhere but a field.
 const keysDialog = document.getElementById("keys-dialog");
+
+// A window that only shows something closes on a click beside it (on its
+// backdrop) as on Escape; a question keeps waiting for its answer.
+function closeOnBackdrop(dialog) {
+  dialog.addEventListener("click", (event) => {
+    // On something in it (an arrow, the picture): not beside it. A click
+    // on the backdrop reaches the dialog itself, as one on its padding.
+    if (event.target !== dialog) return;
+    const box = dialog.getBoundingClientRect();
+    const inside = event.clientX >= box.left && event.clientX <= box.right
+      && event.clientY >= box.top && event.clientY <= box.bottom;
+    if (!inside) dialog.close();
+  });
+}
+closeOnBackdrop(keysDialog);
+closeOnBackdrop(document.getElementById("setting-picture-dialog"));
+for (const arrow of document.querySelectorAll("#setting-picture-dialog .picture-step")) {
+  arrow.addEventListener("click", () => settingPictures.step(Number(arrow.dataset.step)));
+}
+document.getElementById("setting-picture-dialog").addEventListener("keydown", (event) => {
+  if (event.key === "ArrowLeft") settingPictures.step(-1);
+  else if (event.key === "ArrowRight") settingPictures.step(1);
+  else return;
+  event.preventDefault();
+});
 document.getElementById("show-keys").addEventListener("click", () => keysDialog.showModal());
 document.addEventListener("keydown", (event) => {
   if (event.key !== "?" || event.ctrlKey || event.metaKey || event.altKey) return;

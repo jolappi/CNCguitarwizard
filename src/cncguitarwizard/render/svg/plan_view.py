@@ -11,7 +11,9 @@ if TYPE_CHECKING:
     from ...presets import Prototype001Geometry
 
 
-def render_plan_view_svg(geometry: Prototype001Geometry) -> str:
+def render_plan_view_svg(
+    geometry: Prototype001Geometry, frame_of: Prototype001Geometry | None = None
+) -> str:
     """Return an SVG of the body, neck, headstock, and every routed feature.
 
     The drawing is the model seen from the front, standing up: the
@@ -25,10 +27,15 @@ def render_plan_view_svg(geometry: Prototype001Geometry) -> str:
     and on behind it, a line marking where a slotted nut's board starts
     sloping down to its end. Each part carries its name (``<title>``), so
     a browser shows what it is under the pointer.
+
+    ``frame_of`` draws it on another design's page instead of its own (its
+    size and place on it): two designs so drawn lie one over the other,
+    as a setting's picture shows what changing the setting does.
     """
     body = geometry.body
-    points: list[Point2D] = list(body.outline.points)
-    points.extend(geometry.headstock.plan.boundary)
+    frame = frame_of or geometry
+    points: list[Point2D] = list(frame.body.outline.points)
+    points.extend(frame.headstock.plan.boundary)
     min_x = min(point.x for point in points) - 15.0
     max_x = max(point.x for point in points) + 15.0
     min_y = min(point.y for point in points) - 15.0
@@ -123,9 +130,15 @@ def render_plan_view_svg(geometry: Prototype001Geometry) -> str:
     # Each slot as it is cut: blind ones short of the board's edges.
     layout = geometry.fret_layout
     zero = layout.zero_fret_slot
-    for fret_line in (*((zero,) if zero is not None else ()), *layout.slots):
+    named_slots = [
+        *(((zero, "Zero fret slot"),) if zero is not None else ()),
+        *((slot, f"Fret slot {number}") for number, slot in enumerate(layout.slots, 1)),
+    ]
+    for fret_line, name in named_slots:
         slot = layout.cut_slot(fret_line)
-        parts.append(line(slot.start.x, slot.start.y, slot.end.x, slot.end.y, fret))
+        parts.append(
+            line(slot.start.x, slot.start.y, slot.end.x, slot.end.y, fret, name)
+        )
     for marker in geometry.inlay_layout.markers:
         parts.append(path(marker.outline, inlay, f"Inlay, fret {marker.fret_number}"))
         # The wood left standing inside it (an ankh's loop), the board's.
@@ -144,6 +157,14 @@ def render_plan_view_svg(geometry: Prototype001Geometry) -> str:
                     "Carbon fibre rod",
                 )
             )
+    # The truss rod's channel under the fretboard, dashed as the bars.
+    parts.append(
+        path(
+            geometry.truss_rod_channel.top_boundary,
+            'fill="none" stroke="#c8b48a" stroke-width="0.5" stroke-dasharray="3,2"',
+            "Truss rod channel",
+        )
+    )
     for tuner in geometry.tuner_layout.holes:
         parts.append(
             circle(

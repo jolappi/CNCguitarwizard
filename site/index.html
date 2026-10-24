@@ -424,6 +424,30 @@
   dialog.confirm .buttons { display: flex; justify-content: flex-end; gap: 8px; }
   button.keys-button { padding: 3px 10px; font-size: 12.5px; font-weight: 500; align-self: center; }
   dialog.keys { max-width: min(540px, calc(100vw - 32px)); }
+  /* A setting's picture (settingPictures): a thumbnail in front of its
+     label, large in its dialog; the guitar on light paper, the parts the
+     setting shapes outlined in red, the rest faded. */
+  button.setting-picture { display: inline-block; width: 26px; height: 26px; padding: 1px; margin: -3px 6px -3px 0;
+    vertical-align: middle; border: 1px solid var(--line); border-radius: 4px; background: #fbf8f2; cursor: zoom-in; }
+  button.setting-picture:hover { border-color: var(--accent); }
+  button.setting-picture svg { display: block; width: 100%; height: 100%; max-height: none; border: 0; border-radius: 0; background: none; }
+  .setting-picture-drawing :is(path, polygon, circle, line):not(.picked, .changed) { opacity: 0.4; }
+  .setting-picture-drawing .changed { fill: none !important; stroke: #1f6fb2 !important; stroke-width: 2px !important;
+    stroke-dasharray: 6 4; stroke-opacity: 1 !important; vector-effect: non-scaling-stroke; }
+  .setting-picture-drawing .picked { stroke: #d1361f !important; stroke-width: 2px !important; stroke-opacity: 1 !important;
+    vector-effect: non-scaling-stroke; }
+  dialog.picture-dialog { max-width: min(760px, calc(100vw - 32px)); width: 100%; }
+  dialog.picture-dialog .picture-head { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; }
+  dialog.picture-dialog h2 { flex: 1; margin: 0; font-size: 17px; }
+  dialog.picture-dialog .picture-step { min-width: 40px; padding: 4px 10px; font-size: 20px; line-height: 1; }
+  dialog.picture-dialog .change { margin: 8px 0 0; }
+  .picture-key { display: inline-block; width: 22px; height: 0; margin: 0 4px 3px 0; vertical-align: middle;
+    border-top: 3px solid #d1361f; }
+  .picture-key.changed { border-top: 3px dashed #1f6fb2; }
+  dialog.picture-dialog .picture { border: 1px solid var(--line); border-radius: 6px; background: #fbf8f2; color: #6b5a3a; }
+  dialog.picture-dialog .picture svg { display: block; width: 100%; height: auto; max-height: 65vh; }
+  dialog.picture-dialog .meaning { margin: 10px 0 14px; }
+  @media (pointer: coarse) { button.setting-picture { width: 36px; height: 36px; } }
   dialog.keys h2 { margin: 0 0 12px; font-size: 17px; }
   dialog.keys dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 0 0 12px; font-size: 13.5px; }
   dialog.keys dt { white-space: nowrap; }
@@ -993,6 +1017,20 @@
   </svg>
 </div>
 <!-- The page's keys and mouse moves (Shortcuts in the header, or ?). -->
+<dialog id="setting-picture-dialog" class="confirm picture-dialog">
+  <form method="dialog">
+    <div class="picture-head">
+      <button type="button" class="secondary picture-step" data-step="-1" aria-label="Previous setting" title="Previous setting (←)">‹</button>
+      <h2></h2>
+      <button type="button" class="secondary picture-step" data-step="1" aria-label="Next setting" title="Next setting (→)">›</button>
+    </div>
+    <div class="picture"></div>
+    <p class="note change"></p>
+    <p class="note stale" hidden>Being drawn again for the design as it is now…</p>
+    <p class="meaning"></p>
+    <div class="buttons"><button value="close">Close</button></div>
+  </form>
+</dialog>
 <dialog id="keys-dialog" class="confirm keys">
   <form method="dialog">
     <h2>Shortcuts</h2>

@@ -395,3 +395,49 @@ def test_undo_starts_once_a_restored_design_can_be_read() -> None:
     # build looked out of date and nothing could be undone.
     assert "if (repaired.length) undoHistory.start();" in script
     assert "if (this.current === null) {\n      this.current = now;" in script
+
+
+def test_each_setting_has_a_picture_beside_its_label() -> None:
+    script = (ROOT / "site" / "app.js").read_text(encoding="utf-8")
+    page = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
+
+    # Beside the form's and the editors' labels, drawn while in sight from
+    # the design's own drawings, the setting's parts picked out; large in
+    # a dialog when clicked; the search's marks keep it.
+    assert "attachSettingPictures(document);" in script
+    assert "from cncguitarwizard.webapp import setting_views" in script
+    assert "new IntersectionObserver(" in script
+    assert 'for (const part of picked) part.classList.add("picked");' in script
+    assert (
+        "label.replaceChildren(...(picture ? [picture] : []), ...parts.map(" in script
+    )
+    assert "settingPictures.changed();" in script
+    assert '<dialog id="setting-picture-dialog" class="confirm picture-dialog">' in page
+
+
+def test_a_picture_or_the_shortcuts_close_on_a_click_beside_them() -> None:
+    script = (ROOT / "site" / "app.js").read_text(encoding="utf-8")
+
+    assert "closeOnBackdrop(keysDialog);" in script
+    assert (
+        'closeOnBackdrop(document.getElementById("setting-picture-dialog"));' in script
+    )
+    # A question (askConfirm) keeps waiting for its answer.
+    assert 'closeOnBackdrop(document.getElementById("confirm-dialog"))' not in script
+
+
+def test_a_settings_picture_shows_what_changing_it_does_and_steps_on() -> None:
+    script = (ROOT / "site" / "app.js").read_text(encoding="utf-8")
+    page = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
+
+    # The same parts with it changed laid over them, dashed, and a key.
+    assert "from cncguitarwizard.webapp import setting_variation" in script
+    assert 'copy.classList.add("changed");' in script
+    assert 'pictureKey("changed"), ` At ${shownValue(name, result.value)}' in script
+    # The arrows (and the arrow keys) to the settings before and after.
+    assert 'data-step="-1" aria-label="Previous setting"' in page
+    assert 'data-step="1" aria-label="Next setting"' in page
+    assert 'if (event.key === "ArrowLeft") settingPictures.step(-1);' in script
+    assert "settingPictures.sequence = settingPictures.around(button);" in script
+    # A click on something in the window is not one beside it.
+    assert "if (event.target !== dialog) return;" in script

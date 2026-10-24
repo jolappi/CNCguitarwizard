@@ -67,3 +67,13 @@ def test_the_web_app_gets_both_drawings_or_why_not() -> None:
     assert views["neck"].startswith("<svg")
     assert "Scallop after fret 15" in views["fretboard"]
     assert "error" in part_views({"prototype": {"fret_slot_end_inset": 9.0}})
+
+
+def test_the_fretboards_slots_and_section_carry_their_names() -> None:
+    named = titles(render_fretboard_svg(Prototype001Parameters().build()))
+
+    # Each slot from above and from the side, the section at the 12th:
+    # the parts a setting's picture picks out (setting_pictures).
+    assert "Fret slot 1" in named and "Fret slot 24" in named
+    assert "Fret slot 12, from the side" in named
+    assert "The fretboard at fret 12" in named

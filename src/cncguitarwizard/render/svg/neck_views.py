@@ -82,14 +82,19 @@ class _View:
         data = " ".join(self.point(x, v) for x, v in points)
         return f'<polygon points="{data}" {style}><title>{title}</title></polygon>'
 
-    def line(self, a: tuple[float, float], b: tuple[float, float], style: str) -> str:
+    def line(
+        self,
+        a: tuple[float, float],
+        b: tuple[float, float],
+        style: str,
+        title: str = "",
+    ) -> str:
         (x1, y1), (x2, y2) = (
             map(float, self.point(*a).split(",")),
             map(float, self.point(*b).split(",")),
         )
-        return (
-            f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" {style}/>'
-        )
+        start = f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" {style}'
+        return f"{start}><title>{title}</title></line>" if title else f"{start}/>"
 
 
 def _caption(top: float, text: str, left: float = 0.0) -> str:
@@ -155,7 +160,48 @@ def _section(
     return parts
 
 
-def render_neck_svg(geometry: Prototype001Geometry) -> str:
+def _neck_side(
+    geometry: Prototype001Geometry,
+) -> tuple[list[tuple[float, float]], list[tuple[float, float]]]:
+    """Return the neck from the side, nut to heel: its back's depth down
+    the middle and the board's top on it, each as (along, height)."""
+    rows = [
+        row for row in geometry.neck_surface.mesh.rows if row[len(row) // 2].x >= 0.0
+    ]
+    depths = [(row[len(row) // 2].x, row[len(row) // 2].z) for row in rows]
+    heel_end = depths[-1][0]
+    stations = [x for x, _ in depths]
+    samples = sorted({*stations, *(heel_end * k / 400.0 for k in range(401))})
+    tops = [
+        (x, _board_top(geometry, x))
+        for x in samples
+        if x <= geometry.fretboard_surface.station_positions[-1]
+    ]
+    return depths, tops
+
+
+def _board_side(
+    geometry: Prototype001Geometry,
+) -> tuple[float, list[tuple[float, float]]]:
+    """Return where the board ends and its top along its middle, as
+    (along, height)."""
+    end = geometry.fretboard_surface.station_positions[-1]
+    count = int(end * SCALLOP_SAMPLES)
+    return end, [
+        (end * k / count, _board_top(geometry, end * k / count))
+        for k in range(count + 1)
+    ]
+
+
+def _twelfth_row(geometry: Prototype001Geometry) -> Sequence[Point3D]:
+    """Return the board's section at the twelfth fret (or its last)."""
+    surface = geometry.fretboard_surface
+    return surface.profile_row(surface.station_positions[min(12, surface.fret_count)])
+
+
+def render_neck_svg(
+    geometry: Prototype001Geometry, frame_of: Prototype001Geometry | None = None
+) -> str:
     """Return the neck from above, from the side and in section.
 
     From above: the headstock with its tuner holes, the neck to the
@@ -163,10 +209,13 @@ def render_neck_svg(geometry: Prototype001Geometry) -> str:
     (its height stretched ``SIDE_EXAGGERATION`` times): the neck's depth
     under the board, the board on it. In section, true to scale: at the
     first fret and the twelfth, the neck's back profile and the board.
+    ``frame_of`` sizes every view to another design instead (see
+    ``render_plan_view_svg``), so the two lie one over the other.
     """
+    frame = frame_of or geometry
     outline = geometry.neck_outline.boundary
     headstock = geometry.headstock.plan.boundary
-    every = [*outline, *headstock]
+    every = [*frame.neck_outline.boundary, *frame.headstock.plan.boundary]
     x_range = (min(p.x for p in every), max(p.x for p in every))
     y_reach = max(abs(p.y) for p in every)
     parts: list[str] = []
@@ -200,20 +249,11 @@ def render_neck_svg(geometry: Prototype001Geometry) -> str:
     top += 10.0 + plan.height
 
     # From the side: the neck from the nut to the heel.
-    rows = [
-        row for row in geometry.neck_surface.mesh.rows if row[len(row) // 2].x >= 0.0
-    ]
-    depths = [(row[len(row) // 2].x, row[len(row) // 2].z) for row in rows]
+    depths, tops = _neck_side(geometry)
     heel_end = depths[-1][0]
-    stations = [x for x, _ in depths]
-    samples = sorted({*stations, *(heel_end * k / 400.0 for k in range(401))})
-    tops = [
-        (x, _board_top(geometry, x))
-        for x in samples
-        if x <= geometry.fretboard_surface.station_positions[-1]
-    ]
-    v_low = min(z for _, z in depths)
-    v_high = max(z for _, z in tops)
+    frame_depths, frame_tops = _neck_side(frame) if frame_of else (depths, tops)
+    v_low = min(z for _, z in frame_depths)
+    v_high = max(z for _, z in frame_tops)
     parts.append(_caption(top, f"From the side (height x{SIDE_EXAGGERATION:g})"))
     side = _View(
         top + 10.0, (x_range[0], x_range[1]), (v_low, v_high), SIDE_EXAGGERATION
@@ -241,9 +281,14 @@ def render_neck_svg(geometry: Prototype001Geometry) -> str:
         x = positions[fret]
         row = _nearest_row(geometry.neck_surface.mesh.rows, x)
         board = geometry.fretboard_surface.profile_row(x)
-        reach = max(abs(p.y) for p in (*row, *board)) + 4.0
-        low = min(p.z for p in row) - 2.0
-        high = max(p.z for p in board) + 2.0
+        frame_row, frame_board = (row, board)
+        if frame_of is not None:
+            frame_x = frame.fretboard_surface.station_positions[fret]
+            frame_row = _nearest_row(frame.neck_surface.mesh.rows, frame_x)
+            frame_board = frame.fretboard_surface.profile_row(frame_x)
+        reach = max(abs(p.y) for p in (*frame_row, *frame_board)) + 4.0
+        low = min(p.z for p in frame_row) - 2.0
+        high = max(p.z for p in frame_board) + 2.0
         view = _View(
             top + 10.0,
             (-reach * 2.2, reach * 2.2),
@@ -265,7 +310,9 @@ def render_neck_svg(geometry: Prototype001Geometry) -> str:
     return _document(parts, top, "The neck")
 
 
-def render_fretboard_svg(geometry: Prototype001Geometry) -> str:
+def render_fretboard_svg(
+    geometry: Prototype001Geometry, frame_of: Prototype001Geometry | None = None
+) -> str:
     """Return the fretboard from above, from the side and in section.
 
     From above: the board (its binding along its edges), its slots as
@@ -273,12 +320,15 @@ def render_fretboard_svg(geometry: Prototype001Geometry) -> str:
     scallops shaded between their lands. From the side, along its middle
     (its height stretched ``SIDE_EXAGGERATION`` times): its crown, the
     scallops hollowed in it and the slots down into it. In section at the
-    twelfth fret, true to scale: its radius.
+    twelfth fret, true to scale: its radius. ``frame_of`` sizes every view
+    to another design instead (see ``render_plan_view_svg``).
     """
+    frame = frame_of or geometry
     surface = geometry.fretboard_surface
     board = _fretboard_polygon(geometry)
-    x_range = (min(p.x for p in board) - 10.0, max(p.x for p in board) + 4.0)
-    y_reach = max(abs(p.y) for p in board) + 2.0
+    framed = _fretboard_polygon(frame)
+    x_range = (min(p.x for p in framed) - 10.0, max(p.x for p in framed) + 4.0)
+    y_reach = max(abs(p.y) for p in framed) + 2.0
     layout = geometry.fret_layout
     scallops = geometry.fretboard_scallops
     positions = surface.station_positions
@@ -331,10 +381,14 @@ def render_fretboard_svg(geometry: Prototype001Geometry) -> str:
                 )
             parts.append(plan.polygon(corners, SCALLOP, f"Scallop after fret {number}"))
     zero = layout.zero_fret_slot
-    for slot in (*((zero,) if zero is not None else ()), *layout.slots):
+    named_slots = [
+        *(((zero, "Zero fret slot"),) if zero is not None else ()),
+        *((slot, f"Fret slot {number}") for number, slot in enumerate(layout.slots, 1)),
+    ]
+    for slot, name in named_slots:
         cut = layout.cut_slot(slot)
         parts.append(
-            plan.line((cut.start.x, cut.start.y), (cut.end.x, cut.end.y), SLOT)
+            plan.line((cut.start.x, cut.start.y), (cut.end.x, cut.end.y), SLOT, name)
         )
     for marker in geometry.inlay_layout.markers:
         parts.append(
@@ -357,13 +411,8 @@ def render_fretboard_svg(geometry: Prototype001Geometry) -> str:
     top += 10.0 + plan.height + 14.0
 
     # From the side, along the middle: the crown, scallops and slots.
-    end = positions[surface.fret_count] + surface.end_extension
-    count = int(end * SCALLOP_SAMPLES)
-    tops = [
-        (end * k / count, _board_top(geometry, end * k / count))
-        for k in range(count + 1)
-    ]
-    v_high = max(z for _, z in tops)
+    end, tops = _board_side(geometry)
+    v_high = max(z for _, z in (_board_side(frame)[1] if frame_of else tops))
     parts.append(
         _caption(
             top, f"From the side, along its middle (height x{SIDE_EXAGGERATION:g})"
@@ -376,20 +425,24 @@ def render_fretboard_svg(geometry: Prototype001Geometry) -> str:
         )
     )
     depth = geometry.fret_slot_depth
-    for slot in layout.slots:
+    for number, slot in enumerate(layout.slots, 1):
         x = (slot.start.x + slot.end.x) / 2.0
         z = _board_top(geometry, x)
-        parts.append(side.line((x, z), (x, z - depth), SLOT))
+        parts.append(
+            side.line(
+                (x, z), (x, z - depth), SLOT, f"Fret slot {number}, from the side"
+            )
+        )
     top += 10.0 + side.height
 
     # In section at the twelfth fret: the radius.
-    x = positions[min(12, surface.fret_count)]
-    row = surface.profile_row(x)
-    reach = max(abs(p.y) for p in row) + 4.0
+    row = _twelfth_row(geometry)
+    frame_row = _twelfth_row(frame) if frame_of else row
+    reach = max(abs(p.y) for p in frame_row) + 4.0
     view = _View(
         top + 10.0,
         (-reach * 2.4, reach * 2.4),
-        (-1.0, max(p.z for p in row) + 2.0),
+        (-1.0, max(p.z for p in frame_row) + 2.0),
         width=WIDTH / 2.0,
     )
     parts.append(_caption(top, f"At fret 12: {surface.radius:g} mm radius"))
@@ -397,7 +450,7 @@ def render_fretboard_svg(geometry: Prototype001Geometry) -> str:
         view.polygon(
             [(p.y, p.z) for p in row] + [(row[-1].y, 0.0), (row[0].y, 0.0)],
             BOARD,
-            "Fret 12",
+            "The fretboard at fret 12",
         )
     )
     top += 10.0 + view.height
