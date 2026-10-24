@@ -7,9 +7,10 @@ and deterministic checks of that geometry against the equal-tempered
 formula. Its status says whether every check passed; it never says the
 design is ready to cut, only that it is ready for a person to review.
 
-The build writes it into ``build.json`` (``parameter_sheet``) and as
-``Prototype001_parameters.csv``. All dimensions are millimetres, all
-angles degrees.
+The build writes it into ``build.json`` (``parameter_sheet``), as
+``Prototype001_parameters.csv`` and into the FreeCAD model as its
+``Parameters`` spreadsheet. All dimensions are millimetres, all angles
+degrees.
 """
 
 from __future__ import annotations
@@ -205,27 +206,29 @@ class ParameterSheet:
             "to_confirm": list(self.to_confirm),
         }
 
-    def as_csv(self) -> str:
-        """Return the sheet as CSV text, one row a value (``CSV_COLUMNS``).
+    def as_table(self) -> tuple[tuple[str, ...], ...]:
+        """Return the sheet as a table of text, one row a value.
 
-        The status comes first, then the settings, the derived values,
-        the checks (``source`` "check", ``value`` the actual value) and
-        what is left to confirm.
+        The first row is ``CSV_COLUMNS``. The status comes next, then the
+        settings, the derived values, the checks (``source`` "check",
+        ``value`` the actual value) and what is left to confirm. Every
+        row's ``name`` (second column) names its ``value`` (third).
 
         Returns:
-            The CSV text, rows ending in ``\\n``.
+            The rows, each as long as ``CSV_COLUMNS``; an empty cell is
+            ``""``.
         """
-        buffer = io.StringIO()
-        writer = csv.writer(buffer, lineterminator="\n")
-        writer.writerow(CSV_COLUMNS)
-        writer.writerow(("Status", "status", self.status, "", "", "", "", ""))
+        table = [
+            CSV_COLUMNS,
+            ("Status", "status", self.status, "", "", "", "", ""),
+        ]
         for row in self.rows:
-            writer.writerow(
+            table.append(
                 (row.group, row.name, _cell(row.value), row.unit, row.source)
                 + ("", "", "")
             )
         for check in self.checks:
-            writer.writerow(
+            table.append(
                 (
                     "Check",
                     check.name,
@@ -238,9 +241,17 @@ class ParameterSheet:
                 )
             )
         for number, item in enumerate(self.to_confirm, start=1):
-            writer.writerow(
-                ("To confirm", f"confirm_{number}", item, "", "", "", "", "")
-            )
+            table.append(("To confirm", f"confirm_{number}", item, "", "", "", "", ""))
+        return tuple(table)
+
+    def as_csv(self) -> str:
+        """Return the sheet as CSV text: ``as_table``, one line a row.
+
+        Returns:
+            The CSV text, rows ending in ``\\n``.
+        """
+        buffer = io.StringIO()
+        csv.writer(buffer, lineterminator="\n").writerows(self.as_table())
         return buffer.getvalue()
 
 

@@ -279,6 +279,24 @@ the loft's own top at z = 0, tangentially just behind the nut, and
 FreeCAD's fuse then silently drops the block (it reports it as already
 inside the neck). The face cut's faces all cross the loft instead.
 
+## Parameters spreadsheet
+
+`render_prototype001(..., parameter_table=sheet.as_table())` adds a
+`Parameters` spreadsheet to the model holding the design's
+[parameter sheet](../workflows/parameter_sheet.md); the build passes its
+own. It is laid out as the CSV is, row by row from `A1`: a number is a
+number, any other text stays text. Each value's cell is named for its
+setting, derived value or check, so a FreeCAD expression can read it
+(`Parameters.scale_length`, `Parameters.octave_fret_at_half_scale`). An
+empty value (an unset `bass_scale_length`) is not named, and a name
+FreeCAD refuses is left unnamed rather than failing the build.
+
+The sheet is a record of the design, not its source: the solids are made
+from the geometry the script carries, so changing a cell changes no
+solid. Change the design and build again instead. The sheet is made after
+the neck's tilt, which turns every object then in the document. It is no
+`Part::Feature`, so neither the STEP nor the other 3D formats include it.
+
 ## Other 3D formats
 
 `backends.freecad.render_format_export(formats)` writes a script of its

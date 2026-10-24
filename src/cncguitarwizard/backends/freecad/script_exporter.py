@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import math
 import re
+import string
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -159,6 +160,7 @@ class FreeCADScriptExporter:
         fcstd_path: Path | None = None,
         step_path: Path | None = None,
         tray_tool_radius: float = 0.0,
+        parameter_table: Sequence[Sequence[str]] = (),
     ) -> str:
         """Return a complete FreeCAD script from one Prototype001 model.
 
@@ -174,6 +176,9 @@ class FreeCADScriptExporter:
                 tray is cut only where that cutter reaches, a gap in it
                 narrower than the cutter left as wood (as the G-code
                 leaves it); 0 cuts the whole tray.
+            parameter_table: The design's parameter sheet as rows of text
+                (``ParameterSheet.as_table``), written into the model's
+                ``Parameters`` spreadsheet; empty for none.
 
         Returns:
             Standalone Python source for execution inside FreeCAD.
@@ -218,6 +223,7 @@ class FreeCADScriptExporter:
             tray_tool_radius=tray_tool_radius,
             fretboard_scallops=geometry.fretboard_scallops,
             volute=geometry.volute,
+            parameter_table=parameter_table,
         )
 
     def render_fretboard(
@@ -290,6 +296,7 @@ class FreeCADScriptExporter:
         tray_tool_radius: float = 0.0,
         fretboard_scallops: FretboardScallops | None = None,
         volute: Volute | None = None,
+        parameter_table: Sequence[Sequence[str]] = (),
     ) -> str:
         """Return a FreeCAD script containing neck and fretboard solids.
 
@@ -344,6 +351,9 @@ class FreeCADScriptExporter:
             volute: The volute carved into the headstock's back behind the
                 nut, lofted with the neck and headstock (``_with_volute``),
                 or ``None``.
+            parameter_table: Rows of text for the ``Parameters``
+                spreadsheet (see ``_render_parameter_sheet``); empty for
+                none.
 
         Returns:
             Standalone Python source for execution inside FreeCAD.
@@ -920,8 +930,59 @@ class FreeCADScriptExporter:
             f"{body_source}"
             "for feature in HIDDEN_WHILE_BUILT:\n"
             "    feature.ViewObject.Visibility = True\n"
+            f"{self._render_parameter_sheet(parameter_table)}"
             "document.recompute()\n"
             f"{output_commands}"
+        )
+
+    @staticmethod
+    def _render_parameter_sheet(table: Sequence[Sequence[str]]) -> str:
+        """Return the ``Parameters`` spreadsheet holding the parameter sheet.
+
+        Row by row from ``A1``, a cell a column (at most 26 columns): a
+        value that reads as a number is a number, any other text stays
+        text (FreeCAD's leading ``'``), an empty one is left empty. After
+        the first (header) row, each row's second column names the cell
+        of its third, so an expression can read
+        ``Parameters.scale_length``; an empty value is not named, and a
+        name FreeCAD does not take is skipped rather than failing the
+        build. The sheet records the design: its cells drive no solid.
+        It is made last, after the neck's tilt has turned every object
+        then in the document.
+
+        Args:
+            table: The rows of text (``ParameterSheet.as_table``).
+
+        Returns:
+            The source, or ``""`` for an empty table.
+        """
+        if not table:
+            return ""
+        cells = {
+            f"{string.ascii_uppercase[column]}{number}": _sheet_content(text)
+            for number, row in enumerate(table, start=1)
+            for column, text in enumerate(row)
+            if text
+        }
+        aliases = {
+            f"C{number}": row[1]
+            for number, row in enumerate(table, start=1)
+            if number > 1 and len(row) > 2 and row[2]
+        }
+        return (
+            "# The design's parameter sheet: a record of it, driving no solid.\n"
+            f"PARAMETER_CELLS = {json.dumps(cells)}\n"
+            f"PARAMETER_ALIASES = {json.dumps(aliases)}\n"
+            "parameter_sheet = document.addObject(\n"
+            '    "Spreadsheet::Sheet", "Parameters"\n'
+            ")\n"
+            "for cell, content in PARAMETER_CELLS.items():\n"
+            "    parameter_sheet.set(cell, content)\n"
+            "for cell, alias in PARAMETER_ALIASES.items():\n"
+            "    try:\n"
+            "        parameter_sheet.setAlias(cell, alias)\n"
+            "    except ValueError:\n"
+            "        pass  # not a name FreeCAD takes; the value stays unnamed\n"
         )
 
     @staticmethod
@@ -4138,3 +4199,17 @@ def _trimmed_row(row: tuple[Point3D, ...], amount: float) -> tuple[Point3D, ...]
 
     trimmed = from_start(list(row))
     return tuple(reversed(from_start(list(reversed(trimmed)))))
+
+
+def _sheet_content(text: str) -> str:
+    """Return a spreadsheet cell's content for a value written as text.
+
+    A number stays as it is, so FreeCAD reads it as one; any other text
+    gets FreeCAD's leading ``'``, so it stays text however it reads
+    (``mm`` is not taken for a length).
+    """
+    try:
+        float(text)
+    except ValueError:
+        return "'" + text
+    return text

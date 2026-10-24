@@ -377,6 +377,8 @@ class Prototype001Build:
 
     def _write_script_and_report(self) -> None:
         assert self.geometry is not None
+        sheet = parameter_sheet(self.parameters, self.geometry)
+        self._parameter_sheet_path.write_text(sheet.as_csv(), encoding="utf-8")
         exporter = FreeCADScriptExporter()
         source = exporter.render_prototype001(
             self.geometry,
@@ -384,11 +386,10 @@ class Prototype001Build:
             step_path=self._step_path,
             # An epoxy tray modelled as the main cutter routes it.
             tray_tool_radius=self.machining.tool_radius,
+            parameter_table=sheet.as_table(),
         )
         exporter.write_script(self._macro_path, source)
         exporter.write_script(self._python_path, source)
-        sheet = parameter_sheet(self.parameters, self.geometry)
-        self._parameter_sheet_path.write_text(sheet.as_csv(), encoding="utf-8")
         self._report = {
             "project": PROJECT_NAME,
             "mark": PROJECT_MARK,

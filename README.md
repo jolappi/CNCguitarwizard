@@ -67,7 +67,7 @@ Everything lands in the `build/` directory (git-ignored):
 
 | File | What it is |
 | --- | --- |
-| `Prototype001.FCStd` | Editable FreeCAD document: neck, fretboard and body as separate solids |
+| `Prototype001.FCStd` | Editable FreeCAD document: neck, fretboard and body as separate solids, and the parameter sheet as its `Parameters` spreadsheet |
 | `Prototype001.step` | The same three solids for any other CAD/CAM tool |
 | `Prototype001.FCMacro`, `Prototype001_freecad.py` | The generated FreeCAD script (macro and plain-Python form) |
 | `Body_*.nc` | GRBL G-code for the body (index pins, top, back) — see [Body G-code](docs/cam/01_body_gcode.md) |

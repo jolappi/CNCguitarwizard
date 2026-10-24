@@ -5,12 +5,16 @@ page, with units, where each value came from, a few values worked out
 from the built geometry, and checks of that geometry. It is for a person
 to review the design before anything is cut.
 
-It is written twice, with the same content:
+It is written three times, with the same content:
 
 - `Prototype001_parameters.csv`, beside the other build files, for a
   spreadsheet (in the web app it is among *Model and report* in the
   downloads);
-- `build.json`, under `parameter_sheet`.
+- `build.json`, under `parameter_sheet`;
+- the FreeCAD model, as its `Parameters` spreadsheet, each value's cell
+  named for it (`Parameters.scale_length`). It records the design and
+  drives no solid: see
+  [Parameters spreadsheet](../backends/freecad.md#parameters-spreadsheet).
 
 All dimensions are millimetres (`mm`), all angles degrees (`deg`).
 Positions are measured along the neck's centreline from the nut line
@@ -83,7 +87,8 @@ cut before cutting stock.
 
 ## CSV columns
 
-One row a value: `group`, `name`, `value`, `unit`, `source`, `expected`,
+The CSV and the FreeCAD spreadsheet share one layout
+(`ParameterSheet.as_table`). One row a value: `group`, `name`, `value`, `unit`, `source`, `expected`,
 `tolerance`, `result`. The status comes first (group `Status`), then the
 settings, the derived values (group `Derived`), the checks (group
 `Check`, `source` `check`, `value` the actual value, `result` `passed` or

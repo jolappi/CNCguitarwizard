@@ -85,6 +85,14 @@
 
 ### Added
 
+- The parameter sheet in the FreeCAD model: `Prototype001.FCStd` has a
+  `Parameters` spreadsheet laid out as `Prototype001_parameters.csv`, each
+  value's cell named for it, so a FreeCAD expression can read
+  `Parameters.scale_length` or `Parameters.octave_fret_at_half_scale`
+  (`ParameterSheet.as_table`, `render_prototype001(parameter_table=...)`).
+  It records the design and drives no solid; the STEP and the other 3D
+  formats leave it out.
+
 - A parameter sheet with every build (`workflows.parameter_sheet`,
   [Parameter sheet](docs/workflows/parameter_sheet.md)): the design's key
   dimensions in millimetres and degrees, each with its source (the

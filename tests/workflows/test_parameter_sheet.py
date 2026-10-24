@@ -188,6 +188,41 @@ def test_the_build_writes_the_sheet_and_reports_it(tmp_path: Path) -> None:
     assert report["parameter_sheet"]["status"] == READY_FOR_REVIEW
 
 
+def _script_literal(script: str, name: str) -> dict[str, str]:
+    """Return a dict the FreeCAD script assigns to ``name`` on one line."""
+    line = next(line for line in script.splitlines() if line.startswith(name))
+    value: dict[str, str] = json.loads(line.removeprefix(f"{name} = "))
+    return value
+
+
+def test_the_freecad_model_gets_the_sheet(tmp_path: Path) -> None:
+    result = build_prototype001(tmp_path / "build", run_freecad=False)
+
+    script = result.python_path.read_text(encoding="utf-8")
+    cells = _script_literal(script, "PARAMETER_CELLS")
+    aliases = _script_literal(script, "PARAMETER_ALIASES")
+    named = {name: cell for cell, name in aliases.items()}
+
+    assert '"Spreadsheet::Sheet", "Parameters"' in script
+    assert cells[named["scale_length"]] == "609.6"
+    assert cells[named["status"]] == "'" + READY_FOR_REVIEW
+    assert cells[named["octave_fret_at_half_scale"]] == "304.8"
+    assert "bass_scale_length" not in named  # unset, so not named
+    assert script == result.macro_path.read_text(encoding="utf-8")
+
+
+def test_the_table_is_the_csv() -> None:
+    sheet = _sheet(Prototype001Parameters())
+
+    table = sheet.as_table()
+
+    assert table[0] == CSV_COLUMNS
+    assert all(len(row) == len(CSV_COLUMNS) for row in table)
+    assert [tuple(row) for row in csv.reader(io.StringIO(sheet.as_csv()))] == list(
+        table
+    )
+
+
 def test_the_web_build_offers_the_sheet(tmp_path: Path) -> None:
     started = start_build({"prototype": {}, "machining": {}}, str(tmp_path))
     assert "error" not in started

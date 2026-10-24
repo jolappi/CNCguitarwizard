@@ -28,6 +28,7 @@ from cncguitarwizard.geometry.body import (
     RearCavity,
     RectangularCavity,
 )
+from cncguitarwizard.geometry.body.bridges import TuneOMaticSpec
 from cncguitarwizard.geometry.fretboard import (
     Fretboard,
     FretboardSurface,
@@ -1437,3 +1438,80 @@ def test_each_family_of_cuts_is_one_boolean_and_the_neck_drawn_once() -> None:
     shown = source.index("for feature in HIDDEN_WHILE_BUILT:")
     assert shown < source.index("document.recompute()", shown)
     assert "if App.GuiUp:" in source
+
+
+def _assigned(source: str, name: str) -> object:
+    """Return the literal a generated script assigns to ``name``."""
+    for node in ast.parse(source).body:
+        if (
+            isinstance(node, ast.Assign)
+            and isinstance(node.targets[0], ast.Name)
+            and node.targets[0].id == name
+        ):
+            return ast.literal_eval(node.value)
+    raise AssertionError(f"{name} is not assigned")
+
+
+def test_the_parameter_table_becomes_a_named_spreadsheet() -> None:
+    table = (
+        ("group", "name", "value", "unit"),
+        ("Scale and frets", "scale_length", "609.6", "mm"),
+        ("Scale and frets", "bass_scale_length", "", "mm"),
+        ("Neck", "neck_joint", "bolt_on", ""),
+    )
+
+    source = FreeCADScriptExporter().render_neck_assembly(
+        make_neck_surface(),
+        make_fretboard_surface(),
+        parameter_table=table,
+    )
+
+    assert 'document.addObject(\n    "Spreadsheet::Sheet", "Parameters"\n)' in source
+    assert _assigned(source, "PARAMETER_CELLS") == {
+        "A1": "'group",
+        "B1": "'name",
+        "C1": "'value",
+        "D1": "'unit",
+        "A2": "'Scale and frets",
+        "B2": "'scale_length",
+        "C2": "609.6",
+        "D2": "'mm",
+        "A3": "'Scale and frets",
+        "B3": "'bass_scale_length",
+        "D3": "'mm",
+        "A4": "'Neck",
+        "B4": "'neck_joint",
+        "C4": "'bolt_on",
+    }
+    # The header and an empty value are not named.
+    assert _assigned(source, "PARAMETER_ALIASES") == {
+        "C2": "scale_length",
+        "C4": "neck_joint",
+    }
+    # A name FreeCAD refuses is skipped, never failing the build.
+    assert "except ValueError:" in source
+    sheet = source.index('"Spreadsheet::Sheet"')
+    assert sheet < source.index("document.recompute()", sheet)
+
+
+def test_no_parameter_table_makes_no_spreadsheet() -> None:
+    source = FreeCADScriptExporter().render_neck_assembly(
+        make_neck_surface(), make_fretboard_surface()
+    )
+
+    assert "Spreadsheet::Sheet" not in source
+
+
+def test_the_spreadsheet_is_made_after_the_neck_is_tilted() -> None:
+    # A Tune-o-matic tilts the neck: every object then in the document is
+    # turned, and a spreadsheet has no placement to turn.
+    parameters = replace(Prototype001Parameters(), body_bridge=TuneOMaticSpec())
+    geometry = parameters.build()
+
+    source = FreeCADScriptExporter().render_prototype001(
+        geometry, parameter_table=(("group", "name", "value"),)
+    )
+
+    assert geometry.neck_tilt[0] > 0.0
+    tilt = source.index("for neck_object in document.Objects:")
+    assert tilt < source.index('"Spreadsheet::Sheet"')
