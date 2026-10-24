@@ -125,7 +125,11 @@ Every program first rapids to `X0 Y0` at the safe height — parked over
 index pin 1 — then over dowel 2 and back, all before the spindle starts,
 so the work zero and the fixture can be checked by eye; it returns to pin 1
 after the last cut. Each `.nc` file starts with
-operator notes as comments. Its name is the program's and then the tool
+operator notes as comments, the first after the version always
+`REVIEW REQUIRED: simulate and air-cut this program, checking the work
+zero, tool, clamps and machine travel, before cutting stock`
+(`cam.gcode.REVIEW_REQUIRED_NOTE`): a program is never ready to cut on
+its own word, and the operator starts the machine. Its name is the program's and then the tool
 it is cut with (`cam.program_stem`), so the file says which cutter to
 fit: `Body_top_6mm_flathead.nc`, `Body_back_small_holes_3mm_flathead.nc`,
 `Body_top_edges_6mm_ballnose.nc`, `Body_top_engraving_60deg_vbit.nc` (a

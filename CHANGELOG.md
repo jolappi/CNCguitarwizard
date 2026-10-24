@@ -4,6 +4,13 @@
 
 ### Changed
 
+- Every G-code program says it needs review: the second line of its
+  header, in each controller's own comment, is `REVIEW REQUIRED:
+  simulate and air-cut this program, checking the work zero, tool,
+  clamps and machine travel, before cutting stock`
+  (`cam.gcode.REVIEW_REQUIRED_NOTE`). A program is never ready to cut on
+  its own word; the operator checks it and starts the machine.
+
 - Only the settings that do something are shown, on every page. A
   setting that matters only beside others' values
   (`setting_conditions.APPLIES_WHEN`, any of its conditions) is hidden in

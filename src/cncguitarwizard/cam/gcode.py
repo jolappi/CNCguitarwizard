@@ -8,6 +8,13 @@ from ..version import PROJECT_NAME, __version__
 from .parameters import MachiningParameters, PostProcessor
 from .toolpath import Move, Toolpath
 
+REVIEW_REQUIRED_NOTE = (
+    "REVIEW REQUIRED: simulate and air-cut this program, checking the "
+    "work zero, tool, clamps and machine travel, before cutting stock"
+)
+"""Every program's second header line: generated G-code is never ready to
+cut on its own word; the operator checks it and starts the machine."""
+
 
 @dataclass(frozen=True, slots=True)
 class Setup:
@@ -132,6 +139,7 @@ class GCodeWriter:
             lines += ["%", f"O1000 {note(PROJECT_NAME + ' ' + setup.name)}"]
         lines += [
             note(f"{PROJECT_NAME} {__version__}"),
+            note(REVIEW_REQUIRED_NOTE),
             note(f"Setup: {setup.description}"),
             note(
                 f"Tool: {_tool_name(parameters)}, "

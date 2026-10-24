@@ -15,6 +15,7 @@ from cncguitarwizard.cam import (
     program_stem,
 )
 from cncguitarwizard.cam.exceptions import ToolpathError
+from cncguitarwizard.cam.gcode import REVIEW_REQUIRED_NOTE
 from cncguitarwizard.cam.toolpath import Move, PathBuilder
 
 
@@ -35,7 +36,8 @@ def test_writer_emits_a_grbl_program_with_header_and_footer() -> None:
     source = GRBLWriter().render(make_setup(), MachiningParameters())
     lines = source.splitlines()
 
-    assert lines[1] == "(Setup: Test setup [square])"
+    assert lines[1] == f"({REVIEW_REQUIRED_NOTE})"
+    assert lines[2] == "(Setup: Test setup [square])"
     assert "(Note one)" in lines
     assert "G21" in lines and "G90" in lines and "G17" in lines
     assert "M3 S10000" in lines
@@ -339,3 +341,17 @@ def test_a_program_is_named_for_its_tool() -> None:
     # A setup's own tool before the parameters'.
     own = replace(setup, tool=replace(flat, tool_diameter=0.6))
     assert program_stem(own, flat) == "Test_0.6mm_flathead"
+
+
+@pytest.mark.parametrize("dialect", list(POST_PROCESSOR_LABELS))
+def test_every_program_says_it_needs_review_before_cutting(dialect: str) -> None:
+    parameters = MachiningParameters(post_processor=dialect)  # type: ignore[arg-type]
+    writer = GCodeWriter.for_parameters(parameters)
+
+    header = writer.render(make_setup(), parameters).splitlines()[:6]
+
+    # In the dialect's own comment, ahead of the setup, tool and work zero;
+    # never "ready" or "safe to cut" on the program's own word.
+    assert any("REVIEW REQUIRED" in line.upper() for line in header), dialect
+    assert "air-cut" in REVIEW_REQUIRED_NOTE
+    assert not any("SAFE TO CUT" in line.upper() for line in header)

@@ -183,8 +183,9 @@ def test_setups_render_with_their_own_tool_lines(plan) -> None:  # type: ignore[
     finish = writer.render(plan.back_finish, MachiningParameters())
     rough = writer.render(plan.back_rough, MachiningParameters())
 
-    assert "ball nose" in finish.splitlines()[2]
-    assert "end mill" in rough.splitlines()[2]
+    # The tool line follows the version, the review note and the setup.
+    assert "ball nose" in finish.splitlines()[3]
+    assert "end mill" in rough.splitlines()[3]
     assert finish.rstrip().endswith("M2")
 
 
