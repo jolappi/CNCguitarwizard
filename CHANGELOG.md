@@ -1592,6 +1592,13 @@
   loft stalled matching that section with the others. No loft section
   gives a point twice now (`LOFT_POINT_GAP`, 1 µm).
 
+- A carved top on a V body (a long outline with sharp points) did not
+  build: FreeCAD's cut of the rim strip's slab left it whole, so the strip
+  took the whole top 8 mm off and the carve found nothing to cut ("no
+  cut took off about ... mm3"). The strip and an edge's rings are cut by
+  `slab_outside` now, kept only when the outline's prism came out, a
+  little fuzz tried when not.
+
 - A heel wider than the final fret with a round end (`heel_width` 58,
   `neck_heel_end` "round") cut the fretboard's outline out to 762 mm
   either side of the board: cut round, the heel's outline had its tip on

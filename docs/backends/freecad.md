@@ -172,6 +172,14 @@ them, which never finished: a locking nut, a zero fret and a drawn root
 behind a 10° headstock's nut put two points on one another in three of
 the neck's sections.
 
+Everything outside an outline between two heights (a carved top's rim
+strip, an edge's rings) is cut by the script's `slab_outside`: a slab
+less the outline's prism, its cut kept only when it took the prism out,
+with 0.001 and then 0.01 mm of fuzz tried when not. Round a V body's long
+outline with its sharp points FreeCAD's plain cut left the slab whole: the
+rim strip then took the whole top 8 mm off, and the carve found nothing
+to cut.
+
 An existing `TrussRodChannel` can be applied as a rectangular subtraction
 from the neck solid:
 

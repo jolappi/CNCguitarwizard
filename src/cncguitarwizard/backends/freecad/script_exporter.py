@@ -666,6 +666,29 @@ class FreeCADScriptExporter:
             "    if not shape.isValid():\n"
             '        raise RuntimeError(f"{operation} produced an invalid shape")\n'
             "    return shape\n\n"
+            "def slab_outside(face, outer_box, z_bottom, height):\n"
+            '    """Return everything outside a flat face (at Z 0), 20 mm round\n'
+            "    outer_box, between z_bottom and height above it. FreeCAD's cut\n"
+            "    can leave the slab whole round a long outline with sharp\n"
+            "    points (a V's): a little fuzz is tried then, and a cut kept\n"
+            '    only when it took the face\'s prism out."""\n'
+            "    slab = Part.makeBox(\n"
+            "        outer_box.XLength + 40.0, outer_box.YLength + 40.0, height,\n"
+            "        App.Vector(\n"
+            "            outer_box.XMin - 20.0, outer_box.YMin - 20.0, z_bottom\n"
+            "        ),\n"
+            "    )\n"
+            "    inner = face.copy()\n"
+            "    inner.translate(App.Vector(0.0, 0.0, z_bottom - 0.01))\n"
+            "    prism = inner.extrude(App.Vector(0.0, 0.0, height + 0.02))\n"
+            "    taken = face.Area * height\n"
+            "    for fuzz in (0.0, 0.001, 0.01):\n"
+            "        ring = slab.cut(prism, fuzz)\n"
+            "        if ring.isNull() or not ring.isValid():\n"
+            "            continue\n"
+            "        if abs(slab.Volume - ring.Volume - taken) < 0.01 * taken:\n"
+            "            return ring\n"
+            '    raise RuntimeError("the slab round an outline could not be cut")\n\n'
             "HIDDEN_WHILE_BUILT = []\n\n"
             "def hidden_while_built(feature):\n"
             '    """Hide a feature in FreeCAD\'s window while the script still\n'
@@ -3056,19 +3079,12 @@ class FreeCADScriptExporter:
                 "    [App.Vector(x, y, 0.0) for x, y in BODY_OUTLINE_POINTS]\n"
                 "    + [App.Vector(*BODY_OUTLINE_POINTS[0], 0.0)]\n"
                 "))\n"
-                "carve_box = carve_outline.BoundBox\n"
-                "carve_inner = carve_outline.makeOffset2D(\n"
-                "    -CARVE_EDGE_RIM, join=0\n"
-                ")\n"
-                "carve_inner.translate(App.Vector(0.0, 0.0, -CARVE_DEPTH - 0.01))\n"
-                "carve_rim = Part.makeBox(\n"
-                "    carve_box.XLength + 40.0,\n"
-                "    carve_box.YLength + 40.0,\n"
+                "carve_rim = slab_outside(\n"
+                "    carve_outline.makeOffset2D(-CARVE_EDGE_RIM, join=0),\n"
+                "    carve_outline.BoundBox,\n"
+                "    -CARVE_DEPTH,\n"
                 "    CARVE_DEPTH + 1.0,\n"
-                "    App.Vector(\n"
-                "        carve_box.XMin - 20.0, carve_box.YMin - 20.0, -CARVE_DEPTH\n"
-                "    ),\n"
-                ").cut(carve_inner.extrude(App.Vector(0.0, 0.0, CARVE_DEPTH + 1.02)))\n"
+                ")\n"
                 "body_shape = require_shape(\n"
                 '    body_shape.cut(carve_rim), "carved top rim strip"\n'
                 ")\n"
@@ -4139,16 +4155,10 @@ def _body_edge_lines(
         "def edge_ring(inset, z_top, z_bottom):\n",
         "    # Everything outside the outline inset by `inset`, between two\n",
         "    # heights.\n",
-        "    height = z_top - z_bottom\n",
-        "    slab = Part.makeBox(\n",
-        "        body_box.XLength + 40.0, body_box.YLength + 40.0, height,\n",
-        "        App.Vector(body_box.XMin - 20.0, body_box.YMin - 20.0, z_bottom),\n",
-        "    )\n",
         "    inner = body_outline_face.makeOffset2D(-inset, join=0) if inset > 1e-3 "
-        "else body_outline_face.copy()\n",
-        "    inner.translate(App.Vector(0.0, 0.0, z_bottom - 0.01))\n",
+        "else body_outline_face\n",
         "    edge_cutters.append(\n",
-        "        slab.cut(inner.extrude(App.Vector(0.0, 0.0, height + 0.02)))\n",
+        "        slab_outside(inner, body_box, z_bottom, z_top - z_bottom)\n",
         "    )\n",
         "def terrace(outline_points, z_top, z_bottom):\n",
         "    face = Part.Face(Part.makePolygon(\n",

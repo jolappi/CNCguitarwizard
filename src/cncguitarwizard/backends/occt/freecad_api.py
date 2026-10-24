@@ -365,6 +365,14 @@ class Shape:
         return float(props.Mass())
 
     @property
+    def Area(self) -> float:  # noqa: N802
+        if self.isNull():
+            return 0.0
+        props = engine().new("GProp_GProps")
+        engine().call("BRepGProp", "SurfaceProperties", self.shape, props, False, False)
+        return float(props.Mass())
+
+    @property
     def BoundBox(self) -> BoundBox:  # noqa: N802
         box = engine().new("Bnd_Box")
         engine().call("BRepBndLib", "Add", self.shape, box, True)

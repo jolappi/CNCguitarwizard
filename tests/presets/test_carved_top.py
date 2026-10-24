@@ -297,6 +297,24 @@ def test_the_carve_depth_is_set_by_its_own_field() -> None:
         replace(LES_PAUL, body_carve_depth=0.0).build()
 
 
+def test_the_rim_strip_and_the_edges_are_cut_checked() -> None:
+    # Regression: round a V body's long, sharp-pointed outline FreeCAD's cut
+    # of the rim strip's slab left it whole, so the strip took the whole
+    # top 8 mm off and the carve then found nothing to cut ("no cut took
+    # off about ... mm3").
+    geometry = replace(LES_PAUL, body_top_edge_radius=3.0).build()
+    source = FreeCADScriptExporter().render_prototype001(geometry)
+    helper = source[source.index("def slab_outside(") :]
+    helper = helper[: helper.index("\n\n")]
+
+    # Fuzz tried in turn, a cut kept only when it took the face's prism out.
+    assert "for fuzz in (0.0, 0.001, 0.01):" in helper
+    assert "if abs(slab.Volume - ring.Volume - taken) < 0.01 * taken:" in helper
+    assert "carve_rim = slab_outside(" in source
+    assert "slab_outside(inner, body_box, z_bottom, z_top - z_bottom)" in source
+    assert "slab.cut(inner" not in source
+
+
 def test_the_model_checks_the_carve_cut_took_off_its_wood() -> None:
     import re
 
