@@ -156,8 +156,10 @@ def test_the_steps_are_cut_true_and_modelled() -> None:
 
 
 def test_a_stepped_top_refuses_what_does_not_go_with_it() -> None:
-    with pytest.raises(BodyGeometryError, match="either carved or stepped"):
-        replace(ALEXI, body_carved_top=True).build()
+    # A carved top takes the whole top: its steps are left out, not
+    # refused (setting_conditions hides them meanwhile).
+    carved = replace(ALEXI, body_carved_top=True).build().body
+    assert carved.carved_top is not None and carved.stepped_top is None
     with pytest.raises(BodyGeometryError, match="pickguard does not lie flat"):
         replace(ALEXI, body_pickguard=True).build()
     # Drawn steps must nest without crossing (inside the body, away from

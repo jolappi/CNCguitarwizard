@@ -1865,6 +1865,19 @@ class Prototype001Parameters:
         return cls(instrument=instrument, **INSTRUMENT_OVERRIDES[instrument])
 
     @property
+    def fitted_stepped_top(self) -> bool:
+        """Return whether the top is stepped as built: a carved top takes the
+        whole top, its steps left out (setting_conditions)."""
+        return self.body_stepped_top and not self.body_carved_top
+
+    @property
+    def flat_top(self) -> bool:
+        """Return whether the top is flat, neither carved nor stepped: only a
+        flat top takes an arm contour, a top bevel or an epoxy tray (left out
+        otherwise, setting_conditions)."""
+        return not self.body_carved_top and not self.body_stepped_top
+
+    @property
     def fitted_neck_plate(self) -> str:
         """Return ``body_neck_plate`` as fitted: a plate holds a bolt-on
         neck's bolts only, any other neck taking none (setting_conditions)."""
@@ -4300,6 +4313,9 @@ class Prototype001Parameters:
         # sheet as the covers are, its screws' pilots drilled up into the
         # back.
         shape_contours = self._contours(shape, body_outline.points, heel_end, bass_sign)
+        if not self.flat_top:
+            # A carved or stepped top is shaped all over: no arm contour.
+            shape_contours = tuple(c for c in shape_contours if c.face != "top")
         strap_guide: FlameStrapGuide | None = None
         if self.body_strap_guide:
             # Where it may go: on the flat back, clear of the back's
@@ -4549,6 +4565,7 @@ class Prototype001Parameters:
             *((strap_guide.outline,) if strap_guide is not None else ()),
         ]
         bevels = (
+            # A carved or stepped top takes no bevel round its edge.
             self._bevel(
                 "top",
                 body_outline.points,
@@ -4556,7 +4573,9 @@ class Prototype001Parameters:
                 lane,
                 top_clear,
                 shape.top_round_points,
-            ),
+            )
+            if self.flat_top
+            else None,
             self._bevel(
                 "back",
                 body_outline.points,
@@ -4598,7 +4617,6 @@ class Prototype001Parameters:
             ],
             carve_pickups,
             carve_bridge,
-            contours,
         )
 
         stepped_top = self._stepped_top(
@@ -4607,7 +4625,6 @@ class Prototype001Parameters:
             body_outline.points,
             neck_pocket.outline,
             [*carve_pickups, *carve_bridge] if check_steps else [],
-            contours,
             guard,
         )
         lowered = carved_top or stepped_top
@@ -4757,8 +4774,13 @@ class Prototype001Parameters:
             problems=tuple(problems),
             strap_guide=strap_guide,
         )
-        # The epoxy tray last: it walls in every opening in the top.
-        if self.body_epoxy_tray_depth == 0.0:
+        # The epoxy tray last: it walls in every opening in the top. Only a
+        # flat top of a body of its own takes one (setting_conditions).
+        if (
+            self.body_epoxy_tray_depth == 0.0
+            or not self.flat_top
+            or self.neck_runs_through
+        ):
             return layout
         return replace(layout, epoxy_tray=self._epoxy_tray(layout))
 
@@ -4774,18 +4796,13 @@ class Prototype001Parameters:
 
         Raises:
             BodyGeometryError: For sizes that are not finite and positive, a
-                neck-through body, a rim no wider than the top edge's
-                roundover or binding, or a rim that leaves no tray.
+                rim no wider than the top edge's roundover or binding, or a
+                rim that leaves no tray.
         """
         depth = self.body_epoxy_tray_depth
         rim = self.body_epoxy_tray_rim
         if not all(math.isfinite(value) and value > 0.0 for value in (depth, rim)):
             raise BodyGeometryError("Epoxy tray sizes must be finite and positive.")
-        if self.neck_runs_through:
-            raise BodyGeometryError(
-                "An epoxy tray is routed in a body's top; a neck-through or "
-                "one-piece body's centre is the neck."
-            )
         edge = max(self.body_top_edge_radius, self.body_top_binding_width)
         if rim <= edge:
             raise BodyGeometryError(
@@ -5445,7 +5462,6 @@ class Prototype001Parameters:
         outline: tuple[Point2D, ...],
         pocket: tuple[Point2D, ...],
         level: list[tuple[Point2D, ...]],
-        contours: tuple[Contour, ...],
         guard: Pickguard | None,
     ) -> SteppedTop | None:
         """Return the top in levels, or ``None`` (see ``body_stepped_top``).
@@ -5454,21 +5470,15 @@ class Prototype001Parameters:
         taken in by ``body_top_step_insets``. ``level`` is what must sit on
         the top level: the pickups and the bridge's routes, plate and holes.
 
+        Under a carved top there is none (``fitted_stepped_top``), and the
+        top's contours are left out (``flat_top``).
+
         Raises:
-            BodyGeometryError: With a carved top, an arm contour or a
-                pickguard, or steps that reach the pickups or the bridge.
+            BodyGeometryError: With a pickguard, or steps that reach the
+                pickups or the bridge.
         """
-        if not self.body_stepped_top:
+        if not self.fitted_stepped_top:
             return None
-        if self.body_carved_top:
-            raise BodyGeometryError(
-                "A top is either carved or stepped: turn off body_carved_top or "
-                "body_stepped_top."
-            )
-        if any(contour.face == "top" for contour in contours):
-            raise BodyGeometryError(
-                "A stepped top takes no arm contour: set body_arm_contour_depth to 0."
-            )
         if guard is not None:
             raise BodyGeometryError(
                 "A pickguard does not lie flat on a stepped top: turn off "
@@ -5546,7 +5556,6 @@ class Prototype001Parameters:
         flat: list[tuple[Point2D, ...]],
         pickups: list[tuple[Point2D, ...]],
         bridge: list[tuple[Point2D, ...]],
-        contours: tuple[Contour, ...],
     ) -> CarvedTop | None:
         """Return the arched top, or ``None`` for a flat one.
 
@@ -5555,16 +5564,11 @@ class Prototype001Parameters:
         ``PICKUP_RING_REACH`` round, where their mounting rings rest, the
         ``bridge`` ``body_carve_margin`` round).
 
-        Raises:
-            BodyGeometryError: With an arm contour, which a carved top
-                does not take.
+        The top's contours (an arm contour, a top bevel) are left out
+        under it (``flat_top``).
         """
         if not self.body_carved_top:
             return None
-        if any(contour.face == "top" for contour in contours):
-            raise BodyGeometryError(
-                "A carved top takes no arm contour: set body_arm_contour_depth to 0."
-            )
         if not math.isfinite(self.body_carve_margin) or self.body_carve_margin < 0.0:
             raise BodyGeometryError("body_carve_margin must not be negative.")
         # The plateau, in straight lines and arcs: the neck pocket a little

@@ -1519,6 +1519,14 @@
 
 ### Fixed
 
+- A carved top with a bevel round the top's edge (the Mockingbird style's)
+  did not build: every contour on the top was taken for an arm contour,
+  and the error said to set `body_arm_contour_depth` to 0, which did
+  nothing. A carved top now takes the whole top: an arm contour, a top
+  bevel, steps and an epoxy tray are left out under it, and a stepped
+  top leaves out the arm contour, the top bevel and the tray (the page
+  hides them meanwhile); an epoxy tray on a neck-through is left out too.
+
 - Choosing the vintage truss rod (`truss_rod_install` "back") sets what it
   needs instead of leaving a design that does not build: the adjustment
   at the heel, the spoke wheel to auto, the standard rod and a flat

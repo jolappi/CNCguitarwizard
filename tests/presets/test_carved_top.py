@@ -100,9 +100,23 @@ def test_the_back_cavities_keep_their_wall_under_the_arch() -> None:
     assert wall == pytest.approx(LES_PAUL.body_rear_cavity_top_wall, abs=0.01)
 
 
-def test_a_carved_top_refuses_an_arm_contour() -> None:
-    with pytest.raises(BodyGeometryError, match="arm contour"):
-        replace(CARVED, body_arm_contour_depth=12.0).build()
+def test_a_carved_top_leaves_out_an_arm_contour_and_a_top_bevel() -> None:
+    # Regression: a top bevel (the Mockingbird's) was refused as an arm
+    # contour. The carve takes the whole top: both are left out, not
+    # refused (setting_conditions hides them meanwhile), the back's kept.
+    body = (
+        replace(
+            CARVED,
+            body_arm_contour_depth=12.0,
+            body_top_bevel_width=12.0,
+            body_back_bevel_width=12.0,
+        )
+        .build()
+        .body
+    )
+
+    assert body.carved_top is not None
+    assert [c.name for c in body.contours] == ["Back bevel"]
 
 
 def test_the_carve_is_its_own_program_first() -> None:

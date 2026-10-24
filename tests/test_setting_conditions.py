@@ -17,6 +17,7 @@ from cncguitarwizard.cam.parameters import MachiningParameters
 from cncguitarwizard.exceptions import CNCGuitarWizardError
 from cncguitarwizard.presets import Prototype001Parameters
 from cncguitarwizard.presets.body_shapes import YOUR_DESIGN_TEMPLATES
+from cncguitarwizard.presets.prototype001 import BODY_TEMPLATE_VALUES
 from cncguitarwizard.setting_conditions import (
     APPLIES_WHEN,
     NOT_EMPTY,
@@ -28,9 +29,15 @@ from cncguitarwizard.webapp import _variations, parameter_schema, run_build
 DEFAULTS = Prototype001Parameters()
 HINTS = typing.get_type_hints(Prototype001Parameters)
 STRATOCASTER = YOUR_DESIGN_TEMPLATES["stratocaster"][1]
-BASES: tuple[dict[str, object], ...] = ({}, {"body_shape": STRATOCASTER})
+HEXED = YOUR_DESIGN_TEMPLATES["alexi_hexed"][1]
+BASES: tuple[dict[str, object], ...] = (
+    {},
+    {"body_shape": STRATOCASTER},
+    {"body_shape": HEXED, **BODY_TEMPLATE_VALUES["alexi_hexed"]},
+)
 """The instruments a case is built on, the next where the last does not
-build it (a neck plate fits the Stratocaster's back, not the default's)."""
+build it (a neck plate fits the Stratocaster's back, not the default's;
+the Alexi Hexed's steps clear its pickups)."""
 ROOT = Path(__file__).resolve().parent.parent
 
 

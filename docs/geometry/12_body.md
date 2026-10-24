@@ -1146,8 +1146,9 @@ stays out of them. The epoxy is poured in up to the face and sanded
 flush. Walls that meet merge in the cut; one by the neck pocket's mouth
 runs on past the outline.
 
-It needs the flat top: not with a carved or stepped top, an arm contour
-or on a neck-through (whose centre is the neck); its rim must be wider
+It needs the flat top of a body of its own: under a carved or stepped
+top, or on a neck-through (whose centre is the neck), it is left out; an
+arm contour or a top bevel it would run into is refused; its rim must be wider
 than the top edge's roundover or binding, or the epoxy would run out
 over it; and it must leave `CARVE_WALL` (3 mm) of wood over every rear
 cavity under it. `Body_top` routes it first, with the main tool: a
@@ -1215,8 +1216,11 @@ pocket's mouth, is waste).
 
 The back's cavities keep `body_rear_cavity_top_wall` under the arch:
 each is made shallower by as far as the top falls over it, and
-`BodySolid` refuses a carve leaving less than `CARVE_WALL` (3 mm). An arm
-contour does not go with a carved top. A top roundover or binding is cut
+`BodySolid` refuses a carve leaving less than `CARVE_WALL` (3 mm). A
+carved top takes the whole top: an arm contour, a bevel round the top's
+edge, steps and an epoxy tray are left out under it (`flat_top`,
+`fitted_stepped_top`), not refused, and the web app hides them
+meanwhile. A top roundover or binding is cut
 on the rim, the carve's height down; the engraving follows the arch.
 
 `Body_top_carve.nc` runs right after the index pins. A flat end mill
@@ -1314,8 +1318,10 @@ brings them in: on Design by Jone the pickups and the Kahler come within
 Jackson RR's two humbuckers 25). The back's cavities keep
 `body_rear_cavity_top_wall` under the lowered bands, and `BodySolid`
 refuses steps leaving less than `CARVE_WALL` (3 mm) over one, or coming
-to a quarter of the body's thickness. A stepped top is not carved, and
-takes no arm contour or pickguard (which would not lie flat). A top
+to a quarter of the body's thickness. A stepped top is not carved (a
+carved top leaves the steps out), and takes no arm contour, top bevel or
+epoxy tray (left out) nor a pickguard (refused: it would not lie flat).
+A top
 roundover or binding is cut on the outermost band, all the steps down;
 the engraving follows the levels. The plan view and the body editor draw
 each step's wall.

@@ -65,8 +65,6 @@ def test_the_tray_leaves_as_much_wood_at_the_edge_as_round_the_openings(
         ({"body_top_edge_radius": 5.0}, "wider than the top edge's roundover"),
         ({"body_epoxy_tray_rim": -1.0}, "finite and positive"),
         ({"body_arm_contour_depth": 10.0}, "needs the flat top"),
-        ({"body_carved_top": True}, "needs the flat top"),
-        ({"neck_joint": "neck_through"}, "centre is the neck"),
         ({"body_epoxy_tray_depth": 12.0}, "under 3 mm of wood over Control cavity"),
     ],
 )
@@ -75,6 +73,18 @@ def test_a_tray_that_cannot_hold_epoxy_is_refused(
 ) -> None:
     with pytest.raises(BodyGeometryError, match=match):
         tray(**overrides).build()
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [{"body_carved_top": True}, {"neck_joint": "neck_through"}],
+)
+def test_a_tray_on_a_top_that_is_not_its_own_flat_top_is_left_out(
+    overrides: dict[str, object],
+) -> None:
+    # A carved top, or a neck-through body's centre: the tray does not
+    # apply there (setting_conditions), so it is left out, not refused.
+    assert tray(**overrides).build().body.epoxy_tray is None
 
 
 def test_the_tray_is_routed_first_in_the_top_program() -> None:

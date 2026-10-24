@@ -306,6 +306,27 @@ APPLIES_WHEN: dict[str, tuple[Condition, ...]] = {
         "body_jack_plate_thickness",
         {"body_jack": ("side", "plate", "top"), "body_jack_plate": (True,)},
     ),
+    # The top: a carved top takes all of it, a stepped one all but the
+    # carve; only a flat top takes an arm contour, a bevel round its edge or
+    # an epoxy tray (and only a body of its own a tray).
+    **_when("body_stepped_top", {"body_carved_top": (False,)}),
+    **_when(
+        "body_top_step_insets body_top_step_height",
+        {"body_carved_top": (False,), "body_stepped_top": (True,)},
+    ),
+    **_when(
+        "body_arm_contour_depth body_arm_contour_width body_arm_contour_length "
+        "body_arm_contour_position body_top_bevel_width",
+        {"body_carved_top": (False,), "body_stepped_top": (False,)},
+    ),
+    **_when(
+        "body_epoxy_tray_depth body_epoxy_tray_rim",
+        {
+            "neck_joint": BOLTED_OR_SET,
+            "body_carved_top": (False,),
+            "body_stepped_top": (False,),
+        },
+    ),
     # The body's other features, when fitted.
     **_when(
         "body_battery_count body_battery_cavity_length body_battery_cavity_width "
