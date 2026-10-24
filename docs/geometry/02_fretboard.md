@@ -130,7 +130,12 @@ a few straight strokes (its stave and branches) with a round pen
 `RUNE_STROKE` (12 %) of its height wide: the strokes' outline is traced
 where the distance to them is half that (`stroke_outlines`, marching
 squares on a grid `RUNE_CELL` of the height apart, thinned within
-`RUNE_TOLERANCE`). An area a rune closes in (Thurisaz's thorn,
+`RUNE_TOLERANCE`). The grid is shifted an odd share of a cell
+(`GRID_SHIFT`) off the strokes' round numbers, so no grid point lies on
+the outline itself, and each outline is traced from its first edge in
+the grid's order: a rune always gets the same outline, build after
+build, and one whose sides never come near each other (FreeCAD cuts it
+as one face). An area a rune closes in (Thurisaz's thorn,
 Berkano's and Dagaz's triangles, Ingwaz's diamond) is filled, as an
 inlay piece cannot hold an island of wood; Jera's two hooks are two
 pieces. A rune stands with its top toward the bass edge, read from the

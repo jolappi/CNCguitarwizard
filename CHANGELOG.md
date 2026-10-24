@@ -1478,6 +1478,17 @@
 
 ### Fixed
 
+- Rune inlays come out the same in every build, and never crossing
+  themselves. A rune's outline started wherever a set's order put it,
+  which changes from run to run; and as the runes are drawn on round
+  numbers, the tracing grid had points on the outline itself, where it
+  zigzagged. Now and then (about one build in sixteen) algiz's sides then
+  touched where its arm leaves the staff, crossed once fitted to its fret
+  space, and FreeCAD's inlay cut failed: the script stopped before the
+  body, and saved nothing. The grid is now shifted off the strokes' round
+  numbers (`GRID_SHIFT`), and each outline traced from its first edge in
+  the grid's order.
+
 - The FreeCAD script made in the browser saves its `Prototype001.FCStd`
   and `.step` beside itself, wherever it is run: it saved them to the
   browser's own `/build` folder, which no computer has, so FreeCAD made

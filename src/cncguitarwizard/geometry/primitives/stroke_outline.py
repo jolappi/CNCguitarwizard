@@ -8,6 +8,12 @@ from collections.abc import Sequence
 from .point2d import Point2D
 from .point_in_polygon import point_in_polygon
 
+GRID_SHIFT = 0.382
+"""How far, as a share of its cell, the grid is shifted off the strokes'
+round numbers. Strokes drawn on round numbers otherwise put grid points
+on the outline itself (along a stroke's side, at a notch's tip), each in
+or out by rounding alone, and the outline zigzags back on itself there."""
+
 
 def stroke_outlines(
     strokes: Sequence[Sequence[Point2D]],
@@ -22,11 +28,12 @@ def stroke_outlines(
     shape. The shape is found where the distance to the nearest stroke is
     ``half_width``, on a grid ``cell`` apart (marching squares, each
     crossing placed along its cell's edge by the distances either end), and
-    each outline is then thinned to its corners within ``tolerance``.
+    each outline is then thinned to its corners within ``tolerance``. The
+    grid is shifted ``GRID_SHIFT`` of a cell off the strokes' own numbers.
 
     An area the strokes close in (a loop's middle) is filled, so every
     outline is one simple polygon with no hole; strokes that do not touch
-    give one outline each.
+    give one outline each. The same strokes always give the same outlines.
 
     Args:
         strokes: The polylines, each two points or more.
@@ -51,7 +58,7 @@ def stroke_outlines(
     ]
     xs = [p.x for stroke in strokes for p in stroke]
     ys = [p.y for stroke in strokes for p in stroke]
-    margin = half_width + 2.0 * cell
+    margin = half_width + (2.0 + GRID_SHIFT) * cell
     left, bottom = min(xs) - margin, min(ys) - margin
     columns = math.ceil((max(xs) + margin - left) / cell) + 1
     rows = math.ceil((max(ys) + margin - bottom) / cell) + 1
@@ -113,13 +120,18 @@ def stroke_outlines(
                 join(edges[1], edges[2])
 
     loops: list[tuple[Point2D, ...]] = []
-    unvisited = set(links)
-    while unvisited:
-        start = unvisited.pop()
+    visited: set[tuple[str, int, int]] = set()
+    # Each loop from its first edge in the grid's order, never a set's
+    # (whose order changes from run to run): where a loop starts decides
+    # how it is thinned, so the same strokes give the same outline.
+    for start in links:
+        if start in visited:
+            continue
+        visited.add(start)
         loop = [start]
         previous, current = start, links[start][0]
         while current != start:
-            unvisited.discard(current)
+            visited.add(current)
             loop.append(current)
             following = links[current]
             nxt = following[0] if following[0] != previous else following[1]
