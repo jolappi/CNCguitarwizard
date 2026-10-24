@@ -811,7 +811,9 @@ sets the theme before it paints, so it never flashes light first. The
 drawings (the editors, the plan view, the toolpath plots) stay on light
 paper (`--paper`), their colours being a drawing's.
 
-The headstock editor draws the volute (`headstock_pointed_volute`) on
+The headstock editor names the bass side and the treble side beside the
+neck past the nut (turned back to read on a left-handed build's drawing,
+which is turned over). It draws the volute (`headstock_pointed_volute`) on
 the back behind the nut: a drawn one (`headstock_volute_style` "drawn",
 the default) as its three lines, its
 crest solid and where it ends in the headstock and in the neck dashed,

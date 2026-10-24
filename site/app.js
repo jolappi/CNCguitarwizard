@@ -5891,6 +5891,16 @@ const headstockEditor = {
     // The neck past the nut, for scale.
     const half = layout.nut_half_width;
     this.element("rect", { x: 0, y: -half, width: 70, height: 2 * half, fill: "#3b2a1a", "fill-opacity": 0.85 });
+    // Which side is which, beside the neck: a left-handed build's drawing
+    // is turned over, its labels turned back to read.
+    for (const side of ["bass", "treble"]) {
+      const y = this.sign(side) * (half + 6);
+      const label = this.element("text", {
+        class: "side-label", x: 24, y: layout.mirrored ? y : -y,
+        ...(layout.mirrored ? { transform: "scale(1,-1)" } : {}),
+      });
+      label.textContent = `${side} side`;
+    }
     this.element("path", {
       d: this.pathData([...bass, ...tip.slice(1, -1), ...[...treble].reverse()]) + " Z",
       fill: "#f1e4c8", stroke: "none",

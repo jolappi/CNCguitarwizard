@@ -105,6 +105,10 @@
   It records the design and drives no solid; the STEP and the other 3D
   formats leave it out.
 
+- The headstock editor names the bass side and the treble side beside the
+  neck past the nut (upright on a left-handed build's turned-over drawing
+  too).
+
 - *Design › Fretboard*'s *Radius only (NC)*: a board already made given
   another radius, its radius alone as one program
   (`Fretboard_radius_only.nc`, `cam.plan_fretboard_radius`). The board

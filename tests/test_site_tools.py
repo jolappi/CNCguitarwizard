@@ -244,6 +244,17 @@ def test_the_neck_page_holds_the_truss_rod_settings() -> None:
     assert ".filter((name) => !SHARED_WITH_PAGES.has(name))" in layout
 
 
+def test_the_headstock_editor_names_its_sides() -> None:
+    script = (ROOT / "site" / "app.js").read_text(encoding="utf-8")
+    page = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
+
+    assert "const y = this.sign(side) * (half + 6);" in script
+    assert "label.textContent = `${side} side`;" in script
+    # Turned back to read where the drawing is turned over.
+    assert '...(layout.mirrored ? { transform: "scale(1,-1)" } : {}),' in script
+    assert "#headstock-editor .side-label {" in page
+
+
 def test_the_fretboard_page_saves_the_radius_alone() -> None:
     layout = (ROOT / "site" / "desktop.js").read_text(encoding="utf-8")
 
