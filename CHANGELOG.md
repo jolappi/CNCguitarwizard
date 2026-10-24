@@ -85,6 +85,18 @@
 
 ### Added
 
+- The FreeCAD model checked against the parameter sheet: a build that
+  runs FreeCAD measures the finished model in it (`Prototype001_check.py`,
+  `backends.freecad.render_model_measure`) and checks it
+  (`workflows.model_check`): `NeckBack`, `Fretboard` and the body are in
+  it, each a valid solid; the STEP, read back, is valid, holds as many
+  solids and lies where the model does (within 0.01 mm); the model holds
+  its `Parameters` spreadsheet; and a bolt-on or set neck's body solid
+  is as long, as wide and as deep as the sheet says. The result is
+  `model_check` in `build.json`, `READY FOR HUMAN REVIEW` or
+  `REVIEW REQUIRED`, and the command line prints it (`Check:`). A check
+  that cannot be made leaves the model built and asks for review.
+
 - The parameter sheet in the FreeCAD model: `Prototype001.FCStd` has a
   `Parameters` spreadsheet laid out as `Prototype001_parameters.csv`, each
   value's cell named for it, so a FreeCAD expression can read

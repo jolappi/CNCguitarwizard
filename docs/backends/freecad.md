@@ -297,6 +297,26 @@ solid. Change the design and build again instead. The sheet is made after
 the neck's tilt, which turns every object then in the document. It is no
 `Part::Feature`, so neither the STEP nor the other 3D formats include it.
 
+## Measuring the finished model
+
+`backends.freecad.render_model_measure()` writes a script
+(`Prototype001_check.py`) that measures the finished model without
+changing it. Run in FreeCAD beside `Prototype001.FCStd` and
+`Prototype001.step`, it opens the model and reads the STEP back into a
+shape of its own (`Part.read`). Then it prints one line, `MEASURED `
+followed by JSON:
+
+- `parts`: each solid part shown in the model (the parts the STEP and
+  the other 3D formats hold), by its FreeCAD name, with `valid`
+  (`isValid`), `solids` and `box` (`[xmin, ymin, zmin, xmax, ymax, zmax]`
+  in mm);
+- `step`: the same three for the STEP read back;
+- `sheet`: whether the model holds its `Parameters` spreadsheet.
+
+`read_measured(stdout)` returns that object, or `None` when FreeCAD
+printed none. The build judges it (`workflows.model_check`): see
+[Model check](../workflows/parameter_sheet.md#model-check).
+
 ## Other 3D formats
 
 `backends.freecad.render_format_export(formats)` writes a script of its

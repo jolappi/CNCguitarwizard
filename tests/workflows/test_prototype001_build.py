@@ -161,7 +161,10 @@ def test_stepwise_build_runs_one_stage_per_advance(tmp_path: Path) -> None:
     result = build.result
     assert result.report_path.is_file()
     assert len(result.gcode_paths) == 18
-    assert Prototype001Build(tmp_path / "freecad").labels[-1] == "Running FreeCAD"
+    assert Prototype001Build(tmp_path / "freecad").labels[-2:] == (
+        "Running FreeCAD",
+        "Checking the FreeCAD model",
+    )
 
 
 def test_generated_script_saves_beside_itself(tmp_path: Path) -> None:

@@ -42,6 +42,10 @@ The command creates:
   derived from the geometry, the fret checks and the review status.
 - `freecad.log`, containing the executed command, exit code, stdout, and
   stderr from FreeCAD.
+- `Prototype001_check.py` and `freecad_check.log`: the script that
+  measures the finished model in FreeCAD and its output, its
+  [model check](parameter_sheet.md#model-check) in `build.json` as
+  `model_check` (not with `--scripts-only`).
 - `Body_index_pins_6mm_flathead.nc`, `Body_top_6mm_flathead.nc`,
   `Body_back_6mm_flathead.nc`: GRBL G-code for the body, generated
   without FreeCAD, each named for its program and the tool it is cut

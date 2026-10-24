@@ -18,6 +18,7 @@ from __future__ import annotations
 import csv
 import io
 import math
+from collections.abc import Iterable
 from dataclasses import dataclass
 
 from ..geometry.primitives import Line2D
@@ -150,6 +151,26 @@ class SheetCheck:
         """Return whether ``actual`` lies within ``tolerance`` of ``expected``."""
         return abs(self.actual - self.expected) <= self.tolerance
 
+    def as_dict(self) -> dict[str, object]:
+        """Return the check as JSON-ready data, its values to ``DECIMALS``."""
+        return {
+            "name": self.name,
+            "description": self.description,
+            "expected": round(self.expected, DECIMALS),
+            "actual": round(self.actual, DECIMALS),
+            "tolerance": self.tolerance,
+            "unit": self.unit,
+            "passed": self.passed,
+        }
+
+
+def review_status(checks: Iterable[SheetCheck]) -> str:
+    """Return ``READY_FOR_REVIEW`` if every check passed, else
+    ``REVIEW_REQUIRED``."""
+    if all(check.passed for check in checks):
+        return READY_FOR_REVIEW
+    return REVIEW_REQUIRED
+
 
 @dataclass(frozen=True, slots=True)
 class ParameterSheet:
@@ -167,11 +188,8 @@ class ParameterSheet:
 
     @property
     def status(self) -> str:
-        """Return ``READY_FOR_REVIEW`` if every check passed, else
-        ``REVIEW_REQUIRED``."""
-        if all(check.passed for check in self.checks):
-            return READY_FOR_REVIEW
-        return REVIEW_REQUIRED
+        """Return the sheet's ``review_status``."""
+        return review_status(self.checks)
 
     def as_dict(self) -> dict[str, object]:
         """Return the sheet as JSON-ready data, for ``build.json``.
@@ -191,18 +209,7 @@ class ParameterSheet:
                 }
                 for row in self.rows
             ],
-            "checks": [
-                {
-                    "name": check.name,
-                    "description": check.description,
-                    "expected": round(check.expected, DECIMALS),
-                    "actual": round(check.actual, DECIMALS),
-                    "tolerance": check.tolerance,
-                    "unit": check.unit,
-                    "passed": check.passed,
-                }
-                for check in self.checks
-            ],
+            "checks": [check.as_dict() for check in self.checks],
             "to_confirm": list(self.to_confirm),
         }
 

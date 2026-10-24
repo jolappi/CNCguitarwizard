@@ -341,11 +341,11 @@ def test_a_build_says_its_steps_likely_times() -> None:
     # app.js names every step as the build starts.
     assert 'new CustomEvent("cgw-build-stages", { detail: stages })' in script
     # Every step of the build in the browser has a typical time (FreeCAD
-    # runs only in a local build).
+    # runs, and its model is checked, only in a local build).
     typical = layout[layout.index("const TYPICAL_STEPS = {") :]
     typical = typical[: typical.index("};")]
     for label in re.findall(r'\(\s*"([^"]+)",\s*self\._', workflow):
-        if label != "Running FreeCAD":
+        if label not in ("Running FreeCAD", "Checking the FreeCAD model"):
             assert f'"{label}":' in typical, label
 
 

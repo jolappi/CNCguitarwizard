@@ -13,9 +13,12 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from ..backends.freecad import (
+    MEASURE_SCRIPT_NAME,
     FreeCADScriptExporter,
     export_script_name,
+    read_measured,
     render_format_export,
+    render_model_measure,
 )
 from ..cam import (
     BodyMachiningPlan,
@@ -46,7 +49,8 @@ from ..presets import Prototype001Geometry, Prototype001Parameters
 from ..render.dxf import render_covers_dxf, render_plan_dxf
 from ..version import PROJECT_MARK, PROJECT_NAME, __version__
 from .exceptions import BuildWorkflowError, FreeCADExecutionError
-from .parameter_sheet import parameter_sheet
+from .model_check import measured_model, model_check
+from .parameter_sheet import REVIEW_REQUIRED, ParameterSheet, parameter_sheet
 
 
 @dataclass(frozen=True, slots=True)
@@ -64,6 +68,10 @@ class Prototype001BuildResult:
     gcode_paths: tuple[Path, ...] = ()
     toolpath_preview_paths: tuple[Path, ...] = ()
     dxf_paths: tuple[Path, ...] = ()
+    model_check_status: str | None = None
+    """The FreeCAD model's check (``build.json``'s ``model_check``):
+    ``READY FOR HUMAN REVIEW`` or ``REVIEW REQUIRED``; ``None`` when
+    FreeCAD was not run."""
 
 
 class Prototype001Build:
@@ -129,6 +137,11 @@ class Prototype001Build:
         self._report_path = self.destination / "build.json"
         self._freecad_log_path = self.destination / "freecad.log"
         self._parameter_sheet_path = self.destination / "Prototype001_parameters.csv"
+        self._check_script_path = self.destination / MEASURE_SCRIPT_NAME
+        self._check_log_path = self.destination / "freecad_check.log"
+        self._sheet: ParameterSheet | None = None
+        self._freecad_executable: Path | None = None
+        self._model_check_status: str | None = None
         self._stages: list[tuple[str, Callable[[], None]]] = [
             ("Building the geometry", self._build_geometry),
             ("Planning the body toolpaths", self._plan_body),
@@ -141,6 +154,7 @@ class Prototype001Build:
         ]
         if run_freecad:
             self._stages.append(("Running FreeCAD", self._run_freecad))
+            self._stages.append(("Checking the FreeCAD model", self._check_model))
         self._completed = 0
 
     @property
@@ -184,6 +198,7 @@ class Prototype001Build:
             gcode_paths=tuple(self._gcode_paths),
             toolpath_preview_paths=tuple(self._preview_paths),
             dxf_paths=tuple(self._dxf_paths),
+            model_check_status=self._model_check_status,
         )
 
     # -- stages -----------------------------------------------------------
@@ -377,7 +392,7 @@ class Prototype001Build:
 
     def _write_script_and_report(self) -> None:
         assert self.geometry is not None
-        sheet = parameter_sheet(self.parameters, self.geometry)
+        sheet = self._sheet = parameter_sheet(self.parameters, self.geometry)
         self._parameter_sheet_path.write_text(sheet.as_csv(), encoding="utf-8")
         exporter = FreeCADScriptExporter()
         source = exporter.render_prototype001(
@@ -445,7 +460,44 @@ class Prototype001Build:
             self._report["error"] = str(error)
             _write_report(self._report_path, self._report)
             raise
+        self._freecad_executable = executable
         self._report["status"] = "complete"
+        _write_report(self._report_path, self._report)
+
+    def _check_model(self) -> None:
+        """Measure the finished model in FreeCAD and check it (``model_check``).
+
+        A check that cannot be made (FreeCAD fails on the measuring
+        script, or prints nothing that reads) leaves the model built and
+        its check ``REVIEW_REQUIRED``, the reason in ``build.json``.
+        """
+        assert self._sheet is not None and self._freecad_executable is not None
+        self._check_script_path.write_text(render_model_measure(), encoding="utf-8")
+        files = {
+            "script": self._check_script_path.name,
+            "log": self._check_log_path.name,
+        }
+        try:
+            stdout = _execute_freecad(
+                self._freecad_executable,
+                self._check_script_path,
+                (),
+                self._check_log_path,
+            )
+            found = read_measured(stdout)
+            if found is None:
+                raise FreeCADExecutionError("FreeCAD printed no measurements.")
+            check = model_check(measured_model(found), self.parameters, self._sheet)
+        except FreeCADExecutionError as error:
+            self._model_check_status = REVIEW_REQUIRED
+            self._report["model_check"] = {
+                "status": REVIEW_REQUIRED,
+                "error": str(error),
+                **files,
+            }
+        else:
+            self._model_check_status = check.status
+            self._report["model_check"] = {**check.as_dict(), **files}
         _write_report(self._report_path, self._report)
 
 

@@ -76,6 +76,7 @@ Everything lands in the `build/` directory (git-ignored):
 | `Prototype001_plan.dxf`, `Prototype001_covers.dxf` | The plan outlines (a layer a kind) and the sheet plates laid out for cutting, R12 DXF for other CAD, CAM and laser programs — see [DXF](docs/render/02_dxf.md) |
 | `build.json` | Every parameter used, stock size, per-program time estimates, checksums, the parameter sheet |
 | `Prototype001_parameters.csv` | The parameter sheet: key dimensions with units and sources, values derived from the geometry, fret checks and a review status — see [Parameter sheet](docs/workflows/parameter_sheet.md) |
+| `Prototype001_check.py`, `freecad_check.log` | The finished model measured in FreeCAD and checked against the parameter sheet: its parts valid, the STEP matching it, the body's size; the result is `model_check` in `build.json` — see [Model check](docs/workflows/parameter_sheet.md#model-check) |
 | `freecad.log` | FreeCAD's own output from the run |
 
 Each program's file is named for it and the tool it is cut with, e.g.

@@ -85,6 +85,37 @@ hand, the intonation on the finished instrument, and each program's
 units, work zero, tool and machine travel, with a simulation and an air
 cut before cutting stock.
 
+## Model check
+
+A build that runs FreeCAD then checks the model FreeCAD made against the
+design (`workflows.model_check`). Its stage, *Checking the FreeCAD
+model*, runs `Prototype001_check.py` in FreeCAD (see
+[Measuring the finished model](../backends/freecad.md#measuring-the-finished-model)),
+its output in `freecad_check.log`, and checks what it measured:
+
+| Name | Expected |
+| --- | --- |
+| `model_holds_its_parts` | `NeckBack`, `Fretboard` and, unless the neck runs through the body, `Body` are in the model. |
+| `model_parts_are_valid` | Every solid part is a valid shape. |
+| `step_is_valid` | The STEP, read back, is a valid shape. |
+| `step_holds_the_model_solids` | The STEP holds as many solids as the model's parts. |
+| `model_holds_its_parameters` | The model holds its `Parameters` spreadsheet. |
+| `step_lies_where_the_model_does` | The STEP's box and the model's differ by at most 0.01 mm: nothing moved or scaled on export. |
+| `body_length_in_model`, `body_width_in_model` | The body solid's length and width are the sheet's `body_length` and `body_width`, within 0.01 mm (`MODEL_TOLERANCE`). |
+| `body_back_at_thickness` | The body's back lies `body_thickness` below its top (Z = 0); a carved top rises above it. |
+
+The three body checks are made for a bolt-on or set neck only: a neck
+run through the body has a block and wings instead of one body solid.
+
+The result goes into `build.json` as `model_check`: its status
+(`READY FOR HUMAN REVIEW` when every check passed, else
+`REVIEW REQUIRED`), the checks, what was measured, and the script's and
+log's names. The command line prints the status (`Check:`). A check that
+cannot be made (FreeCAD fails on the script, or prints nothing that
+reads) leaves the model built and the check `REVIEW REQUIRED`, its
+reason under `error`. A build made with `--scripts-only`, and the web
+app's, run no FreeCAD and have no model check.
+
 ## CSV columns
 
 The CSV and the FreeCAD spreadsheet share one layout

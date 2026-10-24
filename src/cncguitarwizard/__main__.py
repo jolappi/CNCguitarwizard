@@ -157,6 +157,7 @@ def main(argv: Sequence[str] | None = None) -> None:
         else:
             print(f"FCStd:  {result.fcstd_path.name}")
             print(f"STEP:   {result.step_path.name}")
+            print(f"Check:  {result.model_check_status} (build.json, model_check)")
     elif arguments.command == "export-prototype001":
         formats = (
             list(EXPORT_FORMATS)
