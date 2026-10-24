@@ -205,7 +205,7 @@ def test_complete_prototype_can_be_rendered_with_one_export_call(
     assert "[neck_shape]" in source
     assert (
         "Part.export([neck_feature, fretboard_feature, body_feature], "
-        f'"{step_path}")' in source
+        f'os.path.join(OUTPUT_FOLDER, "{step_path.name}"))' in source
     )
     assert "joint_fillet_radius = 3.0" in source
     assert "HEADSTOCK_OUTER_D_PROFILE_GUIDES = " not in source
@@ -365,8 +365,13 @@ def test_script_can_save_fcstd_and_export_step(tmp_path: Path) -> None:
         step_path=step_path,
     )
 
-    assert f'document.saveAs("{fcstd_path}")' in source
-    assert f'Part.export([feature], "{step_path}")' in source
+    assert (
+        f'document.saveAs(os.path.join(OUTPUT_FOLDER, "{fcstd_path.name}"))' in source
+    )
+    assert (
+        f'Part.export([feature], os.path.join(OUTPUT_FOLDER, "{step_path.name}"))'
+        in source
+    )
     assert source.index("document.recompute()") < source.index("document.saveAs")
     assert source.index("document.saveAs") < source.index("Part.export")
 
@@ -394,7 +399,10 @@ def test_neck_assembly_creates_two_separate_features(tmp_path: Path) -> None:
     assert "neck_feature.Shape = neck_shape" in source
     assert "fretboard_shape = make_loft(FRETBOARD_SECTION_POINTS)" in source
     assert "fretboard_feature.Shape = fretboard_shape" in source
-    assert f'Part.export([neck_feature, fretboard_feature], "{step_path}")' in source
+    assert (
+        "Part.export([neck_feature, fretboard_feature], "
+        f'os.path.join(OUTPUT_FOLDER, "{step_path.name}"))' in source
+    )
 
 
 def test_neck_assembly_serializes_both_surface_row_sets() -> None:
@@ -726,7 +734,7 @@ def test_neck_assembly_includes_body_feature_in_step_export(
 
     assert (
         "Part.export([neck_feature, fretboard_feature, body_feature], "
-        f'"{step_path}")' in source
+        f'os.path.join(OUTPUT_FOLDER, "{step_path.name}"))' in source
     )
 
 
@@ -776,7 +784,7 @@ def test_headstock_is_included_in_step_export(tmp_path: Path) -> None:
 
     assert (
         "Part.export([neck_feature, fretboard_feature, headstock_feature], "
-        f'"{step_path}")' in source
+        f'os.path.join(OUTPUT_FOLDER, "{step_path.name}"))' in source
     )
 
 
@@ -806,7 +814,10 @@ def test_headstock_can_be_joined_to_the_neck_for_manufacturing(
     assert '"headstock-root edge fillet"' in source
     assert source.count("neck_feature.Shape = neck_shape") == 2
     assert "headstock_feature = document.addObject" not in source
-    assert f'Part.export([neck_feature, fretboard_feature], "{step_path}")' in source
+    assert (
+        "Part.export([neck_feature, fretboard_feature], "
+        f'os.path.join(OUTPUT_FOLDER, "{step_path.name}"))' in source
+    )
 
 
 def test_explicit_headstock_root_swell_adds_an_optional_root_loft() -> None:

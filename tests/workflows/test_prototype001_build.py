@@ -164,17 +164,23 @@ def test_stepwise_build_runs_one_stage_per_advance(tmp_path: Path) -> None:
     assert Prototype001Build(tmp_path / "freecad").labels[-1] == "Running FreeCAD"
 
 
-def test_generated_script_targets_absolute_build_paths(tmp_path: Path) -> None:
+def test_generated_script_saves_beside_itself(tmp_path: Path) -> None:
     result = build_prototype001(
         tmp_path / "nested" / "build",
         run_freecad=False,
     )
     source = result.python_path.read_text(encoding="utf-8")
 
-    assert f'document.saveAs("{result.fcstd_path}")' in source
+    # Beside the script, wherever it is run (the build's folder here; the
+    # one a script made in the browser is saved to there).
+    assert "os.path.dirname(os.path.abspath(__file__))" in source
+    assert (
+        f'document.saveAs(os.path.join(OUTPUT_FOLDER, "{result.fcstd_path.name}"))'
+        in source
+    )
     assert (
         "Part.export([neck_feature, fretboard_feature, body_feature], "
-        f'"{result.step_path}")' in source
+        f'os.path.join(OUTPUT_FOLDER, "{result.step_path.name}"))' in source
     )
 
 

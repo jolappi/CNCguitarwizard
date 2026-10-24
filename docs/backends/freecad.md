@@ -25,8 +25,11 @@ source = exporter.render_neck_back(
 )
 ```
 
-Use absolute output paths when the script may be launched from different
-working directories. The exporter validates `.FCStd`, `.step`, and `.stp`
+The script writes each under its own name beside itself, wherever it is
+run (`OUTPUT_FOLDER`: the script's own folder, FreeCAD's working folder
+when it is run with no file of its own): the local build's folder, or the
+one a script made in the browser is saved to, the paths given there being
+the browser's own. The exporter validates `.FCStd`, `.step`, and `.stp`
 suffixes before generating the script.
 
 Run the generated file inside FreeCAD. It:

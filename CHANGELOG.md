@@ -1478,6 +1478,12 @@
 
 ### Fixed
 
+- The FreeCAD script made in the browser saves its `Prototype001.FCStd`
+  and `.step` beside itself, wherever it is run: it saved them to the
+  browser's own `/build` folder, which no computer has, so FreeCAD made
+  the model but kept nothing of it, and an export to another format read
+  an older `Prototype001.FCStd` lying there instead.
+
 - A design restored on opening the page that had a setting put back to
   its default (it showed an error) left the page without a first state:
   every build then said the design had changed since it, and nothing

@@ -3561,17 +3561,34 @@ class FreeCADScriptExporter:
         step_path: Path | None,
         step_objects: str,
     ) -> str:
-        """Return optional FreeCAD document and STEP export commands."""
+        """Return optional FreeCAD document and STEP export commands.
+
+        Each is written under its own name (``fcstd_path``'s and
+        ``step_path``'s) beside the script, wherever it is run: the local
+        build's folder, or the one a script made in the browser was saved
+        to (its paths there the browser's own); FreeCAD's working folder
+        where it is run with no file of its own.
+        """
         commands: list[str] = []
         if fcstd_path is not None:
-            path_literal = json.dumps(str(fcstd_path))
-            commands.append(f"document.saveAs({path_literal})")
+            name = json.dumps(fcstd_path.name)
+            commands.append(f"document.saveAs(os.path.join(OUTPUT_FOLDER, {name}))")
         if step_path is not None:
-            path_literal = json.dumps(str(step_path))
-            commands.append(f"Part.export({step_objects}, {path_literal})")
+            name = json.dumps(step_path.name)
+            commands.append(
+                f"Part.export({step_objects}, os.path.join(OUTPUT_FOLDER, {name}))"
+            )
         if not commands:
             return ""
-        return "\n".join(commands) + "\n"
+        return (
+            "import os\n"
+            "# Beside this script, wherever it is run.\n"
+            "OUTPUT_FOLDER = (\n"
+            "    os.path.dirname(os.path.abspath(__file__))\n"
+            '    if "__file__" in globals()\n'
+            "    else os.getcwd()\n"
+            ")\n" + "\n".join(commands) + "\n"
+        )
 
     @staticmethod
     def _serialize_rows(rows: tuple[tuple[Point3D, ...], ...]) -> str:
