@@ -319,6 +319,9 @@ printed none. The build judges it (`workflows.model_check`): see
 
 ## Other 3D formats
 
+(The web app makes them without FreeCAD, in the browser:
+[The 3D formats made in the browser](occt.md).)
+
 `backends.freecad.render_format_export(formats)` writes a script of its
 own that turns the finished model into other 3D formats, run in FreeCAD
 beside `Prototype001.FCStd` after the build's script has made it (it uses

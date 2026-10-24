@@ -28,6 +28,8 @@ const loadDesignFile = document.getElementById("load-design-file");
 
 let pyodide = null;
 let schema = null;
+// The wheel the page runs, for the 3D model's worker to run too.
+let wheelHref = null;
 let blobUrls = [];
 
 // Ask a yes/no question in the page's own dialog; resolves true for OK.
@@ -118,6 +120,7 @@ async function boot() {
     const micropip = pyodide.pyimport("micropip");
     const wheelUrl = new URL("wheels/" + manifest.wheel, location.href);
     wheelUrl.searchParams.set("v", manifest.build || String(Date.now()));
+    wheelHref = wheelUrl.href;
     await micropip.install(wheelUrl.href);
     const schemaJson = await pyodide.runPythonAsync(
       "import json\nfrom cncguitarwizard.webapp import parameter_schema\njson.dumps(parameter_schema())"
@@ -1521,6 +1524,7 @@ async function build() {
 }
 
 function showResult(result) {
+  lastModelScript = result.files["Prototype001_freecad.py"] ?? null;
   for (const url of blobUrls) URL.revokeObjectURL(url);
   blobUrls = [];
   intro.classList.add("hidden");
@@ -1929,40 +1933,92 @@ async function downloadNcZip() {
   }
 }
 
-// A button for each other 3D format the built model is exported to
-// (webapp.format_export): each downloads the FreeCAD script that writes
-// it, to run beside the model FreeCAD made.
+// A button for each other 3D format (schema.model_formats): the built model
+// made here in the browser and saved as a ZIP, each part a file of its own
+// and the whole guitar one more, no FreeCAD needed. model_worker.js runs
+// the build's FreeCAD script on OpenCascade (backends.occt) off the page's
+// thread; one worker holds one model, so a new build starts a fresh one.
+let lastModelScript = null;
+const modelExport = { worker: null, script: null, busy: false };
+
 function showExportFormats() {
   const holder = document.getElementById("export-formats");
-  for (const [format, meaning] of Object.entries(schema.export_formats || {})) {
+  for (const [format, meaning] of Object.entries(schema.model_formats || {})) {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "secondary";
     button.textContent = meaning.split(":")[0];
-    button.title = `${meaning} — a FreeCAD script that writes the finished model in this format, a file a part and one of the whole`;
-    button.addEventListener("click", () => downloadFormatScript(format));
+    button.title = `${meaning} — made here in your browser from the built 3D model: a ZIP with each part a file of its own and the whole guitar`;
+    button.addEventListener("click", () => exportModel(format));
     holder.appendChild(button);
   }
 }
 
-async function downloadFormatScript(format) {
-  pyodide.globals.set("export_format", format);
-  const script = await runPython(
-    "import json\nfrom cncguitarwizard.webapp import format_export\n" +
-    "json.dumps(format_export(export_format))"
-  );
-  if (script.error) {
-    showError(script.error);
+async function exportModel(format) {
+  const kind = format.toUpperCase();
+  if (!lastModelScript) {
+    showError(`Build the guitar first: the ${kind} is made from its 3D model.`);
     return;
   }
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(new Blob([script.text], { type: "text/x-python" }));
-  link.download = script.name;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  setTimeout(() => URL.revokeObjectURL(link.href), 1000);
-  setStatus(`Saved ${script.name}: run it in FreeCAD beside Prototype001.FCStd`, "ok");
+  if (modelExport.busy) return;
+  if (modelExport.worker && modelExport.script !== lastModelScript) {
+    modelExport.worker.terminate();
+    modelExport.worker = null;
+  }
+  if (!modelExport.worker) {
+    modelExport.worker = new Worker("model_worker.js", { type: "module" });
+    modelExport.script = lastModelScript;
+  }
+  const buttons = [...document.querySelectorAll("#export-formats button")];
+  modelExport.busy = true;
+  for (const button of buttons) button.disabled = true;
+  clearError();
+  const started = performance.now();
+  // A big cut can take minutes with no news from the worker: the time
+  // spent so far, every second, shows it is still at work.
+  let latest = "the 3D model is built here in your browser (a minute or more)…";
+  const showProgress = () => setStatus(`Making the ${kind} (${timeSince(started)}): ${latest}`);
+  showProgress();
+  const ticking = setInterval(showProgress, 1000);
+  try {
+    const { name, bytes } = await new Promise((resolve, reject) => {
+      modelExport.worker.onmessage = ({ data }) => {
+        if (data.type === "progress") {
+          latest = data.text;
+          showProgress();
+        } else if (data.type === "done") resolve(data);
+        else reject(new Error(data.text));
+      };
+      modelExport.worker.onerror = (event) => reject(new Error(event.message || "the model's worker stopped"));
+      modelExport.worker.postMessage({
+        wheel: wheelHref, script: lastModelScript, format, name: fileStem(guitarName.value),
+      });
+    });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(new Blob([bytes], { type: "application/zip" }));
+    link.download = name;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    setStatus(`Saved ${name} (made in ${timeSince(started)})`, "ok");
+  } catch (error) {
+    // A model that failed leaves its worker no use: a fresh one next time.
+    modelExport.worker?.terminate();
+    modelExport.worker = null;
+    showError(`Cannot make the ${kind}: ${error.message}`);
+    setStatus(`${kind} failed`, "bad");
+  } finally {
+    clearInterval(ticking);
+    modelExport.busy = false;
+    for (const button of buttons) button.disabled = false;
+  }
+}
+
+// The time since `started` (a performance.now()), as "45 s" or "3 min 5 s".
+function timeSince(started) {
+  const seconds = Math.round((performance.now() - started) / 1000);
+  return seconds < 60 ? `${seconds} s` : `${Math.floor(seconds / 60)} min ${seconds % 60} s`;
 }
 
 // A file name from the guitar's name, as Python makes the ZIP's.

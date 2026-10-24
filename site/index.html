@@ -718,11 +718,12 @@
       </div>
       <p class="note no-print">The 3D model itself is made in FreeCAD from <code>Prototype001_freecad.py</code>
         (<em>Model and report</em> below): <code>Prototype001.FCStd</code> and <code>Prototype001.step</code>. Each
-        format above downloads a small FreeCAD script that writes that finished model in its format, every part a file
-        of its own and the whole guitar one more, beside it, in seconds and without building it again: put it in the
-        model's folder and run it there (<code>freecadcmd Prototype001_export_stl.py</code>, or as a macro with the
-        model open). Locally, <code>python -m cncguitarwizard export-prototype001 --output build --format stl</code>
-        does the same.</p>
+        format above is made here in your browser instead, from that same script, without FreeCAD: a ZIP with every
+        part a file of its own and the whole guitar one more. The first takes a minute or more, up to a quarter of an
+        hour for a body bevelled round its edges (the CAD kernel, OpenCascade, about 7 MB, is loaded once and the
+        model built); the next format reuses the model. Locally,
+        <code>python -m cncguitarwizard export-prototype001 --output build --format stl</code> writes them from
+        FreeCAD's model, IGES too.</p>
       <p class="note no-print">Each part opens to its programs, numbered in the order to run them; <em>Plot</em> downloads a
         program's toolpaths drawn over its part. The <em>Simulate</em> button copies that program to the clipboard and
         opens <a href="https://ncviewer.com" target="_blank" rel="noopener">NC Viewer</a> below: click into its

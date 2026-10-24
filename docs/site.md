@@ -749,13 +749,17 @@ the design (*Save design*) and build it all locally from a clone with
 --output build/my_guitar`: the G-code, DXF, FCStd and STEP together.
 
 Under *Downloads*, *Other 3D formats* has a button for each format the
-finished model goes into (STEP, each part on its own as well as the
-whole, STL, 3MF, OBJ, GLB, IGES, BREP:
-`webapp.format_export`, the schema's `export_formats`): each downloads a
-small FreeCAD script (`Prototype001_export_stl.py`) that, run beside the
-`Prototype001.FCStd` FreeCAD made (or as a macro with it open), writes
-each part, and the whole guitar, in that format in seconds, without
-building it again (`backends.freecad.formats`; locally
+finished model goes into (STEP, STL, 3MF, OBJ, GLB, BREP: the schema's
+`model_formats`), made here in the browser as files, no FreeCAD needed:
+a ZIP with each part a file of its own and the whole guitar one more
+(`exportModel`, `site/model_worker.js`: the build's own FreeCAD script run
+on OpenCascade compiled for the web, `backends.occt`, see
+[The 3D formats made in the browser](backends/occt.md)). The first takes
+the model's build, from about a minute to a quarter of an hour for a
+body bevelled round its edges (a Mockingbird's), the page free meanwhile
+and the time spent shown; the next formats reuse it. FreeCAD's own export script
+(`webapp.format_export`, `backends.freecad.formats`) still writes them,
+IGES too, beside the `Prototype001.FCStd` FreeCAD made (locally
 `python -m cncguitarwizard export-prototype001 --format stl`).
 
 ## Classic UI and application like UI (a trial), dark mode

@@ -430,15 +430,28 @@ def test_a_flat_headstocks_root_and_the_heel_are_drawn_as_two_lines() -> None:
     assert 'id="heel-editor-view" class="volute-view-box" hidden' in page
 
 
-def test_other_3d_formats_are_buttons_under_downloads() -> None:
+def test_other_3d_formats_are_files_made_in_the_browser() -> None:
     script = (ROOT / "site" / "app.js").read_text(encoding="utf-8")
     page = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
+    worker = (ROOT / "site" / "model_worker.js").read_text(encoding="utf-8")
 
     assert '<div id="export-formats" class="actions no-print">' in page
-    assert "for (const [format, meaning] of Object.entries(schema.export_formats" in (
+    # A button a format the page makes itself, not FreeCAD's script.
+    assert "for (const [format, meaning] of Object.entries(schema.model_formats" in (
         script
     )
-    assert "from cncguitarwizard.webapp import format_export" in script
+    assert "from cncguitarwizard.webapp import format_export" not in script
+    # The build's own FreeCAD script, run in a worker beside the page, a
+    # fresh one for a new build's model.
+    assert (
+        'lastModelScript = result.files["Prototype001_freecad.py"] ?? null;' in script
+    )
+    assert 'new Worker("model_worker.js", { type: "module" })' in script
+    assert "modelExport.script !== lastModelScript" in script
+    # Pinned versions of Pyodide and OpenCascade, as the page's own.
+    assert "cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.mjs" in worker
+    assert "replicad-opencascadejs@1.1.0/dist/" in worker
+    assert "model.export_zip(model_script, model_format, model_name)" in worker
 
 
 def test_undo_starts_once_a_restored_design_can_be_read() -> None:

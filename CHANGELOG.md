@@ -105,6 +105,18 @@
   It records the design and drives no solid; the STEP and the other 3D
   formats leave it out.
 
+- The other 3D formats made in the browser as files, no FreeCAD needed:
+  *Other 3D formats* gives STEP, STL, 3MF, OBJ, GLB or BREP as a ZIP, each
+  part a file of its own and the whole guitar one more. The build's own
+  FreeCAD script runs on OpenCascade compiled for the web
+  (replicad-opencascadejs) in a worker beside the page, through FreeCAD's
+  `FreeCAD` and `Part` modules over it (`backends.occt`), so the model is
+  the one FreeCAD makes (its parts' volumes the same). The first format
+  takes the model's build, from about a minute to a quarter of an hour
+  for a body bevelled round its edges (a Mockingbird's), the time spent
+  shown meanwhile; the next formats take seconds. IGES stays with
+  FreeCAD's export script, its writer not in the web build.
+
 - A parameter sheet with every build (`workflows.parameter_sheet`,
   [Parameter sheet](docs/workflows/parameter_sheet.md)): the design's key
   dimensions in millimetres and degrees, each with its source (the

@@ -34,6 +34,7 @@ from .backends.freecad import (
     render_format_export,
 )
 from .backends.freecad.script_exporter import FreeCADScriptExporter
+from .backends.occt.model import FORMATS as MODEL_FORMATS
 from .cam import (
     POST_PROCESSOR_LABELS,
     GCodeWriter,
@@ -498,7 +499,8 @@ def parameter_schema() -> dict[str, Any]:
         true for the rarely changed fields the form folds away.
         ``export_formats`` the other 3D formats the built model is
         exported to (``format_export``), each by extension to what it is
-        for; ``setting_pictures`` each setting's picture
+        for; ``model_formats`` those the page makes itself, in the browser
+        (``backends.occt``); ``setting_pictures`` each setting's picture
         (``setting_pictures.SETTING_PICTURES``), ``{"view", "parts"}``: the
         view of ``setting_views`` it is drawn on and the parts picked out
         there, the first pattern that finds one; ``applies_when`` the
@@ -549,6 +551,7 @@ def parameter_schema() -> dict[str, Any]:
             for rune in RUNES.values()
         ],
         "export_formats": dict(EXPORT_FORMATS),
+        "model_formats": dict(MODEL_FORMATS),
         "setting_pictures": {
             name: {"view": view, "parts": list(parts)}
             for name, (view, parts) in SETTING_PICTURES.items()

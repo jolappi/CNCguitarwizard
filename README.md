@@ -63,6 +63,11 @@ one:
 python -m cncguitarwizard export-prototype001 --output build/my_guitar --format stl --format glb
 ```
 
+The web app makes them itself, in the browser, as files (all but IGES): it
+runs the build's FreeCAD script on OpenCascade compiled for the web
+([The 3D formats made in the browser](docs/backends/occt.md)), the same
+model FreeCAD makes, with no FreeCAD at all.
+
 Everything lands in the `build/` directory (git-ignored):
 
 | File | What it is |
