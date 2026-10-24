@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache">
 <!-- This page's stamp, set by tools/build_site.py (see the loader below). -->
-<meta name="cgw-page" content="4d897b58bcfa">
+<meta name="cgw-page" content="d4a392eda4e1">
 <title>CNCguitarwizard</title>
 <script>
   // Dark mode, the default; light when chosen in this browser (or
@@ -427,6 +427,7 @@
   dialog.confirm p { margin: 0 0 14px; }
   dialog.confirm .buttons { display: flex; justify-content: flex-end; gap: 8px; }
   button.keys-button { padding: 3px 10px; font-size: 12.5px; font-weight: 500; align-self: center; }
+  button.update-latest { padding: 3px 10px; font-size: 12.5px; align-self: center; white-space: nowrap; }
   dialog.keys { max-width: min(540px, calc(100vw - 32px)); }
   /* A setting's picture (settingPictures): a thumbnail in front of its
      label, large in its dialog; the guitar on light paper, the parts the
@@ -601,6 +602,8 @@
   <span class="credit">Created by yours truly, <a href="https://jounilappi.hopto.org/lsguitars/" target="_blank" rel="noopener" title="LS Guitars">Jouni Lappi</a> ·
     <a href="https://github.com/jolappi/CNCguitarwizard" target="_blank" rel="noopener">GitHub</a></span>
   <span id="status">Loading Python runtime…</span>
+  <button id="update-latest" class="update-latest" type="button" hidden
+    title="A newer CNCguitarwizard is out: load it (your design stays)">Newer version out — Update</button>
   <button id="start-tour" class="secondary keys-button" type="button" title="A short tour: from an instrument to its NC and 3D files">Tour</button>
   <button id="show-keys" class="secondary keys-button" type="button" title="Keyboard and mouse shortcuts (?)">Shortcuts</button>
 </header>

@@ -110,6 +110,52 @@ function clearError() {
   errorBox.textContent = "";
 }
 
+// ---- the latest version ------------------------------------------------------
+// A page left open runs the version it was loaded with. Every
+// UPDATE_CHECK_MINUTES, and each time it is looked at again, it reads the
+// site's manifest afresh (wheel.json): a newer build shows the Update
+// button, which loads the page anew, the design kept (it is saved in this
+// browser). Help > Update to the latest version looks at once.
+const UPDATE_CHECK_MINUTES = 10;
+const updateButton = document.getElementById("update-latest");
+let runningManifest = null;
+
+async function checkForUpdate(asked = false) {
+  if (!runningManifest) return;
+  let latest;
+  try {
+    latest = await (await fetch("wheel.json?t=" + Date.now(), { cache: "no-store" })).json();
+  } catch {
+    if (asked) setStatus("Could not reach the site to look for a newer version", "bad");
+    return;
+  }
+  const newer = latest.build !== runningManifest.build || latest.page !== runningManifest.page;
+  updateButton.hidden = !newer;
+  updateButton.dataset.latestPage = latest.page || "";
+  if (!asked) return;
+  if (newer) await updateToLatest();
+  else setStatus(`This is the latest version (build ${runningManifest.build || "dev"})`, "ok");
+}
+
+async function updateToLatest() {
+  const busy = buildButton.classList.contains("busy") || modelExport.busy;
+  if (busy && !(await askConfirm("A build is running: load the latest version anyway? (It stops.)"))) return;
+  autosave();
+  // At a URL of its own, past any cache's copy of the page (see the loader).
+  const url = new URL(location.href);
+  url.searchParams.set("page", updateButton.dataset.latestPage || String(Date.now()));
+  location.replace(url.href);
+}
+
+function watchForUpdates(manifest) {
+  runningManifest = manifest;
+  updateButton.addEventListener("click", () => updateToLatest());
+  setInterval(() => checkForUpdate(), UPDATE_CHECK_MINUTES * 60 * 1000);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") checkForUpdate();
+  });
+}
+
 async function boot() {
   try {
     pyodide = await loadPyodide({ indexURL: PYODIDE_INDEX });
@@ -154,6 +200,7 @@ async function boot() {
     if (repaired.length) undoHistory.start();
     setStatus(`Ready — ${manifest.wheel} (build ${manifest.build || "dev"})` +
       (changed ? " · your last design is back (Reset starts afresh)" : "") + repairNote(repaired), "ok");
+    watchForUpdates(manifest);
     // The first visit begins with the tour, once the drawings are laid out.
     let toured = true;
     try {

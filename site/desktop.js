@@ -109,7 +109,8 @@
     .menubar { position: fixed; top: 0; left: 0; right: 0; z-index: 50; height: 34px;
       display: flex; align-items: stretch; gap: 2px; padding: 0 10px;
       background: var(--chrome); border-bottom: 1px solid var(--line); font-size: 13.5px; user-select: none; }
-    .menubar .brand { display: flex; align-items: center; padding: 0 12px 0 4px; font-weight: 700; }
+    .menubar .brand { font-weight: 700; }
+    .menubar .brand-short { display: none; }
     .menubar .menu-title { display: flex; align-items: center; padding: 0 10px; border: 0; border-radius: 5px;
       margin: 4px 0; background: none; color: var(--ink); font: inherit; cursor: default; }
     .menubar .menu-title:hover, .menubar .menu-title.open { background: var(--hover); }
@@ -136,6 +137,7 @@
     .statusbar .where { flex: none; font-weight: 600; color: var(--ink); }
     .statusbar #status { flex: 1 1 auto; min-width: 0; margin: 0; white-space: nowrap; overflow: hidden;
       text-overflow: ellipsis; }
+    .statusbar #update-latest { flex: none; padding: 1px 8px; font-size: 12px; }
     .statusbar #progress { flex: 0 1 360px; margin: 0; display: flex; align-items: center; gap: 8px; }
     .statusbar #progress .bar { flex: 0 0 160px; }
     .statusbar #progress .label { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -145,7 +147,8 @@
     .statusbar:has(#progress:not(.hidden)) .tip { display: none; }
     @media (max-width: 700px) { .statusbar .tip { display: none; } }
     @media (max-width: 900px) {
-      .menubar .brand { display: none; }
+      .menubar .brand-long { display: none; }
+      .menubar .brand-short { display: inline; }
       .menubar .menu-title { padding: 0 8px; }
     }
 
@@ -495,10 +498,6 @@
   const bar = document.createElement("nav");
   bar.className = "menubar";
   bar.setAttribute("aria-label", "Menus");
-  const brand = document.createElement("span");
-  brand.className = "brand";
-  brand.textContent = "CNCguitarwizard";
-  bar.appendChild(brand);
   const status = byId("status");
   const progressBox = byId("progress");
   // The build running now (see "a build, in sight"), or null.
@@ -527,7 +526,7 @@
   where.className = "where";
   // The tip of the day (app.js's, the footer's in the Classic UI) at its
   // right, in full on hovering it.
-  statusBar.append(where, status, byId("tip-of-the-day"), progressBox);
+  statusBar.append(where, status, byId("update-latest"), byId("tip-of-the-day"), progressBox);
 
   // ---- a build, in sight ----------------------------------------------------
   // Build opens the result page at once, a panel at its head saying what
@@ -1145,7 +1144,13 @@
     showSub(id);
   };
 
+  // The program's own menu first, as a desktop program's: its build, and
+  // the latest version loaded on asking (app.js's checkForUpdate).
   const MENUS = [
+    ["CNCguitarwizard", () => [
+      { label: `Build ${runningManifest?.build || "…"}`, heading: true },
+      { label: "Update to the latest version", run: () => checkForUpdate(true) },
+    ]],
     ["File", () => [
       { label: "New design", run: click("#reset"), enabled: enabled("#reset") },
       { label: "Open design…", key: "O", run: click("#load-design"), enabled: enabled("#load-design") },
@@ -1290,6 +1295,17 @@
     title.type = "button";
     title.className = "menu-title";
     title.textContent = name;
+    if (name === "CNCguitarwizard") {
+      // Its name in bold, shortened on a narrow screen.
+      title.classList.add("brand");
+      const long = document.createElement("span");
+      long.className = "brand-long";
+      long.textContent = name;
+      const short = document.createElement("span");
+      short.className = "brand-short";
+      short.textContent = "CGW";
+      title.replaceChildren(long, short);
+    }
     title.setAttribute("aria-haspopup", "menu");
     title.addEventListener("click", () => {
       if (openTitle === title) closeMenu();

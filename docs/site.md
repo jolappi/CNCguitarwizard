@@ -1037,6 +1037,18 @@ loads itself again at `?page=<stamp>`, a URL no cache holds, once (a page
 edited but not rebuilt keeps going). The status line shows the build id
 that is running.
 
+A page left open keeps the version it was loaded with, so it looks for a
+newer one: every `UPDATE_CHECK_MINUTES` (10) and each time it is looked at
+again it reads `wheel.json` afresh (`checkForUpdate`), and a build or page
+stamp not its own shows *Newer version out — Update* beside the status
+(in the application like UI's status bar). The button
+(`updateToLatest`) saves the design, as every change does, and loads the
+page anew at `?page=<stamp>`, the design back as it was left; a build or
+export running is asked about first. *CNCguitarwizard › Update to the
+latest version*, in the program's own menu first in the bar (with the
+build running), looks at once, saying so when the page is the latest. A
+FreeCAD script built on an old page is the old version's: update first.
+
 ## Deployment
 
 `.github/workflows/pages.yml` builds the wheel and publishes `site/` on

@@ -244,6 +244,32 @@ def test_the_neck_page_holds_the_truss_rod_settings() -> None:
     assert ".filter((name) => !SHARED_WITH_PAGES.has(name))" in layout
 
 
+def test_a_page_left_open_finds_a_newer_version() -> None:
+    script = (ROOT / "site" / "app.js").read_text(encoding="utf-8")
+    layout = (ROOT / "site" / "desktop.js").read_text(encoding="utf-8")
+    page = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
+
+    # The manifest read afresh, now and then and when looked at again.
+    assert "const UPDATE_CHECK_MINUTES = 10;" in script
+    assert 'fetch("wheel.json?t=" + Date.now(), { cache: "no-store" })' in script
+    assert "latest.build !== runningManifest.build || latest.page" in script
+    assert 'if (document.visibilityState === "visible") checkForUpdate();' in script
+    # The button hidden until then; the update keeps the design and loads
+    # the page past any cache.
+    assert (
+        '<button id="update-latest" class="update-latest" type="button" hidden' in page
+    )
+    assert "autosave();\n  // At a URL of its own" in script
+    assert 'url.searchParams.set("page", updateButton.dataset.latestPage' in script
+    # Not data-page: the app layout's own attribute, which hides a part.
+    assert "dataset.page" not in script
+    assert 'statusBar.append(where, status, byId("update-latest")' in layout
+    assert (
+        'label: "Update to the latest version", run: () => checkForUpdate(true)'
+        in layout
+    )
+
+
 def test_the_headstock_editor_names_its_sides() -> None:
     script = (ROOT / "site" / "app.js").read_text(encoding="utf-8")
     page = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
@@ -294,8 +320,8 @@ def test_a_tip_a_day_in_the_footer_or_the_status_bar() -> None:
         in page
     )
     assert (
-        'statusBar.append(where, status, byId("tip-of-the-day"), progressBox);'
-        in layout
+        'statusBar.append(where, status, byId("update-latest"), '
+        'byId("tip-of-the-day"), progressBox);' in layout
     )
 
 

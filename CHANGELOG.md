@@ -112,6 +112,12 @@
   It records the design and drives no solid; the STEP and the other 3D
   formats leave it out.
 
+- A page left open finds a newer version: every 10 minutes and each time
+  it is looked at again it reads the site's manifest afresh, and a newer
+  build shows *Newer version out — Update* beside the status, which loads
+  it, the design kept. *CNCguitarwizard › Update to the latest version*
+  (the program's own menu, first in the bar) looks at once.
+
 - The headstock editor names the bass side and the treble side beside the
   neck past the nut (upright on a left-handed build's turned-over drawing
   too).
