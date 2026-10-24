@@ -190,6 +190,26 @@ def test_the_app_ui_has_pages_for_the_neck_and_the_fretboard() -> None:
     assert "EDITOR_FIELDS[`${id}-page-options`]" in layout
 
 
+def test_the_neck_page_holds_the_truss_rod_settings() -> None:
+    layout = (ROOT / "site" / "desktop.js").read_text(encoding="utf-8")
+    neck = layout[layout.index("    neck: [") : layout.index("    fretboard: [")]
+
+    for name in (
+        "truss_rod_install",
+        "truss_rod_profile",
+        "truss_rod_rod_length",
+        "truss_rod_adjustment",
+        "truss_rod_spoke_wheel",
+    ):
+        assert f'"{name}"' in neck
+    # Where it is adjusted stays on the headstock's page as well.
+    assert (
+        'SHARED_WITH_PAGES = new Set(["truss_rod_adjustment", '
+        '"truss_rod_spoke_wheel"])' in layout
+    )
+    assert ".filter((name) => !SHARED_WITH_PAGES.has(name))" in layout
+
+
 def test_every_design_page_has_a_reset_of_its_own() -> None:
     layout = (ROOT / "site" / "desktop.js").read_text(encoding="utf-8")
 

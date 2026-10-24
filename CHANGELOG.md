@@ -4,6 +4,11 @@
 
 ### Changed
 
+- *Design › Neck* holds the truss rod's settings too: how it is
+  installed, its profile and its length, and where it is adjusted and
+  with what (those two still on *Design › Headstock* as well, which draws
+  the cover).
+
 - On a touch screen the settings are easier to set (as Apple's
   guidelines have it): the fields and the hint's *Reset to default* 44 px
   tall, the hint's text 14 px, and every field's text 16 px, so iOS

@@ -875,7 +875,10 @@ its scallops shaded between their lands — from the side along its middle
 the twelfth fret, its radius said. Both are drawn afresh a moment after
 a setting changes while either page shows (not during a build); a design
 that does not build says why there instead. The fretboard's binding and
-blind slots move there from the inlay editor's Settings.
+blind slots move there from the inlay editor's Settings. The neck's page
+holds the truss rod's settings too: how it is installed, its profile and
+its length, and where it is adjusted and with what (those two on the
+headstock's page as well, which draws the cover; `SHARED_WITH_PAGES`).
 
 Every page under *Design* has a Reset of its own (*Reset Body (4)*, the
 number its settings changed from their defaults, off when there are
