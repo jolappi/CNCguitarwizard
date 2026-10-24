@@ -879,9 +879,45 @@ the twelfth fret, its radius said. Both are drawn afresh a moment after
 a setting changes while either page shows (not during a build); a design
 that does not build says why there instead. The fretboard's binding and
 blind slots move there from the inlay editor's Settings. The neck's page
-holds the truss rod's settings too: how it is installed, its profile and
-its length, and where it is adjusted and with what (those two on the
-headstock's page as well, which draws the cover; `SHARED_WITH_PAGES`).
+opens with the neck's type (`neck_joint`: bolt-on, set, neck-through or
+one-piece, on the body's page as well), and holds the truss rod's
+settings too: how it is installed, its profile and its length, and
+where it is adjusted and with what (those two on the headstock's page as
+well, which draws the cover; `SHARED_WITH_PAGES`).
+
+Only the settings that do something are shown, on every page. A setting
+that matters only beside other settings' values
+(`setting_conditions.APPLIES_WHEN`, the schema's `applies_when`) has one
+condition or more, any of which lets it show, each the values other
+design settings must have (`any_text`: any lettering but none): the
+heel's thickness and mounting length, a round heel end and a neck angle
+only on a neck with a heel in a pocket, the glue gap on a set neck, the
+neck bolts and plate on a bolt-on, the block's width and heel ramp on a
+neck run through the body; a feature's sizes while it is fitted (the
+battery box, carved top, engraving, strap guide, carbon rods, scallops,
+nut jig, heel relief, a jack plate, a pickguard, a pickup frame); the
+pickups' own kinds with a custom layout, their angles and frames where
+the layout has such a pickup; the controls' holes, cavities and covers
+with controls, the switch's with a layout that has one; the nut's slot
+with a slotted nut or zero fret, a locking nut's screws with one; tuners
+in a row's spacing but on a symmetric headstock; the headstock's
+lettering font, size, place and angle once there is lettering; the
+volute's or the joint's lines by the volute; the standard truss rod's
+step, pocket and sleeve, the low-profile rod's channel, a cover, trough
+and key hole at the headstock; and, for the machining, the carve's
+cutter with a carved top and the nut jig's with the jig. It is hidden in
+the form and wherever a copy of it stands while none hold
+(`showApplicableSettings`, the class `not-applicable`), the Settings
+fold counting only those shown, and *Find a setting* and a picture's
+arrows passing it by. Every rule was found by building the instrument
+with each setting changed under each value of every choice and switch,
+and kept only where nothing changed; where more than settings decide (a
+drawn pickguard, the instrument's own tuners, an engraving drawn in a
+template), the setting stays shown. The geometry leaves a hidden setting
+out rather than refusing it, so turning the neck back keeps it as it
+was; `tests/test_setting_conditions.py` changes each one where it is
+hidden and finds the model (and the machining's programs) unchanged,
+and refused only where its value would be refused anyway.
 
 Every page under *Design* has a Reset of its own (*Reset Body (4)*, the
 number its settings changed from their defaults, off when there are

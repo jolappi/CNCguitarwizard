@@ -225,9 +225,14 @@ keep-outs. The neck's back keeps its D profile, then falls to the body's
 thickness over `neck_through_heel_ramp` (40 mm), reaching it at
 `front_x`, where the body first meets the neck's sides (the neck back's
 own heel transition, its depth the body's). There is no neck angle (it
-is refused; a Tune-o-matic's automatic 2 degrees is 0 here), and a
+is left out; a Tune-o-matic's automatic 2 degrees is 0 here), and a
 heel-adjusted truss rod needs a spoke wheel: a nut at the heel's end
-would be buried in the block.
+would be buried in the block. What only a heel in a pocket takes is left
+out the same way, not refused, so a neck turned back to bolt-on keeps
+it: the heel's thickness and mounting length, a round heel end (square
+here), a heel relief (`fitted_heel_relief`), a neck plate
+(`fitted_neck_plate`: a plate on a bolt-on neck only), and the web app
+hides them meanwhile (`setting_conditions.APPLIES_WHEN`).
 
 Each part is cut from a blank a little larger than it (`body_part`): it
 carries every feature that reaches into it whole — a control cavity
@@ -1101,7 +1106,8 @@ ruling quad a point lies in (`depth_at`); past the edge, in the outline's
 slot, the edge's depth runs on so the ball finishes the edge
 (`machining_depth`); its FreeCAD layers are the rulings cut where they
 pass each depth, with 10 mm of waste past the edge (`level_region`). A
-neck-through or one-piece body has no heel to relieve.
+neck-through or one-piece body has no heel to relieve: the relief is left
+out there (`fitted_heel_relief`).
 
 The neck bolts are drilled from the relief: a ferrule sinks
 `body_neck_ferrule_depth` into its surface (its counterbore, from the

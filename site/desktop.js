@@ -270,9 +270,14 @@
   // and blind slots come over from the inlay editor's.
   const PART_FIELDS = {
     neck: [
+      // The neck's type first, as each page has its own (shown on the
+      // body's page too), then what each type takes (the others hidden,
+      // applies_when).
+      "neck_joint",
       "nut_width", "final_fret_width", "first_fret_thickness", "twelfth_fret_thickness",
-      "heel_thickness", "heel_width", "heel_mounting_length", "heel_root_style", "neck_profile_exponent",
-      "headstock_thickness", "neck_carbon_rods", "neck_carbon_rod_size",
+      "heel_thickness", "heel_width", "heel_mounting_length", "heel_root_style", "neck_heel_end",
+      "neck_angle", "set_neck_glue_gap", "neck_through_width", "neck_through_heel_ramp",
+      "neck_profile_exponent", "headstock_thickness", "neck_carbon_rods", "neck_carbon_rod_size",
       "truss_rod_install", "truss_rod_profile", "truss_rod_rod_length", "truss_rod_adjustment",
       "truss_rod_spoke_wheel",
     ],
@@ -290,8 +295,9 @@
   // A field has one copy in an editor's Settings at most; easy mode's
   // copies stand beside them (the scale, on the fretboard's page too).
   // Where the truss rod is adjusted, and with what, is the neck's as much
-  // as the headstock's (whose drawing shows its cover): on both pages.
-  const SHARED_WITH_PAGES = new Set(["truss_rod_adjustment", "truss_rod_spoke_wheel"]);
+  // as the headstock's (whose drawing shows its cover), and the neck's
+  // type as much the body's: on both pages.
+  const SHARED_WITH_PAGES = new Set(["neck_joint", "truss_rod_adjustment", "truss_rod_spoke_wheel"]);
   const taken = new Set(
     Object.entries(EDITOR_FIELDS).filter(([id]) => id !== "easy-options").flatMap(([, names]) => names)
       .filter((name) => !SHARED_WITH_PAGES.has(name)),
@@ -992,6 +998,7 @@
     };
     const rows = [...form.querySelectorAll(".field")]
       .filter((row) => !row.hidden
+        && !row.classList.contains("not-applicable")
         && row.querySelector("input, select")
         && words.every((word) => rowText(row).includes(word)))
       .map((row) => [rank(row), row])

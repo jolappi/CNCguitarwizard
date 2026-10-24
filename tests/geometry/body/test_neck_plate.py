@@ -219,7 +219,6 @@ def test_a_drawn_heel_relief_over_the_plate_is_refused() -> None:
             {"body_neck_plate": "asymmetric", "body_neck_plate_clip": 30.0},
             "under half",
         ),
-        ({"neck_joint": "set"}, "bolt-on neck's bolts"),
     ],
 )
 def test_plate_sizes_that_do_not_fit_are_refused(
@@ -228,6 +227,15 @@ def test_plate_sizes_that_do_not_fit_are_refused(
     parameters = strat(**{"body_neck_plate": "plate", **overrides})
     with pytest.raises(BodyGeometryError, match=match):
         parameters.build()
+
+
+def test_a_plate_on_a_neck_not_bolted_on_is_left_out() -> None:
+    # It does not apply there (setting_conditions): left out, not refused,
+    # so the neck turned back to bolt-on keeps it.
+    parameters = strat(body_neck_plate="plate", neck_joint="set")
+
+    assert parameters.fitted_neck_plate == "ferrules"
+    assert parameters.build().body.neck_plate == ()
 
 
 def test_the_plate_has_no_ferrules_to_machine_and_is_drawn() -> None:

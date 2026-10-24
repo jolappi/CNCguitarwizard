@@ -233,6 +233,11 @@ BOARD_HEEL_OVERRUN = 2.0
 """How far past the heel's end, in mm, a board running on to it is made
 before it is cut back to it (``fretboard_end`` "heel")."""
 
+RUNS_THROUGH_HEEL_FLARE = 54.0
+"""How far ahead of the heel end, in mm, a neck run through the body flares
+out to a heel wider than its taper: it has no mounting block to flare along
+(``heel_mounting_length``), so as far as the default one."""
+
 MIN_FRETS_PER_OCTAVE = 5
 """The fewest equal steps an octave may be divided into (``frets_per_octave``)."""
 
@@ -1860,6 +1865,18 @@ class Prototype001Parameters:
         return cls(instrument=instrument, **INSTRUMENT_OVERRIDES[instrument])
 
     @property
+    def fitted_neck_plate(self) -> str:
+        """Return ``body_neck_plate`` as fitted: a plate holds a bolt-on
+        neck's bolts only, any other neck taking none (setting_conditions)."""
+        return self.body_neck_plate if self.neck_joint == "bolt_on" else "ferrules"
+
+    @property
+    def fitted_heel_relief(self) -> str:
+        """Return ``body_heel_relief`` as cut: a neck run through the body
+        has no heel to relieve (setting_conditions)."""
+        return "none" if self.neck_runs_through else self.body_heel_relief
+
+    @property
     def neck_runs_through(self) -> bool:
         """Whether the neck runs on into the body (neck-through or one piece)."""
         return self.neck_joint in ("neck_through", "one_piece")
@@ -2527,18 +2544,12 @@ class Prototype001Parameters:
         bolts come in the default rectangle's order.
 
         Raises:
-            BodyGeometryError: For a plate on a neck that is not bolted on,
-                sizes that are not finite and positive, holes that do not
-                fit in the plate, or a clip of half its narrower side or
-                more.
+            BodyGeometryError: For sizes that are not finite and positive,
+                holes that do not fit in the plate, or a clip of half its
+                narrower side or more.
         """
-        if self.body_neck_plate == "ferrules":
+        if self.fitted_neck_plate == "ferrules":
             return None
-        if self.neck_joint != "bolt_on":
-            raise BodyGeometryError(
-                "A neck plate holds a bolt-on neck's bolts; set "
-                "body_neck_plate to ferrules."
-            )
         length = self.body_neck_plate_length
         width = self.body_neck_plate_width
         inset = self.body_neck_plate_hole_inset
@@ -2555,7 +2566,7 @@ class Prototype001Parameters:
                 "must be more than the bolt hole's radius and leave the holes "
                 "apart."
             )
-        clipped = self.body_neck_plate == "asymmetric"
+        clipped = self.fitted_neck_plate == "asymmetric"
         if clipped and clip >= min(length, width) / 2.0:
             raise BodyGeometryError(
                 "body_neck_plate_clip must be under half the neck plate's "
@@ -3103,12 +3114,8 @@ class Prototype001Parameters:
         """
         angle = self.neck_angle
         if self.neck_runs_through:
-            # The neck blank is the body's own centre: nothing to tilt.
-            if angle not in (None, 0.0):
-                raise NeckGeometryError(
-                    "A neck-through or one-piece neck takes no neck_angle (it is "
-                    "the body's own wood): leave it empty or 0."
-                )
+            # The neck blank is the body's own centre: nothing to tilt
+            # (setting_conditions: neck_angle does not apply).
             return 0.0
         if angle is None:
             return (
@@ -3957,18 +3964,15 @@ class Prototype001Parameters:
     def neck_outline(self) -> NeckOutline:
         """Return the neck's plan outline (cheap: no surfaces are built).
 
+        A neck run through the body has no heel end to round: its end is
+        square whatever ``neck_heel_end`` says (setting_conditions).
+
         Raises:
-            NeckGeometryError: For a round heel end on a neck run through
-                the body, or an unknown ``neck_heel_end``.
+            NeckGeometryError: For an unknown ``neck_heel_end``.
         """
         if self.neck_heel_end not in ("square", "round"):
             raise NeckGeometryError('neck_heel_end must be "square" or "round".')
-        round_end = self.neck_heel_end == "round"
-        if round_end and self.neck_runs_through:
-            raise NeckGeometryError(
-                "A neck run through the body has no heel end to round; set "
-                "neck_heel_end to square."
-            )
+        round_end = self.neck_heel_end == "round" and not self.neck_runs_through
         return NeckOutline(
             self.centre_scale,
             self.fret_count,
@@ -3982,7 +3986,11 @@ class Prototype001Parameters:
             fretboard_to_heel_end=self.board_to_heel_end,
             # A heel wider than the taper: the neck and its board flare
             # out to it along the heel's mounting block.
-            heel_flare_length=self.heel_mounting_length,
+            heel_flare_length=(
+                RUNS_THROUGH_HEEL_FLARE
+                if self.neck_runs_through
+                else self.heel_mounting_length
+            ),
         )
 
     def _body_layout(
@@ -4011,8 +4019,9 @@ class Prototype001Parameters:
         # round the heel, or one a plate sits on, comes first, and the plate
         # is placed on it. A corner line that cannot be laid out is refused
         # by the build; the editor draws the U meanwhile.
-        if self.body_heel_relief == "bevel" and (
-            self.body_heel_relief_line != "corner" or self.body_neck_plate != "ferrules"
+        if self.fitted_heel_relief == "bevel" and (
+            self.body_heel_relief_line != "corner"
+            or self.fitted_neck_plate != "ferrules"
         ):
             heel_relief, relief_problem = self._heel_relief(
                 shape, body_outline.points, heel_end, neck_pocket, check=check_steps
@@ -6798,19 +6807,14 @@ class Prototype001Parameters:
         the body editor gets the U and the reason.
 
         Raises:
-            BodyGeometryError: For a neck-through or one-piece body, a depth
-                or reach that is not finite and positive, a corner line that
+            BodyGeometryError: For a depth or reach that is not finite and
+                positive, a corner line that
                 cannot be laid out (when checking), a line wholly on the bass
                 side, a bevel's line that does not run on behind the body's
                 edge, or a line that does not run inside the body.
         """
-        if self.body_heel_relief == "none":
+        if self.fitted_heel_relief == "none":
             return None, ""
-        if self.neck_runs_through:
-            raise BodyGeometryError(
-                "A neck-through or one-piece body has no heel to relieve; set "
-                "body_heel_relief to none."
-            )
         for label, value in (
             ("depth", self.body_heel_relief_depth),
             ("reach", self.body_heel_relief_reach),
@@ -6824,7 +6828,7 @@ class Prototype001Parameters:
         # whatever its line, so it takes the plate; "corner" tilts it toward
         # the treble corner (Ibanez's Tilt Joint).
         carries_plate = (
-            self.body_heel_relief == "bevel" and self.body_neck_plate != "ferrules"
+            self.fitted_heel_relief == "bevel" and self.fitted_neck_plate != "ferrules"
         )
         if shape.heel_relief_points:
             points, corners = drawn_points(shape.heel_relief_points)
@@ -6881,14 +6885,14 @@ class Prototype001Parameters:
                 "relief is cut on the treble side only; draw its line there "
                 "in the body editor."
             )
-        if self.body_heel_relief != "bevel":
+        if self.fitted_heel_relief != "bevel":
             return (
                 HeelRelief.between(
                     "Heel relief",
                     outline,
                     line,
                     self.body_heel_relief_depth,
-                    "flat" if self.body_heel_relief == "notch" else "ramp",
+                    "flat" if self.fitted_heel_relief == "notch" else "ramp",
                 ),
                 problem,
             )

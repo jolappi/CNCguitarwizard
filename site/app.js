@@ -317,11 +317,10 @@ function mirrorEditorFields() {
         mirroredNotes.push([copy, note, variant]);
       }
     }
-    const summary = holder.closest("details.editor-settings")?.querySelector(":scope > summary");
-    if (summary) summary.textContent = `Settings (${holder.querySelectorAll("label").length})`;
   }
   syncMirrors();
   showMirroredRows();
+  showApplicableSettings();
   attachSettingPictures(document);
   nameScaleLabels();
 }
@@ -352,6 +351,43 @@ function showMirroredRows() {
       "mirrored", editors.some((editor) => !editor.classList.contains("hidden")),
     );
   }
+}
+
+// A setting that does anything only beside other settings' values
+// (schema.applies_when: a heel's thickness only on a neck with a heel in
+// a pocket) is hidden, in the form and wherever a copy of it stands,
+// while none of its conditions hold: each the values other settings must
+// have (schema.any_text: any text but none).
+function showApplicableSettings() {
+  // A design setting or a machining one (their names differ).
+  const field = (name) => form.querySelector(`:is(input, select)[data-set][data-name='${name}']`)
+    || form.querySelector(`.variant[data-set][data-name="${name}"] select.kind`);
+  const now = (name) => {
+    const control = field(name);
+    return control?.type === "checkbox" ? control.checked : control?.value;
+  };
+  const fits = (value, values) => values.includes(value)
+    || (values.includes(schema.any_text) && typeof value === "string" && value.trim() !== "");
+  for (const [name, conditions] of Object.entries(schema.applies_when || {})) {
+    const original = field(name);
+    if (!original) continue;
+    const applies = conditions.some((condition) => Object.entries(condition)
+      .every(([other, values]) => fits(now(other), values)));
+    original.closest(".field")?.classList.toggle("not-applicable", !applies);
+    for (const copy of mirrors.get(original) || []) {
+      const label = document.querySelector(`label[for="${CSS.escape(copy.id)}"]`);
+      for (const part of [label, copy.closest(".with-button") || copy]) {
+        part?.classList.toggle("not-applicable", !applies);
+      }
+    }
+  }
+  for (const holder of document.querySelectorAll(".editor-options")) countEditorSettings(holder);
+}
+
+// An editor's Settings fold says how many settings it shows.
+function countEditorSettings(holder) {
+  const summary = holder.closest("details.editor-settings")?.querySelector(":scope > summary");
+  if (summary) summary.textContent = `Settings (${holder.querySelectorAll("label:not(.not-applicable)").length})`;
 }
 
 function syncMirrors() {
@@ -572,7 +608,7 @@ function applyFormFilter() {
     const match = words.every((word) => text.includes(word))
       && (!changedOnly.checked || row.querySelector(".changed") !== null);
     row.classList.toggle("match", match);
-    if (match && !row.hidden) matches += 1;
+    if (match && !row.hidden && !row.classList.contains("not-applicable")) matches += 1;
   }
   for (const fold of folds) {
     const found = fold.querySelector(".field.match:not([hidden])") !== null;
@@ -1039,6 +1075,7 @@ const settingPictures = {
     const holder = button.closest(".editor-options") || form;
     const names = [...holder.querySelectorAll("button.setting-picture")]
       .filter((each) => {
+        if (each.closest(".not-applicable")) return false;
         const row = each.closest(".field");
         return !row || (!row.hidden && !row.classList.contains("mirrored"));
       })
@@ -7184,6 +7221,8 @@ form.addEventListener("change", (event) => {
   syncMirrors();
   setStatus(`For the truss rod chosen: ${changed.join(", ")}`, "ok");
 });
+// What a change makes apply, or not, is shown or hidden at once.
+form.addEventListener("change", showApplicableSettings);
 // A switch turned on or off checks the settings it holds above 0 again
 // (POSITIVE_WHILE_ON), in the form and in an editor's copy.
 form.addEventListener("change", (event) => {

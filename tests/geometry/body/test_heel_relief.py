@@ -196,11 +196,13 @@ def test_a_relief_too_deep_for_the_bolts_is_refused() -> None:
 
 
 def test_a_neck_through_body_has_no_heel_to_relieve() -> None:
-    parameters = replace(
-        Prototype001Parameters(), neck_joint="neck_through", body_heel_relief="contour"
-    )
-    with pytest.raises(BodyGeometryError, match="no heel to relieve"):
-        parameters.build()
+    # The setting does not apply there (setting_conditions): it is left
+    # out, not refused, so a neck turned back to bolt-on keeps it.
+    through = replace(Prototype001Parameters(), neck_joint="neck_through")
+    relieved = replace(through, body_heel_relief="contour")
+
+    assert relieved.fitted_heel_relief == "none"
+    assert relieved.build().body.contours == through.build().body.contours
 
 
 def test_it_is_machined_from_the_back_and_modelled_in_freecad() -> None:

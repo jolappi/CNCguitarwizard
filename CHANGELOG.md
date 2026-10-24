@@ -4,6 +4,32 @@
 
 ### Changed
 
+- Only the settings that do something are shown, on every page. A
+  setting that matters only beside others' values
+  (`setting_conditions.APPLIES_WHEN`, any of its conditions) is hidden in
+  the form and on every page while none hold: on a neck run through the
+  body the heel's thickness, mounting length, round end, neck angle, heel
+  relief and neck plate; the glue gap but on a set neck; the neck bolts
+  and plate but on a bolt-on; the block's width and heel ramp but on a
+  neck-through; a feature's sizes while it is off (battery box, carved
+  top, engraving, strap guide, carbon rods, scallops, nut jig, heel
+  relief, jack plate, pickguard, pickup frame); pickup kinds but with a
+  custom layout, a pickup's angle where the layout has none; the
+  controls' and switch's holes and cavities without them; the nut slot's
+  sizes without a slot; tuner spacing on a symmetric headstock; the
+  lettering's font, size, place and angle with no lettering; the truss
+  rod's step, pocket and sleeve on a low-profile rod and its channel on a
+  standard one, the cover and trough with the rod adjusted at the heel;
+  the carve's and the nut jig's cutters without them. Each rule was found
+  by building every combination and kept only where nothing changed; a
+  test checks every one. *Design › Neck*
+  opens with the neck's type (`neck_joint`, on *Design › Body* too) and
+  holds each type's own settings. The geometry leaves those settings out
+  where they do not apply instead of refusing them (a round heel end, a
+  neck angle, a heel relief or a neck plate on a neck-through), so a neck
+  turned back to bolt-on keeps them; a neck-through's heel flares, if
+  wider, over `RUNS_THROUGH_HEEL_FLARE` (54 mm).
+
 - A `heel_width` wider than the final fret flares the neck and its
   fretboard out to it together along the heel's mounting block
   (`heel_mounting_length`), from nothing where it begins to the heel's

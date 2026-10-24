@@ -238,7 +238,7 @@ def test_the_neck_page_holds_the_truss_rod_settings() -> None:
         assert f'"{name}"' in neck
     # Where it is adjusted stays on the headstock's page as well.
     assert (
-        'SHARED_WITH_PAGES = new Set(["truss_rod_adjustment", '
+        'SHARED_WITH_PAGES = new Set(["neck_joint", "truss_rod_adjustment", '
         '"truss_rod_spoke_wheel"])' in layout
     )
     assert ".filter((name) => !SHARED_WITH_PAGES.has(name))" in layout

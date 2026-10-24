@@ -95,8 +95,8 @@ def test_the_body_splits_into_a_block_and_wings(parameters) -> None:  # type: ig
 
 
 def test_a_neck_through_refuses_what_it_cannot_take() -> None:
-    with pytest.raises(NeckGeometryError, match="neck_angle"):
-        replace(THROUGH, neck_angle=2.0).build()
+    # A neck angle does not apply (the body's own wood): it is left out.
+    assert replace(THROUGH, neck_angle=2.0).neck_angle_degrees == 0.0
     # A Tune-o-matic's automatic angle is 0 here.
     assert replace(THROUGH, body_bridge=TuneOMaticSpec()).neck_angle_degrees == 0.0
     with pytest.raises(NeckGeometryError, match="buries a heel adjuster"):
@@ -225,5 +225,4 @@ def test_a_one_piece_guitar_is_cut_whole_with_its_neck() -> None:
     layout = body_editor_layout({"prototype": {"neck_joint": "one_piece"}})
     assert layout["neck_through"] is None
     assert not any(polygon["name"] == "Neck pocket" for polygon in layout["polygons"])
-    with pytest.raises(NeckGeometryError, match="one-piece"):
-        replace(parameters, neck_angle=2.0).build()
+    assert replace(parameters, neck_angle=2.0).neck_angle_degrees == 0.0

@@ -9,7 +9,6 @@ import pytest
 from cncguitarwizard.backends.freecad import FreeCADScriptExporter
 from cncguitarwizard.cam import fretboard_outline_polygon
 from cncguitarwizard.cam.neck import neck_plan_polygon
-from cncguitarwizard.geometry.exceptions import NeckGeometryError
 from cncguitarwizard.geometry.neck.outline import heel_end_inset
 from cncguitarwizard.geometry.primitives import point_in_polygon
 from cncguitarwizard.presets import Prototype001Parameters
@@ -114,5 +113,7 @@ def test_a_plate_sits_clear_of_the_round_end() -> None:
 
 
 def test_a_neck_through_has_no_heel_end_to_round() -> None:
-    with pytest.raises(NeckGeometryError, match="no heel end to round"):
-        replace(ROUND, neck_joint="neck_through").neck_outline()
+    # Left square, not refused: the setting does not apply there.
+    outline = replace(ROUND, neck_joint="neck_through").neck_outline()
+
+    assert outline.heel_end_radius == 0.0

@@ -125,6 +125,7 @@ from .render.svg import (
     render_plan_view_svg,
     render_volute_view_svg,
 )
+from .setting_conditions import APPLIES_WHEN, NOT_EMPTY
 from .setting_pictures import SETTING_PICTURES
 from .workflows import Prototype001Build
 
@@ -500,7 +501,12 @@ def parameter_schema() -> dict[str, Any]:
         for; ``setting_pictures`` each setting's picture
         (``setting_pictures.SETTING_PICTURES``), ``{"view", "parts"}``: the
         view of ``setting_views`` it is drawn on and the parts picked out
-        there, the first pattern that finds one. ``locking_nut_widths``
+        there, the first pattern that finds one; ``applies_when`` the
+        settings that do anything only beside other settings' values
+        (``setting_conditions.APPLIES_WHEN``), each to its conditions, any
+        one of them the values other settings must have (``any_text``
+        standing for any text but none), the page hiding it while none
+        hold. ``locking_nut_widths``
         maps each locking nut to its width, the least ``nut_width`` it fits
         (the form widens the neck to it);
         ``neck_templates`` each neck template (``NECK_TEMPLATES``) to
@@ -547,6 +553,14 @@ def parameter_schema() -> dict[str, Any]:
             name: {"view": view, "parts": list(parts)}
             for name, (view, parts) in SETTING_PICTURES.items()
         },
+        "applies_when": {
+            name: [
+                {other: list(values) for other, values in condition.items()}
+                for condition in conditions
+            ]
+            for name, conditions in APPLIES_WHEN.items()
+        },
+        "any_text": NOT_EMPTY,
         "styles": {
             key: {"label": style.label, "instruments": list(style.instruments)}
             for key, style in STYLES.items()

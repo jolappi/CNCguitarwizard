@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache">
 <!-- This page's stamp, set by tools/build_site.py (see the loader below). -->
-<meta name="cgw-page" content="440abcef3282">
+<meta name="cgw-page" content="5ebe9dfbe8c7">
 <title>CNCguitarwizard</title>
 <script>
   // Dark mode, the default; light when chosen in this browser (or
@@ -249,6 +249,9 @@
     #body-editor-options { grid-template-columns: repeat(2, auto minmax(0, 1fr)); max-width: 1040px; column-gap: 16px; }
   }
   .field.mirrored { display: none; }
+  /* A setting that does nothing beside the others' values (applies_when),
+     in the form and wherever a copy of it stands. */
+  .field.not-applicable, .editor-options .not-applicable { display: none !important; }
   /* While a feature is dragged it may leave the drawing (to Create NC
      file, or off the body): draw it over the page instead of clipping it. */
   .body-editor svg.dragging { overflow: visible; position: relative; z-index: 5; }
