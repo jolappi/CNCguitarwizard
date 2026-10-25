@@ -75,6 +75,43 @@ def stroke_outlines(
         for i in range(columns)
     ]
 
+    loops = level_loops(level, left, bottom, cell, tolerance)
+    # Holes (a loop inside another) are filled: only the outer ones stay.
+    outer = [
+        loop
+        for loop in loops
+        if not any(
+            other is not loop and point_in_polygon(loop[0], other) for other in loops
+        )
+    ]
+    return tuple(
+        loop if _area(loop) > 0.0 else tuple(reversed(loop))
+        for loop in sorted(outer, key=lambda loop: -abs(_area(loop)))
+    )
+
+
+def level_loops(
+    level: Sequence[Sequence[float]],
+    left: float,
+    bottom: float,
+    cell: float,
+    tolerance: float,
+) -> list[tuple[Point2D, ...]]:
+    """Return the closed loops where a grid's ``level`` crosses nought.
+
+    Marching squares: ``level[i][j]`` is the value at ``(left + i * cell,
+    bottom + j * cell)``, negative inside; each crossing is placed along
+    its cell's edge by the values either end, a saddle decided by its
+    cell's middle, and each loop thinned to its corners within
+    ``tolerance``. The grid's edge must lie outside. Holes (loops inside
+    others) are among the loops; each starts from its first edge in the
+    grid's order, so the same grid always gives the same loops.
+    """
+    columns, rows = len(level), len(level[0])
+
+    def at(i: int, j: int) -> Point2D:
+        return Point2D(left + i * cell, bottom + j * cell)
+
     def crossing(key: tuple[str, int, int]) -> Point2D:
         kind, i, j = key
         a = level[i][j]
@@ -123,7 +160,7 @@ def stroke_outlines(
     visited: set[tuple[str, int, int]] = set()
     # Each loop from its first edge in the grid's order, never a set's
     # (whose order changes from run to run): where a loop starts decides
-    # how it is thinned, so the same strokes give the same outline.
+    # how it is thinned, so the same grid gives the same loops.
     for start in links:
         if start in visited:
             continue
@@ -136,19 +173,8 @@ def stroke_outlines(
             following = links[current]
             nxt = following[0] if following[0] != previous else following[1]
             previous, current = current, nxt
-        loops.append(_thinned([crossing(key) for key in loop], tolerance))
-    # Holes (a loop inside another) are filled: only the outer ones stay.
-    outer = [
-        loop
-        for loop in loops
-        if not any(
-            other is not loop and point_in_polygon(loop[0], other) for other in loops
-        )
-    ]
-    return tuple(
-        loop if _area(loop) > 0.0 else tuple(reversed(loop))
-        for loop in sorted(outer, key=lambda loop: -abs(_area(loop)))
-    )
+        loops.append(thinned_loop([crossing(key) for key in loop], tolerance))
+    return loops
 
 
 def _segment_distance(point: Point2D, a: Point2D, b: Point2D) -> float:
@@ -170,7 +196,7 @@ def _area(points: Sequence[Point2D]) -> float:
     )
 
 
-def _thinned(points: list[Point2D], tolerance: float) -> tuple[Point2D, ...]:
+def thinned_loop(points: Sequence[Point2D], tolerance: float) -> tuple[Point2D, ...]:
     """Return a closed loop with the points it can do without left out.
 
     Douglas-Peucker on the loop split at its two points furthest apart.

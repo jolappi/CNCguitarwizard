@@ -25,7 +25,7 @@ from .spline import (
     moved,
     open_catmull_rom,
 )
-from .stroke_outline import stroke_outlines
+from .stroke_outline import level_loops, stroke_outlines, thinned_loop
 from .surface_mesh import QuadFace, SurfaceMesh
 from .vector2d import Vector2D
 
@@ -50,10 +50,12 @@ __all__ = [
     "closed_catmull_rom",
     "drawn_points",
     "drawn_polygon",
+    "level_loops",
     "moved",
     "nudge_inward",
     "open_catmull_rom",
     "point_in_polygon",
     "rounded_polygon_points",
     "stroke_outlines",
+    "thinned_loop",
 ]
