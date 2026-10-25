@@ -7875,6 +7875,7 @@ class Prototype001Parameters:
             ),
             cap_thickness=self.cap_thickness,
             core_cavities=(*body_parts.wiring.core_channels, *body_parts.chambers),
+            bridge_footprint=body_parts.bridge_footprint,
         )
         return Prototype001Geometry(
             outline,

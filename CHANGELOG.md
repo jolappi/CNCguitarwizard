@@ -1754,6 +1754,16 @@
 
 ### Fixed
 
+- The quick 3D model's bridge drew a plate across the scale line whatever
+  the bridge: a Kahler 7300's lay over the bridge pickup, ahead of its own
+  plate. Each is drawn from what it leaves on the body now: a Kahler's or
+  a headless bridge's own plate (`BodySolid.bridge_footprint`), a Floyd
+  Rose's over its recess, a hardtail's over its screws and string holes
+  (its strings into them), a Tune-o-matic's bar on its posts and its stop
+  tailpiece on its studs (the strings on to it); a plate on forward under
+  its saddles, the unit down in its own routes (a Kahler's baseplate in
+  its cutout, a Floyd Rose's block in its route).
+
 - A drawn arm contour, belly cut or leg contour whose line meets the edge
   at a slant stopped there as a wall: the Stratocaster's arm contour,
   its line turning round onto the tail, ended 4.8 mm deep at the tail's

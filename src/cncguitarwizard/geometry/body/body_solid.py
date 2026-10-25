@@ -175,6 +175,9 @@ class BodySolid:
             glued onto the core under it; ``0`` for a body of one piece.
             Every feature is cut through both as through one; only the
             ``core_cavities`` are the core's own.
+        bridge_footprint: What the bridge's own plate covers on the top
+            past its routes (a Kahler's, a headless bridge's), or empty:
+            the bought bridge, drawn, not cut.
         core_cavities: Routes into the core's top, cut before the cap is
             glued on and hidden under it (wire channels, chambers), each
             ``depth`` deep from the cap's underside; they must leave wood
@@ -229,6 +232,7 @@ class BodySolid:
     checked: bool = True
     cap_thickness: float = 0.0
     core_cavities: tuple[Cavity, ...] = ()
+    bridge_footprint: tuple[Point2D, ...] = ()
 
     def __post_init__(self) -> None:
         """Cross-check every cavity against the slab and outline bounds."""

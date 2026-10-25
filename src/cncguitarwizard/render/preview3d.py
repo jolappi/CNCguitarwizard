@@ -96,6 +96,17 @@ _PICKUP_RISE = 6.0
 """A pickup's top over the pickguard (or the top, without one)."""
 _KNOB = (12.5, 11.0, 17.0)
 """A knob's radius at its foot and at its top, and its height."""
+_PLATE_THICKNESS = 3.0
+"""A bridge's plate over the top."""
+_SADDLE_HEIGHT = 2.5
+"""A Tune-o-matic's saddles over its bar."""
+_TAILPIECE_HEIGHT = 12.0
+"""A stop tailpiece's bar's top over the top."""
+_TAILPIECE_RADIUS = 6.0
+"""A stop tailpiece's bar's radius."""
+_BLOCK_DEPTH = 40.0
+"""How far a bridge's unit reaches down into its route, at most (a Floyd
+Rose's block, through to its springs' cavity)."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -874,8 +885,9 @@ def _bridge_details(
     geometry: Prototype001Geometry, parameters: Prototype001Parameters
 ) -> dict[str, list[_Piece]]:
     """The strings from their tuners over the nut to the saddles, the action
-    set over the frets on the neck (and tilted with it); a bridge plate on
-    the top beneath the saddles."""
+    set over the frets on the neck (and tilted with it), on to a stop
+    tailpiece or into string-through holes; the bridge drawn from what it
+    leaves on the body (``_bridge_pieces``)."""
     surface = geometry.fretboard_surface
     body = geometry.body
     tilt = _Tilt(*geometry.neck_tilt)
@@ -884,8 +896,8 @@ def _bridge_details(
     nut_lean, bridge_lean = surface.skew.at(0.0), surface.skew.at(scale)
     frets = parameters.fret_height
     posts = _posts_of_strings(geometry, count)
-    strings: list[_Piece] = []
-    saddles: list[tuple[Vector, float]] = []
+    tail = _string_anchors(body)
+    paths: list[tuple[list[Vector], float]] = []
     for string in range(1, count + 1):
         side = parameters.bass_sign * ((count + 1) / 2.0 - string)
         nut_y = side * parameters.nut_string_spacing
@@ -903,33 +915,199 @@ def _bridge_details(
             _board_top(surface, bridge_y) + frets + _ACTION_AT_SADDLES + radius,
         )
         path = [tilt(*point) for point in (wound, back, front, saddle)]
-        strings += [
-            _cylinder_piece(a, _unit(_minus(b, a)), radius, radius, _length(a, b), 6)
-            for a, b in zip(path, path[1:], strict=False)
-        ]
-        saddles.append((path[-1], radius))
-    # The plate across beneath the saddles, on the top.
-    middle_x = sum(end[0] for end, _ in saddles) / len(saddles)
-    spread = (count - 1) / 2.0 * parameters.bridge_string_spacing + 9.0
-    corners = [
-        Point2D(middle_x + dx + bridge_lean * dy, dy)
-        for dx in (-14.0, 22.0)
-        for dy in (-spread, spread)
+        anchor = tail(path[-1])
+        paths.append(([*path, *((anchor,) if anchor is not None else ())], radius))
+    strings = [
+        _cylinder_piece(a, _unit(_minus(b, a)), radius, radius, _length(a, b), 6)
+        for path, radius in paths
+        for a, b in zip(path, path[1:], strict=False)
     ]
-    heights = [-body.top_drop_at(p.x, p.y) for p in (*corners, Point2D(middle_x, 0.0))]
-    floor, plate = min(heights) - 1.0, max(heights) + 2.5
-    bridge = [
-        _box_piece(
-            middle_x - 14.0, middle_x + 22.0, -spread, spread, floor, plate, bridge_lean
-        )
+    saddles = [(path[3], radius) for path, radius in paths]
+    return {
+        "Bridge": _bridge_pieces(body, saddles, parameters, bridge_lean),
+        "Strings": strings,
+    }
+
+
+def _string_anchors(body: BodySolid) -> Callable[[Vector], Vector | None]:
+    """Return where a string from a saddle ends past it: on a stop
+    tailpiece's bar, in a string-through hole on the top (the nearest
+    across), or nowhere further (a bridge that holds its strings)."""
+    studs = [h for h in body.holes if h.name.startswith("Tailpiece stud")]
+    through = [h for h in body.holes if h.name.startswith("String ")]
+
+    def surface(x: float, y: float) -> float:
+        return -body.top_drop_at(x, y)
+
+    if studs:
+        x = sum(h.center_x for h in studs) / len(studs)
+        z = max(surface(h.center_x, h.center_y) for h in studs) + _TAILPIECE_HEIGHT
+        return lambda saddle: (x, saddle[1], z + _TAILPIECE_RADIUS)
+    if through:
+
+        def into(saddle: Vector) -> Vector:
+            hole = min(through, key=lambda h: abs(h.center_y - saddle[1]))
+            return (hole.center_x, hole.center_y, surface(hole.center_x, hole.center_y))
+
+        return into
+    return lambda saddle: None
+
+
+def _bridge_pieces(
+    body: BodySolid,
+    saddles: Sequence[tuple[Vector, float]],
+    parameters: Prototype001Parameters,
+    lean: float,
+) -> list[_Piece]:
+    """Return the bridge, drawn from what it leaves on the body: a
+    Tune-o-matic's bar on its posts and its stop tailpiece on its studs;
+    else a plate under the saddles, over the bridge's own footprint (a
+    Kahler's), its recess (a Floyd Rose's), its screws and string holes (a
+    hardtail's), or across the scale line, the unit down in its own routes
+    (a Kahler's baseplate in its cutout, a Floyd Rose's block in its
+    route); a saddle under each string."""
+    up = (0.0, 0.0, 1.0)
+
+    def surface(x: float, y: float) -> float:
+        return -body.top_drop_at(x, y)
+
+    holes = body.holes
+    posts = [h for h in holes if h.name.startswith("Bridge post")]
+    studs = [h for h in holes if h.name.startswith("Tailpiece stud")]
+    plated = [h for h in holes if h.name.startswith(("Bridge screw", "String "))]
+    recesses = [
+        c
+        for c in (*body.extra_cavities, *body.through_cavities)
+        if c.name.endswith(" recess") and "fine-tuner" not in c.name
     ]
     half = min(4.5, parameters.bridge_string_spacing / 2.0 - 0.6)
-    for (x, y, z), radius in saddles:
-        top = max(plate + 1.0, z - radius)
-        bridge.append(
-            _box_piece(x - 1.5, x + 8.5, y - half, y + half, plate - 0.5, top)
+    pieces: list[_Piece] = []
+    if posts:
+        # The bar on its posts, the saddles on it.
+        low = min(z - radius for (_, _, z), radius in saddles)
+        bar_top = low - _SADDLE_HEIGHT
+        x = sum(h.center_x for h in posts) / len(posts)
+        y0 = min(h.center_y for h in posts) - 6.0
+        y1 = max(h.center_y for h in posts) + 6.0
+        pieces.append(_box_piece(x - 5.0, x + 5.0, y0, y1, bar_top - 6.0, bar_top))
+        for post in posts:
+            foot = surface(post.center_x, post.center_y)
+            height = max(1.0, bar_top - 6.0 - foot)
+            pieces.append(
+                _cylinder_piece(
+                    (post.center_x, post.center_y, foot), up, 4.0, 4.0, height, 16
+                )
+            )
+        floor = bar_top
+    else:
+        if body.bridge_footprint:
+            outline: Sequence[Point2D] = body.bridge_footprint
+        elif recesses:
+            outline = recesses[0].outline
+        elif plated:
+            xs = [h.center_x for h in plated]
+            ys = [h.center_y for h in plated]
+            outline = _rectangle(
+                min(xs) - 6.0, max(xs) + 6.0, min(ys) - 6.0, max(ys) + 6.0
+            )
+        else:
+            middle = sum(x for (x, _, _), _ in saddles) / len(saddles)
+            spread = (len(saddles) - 1) / 2.0 * parameters.bridge_string_spacing + 9.0
+            outline = tuple(
+                Point2D(middle + dx + lean * dy, dy)
+                for dx, dy in (
+                    (-14.0, -spread),
+                    (22.0, -spread),
+                    (22.0, spread),
+                    (-14.0, spread),
+                )
+            )
+        # Under the saddles too, which may stand ahead of the plate's own
+        # footprint (a Kahler's, its cutout behind the scale line).
+        outline = _reaching(
+            outline,
+            [
+                Point2D(x + dx, y + dy)
+                for (x, y, _), _ in saddles
+                for dx in (-3.5, 10.5)
+                for dy in (-half - 2.0, half + 2.0)
+            ],
         )
-    return {"Bridge": bridge, "Strings": strings}
+        heights = [surface(p.x, p.y) for p in outline]
+        floor = max(heights) + _PLATE_THICKNESS
+        pieces.append(
+            _plate_piece(outline, 1.0, _level(min(heights) - 1.0), _level(floor))
+        )
+        # The unit down in its own routes: a Kahler's baseplate in its
+        # cutout, a Floyd Rose's block in its route.
+        for route in (*body.extra_cavities, *body.through_cavities):
+            if not route.name.startswith(
+                "Bridge baseplate"
+            ) and not route.name.endswith("block route"):
+                continue
+            xs = [p.x for p in route.outline]
+            ys = [p.y for p in route.outline]
+            centre = Point2D(sum(xs) / len(xs), sum(ys) / len(ys))
+            depth = min(route.depth, _BLOCK_DEPTH) - 1.0
+            pieces.append(
+                _plate_piece(
+                    _rectangle(
+                        min(xs) + 1.0, max(xs) - 1.0, min(ys) + 1.0, max(ys) - 1.0
+                    ),
+                    1.0,
+                    _level(surface(centre.x, centre.y) - depth),
+                    _level(floor - 0.5),
+                )
+            )
+    for (x, y, z), radius in saddles:
+        top = max(floor + 1.0, z - radius)
+        pieces.append(
+            _box_piece(x - 1.5, x + 8.5, y - half, y + half, floor - 0.5, top)
+        )
+    if studs:
+        # The stop tailpiece's bar on its studs.
+        x = sum(h.center_x for h in studs) / len(studs)
+        foot = max(surface(h.center_x, h.center_y) for h in studs)
+        for stud in studs:
+            pieces.append(
+                _cylinder_piece(
+                    (stud.center_x, stud.center_y, foot - 1.0),
+                    up,
+                    5.0,
+                    5.0,
+                    _TAILPIECE_HEIGHT + 1.0,
+                    16,
+                )
+            )
+        y0 = min(h.center_y for h in studs) - 8.0
+        y1 = max(h.center_y for h in studs) + 8.0
+        pieces.append(
+            _cylinder_piece(
+                (x, y0, foot + _TAILPIECE_HEIGHT - _TAILPIECE_RADIUS),
+                (0.0, 1.0, 0.0),
+                _TAILPIECE_RADIUS,
+                _TAILPIECE_RADIUS,
+                y1 - y0,
+                16,
+            )
+        )
+    return pieces
+
+
+def _reaching(
+    outline: Sequence[Point2D], points: Sequence[Point2D]
+) -> Sequence[Point2D]:
+    """Return ``outline``, or the rectangle round it and ``points`` where
+    any of them lies outside it."""
+    if all(point_in_polygon(point, outline) for point in points):
+        return outline
+    xs = [p.x for p in (*outline, *points)]
+    ys = [p.y for p in (*outline, *points)]
+    return _rectangle(min(xs), max(xs), min(ys), max(ys))
+
+
+def _rectangle(x0: float, x1: float, y0: float, y1: float) -> tuple[Point2D, ...]:
+    return (Point2D(x0, y0), Point2D(x1, y0), Point2D(x1, y1), Point2D(x0, y1))
 
 
 def _posts_of_strings(geometry: Prototype001Geometry, count: int) -> list[Vector]:

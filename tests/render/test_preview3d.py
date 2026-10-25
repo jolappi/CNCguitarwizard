@@ -171,9 +171,11 @@ def test_the_details_sit_where_the_design_puts_them() -> None:
 
     bridge, strings = detail_parts(geometry, STRAT, "bridge")
     assert (bridge.name, strings.name) == ("Bridge", "Strings")
-    # The strings to the scale line, held there by the saddles.
+    # The strings over the saddles at the scale line, on into the
+    # string-through holes behind them.
+    holes = [h.center_x for h in geometry.body.holes if h.name.startswith("String ")]
     reach = max(p[0] for p in points(strings))
-    assert reach == pytest.approx(surface.scale_length, abs=0.7)
+    assert reach == pytest.approx(max(holes), abs=0.7)
     assert max(p[2] for p in points(bridge)) < max(p[2] for p in points(strings))
     # The body's own details: none for a design without a pickguard.
     default = Prototype001Parameters()
@@ -181,6 +183,45 @@ def test_the_details_sit_where_the_design_puts_them() -> None:
         part.name for part in detail_parts(default.build(wired=False), default, "body")
     ]
     assert names == ["Pickups", "Knobs"]
+
+
+def test_each_bridge_is_drawn_where_its_own_parts_are() -> None:
+    from dataclasses import replace
+
+    from cncguitarwizard.geometry.body import BodySolid, HardtailSpec, TuneOMaticSpec
+
+    def bridge_and_strings(
+        parameters: Prototype001Parameters,
+    ) -> tuple[
+        BodySolid, list[tuple[float, float, float]], list[tuple[float, float, float]]
+    ]:
+        geometry = parameters.build(wired=False)
+        bridge, strings = detail_parts(geometry, parameters, "bridge")
+        return geometry.body, points(bridge), points(strings)
+
+    # A Kahler 7300 down in its baseplate's cutout, its plate over it and on
+    # forward under the saddles at the scale line (not on the bare top).
+    kahler = Prototype001Parameters()
+    body, bridge, strings = bridge_and_strings(kahler)
+    plate = body.bridge_footprint
+    (cutout,) = (
+        c for c in body.extra_cavities if c.name.startswith("Bridge baseplate")
+    )
+    assert plate
+    assert min(p[0] for p in bridge) < kahler.centre_scale - 1.5
+    assert max(p[0] for p in bridge) >= max(q.x for q in plate) - 1.0
+    assert min(p[2] for p in bridge) == pytest.approx(-cutout.depth + 1.0, abs=0.01)
+    assert max(p[0] for p in strings) == pytest.approx(kahler.centre_scale, abs=1.0)
+    # A Tune-o-matic's strings on to its stop tailpiece, a hardtail's into
+    # their holes through the body.
+    tom = replace(kahler, body_bridge=TuneOMaticSpec())
+    body, bridge, strings = bridge_and_strings(tom)
+    studs = [h.center_x for h in body.holes if h.name.startswith("Tailpiece stud")]
+    assert max(p[0] for p in strings) == pytest.approx(sum(studs) / len(studs), abs=1.0)
+    hardtail = replace(kahler, body_bridge=HardtailSpec())
+    body, bridge, strings = bridge_and_strings(hardtail)
+    holes = [h.center_x for h in body.holes if h.name.startswith("String ")]
+    assert max(p[0] for p in strings) == pytest.approx(max(holes), abs=1.0)
 
 
 def test_a_tilted_neck_is_drawn_tilted_onto_the_body() -> None:
