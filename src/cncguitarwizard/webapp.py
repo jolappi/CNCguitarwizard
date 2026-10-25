@@ -1909,11 +1909,12 @@ def heel_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         return {"error": f"{type(error).__name__}: {error}"}
     problem = None
     try:
-        geometry = parameters.build()
+        geometry = parameters.build(wired=False)
     except (CNCGuitarWizardError, TypeError, ValueError) as error:
         problem = f"{type(error).__name__}: {error}"
         try:
-            geometry = dataclasses.replace(parameters, heel_root_style="smooth").build()
+            smooth = dataclasses.replace(parameters, heel_root_style="smooth")
+            geometry = smooth.build(wired=False)
         except (CNCGuitarWizardError, TypeError, ValueError):
             return {"error": problem}
     surface = geometry.neck_surface
@@ -1972,7 +1973,7 @@ def back_view(payload: dict[str, Any], where: str = "nut") -> dict[str, Any]:
     try:
         built = Prototype001Parameters(**_coerce(payload.get("prototype", {})))
         # As drawn (right-handed), as the editors show it.
-        geometry = dataclasses.replace(built, handedness="right").build()
+        geometry = dataclasses.replace(built, handedness="right").build(wired=False)
     except (CNCGuitarWizardError, TypeError, ValueError) as error:
         return {"error": f"{type(error).__name__}: {error}"}
     surface = geometry.neck_surface
@@ -2898,7 +2899,7 @@ def part_views(payload: dict[str, Any]) -> dict[str, Any]:
     """
     try:
         parameters = Prototype001Parameters(**_coerce(payload.get("prototype", {})))
-        geometry = parameters.build()
+        geometry = parameters.build(wired=False)
     except (CNCGuitarWizardError, TypeError, ValueError) as error:
         return {"error": f"{type(error).__name__}: {error}"}
     return {

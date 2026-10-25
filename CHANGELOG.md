@@ -18,7 +18,10 @@
   a hundred times quicker (its corner found once, not at each corner
   drawn); a body's wiring is planned in little over half the time (the
   outline's edges far from a wire hole passed over at once), the same
-  holes and channels as before.
+  holes and channels as before; the drawings that show no wiring (the
+  neck's and fretboard's, the back views, the heel editor) no longer plan
+  it, `Prototype001Parameters.build(wired=False)`: three to four times
+  quicker for the back views.
 
 - Nothing is worked out or drawn again while a value is typed, only once
   it is entered (Enter, or leaving the field), so a phone no longer lags

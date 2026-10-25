@@ -4007,7 +4007,7 @@ class Prototype001Parameters:
         )
 
     def _body_layout(
-        self, outline: NeckOutline, *, check_steps: bool = True
+        self, outline: NeckOutline, *, check_steps: bool = True, wired: bool = True
     ) -> BodyLayout:
         # Checked first: the neck-bolt and string-through holes take their
         # depths from the thickness, and would otherwise be blamed for it.
@@ -4736,7 +4736,8 @@ class Prototype001Parameters:
             engraving,
             carved_top,
             stepped_top,
-            # Built only (the body editor draws no wiring).
+            # Built only, and wired (the body editor, the neck's and the
+            # back's drawings draw no wiring).
             self._wiring(
                 body_outline.points,
                 (
@@ -4755,7 +4756,7 @@ class Prototype001Parameters:
                 lowered,
                 guard,
             )
-            if self.body_wire_channels and check_steps
+            if self.body_wire_channels and check_steps and wired
             else Wiring(),
             bridge.notes,
             tuple(
@@ -7325,8 +7326,15 @@ class Prototype001Parameters:
             [index in rounded for index in range(len(outline))],
         )
 
-    def build(self) -> Prototype001Geometry:
+    def build(self, *, wired: bool = True) -> Prototype001Geometry:
         """Build and validate all geometry from this parameter set.
+
+        Args:
+            wired: Whether to plan the body's wire channels and holes
+                (``body_wire_channels``). ``False`` for a drawing that shows
+                none (the neck's, the back's, the heel editor's): the
+                wiring is most of a plain body's build, and on a phone
+                each drawing waited for it.
 
         Returns:
             Complete backend-independent Prototype001 geometry.
@@ -7534,7 +7542,7 @@ class Prototype001Parameters:
         # The body first: a neck-through neck's back falls to the body's
         # thickness where the body begins.
         headstock_plan, tuner_layout = self.headstock_design()
-        body_parts = self._body_layout(outline)
+        body_parts = self._body_layout(outline, wired=wired)
         through_parts = self.neck_through_parts(outline, headstock_plan, body_parts)
         heel_depth = self.heel_thickness
         heel_transition = self.heel_root_length

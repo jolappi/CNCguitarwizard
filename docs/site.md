@@ -998,7 +998,9 @@ it is worked out and drawn once, when its page is shown (`showPage`
 fires a `resize`). A change made on the instrument's page no longer
 works out the body's, the headstock's, the heel's and the inlays' editors
 and both back views unseen, seconds of Python on a phone; nor does
-opening the page.
+opening the page. The drawings that show no wiring (`back_view`,
+`heel_editor_layout`, `part_views`) build the design without it
+(`build(wired=False)`), the body's wiring being most of a plain build.
 
 ## Tip of the day
 

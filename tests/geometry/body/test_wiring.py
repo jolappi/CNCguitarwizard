@@ -330,6 +330,22 @@ def test_the_body_editor_lays_no_wiring_out() -> None:
     assert GUITAR.body_layout().wiring.holes == ()
 
 
+def test_a_drawing_without_wiring_is_built_unwired_the_neck_the_same() -> None:
+    # The neck's, the back's and the heel editor's drawings waited, on a
+    # phone, for wiring they do not show.
+    wired = GUITAR.build()
+    unwired = GUITAR.build(wired=False)
+
+    assert wired.body.wire_holes and wired.body.wire_channels == ()
+    assert unwired.body.wire_holes == () and unwired.body.wire_notes == ()
+    assert unwired.neck_surface == wired.neck_surface
+    assert unwired.headstock == wired.headstock
+    assert unwired.fret_layout == wired.fret_layout
+    assert replace(unwired.body, wire_notes=wired.body.wire_notes) == replace(
+        wired.body, wire_holes=(), epoxy_tray=unwired.body.epoxy_tray
+    )
+
+
 def test_the_switch_and_the_battery_are_wired_too() -> None:
     parameters = replace(GUITAR, body_battery_box=True)
     body = parameters.build().body

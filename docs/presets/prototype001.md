@@ -31,6 +31,11 @@ source = FreeCADScriptExporter().render_prototype001(
 )
 ```
 
+`build(wired=False)` leaves the body's wire channels and holes out
+(`body_wire_channels`), the rest the same: for a drawing that shows no
+wiring (the neck's and fretboard's, the back seen from behind, the heel
+editor's), the wiring being most of a plain body's build.
+
 ## Instrument styles
 
 Prototype001 has many settings. `presets.styles.STYLES` gathers the ones
