@@ -214,7 +214,9 @@ Building the preset creates and cross-validates:
   flat face, leaving the neck's profile with no edge and meeting the flat
   at an angle, so the flat line shows where it is drawn (a measured
   Stratocaster neck's heel and headstock fit it within 1.3% of their
-  rise; `BackTransition.share`). Empty, the lines start much as the smooth
+  rise; `BackTransition.share`). Past its ends each line runs on straight
+  across (`LINE_RUN_ON`), so the wood beside it, where a headstock flares
+  out, lies on one side of it. Empty, the lines start much as the smooth
   heel (`DEFAULT_HEEL_LINES`: the block straight across, the neck's
   profile 45 mm ahead of it at the sides and 60 mm down the middle); they
   lie between the 12th fret and the block, which stays flat (a point

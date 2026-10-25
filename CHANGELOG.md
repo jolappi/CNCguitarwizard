@@ -9,7 +9,11 @@
   flat face, with no edge at the neck line and at an angle at the flat
   line (`BackTransition.share`, the square of the way between), where it
   met both with no edge, so the flat ran on unseen past the line drawn;
-  the measured Stratocaster neck fits it three times as closely.
+  the measured Stratocaster neck fits it three times as closely. Past
+  their ends the lines run on straight across (`LINE_RUN_ON`): the wood
+  beside them, where a headstock flares out past the neck, was taken now
+  on one side of a line, now on the other, and the back kinked across the
+  flare.
 
 - The cut that frees a part always runs last, even with its tabs left: the
   body's lower half of the outline, with its tabs, is a program of its own

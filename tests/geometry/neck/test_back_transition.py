@@ -67,6 +67,23 @@ def test_the_back_turns_from_the_neck_line_to_the_flat_one() -> None:
     assert transition.span == (350.0, 410.0)
 
 
+def test_past_their_ends_the_lines_run_on_straight_across() -> None:
+    # Regression: wood beside a line's end (where a headstock flares out
+    # past the neck) was taken now on one side of it, now on the other,
+    # and the back kinked across the flare.
+    transition = heel()
+
+    # Past the flat line's end at 410: the block's, past the neck line's
+    # end at 350: the neck's, however far out.
+    assert transition.share(412.0, 45.0) == 1.0
+    assert transition.share(412.0, -80.0) == 1.0
+    assert transition.share(345.0, 60.0) == 0.0
+    # Between them, out there, it turns as between two lines straight
+    # across: halfway from 350 to 410, a quarter turned.
+    assert transition.share(380.0, 45.0) == pytest.approx(0.25)
+    assert transition.share(380.0, 60.0) == pytest.approx(0.25)
+
+
 def test_a_transition_that_cannot_be_shaped_is_refused() -> None:
     lines = heel()
     with pytest.raises(NeckGeometryError, match="two points"):

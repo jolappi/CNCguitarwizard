@@ -20,6 +20,12 @@ from ..exceptions import NeckGeometryError
 from ..primitives import DrawnPoint, Point2D
 from .drawn_lines import nearest, side_toward
 
+LINE_RUN_ON = 100.0
+"""How far past its ends a drawn line runs on straight across, in mm:
+further than any headstock flares beside the neck, so a point out there
+still lies on one side of each line (it was taken now on one side, now on
+the other, and the back kinked across the flare)."""
+
 DEFAULT_HEEL_LINES: dict[str, tuple[tuple[float, float], ...]] = {
     "flat": ((0.0, 0.0), (0.0, 1.1)),
     "neck": ((60.0, 0.0), (57.0, 0.4), (51.0, 0.7), (45.0, 1.1)),
@@ -80,6 +86,11 @@ class BackTransition:
     block_sides: tuple[float, float] = field(init=False, repr=False, compare=False)
     """Which side of each line (flat, neck) the block is: the sign of
     ``nearest``'s side there."""
+    runs: tuple[tuple[Point2D, ...], tuple[Point2D, ...]] = field(
+        init=False, repr=False, compare=False
+    )
+    """Each line (flat, neck) run on ``LINE_RUN_ON`` straight across past
+    its ends, as ``share`` reads it."""
 
     def __post_init__(self) -> None:
         """Reject a transition that cannot be shaped; find which side of
@@ -100,6 +111,7 @@ class BackTransition:
                 side_toward(self.neck, self.toward_block),
             ),
         )
+        object.__setattr__(self, "runs", (_run_on(self.flat), _run_on(self.neck)))
         if any(self.depth_at(x) <= 0.0 for x in self.span):
             raise NeckGeometryError(
                 "A drawn transition's block must lie below the glue face: its "
@@ -129,14 +141,26 @@ class BackTransition:
         """
         point = Point2D(x, y)
         flat_side, neck_side = self.block_sides
-        to_flat, side = nearest(point, self.flat)
+        flat, neck = self.runs
+        to_flat, side = nearest(point, flat)
         if side * flat_side >= 0.0:
             return 1.0
-        to_neck, side = nearest(point, self.neck)
+        to_neck, side = nearest(point, neck)
         if side * neck_side <= 0.0:
             return 0.0
         toward_flat = to_neck / (to_neck + to_flat)
         return toward_flat * toward_flat
+
+
+def _run_on(line: tuple[Point2D, ...]) -> tuple[Point2D, ...]:
+    """Return ``line`` run on ``LINE_RUN_ON`` straight across past each end."""
+    first, last = line[0], line[-1]
+    out = LINE_RUN_ON if last.y >= first.y else -LINE_RUN_ON
+    return (
+        Point2D(first.x, first.y - out),
+        *line,
+        Point2D(last.x, last.y + out),
+    )
 
 
 def default_transition_lines(
