@@ -1236,6 +1236,7 @@ def plan_neck_machining(
                             x_range=cut_x,
                             y_range=carve_y,
                             step_over=parameters.finishing_step_over,
+                            top=0.0,
                         ),
                     ),
                     (
@@ -1273,6 +1274,9 @@ def plan_neck_machining(
             f"{prefix}_back_finish",
             f"{what} back - ball-nose finishing",
             (
+                # The heel's and a flat headstock's backs where the blank's
+                # planed back is theirs are left as planed: traced only where
+                # they lie below it (a block deeper than the other).
                 raster_finish(
                     f"{what} back finishing",
                     offset_sampled_surface(sampled, ball),
@@ -1280,6 +1284,7 @@ def plan_neck_machining(
                     x_range=cut_x,
                     y_range=carve_y,
                     step_over=parameters.finishing_step_over,
+                    top=0.0,
                 ),
             ),
             (

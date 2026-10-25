@@ -397,3 +397,38 @@ def test_a_laminated_neck_cuts_its_headstock_with_the_ball_nose_too(geometry) ->
     assert len(plan.preview_outlines) == len(plan.setups)
     with pytest.raises(ToolpathError, match="back_cut"):
         NeckMachiningParameters(back_cut="flat")  # type: ignore[arg-type]
+
+
+def _traced_on_the_face(path) -> float:  # type: ignore[no-untyped-def]
+    """Return how far a toolpath feeds along the blank's face (Z 0), in mm."""
+    return sum(
+        math.hypot(b.x - a.x, b.y - a.y)
+        for a, b in zip(path.moves, path.moves[1:], strict=False)
+        if not b.rapid and abs(a.z) < 0.01 and abs(b.z) < 0.01
+    )
+
+
+def test_a_heel_and_headstock_on_the_planed_back_are_left_as_planed() -> None:
+    # Regression: the ball nose traced the heel's and the headstock's flat
+    # backs though they were the blank's planed back, as a Stratocaster's
+    # both are (one plane, 18.6 mm below the glue face).
+    from cncguitarwizard.presets.styles import STYLES
+
+    style = STYLES["stratocaster"]
+    strat = Prototype001Parameters(**style.prototype_values(style.instruments[0]))
+    for back_cut in ("rough_and_finish", "ball"):
+        plan = plan_neck_machining(
+            strat.build(wired=False), NeckMachiningParameters(back_cut=back_cut)
+        )
+        assert plan.stock_thickness == pytest.approx(18.6)
+        for setup in plan.setups:
+            if setup.name.startswith("Neck_back") and "outline" not in setup.name:
+                for path in setup.toolpaths:
+                    assert _traced_on_the_face(path) < 10.0, (back_cut, path.name)
+    # A headstock back above the heel's (the plane): milled down to it.
+    higher = replace(strat, headstock_face_drop=0.0, headstock_thickness=15.0)
+    plan = plan_neck_machining(higher.build(wired=False), NeckMachiningParameters())
+    assert plan.back_finish is not None
+    finish = plan.back_finish.toolpaths[0]
+    headstock = [m for m in finish.moves if not m.rapid and m.z < -3.0]
+    assert headstock and _traced_on_the_face(finish) < 10.0

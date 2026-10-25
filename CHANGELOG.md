@@ -4,6 +4,14 @@
 
 ### Changed
 
+- A neck's heel and flat headstock left as planed where they are the
+  blank's planed back: the back's finishing ran the ball nose over them
+  too (and the roughing skimmed hairline slivers along the heel's edge),
+  though nothing there was below the blank's face. It now finishes only
+  where the back lies below it (`raster_finish`'s `top`) and roughs only
+  where more than 0.01 mm is left (`REST_TOLERANCE`); a heel or headstock
+  back standing higher than the other is still milled down to it.
+
 - The Stratocaster as on the original. Its neck's back runs round into the
   heel and the headstock as the user's reference Stratocaster neck does
   (`StratocasterNeck/Neck.step`): the heel 18.6 mm deep, the headstock

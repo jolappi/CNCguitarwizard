@@ -215,6 +215,7 @@ def raster_finish(
     sample_spacing: float = 1.0,
     tolerance: float = 0.002,
     rest: OffsetGrid | None = None,
+    top: float | None = None,
 ) -> Toolpath:
     """Follow the offset surface with parallel passes along X.
 
@@ -226,7 +227,10 @@ def raster_finish(
     tip surface over the same part), a pass runs only where it takes off
     more than ``REST_TOLERANCE`` below it, a sample on into the rest at
     either end; between its runs the tool goes over at the safe height
-    (the rest may stand higher than either end: a plateau).
+    (the rest may stand higher than either end: a plateau). With a
+    ``top``, the blank's own face (its Z), likewise below it: where the
+    surface is the planed face (a neck's heel and flat headstock back,
+    level with the blank's back), it is left as planed, not traced.
     """
     ys = _steps(y_range[0], y_range[1], step_over)
     builder = _builder(name, tool)
@@ -237,14 +241,17 @@ def raster_finish(
             xs.reverse()
         forward = not forward
         tips = [(x, grid.tip_at(x, y)) for x in xs]
-        if rest is None:
+        if rest is None and top is None:
             runs = [tips]
         else:
-            runs = _runs_below(tips, [rest.tip_at(x, y) for x in xs])
+            left = [math.inf if rest is None else rest.tip_at(x, y) for x in xs]
+            if top is not None:
+                left = [min(value, top) for value in left]
+            runs = _runs_below(tips, left)
         for run in runs:
             points = _simplify(run, tolerance)
             start_x, start_z = points[0]
-            if not builder.positioned or rest is not None:
+            if not builder.positioned or rest is not None or top is not None:
                 builder.rapid_to(start_x, y)
                 builder.rapid_down_to(start_z)
                 builder.plunge_to(start_z)
@@ -406,11 +413,13 @@ def _segments(
     tips: list[float],
     previous_level: float,
 ) -> list[list[tuple[float, float]]]:
-    """Split a pass into runs where material remains below ``previous_level``."""
+    """Split a pass into runs where material remains below ``previous_level``:
+    more than ``REST_TOLERANCE`` (a hair's skim, beside a flat as high as
+    the blank's face, is not cut)."""
     segments: list[list[tuple[float, float]]] = []
     current: list[tuple[float, float]] = []
     for x, tip in zip(xs, tips, strict=True):
-        if tip < previous_level - 1e-6:
+        if tip < previous_level - REST_TOLERANCE:
             current.append((x, tip))
         elif current:
             segments.append(current)
