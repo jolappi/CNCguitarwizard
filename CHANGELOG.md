@@ -16,7 +16,9 @@
   at every change made elsewhere nor on opening the page; the back seen
   from behind and above (the volute's, the heel's), once lofted, is drawn
   a hundred times quicker (its corner found once, not at each corner
-  drawn).
+  drawn); a body's wiring is planned in little over half the time (the
+  outline's edges far from a wire hole passed over at once), the same
+  holes and channels as before.
 
 - Nothing is worked out or drawn again while a value is typed, only once
   it is entered (Enter, or leaving the field), so a phone no longer lags

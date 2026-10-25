@@ -332,6 +332,11 @@ class _Planner:
         self.back_at = back_at
         self._links: dict[tuple[int, int], _Link | None] = {}
         self._outline_edges = _edges(outline)
+        # Each edge's box, to pass over at once the edges far from a hole.
+        self._outline_edge_boxes = [
+            (min(c.x, d.x), min(c.y, d.y), max(c.x, d.x), max(c.y, d.y))
+            for c, d in self._outline_edges
+        ]
         self._bounds = {
             id(polygon): _bounds(polygon)
             for space in spaces
@@ -458,9 +463,17 @@ class _Planner:
         steps = max(2, math.ceil(gap / _SAMPLE))
         along = [gap * k / steps for k in range(steps + 1)]
         points = [Point2D(p0.x + ux * s, p0.y + uy * s) for s in along]
+        # Clear of the body's edge: an edge whose box lies further off than
+        # the wall needs no closer look.
+        wall = radius + WIRE_WALL
+        low_x, high_x = min(p0.x, p1.x) - wall, max(p0.x, p1.x) + wall
+        low_y, high_y = min(p0.y, p1.y) - wall, max(p0.y, p1.y) + wall
         if not point_in_polygon(p0, self.outline) or any(
-            _segment_distance(p0, p1, c, d) < radius + WIRE_WALL
-            for c, d in self._outline_edges
+            _segment_distance(p0, p1, c, d) < wall
+            for (c, d), (x0, y0, x1, y1) in zip(
+                self._outline_edges, self._outline_edge_boxes, strict=True
+            )
+            if x1 >= low_x and x0 <= high_x and y1 >= low_y and y0 <= high_y
         ):
             return None
         # The faces over and under the way (a carve, a contour), every
@@ -626,17 +639,26 @@ def _closest_points(
     """Return the nearest pair of points on two outlines (``None`` if they meet)."""
     if _crosses(a, b) or point_in_polygon(a[0], b) or point_in_polygon(b[0], a):
         return None
-    best: tuple[float, Point2D, Point2D] | None = None
+    # As _foot works it out, in plain numbers: a point made for each of the
+    # many pairs took most of a body's build.
+    best: tuple[float, Point2D, float, float, bool] | None = None
     for first, second, swap in ((a, b, False), (b, a, True)):
+        edges = [(c.x, c.y, d.x - c.x, d.y - c.y) for c, d in _edges(second)]
         for point in first:
-            for c, d in _edges(second):
-                foot = _foot(point, c, d)
-                distance = math.dist(_xy(point), _xy(foot))
+            px, py = point.x, point.y
+            for cx, cy, dx, dy in edges:
+                length = dx * dx + dy * dy
+                t = 0.0 if length == 0.0 else ((px - cx) * dx + (py - cy) * dy) / length
+                t = max(0.0, min(1.0, t))
+                fx, fy = cx + dx * t, cy + dy * t
+                distance = math.dist((px, py), (fx, fy))
                 if best is None or distance < best[0]:
-                    best = (distance, foot, point) if swap else (distance, point, foot)
+                    best = (distance, point, fx, fy, swap)
     if best is None or best[0] < 1e-6:
         return None
-    return best[1], best[2]
+    _, point, fx, fy, swap = best
+    foot = Point2D(fx, fy)
+    return (foot, point) if swap else (point, foot)
 
 
 def _last_exit(
