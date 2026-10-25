@@ -182,7 +182,10 @@ class NeckBackSurface:
             if self.nut_transition_thickness is None
             else self.nut_transition_thickness
         )
-        if (
+        # A drawn root takes the smooth transition's place: the back runs
+        # into the headstock's own back plane, however thin its face drop
+        # leaves the headstock (a Stratocaster's).
+        if self.root_drawn is None and (
             not math.isfinite(transition_thickness)
             or transition_thickness < self.first_fret_thickness
         ):

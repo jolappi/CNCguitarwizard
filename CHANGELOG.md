@@ -4,6 +4,17 @@
 
 ### Changed
 
+- The Stratocaster as on the original. Its neck's back runs round into the
+  heel and the headstock as the user's reference Stratocaster neck does
+  (`StratocasterNeck/Neck.step`): the heel 18.6 mm deep, the headstock
+  14.3 mm thick with its face 4.3 mm below the glue face (over 14 mm), so
+  its back lies 3.9 mm below the neck's, and both transitions drawn
+  (`heel_root_style`, `headstock_root_style` "drawn"), their lines fitted
+  to the reference's back (within 0.45 mm rms); another neck template
+  loaded after it takes none of these (`NECK_TEMPLATE_RESETS`). A drawn
+  root no longer asks for a headstock as thick as the neck at the first
+  fret: the back runs into the headstock's own back plane.
+
 - A drawn heel or headstock root shows its flat line in the model: the
   back turns from the neck's profile into the block as a carve meets a
   flat face, with no edge at the neck line and at an angle at the flat

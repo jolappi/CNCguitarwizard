@@ -169,6 +169,8 @@ STYLES: dict[str, InstrumentStyle] = {
             "body_pickguard": True,
             "body_jack": "oval",
             "body_neck_plate": "plate",
+            # The heel as deep as the reference neck's (see STRATOCASTER_NECK).
+            "heel_thickness": 18.6,
             "body_arm_contour_depth": 10.0,
             # Its belly cut from the bass horn's root back to the waist,
             # deepest there, as on the original (not out along the horn).

@@ -8169,14 +8169,70 @@ STRATOCASTER_NECK: dict[str, Any] = {
     "headstock_style": "6_inline",
     "headstock_outline": "drawn",
     # A modern C neck, 20.8 mm deep at the first fret and 22.1 at the
-    # twelfth (the fretboard's 6 mm in them), and a 15 mm headstock with
-    # its face level with the fretboard's glue face, as on the original:
-    # the back runs straight from the neck onto the headstock's, not down
-    # a step to it.
+    # twelfth (the fretboard's 6 mm in them). Its heel and its headstock
+    # keep the blank's flat back, as the user's reference Stratocaster
+    # neck (StratocasterNeck/Neck.step) does: the heel 18.6 mm deep (the
+    # Stratocaster style's heel_thickness), the headstock 14.3 mm thick,
+    # its face falling 4.3 mm below the glue face over 14 mm behind the
+    # nut's seat, so its back lies 3.9 mm below the neck's. The neck's back
+    # runs round into each as the reference's does (drawn transitions,
+    # their lines fitted to its back): into the heel's block from 66 mm
+    # ahead of it, its flat from 49 mm ahead down the middle and 26 mm at
+    # the sides; into the headstock's back from 13 mm ahead of the nut,
+    # its flat from just behind the nut down the middle and 14 mm behind
+    # it at the sides.
     "first_fret_thickness": 20.8,
     "twelfth_fret_thickness": 22.1,
-    "headstock_thickness": 15.0,
-    "headstock_face_drop": 0.0,
+    "heel_root_style": "drawn",
+    "heel_root_flat_points": (
+        (48.6, 0.0),
+        (48.4, 4.0),
+        (45.9, 8.0),
+        (42.6, 12.0),
+        (38.9, 16.0),
+        (34.6, 20.0),
+        (32.4, 22.0),
+        (29.9, 24.0),
+        (25.5, 26.0),
+        (19.0, 30.8),
+    ),
+    "heel_root_neck_points": (
+        (65.5, 0.0),
+        (65.6, 8.0),
+        (66.4, 12.0),
+        (67.1, 16.0),
+        (68.6, 20.0),
+        (69.4, 22.0),
+        (71.1, 24.0),
+        # Past the heel's side; short of the 12th fret even with the block
+        # where a neck-through body begins.
+        (71.5, 30.8),
+    ),
+    "headstock_thickness": 14.3,
+    "headstock_face_drop": 4.3,
+    "headstock_face_transition": 14.0,
+    "headstock_root_style": "drawn",
+    "headstock_root_flat_points": (
+        (0.4, 0.0),
+        (1.4, 4.0),
+        (3.6, 8.0),
+        (6.6, 12.0),
+        (10.4, 16.0),
+        (11.9, 18.0),
+        (12.9, 20.0),
+        (13.7, 21.0),
+        (14.8, 23.0),
+        (16.8, 26.0),
+    ),
+    "headstock_root_neck_points": (
+        (-13.0, 0.0),
+        (-12.6, 8.0),
+        (-12.6, 12.0),
+        (-11.9, 16.0),
+        (-9.4, 18.0),
+        (-3.1, 20.0),
+        (2.0, 23.0),
+    ),
     # The posts 22.5 mm apart from 51 mm, as on the original; they follow
     # the strings, so the tuner edge runs straight along them the edge
     # offset out (a little wider than the original's) and round the last
@@ -8769,6 +8825,14 @@ still be moved to the headstock afterwards)."""
 NECK_TEMPLATE_RESETS: frozenset[str] = frozenset(
     {
         "neck_heel_end",
+        "heel_root_style",
+        "heel_root_flat_points",
+        "heel_root_neck_points",
+        "headstock_face_drop",
+        "headstock_face_transition",
+        "headstock_root_style",
+        "headstock_root_flat_points",
+        "headstock_root_neck_points",
         "headstock_tip_points",
         "tuner_inline_offsets",
         "tuner_hole_points",
@@ -8781,10 +8845,11 @@ NECK_TEMPLATE_RESETS: frozenset[str] = frozenset(
         "truss_rod_spoke_wheel",
     }
 )
-"""The tuner and tip settings a neck template's outline is drawn round, and
-the heel's end: loading a template puts back the defaults of those it does
-not set, so none is left over from another (an Explorer's row of posts
-under a Telecaster's outline, a Stratocaster's round heel on a Gibson)."""
+"""The tuner and tip settings a neck template's outline is drawn round, the
+heel's end and the Stratocaster's own heel, face and drawn transitions:
+loading a template puts back the defaults of those it does not set, so
+none is left over from another (an Explorer's row of posts under a
+Telecaster's outline, a Stratocaster's round heel on a Gibson)."""
 
 BODY_TEMPLATE_VALUES: dict[str, dict[str, Any]] = {
     "alexi_hexed": {

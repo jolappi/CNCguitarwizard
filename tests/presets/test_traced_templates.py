@@ -238,18 +238,25 @@ def test_given_inline_offsets_place_a_row_and_must_match_it() -> None:
         replace(base, headstock_style="7_inline").headstock_design()
 
 
-def test_the_strat_necks_back_runs_straight_onto_its_headstock() -> None:
+def test_the_strat_necks_back_runs_round_onto_its_headstock() -> None:
     # Regression: a 16 mm headstock 4 mm below the glue face under a 17 mm
     # neck made a step 7.7 mm down from the neck's back to the headstock's.
+    # As on the user's reference Stratocaster neck, the headstock's back is
+    # the heel's plane, 3.9 mm below the neck's: the back runs round down
+    # to it behind the nut, with no step.
     strat = replace(Prototype001Parameters(), **NECK_TEMPLATES["stratocaster"][1])
-    assert strat.face_drop == 0.0
+    assert strat.face_drop == pytest.approx(4.3)
     rows = strat.build().neck_surface.mesh.rows
 
     def back(x: float) -> float:
         row = min(rows, key=lambda row: abs(row[0].x - x))
         return min(point.z for point in row)
 
-    # Under the headstock, at the nut and at the first fret alike.
-    assert back(-10.0) == pytest.approx(-strat.headstock_thickness)
-    for x in (0.0, 12.0, 36.0):
-        assert back(x) == pytest.approx(back(-10.0), abs=0.3)
+    plane = strat.headstock_thickness + strat.face_drop
+    assert back(-10.0) == pytest.approx(-plane)
+    assert back(36.0) == pytest.approx(
+        -(strat.first_fret_thickness - strat.fretboard_thickness), abs=0.05
+    )
+    near = [row[0].x for row in rows if -10.0 <= row[0].x <= 36.0]
+    for a, b in zip(near, near[1:], strict=False):
+        assert abs(back(b) - back(a)) < 0.6
