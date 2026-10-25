@@ -319,9 +319,15 @@ def offset_polygon(
                     second.y + math.sin(angle) * chord_radius,
                 )
             )
+    # disc_fits for each candidate, the polygon's edges found near it
+    # through a bucket grid (thousands of candidates by hundreds of edges
+    # took a Stratocaster's build seconds).
+    edges = _EdgeGrid(points, max(distance, 1.0))
     kept: list[Point2D] = []
     for candidate in raw:
-        if not disc_fits(candidate, points, distance, inside=inward):
+        if point_in_polygon(candidate, points) != inward or edges.within(
+            candidate, distance - _EPSILON
+        ):
             continue
         if (
             kept
@@ -335,6 +341,46 @@ def offset_polygon(
     ):
         kept.pop()
     return tuple(kept) if len(kept) >= 3 else ()
+
+
+class _EdgeGrid:
+    """A closed polygon's edges bucketed on a square grid, to find those
+    near a point without measuring them all."""
+
+    def __init__(self, polygon: Sequence[Point2D], cell: float) -> None:
+        self.cell = cell
+        self.edges = list(zip(polygon, (*polygon[1:], polygon[0]), strict=True))
+        self.buckets: dict[tuple[int, int], list[int]] = {}
+        for index, (a, b) in enumerate(self.edges):
+            for key in self._keys(
+                min(a.x, b.x), min(a.y, b.y), max(a.x, b.x), max(a.y, b.y)
+            ):
+                self.buckets.setdefault(key, []).append(index)
+
+    def _keys(
+        self, low_x: float, low_y: float, high_x: float, high_y: float
+    ) -> list[tuple[int, int]]:
+        size = self.cell
+        return [
+            (column, row)
+            for column in range(math.floor(low_x / size), math.floor(high_x / size) + 1)
+            for row in range(math.floor(low_y / size), math.floor(high_y / size) + 1)
+        ]
+
+    def within(self, point: Point2D, radius: float) -> bool:
+        """Return whether any edge comes nearer ``point`` than ``radius``:
+        exactly, as every edge that near crosses the square round it."""
+        seen: set[int] = set()
+        for key in self._keys(
+            point.x - radius, point.y - radius, point.x + radius, point.y + radius
+        ):
+            for index in self.buckets.get(key, ()):
+                if index in seen:
+                    continue
+                seen.add(index)
+                if segment_distance(point, *self.edges[index]) < radius:
+                    return True
+        return False
 
 
 def _unit(start: Point2D, end: Point2D) -> tuple[float, float]:

@@ -4,6 +4,12 @@
 
 ### Changed
 
+- A pickguard's outline is offset in half the time (a Stratocaster's
+  build 1.9 s → 0.9 s): `offset_polygon` asks only the outline's edges
+  near each point whether it is far enough from them, through a bucket
+  grid (`_EdgeGrid`), not every edge; the outlines are the same to the
+  last digit (every style's geometry and toolpaths compared).
+
 - The Stratocaster's edges rounded over 7/16 in (11.1 mm), top and back,
   as a Stratocaster's usually are; its arm contour and belly cut 10.9 mm
   deep, as deep as a face is cut with that roundover running on down from
