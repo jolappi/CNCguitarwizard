@@ -63,11 +63,13 @@ def test_build_writes_gcode_and_toolpath_previews_for_every_part(
         "Neck_back_finish_6mm_ballnose.nc" in names
         and "Fretboard_slots_0.6mm_flathead.nc" in names
     )
-    # Body 5 (with the electronics program), neck 5, fretboard 5, the
-    # inlay pieces, and the control and switch cavity covers.
-    assert len(names) == 18
-    assert names[15] == "Fretboard_inlay_pieces_1mm_flathead.nc"
+    # Body 6 (with the electronics program, and the cut that frees it
+    # last), neck 5, fretboard 5, the inlay pieces, and the control and
+    # switch cavity covers.
+    assert len(names) == 19
+    assert names[16] == "Fretboard_inlay_pieces_1mm_flathead.nc"
     assert "Body_back_small_holes_3mm_flathead.nc" in names
+    assert names[5] == "Body_back_outline_6mm_flathead.nc"
     assert names[-2:] == [
         "Cover_control_cavity_3mm_flathead.nc",
         "Cover_switch_cavity_3mm_flathead.nc",
@@ -160,7 +162,7 @@ def test_stepwise_build_runs_one_stage_per_advance(tmp_path: Path) -> None:
     assert build.advance() is False
     result = build.result
     assert result.report_path.is_file()
-    assert len(result.gcode_paths) == 18
+    assert len(result.gcode_paths) == 19
     assert Prototype001Build(tmp_path / "freecad").labels[-2:] == (
         "Running FreeCAD",
         "Checking the FreeCAD model",

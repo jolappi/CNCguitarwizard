@@ -118,13 +118,13 @@ def test_the_body_backs_programs_with_the_main_tool_run_as_one() -> None:
         "Body_top",
         "Body_back_and_controls",
         "Body_back_small_holes",
+        "Body_back_outline",
     ]
     program = GCodeWriter().render(
         combined_setups(plan.setups, parameters)[2], parameters
     )
     lines = program.splitlines()
     assert lines.count("M3 S10000") == 1
-    assert "(-- Outline, lower half with tabs --)" in lines
     assert "(-- Control cavity --)" in lines
 
 

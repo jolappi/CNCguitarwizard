@@ -87,8 +87,10 @@ class BodyMachiningPlan:
         top_steps: Top-face program lowering a stepped top's bands, run
             first, or ``None``.
         back: Back-face setup after the flip: rear cavities, cover
-            recesses, rear holes, and the lower half of the outline with
-            tabs.
+            recesses and rear holes.
+        back_release: The lower half of the outline with its tabs, cut
+            once every other back program has run (``Body_back_outline``):
+            the body freed last; ``None`` without the outline.
         stock_length: Minimum blank length along X.
         stock_width: Minimum blank width along Y.
         stock_thickness: Blank thickness (the body thickness).
@@ -118,6 +120,7 @@ class BodyMachiningPlan:
     top_carve: Setup | None = None
     top_steps: Setup | None = None
     top_carve_flats: Setup | None = None
+    back_release: Setup | None = None
 
     @property
     def setups(self) -> tuple[Setup, ...]:
@@ -141,6 +144,7 @@ class BodyMachiningPlan:
             self.back_controls,
             self.back_small_holes,
             self.back_edges,
+            self.back_release,
         )
         return tuple(setup for setup in candidates if setup is not None)
 
@@ -375,8 +379,8 @@ def plan_body_machining(
             "Body back face - electronics cavities and their cover recesses",
             tuple(path for rear in electronics for path in rear_pockets(rear)),
             (
-                "Same fixture, tool and X/Y zero as Body_back (still held by the "
-                "outline's tabs).",
+                "Same fixture, tool and X/Y zero as Body_back (the outline "
+                "is cut last, in Body_back_outline).",
                 "The cover-screw spots are in Body_back_small_holes; drill the "
                 "screw pilots by hand to suit the screws.",
                 *(
@@ -399,16 +403,9 @@ def plan_body_machining(
     for hole in body.rear_holes:
         if hole not in back_small:
             back_paths.append(_drill_rear_hole(hole, body, back_frame, parameters))
-    if cut_outline:
-        back_paths.append(
-            profile(
-                "Outline, lower half with tabs",
-                back_frame.polygon(body.outline.points),
-                half_depth,
-                parameters,
-                with_tabs=True,
-            )
-        )
+    # The outline's lower half, with its tabs, is a program of its own run
+    # last of all (Body_back_outline): the cut that frees the body comes
+    # at the very end, after every other back program.
     if body.back_edge.has_binding:
         back_paths.append(
             binding_path(
@@ -420,19 +417,51 @@ def plan_body_machining(
         )
     back = Setup(
         "Body_back",
-        "Body back face - bridge cavities, rear holes, lower half of the outline",
+        "Body back face - bridge cavities, rear holes",
         tuple(back_paths),
         (
             "Flip the blank about the neck centerline onto the same two index pins.",
             "Keep X/Y zero at index pin 1; set Z zero on the (new) stock top.",
-            f"The outline finishes with {parameters.tab_count} holding tabs "
-            f"{parameters.tab_height:.1f} mm high; saw and sand them off.",
-            "The dowels stay in the waste frame, which the tabs keep attached "
-            "to the body until the end.",
+            *(
+                (
+                    "The outline's lower half is cut last, in Body_back_outline, "
+                    "after every other back program.",
+                )
+                if cut_outline
+                else ()
+            ),
         ),
         reference_points,
         fixture=BACK_FIXTURE,
     )
+    back_release: Setup | None = None
+    if cut_outline:
+        back_release = Setup(
+            "Body_back_outline",
+            "Body back face - lower half of the outline with its tabs, the body "
+            "freed last",
+            (
+                profile(
+                    "Outline, lower half with tabs",
+                    back_frame.polygon(body.outline.points),
+                    half_depth,
+                    parameters,
+                    with_tabs=True,
+                ),
+            ),
+            (
+                "Same fixture, tool and X/Y zero as Body_back: run it last, "
+                "after every other back program.",
+                f"The outline finishes with {parameters.tab_count} holding tabs "
+                f"{parameters.tab_height:.1f} mm high; saw and sand them off."
+                if parameters.tab_count
+                else "The outline is cut through: the body comes free.",
+                "The dowels stay in the waste frame, which the tabs keep attached "
+                "to the body until the end.",
+            ),
+            reference_points,
+            fixture=BACK_FIXTURE,
+        )
 
     back_small_holes: Setup | None = None
     if back_small:
@@ -491,7 +520,7 @@ def plan_body_machining(
         if optional is not None:
             previews.append(top_outline)
     previews.append(back_outline)
-    for optional in (back_controls, back_small_holes, back_edges):
+    for optional in (back_controls, back_small_holes, back_edges, back_release):
         if optional is not None:
             previews.append(back_outline)
     plan = BodyMachiningPlan(
@@ -516,6 +545,7 @@ def plan_body_machining(
         top_carve=top_carve,
         top_steps=top_steps,
         top_carve_flats=top_carve_flats,
+        back_release=back_release,
     )
     return plan if prefix == "Body" else _renamed(plan, prefix)
 
@@ -566,6 +596,7 @@ def _renamed(plan: BodyMachiningPlan, prefix: str) -> BodyMachiningPlan:
             "top_carve",
             "top_steps",
             "top_carve_flats",
+            "back_release",
         )
     }
     return replace(plan, **changes)

@@ -40,12 +40,15 @@ def to_model(point: Point2D, plan, mirror: bool) -> Point2D:  # type: ignore[no-
 
 
 def test_plan_has_its_setups_in_running_order(plan) -> None:  # type: ignore[no-untyped-def]
+    # The cut that frees the body runs last of all, after every other back
+    # program, the body held all round until then.
     assert [setup.name for setup in plan.setups] == [
         "Body_index_pins",
         "Body_top",
         "Body_back",
         "Body_back_controls",
         "Body_back_small_holes",
+        "Body_back_outline",
     ]
     assert [path.name for path in plan.index_pins.toolpaths] == [
         "Index pin 1",
@@ -73,7 +76,10 @@ def test_plan_has_its_setups_in_running_order(plan) -> None:  # type: ignore[no-
         "Neck bolt 2 ferrule",
         "Neck bolt 3 ferrule",
         "Neck bolt 4 ferrule",
-        "Outline, lower half with tabs",
+    ]
+    assert plan.back_release is not None
+    assert [path.name for path in plan.back_release.toolpaths] == [
+        "Outline, lower half with tabs"
     ]
 
 
@@ -190,7 +196,7 @@ def test_every_back_cut_stays_inside_its_own_feature(body, plan, parameters) -> 
             hole.depth,
             64,
         ).outline
-    for path in plan.back.toolpaths:
+    for path in (*plan.back.toolpaths, *plan.back_release.toolpaths):
         for move in path.moves:
             if move.rapid or move.z >= 0.0:
                 continue
@@ -198,7 +204,7 @@ def test_every_back_cut_stays_inside_its_own_feature(body, plan, parameters) -> 
             if path.name in regions:
                 assert disc_fits(point, regions[path.name], radius), path.name
             else:
-                assert path.name == "Outline, lower half with tabs"
+                assert path.name.startswith("Outline, lower half")
                 assert not point_in_polygon(point, body.outline.points)
 
 
@@ -248,10 +254,12 @@ def test_the_index_pins_follow_a_tool_wider_than_six_mm(body) -> None:  # type: 
 
 def test_both_outline_halves_overlap_at_the_mid_plane(plan, body, parameters) -> None:  # type: ignore[no-untyped-def]
     top = plan.top.toolpaths[-1]
-    back = plan.back.toolpaths[-1]
+    back = plan.back_release.toolpaths[-1]
     expected = -(body.thickness / 2.0 + parameters.profile_overlap)
 
     assert top.deepest_z() == pytest.approx(expected)
+    # The whole lower half in the last program, with its tabs.
+    assert not any("utline" in path.name for path in plan.back.toolpaths)
     assert back.deepest_z() == pytest.approx(expected)
     tab_top = expected + parameters.tab_height
     assert any(not move.rapid and abs(move.z - tab_top) < 1e-6 for move in back.moves)
@@ -328,8 +336,9 @@ def test_hardtail_plan_puts_narrow_holes_in_a_small_drill_program() -> None:
         "Body_back",
         "Body_back_controls",
         "Body_back_small_holes",
+        "Body_back_outline",
     ]
-    assert len(plan.preview_outlines) == 6
+    assert len(plan.preview_outlines) == 7
     small_names = [path.name for path in plan.top_small_holes.toolpaths]
     assert len(small_names) == 11 and "String 1 through hole" in small_names
     assert plan.top_small_holes.tool is not None
@@ -383,7 +392,11 @@ def test_the_neck_bolts_are_drilled_from_the_back() -> None:
     hole = small["Neck bolt 1 hole"]
     assert hole.deepest_z() == pytest.approx(-(24.0 + 0.5))
     assert max(move.z for move in hole.moves if not move.rapid) <= -5.0 + 1e-9
-    assert [setup.name for setup in plan.setups][-1] == "Body_back_small_holes"
+    # After the back, before the cut that frees the body.
+    assert [setup.name for setup in plan.setups][-2:] == [
+        "Body_back_small_holes",
+        "Body_back_outline",
+    ]
 
 
 @pytest.mark.parametrize("key", list(YOUR_DESIGN_TEMPLATES))

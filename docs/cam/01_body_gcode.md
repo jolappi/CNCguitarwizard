@@ -78,13 +78,14 @@ Three programs are written, in running order:
 | `Body_top.nc` | Top up, on the dowels | An epoxy tray first, over the whole top round the walls it leaves (`body_epoxy_tray_depth`), then the neck pocket (with a `neck_angle`, its floor then stepped down toward the mouth in 0.1 mm terraces), pickup routes, baseplate cutout, screw recesses, pot and switch shaft holes, a superstrat cavity's blade switch slot (through the top into its pocket), the wire channels routed under a pickguard, outline to half depth + overlap; the notes say how to drill each wire hole by hand |
 | `Body_top_small_holes.nc` | Top up, on the dowels (only when needed) | Holes narrower than the main tool — a hardtail's string-through and pilot holes, a superstrat cavity's blade switch screws, the pickguard's and humbucker frames' screw pilots — with the `small_hole_tool_diameter` drill |
 | `Body_top_controls.nc` | Top up, on the dowels (Tele or Jazz Bass plate only) | The control plate recess, then the control cavity from its floor |
-| `Body_back.nc` | Flipped, on the dowels | Any tremolo spring cavity with its cover recess and deeper block clearance pocket, the neck-bolt ferrules (none with a neck plate), a string-through bridge's string ferrules, outline to half depth + overlap with tabs |
+| `Body_back.nc` | Flipped, on the dowels | Any tremolo spring cavity with its cover recess and deeper block clearance pocket, the neck-bolt ferrules (none with a neck plate), a string-through bridge's string ferrules (the outline's lower half is cut last, in `Body_back_outline`) |
 | `Body_back_controls.nc` | Back up, on the dowels (rear control layouts or a battery box) | The control, switch and battery cover recesses and cavities, and a superstrat cavity's deeper blade switch pocket (the battery lead's and the switch's holes are drilled by hand, as `Body_top`'s notes say) |
 | `Body_top_edges.nc` | Top up, on the dowels (only with an arm contour, a top roundover or scooped grooves) | The arm contour (roughed in step-down layers, then finished with 1 mm passes), a Lion's Claw's scoops (where its grooves lift out of the wood past their full-depth part, which `Body_top` pockets: sampled every 0.5 mm, roughed in layers and finished in passes along the neck 1 mm apart) and the top roundover, with a ball nose the main tool's size |
 | `Body_top_relief.nc` | Top up, on the dowels (only with the `camo` engraving) | The camo relief's shapes, each cleared flat to its level (0.5, 1, 1.5 or 2 mm at the default depth) with a flat end mill (`relief_tool_diameter`, 3 mm) in `engraving_step_down` passes, one inside another on from that one's floor; run it before a top roundover |
 | `Body_top_engraving.nc` | Top up, on the dowels (only with `body_engraving`) | The decorative engraving with a V-bit (`engraving_tool_angle`, 60°), each line in `engraving_step_down` (1 mm) passes back and forth to `body_engraving_depth` (2 mm), the nearest line next; run it before a top roundover, while the top is flat |
 | `Body_back_small_holes.nc` | Back up, on the dowels | The neck-bolt holes (narrower than the main tool) with the `small_hole_tool_diameter` drill, from each ferrule's floor (with a neck plate, from the back face) into the neck pocket — with a plate on a heel bevel only a centre mark on the bevel each, the notes saying how to drill them by hand square to it — the cover-screw spots on the recess ledges and a strap guide's screw pilots |
 | `Body_back_edges.nc` | Back up, on the dowels (only with a belly cut, a heel relief or back roundover) | The belly cut, the heel relief and the back roundover, with the ball nose |
+| `Body_back_outline.nc` | Back up, on the dowels, last of all | The outline's lower half, to half depth + overlap, with its tabs: the cut that frees the body, always after every other program (`back_release`) |
 | `Cover_<name>.nc` | A sheet on a spoilboard | One program per cover plate (below) |
 
 The electronics are in their own programs so the body can be cut with or
@@ -177,7 +178,12 @@ cavity below them; pickup-screw recesses start at the route floor.
 **Profile.** The tool centre follows the outward offset counter-clockwise
 (part on the tool's left → climb milling). Each face cuts half the thickness
 plus the overlap, so no pass exceeds the flute length needed for a 22 mm
-cut, and the back setup's final passes lift over evenly spaced tabs.
+cut. The back's half, its final passes lifting over evenly spaced tabs, is
+a program of its own, `Body_back_outline`, run after every other back
+program (the electronics, the small holes, the edges' ball nose): the cut
+that frees a part always runs last, as the neck's and the fretboard's
+outlines do. The roundover's ball nose, run before it, cuts its own way
+down outside the edge, a little deeper each loop.
 
 ## What the G-code does not cover
 

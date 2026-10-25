@@ -4,6 +4,13 @@
 
 ### Changed
 
+- The cut that frees a part always runs last, even with its tabs left: the
+  body's lower half of the outline, with its tabs, is a program of its own
+  run after every other back program (`Body_back_outline`,
+  `BodyMachiningPlan.back_release`), no longer in `Body_back` before the
+  electronics, the small holes and the edges. The neck's and the
+  fretboard's outlines were last already.
+
 - Nothing is worked out or drawn again while a value is typed, only once
   it is entered (Enter, or leaving the field), so a phone no longer lags
   at every digit: the editors and the neck's and fretboard's drawings

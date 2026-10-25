@@ -41,6 +41,7 @@ def test_each_face_gets_a_ball_nose_program(edged) -> None:  # type: ignore[no-u
         "Body_back_controls",
         "Body_back_small_holes",
         "Body_back_edges",
+        "Body_back_outline",
     ]
     assert len(plan.preview_outlines) == len(names)
     for setup in (plan.top_edges, plan.back_edges):
