@@ -14,7 +14,7 @@ the Prototype001 manufacturing specification (TwoTrees H40, GRBL):
 | Parameter | Default | Meaning |
 | --- | --- | --- |
 | `tool_diameter` | 6.0 mm | One flat end mill for every operation |
-| `step_down` | 3.0 mm | Maximum axial depth per pass |
+| `step_down` | 0: half the tool, 3 mm | Maximum axial depth per pass; 0 is half `tool_diameter` |
 | `step_over` | 0.4 | Raster spacing as a fraction of the diameter |
 | `finishing_allowance` | 0.30 mm | Wall stock left by roughing, removed by the contour pass |
 | `feed_rate` / `plunge_rate` | 1000 / 300 mm/min | Starting values — tune to the wood |
@@ -23,11 +23,27 @@ the Prototype001 manufacturing specification (TwoTrees H40, GRBL):
 | `tab_count` / `tab_length` / `tab_height` | 6 / 8 mm / 4 mm | Holding tabs on the final profile passes |
 | `index_pin_diameter` / `index_pin_positions` | automatic, automatic | Dowels for the flip. The holes are drilled with the main tool, so a dowel is never narrower than it: `None` (empty in the form) is 6 mm, or the tool's diameter where it is wider (an 8 mm end mill takes 8 mm dowels, a 1/4 in one 1/4 in dowels); dowels given narrower than the tool are refused. `None` positions place them in the blank's waste on the centerline |
 | `index_pin_wall` / `stock_margin` / `stock_edge_margin` | 3 / 15 / 8 mm | Wood between a dowel and the nearest cut; waste around the outline; dowel distance from the blank edge |
-| `small_hole_tool_diameter` | 3 mm | Drill for holes narrower than the main tool, in their own program |
+| `small_hole_tool_diameter` / `small_hole_step_down` | 3 mm / 0: half, 1.5 mm | Drill for holes narrower than the main tool, in their own program, and the cover plates' cutter |
+| `ball_tool_diameter` / `ball_step_down` | 0: the main tool's / 0: half | The ball nose: the neck's back, the fretboard's radius and scallops, a body's edges |
 | `profile_overlap` | 0.5 mm | How far each side's outline cut passes the mid-plane |
 
 Feeds and speeds are deliberately conservative placeholders; nothing in the
 planner depends on them except the time estimate.
+
+Every cutter has its size and its depth per pass, and a depth of 0 is half
+its diameter (`depth_per_pass`): the main flat end mill, the ball nose
+(`ball_cutter`), the small end mill (`small_cutter`; the cover plates, in
+sheet, never more than 1 mm a pass), the relief end mill
+(`relief_cutter`, `relief_step_down`) and a carved top's roughing and
+flat-parts cutters (`carve_cutter`, `carve_flat_cutter`,
+`carve_step_down`, `carve_flat_step_down`). The tiny cutters keep a
+shallow depth of their own, as they snap: the fret-slot cutter
+(`fret_slot_tool_diameter` 0.6 mm, `fret_slot_step_down` 0.2) and the
+inlay cutter (`inlay_tool_diameter` 1 mm, `inlay_step_down` 0.2). The
+neck's and the fretboard's programs are cut with the same cutters, their
+sizes, depths and speeds (`with_cutter`, `with_form_settings`); their own
+blanks stay theirs. The web app sets them all on a page of their own,
+*Build › Cutters and depths*.
 
 ## Coordinate frame and the flip
 

@@ -233,9 +233,10 @@ class Prototype001Build:
 
     def _plan_neck(self) -> None:
         assert self.geometry is not None
-        # The machining form's neck_blank picks a laminated blank, its
-        # neck_back_cut the ball nose alone for the back.
-        neck = self.neck_machining
+        # The machining form's cutters cut it; its neck_blank picks a
+        # laminated blank, its neck_back_cut the ball nose alone for the
+        # back.
+        neck = self.neck_machining.with_form_settings(self.machining)
         if self.machining.neck_blank == "laminated":
             neck = replace(neck, blank="laminated")
         if self.machining.neck_back_cut == "ball":
@@ -254,8 +255,8 @@ class Prototype001Build:
 
     def _plan_fretboard(self) -> None:
         assert self.geometry is not None
-        # The machining form sets the fret-slot and inlay cutters' speeds
-        # and step-downs.
+        # The machining form's cutters cut it: the flat end mill, the ball
+        # nose, the fret-slot and inlay cutters.
         fretboard = self.fretboard_machining.with_form_settings(self.machining)
         self._plans.append(
             ("Fretboard", plan_fretboard_machining(self.geometry, fretboard))

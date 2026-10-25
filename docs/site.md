@@ -964,6 +964,19 @@ shows the page an element is on before it scrolls to it or selects it
 finished build opens the result, a setting found or gone to its group,
 the tour's next stop its page.
 
+## Cutters
+
+*Build › Cutters and depths* is a page of its own (`desk-cutters`) for the
+cutters every NC program is cut with, a section each: the flat end mill,
+the ball nose, the small end mill, the fret-slot and inlay cutters, the
+nut jig's, a carved top's, the relief end mill and the engraving V-bit.
+Each says what it cuts and holds copies of its size and its depth per pass
+(`EDITOR_FIELDS`' `machining.<name>` entries, with labels of their own
+after a `=`), 0 for half the diameter, and under them what that comes to
+("Cuts 3 mm wide, 1.5 mm a pass."). A cutter the design has no use for
+(its settings do not apply: a nut jig's without one) is not shown
+(`hides-when-empty`). The settings stay in *Settings › Machining* too.
+
 ## Typing a value
 
 Nothing is worked out or drawn again while a value is typed, only once

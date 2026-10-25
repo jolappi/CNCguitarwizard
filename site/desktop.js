@@ -242,6 +242,11 @@
     .desk-part-view { border: 1px solid var(--line); border-radius: 6px; background: var(--paper); padding: 6px; }
     .desk-part-view svg { display: block; width: 100%; height: auto; }
     .desk-part-status { min-height: 1.2em; }
+    .desk-cutters .cutter { max-width: 640px; margin: 0 0 12px; padding: 8px 12px; border: 1px solid var(--line);
+      border-radius: 6px; background: var(--panel); }
+    .desk-cutters .cutter h3 { margin: 0 0 2px; font-size: 15px; }
+    .desk-cutters .cutter .note { margin: 2px 0; }
+    .desk-cutters .cutter .editor-options { margin: 6px 0; }
     body.desktop-ui #intro { max-width: 760px; }
     body.desktop-ui .aside-top { max-width: 560px; }
   `;
@@ -341,6 +346,91 @@
     partPages[id] = page;
   }
 
+  // ---- the cutters ---------------------------------------------------------------
+  // Every NC program's cutters on a page of their own (Build › Cutters
+  // and depths): each cutter's size and how deep it cuts a pass (0 for
+  // half its diameter), what it cuts and what that comes to. A cutter the
+  // design has no use for is not shown (its settings do not apply).
+  const DIAMETER = "Diameter, mm";
+  const DEPTH = "Depth per pass, mm (0: half the diameter)";
+  const CUTTERS = [
+    ["flat", "Flat end mill", "The body, the neck and the fretboard: their pockets, outlines, index pins and roughing.",
+      [`tool_diameter=${DIAMETER}`, `step_down=${DEPTH}`]],
+    ["ball", "Ball nose", "The neck's back, the fretboard's radius and scallops, a body's roundovers and contours.",
+      ["ball_tool_diameter=Diameter, mm (0: the flat end mill's)", `ball_step_down=${DEPTH}`]],
+    ["small", "Small end mill", "Holes narrower than the flat end mill, and the cover plates cut from sheet "
+      + "(at most 1 mm a pass there).", [`small_hole_tool_diameter=${DIAMETER}`, `small_hole_step_down=${DEPTH}`]],
+    ["slot", "Fret-slot cutter", "The fret slots, each as wide as it.",
+      [`fret_slot_tool_diameter=${DIAMETER}`, "fret_slot_step_down=Depth per pass, mm"]],
+    ["inlay", "Inlay cutter", "The inlay pockets, a slotted nut's slot and the inlay pieces cut from sheet.",
+      [`inlay_tool_diameter=${DIAMETER}`, "inlay_step_down=Depth per pass, mm"]],
+    ["jig", "Nut-jig cutter", "The nut-slot jig, at the fret-slot cutter's depth.",
+      [`nut_jig_tool_diameter=${DIAMETER}`]],
+    ["carve", "Carved top's cutters", "The carve's roughing and, set, a big flat end mill for its flat parts first.",
+      ["carve_tool_diameter=Roughing diameter, mm (0: the flat end mill)",
+        "carve_step_down=Roughing depth per pass, mm (0: half the diameter)",
+        "carve_flat_tool_diameter=Flat parts' cutter diameter, mm (0: none)",
+        "carve_flat_step_down=Its depth per pass, mm (0: half the diameter)"]],
+    ["relief", "Relief end mill", "A relief engraving's shapes (the camo pattern), each to its level.",
+      [`relief_tool_diameter=${DIAMETER}`, `relief_step_down=${DEPTH}`]],
+    ["vbit", "Engraving V-bit", "The engraved lines: the body's pattern and the headstock's lettering.",
+      ["engraving_tool_angle=Angle, degrees", "engraving_step_down=Depth per pass, mm"]],
+  ];
+  const cuttersPage = document.createElement("div");
+  cuttersPage.id = "desk-cutters";
+  cuttersPage.className = "desk-cutters";
+  cuttersPage.innerHTML = `
+    <h2>Cutters</h2>
+    <p class="note">The cutters every NC program is cut with: each one's size and how deep it cuts a pass,
+      0 for half its diameter. Build again for the programs to follow.</p>`;
+  for (const [key, title, note, names] of CUTTERS) {
+    const section = document.createElement("section");
+    section.className = "cutter hides-when-empty";
+    section.dataset.cutter = key;
+    section.innerHTML = `<h3>${title}</h3><p class="note">${note}</p>
+      <div id="cutters-${key}-options" class="editor-options"></div><p class="note cutter-depth"></p>`;
+    cuttersPage.appendChild(section);
+    EDITOR_FIELDS[`cutters-${key}-options`] = names.map((name) => `machining.${name}`);
+  }
+  byId("body-editor").before(cuttersPage);
+
+  // What each cutter comes to: its size and how deep a pass, a depth of 0
+  // worked out as the programs work it out (cam.parameters).
+  const machining = (name) => Number(byId("form").querySelector(`[data-set="machining"][data-name="${name}"]`)?.value) || 0;
+  const pass = (depth, diameter) => (depth > 0 ? depth : diameter / 2);
+  const mm = (value) => `${Number(value.toFixed(2))} mm`;
+  const cuts = (diameter, depth) => `${mm(diameter)} wide, ${mm(depth)} a pass`;
+  const CUTTER_SIZES = {
+    flat: () => cuts(machining("tool_diameter"), pass(machining("step_down"), machining("tool_diameter"))),
+    ball: () => {
+      const diameter = machining("ball_tool_diameter") || machining("tool_diameter");
+      return cuts(diameter, pass(machining("ball_step_down"), diameter));
+    },
+    small: () => cuts(machining("small_hole_tool_diameter"),
+      pass(machining("small_hole_step_down"), machining("small_hole_tool_diameter"))),
+    slot: () => cuts(machining("fret_slot_tool_diameter"), machining("fret_slot_step_down")),
+    inlay: () => cuts(machining("inlay_tool_diameter"), machining("inlay_step_down")),
+    jig: () => cuts(machining("nut_jig_tool_diameter"), machining("fret_slot_step_down")),
+    carve: () => {
+      const own = machining("carve_tool_diameter");
+      const diameter = own || machining("tool_diameter");
+      const depth = machining("carve_step_down")
+        || (own ? diameter / 2 : pass(machining("step_down"), machining("tool_diameter")));
+      const big = machining("carve_flat_tool_diameter");
+      return `roughing ${cuts(diameter, depth)}`
+        + (big ? `; the flat parts first ${cuts(big, pass(machining("carve_flat_step_down"), big))}` : "");
+    },
+    relief: () => cuts(machining("relief_tool_diameter"),
+      pass(machining("relief_step_down"), machining("relief_tool_diameter"))),
+    vbit: () => `a ${machining("engraving_tool_angle")}° V, ${mm(machining("engraving_step_down"))} a pass`,
+  };
+  function showCutterSizes() {
+    for (const section of cuttersPage.querySelectorAll(".cutter")) {
+      section.querySelector(".cutter-depth").textContent = `Cuts ${CUTTER_SIZES[section.dataset.cutter]()}.`;
+    }
+  }
+  byId("form").addEventListener("change", showCutterSizes);
+
   const PAGES = [
     { id: "design", title: "Instrument", parts: ["#intro", ".aside-top", "body > footer"] },
     { id: "body", title: "Body", parts: ["#body-editor"] },
@@ -348,6 +438,7 @@
     { id: "headstock", title: "Headstock", parts: ["#headstock-editor"] },
     { id: "fretboard", title: "Fretboard", parts: ["#desk-fretboard"] },
     { id: "inlays", title: "Inlays", parts: ["#inlay-editor"] },
+    { id: "cutters", title: "Cutters", parts: ["#desk-cutters"] },
     { id: "settings", title: "Settings", parts: [".aside-form"] },
     { id: "result", title: "Result", parts: ["#desk-build", "#output"] },
     { id: "bonus", title: "Bonus", parts: ["#bonus"] },
@@ -380,6 +471,7 @@
     where.textContent = pageOf.get(id).title;
     store(PAGE, id);
     if (id in partPages) drawPartsSoon();
+    if (id === "cutters") showCutterSizes();
     window.scrollTo({ top: 0 });
     // A drawing laid out while hidden fits itself again once shown.
     window.dispatchEvent(new Event("resize"));
@@ -953,6 +1045,7 @@
     "neck-page-options": ["neck", "Design › Neck"],
     "fretboard-page-options": ["fretboard", "Design › Fretboard"],
     "easy-options": ["design", "Instrument"],
+    ...Object.fromEntries(CUTTERS.map(([key]) => [`cutters-${key}-options`, ["cutters", "Build › Cutters"]])),
   };
   const findBox = document.createElement("input");
   findBox.type = "search";
@@ -1175,7 +1268,7 @@
         run: () => findBox.focus(),
       },
     ]],
-    ["Design", () => PAGES.filter((page) => !["settings", "result", "bonus"].includes(page.id)).map((page) => ({
+    ["Design", () => PAGES.filter((page) => !["cutters", "settings", "result", "bonus"].includes(page.id)).map((page) => ({
       label: page.id === "design" ? "Instrument and style" : page.title,
       run: () => showPage(page.id),
       enabled: () => available(page.id),
@@ -1193,6 +1286,7 @@
     ]],
     ["Build", () => [
       { label: "Build 3D and CNC files", key: "↩", run: () => buildButton.click(), enabled: () => !buildButton.disabled },
+      { label: "Cutters and depths", run: () => showPage("cutters"), ticked: () => current === "cutters" },
       "-",
       ...SUBS.map(([id, title]) => ({
         label: title,

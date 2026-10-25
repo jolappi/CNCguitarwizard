@@ -36,7 +36,7 @@ from .exceptions import ToolpathError
 from .fixturing import StockBounds, resolve_index_pins
 from .gcode import Setup
 from .operations import depth_levels, drill, pocket, profile
-from .parameters import MachiningParameters
+from .parameters import MachiningParameters, with_cutter
 from .planar import polygon_bounds
 from .surfacing import (
     build_offset_grid,
@@ -136,6 +136,18 @@ class NeckMachiningParameters:
             raise ToolpathError("roughing_step_over must lie in (0, 1].")
         if self.ball.tool_tip != "ball":
             raise ToolpathError("The finishing tool must be a ball nose.")
+
+    def with_form_settings(
+        self, machining: MachiningParameters
+    ) -> NeckMachiningParameters:
+        """Return these with the machining form's cutters: the flat end
+        mill and the ball nose (``ball_cutter``), their sizes, depths and
+        speeds (``with_cutter``)."""
+        return replace(
+            self,
+            flat=with_cutter(self.flat, machining),
+            ball=with_cutter(self.ball, machining.ball_cutter),
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -781,42 +793,58 @@ def plan_neck_machining(
     # A vintage rod is laid in from the back (Neck_back_truss_rod): nothing
     # of it is cut from the top.
     from_top = truss.routed_from == "top"
-    route = _overrun_truss_route(truss, flat.tool_radius) if from_top else []
-    truss_paths = [
-        pocket(name, top_frame.polygon(boundary), depth, flat)
-        for name, boundary, depth in route
-    ]
-    bore = truss.bore
-    if bore is not None and bore.routed:
-        # The adjuster sleeve's bore, cut from the top as a slot down to the
-        # bore's floor (the fretboard closes it over), out past the heel's
-        # end so it opens cleanly through its end face.
-        half = bore.diameter / 2.0
-        end = bore.end + flat.tool_radius + 1.0
-        truss_paths.append(
-            pocket(
-                "Truss-rod sleeve slot",
-                top_frame.polygon(
-                    (
-                        Point2D(bore.start, -half),
-                        Point2D(end, -half),
-                        Point2D(end, half),
-                        Point2D(bore.start, half),
-                    )
-                ),
-                bore.floor_depth,
-                flat,
+    # The small end mill, for what the flat end mill is too wide to cut.
+    small = replace(flat.small_cutter, finishing_allowance=0.0)
+
+    def truss_route(tool: MachiningParameters) -> list[Toolpath]:
+        """The channel, its step and pockets, the sleeve's slot and the
+        access trough, cut with ``tool``."""
+        route = _overrun_truss_route(truss, tool.tool_radius) if from_top else []
+        paths = [
+            pocket(name, top_frame.polygon(boundary), depth, tool)
+            for name, boundary, depth in route
+        ]
+        bore = truss.bore
+        if bore is not None and bore.routed:
+            # The adjuster sleeve's bore, cut from the top as a slot down to
+            # the bore's floor (the fretboard closes it over), out past the
+            # heel's end so it opens cleanly through its end face.
+            half = bore.diameter / 2.0
+            end = bore.end + tool.tool_radius + 1.0
+            paths.append(
+                pocket(
+                    "Truss-rod sleeve slot",
+                    top_frame.polygon(
+                        (
+                            Point2D(bore.start, -half),
+                            Point2D(end, -half),
+                            Point2D(end, half),
+                            Point2D(bore.start, half),
+                        )
+                    ),
+                    bore.floor_depth,
+                    tool,
+                )
             )
-        )
-    if truss.adjuster_boundary:
-        truss_paths.append(
-            pocket(
-                "Truss-rod access trough",
-                top_frame.polygon(truss.adjuster_boundary),
-                truss.adjuster_depth,
-                flat,
+        if truss.adjuster_boundary:
+            paths.append(
+                pocket(
+                    "Truss-rod access trough",
+                    top_frame.polygon(truss.adjuster_boundary),
+                    truss.adjuster_depth,
+                    tool,
+                )
             )
-        )
+        return paths
+
+    # The flat end mill cuts the route where it fits the channel; a wider
+    # one leaves it all to the small end mill, after a tool change.
+    try:
+        truss_paths = truss_route(flat)
+        truss_tool = flat
+    except ToolpathError:
+        truss_paths = truss_route(small)
+        truss_tool = small
     face_paths: list[Toolpath] = []
     # A flat headstock not set down has the blank's own top for its face:
     # nothing to mill there.
@@ -938,15 +966,50 @@ def plan_neck_machining(
         ),
         *_locking_nut_notes(geometry),
     )
-    if laminated:
+    # A route cut with the small end mill is left to its program on a face
+    # with more for the flat end mill (Neck_top_small_holes); on its own it
+    # is Neck_top's, cut with it.
+    narrow = truss_tool is not flat
+    narrow_notes = (
+        (
+            f"The truss-rod route is narrower than the {flat.tool_diameter:g} mm "
+            f"flat end mill: it is cut with the {small.tool_diameter:g} mm end mill.",
+        )
+        if narrow
+        else ()
+    )
+    small_route = truss_paths if narrow and face_paths and not laminated else []
+    if laminated or (narrow and not face_paths):
         top = Setup(
             "Neck_top",
             "Neck glue face - truss-rod channel",
             tuple(truss_paths),
             (
                 "Blank on the two index pins, glue face up, same work zero.",
-                "The headstock face and the tuner marks wait for "
-                "Headstock_top, after the block is glued on.",
+                *(
+                    (
+                        "The headstock face and the tuner marks wait for "
+                        "Headstock_top, after the block is glued on.",
+                    )
+                    if laminated
+                    else ()
+                ),
+                *narrow_notes,
+                *truss_notes,
+            ),
+            reference_points,
+            truss_tool,
+            fixture=NECK_TOP_FIXTURE,
+        )
+    elif small_route:
+        top = Setup(
+            "Neck_top",
+            "Neck glue face - headstock face, tuner centre marks",
+            tuple(face_paths),
+            (
+                "Blank on the two index pins, glue face up, same work zero.",
+                *face_notes,
+                "The truss-rod route follows in Neck_top_small_holes.",
                 *truss_notes,
             ),
             reference_points,
@@ -1026,15 +1089,10 @@ def plan_neck_machining(
         if cover is not None and not laminated
         else ()
     )
-    if (nut is not None and screws) or cover_screws:
-        drill_tool = replace(
-            flat,
-            tool_diameter=flat.small_hole_tool_diameter,
-            finishing_allowance=0.0,
-            plunge_rate=min(flat.plunge_rate, 150.0),
-        )
-        pilots: list[Toolpath] = []
-        notes: list[str] = []
+    if (nut is not None and screws) or cover_screws or small_route:
+        drill_tool = small
+        pilots: list[Toolpath] = [*small_route]
+        notes: list[str] = [*(narrow_notes if small_route else ())]
         if nut is not None and screws:
             # Drilled to size where the small drill fits the pilot, else
             # started with it as a guide.
@@ -1098,6 +1156,7 @@ def plan_neck_machining(
             + " and ".join(
                 what
                 for what, there in (
+                    ("truss-rod route", bool(small_route)),
                     ("locking nut's screw pilots", bool(screws)),
                     ("truss-rod cover's screw pilots", bool(cover_screws)),
                 )
@@ -1238,15 +1297,27 @@ def plan_neck_machining(
     back_truss_rod: Setup | None = None
     rod = geometry.vintage_truss_rod
     if rod is not None:
-        back_truss_rod = _vintage_rod_setup(
-            rod,
-            back_frame,
-            plank if laminated else thickness,
-            flat,
-            (flip, "Keep X/Y zero at index pin 1; set Z zero on the (new) blank top."),
-            first_back,
-            reference_points,
+        flipped = (
+            flip,
+            "Keep X/Y zero at index pin 1; set Z zero on the (new) blank top.",
         )
+
+        def vintage(tool: MachiningParameters) -> Setup:
+            return _vintage_rod_setup(
+                rod,
+                back_frame,
+                plank if laminated else thickness,
+                tool,
+                flipped,
+                first_back,
+                reference_points,
+            )
+
+        # With the small end mill where the flat one is too wide for it.
+        try:
+            back_truss_rod = vintage(flat)
+        except ToolpathError:
+            back_truss_rod = vintage(small)
         # The blank is face down already, the walnut flush with its back.
         flip = (
             "Back on the same two index pins, glue face down, the walnut "

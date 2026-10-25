@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Literal
 
 from .exceptions import ToolpathError
@@ -23,6 +23,29 @@ POST_PROCESSOR_LABELS: dict[str, str] = {
 
 INDEX_PIN_DIAMETER = 6.0
 """The index pins' diameter, in mm, where the tool is no wider."""
+
+CUTTER_FIELDS = (
+    "tool_diameter",
+    "tool_tip",
+    "step_down",
+    "step_over",
+    "spindle_speed",
+    "feed_rate",
+    "plunge_rate",
+    "rapid_rate",
+    "safe_height",
+    "small_hole_tool_diameter",
+    "small_hole_step_down",
+)
+"""What a part's own tool takes from the machining form's cutter
+(``with_cutter``): its size and how it is run, and the small end mill's
+(for what it is too wide to cut); the part's blank and fixturing stay its
+own."""
+
+
+def depth_per_pass(step_down: float, diameter: float) -> float:
+    """Return ``step_down``, or half ``diameter`` for ``0``."""
+    return step_down if step_down > 0.0 else diameter / 2.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -44,7 +67,8 @@ class MachiningParameters:
         feed_rate: Cutting feed for XY moves.
         plunge_rate: Feed for straight plunges and helical descents.
         rapid_rate: Nominal rapid speed, used only for time estimates.
-        step_down: Maximum axial depth of cut per pass.
+        step_down: Maximum axial depth of cut per pass; ``0`` (the
+            default) for half the tool's diameter.
         step_over: Radial engagement between raster rows, as a fraction
             of the tool diameter.
         finishing_allowance: Wall stock left by roughing and removed by
@@ -74,7 +98,16 @@ class MachiningParameters:
             blank's edge.
         small_hole_tool_diameter: Diameter of the drill or end mill used
             in a separate program for holes smaller than the main tool
-            (string-through and pilot holes).
+            (string-through and pilot holes), and for the cover plates
+            cut from sheet.
+        small_hole_step_down: How deep the small end mill cuts per pass;
+            ``0`` (the default) for half its diameter (the cover plates,
+            in sheet, at most 1 mm).
+        ball_tool_diameter: The ball nose's diameter: the neck's back,
+            the fretboard's radius and scallops, a body's edges; ``0``
+            (the default) for the main tool's.
+        ball_step_down: How deep the ball nose cuts per pass; ``0`` (the
+            default) for half its diameter.
         profile_overlap: How far each side's outline profile cuts past
             the mid-plane so the two half-depth cuts meet.
         raster_link_spacing: Sample spacing when checking whether a link
@@ -115,15 +148,21 @@ class MachiningParameters:
         engraving_feed_rate: Feed along the engraved lines.
         relief_tool_diameter: The flat end mill clearing a relief
             engraving's shapes (the camo pattern) to their levels.
+        relief_step_down: How deep that end mill cuts per pass; ``0`` (the
+            default) for half its diameter.
         fret_slot_spindle_speed: The 0.6 mm fret-slot cutter's spindle
             speed, rpm (30 000 by default: a cutter that thin wants it
             fast).
+        fret_slot_tool_diameter: The fret-slot cutter's diameter, in mm
+            (0.6 by default): the slots come out its width.
         fret_slot_step_down: The most the fret-slot cutter goes down per
             pass, in mm (0.2 by default, so it does not snap); the slot's
             depth is split into equal passes no deeper.
         inlay_spindle_speed: The 1 mm inlay cutter's spindle speed, rpm
             (30 000 by default), for the inlay pockets, a slotted nut's
             slot and the inlay pieces cut from sheet.
+        inlay_tool_diameter: The inlay cutter's diameter, in mm (1 by
+            default).
         inlay_step_down: The most the inlay cutter goes down per pass, in
             mm (0.2 by default, so it does not snap).
         nut_jig_tool_diameter: The cutter the nut-slot jig (nut_jig) is
@@ -135,6 +174,9 @@ class MachiningParameters:
         carve_tool_diameter: The flat end mill roughing a carved top;
             ``0`` uses the main tool. A bigger one roughs the arch far
             quicker (the time goes with the wood over its width).
+        carve_step_down: How deep the carve's roughing tool cuts per pass;
+            ``0`` (the default) for half its diameter, or the main tool's
+            step-down when it is the main tool.
         carve_finish: Finish a carved top with a ball nose as wide as its
             roughing tool, in fine passes; off (the default) leaves the
             roughing's rows, the flat tool following the arch, to sand
@@ -145,6 +187,8 @@ class MachiningParameters:
             bulk of the wood off the fall; the roughing tool then cuts
             only what it left, and the ball nose only the fall, never the
             flat plateau and rim. ``0`` (the default) for none.
+        carve_flat_step_down: How deep that big end mill cuts per pass;
+            ``0`` (the default) for half its diameter.
         fretboard_blank_length: The fretboard blank's length, in mm, the
             board centred on it (a bought blank, 540 mm say); none (the
             default) cuts it from stock 35 mm longer at each end, longer
@@ -173,7 +217,7 @@ class MachiningParameters:
     feed_rate: float = 1000.0
     plunge_rate: float = 300.0
     rapid_rate: float = 3000.0
-    step_down: float = 3.0
+    step_down: float = 0.0
     step_over: float = 0.4
     finishing_allowance: float = 0.3
     safe_height: float = 5.0
@@ -187,6 +231,9 @@ class MachiningParameters:
     stock_margin: float = 15.0
     stock_edge_margin: float = 8.0
     small_hole_tool_diameter: float = 3.0
+    small_hole_step_down: float = 0.0
+    ball_tool_diameter: float = 0.0
+    ball_step_down: float = 0.0
     profile_overlap: float = 0.5
     raster_link_spacing: float = 1.0
     post_processor: PostProcessor = "grbl"
@@ -200,21 +247,29 @@ class MachiningParameters:
     engraving_step_down: float = 1.0
     engraving_feed_rate: float = 600.0
     relief_tool_diameter: float = 3.0
+    relief_step_down: float = 0.0
     fret_slot_spindle_speed: float = 30000.0
+    fret_slot_tool_diameter: float = 0.6
     fret_slot_step_down: float = 0.2
     inlay_spindle_speed: float = 30000.0
+    inlay_tool_diameter: float = 1.0
     inlay_step_down: float = 0.2
     nut_jig_tool_diameter: float = 0.6
     carve_tool_diameter: float = 0.0
+    carve_step_down: float = 0.0
     carve_finish: bool = False
     carve_flat_tool_diameter: float = 0.0
+    carve_flat_step_down: float = 0.0
     fretboard_blank_length: float | None = None
     fretboard_blank_width: float | None = None
     fretboard_blank_thickness: float = 7.0
     fretboard_carrier_thickness: float | None = None
 
     def __post_init__(self) -> None:
-        """Reject parameters the planner cannot cut safely with."""
+        """Reject parameters the planner cannot cut safely with; a
+        ``step_down`` of ``0`` becomes half the tool's diameter."""
+        if self.step_down == 0.0 and math.isfinite(self.tool_diameter):
+            object.__setattr__(self, "step_down", self.tool_diameter / 2.0)
         positive = {
             "tool_diameter": self.tool_diameter,
             "spindle_speed": self.spindle_speed,
@@ -237,6 +292,8 @@ class MachiningParameters:
             "inlay_spindle_speed": self.inlay_spindle_speed,
             "inlay_step_down": self.inlay_step_down,
             "nut_jig_tool_diameter": self.nut_jig_tool_diameter,
+            "fret_slot_tool_diameter": self.fret_slot_tool_diameter,
+            "inlay_tool_diameter": self.inlay_tool_diameter,
             "fretboard_blank_thickness": self.fretboard_blank_thickness,
         }
         for name, value in (
@@ -260,6 +317,12 @@ class MachiningParameters:
             "spindle_dwell": self.spindle_dwell,
             "carve_tool_diameter": self.carve_tool_diameter,
             "carve_flat_tool_diameter": self.carve_flat_tool_diameter,
+            "small_hole_step_down": self.small_hole_step_down,
+            "ball_tool_diameter": self.ball_tool_diameter,
+            "ball_step_down": self.ball_step_down,
+            "relief_step_down": self.relief_step_down,
+            "carve_step_down": self.carve_step_down,
+            "carve_flat_step_down": self.carve_flat_step_down,
         }
         for name, value in non_negative.items():
             if not math.isfinite(value) or value < 0.0:
@@ -307,3 +370,77 @@ class MachiningParameters:
     def raster_spacing(self) -> float:
         """Return the distance between neighbouring raster rows."""
         return self.tool_diameter * self.step_over
+
+    @property
+    def small_cutter(self) -> MachiningParameters:
+        """Return the small end mill's settings: ``small_hole_tool_diameter``
+        at ``small_hole_step_down`` a pass, plunging at most 150 mm/min."""
+        diameter = self.small_hole_tool_diameter
+        return replace(
+            self,
+            tool_diameter=diameter,
+            step_down=depth_per_pass(self.small_hole_step_down, diameter),
+            plunge_rate=min(self.plunge_rate, 150.0),
+        )
+
+    @property
+    def ball_cutter(self) -> MachiningParameters:
+        """Return the ball nose's settings: ``ball_tool_diameter`` (else
+        the main tool's) at ``ball_step_down`` a pass."""
+        diameter = self.ball_tool_diameter or self.tool_diameter
+        return replace(
+            self,
+            tool_tip="ball",
+            tool_diameter=diameter,
+            step_down=depth_per_pass(self.ball_step_down, diameter),
+        )
+
+    @property
+    def relief_cutter(self) -> MachiningParameters:
+        """Return the relief end mill's settings: ``relief_tool_diameter``
+        at ``relief_step_down`` a pass, plunging at most 150 mm/min."""
+        diameter = self.relief_tool_diameter
+        return replace(
+            self,
+            tool_diameter=diameter,
+            step_down=depth_per_pass(self.relief_step_down, diameter),
+            plunge_rate=min(self.plunge_rate, 150.0),
+        )
+
+    @property
+    def carve_cutter(self) -> MachiningParameters:
+        """Return the carve's roughing tool's settings: its own
+        (``carve_tool_diameter``, ``carve_step_down``) or the main tool,
+        at ``carve_step_down`` a pass when set."""
+        if self.carve_tool_diameter <= 0.0:
+            if self.carve_step_down <= 0.0:
+                return self
+            return replace(self, step_down=self.carve_step_down)
+        diameter = self.carve_tool_diameter
+        return replace(
+            self,
+            tool_diameter=diameter,
+            step_down=depth_per_pass(self.carve_step_down, diameter),
+        )
+
+    @property
+    def carve_flat_cutter(self) -> MachiningParameters | None:
+        """Return the carve's big flat end mill's settings
+        (``carve_flat_tool_diameter``, ``carve_flat_step_down``), or
+        ``None`` for none."""
+        diameter = self.carve_flat_tool_diameter
+        if diameter <= 0.0:
+            return None
+        return replace(
+            self,
+            tool_diameter=diameter,
+            step_down=depth_per_pass(self.carve_flat_step_down, diameter),
+        )
+
+
+def with_cutter(
+    tool: MachiningParameters, cutter: MachiningParameters
+) -> MachiningParameters:
+    """Return a part's own ``tool`` cutting as the machining form's
+    ``cutter`` does (``CUTTER_FIELDS``): its size, depth and speeds."""
+    return replace(tool, **{name: getattr(cutter, name) for name in CUTTER_FIELDS})

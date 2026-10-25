@@ -323,11 +323,15 @@ function mirrorEditorFields() {
   for (const [id, names] of Object.entries(EDITOR_FIELDS)) {
     const holder = document.getElementById(id);
     holder.innerHTML = "";
-    for (const name of names) {
+    for (const item of names) {
+      // A design setting, or a machining one named "machining.<name>"
+      // (the Cutters page's), with a label of its own after a "=".
+      const [entry, ownLabel] = item.split("=");
+      const [set, name] = entry.startsWith("machining.") ? ["machining", entry.slice(10)] : ["prototype", entry];
       // A plain field, or a variant's kind (the bridge: its own sizes
       // stay in the form).
-      const original = form.querySelector(`:is(input, select)[data-set="prototype"][data-name="${name}"]`)
-        || form.querySelector(`.variant[data-set="prototype"][data-name="${name}"] select.kind`);
+      const original = form.querySelector(`:is(input, select)[data-set="${set}"][data-name="${name}"]`)
+        || form.querySelector(`.variant[data-set="${set}"][data-name="${name}"] select.kind`);
       if (!original) continue;
       const row = original.closest(".field");
       const copy = original.cloneNode(true);
@@ -336,7 +340,7 @@ function mirrorEditorFields() {
       delete copy.dataset.set;
       delete copy.dataset.name;
       const label = document.createElement("label");
-      label.textContent = fieldLabel(name);
+      label.textContent = ownLabel || fieldLabel(name);
       label.htmlFor = copy.id;
       // The form row's explanation goes with it.
       if (row.title) {
@@ -434,10 +438,15 @@ function showApplicableSettings() {
   for (const holder of document.querySelectorAll(".editor-options")) countEditorSettings(holder);
 }
 
-// An editor's Settings fold says how many settings it shows.
+// An editor's Settings fold says how many settings it shows; a part that
+// is only its settings (a cutter on the Cutters page) is not shown with
+// none.
 function countEditorSettings(holder) {
+  const shown = holder.querySelectorAll("label:not(.not-applicable)").length;
   const summary = holder.closest("details.editor-settings")?.querySelector(":scope > summary");
-  if (summary) summary.textContent = `Settings (${holder.querySelectorAll("label:not(.not-applicable)").length})`;
+  if (summary) summary.textContent = `Settings (${shown})`;
+  const part = holder.closest(".hides-when-empty");
+  if (part) part.hidden = !shown;
 }
 
 function syncMirrors() {

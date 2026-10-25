@@ -62,15 +62,15 @@ class CoverMachiningPlan:
 def cover_tool(parameters: MachiningParameters) -> MachiningParameters:
     """Return the small-tool settings used for sheet covers.
 
-    The small drill doubles as the cutter: slower feeds, shallow steps
-    and short, low tabs suit plastic sheet.
+    The small drill doubles as the cutter (``small_cutter``): slower
+    feeds, shallow steps (at most 1 mm) and short, low tabs suit plastic
+    sheet.
     """
+    small = parameters.small_cutter
     return replace(
-        parameters,
-        tool_diameter=parameters.small_hole_tool_diameter,
-        feed_rate=min(parameters.feed_rate, 600.0),
-        plunge_rate=min(parameters.plunge_rate, 150.0),
-        step_down=min(parameters.step_down, 1.0),
+        small,
+        feed_rate=min(small.feed_rate, 600.0),
+        step_down=min(small.step_down, 1.0),
         tab_count=4,
         tab_length=4.0,
     )

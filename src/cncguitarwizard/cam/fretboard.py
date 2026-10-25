@@ -28,7 +28,7 @@ from .fixturing import StockBounds, resolve_index_pins
 from .gcode import Setup
 from .inlays import inlay_fit_outline
 from .operations import drill, pocket, profile
-from .parameters import MachiningParameters
+from .parameters import MachiningParameters, with_cutter
 from .planar import polygon_bounds
 from .surfacing import build_offset_grid, raster_finish, raster_rough
 from .toolpath import PathBuilder, Toolpath
@@ -150,27 +150,33 @@ class FretboardMachiningParameters:
     def with_form_settings(
         self, machining: MachiningParameters
     ) -> FretboardMachiningParameters:
-        """Return these with the form's small cutters and blank set.
+        """Return these with the form's cutters and blank set.
 
-        From the machining form: the fret-slot cutter's
-        (``fret_slot_spindle_speed``, ``fret_slot_step_down``) and the
-        inlay cutter's (``inlay_spindle_speed``, ``inlay_step_down``)
-        speeds and step-downs, and the blank (``fretboard_blank_*``,
-        ``fretboard_carrier_thickness``).
+        From the machining form: the flat end mill and the ball nose, their
+        sizes, depths and speeds (``with_cutter``, ``ball_cutter``); the
+        fret-slot cutter's (``fret_slot_tool_diameter``,
+        ``fret_slot_spindle_speed``, ``fret_slot_step_down``) and the
+        inlay cutter's (``inlay_tool_diameter``, ``inlay_spindle_speed``,
+        ``inlay_step_down``) sizes, speeds and step-downs; and the blank
+        (``fretboard_blank_*``, ``fretboard_carrier_thickness``).
         """
         return replace(
             self,
+            flat=with_cutter(self.flat, machining),
+            ball=with_cutter(self.ball, machining.ball_cutter),
             blank_thickness=machining.fretboard_blank_thickness,
             blank_length=machining.fretboard_blank_length,
             blank_width=machining.fretboard_blank_width,
             carrier_thickness=machining.fretboard_carrier_thickness,
             slot=replace(
                 self.slot,
+                tool_diameter=machining.fret_slot_tool_diameter,
                 spindle_speed=machining.fret_slot_spindle_speed,
                 step_down=machining.fret_slot_step_down,
             ),
             inlay=replace(
                 self.inlay,
+                tool_diameter=machining.inlay_tool_diameter,
                 spindle_speed=machining.inlay_spindle_speed,
                 step_down=machining.inlay_step_down,
             ),

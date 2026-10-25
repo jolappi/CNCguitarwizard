@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable, Sequence
-from dataclasses import replace
 
 from ..geometry.body import BodySolid, CoverPlate, DrilledHole
 from ..geometry.primitives import Point2D
@@ -71,11 +70,7 @@ def plan_feature_machining(
     )
     stem = "Feature_" + re.sub(r"[^a-z0-9]+", "_", title.lower()).strip("_")
     small = parameters.tool_diameter - 1e-6
-    small_tool = replace(
-        parameters,
-        tool_diameter=parameters.small_hole_tool_diameter,
-        plunge_rate=min(parameters.plunge_rate, 150.0),
-    )
+    small_tool = parameters.small_cutter
     zero = (
         f"X/Y zero at the centre of the {title} ({centre.x:.1f}, {centre.y:.1f} "
         "in the model: from the nut along the neck, from the centerline), "

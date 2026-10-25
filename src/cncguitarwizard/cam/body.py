@@ -336,11 +336,7 @@ def plan_body_machining(
 
     top_small_holes: Setup | None = None
     if small_holes:
-        small_tool = replace(
-            parameters,
-            tool_diameter=parameters.small_hole_tool_diameter,
-            plunge_rate=min(parameters.plunge_rate, 150.0),
-        )
+        small_tool = parameters.small_cutter
         top_small_holes = Setup(
             "Body_top_small_holes",
             f"Body top face - holes for the {small_tool.tool_diameter:g} mm drill",
@@ -440,11 +436,7 @@ def plan_body_machining(
 
     back_small_holes: Setup | None = None
     if back_small:
-        small_tool = replace(
-            parameters,
-            tool_diameter=parameters.small_hole_tool_diameter,
-            plunge_rate=min(parameters.plunge_rate, 150.0),
-        )
+        small_tool = parameters.small_cutter
         back_small_holes = Setup(
             "Body_back_small_holes",
             f"Body back face - holes for the {small_tool.tool_diameter:g} mm drill",
@@ -785,15 +777,11 @@ def _carve_setups(
     carve = body.carved_top
     if carve is None:
         return None, None
-    tool = (
-        replace(parameters, tool_diameter=parameters.carve_tool_diameter)
-        if parameters.carve_tool_diameter > 0.0
-        else parameters
-    )
+    tool = parameters.carve_cutter
     flats: Setup | None = None
     stock: OffsetGrid | None = None
-    if parameters.carve_flat_tool_diameter > 0.0:
-        flat = replace(parameters, tool_diameter=parameters.carve_flat_tool_diameter)
+    flat = parameters.carve_flat_cutter
+    if flat is not None:
         flat_sampled, flat_x_range, flat_y_range = _carve_surface(
             carve, body, frame, flat
         )
@@ -848,7 +836,7 @@ def _carve_setups(
         f"Rough with a {tool.tool_diameter:g} mm flat end mill"
         + (
             ""
-            if tool is parameters
+            if parameters.carve_tool_diameter <= 0.0
             else " (not the main tool: touch Z on the stock top after the change)"
         )
         + (": only the wood Body_top_carve_flats left." if flats is not None else "."),
@@ -993,12 +981,7 @@ def _relief_setup(
     """
     if body.engraving is None or not body.engraving.pockets:
         return None
-    tool = replace(
-        parameters,
-        tool_diameter=parameters.relief_tool_diameter,
-        step_down=min(parameters.step_down, parameters.engraving_step_down),
-        plunge_rate=min(parameters.plunge_rate, 150.0),
-    )
+    tool = parameters.relief_cutter
     shapes = body.engraving.pockets
     paths = tuple(
         pocket(
@@ -1052,7 +1035,7 @@ def _edge_setup(
     ]
     if not contours and not scoops and edge.radius <= 0.0:
         return None
-    ball = ball_tool(parameters)
+    ball = parameters.ball_cutter
     paths: list[Toolpath] = []
     for contour in contours:
         paths += contour_paths(contour, frame.model, ball, floor)

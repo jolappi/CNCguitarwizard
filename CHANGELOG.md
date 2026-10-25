@@ -99,6 +99,17 @@
 
 ### Added
 
+- A page for the cutters every NC program is cut with (*Build › Cutters
+  and depths*): each cutter's size and its depth per pass, 0 for half its
+  diameter, and what that comes to. The ball nose has a size and depth of
+  its own (`ball_tool_diameter`, `ball_step_down`), as have the small end
+  mill (`small_hole_step_down`), the relief end mill
+  (`relief_step_down`), a carved top's cutters (`carve_step_down`,
+  `carve_flat_step_down`) and the fret-slot and inlay cutters
+  (`fret_slot_tool_diameter`, `inlay_tool_diameter`; their 0.2 mm depths
+  kept, as they snap). `step_down` is 0, half the main tool, by default:
+  the small holes are cut 1.5 mm a pass with the 3 mm end mill, not 3.
+
 - The FreeCAD model checked against the parameter sheet: a build that
   runs FreeCAD measures the finished model in it (`Prototype001_check.py`,
   `backends.freecad.render_model_measure`) and checks it
@@ -1604,6 +1615,13 @@
   opens into the back (bodies over 45.7 mm were refused).
 
 ### Fixed
+
+- The neck's and the fretboard's programs kept their own 6 mm tools at
+  10 000 rpm whatever the machining form said: they are cut with the
+  form's flat end mill and ball nose now, their sizes, depths and speeds
+  (`NeckMachiningParameters.with_form_settings`). A flat end mill too
+  wide for the truss-rod channel (8 mm for a 6 mm channel) leaves the
+  route to the small end mill, in `Neck_top_small_holes`.
 
 - A design whose neck behind the nut had two points on one another in
   some of its loft sections (a locking nut, a zero fret and a drawn root

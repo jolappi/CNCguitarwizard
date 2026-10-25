@@ -369,19 +369,26 @@ SETTING_PICTURES: dict[str, SettingPicture] = {
         "fretboard_carrier_thickness",
         r"^The fretboard$",
     ),
-    **_same("fretboard", "fret_slot_spindle_speed fret_slot_step_down", _FRET_SLOTS),
-    **_same("fretboard", "inlay_spindle_speed inlay_step_down", _MARKERS),
+    **_same(
+        "fretboard",
+        "fret_slot_spindle_speed fret_slot_step_down fret_slot_tool_diameter",
+        _FRET_SLOTS,
+    ),
+    **_same(
+        "fretboard", "inlay_spindle_speed inlay_step_down inlay_tool_diameter", _MARKERS
+    ),
     "nut_jig_tool_diameter": ("neck", (_BEHIND_NUT,)),
     **_same(
         "plan",
-        "carve_tool_diameter carve_finish carve_flat_tool_diameter",
+        "carve_tool_diameter carve_finish carve_flat_tool_diameter "
+        "carve_step_down carve_flat_step_down",
         r"^Carved top's plateau$",
         _BODY,
     ),
     **_same(
         "plan",
         "engraving_tool_angle engraving_step_down engraving_feed_rate "
-        "relief_tool_diameter",
+        "relief_tool_diameter relief_step_down",
         _BODY,
     ),
 }
@@ -413,6 +420,9 @@ NO_PICTURE = frozenset(
         "stock_margin",
         "stock_edge_margin",
         "small_hole_tool_diameter",
+        "small_hole_step_down",
+        "ball_tool_diameter",
+        "ball_step_down",
         "profile_overlap",
         "raster_link_spacing",
         "post_processor",

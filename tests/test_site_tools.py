@@ -244,6 +244,45 @@ def test_the_neck_page_holds_the_truss_rod_settings() -> None:
     assert ".filter((name) => !SHARED_WITH_PAGES.has(name))" in layout
 
 
+def test_every_cutter_has_its_size_and_depth_on_a_page() -> None:
+    script = (ROOT / "site" / "app.js").read_text(encoding="utf-8")
+    layout = (ROOT / "site" / "desktop.js").read_text(encoding="utf-8")
+
+    # A page of its own (Build > Cutters and depths), a section a cutter.
+    assert '{ id: "cutters", title: "Cutters", parts: ["#desk-cutters"] }' in layout
+    assert '{ label: "Cutters and depths", run: () => showPage("cutters")' in layout
+    cutters = layout[layout.index("  const CUTTERS = [") :]
+    cutters = cutters[: cutters.index("\n  ];")]
+    for name in (
+        "tool_diameter",
+        "step_down",
+        "ball_tool_diameter",
+        "ball_step_down",
+        "small_hole_tool_diameter",
+        "small_hole_step_down",
+        "fret_slot_tool_diameter",
+        "inlay_tool_diameter",
+        "carve_flat_step_down",
+        "relief_step_down",
+    ):
+        assert f'"{name}=' in cutters or f"`{name}=" in cutters, name
+    assert (
+        "EDITOR_FIELDS[`cutters-${key}-options`] = "
+        "names.map((name) => `machining.${name}`);" in layout
+    )
+    # Copies of machining settings, with labels of their own; a cutter the
+    # design has no use for hidden.
+    assert 'entry.startsWith("machining.") ? ["machining", entry.slice(10)]' in script
+    assert "label.textContent = ownLabel || fieldLabel(name);" in script
+    assert 'section.className = "cutter hides-when-empty";' in layout
+    assert "if (part) part.hidden = !shown;" in script
+    # What each comes to: 0 is half the diameter.
+    assert (
+        "const pass = (depth, diameter) => (depth > 0 ? depth : diameter / 2);"
+        in layout
+    )
+
+
 def test_nothing_is_worked_out_while_a_value_is_typed() -> None:
     # A phone lagged at every digit: the editors and drawings were worked
     # out again at each keystroke (a copy's even sent a change each time).
