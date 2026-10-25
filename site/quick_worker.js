@@ -1,7 +1,7 @@
 // The quick 3D model (webapp.quick_model), made off the page's thread so
 // the page keeps answering while it is: Pyodide with cncguitarwizard only,
-// no CAD kernel. Each message is a design ({prototype}) and the detail set
-// to add ("" for none); the answer is its parts' meshes as buffers handed
+// no CAD kernel. Each message is a design ({prototype}) and the detail sets
+// to add (none for none); the answer is its parts' meshes as buffers handed
 // over to the page (not copied).
 import { loadPyodide } from "https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.mjs";
 
@@ -29,9 +29,10 @@ self.onmessage = async ({ data }) => {
     ready ??= start(data.wheel);
     const pyodide = await ready;
     pyodide.globals.set("quick_payload_json", JSON.stringify(data.payload));
-    pyodide.globals.set("quick_detail", data.detail || "");
+    pyodide.globals.set("quick_details_json", JSON.stringify(data.details || []));
     const result = JSON.parse(pyodide.runPython(
-      "import json\njson.dumps(quick_model(json.loads(quick_payload_json), quick_detail))",
+      "import json\n"
+      + "json.dumps(quick_model(json.loads(quick_payload_json), json.loads(quick_details_json)))",
     ));
     if (result.error) {
       self.postMessage({ type: "error", id: data.id, text: result.error });

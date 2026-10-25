@@ -1022,13 +1022,14 @@ its own (`quick_worker.js`, no CAD kernel) so the page keeps answering,
 turned in three.js (`quick3d.js`, three 0.160 by the page's import map,
 loaded the first time it is shown; the wheel or a pinch zooms toward the
 pointer). *Whole guitar* frames it again and *Save STL* saves it. The
-hardware is a detail set of its own, chosen by radio buttons under it or
-in the *Preview* menu, one set at a time (each takes a little longer to
-draw, and to turn, as both say): *None (quickest)*, *Neck: frets,
-markers and nut*, *Headstock: tuners*, *Body: pickguard, pickups and
-knobs* or *Bridge and strings* — kept in the browser
-(`cncguitarwizard.quickModelDetail`) and sent to the worker with the
-design. Holes and the truss rod are left out: the build's STEP and
+hardware is in detail sets of its own, each ticked or not by the
+checkboxes under it or in the *Preview* menu (each takes a little longer
+to draw, as both say): *Neck: frets, markers and nut*, *Headstock:
+tuners*, *Body: pickguard, pickups and knobs* and *Bridge and strings*,
+none at first — kept in the browser (`cncguitarwizard.quickModelDetails`)
+and sent to the worker with the design. All four add about a second to a
+Stratocaster's drawing in the browser and turn about as quickly (1.25 ms
+a frame where it took 1.05 on a desktop). Holes and the truss rod are left out: the build's STEP and
 FreeCAD model are the exact ones. The build id the
 page's scripts are loaded with (`?v=`) hashes the viewer and the workers
 too (`tools/build_site.py`'s `SCRIPTS`), so a change to one alone reaches

@@ -1285,20 +1285,19 @@
       ticked: () => current === page.id,
     }))],
     // The quick 3D model and its detail sets (app.js's quickModel, through
-    // the page's own radio buttons): one set at a time, so it turns at once.
+    // the page's own checkboxes), each ticked or not.
     ["Preview", () => [
       { label: "3D model", run: () => showPage("model"), ticked: () => current === "model" },
       "-",
-      { label: "Details, one set at a time: each takes a little longer to draw", heading: true },
-      ...[...document.querySelectorAll('input[name="quick-model-detail"]')].map((radio) => ({
-        label: radio.parentElement.textContent.trim(),
-        radio: true,
+      { label: "Details: each takes a little longer to draw", heading: true },
+      ...[...document.querySelectorAll('input[name="quick-model-detail"]')].map((box) => ({
+        label: box.parentElement.textContent.trim(),
         run: () => {
-          radio.checked = true;
-          radio.dispatchEvent(new Event("change", { bubbles: true }));
+          box.checked = !box.checked;
+          box.dispatchEvent(new Event("change", { bubbles: true }));
           showPage("model");
         },
-        ticked: () => radio.checked,
+        ticked: () => box.checked,
       })),
     ]],
     ["Settings", () => [
@@ -1379,13 +1378,11 @@
       }
       const button = document.createElement("button");
       button.type = "button";
-      const ticked = Boolean(item.ticked && item.ticked());
-      button.setAttribute("role", item.radio ? "menuitemradio" : "menuitem");
-      if (item.radio) button.setAttribute("aria-checked", String(ticked));
+      button.setAttribute("role", "menuitem");
       const name = document.createElement("span");
       const tick = document.createElement("span");
       tick.className = "tick";
-      tick.textContent = ticked ? (item.radio ? "•" : "✓") : "";
+      tick.textContent = item.ticked && item.ticked() ? "✓" : "";
       name.append(tick, item.label);
       button.appendChild(name);
       if (item.key) {

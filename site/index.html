@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache">
 <!-- This page's stamp, set by tools/build_site.py (see the loader below). -->
-<meta name="cgw-page" content="35eb16a7f3bc">
+<meta name="cgw-page" content="342e02719a47">
 <title>CNCguitarwizard</title>
 <!-- three.js for the quick 3D model's viewer (quick3d.js), loaded only
      when it is first shown. -->
@@ -983,12 +983,11 @@
         <span id="quick-model-status" class="note"></span>
       </div>
       <fieldset id="quick-model-details" class="quick-model-details">
-        <legend>Details <span class="note">— one set at a time: each takes a little longer to draw, and to turn</span></legend>
-        <label><input type="radio" name="quick-model-detail" value="" checked> None (quickest)</label>
-        <label><input type="radio" name="quick-model-detail" value="neck"> Neck: frets, markers and nut</label>
-        <label><input type="radio" name="quick-model-detail" value="headstock"> Headstock: tuners</label>
-        <label><input type="radio" name="quick-model-detail" value="body"> Body: pickguard, pickups and knobs</label>
-        <label><input type="radio" name="quick-model-detail" value="bridge"> Bridge and strings</label>
+        <legend>Details <span class="note">— each takes a little longer to draw</span></legend>
+        <label><input type="checkbox" name="quick-model-detail" value="neck"> Neck: frets, markers and nut</label>
+        <label><input type="checkbox" name="quick-model-detail" value="headstock"> Headstock: tuners</label>
+        <label><input type="checkbox" name="quick-model-detail" value="body"> Body: pickguard, pickups and knobs</label>
+        <label><input type="checkbox" name="quick-model-detail" value="bridge"> Bridge and strings</label>
       </fieldset>
       <div id="quick-model-view" class="quick-model-view"></div>
     </details>

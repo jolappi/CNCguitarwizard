@@ -2918,18 +2918,19 @@ def _group_title(group: str) -> str:
     }.get(group, group)
 
 
-def quick_model(payload: dict[str, Any], detail: str = "") -> dict[str, Any]:
+def quick_model(payload: dict[str, Any], details: Sequence[str] = ()) -> dict[str, Any]:
     """Return the quick 3D model, to turn and look at in the page.
 
     The design's own surfaces as triangle meshes (``render.preview3d``),
     made in a second or two where the build's exact model takes minutes:
-    to try a change and see it. The last few designs' models are kept, so
-    a detail set chosen, or a design changed back, is drawn at once.
+    to try a change and see it. The last few designs' models and detail
+    sets are kept, so a set ticked, or a design changed back, is drawn at
+    once.
 
     Args:
         payload: ``{"prototype": {...}}`` as for ``start_build``.
-        detail: A detail set to add, a key of ``render.preview3d.DETAILS``
-            (``"neck"``: frets, markers and the nut, ...), or ``""`` for none.
+        details: The detail sets to add, keys of ``render.preview3d.DETAILS``
+            (``"neck"``: frets, markers and the nut, ...); none for none.
 
     Returns:
         ``{"parts": [...]}``, each ``{"name", "colour", "positions",
@@ -2940,14 +2941,14 @@ def quick_model(payload: dict[str, Any], detail: str = "") -> dict[str, Any]:
     try:
         parameters = Prototype001Parameters(**_coerce(payload.get("prototype", {})))
         base: Callable[..., tuple[PreviewPart, ...]] = _quick_base
-        details: Callable[..., tuple[PreviewPart, ...]] = _quick_details
+        detail_set: Callable[..., tuple[PreviewPart, ...]] = _quick_details
         try:
             hash(parameters)
         except TypeError:  # a value the form never sends (a list): made afresh
-            base, details = _quick_base.__wrapped__, _quick_details.__wrapped__
+            base, detail_set = _quick_base.__wrapped__, _quick_details.__wrapped__
         parts = base(parameters)
-        if detail:
-            parts += details(parameters, detail)
+        for detail in details:
+            parts += detail_set(parameters, detail)
     except (CNCGuitarWizardError, TypeError, ValueError) as error:
         return {"error": f"{type(error).__name__}: {error}"}
     return {

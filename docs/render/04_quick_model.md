@@ -30,7 +30,7 @@ floor's heel end, the nut end going down).
 
 ## The details
 
-`detail_parts(geometry, parameters, detail)` adds one detail set
+`detail_parts(geometry, parameters, detail)` makes one detail set
 (`DETAILS`), its parts closed meshes as the others, in typical sizes (the
 design does not hold them):
 
@@ -61,14 +61,17 @@ reads round and an edge sharp). The first model is framed whole (*Whole
 guitar* frames it again); later ones keep the view, so a change is seen
 from where it was looked at, and the wheel or a pinch zooms toward the
 pointer, to a detail. *Save STL* saves what is drawn, 1:1 in
-millimetres. The detail set is chosen by radio buttons (and in the
-*Preview* menu), one at a time so the view turns at once, and is sent
-with the design (`quick_model(payload, detail)`).
+millimetres. The detail sets are ticked by checkboxes (and in the
+*Preview* menu), any or all of them, and are sent with the design
+(`quick_model(payload, details)`): all four add about 70 000 triangles to
+a Stratocaster's 128 000, and about 0.9 s to its drawing in the browser
+(the body's set the most, 0.4 s); it turns about as quickly (a frame
+1.25 ms where it took 1.05, on a desktop).
 
 A Stratocaster is drawn again about 5 seconds after a change (on a
 desktop; a phone takes longer): the design's own build most of it, the
 meshes about a second; a design drawn before comes back in about 1.5 (its
-build kept), and a detail set chosen in a fraction of one (the last few
+build kept), and a detail set ticked in a fraction of one (the last few
 designs' parts and sets kept). The first time takes a few more, loading
 Python and three.js.
 The page answers meanwhile: its longest pause is about 0.15 seconds.

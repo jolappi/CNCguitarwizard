@@ -682,29 +682,28 @@ def test_the_quick_3d_model_is_drawn_off_the_page_and_versioned() -> None:
     assert {"quick3d.js", "quick_worker.js", "model_worker.js"} <= set(builder.SCRIPTS)
 
 
-def test_the_quick_model_s_details_are_one_set_at_a_time() -> None:
-    # Radio buttons, so one set is drawn (and turned) at a time, each the
-    # Python side's: chosen in the page or in the Preview menu, sent along.
+def test_the_quick_model_s_detail_sets_are_each_ticked_or_not() -> None:
+    # Checkboxes, any or all of them, each the Python side's: ticked in the
+    # page or in the Preview menu, sent along.
     page = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
     script = (ROOT / "site" / "app.js").read_text(encoding="utf-8")
     layout = (ROOT / "site" / "desktop.js").read_text(encoding="utf-8")
     worker = (ROOT / "site" / "quick_worker.js").read_text(encoding="utf-8")
 
-    values = re.findall(r'name="quick-model-detail" value="(\w*)"', page)
-    assert values == ["", *DETAILS]
-    assert "each takes a little longer to draw" in page
-    assert "detail: this.detailSet(), id" in script
-    assert "localStorage.setItem(QUICK_DETAIL, quickModel.detailSet());" in script
-    assert (
-        "json.dumps(quick_model(json.loads(quick_payload_json), quick_detail))"
-        in worker
+    values = re.findall(
+        r'type="checkbox" name="quick-model-detail" value="(\w*)"', page
     )
+    assert values == list(DETAILS)
+    assert "each takes a little longer to draw" in page
+    assert "details: this.detailSets(), id" in script
+    assert (
+        'localStorage.setItem(QUICK_DETAILS, quickModel.detailSets().join(" "));'
+        in script
+    )
+    assert "json.loads(quick_details_json)" in worker
     assert '["Preview", () => [' in layout
     assert "querySelectorAll('input[name=\"quick-model-detail\"]')" in layout
-    assert (
-        'button.setAttribute("role", item.radio ? "menuitemradio" : "menuitem");'
-        in layout
-    )
+    assert "box.checked = !box.checked;" in layout
     assert (
         '!["model", "cutters", "settings", "result", "bonus"].includes(page.id)'
         in layout

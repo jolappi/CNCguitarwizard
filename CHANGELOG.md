@@ -184,12 +184,12 @@
   minutes and more, in a worker of its own (no CAD kernel) so the page
   keeps answering, and again a moment after each change while it is open.
   Turned in three.js (drag, wheel or pinch toward the pointer, right-drag
-  or two fingers); *Save STL* saves it. The hardware is a detail set of
-  its own, one at a time (radio buttons, and in the *Preview* menu, which
-  says each takes a little longer to draw): the frets, markers and nut;
-  the tuners; the pickguard, pickups and knobs; or the bridge and the
-  strings, set over the frets (`detail_parts`, `DETAILS`), in typical
-  sizes. A detail set chosen again, or a design changed back, comes back
+  or two fingers); *Save STL* saves it. The hardware is in detail sets of
+  its own, each ticked or not (checkboxes, and in the *Preview* menu,
+  which says each takes a little longer to draw): the frets, markers and
+  nut; the tuners; the pickguard, pickups and knobs; and the bridge and
+  the strings, set over the frets (`detail_parts`, `DETAILS`), in typical
+  sizes. A detail set ticked again, or a design changed back, comes back
   at once (the last few kept). Holes and the truss rod are left out: the
   build's STEP is the exact model.
 

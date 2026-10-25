@@ -7298,10 +7298,10 @@ form.addEventListener("change", (event) => {
 // (quick3d.js) — in a second or two where the build's exact model takes
 // minutes. Drawn when opened and again a moment after each change while
 // open and in sight (out of sight it is only marked stale, as an editor).
-// The hardware is a detail set of its own, one at a time (the radio
-// buttons; the application like UI's Preview menu sets them too), as last
-// chosen in this browser.
-const QUICK_DETAIL = "cncguitarwizard.quickModelDetail";
+// The hardware is in detail sets of its own, each ticked or not (the
+// checkboxes; the application like UI's Preview menu ticks them too), as
+// last ticked in this browser.
+const QUICK_DETAILS = "cncguitarwizard.quickModelDetails";
 const quickModel = {
   panel: document.getElementById("quick-model-view"),
   details: document.getElementById("quick-model"),
@@ -7319,9 +7319,9 @@ const quickModel = {
     this.timer = setTimeout(() => this.refresh(), 600);
   },
 
-  // The detail set chosen ("" for none).
-  detailSet() {
-    return document.querySelector('input[name="quick-model-detail"]:checked')?.value || "";
+  // The detail sets ticked.
+  detailSets() {
+    return [...document.querySelectorAll('input[name="quick-model-detail"]:checked')].map((box) => box.value);
   },
 
   async refresh() {
@@ -7360,10 +7360,10 @@ const quickModel = {
           else reject(new Error(data.text));
         };
         this.worker.onerror = (event) => reject(new Error(event.message || "the 3D model's worker stopped"));
-        this.worker.postMessage({ wheel: wheelHref, payload, detail: this.detailSet(), id });
+        this.worker.postMessage({ wheel: wheelHref, payload, details: this.detailSets(), id });
       });
       this.viewer.show(parts);
-      // A detail set chosen again comes back at once: tenths of a second.
+      // A detail set ticked again comes back at once: tenths of a second.
       const seconds = (performance.now() - started) / 1000;
       this.status.textContent = `Drawn in ${seconds < 10 ? `${seconds.toFixed(1)} s` : timeSince(started)}.`;
     } catch (error) {
@@ -7400,16 +7400,15 @@ form.addEventListener("change", () => {
 });
 document.getElementById("quick-model-details").addEventListener("change", () => {
   try {
-    localStorage.setItem(QUICK_DETAIL, quickModel.detailSet());
+    localStorage.setItem(QUICK_DETAILS, quickModel.detailSets().join(" "));
   } catch {
     // No storage (a private window): the choice is only for now.
   }
   if (quickModel.details.open) quickModel.scheduleRefresh();
 });
 try {
-  const kept = localStorage.getItem(QUICK_DETAIL);
-  const radio = [...document.querySelectorAll('input[name="quick-model-detail"]')].find((input) => input.value === kept);
-  if (radio) radio.checked = true;
+  const kept = (localStorage.getItem(QUICK_DETAILS) || "").split(" ");
+  for (const box of document.querySelectorAll('input[name="quick-model-detail"]')) box.checked = kept.includes(box.value);
 } catch {
   // No storage: no details, as by default.
 }

@@ -20,8 +20,8 @@ The neck and the fretboard are tilted back onto the body as the build
 tilts them (``Prototype001Geometry.neck_tilt``).
 
 Holes, the truss-rod channel and the wiring are left out. The hardware is
-a detail set of its own (``DETAILS``, ``detail_parts``), drawn one set at a
-time: frets, markers and the nut; tuners; pickguard, pickups and knobs;
+in detail sets of its own (``DETAILS``, ``detail_parts``), each drawn or
+not: frets, markers and the nut; tuners; pickguard, pickups and knobs;
 bridge and strings — each in typical sizes, to look right, not to build
 from.
 """
@@ -70,8 +70,8 @@ DETAILS = {
     "body": "Pickguard, pickups and knobs",
     "bridge": "Bridge and strings",
 }
-"""The detail sets ``detail_parts`` makes, one at a time: each takes a
-little longer to make and to turn."""
+"""The detail sets ``detail_parts`` makes, each drawn or not: each takes a
+little longer to make."""
 
 # The hardware's sizes, typical ones (the design does not hold them).
 _FRET_CROWN = 2.6

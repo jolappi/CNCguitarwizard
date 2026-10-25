@@ -212,11 +212,11 @@ def test_the_web_app_sends_the_parts_and_an_stl_holds_them() -> None:
         assert max(memoryview(triangles).cast("I")) < len(positions) // 12
         assert part["colour"].startswith("#")
     assert "error" in quick_model({"prototype": {"body_thickness": -1.0}})
-    # A detail set after the parts; one not known is told.
-    detailed = quick_model({"prototype": {}}, "bridge")
+    # The detail sets ticked after the parts; one not known is told.
+    detailed = quick_model({"prototype": {}}, ["headstock", "bridge"])
     names = [part["name"] for part in detailed["parts"]]
-    assert names == ["Body", "Neck", "Fretboard", "Bridge", "Strings"]
-    assert "ValidationError" in quick_model({"prototype": {}}, "pickups")["error"]
+    assert names == ["Body", "Neck", "Fretboard", "Tuners", "Bridge", "Strings"]
+    assert "ValidationError" in quick_model({"prototype": {}}, ["pickups"])["error"]
     parts = parts_of(Prototype001Parameters())
     data = stl_bytes(parts)
     count = sum(len(part.triangles) // 3 for part in parts)
