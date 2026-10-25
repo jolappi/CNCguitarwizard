@@ -142,8 +142,11 @@ def test_default_preset_builds_every_locked_component() -> None:
     # The DXF's own route: 41 wide, 85.9 long over the mounting ears.
     assert neck_pickup.max_x - neck_pickup.min_x == pytest.approx(41.0)
     assert neck_pickup.max_y - neck_pickup.min_y == pytest.approx(85.916)
+    # The bridge pickup keeps its wood from the Kahler's plate (the DXF had
+    # it 8.4 mm further back, its Kahler further back too).
     bridge_pickup = geometry.body.bridge_pickup
-    assert bridge_pickup.min_x + bridge_pickup.max_x == pytest.approx(2 * 587.87)
+    plate = min(point.x for point in geometry.body.bridge_footprint)
+    assert bridge_pickup.max_x == pytest.approx(plate - 3.0)
     assert geometry.body.bridge_mounting.reference_x == 609.6
     assert geometry.body.bridge_mounting.pivot_holes == ()
     # Fixed Kahler: no sustain block, no rear bridge cavity.
@@ -183,8 +186,10 @@ def test_default_preset_builds_every_locked_component() -> None:
     assert holes["Pot 1 shaft hole"].depth == parameters.body_thickness
     assert holes["Pot 2 shaft hole"].diameter == 10.0
     recess = holes["Bridge pickup treble screw recess"]
+    # Across from the pickup's centre (moved on from the DXF's to clear the
+    # Kahler's plate).
     assert recess.center_x == pytest.approx(
-        parameters.scale_length - parameters.body_bridge_pickup_offset
+        (bridge_pickup.min_x + bridge_pickup.max_x) / 2.0
     )
     assert recess.center_y == pytest.approx(39.95)
     assert recess.depth == pytest.approx(30.0)
@@ -374,10 +379,12 @@ def test_the_bridge_pickup_moves_forward_to_make_room_for_a_floyd_rose() -> None
     assert body.bridge_pickup.max_x == pytest.approx(
         recess.min_x - parameters.body_bridge_pickup_clearance
     )
-    # The Kahler default keeps the DXF's own placement.
-    assert Prototype001Parameters().build().body.bridge_pickup.max_x == (
-        pytest.approx(609.6 - 21.73 + 20.5)
-    )
+    # The Kahler default, its plate starting 6.6 mm ahead of the saddles,
+    # moves it too: past the DXF's own placement (21.73 mm ahead).
+    kahler = Prototype001Parameters().build().body
+    plate = min(point.x for point in kahler.bridge_footprint)
+    assert kahler.bridge_pickup.max_x == pytest.approx(plate - 3.0)
+    assert kahler.bridge_pickup.max_x < 609.6 - 21.73 + 20.5
 
 
 def test_the_bridge_pickup_can_still_be_moved_further_by_hand() -> None:

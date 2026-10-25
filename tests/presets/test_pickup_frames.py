@@ -7,6 +7,7 @@ import pytest
 
 from cncguitarwizard.cam.covers import plan_cover_machining
 from cncguitarwizard.cam.parameters import MachiningParameters
+from cncguitarwizard.geometry.body import KahlerBridgeSpec
 from cncguitarwizard.geometry.exceptions import BodyGeometryError
 from cncguitarwizard.geometry.primitives import Point2D, point_in_polygon
 from cncguitarwizard.presets import Prototype001Parameters
@@ -25,7 +26,14 @@ from cncguitarwizard.presets.pickup_frames import (
 )
 from cncguitarwizard.webapp import body_editor_layout, parameter_schema
 
-HORNS = replace(Prototype001Parameters(), body_pickup_frame="horns")
+# A Kahler set back as the Prototype001 DXF drew it, as these frames were
+# drawn round: the bridge frame has its room behind the pickup (with the
+# Kahler where Kahler places it, the plate takes it: the frame is cut back).
+HORNS = replace(
+    Prototype001Parameters(),
+    body_pickup_frame="horns",
+    body_bridge=KahlerBridgeSpec(baseplate_offset=44.245),
+)
 BRIDGE_ONLY = replace(HORNS, body_pickups="H")
 
 
@@ -205,7 +213,13 @@ def test_seven_strings_open_the_frame_with_the_pickup() -> None:
 
 def test_the_editor_draws_each_frame_and_the_form_offers_the_styles() -> None:
     layout = body_editor_layout(
-        {"prototype": {"body_pickup_frame": "horns", "body_pickups": "H"}}
+        {
+            "prototype": {
+                "body_pickup_frame": "horns",
+                "body_pickups": "H",
+                "body_bridge": {"kind": "kahler_7300", "baseplate_offset": 44.245},
+            }
+        }
     )
     (frame,) = layout["frames"]
     assert (

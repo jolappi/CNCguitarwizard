@@ -6,12 +6,16 @@ from dataclasses import replace
 
 import pytest
 
+from cncguitarwizard.geometry.body import KahlerBridgeSpec
 from cncguitarwizard.geometry.body.body_solid import outlines_overlap
 from cncguitarwizard.geometry.exceptions import BodyGeometryError
 from cncguitarwizard.presets import Prototype001Parameters
 from cncguitarwizard.webapp import body_editor_layout, parameter_schema
 
 HSS = replace(Prototype001Parameters(), body_pickups="HSS")
+# A Kahler set back as the Prototype001 DXF drew it, the room behind the
+# bridge humbucker to turn it in.
+ROOMY = replace(HSS, body_bridge=KahlerBridgeSpec(baseplate_offset=44.245))
 
 
 def _screws(parameters: Prototype001Parameters, label: str) -> dict[str, tuple]:
@@ -32,8 +36,8 @@ def _bearing(screws: dict[str, tuple]) -> float:
 @pytest.mark.parametrize("position", ["neck", "middle", "bridge"])
 def test_a_pickup_turns_about_its_own_centre(position: str) -> None:
     label = position.capitalize()
-    turned = replace(HSS, **{f"body_{position}_pickup_angle": 12.0})
-    before, after = _screws(HSS, label), _screws(turned, label)
+    turned = replace(ROOMY, **{f"body_{position}_pickup_angle": 12.0})
+    before, after = _screws(ROOMY, label), _screws(turned, label)
 
     # The screws turn 12 degrees about the same centre...
     centre = [
@@ -41,12 +45,12 @@ def test_a_pickup_turns_about_its_own_centre(position: str) -> None:
         for s in (before, after)
     ]
     # (The bridge humbucker too: turned on past the saddle line, it is
-    # still well clear of the Kahler's plate. A bridge it would reach is
-    # kept clear of, see the next tests.)
+    # still well clear of a Kahler set that far back. A bridge it would
+    # reach is kept clear of, see the next tests.)
     assert centre[1] == pytest.approx(centre[0], abs=1e-6)
     layout = turned.body_layout()
     assert dict(layout.pickup_centres)[position] == pytest.approx(
-        dict(HSS.body_layout().pickup_centres)[position]
+        dict(ROOMY.body_layout().pickup_centres)[position]
     )
     assert abs(_bearing(after) - _bearing(before)) == pytest.approx(12.0)
     # ...the treble end swinging toward the tail.

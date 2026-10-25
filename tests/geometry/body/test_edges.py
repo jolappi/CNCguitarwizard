@@ -135,7 +135,7 @@ def test_edge_finishes_are_checked_against_the_cavities() -> None:
             base,
             body_arm_contour_depth=12.0,
             body_arm_contour_width=100.0,
-            body_arm_contour_position=160.0,
+            body_arm_contour_position=150.0,
         ).build()
     # A drawn body whose edge comes within 6 mm of the neck pickup route.
     points = list(STRAT.control_points)
