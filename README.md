@@ -106,6 +106,26 @@ Tool, feed and fixturing settings for the G-code live in
 `cncguitarwizard.cam.MachiningParameters` and can be passed the same way
 (`build_prototype001(..., machining=MachiningParameters(feed_rate=800.0))`).
 
+## From the command line, or with Claude
+
+Four commands describe, start, change and check a design file, the same
+one the web app saves and opens, so a design can be made without the
+browser, or by an AI assistant:
+
+```bash
+python -m cncguitarwizard new-design --instrument electric_guitar --style telecaster --name "My Tele" --output my_tele.json
+python -m cncguitarwizard settings --design my_tele.json --search "neck pickup"
+python -m cncguitarwizard set --design my_tele.json handedness=left scale_length=25.5in
+python -m cncguitarwizard check --design my_tele.json
+```
+
+Every change is read and checked as the web app reads and checks it, and
+a change that breaks the design is not saved. The
+[CNCguitarwizard skill](skills/cncguitarwizard/SKILL.md) teaches Claude
+to design with them from a description in plain words: copy
+`skills/cncguitarwizard` into `~/.claude/skills/` for Claude Code. See
+[Designing from the command line, or with Claude](docs/workflows/design_commands.md).
+
 ## In the browser
 
 The same package runs client-side on GitHub Pages: `site/` loads it into
@@ -157,6 +177,7 @@ svg = SVGRenderer().render(neck.fretboard)
 - [Prototype001 preset](docs/presets/prototype001.md)
 - [Building Prototype001 in FreeCAD](docs/workflows/prototype001.md)
 - [Parameter sheet](docs/workflows/parameter_sheet.md)
+- [Designing from the command line, or with Claude](docs/workflows/design_commands.md)
 - [FreeCAD backend](docs/backends/freecad.md)
 - [Body G-code](docs/cam/01_body_gcode.md)
 - [Neck and fretboard G-code](docs/cam/02_neck_and_fretboard_gcode.md)

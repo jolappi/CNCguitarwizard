@@ -117,6 +117,22 @@
   kept, as they snap). `step_down` is 0, half the main tool, by default:
   the small holes are cut 1.5 mm a pass with the 3 mm end mill, not 3.
 
+- Designs made from the command line, or by Claude: `settings` lists the
+  settings with their types, defaults, meanings and, for a design, their
+  values and whether each does anything there (and what it needs);
+  `new-design` starts a design file from an instrument or one of its
+  styles; `set` changes settings (`scale_length=25.5in`,
+  `body_bridge=tune_o_matic`, `body_bridge.string_count=7`), each read as
+  its setting's type, and keeps the change only when the design still
+  builds and checks (or an unfinished one gets no worse); `check` builds
+  the geometry, finds the editors' problems and checks the parameter
+  sheet. Each prints JSON with `--json` and ends with code 1 when a design
+  is not OK (`design_tools`). `build-prototype001` now prints the
+  parameter sheet's status, and names `freecad.log` only when FreeCAD ran. The CNCguitarwizard skill
+  (`skills/cncguitarwizard`) teaches Claude to design with them from a
+  description in plain words, never working out a dimension itself; see
+  [Designing from the command line, or with Claude](docs/workflows/design_commands.md).
+
 - The FreeCAD model checked against the parameter sheet: a build that
   runs FreeCAD measures the finished model in it (`Prototype001_check.py`,
   `backends.freecad.render_model_measure`) and checks it
