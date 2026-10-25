@@ -215,6 +215,9 @@ STYLES: dict[str, InstrumentStyle] = {
             **GIBSON,
             "body_controls": "gibson_4",
             "body_carved_top": True,
+            # A 5/8 in maple cap on the mahogany, its wire channels routed
+            # into the mahogany under it (chambers too, with body_chambers).
+            "body_cap_thickness": 15.875,
             "body_jack_plate": True,
             "inlay_style": "trapezoid",
         },

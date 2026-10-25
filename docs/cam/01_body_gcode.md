@@ -155,6 +155,25 @@ V-bit by its angle); the tables here name the programs alone. A matching
 plots every move (rapids dashed, cuts coloured blue → red by depth) over the
 outline in that setup's own frame, so the flipped setup is drawn mirrored.
 
+### A separate top: the core first
+
+A body glued up from a core and a separate top (`BodySolid.cap_thickness`)
+with routes under the top (wire channels, chambers) starts with two
+programs of its own, run on the core alone before the top is glued on:
+
+- `Body_core_index_pins` drills the two dowel holes through the core, at
+  the same places as `Body_index_pins` (the blank: the core's thickness,
+  the top's blank as large and the cap's thickness);
+- `Body_core_top` pockets the core's routes from its top, the core on its
+  dowels, each to its depth below the core's top (its own Z zero).
+
+Then the top is glued on with the core still on its dowels, the glue kept
+out of the routes and the dowel holes; once it has set, `Body_index_pins`
+drills on through the top into the core's dowel holes, and every other
+program follows as for a body of one piece. Without routes under the top
+there are no core programs: `Body_index_pins` says to glue the top on
+first.
+
 ## Operations
 
 **Pocket.** For every depth pass the planner rasters the region where the

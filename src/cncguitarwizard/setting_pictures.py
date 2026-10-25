@@ -299,6 +299,9 @@ SETTING_PICTURES: dict[str, SettingPicture] = {
         r"^Carved top's plateau$",
         _BODY,
     ),
+    # A separate top: the routes it hides (its wire channels, chambers).
+    "body_cap_thickness": ("plan", (r"\(under the top", _BODY)),
+    "body_chambers": ("plan", (r"^Chamber \d+ \(under the top", _BODY)),
     **_same(
         "plan",
         "body_stepped_top body_top_step_insets body_top_step_height",

@@ -51,6 +51,7 @@ SHEET_FIELDS: tuple[tuple[str, str, str], ...] = (
     ("Body", "body_shape", ""),
     ("Body", "body_bridge", ""),
     ("Body", "body_thickness", "mm"),
+    ("Body", "body_cap_thickness", "mm"),
     ("Body", "body_neck_pocket_length", "mm"),
     ("Body", "body_neck_pocket_clearance", "mm"),
 )

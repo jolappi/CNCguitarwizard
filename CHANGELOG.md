@@ -173,6 +173,25 @@
 
 ### Added
 
+- A body glued up from a core and a separate top (`body_cap_thickness`):
+  the Les Paul style's 5/8 in maple cap on its mahogany, any body's too,
+  set beside the body editor (*Design › Body*) as in the settings, with
+  *Wire channels* there too while it has a cap (the chambers shown only
+  then: a setting's condition may now be a number above 0).
+  Its wire channels are routed into the core's top, hidden under the cap,
+  wherever two cavities reach into the core: a Les Paul's pickups and
+  toggle now wire to its controls, where no straight hole reached and the
+  builder was left to find a way. `body_chambers` lightens the core with
+  chambers routed under the cap wherever there is room, clear of the
+  edge, every cavity and hole and a centre block under the pickups and
+  the bridge, a rib left to any wood standing inside one
+  (`geometry.body.chambers`); a Les Paul gets one in each lower bout. The
+  core is cut first, on its own dowels (`Body_core_index_pins`,
+  `Body_core_top`), the cap glued on, and every other program runs on the
+  glued-up blank as before. The FreeCAD model and the STEP hold the core
+  (`Body`) and the cap (`Top`) as two solids, the quick 3D model too,
+  where *The separate top* unticked shows what lies under it.
+
 - A quick 3D model, to try a change and see it at once (*Preview › 3D
   model*; in the Classic UI a fold under the inlay editor): the design's
   own surfaces as triangle meshes (`render.preview3d`,

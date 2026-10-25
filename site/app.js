@@ -284,7 +284,7 @@ const EDITOR_FIELDS = {
     "body_neck_pickup_offset", "body_middle_pickup_offset", "body_bridge_pickup_offset", "body_pickups_follow_fan",
     "body_bridge", "body_bridge_follows_fan", "body_controls", "body_switch", "body_jack", "body_jack_plate",
     "body_pickguard", "body_pickguard_style", "body_pickup_frame", "body_pickup_frame_direction",
-    "body_arm_contour_depth", "body_belly_cut_depth", "body_leg_contour_depth", "body_top_bevel_width", "body_back_bevel_width", "body_heel_relief", "body_heel_relief_depth", "body_heel_relief_line", "body_carved_top", "body_carve_depth", "body_stepped_top", "body_epoxy_tray_depth",
+    "body_arm_contour_depth", "body_belly_cut_depth", "body_leg_contour_depth", "body_top_bevel_width", "body_back_bevel_width", "body_heel_relief", "body_heel_relief_depth", "body_heel_relief_line", "body_carved_top", "body_carve_depth", "body_cap_thickness", "body_chambers", "body_wire_channels", "body_stepped_top", "body_epoxy_tray_depth",
     "body_engraving", "body_engraving_pattern", "body_engraving_seed", "body_battery_box", "body_battery_count",
     "body_neck_bolts_outward", "body_neck_plate", "body_strap_guide",
   ],
@@ -411,7 +411,8 @@ function showMirroredRows() {
 // (schema.applies_when: a heel's thickness only on a neck with a heel in
 // a pocket) is hidden, in the form and wherever a copy of it stands,
 // while none of its conditions hold: each the values other settings must
-// have (schema.any_text: any text but none).
+// have (schema.any_text: any text but none; schema.above_zero: any number
+// above nought).
 function showApplicableSettings() {
   // A design setting or a machining one (their names differ).
   const field = (name) => form.querySelector(`:is(input, select)[data-set][data-name='${name}']`)
@@ -420,8 +421,15 @@ function showApplicableSettings() {
     const control = field(name);
     return control?.type === "checkbox" ? control.checked : control?.value;
   };
-  const fits = (value, values) => values.includes(value)
-    || (values.includes(schema.any_text) && typeof value === "string" && value.trim() !== "");
+  const fits = (value, values) => (values.includes(schema.above_zero)
+    ? Number(value) > 0
+    : values.includes(value)
+      || (values.includes(schema.any_text) && typeof value === "string" && value.trim() !== ""));
+  // A copy shown only beside another setting's value too: the wire channels
+  // on the body's page with a separate top, the channels routed under it.
+  const copyShown = {
+    "body-editor-options.body_wire_channels": () => Number(now("body_cap_thickness")) > 0,
+  };
   for (const [name, conditions] of Object.entries(schema.applies_when || {})) {
     const original = field(name);
     if (!original) continue;
@@ -429,9 +437,10 @@ function showApplicableSettings() {
       .every(([other, values]) => fits(now(other), values)));
     original.closest(".field")?.classList.toggle("not-applicable", !applies);
     for (const copy of mirrors.get(original) || []) {
+      const shown = applies && (copyShown[copy.id]?.() ?? true);
       const label = document.querySelector(`label[for="${CSS.escape(copy.id)}"]`);
       for (const part of [label, copy.closest(".with-button") || copy]) {
-        part?.classList.toggle("not-applicable", !applies);
+        part?.classList.toggle("not-applicable", !shown);
       }
     }
   }
@@ -7363,6 +7372,10 @@ const quickModel = {
         this.worker.postMessage({ wheel: wheelHref, payload, details: this.detailSets(), id });
       });
       this.viewer.show(parts);
+      // A separate top can be hidden, to see the routes under it.
+      const topLabel = document.getElementById("quick-model-top-label");
+      topLabel.hidden = !parts.some((part) => part.name === "Top");
+      this.viewer.setVisible("Top", document.getElementById("quick-model-top").checked);
       // A detail set ticked again comes back at once: tenths of a second.
       const seconds = (performance.now() - started) / 1000;
       this.status.textContent = `Drawn in ${seconds < 10 ? `${seconds.toFixed(1)} s` : timeSince(started)}.`;
@@ -7412,6 +7425,11 @@ try {
 } catch {
   // No storage: no details, as by default.
 }
+document.getElementById("quick-model-top").addEventListener("change", (event) => {
+  // Its own switch, not a detail set: the view changes, not the model.
+  event.stopPropagation();
+  quickModel.viewer?.setVisible("Top", event.target.checked);
+});
 document.getElementById("quick-model-frame").addEventListener("click", () => quickModel.viewer?.frame());
 document.getElementById("quick-model-stl").addEventListener("click", () => quickModel.saveStl());
 

@@ -48,8 +48,13 @@ if TYPE_CHECKING:
 PREVIEW_SPACING = 2.0
 """The body's sampling grid, in mm."""
 
+_THROUGH = 0.05
+"""How thin, in mm, the body (or a separate top) may be at a point and
+still be drawn there."""
+
 PREVIEW_COLOURS = {
     "Body": "#c9a26b",
+    "Top": "#ead9ae",
     "Neck": "#e7cc93",
     "Fretboard": "#4a2c1d",
     "Frets": "#cfd0cb",
@@ -124,7 +129,8 @@ def preview_parts(
     neck_rows: Sequence[Sequence[Point3D]],
     spacing: float = PREVIEW_SPACING,
 ) -> tuple[PreviewPart, ...]:
-    """Return the quick model's parts: body, neck and fretboard.
+    """Return the quick model's parts: body, neck and fretboard, and a
+    separate top (``Top``, the body then its core).
 
     Args:
         geometry: The built design.
@@ -138,14 +144,18 @@ def preview_parts(
     """
     tilt = _Tilt(*geometry.neck_tilt)
     board = geometry.fretboard_surface.mesh.rows
-    return (
-        _part("Body", [_body_piece(geometry.body, spacing)]),
+    body = _body_pieces(geometry.body, spacing)
+    parts = [
+        _part("Body", body[:1]),
         _part("Neck", [tilt.piece(_rows_piece(neck_rows))]),
         _part(
             "Fretboard",
             [tilt.piece(_rows_piece([_down_to_glue(row) for row in board]))],
         ),
-    )
+    ]
+    if len(body) > 1:
+        parts.append(_part("Top", body[1:]))
+    return tuple(parts)
 
 
 def detail_parts(
@@ -294,7 +304,8 @@ def _cap(positions: list[float], loop: list[int]) -> list[int]:
 # ---- the body: heights on a grid ----------------------------------------------
 
 
-def _body_piece(body: BodySolid, spacing: float) -> _Piece:
+def _body_pieces(body: BodySolid, spacing: float) -> list[_Piece]:
+    """Return the body, or with a separate top the core and the cap."""
     outline = body.outline.points
     edge = _SegmentIndex(body.edge_points)
     x0, y0, columns, rows = _grid(outline, spacing)
@@ -362,8 +373,17 @@ def _body_piece(body: BodySolid, spacing: float) -> _Piece:
             back += _round_drop(back_edge.radius, edge_distance)
         return top, back
 
-    # Each grid point's place: inside, or just outside and moved onto the edge.
-    places: dict[tuple[int, int], tuple[Point2D, float, float]] = {}
+    core_routes = _route_depths(
+        [(cavity.outline, cavity.depth) for cavity in body.core_cavities],
+        x0,
+        y0,
+        spacing,
+        columns,
+        rows,
+    )
+    # Each grid point's place: inside, or just outside and moved onto the
+    # edge; its top and back heights.
+    faces: dict[tuple[int, int], tuple[Point2D, float, float]] = {}
     for j in range(rows):
         for i in range(columns):
             if through[j][i]:
@@ -373,7 +393,7 @@ def _body_piece(body: BodySolid, spacing: float) -> _Piece:
                 top, back = heights(at, edge.distance(at, reach))
                 route = top_routes[j][i]
                 rear_route = back_routes[j][i]
-                places[(i, j)] = (
+                faces[(i, j)] = (
                     at,
                     -max(top, route),
                     -body.thickness + max(back, rear_route),
@@ -381,8 +401,22 @@ def _body_piece(body: BodySolid, spacing: float) -> _Piece:
             elif _next_to(inside, i, j):
                 at = edge.nearest(point(i, j))
                 top, back = heights(at, 0.0)
-                places[(i, j)] = (at, -top, -body.thickness + back)
-    return _grid_piece(places, columns, rows)
+                faces[(i, j)] = (at, -top, -body.thickness + back)
+    if body.cap_thickness == 0.0:
+        return [_grid_piece(faces, columns, rows)]
+    # A separate top: the core up to the cap's underside (lower where a
+    # route reaches into it, and its own routes down from there), the cap
+    # over it; either left out where a route goes clean through it.
+    split = -body.cap_thickness
+    core: dict[tuple[int, int], tuple[Point2D, float, float]] = {}
+    cap: dict[tuple[int, int], tuple[Point2D, float, float]] = {}
+    for (i, j), (at, top, back) in faces.items():
+        floor = min(split, top, split - core_routes[j][i])
+        if floor - back > _THROUGH:
+            core[(i, j)] = (at, floor, back)
+        if top - max(split, back) > _THROUGH:
+            cap[(i, j)] = (at, top, max(split, back))
+    return [_grid_piece(core, columns, rows), _grid_piece(cap, columns, rows)]
 
 
 def _plate_piece(

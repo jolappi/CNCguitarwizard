@@ -19,6 +19,7 @@ from cncguitarwizard.presets import Prototype001Parameters
 from cncguitarwizard.presets.body_shapes import YOUR_DESIGN_TEMPLATES
 from cncguitarwizard.presets.prototype001 import BODY_TEMPLATE_VALUES
 from cncguitarwizard.setting_conditions import (
+    ABOVE_ZERO,
     APPLIES_WHEN,
     NOT_EMPTY,
     Condition,
@@ -48,15 +49,19 @@ def choices(name: str) -> tuple[str | bool, ...]:
     return tuple(a for a in typing.get_args(HINTS[name]) if isinstance(a, str))
 
 
-def meeting(allowed: tuple[str | bool, ...]) -> str | bool:
+def meeting(allowed: tuple[str | bool, ...]) -> str | bool | float:
     """Return a value one of a condition's ``allowed`` values stands for."""
+    if allowed[0] == ABOVE_ZERO:
+        return 12.0
     return "AB" if allowed[0] == NOT_EMPTY else allowed[0]
 
 
-def breaking(name: str, allowed: tuple[str | bool, ...]) -> list[str | bool]:
+def breaking(name: str, allowed: tuple[str | bool, ...]) -> list[str | bool | float]:
     """Return the values of setting ``name`` a condition does not allow."""
     if NOT_EMPTY in allowed:
         return [""]
+    if ABOVE_ZERO in allowed:
+        return [0.0]
     return [value for value in choices(name) if value not in allowed]
 
 
@@ -113,6 +118,8 @@ def test_every_condition_names_settings_and_their_values() -> None:
                 assert other in names and other != name
                 if NOT_EMPTY in values:
                     assert HINTS[other] is str and values == (NOT_EMPTY,)
+                elif ABOVE_ZERO in values:
+                    assert HINTS[other] is float and values == (ABOVE_ZERO,)
                 else:
                     assert set(values) <= set(choices(other))
 

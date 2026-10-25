@@ -129,7 +129,7 @@ from .render.svg import (
     render_plan_view_svg,
     render_volute_view_svg,
 )
-from .setting_conditions import APPLIES_WHEN, NOT_EMPTY
+from .setting_conditions import ABOVE_ZERO, APPLIES_WHEN, NOT_EMPTY
 from .setting_pictures import SETTING_PICTURES
 from .workflows import Prototype001Build
 
@@ -575,6 +575,7 @@ def parameter_schema() -> dict[str, Any]:
             for name, conditions in APPLIES_WHEN.items()
         },
         "any_text": NOT_EMPTY,
+        "above_zero": ABOVE_ZERO,
         "styles": {
             key: {"label": style.label, "instruments": list(style.instruments)}
             for key, style in STYLES.items()
@@ -2964,10 +2965,17 @@ def quick_model(payload: dict[str, Any], details: Sequence[str] = ()) -> dict[st
     }
 
 
+def _quick_built(parameters: Prototype001Parameters) -> Prototype001Geometry:
+    """Return the design built for the quick model: wired only under a
+    separate top, whose wire channels are routes in the core (seen with the
+    top hidden); else not, the quicker."""
+    return _built(parameters, wired=parameters.cap_thickness > 0.0)
+
+
 @functools.lru_cache(maxsize=BUILDS_KEPT)
 def _quick_base(parameters: Prototype001Parameters) -> tuple[PreviewPart, ...]:
     """Return the quick model's body, neck and fretboard (``quick_model``)."""
-    geometry = _built(parameters, wired=False)
+    geometry = _quick_built(parameters)
     rows = FreeCADScriptExporter.neck_loft_rows(
         geometry.neck_surface,
         geometry.headstock,
@@ -2982,7 +2990,7 @@ def _quick_details(
     parameters: Prototype001Parameters, detail: str
 ) -> tuple[PreviewPart, ...]:
     """Return one of the quick model's detail sets (``quick_model``)."""
-    return detail_parts(_built(parameters, wired=False), parameters, detail)
+    return detail_parts(_quick_built(parameters), parameters, detail)
 
 
 def part_views(payload: dict[str, Any]) -> dict[str, Any]:

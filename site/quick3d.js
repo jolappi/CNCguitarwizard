@@ -30,6 +30,9 @@ export function createViewer(holder) {
   scene.add(group);
   let parts = [];
   let framed = false;
+  // Parts hidden by name (a separate top, to see under it), kept as the
+  // model is drawn again.
+  const hidden = new Set();
 
   const render = () => renderer.render(scene, camera);
   controls.addEventListener("change", render);
@@ -82,6 +85,7 @@ export function createViewer(holder) {
       });
       const mesh = new THREE.Mesh(geometry, material);
       mesh.name = part.name;
+      mesh.visible = !hidden.has(part.name);
       group.add(mesh);
     }
     if (!framed) {
@@ -91,6 +95,16 @@ export function createViewer(holder) {
     } else {
       render();
     }
+  }
+
+  // Shows or hides the parts of that name.
+  function setVisible(name, visible) {
+    if (visible) hidden.delete(name);
+    else hidden.add(name);
+    for (const mesh of group.children) {
+      if (mesh.name === name) mesh.visible = visible;
+    }
+    render();
   }
 
   // The parts as one binary STL, in millimetres.
@@ -121,5 +135,5 @@ export function createViewer(holder) {
     return out.buffer;
   }
 
-  return { show, stl, frame };
+  return { show, stl, frame, setVisible };
 }

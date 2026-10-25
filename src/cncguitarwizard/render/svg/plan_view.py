@@ -299,6 +299,17 @@ def render_plan_view_svg(
                 side.name,
             )
         )
+    # The routes into the core under a separate top (its wire channels and
+    # chambers), hidden once the top is glued on: dashed green.
+    for cavity in body.core_cavities:
+        parts.append(
+            path(
+                cavity.outline,
+                'fill="#2e8b57" fill-opacity="0.08" stroke="#2e8b57" '
+                'stroke-width="0.6" stroke-dasharray="3,2"',
+                f"{cavity.name} (under the top, {cavity.depth:g} mm deep)",
+            )
+        )
     # The wire holes drilled by hand, dashed from cavity to cavity.
     for wire in body.wire_holes:
         parts.append(

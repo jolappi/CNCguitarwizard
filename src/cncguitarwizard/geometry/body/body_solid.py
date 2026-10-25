@@ -171,6 +171,14 @@ class BodySolid:
         checked: ``False`` for one part of a neck-through body, cut from
             its own blank: the whole body was checked, and the part carries
             every feature that reaches it, past its glue lines too.
+        cap_thickness: A separate top's thickness (a Les Paul's maple cap),
+            glued onto the core under it; ``0`` for a body of one piece.
+            Every feature is cut through both as through one; only the
+            ``core_cavities`` are the core's own.
+        core_cavities: Routes into the core's top, cut before the cap is
+            glued on and hidden under it (wire channels, chambers), each
+            ``depth`` deep from the cap's underside; they must leave wood
+            over the back.
 
     Raises:
         BodyGeometryError: If any cavity is deeper than the slab, falls
@@ -219,11 +227,25 @@ class BodySolid:
     strap_guide: tuple[Point2D, ...] = ()
     edge_outline: tuple[Point2D, ...] = ()
     checked: bool = True
+    cap_thickness: float = 0.0
+    core_cavities: tuple[Cavity, ...] = ()
 
     def __post_init__(self) -> None:
         """Cross-check every cavity against the slab and outline bounds."""
         if not math.isfinite(self.thickness) or self.thickness <= 0.0:
             raise BodyGeometryError("Body thickness must be finite and positive.")
+        if not (
+            math.isfinite(self.cap_thickness)
+            and 0.0 <= self.cap_thickness < self.thickness
+        ):
+            raise BodyGeometryError(
+                "A separate top must be thinner than the body (0 for none)."
+            )
+        if self.core_cavities and self.cap_thickness == 0.0:
+            raise BodyGeometryError(
+                "Routes under the top need a separate top to hide them: set its "
+                "thickness."
+            )
         if not self.checked:
             return
         if self.carved_top is not None and self.stepped_top is not None:
@@ -371,6 +393,15 @@ class BodySolid:
             raise BodyGeometryError(
                 "Bridge pivot holes must leave material beneath their floor."
             )
+        for cavity in self.core_cavities:
+            if cavity.depth >= self.core_thickness:
+                raise BodyGeometryError(
+                    f"{cavity.name} must leave wood of the core over the back."
+                )
+            if not all(
+                point_in_polygon(point, self.outline.points) for point in cavity.outline
+            ):
+                raise BodyGeometryError(f"{cavity.name} falls outside the body.")
         if (
             self.jack_hole is not None
             and self.jack_hole.depth >= self._outline_half_span()
@@ -711,6 +742,12 @@ class BodySolid:
     def edge_points(self) -> tuple[Point2D, ...]:
         """Return the outline the edge finishes follow (see ``edge_outline``)."""
         return self.edge_outline or self.outline.points
+
+    @property
+    def core_thickness(self) -> float:
+        """Return the core's thickness under a separate top (the whole
+        body's without one)."""
+        return self.thickness - self.cap_thickness
 
     @property
     def top_cavities(self) -> tuple[Cavity, ...]:

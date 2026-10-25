@@ -19,6 +19,14 @@ found so it leaves ``WIRE_SKIN`` of wood under the top and over the back,
 ``WIRE_WALL`` round every other cavity and hole, and opens into both
 cavities; the shallowest that does is taken. Heights here are above the
 back face (``0`` the back, the body's thickness the top).
+
+A body glued up from a core and a separate top (a cap, ``cap`` thick)
+hides a channel routed into the core's top before the cap goes on, as a
+Les Paul's are: wherever two cavities both reach into the core, a channel
+``WIRE_CHANNEL_WIDTH`` wide is routed from the cap's underside, at least
+``WIRE_CORE_CHANNEL_DEPTH`` deep and deep enough to open
+``WIRE_OPENING`` into each, keeping ``WIRE_SKIN`` of wood over the back
+and of the cap under the top.
 """
 
 from __future__ import annotations
@@ -44,6 +52,14 @@ WIRE_CHANNEL_WIDTH = 10.0
 WIRE_CHANNEL_DEPTH = 16.0
 """How deep such a channel is routed, at most, in mm (never deeper than
 the routes it joins)."""
+
+WIRE_CORE_CHANNEL_DEPTH = 10.0
+"""How deep a channel under a separate top is routed into the core, at
+least, in mm (deeper where a cavity it joins needs it)."""
+
+WIRE_OPENING = 4.0
+"""How far, in height, a channel under a separate top opens into each
+cavity it joins, at least, in mm."""
 
 WIRE_SKIN = 3.0
 """Least wood a drilled hole leaves under the top and over the back, in mm."""
@@ -182,11 +198,14 @@ class Wiring:
         holes: Holes drilled by hand.
         by_hand: The connections no straight hole fits, to be made by
             hand (a note each).
+        core_channels: Channels routed into the core's top under a
+            separate top, each ``depth`` deep from the cap's underside.
     """
 
     channels: tuple[TracedCavity, ...] = ()
     holes: tuple[WireHole, ...] = ()
     by_hand: tuple[str, ...] = ()
+    core_channels: tuple[TracedCavity, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -196,6 +215,7 @@ class _Link:
     cost: float
     channel: TracedCavity | None = None
     hole: WireHole | None = None
+    core_channel: TracedCavity | None = None
 
 
 def plan_wiring(
@@ -212,6 +232,7 @@ def plan_wiring(
     openings: Sequence[tuple[Point2D, ...]] = (),
     top_at: Callable[[Point2D], float] | None = None,
     back_at: Callable[[Point2D], float] | None = None,
+    cap: float = 0.0,
 ) -> Wiring:
     """Return the channels and holes wiring the electronics and the bridge.
 
@@ -234,6 +255,8 @@ def plan_wiring(
             arm contour), the thickness if not given.
         back_at: The back's height at a point (above ``0`` in a belly
             cut), ``0`` if not given.
+        cap: A separate top's thickness, its channels routed into the
+            core's top under it; ``0`` for a body of one piece.
     """
     sources = [*pickups, *((switch,) if switch is not None else ())]
     planner = _Planner(
@@ -250,8 +273,10 @@ def plan_wiring(
         tuple(openings),
         top_at or (lambda point: thickness),
         back_at or (lambda point: 0.0),
+        thickness - cap if cap > 0.0 else None,
     )
     channels: list[TracedCavity] = []
+    core_channels: list[TracedCavity] = []
     holes: list[WireHole] = []
     by_hand: list[str] = []
     wired = [controls]
@@ -273,6 +298,8 @@ def plan_wiring(
         link, pickup = best
         if link.channel is not None:
             channels.append(link.channel)
+        if link.core_channel is not None:
+            core_channels.append(link.core_channel)
         if link.hole is not None:
             holes.append(link.hole)
         wired.append(pickup)
@@ -288,6 +315,8 @@ def plan_wiring(
             holes.append(lead.hole)
         elif lead.channel is not None:
             channels.append(lead.channel)
+        elif lead.core_channel is not None:
+            core_channels.append(lead.core_channel)
     if bridge:
         grounds = [
             (target.face == "back", hole)
@@ -307,7 +336,7 @@ def plan_wiring(
                 "No straight hole joins the controls to the bridge: run the "
                 "ground wire by hand."
             )
-    return Wiring(tuple(channels), tuple(holes), tuple(by_hand))
+    return Wiring(tuple(channels), tuple(holes), tuple(by_hand), tuple(core_channels))
 
 
 class _Planner:
@@ -322,8 +351,11 @@ class _Planner:
         openings: tuple[tuple[Point2D, ...], ...],
         top_at: Callable[[Point2D], float],
         back_at: Callable[[Point2D], float],
+        split: float | None = None,
     ) -> None:
         self.thickness = thickness
+        # The height of a separate top's underside, or None.
+        self.split = split
         self.outline = outline
         self.spaces = spaces
         self.covers = covers
@@ -344,7 +376,8 @@ class _Planner:
         }
 
     def link(self, source: WireSpace, target: WireSpace, name: str) -> _Link | None:
-        """Return a channel under the guard, else a hole, from source to target.
+        """Return a channel under the guard or the top, else a hole, from
+        source to target.
 
         Cavities that already meet need neither (cost ``0``).
         """
@@ -362,6 +395,11 @@ class _Planner:
                 channel = self.channel(source, target, start, end, f"{name} channel")
                 if channel is not None:
                     return _Link(math.dist(_xy(start), _xy(end)), channel=channel)
+        if self.split is not None:
+            for start, end in lines:
+                core = self.core_channel(source, target, start, end, f"{name} channel")
+                if core is not None:
+                    return _Link(math.dist(_xy(start), _xy(end)), core_channel=core)
         hole = self.hole(source, target, f"{name} hole", False)
         return None if hole is None else _Link(hole.length, hole=hole)
 
@@ -421,6 +459,67 @@ class _Planner:
                 if _polygons_near(outline, polygon, WIRE_WALL):
                     return None
         return TracedCavity(name, outline, depth)
+
+    def core_channel(
+        self,
+        a: WireSpace,
+        b: WireSpace,
+        start: Point2D,
+        end: Point2D,
+        name: str,
+    ) -> TracedCavity | None:
+        """Return a channel routed into the core's top from ``a`` to ``b``.
+
+        Under a separate top (``split`` its underside's height): both
+        cavities must reach ``WIRE_OPENING`` into the core. Its depth is
+        ``WIRE_CORE_CHANNEL_DEPTH``, or more where it must go deeper to open
+        into a cavity under the split (a control cavity routed from the
+        back); its floor keeps ``WIRE_SKIN`` over the back, and the cap
+        over it ``WIRE_SKIN`` under the top (a carve, a contour).
+        """
+        split = self.split
+        if split is None:
+            return None
+        floor = split - WIRE_CORE_CHANNEL_DEPTH
+        for space in (a, b):
+            if space.bottom > split - WIRE_OPENING:
+                return None
+            floor = min(floor, min(space.top, split) - WIRE_OPENING)
+        ux, uy = _unit(start, end)
+        reach = WIRE_CHANNEL_WIDTH / 2.0 + 1.0
+        outline = _stadium(
+            Point2D(start.x - ux * reach, start.y - uy * reach),
+            Point2D(end.x + ux * reach, end.y + uy * reach),
+            WIRE_CHANNEL_WIDTH / 2.0,
+        )
+        own = (a.outline, *a.parts, b.outline, *b.parts)
+        for point in _dense(outline):
+            if any(point_in_polygon(point, polygon) for polygon in own):
+                continue
+            if (
+                not point_in_polygon(point, self.outline)
+                or self.top_at(point) - split < WIRE_SKIN
+                or floor - self.back_at(point) < WIRE_SKIN
+            ):
+                return None
+        x0, y0, x1, y1 = _bounds(outline)
+        for space in self.spaces:
+            if space is a or space is b or _inside_own(space, (a, b)):
+                continue
+            if space.top <= floor - WIRE_WALL or space.bottom >= split + WIRE_WALL:
+                continue
+            for polygon in (space.outline, *space.parts):
+                px0, py0, px1, py1 = self._bounds[id(polygon)]
+                if (
+                    px1 < x0 - WIRE_WALL
+                    or px0 > x1 + WIRE_WALL
+                    or py1 < y0 - WIRE_WALL
+                    or py0 > y1 + WIRE_WALL
+                ):
+                    continue
+                if _polygons_near(outline, polygon, WIRE_WALL):
+                    return None
+        return TracedCavity(name, outline, split - floor)
 
     def hole(
         self, a: WireSpace, b: WireSpace, name: str, ground: bool

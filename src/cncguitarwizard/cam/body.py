@@ -55,6 +55,9 @@ TOP_FIXTURE = "Body top face up on the index pins"
 BACK_FIXTURE = "Body back face up on the index pins"
 """How the back face's programs hold the blank, once it is flipped."""
 
+CORE_FIXTURE = "Body core top face up on the index pins"
+"""How the core's own program holds the core, before its top is glued on."""
+
 
 @dataclass(frozen=True, slots=True)
 class BodyMachiningPlan:
@@ -91,6 +94,11 @@ class BodyMachiningPlan:
         back_release: The lower half of the outline with its tabs, cut
             once every other back program has run (``Body_back_outline``):
             the body freed last; ``None`` without the outline.
+        core_index_pins: Under a separate top, the program that drills the
+            index pins through the core before the top is glued on, or
+            ``None`` without routes under it.
+        core_top: The core's own routes (wire channels, chambers), cut
+            into its top before the top is glued on, or ``None``.
         stock_length: Minimum blank length along X.
         stock_width: Minimum blank width along Y.
         stock_thickness: Blank thickness (the body thickness).
@@ -121,15 +129,20 @@ class BodyMachiningPlan:
     top_steps: Setup | None = None
     top_carve_flats: Setup | None = None
     back_release: Setup | None = None
+    core_index_pins: Setup | None = None
+    core_top: Setup | None = None
 
     @property
     def setups(self) -> tuple[Setup, ...]:
         """Return the setups in running order.
 
-        Each face runs its main program, then its electronics program,
-        then its small-drill program.
+        Under a separate top the core's own programs come first, before the
+        top is glued on. Each face runs its main program, then its
+        electronics program, then its small-drill program.
         """
         candidates = (
+            self.core_index_pins,
+            self.core_top,
             self.index_pins,
             self.top_carve_flats,
             self.top_carve,
@@ -229,10 +242,12 @@ def plan_body_machining(
             f"{body.thickness:g} mm; pin 1 is "
             f"{pins[0][0] - stock.min_x:.1f} mm from the nut-end edge "
             "on the centerline.",
+            *_cap_notes(body),
             "Insert both dowels after this program before running Body_top.",
         ),
         reference_points,
     )
+    core_pins, core_top = _core_setups(body, pins, stock, top_frame, parameters)
 
     def top_pocket(cavity: Cavity) -> Toolpath:
         return _top_pocket(cavity, body, top_frame, parameters)
@@ -507,6 +522,9 @@ def plan_body_machining(
     top_outline = top_frame.polygon(body.outline.points)
     back_outline = back_frame.polygon(body.outline.points)
     previews = [top_outline, top_outline]
+    for optional in (core_pins, core_top):
+        if optional is not None:
+            previews.append(top_outline)
     for optional in (top_carve_flats, top_carve, top_steps):
         if optional is not None:
             previews.append(top_outline)
@@ -546,8 +564,93 @@ def plan_body_machining(
         top_steps=top_steps,
         top_carve_flats=top_carve_flats,
         back_release=back_release,
+        core_index_pins=core_pins,
+        core_top=core_top,
     )
     return plan if prefix == "Body" else _renamed(plan, prefix)
+
+
+def _cap_notes(body: BodySolid) -> tuple[str, ...]:
+    """Return what Body_index_pins says of a separate top, if any."""
+    if body.cap_thickness == 0.0:
+        return ()
+    if body.core_cavities:
+        return (
+            f"The blank is the core with its {body.cap_thickness:g} mm top glued "
+            "on (Body_core_top first): the drill runs on through the top into "
+            "the core's own dowel holes.",
+        )
+    return (
+        f"The blank is the core ({body.core_thickness:g} mm) with its "
+        f"{body.cap_thickness:g} mm top glued on first.",
+    )
+
+
+def _core_setups(
+    body: BodySolid,
+    pins: Sequence[tuple[float, float]],
+    stock: StockBounds,
+    frame: _Frame,
+    parameters: MachiningParameters,
+) -> tuple[Setup | None, Setup | None]:
+    """Return the core's own programs under a separate top, run before the
+    top is glued on: its dowel holes, then its routes (the wire channels
+    and chambers hidden under the top); ``None`` without such routes."""
+    if not body.core_cavities:
+        return None, None
+    origin_x, origin_y = pins[0]
+    reference_points = tuple((x - origin_x, y - origin_y) for x, y in pins[1:])
+    core = body.core_thickness
+    pins_setup = Setup(
+        "Body_core_index_pins",
+        f"Body core index pins - drill both {parameters.pin_diameter:g} mm dowel "
+        "holes through the core, before its top is glued on",
+        tuple(
+            drill(
+                f"Index pin {index}",
+                frame.point(Point2D(x, y)),
+                parameters.pin_diameter,
+                core + parameters.through_overshoot,
+                parameters,
+            )
+            for index, (x, y) in enumerate(pins, start=1)
+        ),
+        (
+            "The core first, its top not yet glued on: clamp it top face up on "
+            "a spoilboard.",
+            "Set X/Y zero at the index pin 1 position and Z zero on the core's top.",
+            f"Core blank: at least {stock.length:.0f} x {stock.width:.0f} x "
+            f"{core:g} mm; the top's blank as large and "
+            f"{body.cap_thickness:g} mm thick.",
+            "Insert both dowels after this program before running Body_core_top.",
+        ),
+        reference_points,
+    )
+    routes_setup = Setup(
+        "Body_core_top",
+        "Body core top - wire channels and chambers, hidden under the top",
+        tuple(
+            pocket(
+                cavity.name,
+                frame.polygon(cavity.outline),
+                cavity.depth,
+                parameters,
+            )
+            for cavity in body.core_cavities
+        ),
+        (
+            "Core on the two index pins, top face up, same work zero as "
+            "Body_core_index_pins.",
+            f"Then glue the {body.cap_thickness:g} mm top on, the core still on "
+            "its dowels and the glue kept out of the routes and the dowel holes; "
+            "once it has set, Body_index_pins drills on through the top into the "
+            "core's dowel holes, and every other program follows as for a body "
+            "of one piece.",
+        ),
+        reference_points,
+        fixture=CORE_FIXTURE,
+    )
+    return pins_setup, routes_setup
 
 
 def _renamed(plan: BodyMachiningPlan, prefix: str) -> BodyMachiningPlan:

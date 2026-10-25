@@ -545,6 +545,8 @@ class FreeCADScriptExporter:
             ]
         elif body is not None:
             export_feature_names.append("body_feature")
+            if body.cap_thickness > 0.0:
+                export_feature_names.append("cap_feature")
         export_features = "[" + ", ".join(export_feature_names) + "]"
         output_commands = self._render_output_commands(
             fcstd_path,
@@ -2660,6 +2662,12 @@ class FreeCADScriptExporter:
         along its glue lines into the centre block (one piece of wood with
         the neck, its heel running on into it) and the wings.
 
+        A body with a separate top (``BodySolid.cap_thickness``) is built
+        whole too, then split at the cap's underside into the core
+        (``object_name``) and the cap (``Top``); the core's own routes (its
+        wire channels and chambers, hidden under the cap) are then cut down
+        into the core alone.
+
         An epoxy tray is cut where a cutter ``tray_tool_radius`` round
         reaches (the tray opened by it: shrunk by the radius and grown back),
         so a gap between its walls, or a wall and its rim, narrower than the
@@ -3119,6 +3127,8 @@ class FreeCADScriptExporter:
                 )
         lines += _body_edge_lines(body, outline_literal)
         lines += carve_lines
+        if body.cap_thickness > 0.0:
+            lines += _cap_split_lines(body, outline_literal)
         if neck_through is None:
             lines.append(
                 "body_feature = document.addObject(\n"
@@ -4124,6 +4134,60 @@ def _grooves_cut_lines(grooves: ScoopedGrooves, label: str) -> list[str]:
         # Each reaching a hair into the next, all in one boolean.
         f"body_shape = require_shape(body_shape.cut(groove_lofts), {label!r})\n",
     ]
+
+
+def _cap_split_lines(
+    body: BodySolid, outline_literal: Callable[[Iterable[Point2D]], str]
+) -> list[str]:
+    """Return FreeCAD commands that split off a separate top.
+
+    Everything above the cap's underside becomes the ``Top`` object (the
+    cap, glued on); ``body_shape`` keeps the core, and its own routes are
+    cut down into it from that plane: each starts a hair above it, which
+    the cap no longer fills, so no face of the cut lies in the split's.
+    """
+    lines = [
+        f"CAP_THICKNESS = {body.cap_thickness!r}\n",
+        "# The separate top: everything above its underside.\n",
+        "body_box = body_shape.BoundBox\n",
+        "cap_box = Part.makeBox(\n",
+        "    body_box.XLength + 20.0,\n",
+        "    body_box.YLength + 20.0,\n",
+        "    body_box.ZMax + CAP_THICKNESS + 10.0,\n",
+        "    App.Vector(body_box.XMin - 10.0, body_box.YMin - 10.0, -CAP_THICKNESS),\n",
+        ")\n",
+        "cap_feature = document.addObject('Part::Feature', 'Top')\n",
+        "cap_feature.Shape = require_shape(body_shape.common(cap_box), 'top split')\n",
+        f"cap_feature.Label = 'Top (glued on, {body.cap_thickness:g} mm)'\n",
+        "body_shape = require_shape(body_shape.cut(cap_box), 'core split')\n",
+    ]
+    if body.core_cavities:
+        lines.append(
+            "# The core's own routes, hidden under the top: each down from\n"
+            "# its underside.\n"
+            "CORE_CUTTERS = []\n"
+            "def core_tool(outline_points, depth):\n"
+            "    profile = [\n"
+            "        App.Vector(x, y, -CAP_THICKNESS + body_overcut)\n"
+            "        for x, y in outline_points\n"
+            "    ]\n"
+            "    profile.append(profile[0])\n"
+            "    return Part.Face(Part.makePolygon(profile)).extrude(\n"
+            "        App.Vector(0.0, 0.0, -(depth + body_overcut))\n"
+            "    )\n"
+        )
+        for cavity in body.core_cavities:
+            lines.append(
+                f"# {cavity.name.lower()}\n"
+                f"CORE_CUTTERS.append(core_tool({outline_literal(cavity.outline)}, "
+                f"{cavity.depth!r}))\n"
+            )
+        lines.append(
+            "body_shape = require_shape(\n"
+            "    body_shape.cut(CORE_CUTTERS), 'routes under the top'\n"
+            ")\n"
+        )
+    return lines
 
 
 def _body_edge_lines(

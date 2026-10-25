@@ -5,7 +5,8 @@ other settings' values, for the web app to show only those that do.
 conditions, on the design's settings, under which it changes the
 instrument or its programs at all: any one of them, each holding when every setting it
 names has one of its values (``NOT_EMPTY`` standing for any text but
-none); a setting it does not name always applies. The web app hides a
+none, ``ABOVE_ZERO`` for any number above nought); a setting it does not
+name always applies. The web app hides a
 setting, in its form and wherever a copy of it stands, while none of its
 conditions hold (a heel's thickness on a neck run through the body, whose
 heel is the body's own wood). Each rule was found by building the
@@ -19,6 +20,10 @@ from __future__ import annotations
 
 NOT_EMPTY = "<any text>"
 """A condition's value standing for any text but none (lettering typed)."""
+
+ABOVE_ZERO = "<above 0>"
+"""A condition's value standing for any number above nought (a separate
+top's thickness)."""
 
 Condition = dict[str, tuple[str | bool, ...]]
 """The values each named setting must have, any one of them."""
@@ -337,6 +342,12 @@ APPLIES_WHEN: dict[str, tuple[Condition, ...]] = {
         "body_carve_depth body_carve_margin body_carve_rim",
         {"body_carved_top": (True,)},
     ),
+    # A separate top on a body of its own only; its chambers with one only.
+    **_when("body_cap_thickness", {"neck_joint": BOLTED_OR_SET}),
+    **_when(
+        "body_chambers",
+        {"neck_joint": BOLTED_OR_SET, "body_cap_thickness": (ABOVE_ZERO,)},
+    ),
     **_when(
         "body_engraving_pattern body_engraving_seed body_engraving_depth "
         "body_engraving_spacing body_engraving_margin body_engraving_clearance",
@@ -359,11 +370,21 @@ APPLIES_WHEN: dict[str, tuple[Condition, ...]] = {
 
 def holds(condition: Condition, values: dict[str, object]) -> bool:
     """Return whether every setting ``condition`` names has one of its
-    values in ``values`` (``NOT_EMPTY``: any text but none)."""
-    return all(
-        values[other] in allowed or (NOT_EMPTY in allowed and values[other] != "")
-        for other, allowed in condition.items()
-    )
+    values in ``values`` (``NOT_EMPTY``: any text but none; ``ABOVE_ZERO``:
+    any number above nought)."""
+    return all(_fits(values[other], allowed) for other, allowed in condition.items())
+
+
+def _fits(value: object, allowed: tuple[str | bool, ...]) -> bool:
+    """Return whether ``value`` is one of ``allowed``, or what a marker in it
+    stands for."""
+    if ABOVE_ZERO in allowed:
+        return (
+            isinstance(value, int | float)
+            and not isinstance(value, bool)
+            and value > 0.0
+        )
+    return value in allowed or (NOT_EMPTY in allowed and value != "")
 
 
 def applies(name: str, values: dict[str, object]) -> bool:

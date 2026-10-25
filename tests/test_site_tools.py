@@ -710,6 +710,27 @@ def test_the_quick_model_s_detail_sets_are_each_ticked_or_not() -> None:
     )
 
 
+def test_a_separate_top_can_be_hidden_to_see_under_it() -> None:
+    # Only shown for a design with one, and only the view changes: the
+    # part hidden, the model not drawn again.
+    page = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
+    script = (ROOT / "site" / "app.js").read_text(encoding="utf-8")
+    viewer = (ROOT / "site" / "quick3d.js").read_text(encoding="utf-8")
+
+    assert '<label id="quick-model-top-label" hidden>' in page
+    assert 'topLabel.hidden = !parts.some((part) => part.name === "Top");' in script
+    assert 'quickModel.viewer?.setVisible("Top", event.target.checked);' in script
+    assert "event.stopPropagation();" in script
+    assert "mesh.visible = !hidden.has(part.name);" in viewer
+    # The body's page holds the top's settings, and with a cap the wire
+    # channels' too (routed under it).
+    assert '"body_cap_thickness", "body_chambers", "body_wire_channels"' in script
+    assert (
+        '"body-editor-options.body_wire_channels": () => '
+        'Number(now("body_cap_thickness")) > 0'
+    ) in script
+
+
 def test_the_menus_that_do_not_fit_a_phone_fold_under_one() -> None:
     # The bar never wider than the screen: the last menus folded under »,
     # each opened from there; a menu's pop kept on the screen.

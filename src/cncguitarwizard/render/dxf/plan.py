@@ -115,6 +115,10 @@ def render_plan_dxf(geometry: Prototype001Geometry) -> str:
             jack.diameter / 2.0,
             dxf.layer("JACK", 3),
         )
+    if body.core_cavities:
+        under = dxf.layer("BODY_CORE_ROUTES", 3)
+        for cavity in body.core_cavities:
+            dxf.polyline(cavity.outline, under)
     if body.wire_holes:
         wiring = dxf.layer("WIRE_HOLES", 1)
         for wire in body.wire_holes:

@@ -911,6 +911,18 @@ no straight hole fits is left to the builder with a note
 (`BodySolid.wire_notes`). A neck-through body's parts carry the channels
 that reach them; the holes are drilled through the glued body.
 
+Under a separate top (see [A separate top](#a-separate-top)) a channel is
+routed into the core instead, hidden under the cap, wherever two cavities
+both reach `WIRE_OPENING` (4 mm) into the core — a Les Paul's pickup
+routes, toggle cavity and control cavity, which no straight hole joins:
+`WIRE_CHANNEL_WIDTH` wide, from the cap's underside down
+`WIRE_CORE_CHANNEL_DEPTH` (10 mm), or deeper where it must open
+`WIRE_OPENING` into a cavity routed from the back whose ceiling lies under
+the cap; its floor keeps `WIRE_SKIN` over the back, the cap over it
+`WIRE_SKIN` under the top (a carve, a contour), and it keeps `WIRE_WALL`
+from every other cavity and hole that reaches into the core. A channel
+under a pickguard still comes first; a hole where neither fits.
+
 ## Edge finishes and contours
 
 Optional, and off by default (`geometry.body.edges`):
@@ -1299,6 +1311,62 @@ none did. Cutting the top as stepped terraces, as templates of falling
 size rout it by hand, was tried and is far slower here: each step's wall
 is hundreds of faces. The plan view and the body editor dash the
 plateau's edge.
+
+## A separate top
+
+`body_cap_thickness` glues the body up from a core and a separate top, a
+cap that thick at the top's full height — a Les Paul's 5/8 in (15.875 mm)
+maple on its mahogany, the Les Paul style's (its carve's 9.5 mm leaves the
+1/4 in of maple at the rim its binding shows); 0 makes the body one piece.
+`BodySolid.cap_thickness` holds it, `core_thickness` the rest. Every
+feature is cut through the glued-up body as through one piece (the carve
+in the cap, the routes through it into the core, the rear cavities up
+from the back); only the core's own routes, `BodySolid.core_cavities`,
+are cut into the core's top before the cap is glued on, each its `depth`
+down from the cap's underside, and hidden under it: the wire channels
+(see [Wire channels](#wire-channels)) and the chambers. A neck-through
+body takes none: there `body_cap_thickness` and `body_chambers` are left
+alone (`Prototype001Parameters.cap_thickness`, `chambered`), and the web
+app hides them.
+
+`body_chambers` lightens the core as a chambered Les Paul's is
+(`geometry.body.chambers.plan_chambers`): chambers wherever there is room,
+
+- `CHAMBER_EDGE_WALL` (12 mm) in from the edge,
+- `CHAMBER_WALL` (8 mm) clear of every cavity and hole reaching within
+  `CHAMBER_CAP_WALL` (4 mm) of the cap's underside — the routes through
+  the cap, the rear cavities, the studs and pot shafts, the neck pocket,
+  the jack's bore — and of where the top falls within `CHAMBER_CAP_WALL`
+  of the cap's underside (a carve's rim, a contour),
+- out of a centre block along the middle that holds the pickups and the
+  bridge (`CHAMBER_WALL` past the furthest of their routes and holes from
+  the centreline, the whole length of the body), as a chambered body keeps
+  its middle solid,
+- each from the cap's underside down to `CHAMBER_FLOOR` (6 mm) over the
+  back (over a belly cut where it reaches under one), its corners rounded
+  and none narrower than about `2 * CHAMBER_RADIUS` (24 mm) nor smaller
+  than `CHAMBER_LEAST_AREA` (2000 mm²).
+
+The room is found on a `CHAMBER_GRID` (2 mm) grid — the distances to the
+edge and to what must stay wood, the room shrunk by the radius and grown
+back (a cell less, so it never reaches past it) — and traced round with
+marching squares (`primitives.level_loops`, as engraved strokes are), the
+grid's steps smoothed out (only ever inward) and the outline thinned to
+within `CHAMBER_TOLERANCE` (0.2 mm; `primitives.thinned_loop`). Wood
+left standing inside a chamber (a control cavity in the middle of a wing)
+is joined to its wall by a rib `2 * CHAMBER_WALL` wide, so every chamber is
+one pocket with no island. A Les Paul gets one in each lower bout. They
+take no notice of the wire channels, which may run through them; they are
+the same built or only drawn. Without a separate top `body_chambers` is
+left alone (`chambered`), and the web app hides it.
+
+The model is two solids: the body built whole is split at the cap's
+underside into `Body`, the core, and `Top`, the cap; the core's routes
+are then cut down into the core alone (each from a hair above the split,
+which the cap no longer fills, so no face of the cut lies in the
+split's). Both go into the STEP, and the model check wants both. In the
+G-code the core is cut first, before the cap is glued on
+(`Body_core_index_pins`, `Body_core_top`; see the body's G-code).
 
 ## Stepped top
 

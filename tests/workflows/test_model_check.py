@@ -136,6 +136,23 @@ def test_a_body_unlike_the_sheet_asks_for_review() -> None:
     assert _failed(_check(thin)) == ["body_back_at_thickness"]
 
 
+def test_a_body_with_a_separate_top_needs_the_top_too() -> None:
+    capped = replace(PARAMETERS, body_cap_thickness=16.0)
+    # The core alone is not the body: its top must be there, a part of its
+    # own, the body's checks still made on the core (its back, its size).
+    assert _failed(_check(_found(), capped)) == ["model_holds_its_parts"]
+    core = [*BODY_BOX[:5], -16.0]
+    top = [*BODY_BOX[:2], -16.0, *BODY_BOX[3:]]
+    parts = {
+        "NeckBack": _shape(NECK_BOX),
+        "Fretboard": _shape(BOARD_BOX),
+        "Body": _shape(core),
+        "Top": _shape(top),
+    }
+    step = _shape([-150.635, -146.8388, -44.0, 461.2, 146.8388, 6.0], solids=4)
+    assert _failed(_check(_found(parts=parts, step=step), capped)) == []
+
+
 def test_a_neck_through_needs_no_body_part_and_gets_no_body_checks() -> None:
     parameters = replace(PARAMETERS, neck_joint="neck_through")
     found = _found()

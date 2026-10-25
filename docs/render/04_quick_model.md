@@ -23,6 +23,7 @@ face):
 | `Body` | Its top and its back sampled on a grid `PREVIEW_SPACING` (2 mm) apart as heights: the top lowered by a carve or a stepped top, the contours on it, its roundover (by the distance to the edge) and the routes from the top (each to its depth); the back raised by its contours (a belly cut, a heel relief), its roundover (but where it stops short of a neck plate, `EdgeProfile.square`) and the routes from the back (pockets and cover recesses). The grid's points just outside the outline are moved onto it, so the edge is the outline's, not the grid's; walls join top and back round the edge and round every route cut through |
 | `Neck` | The loft's own rows, headstock to heel end (`FreeCADScriptExporter.neck_loft_rows`: the back as FreeCAD lofts it, round into the heel and the headstock, the headstock's outline followed), closed across their top edges and at both ends |
 | `Fretboard` | Its radiused surface's rows (`FretboardSurface.mesh`), run down at both edges to its flat underside and closed |
+| `Top` | With a separate top (`BodySolid.cap_thickness`) only: the body's top from the cap's underside up, left out where a route goes clean through it; `Body` is then the core, up to the cap's underside, lower where a route reaches into it and where its own routes (wire channels, chambers) go down from there |
 
 The neck and the fretboard are tilted back onto the body as the build
 tilts them (`Prototype001Geometry.neck_tilt`: turned about the pocket
@@ -61,7 +62,10 @@ reads round and an edge sharp). The first model is framed whole (*Whole
 guitar* frames it again); later ones keep the view, so a change is seen
 from where it was looked at, and the wheel or a pinch zooms toward the
 pointer, to a detail. *Save STL* saves what is drawn, 1:1 in
-millimetres. The detail sets are ticked by checkboxes (and in the
+millimetres. A design with a separate top is built wired for it
+(`_quick_built`), so the wire channels routed under the top are in the
+core (seen with the top hidden); any other is built without its wiring,
+the quicker. The detail sets are ticked by checkboxes (and in the
 *Preview* menu), any or all of them, and are sent with the design
 (`quick_model(payload, details)`): all four add about 70 000 triangles to
 a Stratocaster's 128 000, and about 0.9 s to its drawing in the browser

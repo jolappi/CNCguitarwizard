@@ -1055,6 +1055,17 @@ FIELD_HELP: dict[str, str] = {
         " frame style's own shape."
     ),
     "body_carve_rim": "A carved top's flat rim round the edge: its width, in mm.",
+    "body_cap_thickness": (
+        "A separate top glued onto the body, as a Les Paul's maple cap on its "
+        "mahogany: its thickness, in mm (0: the body in one piece). The wire "
+        "channels are routed into the body under it, hidden, before it is "
+        "glued on (Body_core_top)."
+    ),
+    "body_chambers": (
+        "Lighten the body with chambers routed into it under the separate "
+        "top, wherever there is room: clear of the edge, every cavity and "
+        "hole, and the middle under the pickups and the bridge."
+    ),
     "body_carve_margin": (
         "How far the carved top's flat middle reaches round the pickups, "
         "the bridge and the neck pocket, in mm."

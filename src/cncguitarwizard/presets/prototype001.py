@@ -53,6 +53,7 @@ from ..geometry.body import (
     turned_hardware,
 )
 from ..geometry.body.body_solid import NECK_PLATE_EDGE_WALL
+from ..geometry.body.chambers import CHAMBER_WALL, plan_chambers
 from ..geometry.body.edges import AROUND_GAP
 from ..geometry.body.neck_through import NeckThrough
 from ..geometry.body.wiring import WireSpace, Wiring, plan_wiring
@@ -706,6 +707,8 @@ class BodyLayout:
         strap_guide: The flame strap guide on the back, or ``None`` (see
             ``body_strap_guide``); its parts are among the ``controls``'
             covers and its pilots among their back marks.
+        chambers: The chambers routed into the core under a separate top,
+            or none (see ``body_chambers``).
         problems: What the build refuses that the body editor draws anyway
             (a heel relief's corner line that falls outside the body, drawn
             as the U; neck bolts with no room, drawn where they are asked
@@ -747,6 +750,48 @@ class BodyLayout:
     problems: tuple[str, ...] = ()
     epoxy_tray: EpoxyTray | None = None
     strap_guide: FlameStrapGuide | None = None
+    chambers: tuple[TracedCavity, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class _BodySpaces:
+    """The body's cavities and holes as the wiring and the chambers see them.
+
+    Args:
+        control: The cavity the pots are in, or ``None``.
+        pickups: The pickup routes.
+        switch: A switch cavity of its own, or ``None``.
+        battery: A battery box, or ``None``.
+        targets: The bridge's cavities and holes.
+        obstacles: Every other cavity and hole.
+        top_at: The top's height at a point.
+        back_at: The back's height at a point, or ``None`` for a flat back.
+    """
+
+    control: WireSpace | None
+    pickups: tuple[WireSpace, ...]
+    switch: WireSpace | None
+    battery: WireSpace | None
+    targets: tuple[WireSpace, ...]
+    obstacles: tuple[WireSpace, ...]
+    top_at: Callable[[Point2D], float]
+    back_at: Callable[[Point2D], float] | None
+
+    @property
+    def every(self) -> tuple[WireSpace, ...]:
+        """Return every space."""
+        return tuple(
+            space
+            for space in (
+                self.control,
+                *self.pickups,
+                self.switch,
+                self.battery,
+                *self.targets,
+                *self.obstacles,
+            )
+            if space is not None
+        )
 
 
 TRUSS_ROD_STOCK_LENGTHS: tuple[float, ...] = tuple(
@@ -1271,6 +1316,17 @@ class Prototype001Parameters:
     body_carve_depth: float = 9.5
     body_carve_rim: float = 8.0
     body_carve_margin: float = 15.0
+    # body_cap_thickness glues the body up from a core and a separate top
+    # (a cap, as a Les Paul's maple on its mahogany), that thick at the
+    # top's full height; 0 makes it one piece. The core's top is routed
+    # before the cap goes on (Body_core_top): the wire channels into it,
+    # hidden under the cap (geometry.body.wiring), and with body_chambers
+    # chambers wherever there is room (geometry.body.chambers), lightening
+    # it as a chambered Les Paul is. Every other feature is cut through the
+    # glued-up body as through one piece. Neither on a neck-through body,
+    # the chambers only with a cap (cap_thickness, chambered).
+    body_cap_thickness: float = 0.0
+    body_chambers: bool = False
     # body_stepped_top lowers the top in bands that follow the edge, the
     # ESP LTD Alexi Hexed's graphic made into levels (geometry.body.steps):
     # inside the innermost of body_top_step_insets the top keeps its full
@@ -1909,6 +1965,18 @@ class Prototype001Parameters:
     def neck_runs_through(self) -> bool:
         """Whether the neck runs on into the body (neck-through or one piece)."""
         return self.neck_joint in ("neck_through", "one_piece")
+
+    @property
+    def cap_thickness(self) -> float:
+        """Return the separate top's thickness as built (``body_cap_thickness``):
+        none on a neck-through body, whose top the neck runs on through."""
+        return 0.0 if self.neck_runs_through else self.body_cap_thickness
+
+    @property
+    def chambered(self) -> bool:
+        """Return whether the core is chambered under a separate top as built
+        (``body_chambers``): only with one, so not on a neck-through body."""
+        return self.body_chambers and self.cap_thickness > 0.0
 
     @property
     def left_handed(self) -> bool:
@@ -4059,6 +4127,7 @@ class Prototype001Parameters:
             raise BodyGeometryError("Body thickness must be finite.")
         if self.body_thickness <= 0.0:
             raise BodyGeometryError("Body thickness must be greater than zero.")
+        self._check_cap()
         heel_end = outline.last_fret_position + self.heel_length
         # Body features ride with the heel end, bridge features with the
         # scale length (see the body_* parameter comments).
@@ -4746,6 +4815,23 @@ class Prototype001Parameters:
             else None,
             heel_end,
         )
+        # Every cavity and hole as the wiring and the chambers keep clear of.
+        spaces = self._wire_spaces(
+            (
+                neck_pocket,
+                *((truss_rod_access,) if truss_rod_access else ()),
+                *((jack_cavity,) if jack_cavity else ()),
+            ),
+            [p for p in (neck_pickup, middle_pickup, bridge_pickup) if p],
+            bridge,
+            bridge_mounting,
+            controls,
+            (*holes, *controls.holes, *controls.top_marks),
+            (*neck_bolts, *controls.back_marks),
+            jack_hole,
+            contours,
+            lowered,
+        )
         layout = BodyLayout(
             heel_end,
             body_outline,
@@ -4783,24 +4869,7 @@ class Prototype001Parameters:
             stepped_top,
             # Built only, and wired (the body editor, the neck's and the
             # back's drawings draw no wiring).
-            self._wiring(
-                body_outline.points,
-                (
-                    neck_pocket,
-                    *((truss_rod_access,) if truss_rod_access else ()),
-                    *((jack_cavity,) if jack_cavity else ()),
-                ),
-                [p for p in (neck_pickup, middle_pickup, bridge_pickup) if p],
-                bridge,
-                bridge_mounting,
-                controls,
-                (*holes, *controls.holes, *controls.top_marks),
-                (*neck_bolts, *controls.back_marks),
-                jack_hole,
-                contours,
-                lowered,
-                guard,
-            )
+            self._wiring(body_outline.points, spaces, guard)
             if self.body_wire_channels and check_steps and wired
             else Wiring(),
             bridge.notes,
@@ -4819,6 +4888,9 @@ class Prototype001Parameters:
             joint_notes=joint_notes,
             problems=tuple(problems),
             strap_guide=strap_guide,
+            chambers=(
+                self._chambers(body_outline.points, spaces) if self.chambered else ()
+            ),
         )
         # The epoxy tray last: it walls in every opening in the top. Only a
         # flat top of a body of its own takes one (setting_conditions).
@@ -4942,9 +5014,8 @@ class Prototype001Parameters:
             for hole in through
         ]
 
-    def _wiring(
+    def _wire_spaces(
         self,
-        outline: tuple[Point2D, ...],
         others: tuple[Cavity, ...],
         pickups: list[TracedCavity],
         bridge: BridgeHardware,
@@ -4955,11 +5026,9 @@ class Prototype001Parameters:
         jack: JackHole | None,
         contours: tuple[Contour, ...],
         lowered: CarvedTop | SteppedTop | None,
-        guard: Pickguard | None,
-    ) -> Wiring:
-        """Return the wire channels and holes (see ``body_wire_channels``).
-
-        No controls, no wiring.
+    ) -> _BodySpaces:
+        """Return the body's cavities and holes as the wiring and the
+        chambers see them (see ``body_wire_channels``, ``body_chambers``).
         """
         thickness = self.body_thickness
 
@@ -4992,6 +5061,7 @@ class Prototype001Parameters:
             )
 
         plate = [c for c in controls.top_cavities if c.name == "Control cavity"]
+        control: WireSpace | None = None
         if controls.control_cavity is not None:
             control = from_back(controls.control_cavity)
         elif plate:
@@ -5001,8 +5071,6 @@ class Prototype001Parameters:
                     c.outline for c in controls.top_cavities if c is not plate[0]
                 ),
             )
-        else:
-            return Wiring()
         targets = [
             *(from_back(rear) for rear in bridge.rear_cavities),
             *(
@@ -5053,23 +5121,46 @@ class Prototype001Parameters:
         def back_at(point: Point2D) -> float:
             return max((c.depth_at(point) for c in back_contours), default=0.0)
 
-        return plan_wiring(
-            thickness,
-            outline,
+        return _BodySpaces(
             control,
-            [from_top(pickup) for pickup in pickups],
-            targets,
-            obstacles,
-            switch=(
+            tuple(from_top(pickup) for pickup in pickups),
+            (
                 from_back(controls.switch_cavity)
                 if controls.switch_cavity is not None
                 else None
             ),
-            battery=(
+            (
                 from_back(controls.battery_cavity)
                 if controls.battery_cavity is not None
                 else None
             ),
+            tuple(targets),
+            tuple(obstacles),
+            top_at,
+            back_at if back_contours else None,
+        )
+
+    def _wiring(
+        self,
+        outline: tuple[Point2D, ...],
+        spaces: _BodySpaces,
+        guard: Pickguard | None,
+    ) -> Wiring:
+        """Return the wire channels and holes (see ``body_wire_channels``).
+
+        No controls, no wiring.
+        """
+        if spaces.control is None:
+            return Wiring()
+        return plan_wiring(
+            self.body_thickness,
+            outline,
+            spaces.control,
+            spaces.pickups,
+            spaces.targets,
+            spaces.obstacles,
+            switch=spaces.switch,
+            battery=spaces.battery,
             covers=(guard.plate.outline,) if guard is not None else (),
             openings=(
                 (
@@ -5082,9 +5173,46 @@ class Prototype001Parameters:
                 if guard is not None
                 else ()
             ),
-            top_at=top_at,
-            back_at=back_at if back_contours else None,
+            top_at=spaces.top_at,
+            back_at=spaces.back_at,
+            cap=self.cap_thickness,
         )
+
+    def _chambers(
+        self, outline: tuple[Point2D, ...], spaces: _BodySpaces
+    ) -> tuple[TracedCavity, ...]:
+        """Return the chambers under a separate top (see ``body_chambers``).
+
+        Their centre block reaches ``CHAMBER_WALL`` past the pickups and
+        the bridge's cavities and holes, either side of the centreline.
+        """
+        middle = (*spaces.pickups, *spaces.targets)
+        block = max(
+            (abs(point.y) for space in middle for point in space.outline),
+            default=-CHAMBER_WALL,
+        )
+        return plan_chambers(
+            outline,
+            self.body_thickness,
+            self.cap_thickness,
+            spaces.every,
+            block + CHAMBER_WALL,
+            spaces.top_at,
+            spaces.back_at,
+        )
+
+    def _check_cap(self) -> None:
+        """Refuse a separate top that cannot be made (``body_cap_thickness``).
+
+        A neck-through body takes none (``cap_thickness``): there the
+        setting is left alone, as are the chambers without a cap.
+        """
+        cap = self.cap_thickness
+        if not math.isfinite(cap) or not 0.0 <= cap < self.body_thickness:
+            raise BodyGeometryError(
+                "body_cap_thickness must lie between 0 (a body of one piece) and "
+                "the body's thickness."
+            )
 
     def carbon_rods(
         self,
@@ -7745,6 +7873,8 @@ class Prototype001Parameters:
                 if body_parts.strap_guide is not None
                 else ()
             ),
+            cap_thickness=self.cap_thickness,
+            core_cavities=(*body_parts.wiring.core_channels, *body_parts.chambers),
         )
         return Prototype001Geometry(
             outline,

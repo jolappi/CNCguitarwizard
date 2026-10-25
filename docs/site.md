@@ -1027,7 +1027,15 @@ checkboxes under it or in the *Preview* menu (each takes a little longer
 to draw, as both say): *Neck: frets, markers and nut*, *Headstock:
 tuners*, *Body: pickguard, pickups and knobs* and *Bridge and strings*,
 none at first — kept in the browser (`cncguitarwizard.quickModelDetails`)
-and sent to the worker with the design. All four add about a second to a
+and sent to the worker with the design. A design with a separate top
+(`body_cap_thickness`, a Les Paul's; it and `body_chambers` are among the
+body editor's *Settings* too, on *Design › Body*, and with a cap *Wire
+channels* there as well, the channels then routed under it — `copyShown`
+in `showApplicableSettings`; the chambers hidden while there is no cap,
+the `ABOVE_ZERO` condition) shows one more: *The separate top*,
+ticked, whose unticking hides the top in the view (`setVisible`, the
+model not drawn again) to show the wire channels and chambers routed
+into the body under it. All four add about a second to a
 Stratocaster's drawing in the browser and turn about as quickly (1.25 ms
 a frame where it took 1.05 on a desktop). Holes and the truss rod are left out: the build's STEP and
 FreeCAD model are the exact ones. The build id the

@@ -144,6 +144,9 @@ def model_check(
         (bolt-on or set), the body's length, width and depth.
     """
     wanted = NECK_PARTS if parameters.neck_runs_through else (*NECK_PARTS, "Body")
+    if parameters.cap_thickness > 0.0:
+        # The core is the Body; its separate top a part of its own.
+        wanted = (*wanted, "Top")
     parts = model.parts
     checks = [
         _count(
