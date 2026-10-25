@@ -108,17 +108,20 @@
 
     .menubar { position: fixed; top: 0; left: 0; right: 0; z-index: 50; height: 34px;
       display: flex; align-items: stretch; gap: 2px; padding: 0 10px;
-      background: var(--chrome); border-bottom: 1px solid var(--line); font-size: 13.5px; user-select: none; }
+      background: var(--chrome); border-bottom: 1px solid var(--line); font-size: 13.5px; user-select: none;
+      overflow: hidden; }
     .menubar .brand { font-weight: 700; }
     .menubar .brand-short { display: none; }
     .menubar .menu-title { display: flex; align-items: center; padding: 0 10px; border: 0; border-radius: 5px;
       margin: 4px 0; background: none; color: var(--ink); font: inherit; cursor: default; }
     .menubar .menu-title:hover, .menubar .menu-title.open { background: var(--hover); }
+    .menubar .menu-title[hidden] { display: none; }
     .menubar .spacer { flex: 1 1 auto; }
     .menubar .bar-build { margin: 4px 0; padding: 0 14px; font-size: 13px; }
 
     .menu-pop { position: fixed; z-index: 60; min-width: 230px; padding: 5px; background: var(--panel);
-      border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 24px rgba(40, 30, 20, 0.18); }
+      border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 24px rgba(40, 30, 20, 0.18);
+      max-width: calc(100vw - 8px); max-height: calc(100vh - 80px); overflow-y: auto; }
     .menu-pop[hidden] { display: none; }
     .menu-pop button { display: flex; width: 100%; gap: 18px; justify-content: space-between; align-items: center;
       padding: 5px 10px; border: 0; border-radius: 5px; background: none; color: var(--ink);
@@ -145,7 +148,11 @@
     .statusbar .tip { flex: 0 1 auto; max-width: 55%; min-width: 0; white-space: nowrap; overflow: hidden;
       text-overflow: ellipsis; font-style: italic; }
     .statusbar:has(#progress:not(.hidden)) .tip { display: none; }
-    @media (max-width: 700px) { .statusbar .tip { display: none; } }
+    @media (max-width: 700px) {
+      .statusbar .tip { display: none; }
+      .menubar { padding: 0 4px; }
+      .menubar .find { min-width: 84px; margin-right: 6px; }
+    }
     @media (max-width: 900px) {
       .menubar .brand-long { display: none; }
       .menubar .brand-short { display: inline; }
@@ -1395,9 +1402,9 @@
       pop.appendChild(button);
     }
     const box = title.getBoundingClientRect();
-    pop.style.left = `${Math.min(box.left, window.innerWidth - 250)}px`;
     pop.style.top = `${box.bottom + 2}px`;
     pop.hidden = false;
+    pop.style.left = `${Math.max(4, Math.min(box.left, window.innerWidth - pop.offsetWidth - 4))}px`;
   }
 
   function closeMenu() {
@@ -1406,6 +1413,7 @@
     for (const title of bar.querySelectorAll(".menu-title")) title.classList.remove("open");
   }
 
+  const titles = [];
   for (const [name, items] of MENUS) {
     const title = document.createElement("button");
     title.type = "button";
@@ -1433,12 +1441,53 @@
       if (openTitle && openTitle !== title) openMenu(title, items);
     });
     bar.appendChild(title);
+    titles.push({ title, name, items });
   }
+
+  // On a narrow screen (a phone) the menus that do not fit, the last
+  // first, go under a » of their own, each opened from there as from its
+  // title.
+  const more = document.createElement("button");
+  more.type = "button";
+  more.className = "menu-title";
+  more.textContent = "»";
+  more.title = "More menus";
+  more.setAttribute("aria-label", "More menus");
+  more.setAttribute("aria-haspopup", "menu");
+  let folded = [];
+  const moreItems = () => folded.map(({ name, items }) => ({ label: `${name} ›`, run: () => openMenu(more, items) }));
+  more.addEventListener("click", () => {
+    if (openTitle === more) closeMenu();
+    else openMenu(more, moreItems);
+  });
+  more.addEventListener("pointerenter", () => {
+    if (openTitle && openTitle !== more) openMenu(more, moreItems);
+  });
+  bar.appendChild(more);
+
+  function fitMenus() {
+    for (const { title } of titles) title.hidden = false;
+    more.hidden = true;
+    folded = [];
+    if (bar.scrollWidth <= bar.clientWidth) return;
+    more.hidden = false;
+    for (let index = titles.length - 1; index > 0 && bar.scrollWidth > bar.clientWidth; index -= 1) {
+      titles[index].title.hidden = true;
+      folded.unshift(titles[index]);
+    }
+  }
+
   const spacer = document.createElement("span");
   spacer.className = "spacer";
   bar.append(spacer, findBox, barBuild);
   document.body.prepend(bar);
   document.body.append(pop, findPop, statusBar);
+  // Fitted again as the screen turns, and as the Build button says how far
+  // a build is (wider).
+  const fit = new ResizeObserver(fitMenus);
+  fit.observe(bar);
+  fit.observe(barBuild);
+  document.fonts?.ready.then(fitMenus);
 
   document.addEventListener("pointerdown", (event) => {
     if (openTitle && !event.target.closest(".menu-pop, .menu-title")) closeMenu();

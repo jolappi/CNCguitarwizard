@@ -1735,6 +1735,11 @@
 
 ### Fixed
 
+- On a phone the application like UI's menus past the screen's edge were
+  out of reach: those that do not fit now fold, the last first, under a
+  » at the bar's end, each opened from there as from its own title, and
+  a menu is kept on the screen (scrolling if it is longer than it).
+
 - The neck's and the fretboard's programs kept their own 6 mm tools at
   10 000 rpm whatever the machining form said: they are cut with the
   form's flat end mill and ball nose now, their sizes, depths and speeds

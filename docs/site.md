@@ -777,7 +777,10 @@ sets), *Settings* (each group of the form), *Build* (build, then the
 result's summary, downloads, plan view and toolpaths), *View* (easy
 mode, dark mode, the Classic UI), *Bonus* (files to print for the
 machine) and *Help* (the tour, the shortcuts, what the
-page does, the source) — with *Build* at its right, and a status bar
+page does, the source) — with *Build* at its right (on a screen too
+narrow for them all, a phone's, the menus that do not fit fold, the last
+first, under a » at the end of the titles, each opened from there as
+from its own; a menu is kept on the screen, scrolling if longer), and a status bar
 along the bottom says which page is shown, the status line and a build's
 progress. One page shows at a time: the instrument (with the intro and
 the design file's buttons), each editor, the settings (the groups in a

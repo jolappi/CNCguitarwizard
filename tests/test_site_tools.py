@@ -710,3 +710,15 @@ def test_the_quick_model_s_details_are_one_set_at_a_time() -> None:
         in layout
     )
 
+
+def test_the_menus_that_do_not_fit_a_phone_fold_under_one() -> None:
+    # The bar never wider than the screen: the last menus folded under »,
+    # each opened from there; a menu's pop kept on the screen.
+    layout = (ROOT / "site" / "desktop.js").read_text(encoding="utf-8")
+
+    assert "overflow: hidden; }" in layout
+    assert ".menubar .menu-title[hidden] { display: none; }" in layout
+    assert "if (bar.scrollWidth <= bar.clientWidth) return;" in layout
+    assert "run: () => openMenu(more, items)" in layout
+    assert "fit.observe(bar);" in layout and "fit.observe(barBuild);" in layout
+    assert "window.innerWidth - pop.offsetWidth - 4" in layout
