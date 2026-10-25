@@ -167,6 +167,7 @@ def roundover_path(
     tool: MachiningParameters,
     face_depth: Callable[[Point2D], float],
     floor: float = math.inf,
+    cut_at: Callable[[Point2D], bool] | None = None,
 ) -> Toolpath:
     """Return passes that round the outline's edge over with a ball nose.
 
@@ -175,7 +176,9 @@ def roundover_path(
     from the face), one full loop of the outline per step, from the
     face down to the wall. ``face_depth`` lowers each point by any bevel
     already cut there, so the roundover follows an arm contour. No pass
-    goes deeper than ``floor``.
+    goes deeper than ``floor``. ``cut_at`` says where the roundover is
+    cut: a pass breaks off where it is not (the edge left square beside a
+    neck plate, to blend by hand).
     """
     ball = tool.tool_radius
     reach = radius + ball
@@ -187,14 +190,31 @@ def roundover_path(
         angle = (math.pi / 2.0) * index / count
         offset = -radius + reach * math.sin(angle)
         tip = reach * math.cos(angle) - radius - ball
-        for run in offsetter.runs(offset):
-            points = [(p, max(tip - face_depth(p), -floor)) for p in run]
-            builder.rapid_to(points[0][0].x, points[0][0].y)
-            builder.rapid_down_to(points[0][1])
-            builder.plunge_to(points[0][1])
-            for point, z in points[1:]:
-                builder.cut_to(point.x, point.y, z)
+        for whole in offsetter.runs(offset):
+            for run in _kept_runs(whole, cut_at):
+                points = [(p, max(tip - face_depth(p), -floor)) for p in run]
+                builder.rapid_to(points[0][0].x, points[0][0].y)
+                builder.rapid_down_to(points[0][1])
+                builder.plunge_to(points[0][1])
+                for point, z in points[1:]:
+                    builder.cut_to(point.x, point.y, z)
     return builder.build()
+
+
+def _kept_runs(
+    run: Sequence[Point2D], keep: Callable[[Point2D], bool] | None
+) -> list[Sequence[Point2D]]:
+    """Return ``run`` split where ``keep`` is false, each piece two points
+    or more; the whole of it without a ``keep``."""
+    if keep is None:
+        return [run]
+    pieces: list[list[Point2D]] = [[]]
+    for point in run:
+        if keep(point):
+            pieces[-1].append(point)
+        elif pieces[-1]:
+            pieces.append([])
+    return [piece for piece in pieces if len(piece) >= 2]
 
 
 def binding_path(

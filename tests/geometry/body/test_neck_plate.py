@@ -88,9 +88,14 @@ def test_the_plate_needs_the_flat_back() -> None:
     # The Design by Jone body's deep treble cutaway leaves it no room.
     with pytest.raises(BodyGeometryError, match="keep 1 mm of flat back"):
         replace(Prototype001Parameters(), body_neck_plate="plate").build()
-    # Nor does it sit on a roundover.
+    # Nor does it sit on a roundover: the back's stops short of it, the
+    # edge beside it left square (as builders stop the router), and where
+    # the roundover is cut the plate keeps its wall from it.
+    body = strat(body_neck_plate="plate", body_back_edge_radius=6.0).build().body
+    assert body.back_edge.square
+    assert not any(body.back_edge.rounds_at(p) for p in body.neck_plate)
     with pytest.raises(BodyGeometryError, match="keep 7 mm of flat back"):
-        strat(body_neck_plate="plate", body_back_edge_radius=6.0).build()
+        replace(body, back_edge=replace(body.back_edge, square=()))
 
 
 def test_the_plate_keeps_clear_of_the_rear_covers() -> None:

@@ -26,6 +26,11 @@ class EdgeProfile:
         binding_width: Width of a binding channel (a rabbet) cut into
             the edge; ``0`` for no binding.
         binding_depth: Depth of that channel from the face.
+        square: Regions of the face the roundover stops short of, the
+            edge in them left square, to blend by hand: round a bolt-on
+            neck's plate on the back where it sits too near the edge for
+            the roundover (a Stratocaster's, 3 mm in), as builders stop
+            the router short of it.
 
     Raises:
         BodyGeometryError: For a negative or non-finite value, or a
@@ -35,6 +40,7 @@ class EdgeProfile:
     radius: float = 0.0
     binding_width: float = 0.0
     binding_depth: float = 0.0
+    square: tuple[tuple[Point2D, ...], ...] = ()
 
     def __post_init__(self) -> None:
         """Reject a finish that cannot be cut."""
@@ -53,6 +59,11 @@ class EdgeProfile:
     def has_binding(self) -> bool:
         """Return whether a binding channel is cut into this edge."""
         return self.binding_width > 0.0
+
+    def rounds_at(self, point: Point2D) -> bool:
+        """Return whether the roundover is cut at ``point``: anywhere but
+        in a ``square`` region."""
+        return not any(point_in_polygon(point, region) for region in self.square)
 
     @property
     def reach(self) -> float:

@@ -263,6 +263,11 @@ FENDER_HEEL_CORNER_RADIUS = 6.35
 NECK_PLATE_RELIEF_GAP = 2.0
 """Flat back, in mm, an automatic heel relief leaves round a neck plate."""
 
+ROUNDOVER_PLATE_CLEARANCE = 6.0
+"""How much further than its wall from a neck plate the back's roundover
+stops short of it, where the plate sits too near the edge for it, in mm:
+the ball nose's room (a 6 mm one, the cut ending in its round)."""
+
 BEVEL_NECK_CLEARANCE = 5.0
 """How far, in mm, a bevel all round the edge keeps from the neck: the
 edge within that of the neck's sides ahead of the heel end is left square."""
@@ -2546,6 +2551,34 @@ class Prototype001Parameters:
                 centres.append((side, -distance, sign * offset))
         return tuple(centres)
 
+    def _roundover_square(
+        self,
+        outline: Sequence[Point2D],
+        neck_plate: tuple[tuple[Point2D, ...], tuple[tuple[float, float], ...]] | None,
+    ) -> tuple[tuple[Point2D, ...], ...]:
+        """Return where the back's roundover stops short of the neck plate.
+
+        Where the plate sits nearer the edge than the roundover and its
+        wall (``NECK_PLATE_EDGE_WALL``), as a Stratocaster's does (3 mm
+        in), the edge round it is left square, to blend by hand, as
+        builders stop the router short of the plate: the plate grown by
+        the roundover, the wall and ``ROUNDOVER_PLATE_CLEARANCE``. Else
+        none: the roundover runs all round.
+        """
+        radius = self.body_back_edge_radius
+        if neck_plate is None or radius <= 0.0:
+            return ()
+        plate = neck_plate[0]
+        reach = radius + NECK_PLATE_EDGE_WALL
+        if all(distance_to_boundary(point, outline) >= reach for point in plate):
+            return ()
+        grown = reach + ROUNDOVER_PLATE_CLEARANCE
+        return (
+            offset_polygon(
+                plate, grown, inward=False, arc_spacing=2.0, sample_spacing=5.0
+            ),
+        )
+
     def _neck_plate(
         self,
         heel_end: float,
@@ -4739,6 +4772,7 @@ class Prototype001Parameters:
                 self.body_back_edge_radius,
                 self.body_back_binding_width,
                 self.body_back_binding_depth if self.body_back_binding_width else 0.0,
+                self._roundover_square(body_outline.points, neck_plate),
             ),
             contours,
             truss_rod_access,

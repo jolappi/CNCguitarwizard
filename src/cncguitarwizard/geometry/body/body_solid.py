@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 
 from ..exceptions import BodyGeometryError
@@ -761,10 +761,15 @@ class BodySolid:
         """
         edge = self.back_edge
         wall = max(edge.radius, edge.binding_width) + NECK_PLATE_EDGE_WALL
+        # Where the roundover stops short of the plate (edge.square), the
+        # edge beside it is square: the plate keeps only the wall from it.
+        square_wall = edge.binding_width + NECK_PLATE_EDGE_WALL
+        rounds = [edge.rounds_at(point) for point in self.edge_points]
         for point in self.neck_plate:
             if (
                 not point_in_polygon(point, self.outline.points)
-                or _distance_to_outline(point, self.edge_points) < wall
+                or _distance_to_outline(point, self.edge_points) < square_wall
+                or _distance_to_outline(point, self.edge_points, rounds) < wall
             ):
                 raise BodyGeometryError(
                     f"The neck plate must keep {wall:g} mm of flat back to the "
@@ -910,10 +915,23 @@ class BodySolid:
                         )
 
 
-def _distance_to_outline(point: Point2D, outline: tuple[Point2D, ...]) -> float:
-    """Return the distance from ``point`` to the closed polyline ``outline``."""
+def _distance_to_outline(
+    point: Point2D,
+    outline: tuple[Point2D, ...],
+    along: Sequence[bool] | None = None,
+) -> float:
+    """Return the distance from ``point`` to the closed polyline ``outline``,
+    or to the stretches of it ``along`` marks (a segment whose ends both
+    are)."""
     best = math.inf
-    for a, b in zip(outline, (*outline[1:], outline[0]), strict=True):
+    marks = list(along) if along is not None else [True] * len(outline)
+    for (a, b), (near, far) in zip(
+        zip(outline, (*outline[1:], outline[0]), strict=True),
+        zip(marks, (*marks[1:], marks[0]), strict=True),
+        strict=True,
+    ):
+        if not (near and far):
+            continue
         ex, ey = b.x - a.x, b.y - a.y
         length_squared = ex * ex + ey * ey
         t = 0.0

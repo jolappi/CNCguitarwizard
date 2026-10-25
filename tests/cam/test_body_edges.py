@@ -90,6 +90,26 @@ def test_a_roundover_sweeps_from_the_face_down_to_the_wall() -> None:
     assert max(move.z for move in cuts) > -0.2
 
 
+def test_a_roundover_breaks_off_where_the_edge_is_left_square() -> None:
+    # Beside a neck plate too near the edge, the roundover stops short of
+    # it (the edge there to blend by hand): no pass runs on into it.
+    square = (
+        Point2D(0.0, 0.0),
+        Point2D(100.0, 0.0),
+        Point2D(100.0, 100.0),
+        Point2D(0.0, 100.0),
+    )
+    ball = replace(MachiningParameters(), tool_tip="ball")
+    path = roundover_path(
+        "Round", square, 6.0, ball, lambda point: 0.0, cut_at=lambda p: p.x > 30.0
+    )
+    cuts = [move for move in path.moves if not move.rapid]
+
+    assert cuts and min(move.x for move in cuts) > 30.0
+    # Still all round the rest: along the far side too.
+    assert max(move.x for move in cuts) > 100.0
+
+
 def test_a_binding_channel_is_cut_with_the_main_tool() -> None:
     parameters = replace(
         Prototype001Parameters(),

@@ -4152,14 +4152,21 @@ def _body_edge_lines(
         "))\n",
         "body_box = body_outline_face.BoundBox\n",
         "edge_cutters = []\n",
-        "def edge_ring(inset, z_top, z_bottom):\n",
+        "def edge_ring(inset, z_top, z_bottom, square=()):\n",
         "    # Everything outside the outline inset by `inset`, between two\n",
-        "    # heights.\n",
+        "    # heights, but in the `square` regions (the roundover stopped\n",
+        "    # short of a neck plate).\n",
         "    inner = body_outline_face.makeOffset2D(-inset, join=0) if inset > 1e-3 "
         "else body_outline_face\n",
-        "    edge_cutters.append(\n",
-        "        slab_outside(inner, body_box, z_bottom, z_top - z_bottom)\n",
-        "    )\n",
+        "    ring = slab_outside(inner, body_box, z_bottom, z_top - z_bottom)\n",
+        "    for points in square:\n",
+        "        region = Part.Face(Part.makePolygon(\n",
+        "            [App.Vector(x, y, z_bottom - 1.0) for x, y in points]\n",
+        "            + [App.Vector(*points[0], z_bottom - 1.0)]\n",
+        "        ))\n",
+        "        rise = App.Vector(0.0, 0.0, z_top - z_bottom + 2.0)\n",
+        "        ring = ring.cut(region.extrude(rise))\n",
+        "    edge_cutters.append(ring)\n",
         "def terrace(outline_points, z_top, z_bottom):\n",
         "    face = Part.Face(Part.makePolygon(\n",
         "        [App.Vector(x, y, z_bottom) for x, y in outline_points]\n",
@@ -4179,6 +4186,12 @@ def _body_edge_lines(
             return -(depth + rim) if face == "top" else -body.thickness + depth
 
         if edge.radius > 0.0:
+            # The regions the roundover stops short of (a neck plate's).
+            square = (
+                ", [" + ", ".join(outline_literal(r) for r in edge.square) + "]"
+                if edge.square
+                else ""
+            )
             layers = max(4, math.ceil(edge.radius / EDGE_LAYER))
             for index in range(layers):
                 upper = edge.radius * index / layers
@@ -4193,7 +4206,7 @@ def _body_edge_lines(
                     high, low = (
                         (high + 0.6, low) if face == "top" else (high, low - 0.6)
                     )
-                lines.append(f"edge_ring({inset!r}, {high!r}, {low!r})\n")
+                lines.append(f"edge_ring({inset!r}, {high!r}, {low!r}{square})\n")
         if edge.has_binding:
             high, low = sorted((z_of(0.0), z_of(edge.binding_depth)), reverse=True)
             high, low = (high + 0.6, low) if face == "top" else (high, low - 0.6)
