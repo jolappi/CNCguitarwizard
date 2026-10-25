@@ -2176,6 +2176,46 @@ template's to within 3 mm): the treble horn's point, the bridge's notch,
 the long bass side, and a notch round the neck pocket's round end 0.6 mm
 out from it. Its controls are the template's ``pickguard_controls``."""
 
+_STRATOCASTER_ARM_CONTOUR: tuple[tuple[float, float], ...] = (
+    (135.4, -139.0),
+    (146.0, -131.3),
+    (187.8, -100.8),
+    (229.6, -70.3),
+    (271.4, -39.8),
+    (313.3, -9.2),
+    (317.3, -14.1),
+    (321.1, -19.1),
+    (324.3, -24.5),
+    (325.9, -30.5),
+)
+"""The Stratocaster style template's arm contour, where it starts on the
+top: the user's Stratocaster drawing's (stratbody.dxf, aligned on its neck
+pocket's end), a straight line across the bass side's rear bout from its
+edge in to the tail's middle, turning round onto the tail's edge."""
+
+_STRATOCASTER_BELLY_CUT: tuple[tuple[float, float], ...] = (
+    (-83.5, -139.5),
+    (-71.0, -128.8),
+    (-48.5, -109.4),
+    (-24.1, -92.4),
+    (2.1, -78.6),
+    (30.1, -68.8),
+    (59.3, -63.7),
+    (89.0, -63.8),
+    (118.2, -69.1),
+    (146.1, -79.2),
+    (172.3, -93.2),
+    (196.5, -110.2),
+    (218.9, -129.7),
+    (239.6, -151.0),
+    (248.8, -160.5),
+)
+"""The Stratocaster style template's belly cut, where it starts on the
+back: the user's Stratocaster drawing's (stratbody.dxf), an arch along the
+bass side from the horn's root to the rear bout's widest, 64 mm in from
+the centre line at its top; its ends, which the drawing stops on the
+roundover's line, run on to the edge."""
+
 _DESIGN_BY_JONE_PICKGUARD_POINTS: tuple[tuple[float, float], ...] = (
     (215.7, 128.3),
     (205.0, 113.5),
@@ -2563,6 +2603,9 @@ YOUR_DESIGN_TEMPLATES: dict[str, tuple[str, YourDesignShape]] = {
             jack_y=93.8,
             jack_direction_degrees=232.5,
             jack_inset=67.5,
+            # Its arm contour and belly cut where the drawing has them.
+            arm_contour_points=_STRATOCASTER_ARM_CONTOUR,
+            belly_cut_points=_STRATOCASTER_BELLY_CUT,
             # The neck bolts spread like the bass's: the pair at the
             # pocket's mouth out near the body's edge, the rear pair's
             # ferrules wholly over the pocket.

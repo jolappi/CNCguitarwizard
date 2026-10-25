@@ -13,7 +13,11 @@
   to the reference's back (within 0.45 mm rms); another neck template
   loaded after it takes none of these (`NECK_TEMPLATE_RESETS`). A drawn
   root no longer asks for a headstock as thick as the neck at the first
-  fret: the back runs into the headstock's own back plane.
+  fret: the back runs into the headstock's own back plane. Its arm contour
+  and belly cut are the user's Stratocaster drawing's
+  (`arm_contour_points`, `belly_cut_points` in the template), 20 mm deep,
+  as deep as a face is cut (the original's leave 5/8 in of wood, 28 mm
+  deep: the rest by hand).
 
 - A drawn heel or headstock root shows its flat line in the model: the
   back turns from the neck's profile into the block as a carve meets a

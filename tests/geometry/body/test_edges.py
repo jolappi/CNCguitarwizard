@@ -302,8 +302,12 @@ def test_a_belly_cut_keeps_off_a_stratocasters_horn() -> None:
     # Regression: the bass side only narrows from the horn's root to the
     # waist, so the belly cut, centred there, ran out along the horn to
     # its tip. It now starts at the horn's root and runs back past the
-    # waist, deepest about there.
+    # waist, deepest about there. (The automatic one: the template draws
+    # the original's.)
     parameters = strat_style()
+    parameters = replace(
+        parameters, body_shape=replace(parameters.body_shape, belly_cut_points=())
+    )
     layout = parameters.body_layout()
     (cut,) = [c for c in layout.contours if c.name == "Belly cut"]
     along = [point.x - layout.heel_end for point in cut.edge]

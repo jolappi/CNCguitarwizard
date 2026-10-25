@@ -1,6 +1,6 @@
 """Tests for a Stratocaster as on the original: its neck's back running
 into the heel and the headstock as the user's reference Stratocaster neck
-does."""
+does, and its arm contour and belly cut where the user's drawing has them."""
 
 from dataclasses import replace
 
@@ -89,3 +89,19 @@ def test_another_neck_template_takes_none_of_the_stratocasters_own() -> None:
     ):
         assert name in NECK_TEMPLATE_RESETS
 
+
+def test_its_arm_contour_and_belly_cut_are_the_drawings() -> None:
+    shape = STRAT.body_shape
+    assert shape.arm_contour_points and shape.belly_cut_points
+    contours = {c.name: c for c in GEOMETRY.body.contours}
+    arm, belly = contours["Arm contour"], contours["Belly cut"]
+    # As deep as a face can be cut (to the body's middle, less 2 mm).
+    assert (arm.depth, belly.depth) == (20.0, 20.0)
+    assert (arm.face, belly.face) == ("top", "back")
+    # Where both cut the edge, it keeps wood enough.
+    left = [
+        STRAT.body_thickness - arm.depth_at(p) - belly.depth_at(p)
+        for c in (arm, belly)
+        for p in c.edge
+    ]
+    assert min(left) > 14.0
