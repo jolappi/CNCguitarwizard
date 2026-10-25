@@ -1255,7 +1255,16 @@
       { label: "Update to the latest version", run: () => checkForUpdate(true) },
     ]],
     ["File", () => [
-      { label: "New design", run: click("#reset"), enabled: enabled("#reset") },
+      // A new design starts from the instrument and its style.
+      {
+        label: "New design",
+        run: () => {
+          byId("reset").click();
+          showPage("design");
+          byId("style").focus();
+        },
+        enabled: enabled("#reset"),
+      },
       { label: "Open design…", key: "O", run: click("#load-design"), enabled: enabled("#load-design") },
       ...recentItems(),
       "-",

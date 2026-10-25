@@ -33,14 +33,18 @@ let wheelHref = null;
 let blobUrls = [];
 
 // Ask a yes/no question in the page's own dialog; resolves true for OK.
-// (window.confirm is answered unseen in some embedded browsers.)
+// (window.confirm is answered unseen in some embedded browsers.) A list
+// that asked it (Start from, a style) is let go of first and the dialog
+// opened a frame later, its picker closed: the focus would go back to it
+// as the dialog closes, and some browsers open it again then.
 function askConfirm(message) {
   const dialog = document.getElementById("confirm-dialog");
   dialog.querySelector(".message").textContent = message;
   dialog.returnValue = "";
+  if (document.activeElement instanceof HTMLSelectElement) document.activeElement.blur();
   return new Promise((resolve) => {
     dialog.addEventListener("close", () => resolve(dialog.returnValue === "yes"), { once: true });
-    dialog.showModal();
+    requestAnimationFrame(() => dialog.showModal());
   });
 }
 

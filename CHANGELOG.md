@@ -1764,6 +1764,11 @@
   its saddles, the unit down in its own routes (a Kahler's baseplate in
   its cutout, a Floyd Rose's block in its route).
 
+- A question asked from a list (a body template in *Start from*, a style)
+  could open the list again once answered, in some browsers: the list is
+  let go of first and the question opened a frame later. *File › New
+  design* goes to the instrument and its style.
+
 - A drawn arm contour, belly cut or leg contour whose line meets the edge
   at a slant stopped there as a wall: the Stratocaster's arm contour,
   its line turning round onto the tail, ended 4.8 mm deep at the tail's

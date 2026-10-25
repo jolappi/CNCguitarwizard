@@ -718,6 +718,8 @@ def test_a_separate_top_can_be_hidden_to_see_under_it() -> None:
     viewer = (ROOT / "site" / "quick3d.js").read_text(encoding="utf-8")
 
     assert '<label id="quick-model-top-label" hidden>' in page
+    # Hidden indeed: the labels' own display would show it.
+    assert ".quick-model-details label[hidden] { display: none; }" in page
     assert 'topLabel.hidden = !parts.some((part) => part.name === "Top");' in script
     assert 'quickModel.viewer?.setVisible("Top", event.target.checked);' in script
     assert "event.stopPropagation();" in script
@@ -729,6 +731,24 @@ def test_a_separate_top_can_be_hidden_to_see_under_it() -> None:
         '"body-editor-options.body_wire_channels": () => '
         'Number(now("body_cap_thickness")) > 0'
     ) in script
+
+
+def test_a_question_lets_go_of_its_list_and_a_new_design_starts_at_the_style() -> None:
+    script = (ROOT / "site" / "app.js").read_text(encoding="utf-8")
+    layout = (ROOT / "site" / "desktop.js").read_text(encoding="utf-8")
+
+    # Asked from a list (Start from, a style): the list let go of and the
+    # dialog opened a frame later, so closing it opens no list again.
+    assert (
+        "if (document.activeElement instanceof HTMLSelectElement) "
+        "document.activeElement.blur();"
+    ) in script
+    assert "requestAnimationFrame(() => dialog.showModal());" in script
+    # File > New design: the Instrument and style page, the style chosen next.
+    assert (
+        'byId("reset").click();\n          showPage("design");\n'
+        '          byId("style").focus();'
+    ) in layout
 
 
 def test_the_menus_that_do_not_fit_a_phone_fold_under_one() -> None:
