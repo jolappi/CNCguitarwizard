@@ -244,6 +244,34 @@ def test_the_neck_page_holds_the_truss_rod_settings() -> None:
     assert ".filter((name) => !SHARED_WITH_PAGES.has(name))" in layout
 
 
+def test_nothing_is_worked_out_while_a_value_is_typed() -> None:
+    # A phone lagged at every digit: the editors and drawings were worked
+    # out again at each keystroke (a copy's even sent a change each time).
+    script = (ROOT / "site" / "app.js").read_text(encoding="utf-8")
+    layout = (ROOT / "site" / "desktop.js").read_text(encoding="utf-8")
+
+    assert "function setControlValue(control, value, settled = true) {" in script
+    assert (
+        'if (settled) control.dispatchEvent(new Event("change", { bubbles: true }));'
+        in script
+    )
+    forwarded = (
+        'setControlValue(original, copy.tagName === "SELECT" ? copy.value : '
+        'readValue(copy), event.type === "change");'
+    )
+    assert forwarded in script and forwarded in layout
+    # Every handler of the form's input events: its line, or its body.
+    handlers = []
+    for part in script.split('form.addEventListener("input", ')[1:]:
+        line = part[: part.index("\n")]
+        handlers.append(part[: part.index("\n});")] if line.endswith("{") else line)
+    assert handlers
+    for handler in handlers:
+        assert "scheduleRefresh" not in handler, handler[:80]
+    assert 'form.addEventListener("input", () => drawPartsSoon());' not in layout
+    assert 'form.addEventListener("change", () => drawPartsSoon());' in layout
+
+
 def test_a_page_left_open_finds_a_newer_version() -> None:
     script = (ROOT / "site" / "app.js").read_text(encoding="utf-8")
     layout = (ROOT / "site" / "desktop.js").read_text(encoding="utf-8")

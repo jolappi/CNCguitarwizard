@@ -4,6 +4,13 @@
 
 ### Changed
 
+- Nothing is worked out or drawn again while a value is typed, only once
+  it is entered (Enter, or leaving the field), so a phone no longer lags
+  at every digit: the editors and the neck's and fretboard's drawings
+  follow a setting once entered, and a copy of a setting (an editor's or a
+  page's Settings) passes its keystrokes on without the change that sets
+  the drawings, the undo step and the autosave going.
+
 - Every G-code program says it needs review: the second line of its
   header, in each controller's own comment, is `REVIEW REQUIRED:
   simulate and air-cut this program, checking the work zero, tool,

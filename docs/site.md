@@ -883,7 +883,7 @@ fretboard from above — its slots as cut
 its scallops shaded between their lands — from the side along its middle
 (the scallops hollowed in it, the slots down into it) and in section at
 the twelfth fret, its radius said. Both are drawn afresh a moment after
-a setting changes while either page shows (not during a build); a design
+a setting is entered while either page shows (not during a build); a design
 that does not build says why there instead. The fretboard's binding and
 blind slots move there from the inlay editor's Settings. The neck's page
 opens with the neck's type (`neck_joint`: bolt-on, set, neck-through or
@@ -963,6 +963,20 @@ shows the page an element is on before it scrolls to it or selects it
 (`reveal`, which the app layout answers as `window.cncgwLayout`): a
 finished build opens the result, a setting found or gone to its group,
 the tour's next stop its page.
+
+## Typing a value
+
+Nothing is worked out or drawn again while a value is typed, only once
+it is entered (Enter, or leaving the field: its `change` event), so a
+phone does not lag at every digit. The editors (body, headstock, heel,
+inlays) and the neck's and fretboard's drawings follow a setting's
+`change`, not its `input`; a copy of a setting (an editor's Settings, a
+design page's) passes each keystroke on to the form's field as `input`
+alone (`setControlValue`'s `settled`), and its `change` once, so the step
+kept to undo, the autosave and the settings' pictures come once too.
+What costs nothing goes on as it is typed: the field's changed mark, its
+other copies, the counts of changed settings. A body outline's points
+typed into their own field are drawn as they read whole.
 
 ## Tip of the day
 

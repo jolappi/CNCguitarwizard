@@ -353,7 +353,7 @@ function mirrorEditorFields() {
           }
           copy.classList.remove("invalid");
         }
-        setControlValue(original, copy.tagName === "SELECT" ? copy.value : readValue(copy));
+        setControlValue(original, copy.tagName === "SELECT" ? copy.value : readValue(copy), event.type === "change");
       };
       copy.addEventListener("change", pass);
       if (copy.tagName !== "SELECT") copy.addEventListener("input", pass);
@@ -2210,7 +2210,11 @@ function showEditorStatus(editor, text, kind) {
 }
 
 // Put one saved value into its form control, as if typed or picked.
-function setControlValue(control, value) {
+// Set a form field, as typing or choosing it would. ``settled`` false (a
+// copy of it being typed in) gives it only the "input" event: the
+// "change", whose work is heavy (the editors and drawings worked out
+// again, a step kept to undo), waits until the value is entered.
+function setControlValue(control, value, settled = true) {
   if (control.tagName === "SELECT") {
     control.value = String(value);
     control.dispatchEvent(new Event("change", { bubbles: true }));
@@ -2223,7 +2227,7 @@ function setControlValue(control, value) {
   else if (type === "str") control.value = String(value);
   else control.value = JSON.stringify(value);
   control.dispatchEvent(new Event("input", { bubbles: true }));
-  control.dispatchEvent(new Event("change", { bubbles: true }));
+  if (settled) control.dispatchEvent(new Event("change", { bubbles: true }));
 }
 
 // Apply saved values to one parameter set; return the names the form
@@ -7352,17 +7356,11 @@ form.addEventListener("change", (event) => {
   else if (!/^headstock_(bass_edge|treble_edge|tip_points)$/.test(event.target.dataset.name || "")) headstockEditor.scheduleRefresh();
   heelEditor.scheduleRefresh();
 });
+// While a value is typed nothing is worked out or drawn again (a phone
+// would lag at every digit): the editors follow a setting once it is
+// entered, its "change" (Enter, or leaving the field; above and below).
 form.addEventListener("input", (event) => {
-  heelEditor.scheduleRefresh();
-  if (/^headstock_(treble_edge|bass_edge|tip_points)$/.test(event.target.dataset.name || "")) return;
-  headstockEditor.scheduleRefresh();
-});
-
-form.addEventListener("input", (event) => {
-  if (event.target.dataset.name !== "control_points") {
-    bodyEditor.scheduleRefresh();
-    return;
-  }
+  if (event.target.dataset.name !== "control_points") return;
   // Points typed into the JSON field, or loaded from a saved design, are
   // the editor's from now on, even before it has a layout to draw them on.
   try {

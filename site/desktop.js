@@ -896,8 +896,8 @@
     }
   }
 
+  // Once a value is entered, not at every digit typed.
   form.addEventListener("change", () => drawPartsSoon());
-  form.addEventListener("input", () => drawPartsSoon());
 
   // The fretboard's radius alone, as one program, saved
   // (webapp.fretboard_radius_program): to give a board already made
@@ -1018,7 +1018,7 @@
         }
         copy.classList.remove("invalid");
       }
-      setControlValue(original, copy.tagName === "SELECT" ? copy.value : readValue(copy));
+      setControlValue(original, copy.tagName === "SELECT" ? copy.value : readValue(copy), event.type === "change");
       copy.classList.toggle("changed", original.classList.contains("changed"));
     };
     copy.addEventListener("change", pass);
