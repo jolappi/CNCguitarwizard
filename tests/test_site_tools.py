@@ -311,6 +311,23 @@ def test_nothing_is_worked_out_while_a_value_is_typed() -> None:
     assert 'form.addEventListener("change", () => drawPartsSoon());' in layout
 
 
+def test_an_editor_out_of_sight_is_worked_out_only_once_shown() -> None:
+    # A phone froze for seconds at each change on any page: every editor,
+    # its page behind another, was worked out again and drawn unseen.
+    script = (ROOT / "site" / "app.js").read_text(encoding="utf-8")
+
+    assert "function outOfSight(editor) {" in script
+    for editor in ("bodyEditor", "headstockEditor", "heelEditor", "inlayEditor"):
+        body = script.split(f"const {editor} = {{", 1)[1]
+        refresh = body[body.index("  async refresh() {") :]
+        assert "outOfSight(this)) return;" in refresh[: refresh.index("\n    let")]
+    # Drawn when shown again: showPage fires a resize.
+    assert (
+        "for (const editor of [bodyEditor, headstockEditor, heelEditor, "
+        "inlayEditor]) {\n    if (editor.stale) editor.scheduleRefresh();"
+    ) in script
+
+
 def test_a_page_left_open_finds_a_newer_version() -> None:
     script = (ROOT / "site" / "app.js").read_text(encoding="utf-8")
     layout = (ROOT / "site" / "desktop.js").read_text(encoding="utf-8")

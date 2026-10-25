@@ -3202,7 +3202,7 @@ const bodyEditor = {
   },
 
   async refresh() {
-    if (this.panel.classList.contains("hidden") || !pyodide) return;
+    if (this.panel.classList.contains("hidden") || !pyodide || outOfSight(this)) return;
     let payload;
     try {
       payload = collectValues();
@@ -5738,7 +5738,7 @@ const headstockEditor = {
   },
 
   async refresh() {
-    if (this.panel.classList.contains("hidden") || !pyodide) return;
+    if (this.panel.classList.contains("hidden") || !pyodide || outOfSight(this)) return;
     let payload;
     try {
       payload = collectValues();
@@ -6815,10 +6815,7 @@ const heelEditor = {
   },
 
   async refresh() {
-    if (!pyodide) return;
-    // Not shown: drawn when its page is (showPage fires a resize).
-    this.stale = !this.panel.offsetParent;
-    if (this.stale) return;
+    if (!pyodide || outOfSight(this)) return;
     let payload;
     try {
       payload = collectValues();
@@ -6899,8 +6896,18 @@ const heelEditor = {
       !Object.values(layout.heel.lines).some((line) => line.whole);
   },
 };
+// An editor out of sight (another page in front, in the app layout) is
+// not worked out again at every change, which on a phone took seconds of
+// Python each: it is marked stale and drawn when it is shown again
+// (showPage fires a resize).
+function outOfSight(editor) {
+  editor.stale = !editor.panel.offsetParent;
+  return editor.stale;
+}
 window.addEventListener("resize", () => {
-  if (heelEditor.stale) heelEditor.scheduleRefresh();
+  for (const editor of [bodyEditor, headstockEditor, heelEditor, inlayEditor]) {
+    if (editor.stale) editor.scheduleRefresh();
+  }
 });
 document.getElementById("heel-editor-reset").addEventListener("click", () => heelEditor.reset());
 document.getElementById("heel-editor-alike").addEventListener("click", () => backLines.sidesAlike.call(heelEditor, "heel"));
@@ -6927,7 +6934,7 @@ const inlayEditor = {
   request: 0,
 
   async refresh() {
-    if (!pyodide) return;
+    if (!pyodide || outOfSight(this)) return;
     let payload;
     try {
       payload = collectValues();

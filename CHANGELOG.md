@@ -11,6 +11,10 @@
   electronics, the small holes and the edges. The neck's and the
   fretboard's outlines were last already.
 
+- A slow device (a phone) keeps up: an editor whose page is out of sight,
+  in the application like UI, is worked out and drawn only when shown, not
+  at every change made elsewhere nor on opening the page.
+
 - Nothing is worked out or drawn again while a value is typed, only once
   it is entered (Enter, or leaving the field), so a phone no longer lags
   at every digit: the editors and the neck's and fretboard's drawings

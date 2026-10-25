@@ -991,6 +991,15 @@ What costs nothing goes on as it is typed: the field's changed mark, its
 other copies, the counts of changed settings. A body outline's points
 typed into their own field are drawn as they read whole.
 
+An editor out of sight is not worked out at all: in the application
+like UI its page behind another (its panel without an `offsetParent`),
+a change made on any other page only marks it stale (`outOfSight`), and
+it is worked out and drawn once, when its page is shown (`showPage`
+fires a `resize`). A change made on the instrument's page no longer
+works out the body's, the headstock's, the heel's and the inlays' editors
+and both back views unseen, seconds of Python on a phone; nor does
+opening the page.
+
 ## Tip of the day
 
 One sentence a day from `TIPS` in `site/app.js` — the builder's own
