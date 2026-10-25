@@ -171,14 +171,20 @@ STYLES: dict[str, InstrumentStyle] = {
             "body_neck_plate": "plate",
             # The heel as deep as the reference neck's (see STRATOCASTER_NECK).
             "heel_thickness": 18.6,
+            # Its edges rounded over 7/16 in, as a Stratocaster's usually
+            # are; on the back the roundover stops short of the neck plate,
+            # 3 mm from the edge as on the original, to blend by hand.
+            "body_top_edge_radius": 11.1,
+            "body_back_edge_radius": 11.1,
             # Its arm contour and belly cut where the template draws them,
-            # as deep as a face can be cut (to the body's middle, less 2 mm):
-            # the original's leave 5/8 in of wood at their deepest, 28 mm
+            # as deep as a face can be cut with that roundover running on
+            # down from their floor (together to the body's middle): the
+            # original's leave 5/8 in of wood at their deepest, 28 mm
             # deep, which only a hand tool takes. The automatic belly cut
             # (Auto belly cut) runs from the bass horn's root back to the
             # waist, not out along the horn.
-            "body_arm_contour_depth": 20.0,
-            "body_belly_cut_depth": 20.0,
+            "body_arm_contour_depth": 10.9,
+            "body_belly_cut_depth": 10.9,
             "body_belly_cut_length": 190.0,
             "inlay_style": "dot",
         },

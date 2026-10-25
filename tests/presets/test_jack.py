@@ -105,9 +105,9 @@ def test_a_stratocaster_has_its_oval_jack_route() -> None:
     assert cavity.depth == 32.0
     assert all(point_in_polygon(p, body.outline.points) for p in cavity.outline)
     # Without the shape's inset: its edge tip 4 mm in along the line, the
-    # bore from its middle.
+    # bore from its middle (and no roundover, which would lower its rim).
     shape = replace(plain.body_shape, jack_inset=None)
-    body = replace(plain, body_shape=shape).build().body
+    body = replace(plain, body_shape=shape, body_top_edge_radius=0.0).build().body
     (cavity,) = [c for c in body.top_cavities if c.name == "Jack cavity"]
     edge_tip = min(u for u, _ in _across(body.jack_hole, cavity.outline))
     assert edge_tip == pytest.approx(-28.98, abs=0.05)

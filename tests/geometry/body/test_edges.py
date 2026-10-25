@@ -292,9 +292,11 @@ def test_a_leg_contour_bevels_the_back_of_the_treble_side_waist() -> None:
 
     plan = plan_body_machining(body, MachiningParameters())
     assert plan.back_edges is not None
-    assert [path.name for path in plan.back_edges.toolpaths][-2:] == [
+    # (And the style's roundover after the contours.)
+    assert [path.name for path in plan.back_edges.toolpaths][-3:] == [
         "Leg contour roughing",
         "Leg contour finishing",
+        "Back edge roundover",
     ]
 
 

@@ -2,11 +2,13 @@
 into the heel and the headstock as the user's reference Stratocaster neck
 does, and its arm contour and belly cut where the user's drawing has them."""
 
+import math
 from dataclasses import replace
 
 import pytest
 
 from cncguitarwizard.backends.freecad import FreeCADScriptExporter
+from cncguitarwizard.cam.planar import distance_to_boundary
 from cncguitarwizard.geometry.exceptions import NeckGeometryError
 from cncguitarwizard.presets import Prototype001Parameters
 from cncguitarwizard.presets.prototype001 import NECK_TEMPLATE_RESETS
@@ -95,8 +97,10 @@ def test_its_arm_contour_and_belly_cut_are_the_drawings() -> None:
     assert shape.arm_contour_points and shape.belly_cut_points
     contours = {c.name: c for c in GEOMETRY.body.contours}
     arm, belly = contours["Arm contour"], contours["Belly cut"]
-    # As deep as a face can be cut (to the body's middle, less 2 mm).
-    assert (arm.depth, belly.depth) == (20.0, 20.0)
+    # As deep as a face can be cut, its roundover running on down from
+    # their floor (together to the body's middle).
+    assert (arm.depth, belly.depth) == (10.9, 10.9)
+    assert arm.depth + GEOMETRY.body.top_edge.radius == pytest.approx(22.0)
     assert (arm.face, belly.face) == ("top", "back")
     # Where both cut the edge, it keeps wood enough.
     left = [
@@ -105,3 +109,31 @@ def test_its_arm_contour_and_belly_cut_are_the_drawings() -> None:
         for p in c.edge
     ]
     assert min(left) > 14.0
+
+
+def test_its_edges_are_rounded_over_its_back_short_of_the_neck_plate() -> None:
+    # 7/16 in, as a Stratocaster's edges usually are; its neck plate sits
+    # nearer the back's edge than that, as on the original, so the back's
+    # roundover stops short of it (the edge there blended by hand).
+    body = GEOMETRY.body
+    assert (body.top_edge.radius, body.back_edge.radius) == (11.1, 11.1)
+    assert body.top_edge.square == () and len(body.back_edge.square) == 1
+    plate = body.neck_plate
+    assert min(distance_to_boundary(p, body.outline.points) for p in plate) < 3.0
+    beside = [
+        p
+        for p in body.edge_points
+        if min(distance_to_boundary(p, plate), 99.0) < body.back_edge.radius + 1.0
+    ]
+    assert beside and not any(body.back_edge.rounds_at(p) for p in beside)
+    # Only there: the rest of the edge, most of it, rounded over.
+    edge = body.edge_points
+    lengths = [
+        (math.dist((a.x, a.y), (b.x, b.y)), body.back_edge.rounds_at(a))
+        for a, b in zip(edge, (*edge[1:], edge[0]), strict=True)
+    ]
+    rounded = sum(length for length, rounds in lengths if rounds)
+    assert rounded > 0.85 * sum(length for length, _ in lengths)
+    # The model's rings are cut round it too.
+    script = FreeCADScriptExporter().render_prototype001(GEOMETRY)
+    assert script.count("edge_ring(") > 10 and ", [[" in script

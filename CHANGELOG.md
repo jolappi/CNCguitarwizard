@@ -4,12 +4,15 @@
 
 ### Changed
 
-- A back roundover now stops short of a neck plate that sits nearer the
-  edge than it (a Stratocaster's and a Telecaster's 1.9 mm in, a Jazz
-  Bass's 2.5 mm), the edge beside the plate left square to blend by hand
-  (`EdgeProfile.square`, the plate grown by the roundover, its wall and
-  `ROUNDOVER_PLATE_CLEARANCE`), as builders stop the router short of it:
-  the model's rings and the roundover's passes break off there. Such a
+- The Stratocaster's edges rounded over 7/16 in (11.1 mm), top and back,
+  as a Stratocaster's usually are; its arm contour and belly cut 10.9 mm
+  deep, as deep as a face is cut with that roundover running on down from
+  their floor. A back roundover now stops short of a neck plate that sits
+  nearer the edge than it (a Stratocaster's and a Telecaster's 1.9 mm in,
+  a Jazz Bass's 2.5 mm), the edge beside the plate left square to blend by
+  hand (`EdgeProfile.square`, the plate grown by the roundover, its wall
+  and `ROUNDOVER_PLATE_CLEARANCE`), as builders stop the router short of
+  it: the model's rings and the roundover's passes break off there. Such a
   plate was refused with any back roundover.
 
 - A neck's heel and flat headstock left as planed where they are the
