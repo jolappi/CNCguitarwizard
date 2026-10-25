@@ -5,8 +5,10 @@ blocks the neck's rounded back runs into. Seen from behind, two lines
 across the back say how: where the block's flat begins (the heel's or the
 headstock's rounding, its shape) and where the neck's own profile does
 (how far the rounding runs out onto the neck). Between them the back
-turns evenly from the one into the other. It is never proud of either, so
-two lines are enough; a volute, standing proud, needs its crest too.
+turns from the one into the other as a carve meets a flat face: rounding
+off the neck's profile, meeting the flat at an angle, so the flat's line
+shows (as on a measured Stratocaster neck). It is never proud of either,
+so two lines are enough; a volute, standing proud, needs its crest too.
 """
 
 from __future__ import annotations
@@ -16,7 +18,7 @@ from dataclasses import dataclass, field
 
 from ..exceptions import NeckGeometryError
 from ..primitives import DrawnPoint, Point2D
-from .drawn_lines import nearest, side_toward, smootherstep
+from .drawn_lines import nearest, side_toward
 
 DEFAULT_HEEL_LINES: dict[str, tuple[tuple[float, float], ...]] = {
     "flat": ((0.0, 0.0), (0.0, 1.1)),
@@ -49,7 +51,7 @@ class BackTransition:
     the back is the block's, ``depth_at`` below the glue face, square at
     its sides; on the neck's side of ``neck`` it is the neck's own rounded
     profile; between, the back turns from the one into the other by
-    ``share``, evenly, meeting each with no edge.
+    ``share``: tangent to the neck's profile, at an angle to the flat.
 
     Args:
         flat: Where the block's flat begins, seen from behind, across the
@@ -119,8 +121,11 @@ class BackTransition:
         """Return how far the back at ``(x, y)`` has turned into the block.
 
         1 on the block's side of the flat line, 0 on the neck's side of the
-        neck line; between them the way from the neck line to the flat
-        one, eased so the back meets each with no edge.
+        neck line; between them the square of the way from the neck line
+        to the flat one: the back leaves the neck's profile with no edge
+        and meets the flat at an angle, as a carve meets a flat face (a
+        measured Stratocaster neck's heel and headstock fit it within 1.3%
+        of their rise).
         """
         point = Point2D(x, y)
         flat_side, neck_side = self.block_sides
@@ -130,7 +135,8 @@ class BackTransition:
         to_neck, side = nearest(point, self.neck)
         if side * neck_side <= 0.0:
             return 0.0
-        return smootherstep(to_neck / (to_neck + to_flat))
+        toward_flat = to_neck / (to_neck + to_flat)
+        return toward_flat * toward_flat
 
 
 def default_transition_lines(

@@ -56,11 +56,14 @@ def test_the_back_turns_from_the_neck_line_to_the_flat_one() -> None:
     assert transition.share(350.0, 0.0) == 0.0
     assert transition.share(401.0, 0.0) == 1.0
     assert transition.share(405.0, 25.0) < 1.0 and transition.share(411.0, 25.0) == 1.0
-    # Between, evenly: halfway there, half turned, and easing in and out.
-    assert transition.share(375.0, 0.0) == pytest.approx(0.5)
+    # Between, as a carve meets a flat face: halfway there, a quarter
+    # turned; leaving the neck's profile with no edge, meeting the flat at
+    # an angle (so its line shows).
+    assert transition.share(375.0, 0.0) == pytest.approx(0.25)
     shares = [transition.share(x, 0.0) for x in range(350, 401, 5)]
     assert shares == sorted(shares)
-    assert transition.share(351.0, 0.0) < 0.01 and transition.share(399.0, 0.0) > 0.99
+    assert transition.share(351.0, 0.0) < 0.001
+    assert transition.share(399.0, 0.0) == pytest.approx(0.96, abs=0.001)
     assert transition.span == (350.0, 410.0)
 
 

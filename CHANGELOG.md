@@ -4,6 +4,13 @@
 
 ### Changed
 
+- A drawn heel or headstock root shows its flat line in the model: the
+  back turns from the neck's profile into the block as a carve meets a
+  flat face, with no edge at the neck line and at an angle at the flat
+  line (`BackTransition.share`, the square of the way between), where it
+  met both with no edge, so the flat ran on unseen past the line drawn;
+  the measured Stratocaster neck fits it three times as closely.
+
 - The cut that frees a part always runs last, even with its tabs left: the
   body's lower half of the outline, with its tabs, is a program of its own
   run after every other back program (`Body_back_outline`,

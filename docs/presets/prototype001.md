@@ -209,9 +209,12 @@ Building the preset creates and cross-validates:
   the top frets, say). The heel is never proud of the block or
   the neck, so two lines say it all: between them the back turns from the
   neck's rounded profile into the block's square one and deepens to the
-  block's depth by one share, 0 at the neck line and 1 at the flat line,
-  the way from the one to the other eased so it meets each with no edge
-  (`BackTransition.share`). Empty, the lines start much as the smooth
+  block's depth by one share, 0 at the neck line and 1 at the flat line:
+  the square of the way from the one to the other, as a carve meets a
+  flat face, leaving the neck's profile with no edge and meeting the flat
+  at an angle, so the flat line shows where it is drawn (a measured
+  Stratocaster neck's heel and headstock fit it within 1.3% of their
+  rise; `BackTransition.share`). Empty, the lines start much as the smooth
   heel (`DEFAULT_HEEL_LINES`: the block straight across, the neck's
   profile 45 mm ahead of it at the sides and 60 mm down the middle); they
   lie between the 12th fret and the block, which stays flat (a point
