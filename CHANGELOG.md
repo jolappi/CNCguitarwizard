@@ -21,7 +21,9 @@
   holes and channels as before; the drawings that show no wiring (the
   neck's and fretboard's, the back views, the heel editor) no longer plan
   it, `Prototype001Parameters.build(wired=False)`: three to four times
-  quicker for the back views.
+  quicker for the back views; a page's drawings of one design share its
+  build (the last four designs' kept), so opening the neck's page builds
+  it twice, not four times.
 
 - Nothing is worked out or drawn again while a value is typed, only once
   it is entered (Enter, or leaving the field), so a phone no longer lags

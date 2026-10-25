@@ -1001,6 +1001,11 @@ and both back views unseen, seconds of Python on a phone; nor does
 opening the page. The drawings that show no wiring (`back_view`,
 `heel_editor_layout`, `part_views`) build the design without it
 (`build(wired=False)`), the body's wiring being most of a plain build.
+And a design is built once for all its drawings: the web app keeps the
+last `BUILDS_KEPT` designs' builds (`_built`), so the neck's page shown
+(its drawings, the heel editor, the heel's back view, the settings'
+pictures) builds the design twice, without the wiring and with it for
+the plan view, not four times.
 
 ## Tip of the day
 

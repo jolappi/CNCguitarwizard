@@ -95,7 +95,7 @@ from .geometry.primitives import (
     drawn_polygon,
     point_in_polygon,
 )
-from .presets import Prototype001Parameters
+from .presets import Prototype001Geometry, Prototype001Parameters
 from .presets.body_shapes import (
     BODY_SHAPE_KINDS,
     BODY_SHAPE_LABELS,
@@ -1877,6 +1877,39 @@ def _root_drawing(parameters: Prototype001Parameters) -> dict[str, Any] | None:
     )
 
 
+BUILDS_KEPT = 4
+"""How many designs' builds the drawings keep (``_built``)."""
+
+
+def _built(parameters: Prototype001Parameters, *, wired: bool) -> Prototype001Geometry:
+    """Return ``parameters`` built, the last few designs' builds kept.
+
+    A page shown asks for one design's drawings several times over (the
+    neck's, the heel editor's, the settings' pictures, the back's), each
+    a build of a second or more on a phone: built once, the others are
+    quick. The geometry is immutable, so a kept one is safely shared.
+
+    Args:
+        parameters: The design.
+        wired: As for ``Prototype001Parameters.build``.
+
+    Returns:
+        The design's geometry.
+    """
+    try:
+        hash(parameters)
+    except TypeError:  # a value the form never sends (a list): built afresh
+        return parameters.build(wired=wired)
+    return _kept_build(parameters, wired)
+
+
+@functools.lru_cache(maxsize=BUILDS_KEPT)
+def _kept_build(
+    parameters: Prototype001Parameters, wired: bool
+) -> Prototype001Geometry:
+    return parameters.build(wired=wired)
+
+
 HEEL_EDITOR_REACH = 130.0
 """How far ahead of the heel's block the heel editor shows the neck, in mm."""
 
@@ -1909,12 +1942,12 @@ def heel_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         return {"error": f"{type(error).__name__}: {error}"}
     problem = None
     try:
-        geometry = parameters.build(wired=False)
+        geometry = _built(parameters, wired=False)
     except (CNCGuitarWizardError, TypeError, ValueError) as error:
         problem = f"{type(error).__name__}: {error}"
         try:
             smooth = dataclasses.replace(parameters, heel_root_style="smooth")
-            geometry = smooth.build(wired=False)
+            geometry = _built(smooth, wired=False)
         except (CNCGuitarWizardError, TypeError, ValueError):
             return {"error": problem}
     surface = geometry.neck_surface
@@ -1973,7 +2006,7 @@ def back_view(payload: dict[str, Any], where: str = "nut") -> dict[str, Any]:
     try:
         built = Prototype001Parameters(**_coerce(payload.get("prototype", {})))
         # As drawn (right-handed), as the editors show it.
-        geometry = dataclasses.replace(built, handedness="right").build(wired=False)
+        geometry = _built(dataclasses.replace(built, handedness="right"), wired=False)
     except (CNCGuitarWizardError, TypeError, ValueError) as error:
         return {"error": f"{type(error).__name__}: {error}"}
     surface = geometry.neck_surface
@@ -2899,7 +2932,7 @@ def part_views(payload: dict[str, Any]) -> dict[str, Any]:
     """
     try:
         parameters = Prototype001Parameters(**_coerce(payload.get("prototype", {})))
-        geometry = parameters.build(wired=False)
+        geometry = _built(parameters, wired=False)
     except (CNCGuitarWizardError, TypeError, ValueError) as error:
         return {"error": f"{type(error).__name__}: {error}"}
     return {
@@ -2925,7 +2958,7 @@ def setting_views(payload: dict[str, Any]) -> dict[str, Any]:
     """
     try:
         parameters = Prototype001Parameters(**_coerce(payload.get("prototype", {})))
-        geometry = parameters.build()
+        geometry = _built(parameters, wired=True)
     except (CNCGuitarWizardError, TypeError, ValueError) as error:
         return {"error": f"{type(error).__name__}: {error}"}
     return {

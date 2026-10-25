@@ -5,17 +5,22 @@ from pathlib import Path
 
 import pytest
 
+from cncguitarwizard.presets import Prototype001Parameters
 from cncguitarwizard.webapp import (
     advance_build,
+    back_view,
     body_editor_layout,
     finish_build,
     headstock_editor_layout,
+    heel_editor_layout,
     import_outline,
     inlay_editor_layout,
     load_design,
     outline_template,
     parameter_schema,
+    part_views,
     run_build,
+    setting_views,
     start_build,
     upgrade_design,
 )
@@ -1187,3 +1192,30 @@ def test_the_built_model_is_offered_in_other_3d_formats() -> None:
     assert script["name"] == "Prototype001_export_glb.py"
     assert 'FORMATS = ["glb"]' in script["text"]
     assert "Unknown 3D format" in format_export("dwg")["error"]
+
+
+def test_a_designs_drawings_share_its_build(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Regression: a page shown built the design again for each of its
+    # drawings (the neck's, the heel editor's, the back's, the settings'
+    # pictures), a second or more each on a phone.
+    builds: list[bool] = []
+    build = Prototype001Parameters.build
+
+    def counted(self: Prototype001Parameters, *, wired: bool = True) -> object:
+        builds.append(wired)
+        return build(self, wired=wired)
+
+    monkeypatch.setattr(Prototype001Parameters, "build", counted)
+    # A design no other test asks for, so none of its builds is kept yet.
+    payload = {"prototype": {"scale_length": 641.25}}
+
+    assert "error" not in part_views(payload)
+    assert "error" not in heel_editor_layout(payload)
+    assert back_view(payload, "heel")["svg"]
+    assert "error" not in setting_views(payload)
+    # Once without the wiring the drawings do not show, once with it for
+    # the plan view's.
+    assert builds == [False, True]
+    # A changed design is built again.
+    part_views({"prototype": {"scale_length": 641.5}})
+    assert builds == [False, True, False]
