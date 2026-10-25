@@ -1735,6 +1735,14 @@
 
 ### Fixed
 
+- A drawn arm contour, belly cut or leg contour whose line meets the edge
+  at a slant stopped there as a wall: the Stratocaster's arm contour,
+  its line turning round onto the tail, ended 4.8 mm deep at the tail's
+  edge and 42 mm in, a notch in the model and the top's toolpaths. At
+  either end the bevel now runs out over as far along the edge as it
+  reaches in there (`ContourCut.along_line`), ending on the line's end
+  at about the angle it falls across.
+
 - On a phone the application like UI's menus past the screen's edge were
   out of reach: those that do not fit now fold, the last first, under a
   » at the bar's end, each opened from there as from its own title, and

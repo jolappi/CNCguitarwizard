@@ -955,7 +955,12 @@ onto the outline, runs the bevel along the stretch of edge between them
 and, at each edge sample, in along the inward normal to the line
 (`reaches`); its depth at the edge is `body_arm_contour_depth` where the
 line is furthest in, scaled with the reach elsewhere, so a line that
-meets the edge fades the bevel out there. In the body editor the line is
+meets the edge fades the bevel out there. A line that meets the edge at a
+slant (a Stratocaster's, turning round onto the tail) is still far in
+along the last samples' normals, so at either end the reach is eased
+(a smoothstep) from nothing over as far along the edge as it reaches in
+there: the bevel runs out on the line's end at about the angle it falls
+across, not as a wall that deep (`_run_out`). In the body editor the line is
 drawn in green with round handles while the arm contour is on: drag one,
 click the line to add one, Alt-click or right-click to remove one (three
 at least); *Auto arm contour* empties the points again. The belly cut's

@@ -19,6 +19,7 @@ from cncguitarwizard.geometry.body.edges import (
 from cncguitarwizard.geometry.exceptions import BodyGeometryError
 from cncguitarwizard.geometry.primitives import Point2D, point_in_polygon
 from cncguitarwizard.presets import Prototype001Parameters, YourDesignShape
+from cncguitarwizard.presets.styles import STYLES
 
 # The drawn body's default starting outline (a Stratocaster-style shape).
 STRAT = YourDesignShape()
@@ -191,6 +192,41 @@ def test_a_contour_drawn_as_a_line_reaches_in_to_it() -> None:
     # Halfway up the slope the line is 15 mm in: half as deep at the edge.
     assert contour.depth_at(Point2D(-45.0, -100.0)) == pytest.approx(5.0, abs=0.5)
     assert contour.depth_at(Point2D(-45.0, -84.0)) == 0.0
+
+
+def test_a_line_meeting_the_edge_at_a_slant_runs_out_not_as_a_wall() -> None:
+    # The line comes back to the edge at (60, -100) from beyond the
+    # stretch's end, as a Stratocaster's does round its tail: the last
+    # samples' normals still meet it 22 mm in. The bevel runs out to
+    # nothing at the line's end instead of stopping 7 mm deep there.
+    line = (
+        Point2D(-60.0, -100.0),
+        Point2D(-30.0, -70.0),
+        Point2D(40.0, -70.0),
+        Point2D(75.0, -85.0),
+        Point2D(60.0, -100.0),
+    )
+    contour = ContourCut.along_line("Arm contour", "top", square(), line, 10.0)
+    along = [contour.depth_at(Point2D(-60.0 + k * 0.5, -99.9)) for k in range(241)]
+    assert along[-1] == pytest.approx(0.0, abs=0.05)
+    # Never steeper along the edge than 45 degrees (it was a 7 mm wall).
+    assert max(abs(b - a) for a, b in zip(along, along[1:], strict=False)) < 0.5
+    # Where the line is square to the edge, as it was.
+    assert contour.depth_at(Point2D(0.0, -100.0)) == pytest.approx(10.0, abs=0.2)
+
+
+def test_a_stratocaster_s_arm_contour_runs_out_at_its_tail() -> None:
+    style = STYLES["stratocaster"]
+    parameters = Prototype001Parameters(**style.prototype_values(style.instruments[0]))
+    (arm, _) = parameters.body_layout().contours
+    assert isinstance(arm, ContourCut)
+    # Along the edge to where its line meets the tail: no step anywhere.
+    depths = [
+        arm.depth_at(Point2D(p.x + n.x * 0.1, p.y + n.y * 0.1))
+        for p, n in zip(arm.edge, arm.normals, strict=True)
+    ]
+    assert depths[-1] == pytest.approx(0.0, abs=0.05)
+    assert max(abs(b - a) for a, b in zip(depths, depths[1:], strict=False)) < 2.0
 
 
 def test_a_line_outside_the_body_is_refused() -> None:

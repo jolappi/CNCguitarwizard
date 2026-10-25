@@ -267,6 +267,15 @@ class ContourCut:
             _ray_to_line(p, n, line)
             for p, n in zip(shape.edge, shape.normals, strict=True)
         )
+        # A line meeting the edge at a slant (a Stratocaster's, turning
+        # round onto the tail) is still far in along the last samples'
+        # normals: run out over as far along the edge as it reaches in at
+        # either end, so the bevel ends on the line's end at about the
+        # angle it falls across, not as a wall that deep.
+        reaches = tuple(
+            reach * _run_out(s, shape.arc, reaches)
+            for reach, s in zip(reaches, shape.arc, strict=True)
+        )
         widest = max(reaches)
         if widest <= 0.0:
             raise BodyGeometryError(
@@ -1053,3 +1062,20 @@ def _ray_to_line(origin: Point2D, direction: Point2D, line: Sequence[Point2D]) -
         if t > 0.0 and 0.0 <= u <= 1.0:
             best = min(best, t)
     return best if math.isfinite(best) else 0.0
+
+
+def _run_out(s: float, arc: Sequence[float], reaches: Sequence[float]) -> float:
+    """Return the share of a drawn bevel's reach kept at arc ``s``.
+
+    Eased (a smoothstep) from none at either end of its stretch to all of
+    it as far along the edge from there as the bevel reaches in at that
+    end; all of it near an end it reaches in by nothing at (where its line
+    meets the edge square).
+    """
+    kept = 1.0
+    for end, reach in ((arc[0], reaches[0]), (arc[-1], reaches[-1])):
+        if reach <= 0.0:
+            continue
+        t = min(1.0, abs(s - end) / reach)
+        kept *= t * t * (3.0 - 2.0 * t)
+    return kept
