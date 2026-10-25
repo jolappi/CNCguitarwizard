@@ -23,7 +23,9 @@
   it, `Prototype001Parameters.build(wired=False)`: three to four times
   quicker for the back views; a page's drawings of one design share its
   build (the last four designs' kept), so opening the neck's page builds
-  it twice, not four times.
+  it twice, not four times; and a drawn headstock's edges are made once,
+  not again at each width asked of them (thousands of times for a back
+  view).
 
 - Nothing is worked out or drawn again while a value is typed, only once
   it is entered (Enter, or leaving the field), so a phone no longer lags

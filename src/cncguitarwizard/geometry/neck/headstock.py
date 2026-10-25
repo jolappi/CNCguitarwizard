@@ -109,6 +109,11 @@ class HeadstockPlan:
     tip_line: Line2D = field(init=False)
     boundary: tuple[Point2D, ...] = field(init=False)
     point_start: float = field(init=False)
+    # A drawn plan's bass and treble edge curves, made once: a back view's
+    # loft reads the edges thousands of times.
+    edge_curves: tuple[SmoothCurve, SmoothCurve] | None = field(
+        init=False, default=None, repr=False, compare=False
+    )
 
     def __post_init__(self) -> None:
         """Validate dimensions and construct the symmetric outline."""
@@ -245,9 +250,9 @@ class HeadstockPlan:
 
     def edge_curve(self, side: Side) -> SmoothCurve:
         """Return a drawn edge's curve, half-width by distance from the nut."""
-        edge = self.bass_edge if side == "bass" else self.treble_edge
-        assert edge is not None
-        return self._smooth_edge(edge)
+        assert self.edge_curves is not None
+        bass, treble = self.edge_curves
+        return bass if side == "bass" else treble
 
     def _smooth_edge(self, edge: tuple[DrawnPoint, ...]) -> SmoothCurve:
         """Return a drawn edge's curve from the nut's half-width through it."""
@@ -270,6 +275,7 @@ class HeadstockPlan:
             raise HeadstockGeometryError("Draw both headstock edges, or neither.")
         if self.bass_edge is None or self.treble_edge is None:
             return
+        curves = []
         for side, edge in (("bass", self.bass_edge), ("treble", self.treble_edge)):
             if not edge:
                 raise HeadstockGeometryError(f"The {side} edge needs a tip point.")
@@ -279,12 +285,13 @@ class HeadstockPlan:
                     f"{self.length:g} mm from the nut."
                 )
             try:
-                self._smooth_edge(edge)
+                curves.append(self._smooth_edge(edge))
             except GeometryException as error:
                 raise HeadstockGeometryError(
                     f"The drawn {side} edge must run from the nut to the tip "
                     f"without doubling back ({error})"
                 ) from error
+        object.__setattr__(self, "edge_curves", (curves[0], curves[1]))
         # Nowhere under TIP_POINT_WIDTH, but for a pointed tip's last run,
         # narrowing all the way to the point.
         distances = self._drawn_distances()

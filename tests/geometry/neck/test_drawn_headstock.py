@@ -42,6 +42,19 @@ def test_a_drawn_plan_follows_its_edges_from_the_nut() -> None:
     assert min(xs) == pytest.approx(-170.0)
 
 
+def test_a_drawn_plans_edges_are_made_once_not_at_each_width_asked() -> None:
+    # Regression: each width asked made the edge's curve again, thousands
+    # of times for the back's view, and a phone waited for it.
+    plan = HeadstockPlan(
+        170.0, 42.0, 45.0, 65.0, 40.0, bass_edge=BASS, treble_edge=TREBLE
+    )
+
+    assert plan.edge_curve("bass") is plan.edge_curve("bass")
+    assert plan.edge_curve("treble") is not plan.edge_curve("bass")
+    # Not part of what the plan is: equal plans stay equal.
+    assert plan == replace(plan) and "edge_curves" not in repr(plan)
+
+
 @pytest.mark.parametrize(
     ("bass", "treble", "match"),
     [
