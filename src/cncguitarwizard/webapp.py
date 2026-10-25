@@ -68,6 +68,7 @@ from .geometry.body import (
     BRIDGE_MIN_STRINGS,
     BRIDGE_NOTES,
     JackHole,
+    KahlerBridgeSpec,
     bridge_spec_from_dict,
 )
 from .geometry.exceptions import GeometryException
@@ -611,6 +612,11 @@ def upgrade_design(design: dict[str, Any]) -> dict[str, Any]:
     a ``body_epoxy_tray_wall`` of their own: it is dropped, so the design
     loads with the walls as wide as the rim (and nothing skipped).
 
+    Designs saved before a Kahler 7300's cutout was placed as Kahler's
+    installation guide places it have its ``baseplate_offset`` at
+    ``KAHLER_DXF_OFFSET``, the default then (the cutout 16.5 mm behind the
+    saddles): it loads as the default now, the saddles just inside it.
+
     Args:
         design: The saved design, ``{"instrument", "prototype", ...}``.
 
@@ -632,6 +638,16 @@ def upgrade_design(design: dict[str, Any]) -> dict[str, Any]:
     if prototype.get("inlay_style") == "iommi_cross":
         prototype["inlay_style"] = "cross"
     prototype.pop("body_epoxy_tray_wall", None)
+    bridge = prototype.get("body_bridge")
+    if (
+        isinstance(bridge, dict)
+        and bridge.get("kind") == "kahler_7300"
+        and bridge.get("baseplate_offset") == KAHLER_DXF_OFFSET
+    ):
+        prototype["body_bridge"] = {
+            **bridge,
+            "baseplate_offset": KahlerBridgeSpec().baseplate_offset,
+        }
     upgraded = {**design, "prototype": prototype}
     if "machining" in design:
         upgraded["machining"] = machining
@@ -640,6 +656,11 @@ def upgrade_design(design: dict[str, Any]) -> dict[str, Any]:
 
 DESIGN_FORMAT = "cncguitarwizard-design"
 """The ``format`` entry of a design saved with the web app's Save design."""
+
+KAHLER_DXF_OFFSET = 44.245
+"""A Kahler 7300 cutout's centre behind the scale line as the Prototype001
+DXF drew it, the default until it was placed as Kahler places it
+(``upgrade_design``)."""
 
 
 def style_design(instrument: str, style: str, name: str = "") -> dict[str, Any]:

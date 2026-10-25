@@ -516,6 +516,22 @@ def test_a_design_saved_with_six_mm_index_pins_follows_a_wider_tool() -> None:
     assert "machining" not in upgrade_design({"instrument": "bass_guitar"})
 
 
+def test_a_design_saved_with_the_dxf_s_kahler_cutout_loads_with_kahler_s() -> None:
+    from cncguitarwizard.geometry.body import KahlerBridgeSpec
+    from cncguitarwizard.webapp import KAHLER_DXF_OFFSET
+
+    bridge = {"kind": "kahler_7300", "baseplate_offset": KAHLER_DXF_OFFSET}
+    old = {"instrument": "electric_guitar", "prototype": {"body_bridge": bridge}}
+    upgraded = upgrade_design(old)["prototype"]["body_bridge"]
+    assert upgraded["baseplate_offset"] == KahlerBridgeSpec().baseplate_offset
+    assert old["prototype"]["body_bridge"]["baseplate_offset"] == KAHLER_DXF_OFFSET
+    # One set otherwise stays as saved.
+    kept = {**bridge, "baseplate_offset": 30.0}
+    assert upgrade_design({"prototype": {"body_bridge": kept}})["prototype"] == {
+        "body_bridge": kept
+    }
+
+
 def test_a_saved_design_loads_as_the_web_app_loads_it() -> None:
     from cncguitarwizard.exceptions import CNCGuitarWizardError
     from cncguitarwizard.presets import Prototype001Parameters

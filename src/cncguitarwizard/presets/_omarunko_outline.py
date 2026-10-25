@@ -23,8 +23,9 @@ pickup block, the only features the drawing positions explicitly):
 The same offset then places every other traced feature — both rear
 cavities with their cover recesses — at its real position and shape
 relative to that same neck. The drawing's rectangular bridge baseplate
-cutout lives on as the defaults of ``KahlerBridgeSpec`` (55.45 x 65.04 mm,
-centred 44.245 mm behind the scale line).
+cutout lives on as the defaults of ``KahlerBridgeSpec`` (55.45 x 65.04 mm;
+it was centred 44.245 mm behind the scale line, now where Kahler's
+installation guide puts it, ``KAHLER_CUTOUT_LEAD``).
 
 ``OMARUNKO_OUTLINE_POINTS`` excludes the pickup, neck-pocket, bridge
 and rear-cavity features, which are modelled separately as their own

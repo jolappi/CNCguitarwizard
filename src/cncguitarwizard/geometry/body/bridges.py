@@ -245,6 +245,15 @@ depths and position are the six-string's."""
 KAHLER_MODELS: dict[int, str] = {6: "7300", 7: "7327", 8: "7328"}
 """The Kahler 7300-series model per string count."""
 
+KAHLER_CUTOUT_LEAD = 1.5875
+"""How far a Kahler 7300's cutout starts ahead of the scale line, in mm:
+its installation guide puts the template's leading edge at the scale length
+and moves it 1/16 in forward, so the saddles stand just inside the route."""
+
+KAHLER_CUTOUT_LENGTH = 55.45
+"""A Kahler 7300's cutout along the neck, in mm, as drawn in the
+Prototype001 DXF."""
+
 
 @dataclass(frozen=True, slots=True)
 class KahlerBridgeSpec:
@@ -252,8 +261,12 @@ class KahlerBridgeSpec:
 
     Only a rectangular baseplate-clearance cutout is routed; there are no
     studs, no springs and no rear cavity. The defaults are the cutout as
-    drawn in the Prototype001 DXF; the seven- and eight-string units
-    (7327, 7328) take a wider one (``KAHLER_BASEPLATE_WIDTHS``).
+    drawn in the Prototype001 DXF, placed as Kahler's installation guide
+    places its template: starting ``KAHLER_CUTOUT_LEAD`` (1/16 in) ahead of
+    the scale line, the saddles just inside it (the DXF had its centre
+    44.245 mm behind the line, the saddles over wood ahead of it); the
+    seven- and eight-string units (7327, 7328) take a wider one
+    (``KAHLER_BASEPLATE_WIDTHS``).
 
     Args:
         string_count: Strings the unit carries: 6, 7 or 8.
@@ -268,9 +281,9 @@ class KahlerBridgeSpec:
 
     kind: Literal["kahler_7300"] = "kahler_7300"
     string_count: int = 6
-    baseplate_length: float = 55.45
+    baseplate_length: float = KAHLER_CUTOUT_LENGTH
     baseplate_width: float | None = None
-    baseplate_offset: float = 44.245
+    baseplate_offset: float = round(KAHLER_CUTOUT_LENGTH / 2.0 - KAHLER_CUTOUT_LEAD, 4)
     baseplate_depth: float = 25.0
     plate_overhang: float = 5.0
 

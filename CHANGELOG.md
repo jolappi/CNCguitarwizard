@@ -4,6 +4,15 @@
 
 ### Changed
 
+- A Kahler 7300's cutout where Kahler's installation guide places it: its
+  front edge 1/16 in ahead of the scale line, so the saddles stand just
+  inside it (`KAHLER_CUTOUT_LEAD`), as on the bridge itself. It was centred
+  44.245 mm behind the line, as the Prototype001 DXF drew it, the saddles
+  over the wood 16.5 mm ahead of it. The default design's bridge pickup
+  moves 8.4 mm toward the neck with it, keeping its 3 mm from the plate. A
+  design saved with the old offset loads with the new one
+  (`upgrade_design`).
+
 - A pickguard's outline is offset in half the time (a Stratocaster's
   build 1.9 s → 0.9 s): `offset_polygon` asks only the outline's edges
   near each point whether it is far enough from them, through a bucket

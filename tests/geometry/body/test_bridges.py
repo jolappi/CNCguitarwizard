@@ -10,6 +10,7 @@ from cncguitarwizard.geometry.body import (
     TuneOMaticSpec,
     bridge_spec_from_dict,
 )
+from cncguitarwizard.geometry.body.bridges import KAHLER_CUTOUT_LEAD
 from cncguitarwizard.geometry.exceptions import BodyGeometryError
 
 
@@ -22,8 +23,10 @@ def test_kahler_routes_only_the_baseplate_cutout() -> None:
         "Bridge baseplate cutout"
     ]
     cutout = hardware.top_cavities[0]
-    assert cutout.min_x == pytest.approx(626.12, abs=0.01)
-    assert cutout.max_x == pytest.approx(681.57, abs=0.01)
+    # Placed as Kahler's guide places its template: starting 1/16 in ahead
+    # of the scale line, the saddles standing just inside it.
+    assert cutout.min_x == pytest.approx(609.6 - KAHLER_CUTOUT_LEAD)
+    assert cutout.max_x == pytest.approx(609.6 - KAHLER_CUTOUT_LEAD + 55.45)
     assert cutout.max_y == pytest.approx(32.52)
     assert cutout.depth == 25.0
     assert hardware.through_cavities == () and hardware.rear_cavities == ()
