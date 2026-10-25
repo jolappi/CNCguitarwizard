@@ -167,7 +167,7 @@ STYLES: dict[str, InstrumentStyle] = {
             "body_bridge": HardtailSpec(),
             "body_controls": "pickguard",
             "body_pickguard": True,
-            "body_jack": "strat",
+            "body_jack": "oval",
             "body_neck_plate": "plate",
             "body_arm_contour_depth": 10.0,
             # Its belly cut from the bass horn's root back to the waist,

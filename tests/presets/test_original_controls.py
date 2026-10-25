@@ -102,12 +102,11 @@ def test_a_stratocaster_has_its_guard_controls_and_jack_as_drawn() -> None:
     ]
     assert all(point_in_polygon(Point2D(h.center_x, h.center_y), cavity) for h in pots)
     # The jack's cavity in its angled plate, well in from the edge, its
-    # bore wired into the control cavity.
+    # bore wired into the control cavity from its middle.
     (jack_cavity,) = [c for c in geometry.body.top_cavities if c.name == "Jack cavity"]
-    centre = Point2D(
-        sum(p.x for p in jack_cavity.outline) / len(jack_cavity.outline),
-        sum(p.y for p in jack_cavity.outline) / len(jack_cavity.outline),
-    )
+    jack = geometry.body.jack_hole
+    centre = Point2D(jack.start_x, jack.start_y)
+    assert point_in_polygon(centre, jack_cavity.outline)
     assert centre.x - heel == pytest.approx(shape.jack_offset, abs=0.1)
     assert centre.y == pytest.approx(shape.jack_y, abs=0.1)
     assert jack_reaches_the_controls(geometry)

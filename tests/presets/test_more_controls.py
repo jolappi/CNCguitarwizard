@@ -164,7 +164,14 @@ def test_the_web_form_offers_the_layouts() -> None:
     assert {"superstrat", "volume_1", "active_4", "jazz_bass"} <= set(
         fields["body_controls"]["options"]
     )
-    assert fields["body_jack"]["options"] == ["side", "cup", "strat", "plate", "top"]
+    assert fields["body_jack"]["options"] == [
+        "side",
+        "cup",
+        "strat",
+        "oval",
+        "plate",
+        "top",
+    ]
     assert "Jazz Bass" in fields["body_jack"]["labels"]["plate"]
 
 

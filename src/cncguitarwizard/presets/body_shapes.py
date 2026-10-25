@@ -176,8 +176,8 @@ class DesignByJoneShape:
             for all the electronics) instead of a round cavity of its own;
             a switch close beside the pots shares it anyway.
         jack_inset: How far in from the edge, along the jack's line, a
-            ``"strat"`` jack's cavity centre sits; empty for just in from
-            the edge.
+            ``"strat"`` or ``"oval"`` jack's cavity centre sits; empty for
+            just in from the edge.
         arm_contour_points: Where a drawn arm contour starts on the top:
             an open line's control points (X from the heel end, Y), its
             ends on the body's edge; empty for the automatic contour (used
@@ -414,8 +414,8 @@ class YourDesignShape:
             for all the electronics) instead of a round cavity of its own;
             a switch close beside the pots shares it anyway.
         jack_inset: How far in from the edge, along the jack's line, a
-            ``"strat"`` jack's cavity centre sits; empty for just in from
-            the edge.
+            ``"strat"`` or ``"oval"`` jack's cavity centre sits; empty for
+            just in from the edge.
         arm_contour_points: Where a drawn arm contour starts on the top:
             an open line's control points (X from the heel end, Y), its
             ends on the body's edge; empty for the automatic contour (used

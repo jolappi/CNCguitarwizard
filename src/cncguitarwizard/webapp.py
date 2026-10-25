@@ -240,7 +240,8 @@ _CHOICE_LABELS: dict[str, dict[str, str]] = {
     "body_jack": {
         "side": "Side jack (Les Paul style plate or barrel jack)",
         "cup": "Cup jack or Electrosocket (7/8 in counterbore)",
-        "strat": "Stratocaster style top plate (cavity from the top)",
+        "strat": "Round top cavity (a 1 in pocket under a top plate)",
+        "oval": "Stratocaster oval plate (its football route from the top)",
         "plate": "On the Jazz Bass control plate (no bore from the edge)",
         "top": "In the top, into the rear control cavity (SG, Explorer style)",
     },

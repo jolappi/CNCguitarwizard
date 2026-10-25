@@ -468,14 +468,18 @@ editor then says so). The housings:
 | --- | --- |
 | `side` (default) | A Ø `body_jack_diameter` (12.5 mm) bore from the edge: a Les Paul style side plate or a barrel jack |
 | `cup` | The bore with a 7/8 in (22.2 mm) counterbore 25 mm deep at the edge: a Telecaster cup jack or an Electrosocket (`JackHole.cup_diameter`, `cup_depth`) |
-| `strat` | A Stratocaster style plate on the top: a Ø 25.4 × 32 mm cavity routed from the top 4 mm in from the edge (`Jack cavity`, cut with the top's pockets), the bore running on from its centre into the controls |
+| `strat` | A round plate on the top: a Ø 25.4 × 32 mm cavity routed from the top 4 mm in from the edge (`Jack cavity`, cut with the top's pockets), the bore running on from its centre into the controls |
+| `oval` | A Stratocaster's own oval plate on the top (about 80.5 × 31.3 mm, its screws 71 mm apart; the Stratocaster style's): its football shaped route from the top, 32 mm deep along the jack's line, two 3 in (76.2 mm) arcs 24 mm apart at the middle, the tip toward the edge rounded 6.76 mm and the inner one 3/8 in (9.53 mm), 60.7 mm long, as the user's Stratocaster drawing has it (`JACK_OVAL_*`); its edge tip's end 4 mm in from the edge, the bore running on from its middle (midway between its tips' centres) into the controls |
 | `plate` | On the Jazz Bass control plate (`body_controls` "jazz_bass" only): a hole in the plate behind its pots, nothing bored from the edge (`BodySolid.jack_hole` is `None`) |
 | `top` | In the top at `jack_offset` / `jack_y`, as on an SG: a Ø 9.6 mm (3/8 in) `Jack hole` drilled through into the rear control cavity (a rear layout only; drawn `rear_pots` route the cavity round it, another cavity must lie under it), nothing bored from the edge |
 
-A shape's `jack_inset` sets a `strat` jack's cavity that far in along the
-line instead (a Stratocaster's sits in its angled plate well in from the
-edge); where the bore's line from it misses the control cavity, the bore
-is wired straight to the cavity's nearest point.
+A shape's `jack_inset` sets a `strat` or `oval` jack's cavity that far
+in along the line instead (a Stratocaster's sits in its angled plate well
+in from the edge); where the bore's line from it misses the control
+cavity, the bore is wired straight to the cavity's nearest point. Either
+cavity is cut 32 mm deep from the top: where a rear control cavity lies
+under it the build refuses it (it would break through), so the longer
+oval goes best with the controls in the top, as on a Stratocaster.
 
 The jack's line can be dragged and turned (Shift-drag) in the body editor;
 the bore follows the drawn outline and the cavity.

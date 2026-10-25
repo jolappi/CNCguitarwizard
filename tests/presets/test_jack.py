@@ -10,6 +10,7 @@ from cncguitarwizard.geometry.primitives import Point2D, point_in_polygon
 from cncguitarwizard.presets import Prototype001Parameters
 from cncguitarwizard.presets.body_shapes import YOUR_DESIGN_TEMPLATES
 from cncguitarwizard.presets.prototype001 import JACK_CAVITY_OVERRUN
+from cncguitarwizard.presets.styles import STYLES
 
 
 def _along(jack, distance):  # type: ignore[no-untyped-def]
@@ -64,6 +65,56 @@ def test_a_strat_jack_is_a_cavity_from_the_top() -> None:
     )
     assert max(xs) - min(xs) == pytest.approx(25.4, abs=0.1)
     assert all(point_in_polygon(p, body.outline.points) for p in cavity.outline)
+
+
+def _across(jack, points):  # type: ignore[no-untyped-def]
+    """Return ``points`` as (along the jack's line, across it) from its start."""
+    import math
+
+    radians = math.radians(jack.direction_degrees)
+    ux, uy = math.cos(radians), math.sin(radians)
+    return [
+        (
+            (p.x - jack.start_x) * ux + (p.y - jack.start_y) * uy,
+            (p.y - jack.start_y) * ux - (p.x - jack.start_x) * uy,
+        )
+        for p in points
+    ]
+
+
+def test_a_stratocaster_has_its_oval_jack_route() -> None:
+    style = STYLES["stratocaster"]
+    values = style.prototype_values(style.instruments[0])
+    assert values["body_jack"] == "oval"
+    body = Prototype001Parameters(**values).build().body
+    (cavity,) = [c for c in body.top_cavities if c.name == "Jack cavity"]
+    jack = body.jack_hole
+
+    # Its football route, as the user's Stratocaster drawing has it: 60.7
+    # x 24 mm along the jack's line (the bore turned on to the controls).
+    plain = replace(Prototype001Parameters(**values), body_jack_depth=40.0)
+    straight = plain.build().body.jack_hole
+    assert (straight.start_x, straight.start_y) == (jack.start_x, jack.start_y)
+    along = _across(straight, cavity.outline)
+    assert max(u for u, _ in along) - min(u for u, _ in along) == pytest.approx(
+        60.7, abs=0.1
+    )
+    assert max(v for _, v in along) - min(v for _, v in along) == pytest.approx(
+        24.0, abs=0.1
+    )
+    assert cavity.depth == 32.0
+    assert all(point_in_polygon(p, body.outline.points) for p in cavity.outline)
+    # Without the shape's inset: its edge tip 4 mm in along the line, the
+    # bore from its middle.
+    shape = replace(plain.body_shape, jack_inset=None)
+    body = replace(plain, body_shape=shape).build().body
+    (cavity,) = [c for c in body.top_cavities if c.name == "Jack cavity"]
+    edge_tip = min(u for u, _ in _across(body.jack_hole, cavity.outline))
+    assert edge_tip == pytest.approx(-28.98, abs=0.05)
+    assert point_in_polygon(_along(body.jack_hole, edge_tip - 3.5), body.outline.points)
+    assert not point_in_polygon(
+        _along(body.jack_hole, edge_tip - 4.5), body.outline.points
+    )
 
 
 def test_a_fixed_depth_overrides_the_reach_and_a_bad_jack_is_refused() -> None:

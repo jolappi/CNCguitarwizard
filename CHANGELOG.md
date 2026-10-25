@@ -122,6 +122,15 @@
 
 ### Added
 
+- A Stratocaster's own oval jack plate (`body_jack` "oval", *Stratocaster
+  oval plate*), the Stratocaster style's jack now: its football shaped
+  route from the top under the plate, two 3 in arcs 24 mm apart with
+  rounded tips, 60.7 mm long and 32 mm deep, as the user's Stratocaster
+  drawing has it, along the jack's line where the shape's `jack_inset`
+  puts it (its edge tip 4 mm in from the edge without), the bore running
+  on from its middle into the controls. The round 1 in pocket (`strat`)
+  stays, named for what it is (*Round top cavity*).
+
 - A page for the cutters every NC program is cut with (*Build › Cutters
   and depths*): each cutter's size and its depth per pass, 0 for half its
   diameter, and what that comes to. The ball nose has a size and depth of

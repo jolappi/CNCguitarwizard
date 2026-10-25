@@ -359,6 +359,13 @@ JACK_STRAT_DIAMETER, JACK_STRAT_DEPTH, JACK_STRAT_WALL = 25.4, 32.0, 4.0
 """A Stratocaster style jack's cavity under its top plate: a 1 in round
 pocket this deep, this much wood from the body's edge, in mm."""
 
+JACK_OVAL_RADIUS, JACK_OVAL_WIDTH, JACK_OVAL_TIPS = 76.2, 24.0, (6.76, 9.53)
+"""A Stratocaster's jack route under its oval plate (about 80.5 x 31.3 mm,
+its screws 71 mm apart), as the user's Stratocaster drawing has it
+(stratbody.dxf): a football of two 3 in arcs this wide apart at the
+middle, its tips rounded 6.76 mm toward the edge and 3/8 in inward,
+60.7 mm long, in mm; ``JACK_STRAT_DEPTH`` deep."""
+
 PICKUP_RING_REACH = 12.0
 """How far a pickup's mounting ring reaches past its route, in mm (a
 humbucker's ring is about 92 x 45 mm over its 70 x 40 mm route, the ears
@@ -1331,21 +1338,25 @@ class Prototype001Parameters:
     # Electrosocket (JACK_CUP_DIAMETER x JACK_CUP_DEPTH); "strat", a
     # Stratocaster style plate on the top: a round jack cavity routed from
     # the top just in from the edge (JACK_STRAT_DIAMETER x
-    # JACK_STRAT_DEPTH), the bore running on from it. The bore starts where
+    # JACK_STRAT_DEPTH), the bore running on from it; "oval", a
+    # Stratocaster's own oval plate on the top: its football shaped route
+    # (JACK_OVAL_*) the same depth, along the jack's line, the bore
+    # running on from its middle. The bore starts where
     # the shape's jack line (jack_offset / jack_y along
     # jack_direction_degrees) meets the outline, whatever the body, and
     # runs on into the control cavity, JACK_CAVITY_OVERRUN past its wall;
     # body_jack_depth fixes its length instead (JACK_DEFAULT_DEPTH when it
     # aims at no control cavity). A shape's jack_inset sets the Strat
-    # style cavity that far in along the line, as on a Stratocaster, its
-    # bore then turned to the control cavity if the line misses it.
+    # style or oval cavity that far in along the line, as on a
+    # Stratocaster, its bore then turned to the control cavity if the line
+    # misses it.
     # "plate" puts the jack on the Jazz Bass style control plate
     # (body_controls "jazz_bass"), behind its pots: no bore from the edge.
     # "top" mounts it through the top at the shape's jack_offset / jack_y,
     # as on an SG or an Explorer: a JACK_PLATE_HOLE drilled through into
     # the rear control cavity (a shape's rear_pots route the cavity round
     # it), no bore from the edge.
-    body_jack: Literal["side", "cup", "strat", "plate", "top"] = "side"
+    body_jack: Literal["side", "cup", "strat", "oval", "plate", "top"] = "side"
     body_jack_diameter: float = 12.5
     body_jack_depth: float | None = None
     # body_jack_plate puts a Les Paul style jack plate over a side jack's
@@ -6136,7 +6147,7 @@ class Prototype001Parameters:
         controls: ControlFeatures,
         inset: float | None = None,
     ) -> tuple[JackHole | None, TracedCavity | None]:
-        """Return the output jack's bore and a Strat style jack's cavity.
+        """Return the output jack's bore and a Strat style or oval jack's cavity.
 
         Neither with the jack on the control plate or in the top
         (``body_jack`` "plate", "top": the controls place it).
@@ -6145,7 +6156,7 @@ class Prototype001Parameters:
         starts where that line enters the body (the crossing of the outline
         nearest ``aim``), so it sits on the edge of whatever body is drawn,
         and runs on into the control cavity (see ``body_jack``). A Strat
-        style cavity sits ``inset`` in along the line (the shape's
+        style or oval cavity sits ``inset`` in along the line (the shape's
         ``jack_inset``), or just in from the edge; where its bore's line
         misses the control cavity, the bore turns to the cavity's nearest
         point.
@@ -6153,10 +6164,10 @@ class Prototype001Parameters:
         Raises:
             BodyGeometryError: For an unknown ``body_jack``.
         """
-        if self.body_jack not in ("side", "cup", "strat", "plate", "top"):
+        if self.body_jack not in ("side", "cup", "strat", "oval", "plate", "top"):
             raise BodyGeometryError(
-                f"Unknown jack {self.body_jack!r}: choose side, cup, strat, plate "
-                "or top."
+                f"Unknown jack {self.body_jack!r}: choose side, cup, strat, oval, "
+                "plate or top."
             )
         if self.body_jack in ("plate", "top"):
             return None, None
@@ -6187,6 +6198,17 @@ class Prototype001Parameters:
                     for k in range(32)
                 ),
                 JACK_STRAT_DEPTH,
+            )
+            start = centre
+        elif self.body_jack == "oval":
+            # Its edge tip's end JACK_STRAT_WALL in from the edge: the tips'
+            # centres lie either side of its middle, half their distance.
+            toward_edge = sum(_jack_oval_tip_reaches()) / 2.0 + JACK_OVAL_TIPS[0]
+            centre = along(
+                start, toward_edge + JACK_STRAT_WALL if inset is None else inset
+            )
+            cavity = TracedCavity(
+                "Jack cavity", _jack_oval_points(centre, ux, uy), JACK_STRAT_DEPTH
             )
             start = centre
         depth = self.body_jack_depth
@@ -9046,6 +9068,51 @@ def _circle_points(centre: Point2D, radius: float) -> tuple[Point2D, ...]:
         )
         for k in range(16)
     )
+
+
+def _jack_oval_tip_reaches() -> tuple[float, float]:
+    """Return how far along an oval jack route's axis its edge and inner
+    tips' centres lie from its 3 in arcs' centres (``JACK_OVAL_*``): a
+    tip's circle touches both arcs from inside."""
+    off = JACK_OVAL_RADIUS - JACK_OVAL_WIDTH / 2.0
+    edge_tip, inner_tip = JACK_OVAL_TIPS
+    return (
+        math.sqrt((JACK_OVAL_RADIUS - edge_tip) ** 2 - off**2),
+        math.sqrt((JACK_OVAL_RADIUS - inner_tip) ** 2 - off**2),
+    )
+
+
+def _jack_oval_points(centre: Point2D, ux: float, uy: float) -> tuple[Point2D, ...]:
+    """Return an oval jack route's outline (``JACK_OVAL_*``) round ``centre``.
+
+    Its length along ``(ux, uy)``, the edge tip behind the centre, the
+    inner tip ahead: the inner tip's arc, one 3 in side, the edge tip's
+    arc, the other side, each arc sampled every few degrees.
+    """
+    radius, edge_tip, inner_tip = JACK_OVAL_RADIUS, *JACK_OVAL_TIPS
+    off = radius - JACK_OVAL_WIDTH / 2.0
+    edge_reach, inner_reach = _jack_oval_tip_reaches()
+    # Along the axis (u) from the midpoint between the tips' centres.
+    arcs_u = (edge_reach - inner_reach) / 2.0
+    edge_u, inner_u = arcs_u - edge_reach, arcs_u + inner_reach
+    inner_turn = math.atan2(off, inner_reach)
+    edge_turn = math.atan2(off, edge_reach)
+    # (centre u, centre v, radius, from angle, to angle, segments)
+    arcs = (
+        (inner_u, 0.0, inner_tip, -inner_turn, inner_turn, 8),
+        (arcs_u, -off, radius, inner_turn, math.pi - edge_turn, 12),
+        (edge_u, 0.0, edge_tip, math.pi - edge_turn, math.pi + edge_turn, 8),
+        (arcs_u, off, radius, math.pi + edge_turn, 2.0 * math.pi - inner_turn, 12),
+    )
+    points = []
+    for u0, v0, r, start, end, segments in arcs:
+        for k in range(segments):
+            angle = start + (end - start) * k / segments
+            u, v = u0 + r * math.cos(angle), v0 + r * math.sin(angle)
+            points.append(
+                Point2D(centre.x + u * ux - v * uy, centre.y + u * uy + v * ux)
+            )
+    return tuple(points)
 
 
 def _jack_space(jack: JackHole, thickness: float) -> WireSpace:
