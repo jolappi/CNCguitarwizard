@@ -27,6 +27,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SITE = ROOT / "site"
 WHEELS = SITE / "wheels"
+SCRIPTS = ("app.js", "desktop.js", "quick3d.js", "quick_worker.js", "model_worker.js")
+"""The page's own scripts, loaded with the build id (``?v=``)."""
 
 PAGE_STAMP = re.compile(r'(<meta name="cgw-page" content=")([0-9a-f]*)(">)')
 """The page's stamp in ``index.html``: a meta tag the loader reads."""
@@ -71,10 +73,11 @@ def main() -> None:
     if len(wheels) != 1:
         raise SystemExit(f"Expected exactly one wheel, found {len(wheels)}")
     # Hash the wheel together with the page's own scripts, so a change to
-    # app.js (or the app layout's desktop.js) alone also busts the cache.
+    # app.js (or the app layout's desktop.js, the quick 3D model's viewer
+    # or a worker) alone also busts the cache.
     digest = hashlib.sha256(wheels[0].read_bytes())
-    digest.update((SITE / "app.js").read_bytes())
-    digest.update((SITE / "desktop.js").read_bytes())
+    for script in SCRIPTS:
+        digest.update((SITE / script).read_bytes())
     build_id = digest.hexdigest()[:12]
     page = SITE / "index.html"
     text = page.read_text(encoding="utf-8")

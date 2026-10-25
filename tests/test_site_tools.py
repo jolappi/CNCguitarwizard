@@ -12,6 +12,8 @@ from types import ModuleType
 
 import pytest
 
+from cncguitarwizard.render.preview3d import DETAILS
+
 ROOT = Path(__file__).resolve().parent.parent
 
 
@@ -155,7 +157,10 @@ def test_the_app_layout_is_tried_beside_the_classic_page() -> None:
 
     # Laid over the page once app.js runs, versioned with it.
     assert '"desktop.js?v=" + version' in page
-    assert 'digest.update((SITE / "desktop.js").read_bytes())' in build
+    assert (
+        '"desktop.js"' in build
+        and "digest.update((SITE / script).read_bytes())" in build
+    )
     # A new visitor gets the application like UI: only "classic", asked or
     # kept, chooses the Classic UI, and its View menu goes there.
     assert '(asked || stored(LAYOUT) || "desktop") === "classic"' in layout
@@ -324,7 +329,7 @@ def test_an_editor_out_of_sight_is_worked_out_only_once_shown() -> None:
     # Drawn when shown again: showPage fires a resize.
     assert (
         "for (const editor of [bodyEditor, headstockEditor, heelEditor, "
-        "inlayEditor]) {\n    if (editor.stale) editor.scheduleRefresh();"
+        "inlayEditor, quickModel]) {\n    if (editor.stale) editor.scheduleRefresh();"
     ) in script
 
 
@@ -650,3 +655,58 @@ def test_a_settings_picture_shows_what_changing_it_does_and_steps_on() -> None:
     assert "settingPictures.sequence = settingPictures.around(button);" in script
     # A click on something in the window is not one beside it.
     assert "if (event.target !== dialog) return;" in script
+
+
+def test_the_quick_3d_model_is_drawn_off_the_page_and_versioned() -> None:
+    # The build's exact model took twenty minutes and more: a quick one,
+    # the design's own surfaces, is drawn in a worker of its own (no CAD
+    # kernel) and turned in three.js, a moment after each change while open.
+    page = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
+    script = (ROOT / "site" / "app.js").read_text(encoding="utf-8")
+    layout = (ROOT / "site" / "desktop.js").read_text(encoding="utf-8")
+    worker = (ROOT / "site" / "quick_worker.js").read_text(encoding="utf-8")
+
+    assert (
+        '"three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"'
+        in page
+    )
+    assert '<details id="quick-model" class="quick-model">' in page
+    assert "this.viewer ??= (await import(`./quick3d.js?v=${version}`))" in script
+    assert 'new Worker(`quick_worker.js?v=${version}`, { type: "module" })' in script
+    assert "if (!pyodide || !this.details.open || outOfSight(this)) return;" in script
+    assert "from cncguitarwizard.webapp import quick_model" in worker
+    assert "replicad" not in worker
+    assert '{ id: "model", title: "3D model", parts: ["#quick-model"] }' in layout
+    # A change to the viewer or a worker alone reaches the browser too.
+    builder = tool("build_site")
+    assert {"quick3d.js", "quick_worker.js", "model_worker.js"} <= set(builder.SCRIPTS)
+
+
+def test_the_quick_model_s_details_are_one_set_at_a_time() -> None:
+    # Radio buttons, so one set is drawn (and turned) at a time, each the
+    # Python side's: chosen in the page or in the Preview menu, sent along.
+    page = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
+    script = (ROOT / "site" / "app.js").read_text(encoding="utf-8")
+    layout = (ROOT / "site" / "desktop.js").read_text(encoding="utf-8")
+    worker = (ROOT / "site" / "quick_worker.js").read_text(encoding="utf-8")
+
+    values = re.findall(r'name="quick-model-detail" value="(\w*)"', page)
+    assert values == ["", *DETAILS]
+    assert "each takes a little longer to draw" in page
+    assert "detail: this.detailSet(), id" in script
+    assert "localStorage.setItem(QUICK_DETAIL, quickModel.detailSet());" in script
+    assert (
+        "json.dumps(quick_model(json.loads(quick_payload_json), quick_detail))"
+        in worker
+    )
+    assert '["Preview", () => [' in layout
+    assert "querySelectorAll('input[name=\"quick-model-detail\"]')" in layout
+    assert (
+        'button.setAttribute("role", item.radio ? "menuitemradio" : "menuitem");'
+        in layout
+    )
+    assert (
+        '!["model", "cutters", "settings", "result", "bonus"].includes(page.id)'
+        in layout
+    )
+

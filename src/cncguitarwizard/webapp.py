@@ -122,6 +122,7 @@ from .presets.prototype001 import (
 )
 from .presets.styles import STYLES
 from .presets.truss_rod_covers import editable_cover_points, truss_rod_cover_shape
+from .render.preview3d import DETAILS, PreviewPart, detail_parts, preview_parts
 from .render.svg import (
     render_fretboard_svg,
     render_neck_svg,
@@ -2915,6 +2916,72 @@ def _group_title(group: str) -> str:
         "battery": "battery box",
         "strap_guide": "strap guide",
     }.get(group, group)
+
+
+def quick_model(payload: dict[str, Any], detail: str = "") -> dict[str, Any]:
+    """Return the quick 3D model, to turn and look at in the page.
+
+    The design's own surfaces as triangle meshes (``render.preview3d``),
+    made in a second or two where the build's exact model takes minutes:
+    to try a change and see it. The last few designs' models are kept, so
+    a detail set chosen, or a design changed back, is drawn at once.
+
+    Args:
+        payload: ``{"prototype": {...}}`` as for ``start_build``.
+        detail: A detail set to add, a key of ``render.preview3d.DETAILS``
+            (``"neck"``: frets, markers and the nut, ...), or ``""`` for none.
+
+    Returns:
+        ``{"parts": [...]}``, each ``{"name", "colour", "positions",
+        "triangles"}``, the positions little-endian 32-bit floats (x, y, z
+        a vertex, in mm) and the triangles 32-bit indices, both base64; or
+        ``{"error": message}`` when the design does not build.
+    """
+    try:
+        parameters = Prototype001Parameters(**_coerce(payload.get("prototype", {})))
+        base: Callable[..., tuple[PreviewPart, ...]] = _quick_base
+        details: Callable[..., tuple[PreviewPart, ...]] = _quick_details
+        try:
+            hash(parameters)
+        except TypeError:  # a value the form never sends (a list): made afresh
+            base, details = _quick_base.__wrapped__, _quick_details.__wrapped__
+        parts = base(parameters)
+        if detail:
+            parts += details(parameters, detail)
+    except (CNCGuitarWizardError, TypeError, ValueError) as error:
+        return {"error": f"{type(error).__name__}: {error}"}
+    return {
+        "parts": [
+            {
+                "name": part.name,
+                "colour": part.colour,
+                "positions": base64.b64encode(part.float32()).decode("ascii"),
+                "triangles": base64.b64encode(part.uint32()).decode("ascii"),
+            }
+            for part in parts
+        ]
+    }
+
+
+@functools.lru_cache(maxsize=BUILDS_KEPT)
+def _quick_base(parameters: Prototype001Parameters) -> tuple[PreviewPart, ...]:
+    """Return the quick model's body, neck and fretboard (``quick_model``)."""
+    geometry = _built(parameters, wired=False)
+    rows = FreeCADScriptExporter.neck_loft_rows(
+        geometry.neck_surface,
+        geometry.headstock,
+        geometry.joint_fillet_radius,
+        geometry.volute,
+    )
+    return preview_parts(geometry, rows)
+
+
+@functools.lru_cache(maxsize=BUILDS_KEPT * len(DETAILS))
+def _quick_details(
+    parameters: Prototype001Parameters, detail: str
+) -> tuple[PreviewPart, ...]:
+    """Return one of the quick model's detail sets (``quick_model``)."""
+    return detail_parts(_built(parameters, wired=False), parameters, detail)
 
 
 def part_views(payload: dict[str, Any]) -> dict[str, Any]:

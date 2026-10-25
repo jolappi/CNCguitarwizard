@@ -173,6 +173,26 @@
 
 ### Added
 
+- A quick 3D model, to try a change and see it at once (*Preview › 3D
+  model*; in the Classic UI a fold under the inlay editor): the design's
+  own surfaces as triangle meshes (`render.preview3d`,
+  `webapp.quick_model`) — the body's top and back sampled as heights (its
+  carve, contours, roundover and routes, its edge on the outline), the
+  neck as the loft's own rows, headstock to heel end, and the fretboard's
+  radiused surface, the neck tilted onto the body as the build tilts it —
+  drawn in a few seconds where the build's exact model takes twenty
+  minutes and more, in a worker of its own (no CAD kernel) so the page
+  keeps answering, and again a moment after each change while it is open.
+  Turned in three.js (drag, wheel or pinch toward the pointer, right-drag
+  or two fingers); *Save STL* saves it. The hardware is a detail set of
+  its own, one at a time (radio buttons, and in the *Preview* menu, which
+  says each takes a little longer to draw): the frets, markers and nut;
+  the tuners; the pickguard, pickups and knobs; or the bridge and the
+  strings, set over the frets (`detail_parts`, `DETAILS`), in typical
+  sizes. A detail set chosen again, or a design changed back, comes back
+  at once (the last few kept). Holes and the truss rod are left out: the
+  build's STEP is the exact model.
+
 - A Stratocaster's own oval jack plate (`body_jack` "oval", *Stratocaster
   oval plate*), the Stratocaster style's jack now: its football shaped
   route from the top under the plate, two 3 in arcs 24 mm apart with

@@ -7,8 +7,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache">
 <!-- This page's stamp, set by tools/build_site.py (see the loader below). -->
-<meta name="cgw-page" content="5f92c5019c5a">
+<meta name="cgw-page" content="35eb16a7f3bc">
 <title>CNCguitarwizard</title>
+<!-- three.js for the quick 3D model's viewer (quick3d.js), loaded only
+     when it is first shown. -->
+<script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+</script>
 <script>
   // Dark mode, the default; light when chosen in this browser (or
   // ?theme=light / ?theme=dark in the address). Set before the page
@@ -306,6 +316,17 @@
   #headstock-editor .cover-stretch.width { cursor: ns-resize; }
   .volute-view-box .volute-picture svg { display: block; width: 100%; max-width: 380px; height: auto; border-radius: 6px; }
   .volute-view-box.busy .volute-picture { opacity: 0.55; }
+  /* The quick 3D model: a viewer as wide as the column, its canvas filling it. */
+  .quick-model { margin-top: 18px; }
+  .quick-model > summary { cursor: pointer; }
+  .quick-model > summary h2 { display: inline; }
+  .quick-model-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 8px 0; }
+  .quick-model-details { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 0 0 8px; padding: 0; border: 0; }
+  .quick-model-details legend { width: 100%; padding: 0; margin-bottom: 2px; font-weight: 600; }
+  .quick-model-details label { display: inline-flex; align-items: center; gap: 5px; font-weight: 400; }
+  .quick-model-view { width: 100%; height: min(70vh, 640px); border-radius: 8px; overflow: hidden; background: #f4efe4; touch-action: none; }
+  .quick-model-view canvas { display: block; width: 100%; height: 100%; }
+  .quick-model.busy .quick-model-view { opacity: 0.6; }
   #headstock-editor .volute-outline { fill: #8a5a2b; fill-opacity: 0.2; stroke: #8a5a2b; stroke-width: 0.4; stroke-dasharray: 1.6,0.8; pointer-events: none; }
   :is(#headstock-editor, #heel-editor) .volute-line { fill: none; stroke: #8a5a2b; stroke-width: 1.2; stroke-linecap: round; stroke-opacity: 0.85; pointer-events: none; }
   :is(#headstock-editor, #heel-editor) .volute-line.end { stroke-width: 0.6; stroke-dasharray: 2,1.2; }
@@ -950,6 +971,27 @@
       <svg id="inlay-editor-svg" xmlns="http://www.w3.org/2000/svg"></svg>
       <svg id="inlay-editor-board" xmlns="http://www.w3.org/2000/svg"></svg>
     </div>
+    <details id="quick-model" class="quick-model">
+      <summary><h2>3D model</h2> <span class="note">quick, to try a change and see it</span></summary>
+      <p class="note">The design's own surfaces drawn in a second or two, here in your browser, and drawn again a
+        moment after each change while it is open: drag to turn, the wheel or a pinch to zoom, a right-drag or two
+        fingers to move. A model to look at, not to build from — holes and the truss rod are left out; the
+        build's STEP and FreeCAD model are the exact ones.</p>
+      <div class="quick-model-bar">
+        <button id="quick-model-frame" class="secondary" type="button" title="Turn the view back to the whole guitar">Whole guitar</button>
+        <button id="quick-model-stl" class="secondary" type="button" title="Save this quick model as an STL, 1:1 in millimetres, to open in any 3D program">Save STL</button>
+        <span id="quick-model-status" class="note"></span>
+      </div>
+      <fieldset id="quick-model-details" class="quick-model-details">
+        <legend>Details <span class="note">— one set at a time: each takes a little longer to draw, and to turn</span></legend>
+        <label><input type="radio" name="quick-model-detail" value="" checked> None (quickest)</label>
+        <label><input type="radio" name="quick-model-detail" value="neck"> Neck: frets, markers and nut</label>
+        <label><input type="radio" name="quick-model-detail" value="headstock"> Headstock: tuners</label>
+        <label><input type="radio" name="quick-model-detail" value="body"> Body: pickguard, pickups and knobs</label>
+        <label><input type="radio" name="quick-model-detail" value="bridge"> Bridge and strings</label>
+      </fieldset>
+      <div id="quick-model-view" class="quick-model-view"></div>
+    </details>
   </section>
 </main>
 <section id="bonus" class="bonus">

@@ -129,7 +129,7 @@
     .menu-pop button:hover:not(:disabled) .key { color: #f4e6d6; }
     .menu-pop button .tick { display: inline-block; width: 16px; }
     .menu-pop hr { border: 0; border-top: 1px solid var(--line); margin: 4px 6px; }
-    .menu-pop .menu-label { padding: 4px 10px 2px; color: var(--muted); font-size: 11.5px; }
+    .menu-pop .menu-label { max-width: 250px; padding: 4px 10px 2px; color: var(--muted); font-size: 11.5px; }
 
     .statusbar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 50; height: 28px;
       display: flex; align-items: center; gap: 14px; padding: 0 14px;
@@ -438,6 +438,7 @@
     { id: "headstock", title: "Headstock", parts: ["#headstock-editor"] },
     { id: "fretboard", title: "Fretboard", parts: ["#desk-fretboard"] },
     { id: "inlays", title: "Inlays", parts: ["#inlay-editor"] },
+    { id: "model", title: "3D model", parts: ["#quick-model"] },
     { id: "cutters", title: "Cutters", parts: ["#desk-cutters"] },
     { id: "settings", title: "Settings", parts: [".aside-form"] },
     { id: "result", title: "Result", parts: ["#desk-build", "#output"] },
@@ -472,6 +473,8 @@
     store(PAGE, id);
     if (id in partPages) drawPartsSoon();
     if (id === "cutters") showCutterSizes();
+    // The quick 3D model is the page: open, drawn once shown (the resize).
+    if (id === "model") byId("quick-model").open = true;
     window.scrollTo({ top: 0 });
     // A drawing laid out while hidden fits itself again once shown.
     window.dispatchEvent(new Event("resize"));
@@ -1268,12 +1271,29 @@
         run: () => findBox.focus(),
       },
     ]],
-    ["Design", () => PAGES.filter((page) => !["cutters", "settings", "result", "bonus"].includes(page.id)).map((page) => ({
+    ["Design", () => PAGES.filter((page) => !["model", "cutters", "settings", "result", "bonus"].includes(page.id)).map((page) => ({
       label: page.id === "design" ? "Instrument and style" : page.title,
       run: () => showPage(page.id),
       enabled: () => available(page.id),
       ticked: () => current === page.id,
     }))],
+    // The quick 3D model and its detail sets (app.js's quickModel, through
+    // the page's own radio buttons): one set at a time, so it turns at once.
+    ["Preview", () => [
+      { label: "3D model", run: () => showPage("model"), ticked: () => current === "model" },
+      "-",
+      { label: "Details, one set at a time: each takes a little longer to draw", heading: true },
+      ...[...document.querySelectorAll('input[name="quick-model-detail"]')].map((radio) => ({
+        label: radio.parentElement.textContent.trim(),
+        radio: true,
+        run: () => {
+          radio.checked = true;
+          radio.dispatchEvent(new Event("change", { bubbles: true }));
+          showPage("model");
+        },
+        ticked: () => radio.checked,
+      })),
+    ]],
     ["Settings", () => [
       ...groups().map((group) => ({
         label: group.dataset.title,
@@ -1352,11 +1372,13 @@
       }
       const button = document.createElement("button");
       button.type = "button";
-      button.setAttribute("role", "menuitem");
+      const ticked = Boolean(item.ticked && item.ticked());
+      button.setAttribute("role", item.radio ? "menuitemradio" : "menuitem");
+      if (item.radio) button.setAttribute("aria-checked", String(ticked));
       const name = document.createElement("span");
       const tick = document.createElement("span");
       tick.className = "tick";
-      tick.textContent = item.ticked && item.ticked() ? "✓" : "";
+      tick.textContent = ticked ? (item.radio ? "•" : "✓") : "";
       name.append(tick, item.label);
       button.appendChild(name);
       if (item.key) {

@@ -772,7 +772,8 @@ opens the same (`?layout=desktop` or `?layout=classic` in the address
 chooses too). A menu bar runs along the top — *File* (new, open, recent
 designs, save, print the result), *Edit* (undo, redo, find a setting),
 *Design* (the instrument and style, the body, the neck, the headstock,
-the fretboard, the inlays), *Settings* (each group of the form), *Build* (build, then the
+the fretboard, the inlays), *Preview* (the quick 3D model and its detail
+sets), *Settings* (each group of the form), *Build* (build, then the
 result's summary, downloads, plan view and toolpaths), *View* (easy
 mode, dark mode, the Classic UI), *Bonus* (files to print for the
 machine) and *Help* (the tour, the shortcuts, what the
@@ -1006,6 +1007,29 @@ last `BUILDS_KEPT` designs' builds (`_built`), so the neck's page shown
 (its drawings, the heel editor, the heel's back view, the settings'
 pictures) builds the design twice, without the wiring and with it for
 the plan view, not four times.
+
+## 3D model (quick)
+
+*Preview › 3D model* (the Classic UI's *3D model* fold under the inlay
+editor) draws the design's own surfaces as a 3D model to turn, in a
+second or two where the build's exact model takes twenty minutes and more
+(see [The quick 3D model](render/04_quick_model.md)): drawn when opened and
+a moment after each change while it is open and in sight, in a worker of
+its own (`quick_worker.js`, no CAD kernel) so the page keeps answering,
+turned in three.js (`quick3d.js`, three 0.160 by the page's import map,
+loaded the first time it is shown; the wheel or a pinch zooms toward the
+pointer). *Whole guitar* frames it again and *Save STL* saves it. The
+hardware is a detail set of its own, chosen by radio buttons under it or
+in the *Preview* menu, one set at a time (each takes a little longer to
+draw, and to turn, as both say): *None (quickest)*, *Neck: frets,
+markers and nut*, *Headstock: tuners*, *Body: pickguard, pickups and
+knobs* or *Bridge and strings* — kept in the browser
+(`cncguitarwizard.quickModelDetail`) and sent to the worker with the
+design. Holes and the truss rod are left out: the build's STEP and
+FreeCAD model are the exact ones. The build id the
+page's scripts are loaded with (`?v=`) hashes the viewer and the workers
+too (`tools/build_site.py`'s `SCRIPTS`), so a change to one alone reaches
+the browser.
 
 ## Tip of the day
 

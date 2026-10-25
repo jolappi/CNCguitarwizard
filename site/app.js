@@ -2488,6 +2488,7 @@ function redrawEditors() {
   inlayEditor.scheduleRefresh();
   bodyEditor.reloadPoints();
   bodyEditor.scheduleRefresh();
+  quickModel.scheduleRefresh();
 }
 
 const undoHistory = {
@@ -6905,7 +6906,7 @@ function outOfSight(editor) {
   return editor.stale;
 }
 window.addEventListener("resize", () => {
-  for (const editor of [bodyEditor, headstockEditor, heelEditor, inlayEditor]) {
+  for (const editor of [bodyEditor, headstockEditor, heelEditor, inlayEditor, quickModel]) {
     if (editor.stale) editor.scheduleRefresh();
   }
 });
@@ -7289,6 +7290,131 @@ document.getElementById("inlay-editor-template").addEventListener("change", () =
 form.addEventListener("change", (event) => {
   if (event.target.dataset.name !== "inlay_points") inlayEditor.scheduleRefresh();
 });
+
+// ---- The quick 3D model ----------------------------------------------------
+// The design's own surfaces as triangle meshes (webapp.quick_model), made
+// in a worker of their own (quick_worker.js: Pyodide with the wheel, no
+// CAD kernel) so the page keeps answering, and turned in a three.js view
+// (quick3d.js) — in a second or two where the build's exact model takes
+// minutes. Drawn when opened and again a moment after each change while
+// open and in sight (out of sight it is only marked stale, as an editor).
+// The hardware is a detail set of its own, one at a time (the radio
+// buttons; the application like UI's Preview menu sets them too), as last
+// chosen in this browser.
+const QUICK_DETAIL = "cncguitarwizard.quickModelDetail";
+const quickModel = {
+  panel: document.getElementById("quick-model-view"),
+  details: document.getElementById("quick-model"),
+  status: document.getElementById("quick-model-status"),
+  worker: null,
+  viewer: null,
+  busy: false,
+  pending: false,
+  stale: true,
+  timer: null,
+  request: 0,
+
+  scheduleRefresh() {
+    clearTimeout(this.timer);
+    this.timer = setTimeout(() => this.refresh(), 600);
+  },
+
+  // The detail set chosen ("" for none).
+  detailSet() {
+    return document.querySelector('input[name="quick-model-detail"]:checked')?.value || "";
+  },
+
+  async refresh() {
+    if (!pyodide || !this.details.open || outOfSight(this)) return;
+    // The page still starting (its design not yet put back): later.
+    if (!autosaveReady || !wheelHref) {
+      this.scheduleRefresh();
+      return;
+    }
+    if (this.busy) {
+      this.pending = true;
+      return;
+    }
+    let payload;
+    try {
+      payload = collectValues();
+    } catch (error) {
+      this.status.textContent = error.message;
+      return;
+    }
+    const version = encodeURIComponent((window.CNCGW_MANIFEST || {}).build || "");
+    this.busy = true;
+    this.details.classList.add("busy");
+    const started = performance.now();
+    this.status.textContent = this.viewer
+      ? "Drawing the change…"
+      : "Drawing the 3D model (the first time loads Python and three.js, half a minute or so)…";
+    try {
+      this.viewer ??= (await import(`./quick3d.js?v=${version}`)).createViewer(this.panel);
+      this.worker ??= new Worker(`quick_worker.js?v=${version}`, { type: "module" });
+      const id = ++this.request;
+      const parts = await new Promise((resolve, reject) => {
+        this.worker.onmessage = ({ data }) => {
+          if (data.id !== id) return;
+          if (data.type === "done") resolve(data.parts);
+          else reject(new Error(data.text));
+        };
+        this.worker.onerror = (event) => reject(new Error(event.message || "the 3D model's worker stopped"));
+        this.worker.postMessage({ wheel: wheelHref, payload, detail: this.detailSet(), id });
+      });
+      this.viewer.show(parts);
+      // A detail set chosen again comes back at once: tenths of a second.
+      const seconds = (performance.now() - started) / 1000;
+      this.status.textContent = `Drawn in ${seconds < 10 ? `${seconds.toFixed(1)} s` : timeSince(started)}.`;
+    } catch (error) {
+      this.status.textContent = `The design does not build: ${error.message}`;
+    } finally {
+      this.busy = false;
+      this.details.classList.remove("busy");
+      if (this.pending) {
+        this.pending = false;
+        this.scheduleRefresh();
+      }
+    }
+  },
+
+  saveStl() {
+    if (!this.viewer) {
+      this.status.textContent = "Open the 3D model first: the STL is the model drawn.";
+      return;
+    }
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(new Blob([this.viewer.stl()], { type: "model/stl" }));
+    link.download = `${fileStem(guitarName.value)}_quick.stl`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+  },
+};
+quickModel.details.addEventListener("toggle", () => {
+  if (quickModel.details.open) quickModel.scheduleRefresh();
+});
+form.addEventListener("change", () => {
+  if (quickModel.details.open) quickModel.scheduleRefresh();
+});
+document.getElementById("quick-model-details").addEventListener("change", () => {
+  try {
+    localStorage.setItem(QUICK_DETAIL, quickModel.detailSet());
+  } catch {
+    // No storage (a private window): the choice is only for now.
+  }
+  if (quickModel.details.open) quickModel.scheduleRefresh();
+});
+try {
+  const kept = localStorage.getItem(QUICK_DETAIL);
+  const radio = [...document.querySelectorAll('input[name="quick-model-detail"]')].find((input) => input.value === kept);
+  if (radio) radio.checked = true;
+} catch {
+  // No storage: no details, as by default.
+}
+document.getElementById("quick-model-frame").addEventListener("click", () => quickModel.viewer?.frame());
+document.getElementById("quick-model-stl").addEventListener("click", () => quickModel.saveStl());
 
 document.getElementById("headstock-editor-reset").addEventListener("click", () => headstockEditor.reset());
 document.getElementById("headstock-editor-alike").addEventListener("click", () => {
