@@ -13,7 +13,10 @@
 
 - A slow device (a phone) keeps up: an editor whose page is out of sight,
   in the application like UI, is worked out and drawn only when shown, not
-  at every change made elsewhere nor on opening the page.
+  at every change made elsewhere nor on opening the page; the back seen
+  from behind and above (the volute's, the heel's), once lofted, is drawn
+  a hundred times quicker (its corner found once, not at each corner
+  drawn).
 
 - Nothing is worked out or drawn again while a value is typed, only once
   it is entered (Enter, or leaving the field), so a phone no longer lags

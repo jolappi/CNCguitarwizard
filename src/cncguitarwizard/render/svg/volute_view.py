@@ -85,8 +85,10 @@ def render_volute_view_svg(
         return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"></svg>'
     xs = [x for _, flat, _ in faces for x, _ in flat]
     ys = [y for _, flat, _ in faces for _, y in flat]
-    scale = (VIEW_WIDTH - 2.0 * VIEW_MARGIN) / (max(xs) - min(xs))
-    height = (max(ys) - min(ys)) * scale + 2.0 * VIEW_MARGIN
+    # Once, not for every corner drawn (the view slowed to seconds).
+    left, low = min(xs), min(ys)
+    scale = (VIEW_WIDTH - 2.0 * VIEW_MARGIN) / (max(xs) - left)
+    height = (max(ys) - low) * scale + 2.0 * VIEW_MARGIN
     parts = [
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {VIEW_WIDTH:g} '
         f'{height:.1f}" class="volute-view">',
@@ -98,8 +100,8 @@ def render_volute_view_svg(
             *(round(c * (0.35 + 0.65 * shade)) for c in VIEW_WOOD)
         )
         points = " ".join(
-            f"{(x - min(xs)) * scale + VIEW_MARGIN:.1f},"
-            f"{(y - min(ys)) * scale + VIEW_MARGIN:.1f}"
+            f"{(x - left) * scale + VIEW_MARGIN:.1f},"
+            f"{(y - low) * scale + VIEW_MARGIN:.1f}"
             for x, y in flat
         )
         parts.append(

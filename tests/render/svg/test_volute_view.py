@@ -3,10 +3,12 @@ headstock's drawn root and the drawn heel."""
 
 from dataclasses import replace
 
+import pytest
+
 from cncguitarwizard.backends.freecad.script_exporter import FreeCADScriptExporter
 from cncguitarwizard.presets import Prototype001Parameters
 from cncguitarwizard.presets.prototype001 import INSTRUMENT_OVERRIDES
-from cncguitarwizard.render.svg import render_volute_view_svg
+from cncguitarwizard.render.svg import render_volute_view_svg, volute_view
 from cncguitarwizard.webapp import back_view
 
 
@@ -72,3 +74,27 @@ def test_the_root_and_heel_are_seen_too_the_heel_at_the_top() -> None:
     # No headstock, nothing to see round the nut.
     headless = INSTRUMENT_OVERRIDES["headless_guitar"]
     assert back_view({"prototype": {**headless}}) == {"svg": None}
+
+
+def test_the_drawings_corner_is_found_once_not_at_every_corner(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Regression: the drawing's corner was looked for again at every corner
+    # drawn, and the view took seconds (on a phone, many).
+    geometry = Prototype001Parameters().build()
+    rows = FreeCADScriptExporter.neck_loft_rows(
+        geometry.neck_surface,
+        geometry.headstock,
+        geometry.joint_fillet_radius,
+        geometry.volute,
+    )
+    calls = []
+
+    def counted_min(values: list[float]) -> float:
+        calls.append(len(values))
+        return min(values)
+
+    monkeypatch.setattr(volute_view, "min", counted_min, raising=False)
+    render_volute_view_svg(rows)
+
+    assert len(calls) == 2  # the smallest x and the smallest y
