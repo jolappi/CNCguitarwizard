@@ -2856,8 +2856,14 @@ function nearestSide(points, x, y) {
 // One segment's samples from p1 toward p2 (p2 left out): the plain
 // Catmull-Rom blend, or with a sharp end a Hermite cubic whose tangent
 // there is half its own chord (as geometry.primitives.spline._segment).
+// A segment far shorter than its neighbours' spans (two points drawn
+// almost on each other at a turn) would curl back on itself: it is drawn
+// with its tangents no longer than its own chord instead (as _unlooped).
 function splineSegment(p0, p1, p2, p3, samples, out) {
   const sharpStart = isCorner(p1), sharpEnd = isCorner(p2);
+  const start = sharpStart ? [p2[0] - p1[0], p2[1] - p1[1]] : [p2[0] - p0[0], p2[1] - p0[1]];
+  const end = sharpEnd ? [p2[0] - p1[0], p2[1] - p1[1]] : [p3[0] - p1[0], p3[1] - p1[1]];
+  let points = [];
   if (!sharpStart && !sharpEnd) {
     const blend = (a, b, c, d, t) => 0.5 * (
       2 * b + (c - a) * t + (2 * a - 5 * b + 4 * c - d) * t * t
@@ -2865,20 +2871,50 @@ function splineSegment(p0, p1, p2, p3, samples, out) {
     );
     for (let s = 0; s < samples; s++) {
       const t = s / samples;
-      out.push([blend(p0[0], p1[0], p2[0], p3[0], t), blend(p0[1], p1[1], p2[1], p3[1], t)]);
+      points.push([blend(p0[0], p1[0], p2[0], p3[0], t), blend(p0[1], p1[1], p2[1], p3[1], t)]);
     }
-    return;
+  } else {
+    points = hermiteSamples(p1, p2, [start[0] / 2, start[1] / 2], [end[0] / 2, end[1] / 2], samples);
   }
-  const start = sharpStart ? [p2[0] - p1[0], p2[1] - p1[1]] : [p2[0] - p0[0], p2[1] - p0[1]];
-  const end = sharpEnd ? [p2[0] - p1[0], p2[1] - p1[1]] : [p3[0] - p1[0], p3[1] - p1[1]];
+  if (polylineCrossesItself([...points, p2])) {
+    const chord = Math.hypot(p2[0] - p1[0], p2[1] - p1[1]);
+    // Half the span, as a Catmull-Rom tangent, at most the chord.
+    const shortened = ([x, y]) => {
+      const length = Math.hypot(x, y) / 2;
+      const scale = 0.5 * (length > 0 ? Math.min(1, chord / length) : 1);
+      return [x * scale, y * scale];
+    };
+    points = hermiteSamples(p1, p2, shortened(start), shortened(end), samples);
+  }
+  out.push(...points);
+}
+
+// A Hermite cubic's samples from p1 toward p2 (p2 left out), its tangents
+// at each end given.
+function hermiteSamples(p1, p2, start, end, samples) {
+  const points = [];
   for (let s = 0; s < samples; s++) {
     const t = s / samples, t2 = t * t, t3 = t2 * t;
     const h00 = 2 * t3 - 3 * t2 + 1, h10 = t3 - 2 * t2 + t, h01 = -2 * t3 + 3 * t2, h11 = t3 - t2;
-    out.push([
-      h00 * p1[0] + h10 * start[0] / 2 + h01 * p2[0] + h11 * end[0] / 2,
-      h00 * p1[1] + h10 * start[1] / 2 + h01 * p2[1] + h11 * end[1] / 2,
+    points.push([
+      h00 * p1[0] + h10 * start[0] + h01 * p2[0] + h11 * end[0],
+      h00 * p1[1] + h10 * start[1] + h01 * p2[1] + h11 * end[1],
     ]);
   }
+  return points;
+}
+
+// Whether an open polyline crosses itself (two edges not next to each
+// other meeting).
+function polylineCrossesItself(points) {
+  const turn = (p, q, r) => (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]);
+  for (let i = 0; i + 1 < points.length; i++) {
+    for (let j = i + 2; j + 1 < points.length; j++) {
+      const [a, b, c, d] = [points[i], points[i + 1], points[j], points[j + 1]];
+      if ((turn(c, d, a) > 0) !== (turn(c, d, b) > 0) && (turn(a, b, c) > 0) !== (turn(a, b, d) > 0)) return true;
+    }
+  }
+  return false;
 }
 
 // How the body editor draws each kind of feature (a layout polygon's

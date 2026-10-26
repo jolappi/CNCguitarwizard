@@ -164,7 +164,15 @@ assert first_fret.direction.dot(first_fret.direction) == 1.0
 `closed_catmull_rom(control_points, samples_per_segment=8)` returns a
 smooth closed outline that passes through every control point: each
 segment is a uniform Catmull-Rom cubic, tangent-continuous with its
-neighbours. A drawn body (`YourDesignShape`) is such a loop.
+neighbours. A drawn body (`YourDesignShape`) is such a loop. A segment far
+shorter than its neighbours' spans — two points drawn almost on each other
+at a sharp turn, as a cutaway deepened at the upper frets leaves them —
+would curl back on itself with those tangents, and an outline that crosses
+itself makes no solid (FreeCAD loses the body): it is drawn with its
+tangents no longer than its own chord instead, their directions kept
+(`_unlooped`). Every other segment is as it was; the web page's twin
+(`splineSegment`) does the same. `BodySolid` refuses an outline that still
+crosses itself, saying where.
 
 ```python
 from cncguitarwizard.geometry.primitives import Point2D, closed_catmull_rom

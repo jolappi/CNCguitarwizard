@@ -12,6 +12,7 @@ a point marked ``ROUND``, ``(x, y, "round")``, is rounded through
 
 from __future__ import annotations
 
+import math
 from collections.abc import Sequence
 
 from ..exceptions import GeometryException
@@ -212,8 +213,27 @@ def _segment(
 
     A Catmull-Rom cubic, its tangents half the chord between each end's
     neighbours; at a sharp end, half its own chord instead, so a segment
-    between two corners is straight.
+    between two corners is straight. A segment far shorter than its
+    neighbours' spans (two points drawn almost on each other at a sharp
+    turn) would curl back on itself with those tangents: it is drawn with
+    them no longer than its own chord instead (``_unlooped``).
     """
+    points = _hermite(p0, p1, p2, p3, sharp_start, sharp_end, samples)
+    if not _crosses_itself([*points, p2]):
+        return points
+    return _unlooped(p0, p1, p2, p3, sharp_start, sharp_end, samples)
+
+
+def _hermite(
+    p0: Point2D,
+    p1: Point2D,
+    p2: Point2D,
+    p3: Point2D,
+    sharp_start: bool,
+    sharp_end: bool,
+    samples: int,
+) -> list[Point2D]:
+    """Return a segment's samples with its Catmull-Rom (or corner) tangents."""
     if not sharp_start and not sharp_end:
         # The plain Catmull-Rom blend, as before corners were drawn.
         points = []
@@ -246,6 +266,66 @@ def _segment(
             )
         )
     return points
+
+
+def _unlooped(
+    p0: Point2D,
+    p1: Point2D,
+    p2: Point2D,
+    p3: Point2D,
+    sharp_start: bool,
+    sharp_end: bool,
+    samples: int,
+) -> list[Point2D]:
+    """Return a segment's samples, each tangent no longer than its chord:
+    the same directions (so the outline still turns smoothly through its
+    points), but too short to curl back."""
+    chord = math.hypot(p2.x - p1.x, p2.y - p1.y)
+    start = (p2.x - p1.x, p2.y - p1.y) if sharp_start else (p2.x - p0.x, p2.y - p0.y)
+    end = (p2.x - p1.x, p2.y - p1.y) if sharp_end else (p3.x - p1.x, p3.y - p1.y)
+    tangents = []
+    for x, y in (start, end):
+        # Half the span, as a Catmull-Rom tangent, at most the chord.
+        length = math.hypot(x, y) / 2.0
+        scale = 0.5 * (min(1.0, chord / length) if length > 0.0 else 1.0)
+        tangents.append((x * scale, y * scale))
+    (sx, sy), (ex, ey) = tangents
+    points = []
+    for step in range(samples):
+        t = step / samples
+        t2 = t * t
+        t3 = t2 * t
+        h00 = 2.0 * t3 - 3.0 * t2 + 1.0
+        h10 = t3 - 2.0 * t2 + t
+        h01 = -2.0 * t3 + 3.0 * t2
+        h11 = t3 - t2
+        points.append(
+            Point2D(
+                h00 * p1.x + h10 * sx + h01 * p2.x + h11 * ex,
+                h00 * p1.y + h10 * sy + h01 * p2.y + h11 * ey,
+            )
+        )
+    return points
+
+
+def _crosses_itself(points: Sequence[Point2D]) -> bool:
+    """Return whether an open polyline crosses itself (two edges not next
+    to each other meeting)."""
+    edges = list(zip(points, points[1:], strict=False))
+    for i, (a, b) in enumerate(edges):
+        for c, d in edges[i + 2 :]:
+            if _segments_cross(a, b, c, d):
+                return True
+    return False
+
+
+def _segments_cross(a: Point2D, b: Point2D, c: Point2D, d: Point2D) -> bool:
+    def turn(p: Point2D, q: Point2D, r: Point2D) -> float:
+        return (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x)
+
+    return (turn(c, d, a) > 0.0) != (turn(c, d, b) > 0.0) and (turn(a, b, c) > 0.0) != (
+        turn(a, b, d) > 0.0
+    )
 
 
 def _blend(

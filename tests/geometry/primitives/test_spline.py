@@ -17,6 +17,55 @@ from cncguitarwizard.geometry.primitives import (
 )
 
 
+def _crosses_itself(points: tuple[Point2D, ...]) -> bool:
+    def turn(p: Point2D, q: Point2D, r: Point2D) -> float:
+        return (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x)
+
+    edges = list(zip(points, (*points[1:], points[0]), strict=True))
+    for i, (a, b) in enumerate(edges):
+        for j in range(i + 2, len(edges)):
+            if i == 0 and j == len(edges) - 1:
+                continue
+            c, d = edges[j]
+            if (turn(c, d, a) > 0) != (turn(c, d, b) > 0) and (turn(a, b, c) > 0) != (
+                turn(a, b, d) > 0
+            ):
+                return True
+    return False
+
+
+def test_two_points_drawn_almost_on_each_other_at_a_turn_make_no_loop() -> None:
+    # Regression: a body's cutaway deepened at the upper frets, its inner
+    # corner drawn as two points 0.09 mm apart between points 5 mm away. Its
+    # Catmull-Rom tangents (half its neighbours' 5 mm span) curled that
+    # short segment back on itself, a loop FreeCAD made no face of: the
+    # body was lost. It is drawn with them no longer than its chord.
+    corner = (
+        Point2D(-9.57, 49.51),
+        Point2D(-8.27, 54.24),
+        Point2D(-7.02, 59.0),
+        Point2D(-6.94, 59.04),
+        Point2D(-3.17, 60.56),
+        Point2D(1.35, 62.38),
+        Point2D(10.43, 65.95),
+        Point2D(10.43, 20.0),
+        Point2D(-9.57, 20.0),
+    )
+    outline = closed_catmull_rom(corner, 8)
+    assert not _crosses_itself(outline)
+    # Still through every point, and the short segment between the two.
+    for index, point in enumerate(corner):
+        assert outline[index * 8] == point
+    short = outline[2 * 8 : 3 * 8]
+    assert all(-7.03 < p.x < -6.93 and 58.99 < p.y < 59.05 for p in short)
+    # A loop of evenly spread points is the plain Catmull-Rom curve as ever:
+    # at a quarter of its first segment, half of 2 P1 + (P2 - P0) t
+    # + (2 P0 - 5 P1 + 4 P2 - P3) t^2 + (3 P1 - P0 - 3 P2 + P3) t^3.
+    square = (Point2D(0, 0), Point2D(10, 0), Point2D(10, 10), Point2D(0, 10))
+    quarter = closed_catmull_rom(square, 4)[1]
+    assert (quarter.x, quarter.y) == pytest.approx((2.03125, -0.9375))
+
+
 def test_spline_passes_through_every_control_point_in_order() -> None:
     square = (Point2D(0, 0), Point2D(10, 0), Point2D(10, 10), Point2D(0, 10))
     outline = closed_catmull_rom(square, samples_per_segment=4)

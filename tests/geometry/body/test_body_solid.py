@@ -12,6 +12,7 @@ from cncguitarwizard.geometry.body import (
     RearCavity,
     RectangularCavity,
     TracedCavity,
+    TracedOutline,
 )
 from cncguitarwizard.geometry.exceptions import BodyGeometryError
 from cncguitarwizard.geometry.primitives import Point2D
@@ -38,6 +39,15 @@ def make_body(**cavity_overrides: object) -> BodySolid:
     }
     cavities.update(cavity_overrides)
     return BodySolid(**cavities)  # type: ignore[arg-type]
+
+
+def test_an_outline_that_crosses_itself_is_refused_where_it_does() -> None:
+    # FreeCAD makes no face of it and loses the whole body: said where.
+    points = list(BodyOutline(609.6, 407.2, 28.0).points)
+    points[40], points[41] = points[41], points[40]
+    twisted = TracedOutline(tuple(points))
+    with pytest.raises(BodyGeometryError, match="outline crosses itself near X"):
+        make_body(outline=twisted)
 
 
 def make_rear_cavity(

@@ -252,6 +252,15 @@ class BodySolid:
             )
         if not self.checked:
             return
+        # An outline that crosses itself makes no body at all (FreeCAD's
+        # face of it is no face): said where, rather than lost there.
+        crossing = _first_crossing(self.outline.points)
+        if crossing is not None:
+            raise BodyGeometryError(
+                "The body's outline crosses itself near X "
+                f"{crossing.x:.0f} Y {crossing.y:.0f}: move the points drawn "
+                "there apart."
+            )
         if self.carved_top is not None and self.stepped_top is not None:
             raise BodyGeometryError(
                 "A top is either carved or stepped: turn off body_carved_top or "
@@ -981,6 +990,51 @@ def _distance_to_outline(
             t = min(1.0, max(0.0, t))
         best = min(best, math.hypot(a.x + ex * t - point.x, a.y + ey * t - point.y))
     return best
+
+
+def _first_crossing(outline: Sequence[Point2D]) -> Point2D | None:
+    """Return where a closed outline first crosses itself, or ``None``.
+
+    Only edges sharing a cell of a 10 mm grid are tried against each other.
+    """
+    cell = 10.0
+    edges = list(zip(outline, (*outline[1:], outline[0]), strict=True))
+    count = len(edges)
+    buckets: dict[tuple[int, int], list[int]] = {}
+    for index, (a, b) in enumerate(edges):
+        for cx in range(
+            math.floor(min(a.x, b.x) / cell), math.floor(max(a.x, b.x) / cell) + 1
+        ):
+            for cy in range(
+                math.floor(min(a.y, b.y) / cell), math.floor(max(a.y, b.y) / cell) + 1
+            ):
+                buckets.setdefault((cx, cy), []).append(index)
+    tried: set[tuple[int, int]] = set()
+    for members in buckets.values():
+        for first in members:
+            for second in members:
+                # Edges next to each other share a point, not a crossing.
+                if second <= first + 1 or (first == 0 and second == count - 1):
+                    continue
+                if (first, second) in tried:
+                    continue
+                tried.add((first, second))
+                a, b = edges[first]
+                c, d = edges[second]
+                if _proper_crossing(a, b, c, d):
+                    return Point2D((a.x + b.x) / 2.0, (a.y + b.y) / 2.0)
+    return None
+
+
+def _proper_crossing(a: Point2D, b: Point2D, c: Point2D, d: Point2D) -> bool:
+    """Return whether segments ``a``-``b`` and ``c``-``d`` cross."""
+
+    def turn(p: Point2D, q: Point2D, r: Point2D) -> float:
+        return (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x)
+
+    return (turn(c, d, a) > 0.0) != (turn(c, d, b) > 0.0) and (turn(a, b, c) > 0.0) != (
+        turn(a, b, d) > 0.0
+    )
 
 
 def outlines_overlap(first: tuple[Point2D, ...], second: tuple[Point2D, ...]) -> bool:

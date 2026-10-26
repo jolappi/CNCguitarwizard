@@ -1763,6 +1763,16 @@
 
 ### Fixed
 
+- A body whose cutaway was deepened at the upper frets was lost in
+  FreeCAD ("body outline extrude produced an invalid shape"): two of its
+  points drawn 0.09 mm apart at the corner's sharp turn, the Catmull-Rom
+  tangents there (half the 5 mm spans either side) curled that segment
+  back into a loop, and an outline that crosses itself makes no face. Such
+  a segment is drawn with its tangents no longer than its own chord now,
+  in the page's editor too, every other one as it was (the SG's humbucker
+  frames and the Jazz Bass's pickguard had loops as small, now gone), and
+  an outline that still crosses itself is refused saying where.
+
 - The quick 3D model's bridge drew a plate across the scale line whatever
   the bridge: a Kahler 7300's lay over the bridge pickup, ahead of its own
   plate. Each is drawn from what it leaves on the body now: a Kahler's or

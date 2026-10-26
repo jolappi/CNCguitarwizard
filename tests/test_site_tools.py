@@ -751,6 +751,14 @@ def test_a_question_lets_go_of_its_list_and_a_new_design_starts_at_the_style() -
     ) in layout
 
 
+def test_the_page_s_spline_never_curls_a_short_segment_back() -> None:
+    # As Python's (spline._unlooped): the editor draws the outline built.
+    script = (ROOT / "site" / "app.js").read_text(encoding="utf-8")
+
+    assert "if (polylineCrossesItself([...points, p2])) {" in script
+    assert "Math.min(1, chord / length)" in script
+
+
 def test_the_menus_that_do_not_fit_a_phone_fold_under_one() -> None:
     # The bar never wider than the screen: the last menus folded under »,
     # each opened from there; a menu's pop kept on the screen.
