@@ -230,6 +230,7 @@ class FreeCADScriptExporter:
             tray_tool_radius=tray_tool_radius,
             fretboard_scallops=geometry.fretboard_scallops,
             volute=geometry.volute,
+            fretboard_one_piece=geometry.fretboard_one_piece,
             parameter_table=parameter_table,
         )
 
@@ -303,6 +304,7 @@ class FreeCADScriptExporter:
         tray_tool_radius: float = 0.0,
         fretboard_scallops: FretboardScallops | None = None,
         volute: Volute | None = None,
+        fretboard_one_piece: bool = False,
         parameter_table: Sequence[Sequence[str]] = (),
     ) -> str:
         """Return a FreeCAD script containing neck and fretboard solids.
@@ -358,6 +360,9 @@ class FreeCADScriptExporter:
             volute: The volute carved into the headstock's back behind the
                 nut, lofted with the neck and headstock (``_with_volute``),
                 or ``None``.
+            fretboard_one_piece: The fretboard cut from the neck's own
+                wood: the finished board fused into the neck, one solid
+                (``Neck``), and no fretboard object of its own.
             parameter_table: Rows of text for the ``Parameters``
                 spreadsheet (see ``_render_parameter_sheet``); empty for
                 none.
@@ -526,7 +531,10 @@ class FreeCADScriptExporter:
                 _trimmed_row(row, fret_layout.slot_end_inset)
                 for row in fret_surface_rows
             )
-        export_feature_names = ["neck_feature", "fretboard_feature"]
+        export_feature_names = [
+            "neck_feature",
+            *(() if fretboard_one_piece else ("fretboard_feature",)),
+        ]
         if carbon_rods is not None:
             export_feature_names.append("carbon_rods_feature")
         if headstock is not None and not join_headstock_to_neck and not hide_headstock:
@@ -959,6 +967,7 @@ class FreeCADScriptExporter:
             f"{headstock_source}"
             f"{locking_nut_screw_source}"
             f"{self._render_vintage_truss_rod(vintage_truss_rod)}"
+            f"{self._render_one_piece(fretboard_one_piece)}"
             f"{self._render_nut_jig(nut_jig)}"
             f"{self._render_neck_tilt(neck_tilt)}"
             f"{body_source}"
@@ -1213,6 +1222,22 @@ class FreeCADScriptExporter:
             "    fretboard_shape.fuse(locking_nut_shelf).removeSplitter(),\n"
             '    "locking nut shelf",\n'
             ")\n"
+        )
+
+    @staticmethod
+    def _render_one_piece(one_piece: bool) -> str:
+        """Return a one-piece neck's fretboard fused into it, one solid of
+        the neck's wood, its fret slots and marker pockets cut as they were."""
+        if not one_piece:
+            return ""
+        return (
+            "# One piece: the board is the neck's own wood.\n"
+            "neck_feature.Shape = require_shape(\n"
+            "    neck_feature.Shape.fuse(fretboard_feature.Shape).removeSplitter(),\n"
+            '    "one-piece neck",\n'
+            ")\n"
+            "neck_feature.Label = 'Neck (one piece with its fretboard)'\n"
+            "document.removeObject(fretboard_feature.Name)\n"
         )
 
     @staticmethod

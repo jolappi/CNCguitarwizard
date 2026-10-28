@@ -8,7 +8,10 @@ both setups:
 * **top** — truss-rod channel, the 8-degree headstock face as a Z-limited
   raster with the flat end mill, and shallow centre marks for the tuner
   holes (which must be drilled perpendicular to the angled face, so they
-  are left to a drill press with an 8-degree wedge);
+  are left to a drill press with an 8-degree wedge); on a one-piece neck
+  the blank reaches up past the glue face by the fretboard's blank, and
+  the board's own programs (radius, markers, fret slots) are cut into it
+  first, then everything round the board milled down to the glue face;
 * **back** (flipped about the centerline) — a vintage truss rod's
   curved channel and teardrop, when it is laid in from the back (the rod
   and its walnut glued in before the back is carved), Z-limited roughing
@@ -34,10 +37,16 @@ from .body import plan_body_machining
 from .engraving import engraving_path, engraving_tool
 from .exceptions import ToolpathError
 from .fixturing import StockBounds, resolve_index_pins
+from .fretboard import (
+    INLAID_FIXTURE,
+    FretboardMachiningParameters,
+    fretboard_outline_polygon,
+    plan_fretboard_machining,
+)
 from .gcode import Setup
 from .operations import depth_levels, drill, pocket, profile
 from .parameters import MachiningParameters, with_cutter
-from .planar import polygon_bounds
+from .planar import offset_polygon, polygon_bounds
 from .surfacing import (
     build_offset_grid,
     interpolate_rows,
@@ -190,7 +199,8 @@ class NeckMachiningPlan:
     program, ``back_rough``, and ``back_finish`` is ``None``. A vintage
     truss rod's channel and teardrop are routed from the back first
     (``back_truss_rod``), the rod and its walnut glued in before the back
-    is carved.
+    is carved. A one-piece neck's board is cut into its top first
+    (``fretboard_setups``: its radius, markers, fret slots, scallops).
     """
 
     index_pins: Setup
@@ -214,6 +224,7 @@ class NeckMachiningPlan:
     carbon_rods: Setup | None = None
     small_holes: Setup | None = None
     back_truss_rod: Setup | None = None
+    fretboard_setups: tuple[Setup, ...] = ()
 
     @property
     def setups(self) -> tuple[Setup, ...]:
@@ -227,6 +238,8 @@ class NeckMachiningPlan:
         """
         return (
             self.index_pins,
+            # A one-piece neck's board first, on the blank's untouched top.
+            *self.fretboard_setups,
             self.top,
             *((self.carbon_rods,) if self.carbon_rods is not None else ()),
             *((self.small_holes,) if self.small_holes is not None else ()),
@@ -634,6 +647,7 @@ def plan_neck_machining(
     geometry: Prototype001Geometry,
     parameters: NeckMachiningParameters,
     body_parameters: MachiningParameters | None = None,
+    fretboard: FretboardMachiningParameters | None = None,
 ) -> NeckMachiningPlan:
     """Return toolpaths for every machinable feature of the neck.
 
@@ -653,10 +667,17 @@ def plan_neck_machining(
     programs (``body_parameters``, else the flat tool's) on the neck's
     fixture, named ``Neck_block_...``; the outline is then cut full depth.
 
+    A one-piece neck (``fretboard_one_piece``) has no board glued on: its
+    blank reaches ``fretboard.blank_thickness`` (the board's own blank's)
+    above the glue face, and the board's programs are cut into it on the
+    neck's dowels, from its untouched top (``Neck_fretboard_...``), before
+    ``Neck_top`` mills everything round the board down to the glue face.
+
     Raises:
-        ToolpathError: If an index pin cannot be placed, or a neck-through
+        ToolpathError: If an index pin cannot be placed, a neck-through
             headstock needs a blank thicker than the body (glue a block
-            under it: ``blank="laminated"``).
+            under it: ``blank="laminated"``), or a one-piece neck comes
+            without ``fretboard``.
     """
     flat = parameters.flat
     ball = parameters.ball
@@ -681,6 +702,16 @@ def plan_neck_machining(
         needed = max(needed, plank)
         thickness = max(parameters.blank_thickness or 0.0, needed)
 
+    # A one-piece neck's board stands on it: the blank reaches up past the
+    # glue face (Z zero of the glued neck) by the board's blank.
+    board = 0.0
+    if geometry.fretboard_one_piece:
+        if fretboard is None:
+            raise ToolpathError(
+                "A one-piece neck's fretboard is cut with the fretboard's "
+                "cutters: pass them (fretboard)."
+            )
+        board = fretboard.blank_thickness
     outline = through.plan if through is not None else neck_plan_polygon(geometry)
     min_x, min_y, max_x, max_y = polygon_bounds(outline)
     radius = max(flat.tool_radius, ball.tool_radius)
@@ -725,7 +756,13 @@ def plan_neck_machining(
         )
     else:
         blank_notes = (
-            f"Blank: at least {size} x {thickness:g} mm"
+            f"Blank: at least {size} x {thickness + board:g} mm"
+            + (
+                f", the {board:g} mm above the neck's {thickness:g} mm for "
+                "its fretboard (one piece with it)"
+                if board > 0.0
+                else ""
+            )
             + (
                 f" (more than the {parameters.blank_thickness:g} mm "
                 "blank_thickness: the headstock needs it)."
@@ -754,13 +791,15 @@ def plan_neck_machining(
                 f"Index pin {index}",
                 top_frame.point(Point2D(x, y)),
                 flat.pin_diameter,
-                (plank if laminated else thickness) + flat.through_overshoot,
+                (plank if laminated else thickness) + board + flat.through_overshoot,
                 flat,
             )
             for index, (x, y) in enumerate(pins, start=1)
         ),
         (
-            "Clamp the planed blank glue-face up on a spoilboard.",
+            "Clamp the planed blank "
+            + ("its top" if board > 0.0 else "glue-face")
+            + " up on a spoilboard.",
             "Set X/Y zero at the index pin 1 position and Z zero on the blank top.",
             "Both dowels sit in the waste on the centerline, beyond the "
             "headstock tip and beyond the heel.",
@@ -777,7 +816,7 @@ def plan_neck_machining(
     # locking nut's is longer), level with the glue face; the face starts
     # right behind it.
     def face_depth(model_x: float, model_y: float = 0.0) -> float:
-        return headstock.top_z(model_x, model_y)
+        return headstock.top_z(model_x, model_y) - board
 
     lettering = _lettering_setup(
         geometry,
@@ -893,7 +932,59 @@ def plan_neck_machining(
                 start_depth=surface_depth,
             )
         )
+    # A one-piece neck's board is cut into the blank's top first, on its
+    # own programs; then everything round it comes down to the glue face.
+    board_setups: tuple[Setup, ...] = ()
+    board_notes: tuple[str, ...] = ()
+    if fretboard is not None and board > 0.0:
+        board_plan = plan_fretboard_machining(
+            geometry,
+            fretboard,
+            origin=(origin_x, origin_y),
+            reference_points=reference_points,
+        )
+        board_setups = tuple(
+            _cut_in_the_neck(setup)
+            for setup in (
+                board_plan.radius,
+                board_plan.inlays,
+                board_plan.slots,
+                *((board_plan.scallops,) if board_plan.scallops is not None else ()),
+            )
+        )
+        # The waste round the neck beside the board is left whole: the
+        # pocket reaches only a hair past the neck's outline, where the
+        # board takes up its whole width.
+        around = offset_polygon(
+            neck_plan_polygon(geometry), flat.tool_radius + 1.0, inward=False
+        )
+        face_paths[:0] = [
+            *board_plan.nut_end,
+            pocket(
+                "Round the fretboard, down to the glue face",
+                top_frame.polygon(around),
+                board,
+                flat,
+                islands=[top_frame.polygon(fretboard_outline_polygon(geometry))],
+            ),
+        ]
+        board_notes = (
+            "One-piece neck: re-touch Z on the blank's untouched top beside "
+            f"the board, as for Neck_fretboard_radius ({board:g} mm above the "
+            "glue face, where a board would be glued).",
+            "Everything round the board - the nut's seat, the headstock's "
+            f"face, the heel past the board's end - is milled {board:g} mm "
+            "down to the glue face first, the board left standing.",
+            *board_plan.nut_end_notes,
+        )
+    # A one-piece neck's top is its board's, not a glue face.
+    on_the_pins = (
+        "Blank on the two index pins, "
+        + ("its top" if board > 0.0 else "glue face")
+        + " up, same work zero."
+    )
     face_notes = (
+        *board_notes,
         (
             f"The headstock face is milled to {headstock.angle.angle_degrees:g} "
             f"degrees right behind the nut's {shelf:g} mm flat seat, which "
@@ -905,6 +996,9 @@ def plan_neck_machining(
             f"the nut's {shelf:g} mm flat seat, so the strings break over "
             "the nut; the nut is glued to the seat and to the fretboard."
             if headstock.face_drop > 0.0
+            else "The headstock is flat (0 degrees): its face is level with "
+            "the glue face."
+            if board > 0.0
             else "The headstock is flat (0 degrees): its face is the blank's "
             "top, level with the glue face, and is not milled."
         ),
@@ -985,7 +1079,7 @@ def plan_neck_machining(
             "Neck glue face - truss-rod channel",
             tuple(truss_paths),
             (
-                "Blank on the two index pins, glue face up, same work zero.",
+                on_the_pins,
                 *(
                     (
                         "The headstock face and the tuner marks wait for "
@@ -1007,7 +1101,7 @@ def plan_neck_machining(
             "Neck glue face - headstock face, tuner centre marks",
             tuple(face_paths),
             (
-                "Blank on the two index pins, glue face up, same work zero.",
+                on_the_pins,
                 *face_notes,
                 "The truss-rod route follows in Neck_top_small_holes.",
                 *truss_notes,
@@ -1024,7 +1118,7 @@ def plan_neck_machining(
             + "headstock face, tuner centre marks",
             (*truss_paths[:1], *face_paths, *truss_paths[1:]),
             (
-                "Blank on the two index pins, glue face up, same work zero.",
+                on_the_pins,
                 *face_notes,
                 *truss_notes,
             ),
@@ -1431,7 +1525,7 @@ def plan_neck_machining(
             profile(
                 "Neck outline with tabs",
                 back_frame.polygon(outline),
-                thickness + flat.through_overshoot,
+                thickness + board + flat.through_overshoot,
                 flat,
                 # Round a neck-through block the waste is still whole.
                 start_depth=(
@@ -1541,7 +1635,7 @@ def plan_neck_machining(
         back_outline,
         stock_length=stock.length,
         stock_width=stock.width,
-        stock_thickness=thickness,
+        stock_thickness=thickness + board,
         origin_x=origin_x,
         origin_y=origin_y,
         index_pin_positions=pins,
@@ -1554,8 +1648,10 @@ def plan_neck_machining(
         carbon_rods=carbon_rods,
         small_holes=small_holes,
         back_truss_rod=back_truss_rod,
+        fretboard_setups=board_setups,
         preview_outlines=(
             top_outline,
+            *((top_outline,) * len(board_setups)),
             top_outline,
             *((top_outline,) if carbon_rods is not None else ()),
             *((top_outline,) if small_holes is not None else ()),
@@ -1567,6 +1663,20 @@ def plan_neck_machining(
             *block_back_previews,
             back_outline_polygon,
         ),
+    )
+
+
+def _cut_in_the_neck(setup: Setup) -> Setup:
+    """Return a fretboard program as a one-piece neck's: ``Neck_`` before
+    its name, run on the neck's blank (the inlays glued in, for the
+    scallops cut through them)."""
+    return replace(
+        setup,
+        name=f"Neck_{setup.name[0].lower()}{setup.name[1:]}",
+        description=f"One-piece neck: {setup.description[0].lower()}"
+        f"{setup.description[1:]}",
+        fixture=NECK_TOP_FIXTURE
+        + (", the inlays glued in" if setup.fixture == INLAID_FIXTURE else ""),
     )
 
 

@@ -208,7 +208,10 @@ class FretboardMachiningPlan:
 
     ``carrier`` is the board the blank is glued on, or ``None``;
     ``scallops`` the program hollowing a scalloped board's fret spaces, or
-    ``None``.
+    ``None``; ``nut_end`` what the outline program cuts at the nut before
+    the outline itself (a locking nut's shelf, a slotted nut's slope), and
+    ``nut_end_notes`` its notes — a one-piece neck's top program cuts them
+    (``plan_neck_machining``).
     """
 
     index_pins: Setup
@@ -225,6 +228,8 @@ class FretboardMachiningPlan:
     preview_outlines: tuple[tuple[Point2D, ...], ...]
     carrier: FretboardCarrier | None = None
     scallops: Setup | None = None
+    nut_end: tuple[Toolpath, ...] = ()
+    nut_end_notes: tuple[str, ...] = ()
 
     @property
     def setups(self) -> tuple[Setup, ...]:
@@ -304,8 +309,20 @@ def fretboard_outline_polygon(geometry: Prototype001Geometry) -> tuple[Point2D, 
 def plan_fretboard_machining(
     geometry: Prototype001Geometry,
     parameters: FretboardMachiningParameters,
+    *,
+    origin: tuple[float, float] | None = None,
+    reference_points: tuple[tuple[float, float], ...] = (),
 ) -> FretboardMachiningPlan:
     """Return toolpaths for every feature of the fretboard.
+
+    Args:
+        geometry: The built design.
+        parameters: The board's blank and cutters.
+        origin: The work zero, in the model, when the board is cut into a
+            one-piece neck's top on the neck's own dowels (pin 1 there),
+            the neck's blank ``parameters.blank_thickness`` above its glue
+            face; ``None`` for a board of its own, on dowels of its own.
+        reference_points: The neck's other dowels, from ``origin``.
 
     Raises:
         ToolpathError: If the blank is thinner than the finished board,
@@ -332,7 +349,11 @@ def plan_fretboard_machining(
     given = parameters.blank_length is not None or parameters.blank_width is not None
     if given:
         stock = _given_blank(outline, stock, parameters)
-    pins, pin_stock = resolve_index_pins(outline, [sweep], flat, stock)
+    if origin is None:
+        pins, pin_stock = resolve_index_pins(outline, [sweep], flat, stock)
+    else:
+        # Cut into a one-piece neck's top, on the neck's own dowels.
+        pins, pin_stock = (origin,), stock
     carrier: FretboardCarrier | None = None
     if parameters.blank_length is not None and pin_stock.length > stock.length:
         # A bought blank too short for the dowels: they go in a carrier.
@@ -345,7 +366,7 @@ def plan_fretboard_machining(
             )
     else:
         stock = pin_stock
-    if parameters.carrier_thickness is not None:
+    if parameters.carrier_thickness is not None and origin is None:
         carrier = FretboardCarrier(
             length=pin_stock.length,
             width=stock.width,
@@ -360,7 +381,8 @@ def plan_fretboard_machining(
         + flat.through_overshoot
     )
     origin_x, origin_y = pins[0]
-    reference_points = tuple((x - origin_x, y - origin_y) for x, y in pins[1:])
+    if origin is None:
+        reference_points = tuple((x - origin_x, y - origin_y) for x, y in pins[1:])
 
     def machine(point: Point2D) -> Point2D:
         return Point2D(point.x - origin_x, point.y - origin_y)
@@ -812,6 +834,8 @@ def plan_fretboard_machining(
         preview_outlines=(preview,) * (5 if scallop_setup is None else 6),
         carrier=carrier,
         scallops=scallop_setup,
+        nut_end=tuple(shelf_paths),
+        nut_end_notes=shelf_notes,
     )
 
 

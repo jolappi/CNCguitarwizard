@@ -185,8 +185,14 @@ APPLIES_WHEN: dict[str, tuple[Condition, ...]] = {
         {"locking_nut": ("r3",)},
     ),
     **_when("nut_jig_height nut_jig_slot_play nut_jig_thickness", {"nut_jig": (True,)}),
-    # The fretboard's end and scallops.
+    # The fretboard's end and scallops; a one-piece neck's top is its
+    # playing surface: its truss rod goes in from the back, and it has no
+    # board of its own to bind.
     **_when("fretboard_end_extension", {"fretboard_end": ("auto", "fret")}),
+    **_when(
+        "truss_rod_install fretboard_binding_width neck_carbon_rods",
+        {"fretboard_one_piece": (False,)},
+    ),
     **_when(
         "fretboard_scallop_from_fret fretboard_scallop_depth fretboard_scallop_land",
         {"fretboard_scalloped": (True,)},

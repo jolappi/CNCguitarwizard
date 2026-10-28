@@ -52,6 +52,28 @@ their notes. In the FreeCAD model the strips are their own object,
 `FretboardBinding`: two solids from the nut to the board's end, as tall
 as the board's edge, outside it.
 
+## One piece with the neck
+
+`Prototype001Parameters.fretboard_one_piece` makes a one-piece (maple)
+neck: no fretboard of its own, the board cut from the neck's own wood. The
+board's geometry is the same — its `FretboardSurface`, outline, radius,
+fret slots and markers stand just where a glued board's would, on the
+neck's glue face, so the nut and everything over the board are unchanged
+— only it is one piece with the neck: FreeCAD fuses the finished board
+into the neck (`Neck (one piece with its fretboard)`, no `Fretboard`
+object or part), the previews draw it in the neck's wood, and it is
+machined into the neck's own blank (see
+[Neck and fretboard G-code](../cam/02_neck_and_fretboard_gcode.md#one-piece-neck)).
+The neck's top is then its playing surface, so the truss rod always goes
+in from the back, under a walnut strip
+(`Prototype001Parameters.truss_rod_from_back`, whatever `truss_rod_install`
+says; see [Truss rod](08_truss_rod.md#vintage-rod-laid-in-from-the-back)),
+with what that rod asks: a flat headstock, the heel adjustment, a bolt-on
+or set neck. A one-piece neck has no board of its own to bind
+(`fretboard_binding_width` must be 0) and no glue face to lay carbon rods
+into (`neck_carbon_rods` off); the web form hides those settings and
+`truss_rod_install` while it is on.
+
 ## Position markers
 
 `InlayLayout` (`Prototype001Parameters.inlay_style`, `inlay_depth` 2 mm)

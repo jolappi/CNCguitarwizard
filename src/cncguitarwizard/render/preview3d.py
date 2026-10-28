@@ -154,14 +154,17 @@ def preview_parts(
         The parts, each a closed mesh.
     """
     tilt = _Tilt(*geometry.neck_tilt)
-    board = geometry.fretboard_surface.mesh.rows
+    rows = geometry.fretboard_surface.mesh.rows
+    board = tilt.piece(_rows_piece([_down_to_glue(row) for row in rows]))
     body = _body_pieces(geometry.body, spacing)
+    neck = tilt.piece(_rows_piece(neck_rows))
     parts = [
         _part("Body", body[:1]),
-        _part("Neck", [tilt.piece(_rows_piece(neck_rows))]),
-        _part(
-            "Fretboard",
-            [tilt.piece(_rows_piece([_down_to_glue(row) for row in board]))],
+        # A one-piece neck's board is the neck's own wood.
+        *(
+            (_part("Neck", [neck, board]),)
+            if geometry.fretboard_one_piece
+            else (_part("Neck", [neck]), _part("Fretboard", [board]))
         ),
     ]
     if len(body) > 1:

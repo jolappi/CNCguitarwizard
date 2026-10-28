@@ -23,7 +23,8 @@ MODEL_TOLERANCE = 0.01
 """How far, in mm, a measured size may lie from the expected one."""
 
 NECK_PARTS = ("NeckBack", "Fretboard")
-"""The parts every model holds, by their FreeCAD names."""
+"""The parts every model holds, by their FreeCAD names (a one-piece neck's
+board fused into its neck)."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -143,7 +144,9 @@ def model_check(
         matches it, the spreadsheet is in it and, for a neck in a pocket
         (bolt-on or set), the body's length, width and depth.
     """
-    wanted = NECK_PARTS if parameters.neck_runs_through else (*NECK_PARTS, "Body")
+    # A one-piece neck's board is the neck's own wood: no part of its own.
+    neck = ("NeckBack",) if parameters.fretboard_one_piece else NECK_PARTS
+    wanted = neck if parameters.neck_runs_through else (*neck, "Body")
     if parameters.cap_thickness > 0.0:
         # The core is the Body; its separate top a part of its own.
         wanted = (*wanted, "Top")

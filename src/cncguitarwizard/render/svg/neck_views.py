@@ -136,14 +136,22 @@ def _board_top(geometry: Prototype001Geometry, x: float, y: float = 0.0) -> floa
     return middle.z - (scallops.depth_at(x, y) if scallops is not None else 0.0)
 
 
+def _board_style(geometry: Prototype001Geometry) -> str:
+    """Return how the board is drawn: dark, or in the neck's own wood on a
+    one-piece neck."""
+    return WOOD if geometry.fretboard_one_piece else BOARD
+
+
 def _section(
     view: _View,
     row: Sequence[Point3D],
     board: Sequence[Point3D] | None,
     title: str,
+    style: str = BOARD,
 ) -> list[str]:
     """A section across the neck: its back (``row``, below the glue face)
-    and the board on it."""
+    and the board on it, drawn in ``style`` (a one-piece neck's in its
+    wood's)."""
     parts = [
         view.polygon(
             [(p.y, p.z) for p in row] + [(row[-1].y, 0.0), (row[0].y, 0.0)],
@@ -155,7 +163,7 @@ def _section(
         parts.append(
             view.polygon(
                 [(p.y, p.z) for p in board] + [(board[-1].y, 0.0), (board[0].y, 0.0)],
-                BOARD,
+                style,
                 f"{title}: the fretboard",
             )
         )
@@ -240,7 +248,9 @@ def render_neck_svg(
     parts.append(plan.polygon(_plan(headstock), WOOD, "The headstock"))
     parts.append(plan.polygon(_plan(outline), WOOD, "The neck"))
     parts.append(
-        plan.polygon(_plan(_fretboard_polygon(geometry)), BOARD, "The fretboard")
+        plan.polygon(
+            _plan(_fretboard_polygon(geometry)), _board_style(geometry), "The fretboard"
+        )
     )
     for slot in geometry.fret_layout.slots:
         parts.append(
@@ -312,7 +322,7 @@ def render_neck_svg(
     parts.append(
         side.polygon(
             tops + [(tops[-1][0], 0.0), (tops[0][0], 0.0)],
-            BOARD,
+            _board_style(geometry),
             "The fretboard from the side",
         )
     )
@@ -349,7 +359,9 @@ def render_neck_svg(
                 top, f"At fret {fret}: {width:.1f} wide, {depth:.1f} deep", index * half
             )
         )
-        section_parts += _section(view, row, board, f"Fret {fret}")
+        section_parts += _section(
+            view, row, board, f"Fret {fret}", _board_style(geometry)
+        )
         heights.append(view.height)
     parts += section_parts
     top += 10.0 + max(heights)
@@ -395,7 +407,7 @@ def render_fretboard_svg(
                 "The binding",
             )
         )
-    parts.append(plan.polygon(_plan(board), BOARD, "The fretboard"))
+    parts.append(plan.polygon(_plan(board), _board_style(geometry), "The fretboard"))
     if scallops is not None:
         half_width = surface.half_width_at
 
@@ -460,7 +472,9 @@ def render_fretboard_svg(
     side = _View(top + 10.0, x_range, (0.0, v_high), SIDE_EXAGGERATION)
     parts.append(
         side.polygon(
-            tops + [(end, 0.0), (0.0, 0.0)], BOARD, "The fretboard from the side"
+            tops + [(end, 0.0), (0.0, 0.0)],
+            _board_style(geometry),
+            "The fretboard from the side",
         )
     )
     depth = geometry.fret_slot_depth
@@ -488,7 +502,7 @@ def render_fretboard_svg(
     parts.append(
         view.polygon(
             [(p.y, p.z) for p in row] + [(row[-1].y, 0.0), (row[0].y, 0.0)],
-            BOARD,
+            _board_style(geometry),
             "The fretboard at fret 12",
         )
     )

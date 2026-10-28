@@ -647,6 +647,9 @@ class Prototype001Geometry:
     volute: Volute | None = None
     """The volute carved into the headstock's back behind the nut, or
     ``None``."""
+    fretboard_one_piece: bool = False
+    """Whether the fretboard is cut from the neck's own wood (a one-piece
+    neck): no board glued on."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -963,6 +966,14 @@ class Prototype001Parameters:
     heel_thickness: float = 20.0
     fretboard_radius: float = 430.0
     fretboard_thickness: float = 6.0
+    # fretboard_one_piece: the fretboard cut from the neck's own wood, a
+    # one-piece (maple) neck: no board glued on. Its playing surface, fret
+    # slots and markers are cut into the neck's top, the headstock face
+    # and the heel round it milled down to where a board would be glued,
+    # so it stands as a glued one would. Its truss rod can only go in from
+    # the back (truss_rod_install is then "back", whatever it is set to),
+    # and no binding is glued along it.
+    fretboard_one_piece: bool = False
     # Binding along the fretboard's long edges (0 = none): the board is
     # cut fretboard_binding_width narrower each side and strips that thick
     # are glued on, so board and binding together keep nut_width and
@@ -3392,7 +3403,7 @@ class Prototype001Parameters:
         on a standard rod laid in from the top (a vintage rod's nut is
         plain).
         """
-        if self.truss_rod_install == "back":
+        if self.truss_rod_from_back:
             return self.truss_rod_spoke_wheel == "yes"
         if self.truss_rod_spoke_wheel == "auto":
             return (
@@ -3400,6 +3411,13 @@ class Prototype001Parameters:
                 and self.truss_rod_profile == "standard"
             )
         return self.truss_rod_spoke_wheel == "yes"
+
+    @property
+    def truss_rod_from_back(self) -> bool:
+        """Return whether the truss rod is laid in from the neck's back:
+        ``truss_rod_install`` "back", or always on a one-piece neck, whose
+        top is its playing surface (``fretboard_one_piece``)."""
+        return self.truss_rod_install == "back" or self.fretboard_one_piece
 
     def _truss_rod_key_notch(self) -> bool:
         """Whether a headstock adjuster is reached through a key notch.
@@ -3416,10 +3434,11 @@ class Prototype001Parameters:
     def truss_rod(self, outline: NeckOutline) -> TrussRodChannel:
         """Return the truss-rod channel with its adjusting nut's pocket.
 
-        A vintage rod laid in from the back (``truss_rod_install``) gives
-        its plan alone, routed from the back (see ``vintage_truss_rod``).
+        A vintage rod laid in from the back (``truss_rod_from_back``)
+        gives its plan alone, routed from the back (see
+        ``vintage_truss_rod``).
         """
-        if self.truss_rod_install == "back":
+        if self.truss_rod_from_back:
             rod = self.vintage_truss_rod(outline)
             assert rod is not None
             return TrussRodChannel(
@@ -3525,7 +3544,7 @@ class Prototype001Parameters:
 
     def vintage_truss_rod(self, outline: NeckOutline) -> VintageTrussRod | None:
         """Return the vintage truss rod laid in from the neck's back, or
-        ``None`` for one routed from the top (``truss_rod_install``).
+        ``None`` for one routed from the top (``truss_rod_from_back``).
 
         From its anchor at the nut seat's end, where the top starts down
         onto the headstock's face, to the heel end, ``truss_rod_width``
@@ -3539,7 +3558,7 @@ class Prototype001Parameters:
         """
         if self.truss_rod_install not in ("top", "back"):
             raise NeckGeometryError('truss_rod_install must be "top" or "back".')
-        if self.truss_rod_install == "top":
+        if not self.truss_rod_from_back:
             return None
         problem = next(
             (
@@ -3577,9 +3596,12 @@ class Prototype001Parameters:
             None,
         )
         if problem is not None:
-            raise NeckGeometryError(
-                f"A vintage truss rod (truss_rod_install back) {problem}."
+            rod = (
+                "A one-piece neck's truss rod (laid in from the back)"
+                if self.fretboard_one_piece
+                else "A vintage truss rod (truss_rod_install back)"
             )
+            raise NeckGeometryError(f"{rod} {problem}.")
         heel_end = outline.last_fret_position + outline.heel_length
         return VintageTrussRod(
             -self.nut_seat_length(),
@@ -5226,10 +5248,16 @@ class Prototype001Parameters:
             NeckGeometryError: For bars that would leave less than
                 ``CARBON_ROD_FLOOR`` of wood under them, or come within
                 ``CARBON_ROD_WALL`` of the truss rod's route or the neck's
-                sides.
+                sides, or bars in a one-piece neck, which has no glue face
+                to lay them in under its board.
         """
         if not self.neck_carbon_rods:
             return None
+        if self.fretboard_one_piece:
+            raise NeckGeometryError(
+                "Carbon rods are laid in under a glued-on fretboard: a one-piece "
+                "neck has none (turn neck_carbon_rods off)."
+            )
         start = self.neck_carbon_rod_start
         if not math.isfinite(start) or start < 0.0:
             raise NeckGeometryError("neck_carbon_rod_start must not be negative.")
@@ -6127,6 +6155,11 @@ class Prototype001Parameters:
             raise NeckGeometryError(
                 "fretboard_binding_width must lie between 0 and "
                 f"{MAX_FRETBOARD_BINDING:g} mm."
+            )
+        if binding > 0.0 and self.fretboard_one_piece:
+            raise NeckGeometryError(
+                "A one-piece neck has no fretboard of its own to bind: set "
+                "fretboard_binding_width to 0."
             )
         return FretboardSurface(
             self.centre_scale,
@@ -7918,6 +7951,7 @@ class Prototype001Parameters:
             ),
             fretboard_scallops=scallops,
             volute=self.volute(outline),
+            fretboard_one_piece=self.fretboard_one_piece,
         )
 
     def volute(self, outline: NeckOutline) -> Volute | None:

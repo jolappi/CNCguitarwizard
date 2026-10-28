@@ -120,6 +120,30 @@ millimetre proud), let them cure and plane them flush with the blank's
 back; the back's programs carve them with it, the blank back on the same
 dowels.
 
+### One-piece neck
+
+With `fretboard_one_piece` the board is cut into the neck's own blank, and
+there are no `Fretboard_` programs (the inlay pieces and the nut-slot jig
+stay). The blank reaches the fretboard's blank (`fretboard_blank_thickness`,
+7 mm) above the neck's glue face — 25.6 mm for a Stratocaster's 18.6 mm
+neck — and the index pins and the outline go through all of it. Right
+after `Neck_index_pins` come the fretboard's own programs, on the neck's
+dowels and work zero, Z zero on the blank's top: `Neck_fretboard_radius`,
+`Neck_fretboard_inlays`, `Neck_fretboard_slots` (and
+`Neck_fretboard_scallops` on a scalloped board), each just as the board's
+own would be (`plan_fretboard_machining` with the neck's `origin`). Then
+`Neck_top`, Z zero still on the blank's untouched top beside the board:
+first what the board's outline program cuts at the nut (a locking nut's
+shelf, a slotted nut's slope), then everything round the board milled
+7 mm down to the glue face — the nut's seat, the headstock's face and its
+root where it widens past the board, the heel past the board's end — in
+one pocket round the neck's outline with the board left standing as an
+island (the waste beside the neck, where the board takes up its whole
+width, left whole), then the headstock's face and tuner marks as usual,
+7 mm deeper. The truss rod goes in from the back (`Neck_back_truss_rod`,
+as above), and the back's programs are those of the glued neck, Z zero on
+the blank's back.
+
 ### Carbon fibre reinforcement
 
 With `neck_carbon_rods` (see [Truss rod](../geometry/08_truss_rod.md#carbon-fibre-reinforcement))

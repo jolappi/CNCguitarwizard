@@ -72,7 +72,12 @@ def render_plan_view_svg(
         )
 
     wood = 'fill="#f1e4c8" stroke="#6b4a1f" stroke-width="0.8"'
-    fretboard = 'fill="#3b2a1a" stroke="#1f150c" stroke-width="0.5"'
+    fretboard = (
+        # A one-piece neck's board is the neck's own wood.
+        'fill="#f1e4c8" stroke="#6b4a1f" stroke-width="0.5"'
+        if geometry.fretboard_one_piece
+        else 'fill="#3b2a1a" stroke="#1f150c" stroke-width="0.5"'
+    )
     pocket = 'fill="#f2c4b3" fill-opacity="0.85" stroke="#7a3a1a" stroke-width="0.5"'
     rear = (
         'fill="#c9b7e6" fill-opacity="0.45" stroke="#5a3a8a" stroke-width="0.6" '

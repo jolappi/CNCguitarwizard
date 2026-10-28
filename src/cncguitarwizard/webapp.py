@@ -319,6 +319,7 @@ _BASIC_FIELDS: frozenset[str] = frozenset(
         "nut_width",
         "fretboard_radius",
         "fretboard_thickness",
+        "fretboard_one_piece",
         "fretboard_binding_width",
         "fret_slot_end_inset",
         "fretboard_scalloped",

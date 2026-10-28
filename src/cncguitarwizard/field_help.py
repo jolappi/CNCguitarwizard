@@ -176,6 +176,12 @@ FIELD_HELP: dict[str, str] = {
         "The fretboard's thickness at its centre, in mm; it is cut from its "
         "own blank and glued onto the neck."
     ),
+    "fretboard_one_piece": (
+        "No fretboard of its own: the playing surface, the fret slots and "
+        "the markers are cut into the neck's top, a one-piece (maple) neck. "
+        "Its truss rod then always goes in from the back, under a walnut "
+        "strip; the headstock is flat and the rod adjusted at the heel."
+    ),
     "fretboard_binding_width": (
         "Binding strips along the fretboard's long edges, this thick in mm "
         "(0: none); the board is cut narrower by as much, so board and "

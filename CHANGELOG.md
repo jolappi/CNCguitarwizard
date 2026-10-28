@@ -182,6 +182,20 @@
 
 ### Added
 
+- A one-piece neck (`fretboard_one_piece`, *Fretboard one piece*): no
+  fretboard of its own, its playing surface, fret slots and markers cut
+  into the neck's top, so a maple neck comes from one blank. The board
+  stands as a glued one would, the nut and everything on it unchanged;
+  the truss rod always goes in from the back, under a walnut strip, the
+  neck's top being its playing surface (`truss_rod_from_back`, whatever
+  `truss_rod_install` says). The neck's blank is the fretboard's blank
+  thicker: the board's own programs are cut into it first, on the neck's
+  dowels (`Neck_fretboard_radius`, `_inlays`, `_slots`), then `Neck_top`
+  mills everything round the board down to the glue face; there are no
+  `Fretboard_` programs. FreeCAD fuses the board into the neck, one solid,
+  and the previews draw it in the neck's wood. Binding and carbon rods,
+  which need a board of its own, are refused and hidden with it.
+
 - The Fender vintage six-screw tremolo (`VintageTremoloSpec`, *Fender
   vintage tremolo*), a Stratocaster's, set decked: flat on the top, it only
   dives. Six pivot screw pilots 2-7/32 in across, 25-1/4 in from the nut;

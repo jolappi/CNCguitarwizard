@@ -205,7 +205,9 @@ walls cross the lofted neck top.
 `truss_rod_install="back"` lays the rod in the vintage Fender way: from
 the neck's back, before the back is carved, under a walnut strip (the
 "skunk stripe") and a walnut teardrop plug, instead of from the top under
-the fretboard (`"top"`, the default). `geometry.neck.VintageTrussRod`
+the fretboard (`"top"`, the default). A one-piece neck
+(`fretboard_one_piece`), whose top is its playing surface, always lays it
+in so (`truss_rod_from_back`), whatever `truss_rod_install` says. `geometry.neck.VintageTrussRod`
 holds it:
 
 | Part | Size |

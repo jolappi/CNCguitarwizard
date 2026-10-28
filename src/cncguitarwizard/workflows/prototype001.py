@@ -249,6 +249,9 @@ class Prototype001Build:
                     neck,
                     # A neck-through block's features are the body's.
                     self.machining,
+                    # A one-piece neck's board is cut into it, as the
+                    # fretboard's would be.
+                    self.fretboard_machining.with_form_settings(self.machining),
                 ),
             )
         )
@@ -258,9 +261,11 @@ class Prototype001Build:
         # The machining form's cutters cut it: the flat end mill, the ball
         # nose, the fret-slot and inlay cutters.
         fretboard = self.fretboard_machining.with_form_settings(self.machining)
-        self._plans.append(
-            ("Fretboard", plan_fretboard_machining(self.geometry, fretboard))
-        )
+        # A one-piece neck's board is the neck's (Neck_fretboard_...).
+        if not self.geometry.fretboard_one_piece:
+            self._plans.append(
+                ("Fretboard", plan_fretboard_machining(self.geometry, fretboard))
+            )
         # The marker pieces, cut from sheet to fit the pockets (none for dots).
         inlays = plan_inlay_machining(self.geometry.inlay_layout, fretboard)
         if inlays is not None:
