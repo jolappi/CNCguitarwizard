@@ -59,9 +59,14 @@ class Setup:
         return sum(path.rapid_length() for path in self.toolpaths)
 
     def estimated_minutes(self, parameters: MachiningParameters) -> float:
-        """Return a rough run time from path lengths and nominal feeds."""
+        """Return a rough run time from path lengths and nominal feeds.
+
+        With a Z lift speed, the rapids straight up and down are timed at
+        it, as the writer feeds them.
+        """
         parameters = self.tool or parameters
         cutting = 0.0
+        lifting = 0.0
         for path in self.toolpaths:
             previous: Move | None = None
             for move in path.moves:
@@ -72,8 +77,18 @@ class Setup:
                         + (move.z - previous.z) ** 2
                     ) ** 0.5
                     cutting += distance / move.feed
+                elif (
+                    previous is not None
+                    and move.rapid
+                    and parameters.z_lift_rate > 0.0
+                    and (move.x, move.y) == (previous.x, previous.y)
+                ):
+                    lifting += abs(move.z - previous.z)
                 previous = move
-        return cutting + self.rapid_length() / parameters.rapid_rate
+        rapids = (self.rapid_length() - lifting) / parameters.rapid_rate
+        if lifting > 0.0:
+            rapids += lifting / parameters.z_lift_rate
+        return cutting + rapids
 
 
 @dataclass(frozen=True, slots=True)
@@ -107,10 +122,14 @@ class GCodeWriter:
         post_processor: The dialect (see ``MachiningParameters``).
         spindle_dwell: Seconds to wait after the spindle starts; ``0``
             for no dwell.
+        z_lift_rate: The feed every Z move outside the cut is written at
+            (a lift, a move back down to just above the work), as ``G1``;
+            ``0`` for rapids (``G0``).
     """
 
     post_processor: PostProcessor = "grbl"
     spindle_dwell: float = 0.0
+    z_lift_rate: float = 0.0
 
     @property
     def extension(self) -> str:
@@ -120,7 +139,11 @@ class GCodeWriter:
     @classmethod
     def for_parameters(cls, parameters: MachiningParameters) -> GCodeWriter:
         """Return the writer the machining parameters ask for."""
-        return cls(parameters.post_processor, parameters.spindle_dwell)
+        return cls(
+            parameters.post_processor,
+            parameters.spindle_dwell,
+            parameters.z_lift_rate,
+        )
 
     def render(self, setup: Setup, parameters: MachiningParameters) -> str:
         """Return the complete program for one setup.
@@ -146,6 +169,11 @@ class GCodeWriter:
                 f"S{parameters.spindle_speed:.0f}, F{parameters.feed_rate:.0f}, "
                 f"plunge F{parameters.plunge_rate:.0f}, "
                 f"step-down {parameters.step_down:.3f} mm"
+                + (
+                    f", Z lifts F{self.z_lift_rate:.0f}"
+                    if self.z_lift_rate > 0.0
+                    else ""
+                )
             ),
             note(
                 f"Work zero: {setup.work_zero}"
@@ -155,7 +183,8 @@ class GCodeWriter:
         ]
         lines.extend(note(text) for text in setup.notes)
         kosy = dialect == "kosy"
-        if kosy and max(parameters.feed_rate, parameters.plunge_rate) > KOSY_MAX_FEED:
+        feeds = (parameters.feed_rate, parameters.plunge_rate, self.z_lift_rate)
+        if kosy and max(feeds) > KOSY_MAX_FEED:
             lines.append(
                 note(f"Feeds over {KOSY_MAX_FEED:g} mm/min are cut at nccad's F200")
             )
@@ -172,10 +201,16 @@ class GCodeWriter:
         def number(value: float) -> str:
             return f"{value:.{decimals}f}"
 
-        safe = number(parameters.safe_height)
         origin = f"G0 X{number(0.0)} Y{number(0.0)}"
+        state = _WordState(
+            initial_z=parameters.safe_height,
+            decimals=decimals,
+            feed_scale=1.0 / 6.0 if kosy else 1.0,
+            max_feed=KOSY_MAX_FEED / 6.0 if kosy else None,
+            z_lift_feed=self.z_lift_rate or None,
+        )
         lines += [
-            f"G0 Z{safe}",
+            state.lift(parameters.safe_height),
             note(f"Start over {zero} - check the work zero here")
             if setup.work_zero is None
             else note("Start over the work zero - check it here"),
@@ -196,12 +231,6 @@ class GCodeWriter:
             lines.append(f"M3 S{speed}")
         if self.spindle_dwell > 0.0:
             lines.append(self._dwell())
-        state = _WordState(
-            initial_z=parameters.safe_height,
-            decimals=decimals,
-            feed_scale=1.0 / 6.0 if kosy else 1.0,
-            max_feed=KOSY_MAX_FEED / 6.0 if kosy else None,
-        )
         for path in setup.toolpaths:
             lines.append(note(f"-- {path.name} --"))
             for move in path.moves:
@@ -210,7 +239,7 @@ class GCodeWriter:
                     lines.append(rendered)
         lines += [
             "M10 O6.0" if kosy else "M5",
-            f"G0 Z{safe}",
+            state.lift(parameters.safe_height),
             note("Return over index pin 1")
             if setup.work_zero is None
             else note("Return over the work zero"),
@@ -287,10 +316,12 @@ class _WordState:
         decimals: int = 3,
         feed_scale: float = 1.0,
         max_feed: float | None = None,
+        z_lift_feed: float | None = None,
     ) -> None:
         self._decimals = decimals
         self._feed_scale = feed_scale
         self._max_feed = max_feed
+        self._z_lift_feed = z_lift_feed
         # The program starts parked over the work origin at the safe height.
         self._x: str | None = self._number(0.0)
         self._y: str | None = self._number(0.0)
@@ -300,10 +331,22 @@ class _WordState:
     def _number(self, value: float) -> str:
         return f"{value:.{self._decimals}f}"
 
+    def lift(self, z: float) -> str:
+        """Return a move straight to height ``z`` outside the cut: a rapid,
+        or with a lift feed a feed move at it."""
+        self._z = self._number(z)
+        if self._z_lift_feed is None:
+            return f"G0 Z{self._z}"
+        return f"G1 Z{self._z} {self._feed_word(self._z_lift_feed)}".rstrip()
+
     def render(self, move: Move) -> str | None:
         """Return the move's line, or ``None`` if it changes nothing."""
-        words = ["G0" if move.rapid else "G1"]
         x, y, z = (self._number(value) for value in (move.x, move.y, move.z))
+        # A rapid straight up or down, outside the cut: at the lift feed.
+        straight = (x, y) == (self._x, self._y)
+        if move.rapid and straight and self._z_lift_feed is not None:
+            return None if z == self._z else self.lift(move.z)
+        words = ["G0" if move.rapid else "G1"]
         if x != self._x:
             words.append(f"X{x}")
             self._x = x
@@ -314,16 +357,24 @@ class _WordState:
             words.append(f"Z{z}")
             self._z = z
         if not move.rapid and move.feed is not None:
-            value = move.feed * self._feed_scale
-            if self._max_feed is not None:
-                value = min(value, self._max_feed)
-            feed = f"{value:.0f}" if self._feed_scale == 1.0 else f"{value:.1f}"
-            if feed != self._feed:
-                words.append(f"F{feed}")
-                self._feed = feed
+            feed = self._feed_word(move.feed)
+            if feed:
+                words.append(feed)
         if len(words) == 1:
             return None
         return " ".join(words)
+
+    def _feed_word(self, feed: float) -> str:
+        """Return the ``F`` word for ``feed``, or nothing when it is the
+        feed already in force."""
+        value = feed * self._feed_scale
+        if self._max_feed is not None:
+            value = min(value, self._max_feed)
+        text = f"{value:.0f}" if self._feed_scale == 1.0 else f"{value:.1f}"
+        if text == self._feed:
+            return ""
+        self._feed = text
+        return f"F{text}"
 
 
 def _comment(text: str) -> str:

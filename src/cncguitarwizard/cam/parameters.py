@@ -119,6 +119,12 @@ class MachiningParameters:
             ``.KNC`` programs).
         spindle_dwell: Seconds to wait after starting the spindle, for a
             spindle that needs time to reach speed; ``0`` for none.
+        z_lift_rate: How fast the cutter lifts and comes back down above
+            the work, in mm/min: every Z move outside the cut written as a
+            feed move at that speed (``G1``), so the Z axis is never driven
+            at the machine's top speed. A heavy spindle's Z motor that
+            stalls lifting loses steps, and every later cut goes deeper.
+            ``0`` (the default): rapids (``G0``), at the machine's speed.
         combine_programs: Join a part's programs that run one after
             another with the same tool, fixture and work zero into one
             program (``Body_back`` and ``Body_back_controls`` become
@@ -238,6 +244,7 @@ class MachiningParameters:
     raster_link_spacing: float = 1.0
     post_processor: PostProcessor = "grbl"
     spindle_dwell: float = 0.0
+    z_lift_rate: float = 0.0
     combine_programs: bool = False
     machine_x_travel: float | None = None
     machine_y_travel: float | None = None
@@ -315,6 +322,7 @@ class MachiningParameters:
             "profile_overlap": self.profile_overlap,
             "index_pin_wall": self.index_pin_wall,
             "spindle_dwell": self.spindle_dwell,
+            "z_lift_rate": self.z_lift_rate,
             "carve_tool_diameter": self.carve_tool_diameter,
             "carve_flat_tool_diameter": self.carve_flat_tool_diameter,
             "small_hole_step_down": self.small_hole_step_down,

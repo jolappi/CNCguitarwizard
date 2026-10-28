@@ -242,6 +242,18 @@ units are those of that setup, so run the first program in nccad's own
 simulation. KinetiC-NC (CNC-STEP)
 reads the GRBL dialect as it is.
 
+`z_lift_rate` (mm/min, 0 by default) slows the cutter's moves straight up
+and down outside the cut: every lift to the safe height, every move back
+down to just above the work and the program's first and last move to the
+safe height are written as `G1 Z… F…` at that feed instead of `G0`, so the
+Z axis never runs at the machine's top speed. A Z motor too weak for a
+heavy spindle at that speed stalls lifting and loses steps without a
+word, and every cut after it goes that much deeper: a pocket routed
+−22 mm comes out −30 mm. The moves across at the safe height stay rapids,
+and the time estimate counts the lifts at their feed. Set it to what the
+Z axis lifts the spindle reliably at (500–1000 mm/min on a hobby machine),
+or lower the machine's own Z top speed (GRBL `$112`, `$122`) instead.
+
 ## Programs run as one
 
 Each part's setups are written one program each, so any of them can be

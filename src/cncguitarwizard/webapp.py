@@ -380,6 +380,7 @@ _BASIC_FIELDS: frozenset[str] = frozenset(
         "tool_tip",
         "post_processor",
         "spindle_dwell",
+        "z_lift_rate",
         "combine_programs",
         "machine_x_travel",
         "machine_y_travel",

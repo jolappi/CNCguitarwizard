@@ -430,6 +430,7 @@ NO_PICTURE = frozenset(
         "raster_link_spacing",
         "post_processor",
         "spindle_dwell",
+        "z_lift_rate",
         "combine_programs",
         "machine_x_travel",
         "machine_y_travel",

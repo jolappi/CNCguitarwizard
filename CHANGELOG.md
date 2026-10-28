@@ -182,6 +182,15 @@
 
 ### Added
 
+- *Z lift speed* (`z_lift_rate`, mm/min): every move straight up or down
+  outside the cut (the lifts to the safe height, the moves back down to
+  just above the work) written as a feed move at it, `G1 Z… F…`, not a
+  rapid, so a Z axis that stalls lifting a heavy spindle at its top speed
+  no longer loses steps and cuts every later pass deeper (a bridge
+  pickup's −22 mm floor came out −30 mm). 0, the default, keeps rapids.
+  The tool line says it, the time estimate counts it, and KOSY scales it
+  like every feed.
+
 - A body glued up from a core and a separate top (`body_cap_thickness`):
   the Les Paul style's 5/8 in maple cap on its mahogany, any body's too,
   set beside the body editor (*Design › Body*) as in the settings, with

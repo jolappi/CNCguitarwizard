@@ -235,6 +235,84 @@ def test_the_spindle_dwell_is_written_in_each_dialects_units() -> None:
         assert lines[spindle + 1] == dwell, dialect
 
 
+def make_two_pocket_setup() -> Setup:
+    builder = PathBuilder("Two", safe_height=5.0, feed_rate=1000.0, plunge_rate=300.0)
+    builder.rapid_to(0.0, 0.0)
+    builder.plunge_to(-2.0)
+    builder.cut_to(10.0, 0.0)
+    builder.rapid_to(20.0, 0.0)
+    builder.rapid_down_to(-2.0)
+    builder.plunge_to(-4.0)
+    builder.cut_to(30.0, 0.0)
+    return Setup("Two", "Two pockets", (builder.build(),))
+
+
+def test_a_z_lift_speed_feeds_every_move_straight_up_or_down() -> None:
+    parameters = MachiningParameters(z_lift_rate=600.0)
+    writer = GCodeWriter.for_parameters(parameters)
+    lines = writer.render(make_two_pocket_setup(), parameters).splitlines()
+    body = lines[lines.index("(-- Two --)") + 1 : lines.index("M5")]
+
+    assert lines[3] == (
+        "(Tool: 6.000 mm end mill, S10000, F1000, plunge F300, "
+        "step-down 3.000 mm, Z lifts F600)"
+    )
+    # The program's first move up to the safe height is fed too.
+    assert lines[lines.index("G0 X0.000 Y0.000") - 2] == "G1 Z5.000 F600"
+    assert body == [
+        "G1 Z-2.000 F300",
+        "G1 X10.000 F1000",
+        "G1 Z5.000 F600",
+        # Only the move across at the safe height is still a rapid.
+        "G0 X20.000",
+        "G1 Z-1.000",
+        "G1 Z-4.000 F300",
+        "G1 X30.000 F1000",
+        "G1 Z5.000 F600",
+    ]
+    assert lines[lines.index("M5") + 1] == "G1 Z5.000"
+    assert not any(line.startswith("G0 Z") for line in lines)
+
+
+def test_without_a_z_lift_speed_the_lifts_are_rapids() -> None:
+    parameters = MachiningParameters()
+    lines = GRBLWriter().render(make_two_pocket_setup(), parameters).splitlines()
+
+    assert [line for line in lines if line.startswith("G0 Z")] == [
+        "G0 Z5.000",
+        "G0 Z5.000",
+        "G0 Z-1.000",
+        "G0 Z5.000",
+        "G0 Z5.000",
+    ]
+    assert not any("Z lifts" in line for line in lines)
+
+
+def test_kosy_writes_the_z_lift_speed_in_nccads_units() -> None:
+    parameters = MachiningParameters(z_lift_rate=600.0, post_processor="kosy")
+    writer = GCodeWriter.for_parameters(parameters)
+    lines = writer.render(make_two_pocket_setup(), parameters).splitlines()
+
+    assert "G1 Z5.00 F100.0" in lines
+    assert "G1 Z-1.00" in lines
+
+
+def test_the_time_estimate_counts_the_lifts_at_their_speed() -> None:
+    setup = make_two_pocket_setup()
+    rapids = MachiningParameters(rapid_rate=3000.0)
+    lifts = MachiningParameters(rapid_rate=3000.0, z_lift_rate=600.0)
+
+    # 32 mm of rapids: 22 mm of them up and down, 10 mm across.
+    assert setup.rapid_length() == 32.0
+    difference = setup.estimated_minutes(lifts) - setup.estimated_minutes(rapids)
+    assert difference == pytest.approx(22.0 / 600.0 - 22.0 / 3000.0)
+
+
+def test_a_negative_z_lift_speed_is_rejected() -> None:
+    with pytest.raises(ToolpathError, match="z_lift_rate"):
+        MachiningParameters(z_lift_rate=-1.0)
+
+
 def test_an_unknown_post_processor_is_rejected() -> None:
     with pytest.raises(ToolpathError, match="post_processor"):
         MachiningParameters(post_processor="haas")  # type: ignore[arg-type]
