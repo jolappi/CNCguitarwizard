@@ -46,8 +46,9 @@ def test_the_slots_first_then_the_outline_through_the_sheet() -> None:
         assert min(move.z for move in path.moves) == pytest.approx(-3.5)
     assert plan.stock_thickness == 3.0
     (preview,) = plan.preview_outlines
-    assert [(p.x, p.y) for p in preview] == pytest.approx(
-        [(p.x, p.y) for p in _framed(jig, jig.outline)]
+    # Flat: pytest.approx takes no nested sequences.
+    assert [c for p in preview for c in (p.x, p.y)] == pytest.approx(
+        [c for p in _framed(jig, jig.outline) for c in (p.x, p.y)]
     )
 
 

@@ -110,8 +110,11 @@ def test_the_tuner_centres_match_the_built_holes() -> None:
     centres = parameters.tuner_centres()
     holes = parameters.build().tuner_layout.holes
 
-    assert sorted((x, y) for _, x, y in centres) == pytest.approx(
-        sorted((hole.center.x, hole.center.y) for hole in holes)
+    # Flat: pytest.approx takes no nested sequences.
+    given = sorted((x, y) for _, x, y in centres)
+    built = sorted((hole.center.x, hole.center.y) for hole in holes)
+    assert [c for point in given for c in point] == pytest.approx(
+        [c for point in built for c in point]
     )
 
 

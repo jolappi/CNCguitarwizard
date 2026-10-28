@@ -21,9 +21,10 @@ def same_centres(
     second: tuple[tuple[str, float, float], ...],
 ) -> bool:
     """Whether two lists of (side, x, y) hold the same holes, in order."""
+    # Flat: pytest.approx takes no nested sequences.
     return [side for side, _, _ in first] == [side for side, _, _ in second] and [
-        (x, y) for _, x, y in first
-    ] == pytest.approx([(x, y) for _, x, y in second])
+        c for _, x, y in first for c in (x, y)
+    ] == pytest.approx([c for _, x, y in second for c in (x, y)])
 
 
 def points_of(params: Prototype001Parameters) -> list[list[float]]:
@@ -46,8 +47,10 @@ def test_the_styles_own_places_given_back_change_nothing(style: str) -> None:
     assert [hole.side for hole in tuners.holes] == [
         hole.side for hole in style_tuners.holes
     ]
-    assert [(hole.center.x, hole.center.y) for hole in tuners.holes] == pytest.approx(
-        [(hole.center.x, hole.center.y) for hole in style_tuners.holes]
+    assert [c for hole in tuners.holes for c in (hole.center.x, hole.center.y)] == (
+        pytest.approx(
+            [c for hole in style_tuners.holes for c in (hole.center.x, hole.center.y)]
+        )
     )
     for distance in (60.0, 100.0):
         for side in ("bass", "treble"):
@@ -74,7 +77,10 @@ def test_a_3_plus_3_hole_moves_on_its_own_and_the_fitted_edge_follows() -> None:
         fitted.half_width_at(85.0, "treble")
     )
     built = sorted((hole.center.x, hole.center.y) for hole in tuners.holes)
-    assert built == pytest.approx(sorted((x, y) for _, x, y in centres))
+    wanted = sorted((x, y) for _, x, y in centres)
+    assert [c for point in built for c in point] == pytest.approx(
+        [c for point in wanted for c in point]
+    )
 
 
 def test_a_row_hole_moves_along_the_neck() -> None:
