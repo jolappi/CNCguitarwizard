@@ -66,8 +66,11 @@ The neck pocket follows it its clearance out (the arc and the corners'
 radii that much larger, its end still touching the heel's on the
 centre), and the neck bolts keep their end wall to the heel's end beside
 them. In FreeCAD the neck, the fretboard and its binding are cut by a
-prism of what lies past the end, set `HEEL_TRIM_SLACK` (0.02 mm) out so
-its faces cross the neck's rather than touch them.
+prism of what lies past the end, set `HEEL_TRIM_SLACK` (0.02 mm) out past
+the heel's sides and its curve as far in from the neck's end, so its faces
+cross the neck's rather than touch them (a curve out past the end left
+slivers of the loft's flat end by its apex, which a later boolean there
+failed on).
 
 ```python
 from cncguitarwizard.geometry.neck import NeckOutline

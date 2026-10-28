@@ -1800,6 +1800,12 @@
 
 ### Fixed
 
+- A vintage truss rod in a neck with a round heel end (the Stratocaster
+  style's) failed in FreeCAD: its walnut strip came out empty. The round
+  end's trim lay 0.02 mm out past the neck's end, leaving slivers of the
+  loft's flat end beside its apex, on which the strip's boolean failed;
+  its curve now lies as far inside the end, crossing it everywhere.
+
 - A body whose cutaway was deepened at the upper frets was lost in
   FreeCAD ("body outline extrude produced an invalid shape"): two of its
   points drawn 0.09 mm apart at the corner's sharp turn, the Catmull-Rom

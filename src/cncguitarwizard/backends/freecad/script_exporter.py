@@ -1087,10 +1087,13 @@ class FreeCADScriptExporter:
         It is what lies past the end (``heel_end_curve``) and beside the
         heel from where the end begins to round, through the whole neck's
         height; the fretboard and its binding are cut by it too. It lies
-        ``HEEL_TRIM_SLACK`` out past the heel's sides and end, so its faces
-        cross the neck's instead of touching them (where a boolean cut
-        fails). A square end cuts only a board run on to it
-        (``fretboard_to_heel_end``): all past it, the neck left as it is.
+        ``HEEL_TRIM_SLACK`` out past the heel's sides, and its curve as far
+        in from the neck's end, so its faces cross the neck's instead of
+        touching them (where a boolean cut fails): a curve out past the end
+        left slivers of the loft's flat end beside its apex, on which a
+        later boolean there (a vintage truss rod's walnut strip) failed. A
+        square end cuts only a board run on to it (``fretboard_to_heel_end``):
+        all past it, the neck left as it is.
         """
         if outline.heel_end_radius == 0.0:
             if not outline.fretboard_to_heel_end:
@@ -1114,7 +1117,7 @@ class FreeCADScriptExporter:
         end_x = outline.last_fret_position + outline.heel_length
         half = outline.heel_width / 2.0 + HEEL_TRIM_SLACK
         end = heel_end_curve(
-            end_x + HEEL_TRIM_SLACK,
+            end_x - HEEL_TRIM_SLACK,
             half,
             outline.heel_end_radius,
             outline.heel_corner_radius,
@@ -3937,8 +3940,9 @@ class FreeCADScriptExporter:
 
 
 HEEL_TRIM_SLACK = 0.02
-"""How far, in mm, a round heel end's trim lies past the heel's sides and
-end, so a cut is not left to faces that only touch."""
+"""How far, in mm, a round heel end's trim lies past the heel's sides, and
+its curve in from the neck's end, so a cut is not left to faces that only
+touch."""
 
 EDGE_LAYER = 1.0
 """Height of the layers a roundover or contour is modelled in, in mm."""
