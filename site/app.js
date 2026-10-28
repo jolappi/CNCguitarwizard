@@ -7766,41 +7766,78 @@ const tourCursor = document.getElementById("tour-cursor");
 const tourNext = document.getElementById("tour-next");
 const tourSkip = document.getElementById("tour-skip");
 
+// The app layout (desktop.js) shows a part's page at a time, its settings
+// beside its drawing, from its menus; the classic page lists them all.
+const onPages = () => Boolean(window.cncgwLayout);
+
 const TOUR_STEPS = [
   {
     target: () => document.getElementById("instrument-rows"),
     title: "Choose the instrument",
-    text: "A guitar, a 7- or 8-string or a bass, and its name: the files are named after it. " +
+    text: () => "A guitar, a 7- or 8-string or a bass, and its name: the files are named after it. " +
       "Style sets a whole instrument at once — a Stratocaster, a Les Paul, a Jackson RR… — to build as it is " +
-      "or change from there; Easy mode hides the long list of settings.",
+      "or change from there; Easy mode hides the long list of settings." +
+      (onPages() ? " File › New design comes back here." : ""),
   },
   {
     target: () => bodyEditor.svg,
     shown: () => !bodyEditor.panel.classList.contains("hidden"),
     title: "Shape the body",
     text: "Drag a round handle to shape the outline, or a pickup to move it. Start from, above the drawing, " +
-      "gives you another body to begin with.",
+      "gives you another body to begin with; the bridge, the pickups and the controls are in its settings.",
     demo: (signal) => demoBody(signal),
+  },
+  {
+    // The neck's drawing, not its whole page.
+    target: () => document.querySelector("#desk-neck .desk-part-view"),
+    shown: () => Boolean(document.querySelector("#desk-neck .desk-part-view")),
+    title: "The neck and the fretboard",
+    text: "Design › Neck and Design › Fretboard draw them, their settings beside: the neck's joint and its " +
+      "truss rod (from the top under the board, or from the back under a walnut strip), the board's radius " +
+      "and frets, or a fretboard in one piece with the neck.",
   },
   {
     target: () => headstockEditor.svg,
     shown: () => !headstockEditor.panel.classList.contains("hidden"),
     title: "Shape the headstock",
     text: "The same here: drag its handles, and the tuner holes come along; drag a hole to slide it along the " +
-      "edge. The inlays below work the same way.",
+      "edge. The inlays work the same way.",
     demo: (signal) => demoHeadstock(signal),
+  },
+  {
+    // Its view, open (a closed fold shows only its title).
+    target: () => {
+      const model = document.getElementById("quick-model");
+      model.open = true;
+      return document.getElementById("quick-model-view");
+    },
+    title: "See it in 3D",
+    text: () => "A quick 3D model of the whole instrument, drawn here in a second or two and again after each " +
+      "change: drag to turn it, the wheel to zoom. The frets, the tuners, the bridge and strings each take a " +
+      "little longer to draw: tick them above it" + (onPages() ? ", or under Preview." : "."),
   },
   {
     target: () => findSetting,
     title: "Fine-tune, if you like",
-    text: "Every other value is in the list below: find one by its name. The defaults make a playable guitar, " +
-      "so you can leave them as they are.",
+    text: () => (onPages()
+      ? "Every other value is on its part's page or under Settings: find one by its name here (or press /). "
+      : "Every other value is in the list below: find one by its name. ") +
+      "The defaults make a playable guitar, so you can leave them as they are.",
+  },
+  {
+    // The first cutter: its page is a long list of them.
+    target: () => document.querySelector("#desk-cutters .cutter"),
+    shown: () => Boolean(document.querySelector("#desk-cutters .cutter")),
+    title: "Your cutters",
+    text: "Build › Cutters and depths: the cutters your machine has and how deep each may cut a pass. Every " +
+      "program is made for them.",
   },
   {
     target: () => buildButton,
     title: "Build it",
-    text: "Press Build 3D and CNC files: the NC programs for your CNC, the FreeCAD script for the 3D model and " +
-      "plots of every toolpath appear, ready to download.",
+    text: "Press Build 3D and CNC files: the NC programs for your CNC with a plot of every toolpath, the 3D " +
+      "model in STEP, STL, 3MF and more, made here in the browser, and the FreeCAD script for the editable " +
+      "model, ready to download.",
   },
 ];
 
@@ -7837,7 +7874,8 @@ function showTourStep(index) {
   const step = tour.steps[index];
   const last = index === tour.steps.length - 1;
   document.getElementById("tour-title").textContent = step.title;
-  document.getElementById("tour-text").textContent = step.text;
+  document.getElementById("tour-text").textContent =
+    typeof step.text === "function" ? step.text() : step.text;
   document.getElementById("tour-count").textContent = `${index + 1} / ${tour.steps.length}`;
   tourNext.hidden = last;
   tourSkip.textContent = last ? "Close" : "Skip tour";

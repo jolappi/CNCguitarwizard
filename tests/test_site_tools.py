@@ -785,3 +785,32 @@ def test_the_menus_that_do_not_fit_a_phone_fold_under_one() -> None:
     assert "run: () => openMenu(more, items)" in layout
     assert "fit.observe(bar);" in layout and "fit.observe(barBuild);" in layout
     assert "window.innerWidth - pop.offsetWidth - 4" in layout
+
+
+def test_the_tour_goes_through_the_app_as_it_is_now() -> None:
+    script = (ROOT / "site" / "app.js").read_text(encoding="utf-8")
+    page = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
+    layout = (ROOT / "site" / "desktop.js").read_text(encoding="utf-8")
+    start = script.index("const TOUR_STEPS = [")
+    steps = script[start : script.index("const tour = {", start)]
+
+    titles = re.findall(r'title: "([^"]+)"', steps)
+    assert titles == [
+        "Choose the instrument",
+        "Shape the body",
+        "The neck and the fretboard",
+        "Shape the headstock",
+        "See it in 3D",
+        "Fine-tune, if you like",
+        "Your cutters",
+        "Build it",
+    ]
+    # Every part it lights is on the page, or on a page the app layout
+    # makes (the neck's, the cutters'), its step only there.
+    for name in re.findall(r'getElementById\("([\w-]+)"\)', steps):
+        assert f'id="{name}"' in page, name
+    made = set(re.findall(r'querySelector\("#([\w-]+) ', steps))
+    assert made == {"desk-neck", "desk-cutters"}
+    assert '["neck", "Neck"]' in layout and "page.id = `desk-${id}`;" in layout
+    assert 'cuttersPage.id = "desk-cutters";' in layout
+    assert steps.count("shown: () => Boolean(document.querySelector(") == 2
