@@ -78,6 +78,7 @@ def render_plan_view_svg(
         'fill="#c9b7e6" fill-opacity="0.45" stroke="#5a3a8a" stroke-width="0.6" '
         'stroke-dasharray="3,2"'
     )
+    on_back = 'fill="none" stroke="#5a3a8a" stroke-width="0.4" stroke-dasharray="1,2"'
     hole = 'fill="#fff" stroke="#222" stroke-width="0.5"'
     fret = 'stroke="#d9c9a8" stroke-width="0.6"'
     inlay = 'fill="#e8e2d0" stroke="none"'
@@ -235,11 +236,13 @@ def render_plan_view_svg(
     for cavity in body.top_cavities:
         parts.append(path(cavity.outline, pocket, cavity.name))
     for rear_cavity in body.rear_cavities:
+        # A cover screwed onto the back is drawn where it lies, unrouted.
         parts.append(
             path(
                 rear_cavity.cover_recess.outline,
-                rear,
-                f"{rear_cavity.cover_recess.name} (back)",
+                on_back if rear_cavity.cover_on_back else rear,
+                f"{rear_cavity.cover_recess.name} "
+                + ("(on the back)" if rear_cavity.cover_on_back else "(back)"),
             )
         )
         for rear_pocket in rear_cavity.pockets:

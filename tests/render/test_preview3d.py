@@ -4,10 +4,12 @@ made in a second or two, to turn and look at."""
 import base64
 import math
 from collections import Counter
+from dataclasses import replace
 
 import pytest
 
 from cncguitarwizard.backends.freecad import FreeCADScriptExporter
+from cncguitarwizard.geometry.body import HardtailSpec
 from cncguitarwizard.presets import Prototype001Parameters
 from cncguitarwizard.presets.styles import STYLES
 from cncguitarwizard.render.preview3d import (
@@ -171,12 +173,18 @@ def test_the_details_sit_where_the_design_puts_them() -> None:
 
     bridge, strings = detail_parts(geometry, STRAT, "bridge")
     assert (bridge.name, strings.name) == ("Bridge", "Strings")
-    # The strings over the saddles at the scale line, on into the
-    # string-through holes behind them.
-    holes = [h.center_x for h in geometry.body.holes if h.name.startswith("String ")]
+    # The strings over the saddles at the scale line, where its tremolo's
+    # block holds them.
+    reach = max(p[0] for p in points(strings))
+    assert reach == pytest.approx(STRAT.scale_length, abs=0.7)
+    assert max(p[2] for p in points(bridge)) < max(p[2] for p in points(strings))
+    # A hardtail's run on into the string-through holes behind them.
+    hardtail = replace(STRAT, body_bridge=HardtailSpec())
+    through = hardtail.build(wired=False)
+    holes = [h.center_x for h in through.body.holes if h.name.startswith("String ")]
+    _, strings = detail_parts(through, hardtail, "bridge")
     reach = max(p[0] for p in points(strings))
     assert reach == pytest.approx(max(holes), abs=0.7)
-    assert max(p[2] for p in points(bridge)) < max(p[2] for p in points(strings))
     # The body's own details: none for a design without a pickguard.
     default = Prototype001Parameters()
     names = [

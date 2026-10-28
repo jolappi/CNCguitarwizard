@@ -1293,6 +1293,326 @@ class LoProEdgeSpec:
             )
 
 
+VINTAGE_TREMOLO_DRAWN_THICKNESS = 44.45
+"""The body thickness the vintage tremolo's spring cavity depth is set for
+(1.75 in, a Stratocaster's)."""
+
+VINTAGE_TREMOLO_COVER_THICKNESS = 1.5
+"""A stock Strat tremolo cover's thickness, in mm: it lies on the back,
+nothing routed for it."""
+
+
+@dataclass(frozen=True, slots=True)
+class VintageTremoloSpec:
+    """Fender vintage six-screw synchronized tremolo, set flat on the top.
+
+    The Stratocaster's own tremolo: a plate rocking on six screws along its
+    front edge, its block hanging through the body, pulled down by springs
+    in a cavity routed from the back. Set decked — the claw's screws turned
+    in until the plate's back rests on the top — it only dives: the block's
+    foot swings toward the tail, into the block cavity behind the block
+    route; nothing is routed for the plate (a pull-up needs it floating,
+    its back 1/8 in up; the routing is the same).
+
+    The depths and the screw line are StewMac's (*Router Template Set for
+    Traditional Strat Tremolo*, for a 25-1/2 in scale): the pivot screws
+    25-1/4 in from the nut, 1/4 in (6.35 mm) ahead of the scale line; the
+    block route from the top 1-1/8 in deep; from the back a 5/8 in spring
+    cavity, the block cavity routed on to within 3/16 in of the top; the
+    claw's screw holes 7/16 in from the back, drilled with a 7/64 in bit.
+    The outlines are the user's Stratocaster drawing's (stratbody.dxf,
+    R1/4 in corners): the block route 17.45 × 79.375 mm (3-1/8 in across,
+    3/16 in toward the arm, the treble side), 1/2 in behind the screws;
+    the spring cavity 99.3 × 56.4 mm ahead of it and the 1 in block cavity
+    as wide as the route, one outline from the back. The six screws are 2-7/32 in
+    across (Fender's vintage spacing; the drawing has 2.2 in); the plate
+    is a typical one's size. The block hangs nearly to the back (an
+    American Vintage block is 42.5 mm, 1.675 in, tall), so the cover is a
+    stock one screwed onto the back's face (``RearCavity.cover_on_back``),
+    not into a recess. In a body thicker than 1.75 in
+    (``VINTAGE_TREMOLO_DRAWN_THICKNESS``) the spring cavity and the claw's
+    screws are that much deeper, as the block's foot is further from the
+    back. Check every size against the bridge in hand before cutting.
+
+    Args:
+        treble_side: Which side of the centreline carries the treble
+            strings and the tremolo arm: ``"+y"`` for the right-handed
+            Prototype001 body (controls at +Y), ``"-y"`` otherwise.
+        screw_offset: The pivot screws' line relative to the scale line
+            (negative = ahead of it, toward the nut).
+        screw_spacing: Centre distance between neighbouring pivot screws.
+        screw_hole_diameter: Their pilot holes' diameter.
+        screw_hole_depth: Their pilot holes' depth from the top.
+        plate_lead: How far the plate reaches ahead of the screw line.
+        plate_length: The plate's length along the neck.
+        plate_width: The plate's width across the body.
+        block_route_lead: From the screw line to the block route's front.
+        block_route_length: The block route's length along the neck.
+        block_route_width: Its width across the body, and the block
+            cavity's.
+        block_route_treble_shift: Its centre toward the treble side.
+        block_route_depth: Its depth from the top; it opens into the block
+            cavity below.
+        block_cavity_length: The block cavity's length along the neck,
+            from the block route's front: room behind the block for its
+            foot to swing back on a dive.
+        block_cavity_top_wood: The wood left over the block cavity, under
+            the top.
+        spring_cavity_length: The spring cavity's length, ahead of the
+            block cavity.
+        spring_cavity_width: The spring cavity's width, centred.
+        spring_cavity_depth: Its depth from the back, as drawn (before a
+            thicker body deepens it).
+        corner_radius: The routes' corner radius.
+        cover_margin: How far the stock cover reaches past the cavity all
+            round, on the back.
+        claw_screw_spacing: The tremolo claw's two screws apart, about the
+            centreline.
+        claw_screw_height: The screws' height above the back face, as
+            drawn (before a thicker body raises them).
+        claw_screw_diameter: Their pilot holes' diameter.
+        claw_screw_depth: How deep the pilots run into the spring
+            cavity's nut-ward wall, along the neck.
+    """
+
+    kind: Literal["vintage_tremolo"] = "vintage_tremolo"
+    treble_side: Literal["+y", "-y"] = "+y"
+    screw_offset: float = -6.35
+    screw_spacing: float = 11.271
+    screw_hole_diameter: float = 3.0
+    screw_hole_depth: float = 22.0
+    plate_lead: float = 4.0
+    plate_length: float = 42.0
+    plate_width: float = 73.0
+    block_route_lead: float = 12.7
+    block_route_length: float = 17.45
+    block_route_width: float = 79.375
+    block_route_treble_shift: float = 4.7625
+    block_route_depth: float = 28.575
+    block_cavity_length: float = 25.4
+    block_cavity_top_wood: float = 4.7625
+    spring_cavity_length: float = 99.314
+    spring_cavity_width: float = 56.388
+    spring_cavity_depth: float = 15.875
+    corner_radius: float = 6.35
+    cover_margin: float = 8.0
+    claw_screw_spacing: float = 34.0
+    claw_screw_height: float = 11.1125
+    claw_screw_diameter: float = 2.78
+    claw_screw_depth: float = 30.0
+
+    def hardware(self, scale_length: float, body_thickness: float) -> BridgeHardware:
+        _positive(
+            self,
+            "screw_spacing",
+            "screw_hole_diameter",
+            "screw_hole_depth",
+            "plate_lead",
+            "plate_length",
+            "plate_width",
+            "block_route_lead",
+            "block_route_length",
+            "block_route_width",
+            "block_route_depth",
+            "block_cavity_length",
+            "block_cavity_top_wood",
+            "spring_cavity_length",
+            "spring_cavity_width",
+            "spring_cavity_depth",
+            "corner_radius",
+            "cover_margin",
+            "claw_screw_spacing",
+            "claw_screw_height",
+            "claw_screw_diameter",
+            "claw_screw_depth",
+        )
+        if not math.isfinite(self.screw_offset) or not math.isfinite(
+            self.block_route_treble_shift
+        ):
+            raise BodyGeometryError(
+                "Bridge screw_offset and block_route_treble_shift must be finite."
+            )
+        # As routed in this body: a thicker one hangs the block's foot,
+        # and so the springs, further from the back.
+        extra = max(0.0, body_thickness - VINTAGE_TREMOLO_DRAWN_THICKNESS)
+        spring_depth = self.spring_cavity_depth + extra
+        claw_height = self.claw_screw_height + extra
+        self._check_layout(body_thickness, spring_depth, claw_height)
+        sign = 1.0 if self.treble_side == "+y" else -1.0
+        screw_x = scale_length + self.screw_offset
+        route_front = screw_x + self.block_route_lead
+        route_back = route_front + self.block_route_length
+        cavity_back = route_front + self.block_cavity_length
+        spring_front = route_front - self.spring_cavity_length
+        shift = sign * self.block_route_treble_shift
+        low = shift - self.block_route_width / 2.0
+        high = shift + self.block_route_width / 2.0
+        half = self.spring_cavity_width / 2.0
+        radius = self.corner_radius
+
+        holes = tuple(
+            DrilledHole(
+                f"Bridge screw {index + 1} pilot",
+                screw_x,
+                (index - 2.5) * self.screw_spacing,
+                self.screw_hole_diameter,
+                self.screw_hole_depth,
+            )
+            for index in range(6)
+        )
+        block_route = RectangularCavity(
+            "Vintage tremolo block route",
+            (route_front + route_back) / 2.0,
+            shift,
+            self.block_route_length,
+            self.block_route_width,
+            self.block_route_depth,
+            corner_radius=min(radius, self.block_route_length / 2.0),
+        )
+        # From the back the spring cavity and the block cavity are one
+        # outline, the block cavity routed on deeper as a step inside it.
+        block_corners = [
+            Point2D(route_front, low),
+            Point2D(cavity_back, low),
+            Point2D(cavity_back, high),
+            Point2D(route_front, high),
+        ]
+        spring_cavity = RearCavity(
+            TracedCavity(
+                "Vintage tremolo spring cavity",
+                rounded_polygon_points(
+                    [
+                        Point2D(spring_front, -half),
+                        Point2D(route_front, -half),
+                        *block_corners,
+                        Point2D(route_front, half),
+                        Point2D(spring_front, half),
+                    ],
+                    [radius, 0.0, radius, radius, radius, radius, 0.0, radius],
+                ),
+                spring_depth,
+            ),
+            RectangularCavity(
+                "Vintage tremolo cover",
+                (spring_front + cavity_back) / 2.0,
+                (low + high) / 2.0,
+                cavity_back - spring_front + 2.0 * self.cover_margin,
+                high - low + 2.0 * self.cover_margin,
+                VINTAGE_TREMOLO_COVER_THICKNESS,
+                corner_radius=radius + self.cover_margin,
+            ),
+            steps=(
+                TracedCavity(
+                    "Vintage tremolo block cavity",
+                    rounded_polygon_points(block_corners, [radius] * 4),
+                    body_thickness - self.block_cavity_top_wood,
+                ),
+            ),
+            cover_on_back=True,
+        )
+        plate_front = screw_x - self.plate_lead
+        plate_back = plate_front + self.plate_length
+        plate_half = self.plate_width / 2.0
+        claw = _trem_claw_holes(
+            spring_front,
+            claw_height,
+            self.claw_screw_spacing,
+            self.claw_screw_diameter,
+            self.claw_screw_depth,
+            "Vintage tremolo spring cavity",
+        )
+        return BridgeHardware(
+            BridgeMounting(screw_x, pivot_stud_spacing=None, has_sustain_block=False),
+            through_cavities=(block_route,),
+            rear_cavities=(spring_cavity,),
+            holes=holes,
+            notes=(
+                "Fender vintage tremolo: depths and screw line per StewMac's "
+                "Strat tremolo template sheet (the pivot screws 25-1/4 in from "
+                "the nut on a 25-1/2 in scale), outlines per the Stratocaster "
+                "drawing; check them and the plate against the bridge in hand.",
+                "Set it decked, so it only dives: turn the claw's screws in "
+                "until the plate's back rests on the top.",
+                "Screw a stock Strat tremolo cover onto the back over the "
+                "cavity (its holes let the strings through to the block), "
+                "drilling its screws' pilots through it; nothing is routed "
+                "for it.",
+                f"Drill the trem claw's two screws' {self.claw_screw_diameter:g} "
+                "mm pilots by hand into the spring cavity's nut-ward wall, "
+                f"{self.claw_screw_depth:g} mm deep along the neck, "
+                f"{self.claw_screw_spacing:g} mm apart about the centreline and "
+                f"{claw_height:.1f} mm up from the back (modelled: Trem claw screw "
+                "holes; set the bridge's claw_screw_* to the claw's own).",
+            ),
+            footprint=(
+                Point2D(plate_front, -plate_half),
+                Point2D(plate_back, -plate_half),
+                Point2D(plate_back, plate_half),
+                Point2D(plate_front, plate_half),
+            ),
+            side_holes=claw,
+        )
+
+    def _check_layout(
+        self, body_thickness: float, spring_depth: float, claw_height: float
+    ) -> None:
+        """Reject routes that cannot be laid out as drawn in this body."""
+        screw_reach = 2.5 * self.screw_spacing + self.screw_hole_diameter / 2.0
+        if screw_reach > self.plate_width / 2.0 or (
+            self.plate_lead <= self.screw_hole_diameter / 2.0
+        ):
+            raise BodyGeometryError(
+                "The vintage tremolo's six screws must lie on its plate: make "
+                "the plate wider or the screws closer."
+            )
+        if self.block_route_lead <= self.screw_hole_diameter / 2.0:
+            raise BodyGeometryError(
+                "The vintage tremolo's block route must start behind its screws."
+            )
+        if self.block_route_length > self.block_cavity_length:
+            raise BodyGeometryError(
+                "The vintage tremolo's block cavity must be at least as long as "
+                "its block route."
+            )
+        half = self.spring_cavity_width / 2.0
+        shift = self.block_route_treble_shift
+        if self.block_route_width / 2.0 - abs(shift) <= half:
+            raise BodyGeometryError(
+                "The vintage tremolo's block route must be wider than the spring "
+                "cavity on both sides."
+            )
+        if self.block_route_depth >= body_thickness:
+            raise BodyGeometryError(
+                "The vintage tremolo's block route would pass through the body: "
+                "make block_route_depth smaller."
+            )
+        if self.block_route_depth <= self.block_cavity_top_wood:
+            raise BodyGeometryError(
+                "The vintage tremolo's block route would not open into the block "
+                "cavity: leave less block_cavity_top_wood."
+            )
+        if body_thickness - self.block_cavity_top_wood <= spring_depth:
+            raise BodyGeometryError(
+                "The body is too thin for a vintage tremolo: its block cavity "
+                "would be no deeper than the spring cavity."
+            )
+        if self.screw_hole_depth + spring_depth >= body_thickness:
+            raise BodyGeometryError(
+                "The vintage tremolo's screw pilots would break into the spring "
+                "cavity: the body is too thin, or shorten screw_hole_depth."
+            )
+        if self.claw_screw_spacing >= self.spring_cavity_width:
+            raise BodyGeometryError(
+                "The trem claw's screws must lie inside the spring cavity's "
+                "width: make claw_screw_spacing smaller."
+            )
+        if claw_height + self.claw_screw_diameter / 2.0 >= spring_depth:
+            raise BodyGeometryError(
+                "The trem claw's screws must go into the spring cavity's wall: "
+                "make claw_screw_height smaller."
+            )
+
+
 @dataclass(frozen=True, slots=True)
 class TuneOMaticSpec:
     """Tune-o-matic bridge on two posts with a stop-bar tailpiece.
@@ -1692,6 +2012,7 @@ BridgeSpec = (
     KahlerBridgeSpec
     | FloydRoseSpec
     | LoProEdgeSpec
+    | VintageTremoloSpec
     | TuneOMaticSpec
     | HardtailSpec
     | HeadlessBridgeSpec
@@ -1702,6 +2023,7 @@ BRIDGE_KINDS: dict[str, type[Any]] = {
     "kahler_7300": KahlerBridgeSpec,
     "floyd_rose": FloydRoseSpec,
     "lo_pro_edge": LoProEdgeSpec,
+    "vintage_tremolo": VintageTremoloSpec,
     "tune_o_matic": TuneOMaticSpec,
     "hardtail": HardtailSpec,
     "headless": HeadlessBridgeSpec,
@@ -1712,6 +2034,7 @@ BRIDGE_LABELS: dict[str, str] = {
     "kahler_7300": "Kahler 7300 (fixed, flat mount)",
     "floyd_rose": "Floyd Rose (recessed tremolo)",
     "lo_pro_edge": "Ibanez Lo-Pro Edge + Lion's Claw (recessed, as on a JEM777)",
+    "vintage_tremolo": "Fender vintage tremolo (6 screws, springs from the back)",
     "tune_o_matic": "Tune-o-matic + stop bar",
     "hardtail": "Hardtail (string-through or top-load)",
     "headless": "Headless (tuners at the bridge)",
@@ -1725,6 +2048,11 @@ BRIDGE_NOTES: dict[str, str] = {
         'of the coupler housing counter-clockwise with a 1/16" Allen wrench, '
         "by just 1/16 of a turn: that takes a little of its friction off."
     ),
+    "vintage_tremolo": (
+        "Set decked, it only dives: turn the claw's screws in until the "
+        "plate's back rests flat on the top. A stock Strat tremolo cover is "
+        "screwed onto the back; nothing is routed for it."
+    ),
 }
 """A setup note for a bridge kind, shown under it while it is chosen."""
 
@@ -1732,20 +2060,23 @@ BRIDGE_MAX_STRINGS: dict[str, int] = {
     "kahler_7300": 8,
     "floyd_rose": 8,
     "lo_pro_edge": 6,
+    "vintage_tremolo": 6,
     "tune_o_matic": 6,
 }
 """The most strings a bridge kind is drawn for; unlisted kinds take any count.
 
 The Kahler 7300 and the Floyd Rose come for six to eight strings, the
-Lo-Pro Edge (its Lion's Claw a groove per string) and the Tune-o-matic
-spec carry six-string dimensions; the hardtail and the
-single-string bridges make a hole or a unit per string.
+Lo-Pro Edge (its Lion's Claw a groove per string), the vintage tremolo
+(its six screws) and the Tune-o-matic spec carry six-string dimensions;
+the hardtail and the single-string bridges make a hole or a unit per
+string.
 """
 
 BRIDGE_MIN_STRINGS: dict[str, int] = {
     "kahler_7300": 6,
     "floyd_rose": 6,
     "lo_pro_edge": 6,
+    "vintage_tremolo": 6,
 }
 """The fewest strings a bridge kind is made for; unlisted kinds take any."""
 

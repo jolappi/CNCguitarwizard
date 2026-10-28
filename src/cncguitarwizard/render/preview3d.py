@@ -349,7 +349,7 @@ def _body_pieces(body: BodySolid, spacing: float) -> list[_Piece]:
     rear = [
         (pocket.outline, pocket.depth)
         for cavity in body.rear_cavities
-        for pocket in (*cavity.pockets, cavity.cover_recess)
+        for pocket in cavity.routes
     ]
     back_routes = _route_depths(rear, x0, y0, spacing, columns, rows)
     # Each contour asked only within its own region's box (asking is a

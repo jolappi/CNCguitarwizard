@@ -15,7 +15,12 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
 from typing import Any
 
-from ..geometry.body import FloydRoseSpec, HardtailSpec, TuneOMaticSpec
+from ..geometry.body import (
+    FloydRoseSpec,
+    HardtailSpec,
+    TuneOMaticSpec,
+    VintageTremoloSpec,
+)
 from .body_shapes import YOUR_DESIGN_TEMPLATES
 from .prototype001 import (
     BODY_TEMPLATE_VALUES,
@@ -164,7 +169,7 @@ STYLES: dict[str, InstrumentStyle] = {
             "fret_count": 22,
             "body_pickups": "SSS",
             **STRAT_PICKUPS,
-            "body_bridge": HardtailSpec(),
+            "body_bridge": VintageTremoloSpec(),
             "body_controls": "pickguard",
             "body_pickguard": True,
             "body_jack": "oval",

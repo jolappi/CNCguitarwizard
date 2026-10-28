@@ -45,6 +45,7 @@ from ..geometry.body import (
     TracedCavity,
     TracedOutline,
     TuneOMaticSpec,
+    VintageTremoloSpec,
     les_paul_jack_plate,
     mirrored_hardware,
     neck_through,
@@ -4224,11 +4225,10 @@ class Prototype001Parameters:
         # The saddles' line, moved with a tilted neck.
         saddles = self.bridge_scale_line()
         bridge_spec = self.body_bridge
-        if isinstance(bridge_spec, FloydRoseSpec | LoProEdgeSpec) and (
-            self.left_handed
-        ):
-            # The tremolo arm (and the recess's wider side) go with the
-            # treble strings.
+        tremolos = FloydRoseSpec | LoProEdgeSpec | VintageTremoloSpec
+        if isinstance(bridge_spec, tremolos) and self.left_handed:
+            # The tremolo arm (and the recess's or the block route's wider
+            # side) go with the treble strings.
             bridge_spec = replace(
                 bridge_spec,
                 treble_side="-y" if bridge_spec.treble_side == "+y" else "+y",

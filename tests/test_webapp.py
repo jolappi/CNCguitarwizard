@@ -96,6 +96,7 @@ def test_schema_lists_every_parameter_with_a_form_type() -> None:
         "kahler_7300",
         "floyd_rose",
         "lo_pro_edge",
+        "vintage_tremolo",
         "tune_o_matic",
         "hardtail",
         "headless",
@@ -1187,9 +1188,12 @@ def test_the_kahler_7300_carries_a_setup_note_for_the_form() -> None:
     variants = prototype["body_bridge"]["variants"]
     note = variants["kahler_7300"]["note"]
     assert "coupler" in note and '1/16"' in note
-    # The other bridges have none.
+    # A vintage tremolo's says how it is set; the other bridges have none.
+    assert "decked" in variants["vintage_tremolo"]["note"]
     assert all(
-        v["note"] is None for kind, v in variants.items() if kind != "kahler_7300"
+        v["note"] is None
+        for kind, v in variants.items()
+        if kind not in ("kahler_7300", "vintage_tremolo")
     )
     # The form shows it under the chosen kind, small and quiet.
     script = (Path(__file__).resolve().parent.parent / "site" / "app.js").read_text(

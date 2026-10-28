@@ -182,6 +182,20 @@
 
 ### Added
 
+- The Fender vintage six-screw tremolo (`VintageTremoloSpec`, *Fender
+  vintage tremolo*), a Stratocaster's, set decked: flat on the top, it only
+  dives. Six pivot screw pilots 2-7/32 in across, 25-1/4 in from the nut;
+  a block route 1-1/8 in deep from the top, 3/16 in toward the arm; from
+  the back the 5/8 in spring cavity and the 1 in block cavity routed on to
+  3/16 in under the top, room for the block's foot to swing back on a
+  dive; the claw's screw holes 7/16 in up from the back — depths and
+  screw line from StewMac's Strat tremolo template sheet, outlines from
+  the user's Stratocaster drawing. Its block hangs nearly to the back, so
+  the cover is a stock Strat tremolo cover screwed onto the back, as on a
+  vintage Strat, not into a recess: a rear cavity's cover may now sit on
+  the back (`RearCavity.cover_on_back`), nothing routed or cut for it. The
+  Stratocaster style now carries it in place of the hardtail.
+
 - *Z lift speed* (`z_lift_rate`, mm/min): every move straight up or down
   outside the cut (the lifts to the safe height, the moves back down to
   just above the work) written as a feed move at it, `G1 Z… F…`, not a

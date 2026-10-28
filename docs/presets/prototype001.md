@@ -51,7 +51,7 @@ not the makers' own.
 | Style | Instruments | Body / neck | Its own settings |
 | --- | --- | --- | --- |
 | Design by Jone | 6-, 7-, 8-string | Design by Jone / the instrument's | none (the defaults) |
-| Fender Stratocaster | 6-string | Stratocaster / Stratocaster (round heel) | 647.7 mm, 22 frets, SSS, hardtail, controls in the automatic Strat guard, its oval jack plate, Fender plate, its edges rounded over 7/16 in (11.1 mm; the back's stopping short of the neck plate), its template's drawn arm contour and belly cut 10.9 mm deep (as deep as a face is cut with that roundover; the original's 28 mm leave 5/8 in of wood), the heel 18.6 mm deep, dots |
+| Fender Stratocaster | 6-string | Stratocaster / Stratocaster (round heel) | 647.7 mm, 22 frets, SSS, the Fender vintage six-screw tremolo (set decked, its cover on the back), controls in the automatic Strat guard, its oval jack plate, Fender plate, its edges rounded over 7/16 in (11.1 mm; the back's stopping short of the neck plate), its template's drawn arm contour and belly cut 10.9 mm deep (as deep as a face is cut with that roundover; the original's 28 mm leave 5/8 in of wood), the heel 18.6 mm deep, dots |
 | Fender Telecaster | 6-string | Telecaster / Telecaster | 647.7 mm, 22 frets, SS, hardtail, Tele control plate, cup jack, Fender plate, dots |
 | Gibson Les Paul | 6-string | Les Paul / Gibson | 628.65 mm, 22 frets, set neck, HH, Tune-o-matic, Gibson controls, carved top on a 5/8 in maple cap (its wire channels routed under it; chambers with `body_chambers`), trapezoids |
 | Gibson SG | 6-string | SG / Gibson | as the Les Paul, flat top |

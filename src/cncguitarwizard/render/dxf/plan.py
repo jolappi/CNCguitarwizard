@@ -89,9 +89,8 @@ def render_plan_dxf(geometry: Prototype001Geometry) -> str:
         dxf.polyline(cavity.outline, top)
     rear = dxf.layer("BODY_REAR_CAVITIES", 5)
     for rear_cavity in body.rear_cavities:
-        dxf.polyline(rear_cavity.cover_recess.outline, rear)
-        for pocket in rear_cavity.pockets:
-            dxf.polyline(pocket.outline, rear)
+        for route in rear_cavity.routes:
+            dxf.polyline(route.outline, rear)
     if body.neck_plate:
         dxf.polyline(body.neck_plate, dxf.layer("NECK_PLATE", 8))
     if body.epoxy_tray is not None:

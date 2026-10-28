@@ -443,6 +443,9 @@ _BASIC_VARIANT_FIELDS: dict[str, frozenset[str]] = {
     ),
     "floyd_rose": frozenset({"treble_side", "pivot_offset", "pivot_stud_spacing"}),
     "lo_pro_edge": frozenset({"treble_side", "pivot_offset"}),
+    "vintage_tremolo": frozenset(
+        {"treble_side", "screw_offset", "screw_spacing", "plate_width"}
+    ),
     "tune_o_matic": frozenset(
         {
             "post_spacing",

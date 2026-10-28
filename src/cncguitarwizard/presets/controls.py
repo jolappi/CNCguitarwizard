@@ -237,8 +237,12 @@ def rear_cover(
     its cover recess (``cover_screw_points``), or go where ``at`` puts
     them (a drawn cover's corners); each gets a clearance hole in the
     plate and a shallow spot 1 mm into the ledge's floor. The plate is the
-    recess's outline, as thick as the recess is deep.
+    recess's outline, as thick as the recess is deep. A cover screwed
+    onto the back (``cover_on_back``) is a stock one: nothing is cut or
+    drilled for it.
     """
+    if rear.cover_on_back:
+        return ControlFeatures()
     depth = rear.cover_recess.depth
     screws = at or cover_screw_points(
         rear.cavity.outline,

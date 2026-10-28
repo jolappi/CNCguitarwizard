@@ -440,7 +440,9 @@ class RearCavity:
     larger recess around the cavity mouth. Both the deep cavity and the
     shallow recess are ordinary cavities in plan; only their cutting
     direction (up from the back face, not down from the top) differs,
-    and that is the exporter's concern.
+    and that is the exporter's concern. A vintage Strat's tremolo cover
+    is screwed onto the back's face instead (``cover_on_back``): nothing
+    is routed for it.
 
     Args:
         cavity: The deep route itself. Its ``depth`` is measured up from
@@ -448,10 +450,15 @@ class RearCavity:
         cover_recess: The shallow ledge the cover plate sits in. Its
             ``depth`` is the cover-plate thickness, also measured from
             the back face. Its outline must enclose the cavity outline.
+            With ``cover_on_back``, only where the cover lies on the back.
         steps: Deeper pockets cut on from the cavity floor — a tremolo
             spring cavity's block-clearance pocket. Each must lie inside
             the cavity outline and be deeper than the cavity; its
             ``depth`` is again measured from the back face.
+        cover_on_back: The cover is screwed onto the back's face, not
+            into a recess (a stock Strat tremolo cover, clear of a block
+            hanging nearly to the back): its recess is not routed and no
+            cover is cut for it.
 
     Raises:
         BodyGeometryError: If the cover recess is at least as deep as
@@ -462,6 +469,7 @@ class RearCavity:
     cavity: Cavity
     cover_recess: Cavity
     steps: tuple[Cavity, ...] = ()
+    cover_on_back: bool = False
 
     def __post_init__(self) -> None:
         """Reject a recess that would not actually seat a cover plate."""
@@ -504,6 +512,13 @@ class RearCavity:
     def pockets(self) -> tuple[Cavity, ...]:
         """Return the cavity and its steps, shallowest first."""
         return (self.cavity, *self.steps)
+
+    @property
+    def routes(self) -> tuple[Cavity, ...]:
+        """Return everything routed for it, shallowest first: its cover
+        recess (none for a cover on the back), the cavity and its steps."""
+        recess = () if self.cover_on_back else (self.cover_recess,)
+        return (*recess, *self.pockets)
 
     def depth_at(self, point: Point2D) -> float | None:
         """Return the depth from the back face under ``point``, or ``None``."""

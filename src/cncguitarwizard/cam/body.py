@@ -1340,20 +1340,28 @@ def _rear_pockets(
     frame: _Frame,
     parameters: MachiningParameters,
 ) -> list[Toolpath]:
-    """Pocket one rear cavity: its cover recess, the cavity, its steps."""
+    """Pocket one rear cavity: its cover recess (none for a cover screwed
+    onto the back), the cavity, its steps."""
+    recessed = not rear.cover_on_back
     paths = [
-        pocket(
-            rear.cover_recess.name,
-            frame.polygon(rear.cover_recess.outline),
-            rear.cover_recess.depth,
-            parameters,
+        *(
+            (
+                pocket(
+                    rear.cover_recess.name,
+                    frame.polygon(rear.cover_recess.outline),
+                    rear.cover_recess.depth,
+                    parameters,
+                ),
+            )
+            if recessed
+            else ()
         ),
         pocket(
             rear.cavity.name,
             frame.polygon(rear.cavity.outline),
             rear.cavity.depth,
             parameters,
-            start_depth=rear.cover_recess.depth,
+            start_depth=rear.cover_recess.depth if recessed else 0.0,
         ),
     ]
     paths += [
@@ -1391,7 +1399,7 @@ def _drill_rear_hole(
     # Inside a rear cavity or its cover recess the wood starts at that
     # floor (a cover screw's spot sits on the recess floor).
     for rear in body.rear_cavities:
-        for floor in (rear.cover_recess, *rear.pockets):
+        for floor in rear.routes:
             if floor.depth < hole.depth and point_in_polygon(
                 hole.center, floor.outline
             ):

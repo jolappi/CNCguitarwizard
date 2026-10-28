@@ -2941,7 +2941,12 @@ class FreeCADScriptExporter:
                 continue
             for cavity, suffix in (
                 (rear.cavity, "cut"),
-                (rear.cover_recess, "cover recess cut"),
+                # A cover screwed onto the back has no recess.
+                *(
+                    ()
+                    if rear.cover_on_back
+                    else ((rear.cover_recess, "cover recess cut"),)
+                ),
                 *((step, "step cut") for step in rear.steps),
             ):
                 outline = outline_literal(cavity.outline)
