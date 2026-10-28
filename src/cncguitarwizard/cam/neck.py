@@ -523,35 +523,31 @@ def _vintage_rod_setup(
 ) -> Setup:
     """Return the vintage truss rod's routes from the blank's back.
 
-    The teardrop for the walnut plug over the rod's anchor, then the
-    curved channel (``_vintage_channel``), in a blank ``thickness`` thick
-    with Z zero on its back; the notes say how the rod, the strip and the
-    plug go in before ``next_back`` carves them with the back.
+    The teardrop for the walnut plug over the rod's anchor (a rod
+    adjusted at the heel's), then the curved channel
+    (``_vintage_channel``), in a blank ``thickness`` thick with Z zero on
+    its back; the notes say how the rod, the strip and the plug go in
+    before ``next_back`` carves them with the back.
     """
-    teardrop = pocket(
-        "Truss-rod plug teardrop",
-        frame.polygon(rod.plug_outline),
-        thickness - rod.plug_depth,
-        tool,
+    teardrop = (
+        (
+            pocket(
+                "Truss-rod plug teardrop",
+                frame.polygon(rod.plug_outline),
+                thickness - rod.plug_depth,
+                tool,
+            ),
+        )
+        if rod.has_plug
+        else ()
     )
     channel = _vintage_channel(rod, frame, thickness, tool)
     middle = (rod.start + rod.end) / 2.0
     strip_height = thickness - min(
         rod.strip_depth(rod.strip_start), rod.strip_depth(rod.end)
     )
-    return Setup(
-        "Neck_back_truss_rod",
-        "Neck back - the vintage truss rod's channel and plug teardrop",
-        (teardrop, channel),
-        (
-            *fixture_notes,
-            f"The truss rod's channel, {rod.width:g} mm wide on the "
-            f"centreline from {-rod.start:g} mm behind the nut out through "
-            "the heel's end, curves with the rod: "
-            f"{thickness - rod.ceiling_depth(rod.end):.1f} mm deep at its "
-            f"ends and {thickness - rod.ceiling_depth(middle):.1f} mm in the "
-            f"middle. The cutter must reach {-channel.deepest_z():.1f} mm "
-            "deep.",
+    if rod.has_plug:
+        laid_in = (
             f"Lay in the {rod.rod_diameter:g} mm rod, "
             f"{rod.end - rod.start:.0f} mm long, its anchor in the teardrop "
             "and its adjusting nut at the heel's end face.",
@@ -562,6 +558,33 @@ def _vintage_rod_setup(
             f"rod; and a walnut plug in the teardrop ({rod.plug_width:g} x "
             f"{rod.plug_length:g} mm, at least "
             f"{thickness - rod.plug_depth + 1.0:.0f} mm tall) over its anchor.",
+        )
+    else:
+        laid_in = (
+            f"Lay in the {rod.rod_diameter:g} mm bullet rod, "
+            f"{rod.end - rod.start:.0f} mm long, its anchor at the heel's end "
+            "face and its threaded end into the bullet's trough behind the "
+            "nut (Neck_top), where the bullet nut goes on.",
+            f"Glue in a walnut strip {rod.width:g} mm wide, at least "
+            f"{strip_height + 1.0:.0f} mm tall and "
+            f"{rod.end - rod.strip_start + 1.0:.0f} mm long, the channel's "
+            "whole length, pressed down onto the rod (no plug).",
+        )
+    return Setup(
+        "Neck_back_truss_rod",
+        "Neck back - the vintage truss rod's channel"
+        + (" and plug teardrop" if rod.has_plug else ""),
+        (*teardrop, channel),
+        (
+            *fixture_notes,
+            f"The truss rod's channel, {rod.width:g} mm wide on the "
+            f"centreline from {-rod.start:g} mm behind the nut out through "
+            "the heel's end, curves with the rod: "
+            f"{thickness - rod.ceiling_depth(rod.end):.1f} mm deep at its "
+            f"ends and {thickness - rod.ceiling_depth(middle):.1f} mm in the "
+            f"middle. The cutter must reach {-channel.deepest_z():.1f} mm "
+            "deep.",
+            *laid_in,
             f"Let the glue cure, then plane the walnut flush with the blank's "
             f"back: {next_back} carves it with the back.",
         ),
@@ -839,8 +862,10 @@ def plan_neck_machining(
         """The channel, its step and pockets, the sleeve's slot and the
         access trough, cut with ``tool``."""
         route = _overrun_truss_route(truss, tool.tool_radius) if from_top else []
+        # Every depth from the glue face (a one-piece neck's top is the
+        # board's blank above it).
         paths = [
-            pocket(name, top_frame.polygon(boundary), depth, tool)
+            pocket(name, top_frame.polygon(boundary), board + depth, tool)
             for name, boundary, depth in route
         ]
         bore = truss.bore
@@ -861,16 +886,19 @@ def plan_neck_machining(
                             Point2D(bore.start, half),
                         )
                     ),
-                    bore.floor_depth,
+                    board + bore.floor_depth,
                     tool,
                 )
             )
         if truss.adjuster_boundary:
             paths.append(
                 pocket(
-                    "Truss-rod access trough",
+                    # A bullet rod's nut sits in it.
+                    "Truss-rod access trough"
+                    if from_top
+                    else "Truss-rod bullet trough",
                     top_frame.polygon(truss.adjuster_boundary),
-                    truss.adjuster_depth,
+                    board + truss.adjuster_depth,
                     tool,
                 )
             )
@@ -1043,6 +1071,18 @@ def plan_neck_machining(
         *_adjuster_notes(geometry),
         *(
             (
+                "The bullet rod's nut sits in a "
+                f"{max(p.y for p in truss.adjuster_boundary) * 2.0:g} mm wide "
+                "trough behind the nut, "
+                f"{truss.adjuster_depth:g} mm below the glue face, open to the "
+                "top for the key: thread it onto the rod's end once the rod "
+                "and its walnut are in (Neck_back_truss_rod).",
+            )
+            if not from_top and truss.adjuster_boundary
+            else ()
+        ),
+        *(
+            (
                 "Set neck: once the neck is finished and fretted, glue its heel "
                 "into the body's pocket (a tight fit, cut by Body_top) with "
                 "wood glue, clamp it down onto the pocket floor and let it "
@@ -1116,7 +1156,10 @@ def plan_neck_machining(
             "Neck glue face - "
             + ("truss-rod channel, " if from_top else "")
             + "headstock face, tuner centre marks",
-            (*truss_paths[:1], *face_paths, *truss_paths[1:]),
+            # A bullet rod's trough goes into the finished face.
+            (*truss_paths[:1], *face_paths, *truss_paths[1:])
+            if from_top
+            else (*face_paths, *truss_paths),
             (
                 on_the_pins,
                 *face_notes,

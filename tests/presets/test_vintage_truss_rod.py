@@ -13,6 +13,10 @@ from cncguitarwizard.cam.neck import NeckMachiningParameters, plan_neck_machinin
 from cncguitarwizard.geometry.exceptions import NeckGeometryError
 from cncguitarwizard.presets import Prototype001Geometry, Prototype001Parameters
 from cncguitarwizard.presets.prototype001 import (
+    BULLET_KEY_ROOM,
+    BULLET_NUT_DIAMETER,
+    BULLET_NUT_LENGTH,
+    BULLET_SEAT,
     VINTAGE_ROD_WALL,
     VINTAGE_STRIP_MIN,
     _back_z,
@@ -86,7 +90,6 @@ def test_a_neck_too_thin_for_the_walnut_is_refused() -> None:
 @pytest.mark.parametrize(
     ("changes", "message"),
     [
-        ({"truss_rod_adjustment": "headstock"}, "truss_rod_adjustment to heel"),
         ({"truss_rod_spoke_wheel": "yes"}, "truss_rod_spoke_wheel"),
         ({"truss_rod_profile": "low_profile"}, "truss_rod_profile"),
         ({"headstock_angle": 8.0}, "headstock_angle to 0"),
@@ -164,3 +167,71 @@ def test_the_plan_and_its_dxf_show_the_walnut() -> None:
     assert "Walnut strip (back)" in render_plan_view_svg(geometry)
     assert "TRUSS_ROD_WALNUT" in render_plan_dxf(geometry)
     assert "TRUSS_ROD_WALNUT" not in render_plan_dxf(Prototype001Parameters().build())
+
+
+BULLET = replace(VINTAGE, truss_rod_adjustment="headstock")
+
+
+@cache
+def bullet() -> Prototype001Geometry:
+    """Return the Telecaster style's neck with a 1970s bullet rod, built."""
+    return BULLET.build()
+
+
+def test_a_bullet_rod_is_adjusted_at_the_headstock() -> None:
+    geometry = bullet()
+    rod = geometry.vintage_truss_rod
+    assert rod is not None
+    assert rod.adjusted_at == "headstock"
+    # Anchored at the heel's end; no plug at the headstock, the walnut
+    # the channel's whole length.
+    assert rod.start == pytest.approx(-BULLET.nut_seat_length())
+    assert not rod.has_plug and rod.plug_outline == ()
+    assert rod.strip_start == rod.start
+    # Its bullet nut ahead of the channel, behind the nut, in a trough open
+    # to the top: room for it and for the key in its end.
+    channel = geometry.truss_rod_channel
+    assert channel.routed_from == "back" and channel.adjustment_side == "nut"
+    xs = [point.x for point in channel.adjuster_boundary]
+    # On over the channel's start, where the rod's end goes into it.
+    assert max(xs) == pytest.approx(rod.start + BULLET_SEAT)
+    assert max(xs) - min(xs) == pytest.approx(BULLET_NUT_LENGTH + BULLET_KEY_ROOM)
+    width = 2.0 * max(point.y for point in channel.adjuster_boundary)
+    assert width == pytest.approx(BULLET_NUT_DIAMETER + 2.0)
+    assert channel.adjuster_depth == pytest.approx(
+        rod.end_depth + BULLET_NUT_DIAMETER / 2.0 + 0.5
+    )
+
+
+def test_a_bullet_rods_trough_is_cut_into_the_finished_face() -> None:
+    geometry = bullet()
+    rod = geometry.vintage_truss_rod
+    assert rod is not None
+    plan = plan_neck_machining(geometry, NeckMachiningParameters())
+    names = [path.name for path in plan.top.toolpaths]
+    assert names[-1] == "Truss-rod bullet trough"
+    (trough,) = [path for path in plan.top.toolpaths if path.name == names[-1]]
+    assert trough.deepest_z() == pytest.approx(
+        -geometry.truss_rod_channel.adjuster_depth
+    )
+    assert any("bullet rod's nut" in note for note in plan.top.notes)
+    # From the back the channel alone: no teardrop.
+    setup = plan.back_truss_rod
+    assert setup is not None
+    assert [path.name for path in setup.toolpaths] == [
+        "Truss-rod channel from the back"
+    ]
+    assert any("no plug" in note for note in setup.notes)
+
+
+def test_freecad_cuts_a_bullet_rods_trough_and_no_plug(tmp_path: Path) -> None:
+    source = FreeCADScriptExporter().render_prototype001(
+        bullet(), step_path=tmp_path / "neck.step"
+    )
+    ast.parse(source)
+    assert '"TrussRodStrip"' in source and '"TrussRodPlug"' not in source
+    assert "truss-rod bullet trough cut" in source
+    assert "if strip.Solids and removed > strip.Volume:" in source
+    svg = render_plan_view_svg(bullet())
+    assert "Walnut strip (back)" in svg and "teardrop" not in svg
+    assert "Truss rod adjuster trough" in svg

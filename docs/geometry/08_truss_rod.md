@@ -220,18 +220,32 @@ holds it:
 
 The channel is curved like Fender's: the rod lies deeper toward the
 back in the middle, so tightened it pulls straight against the wood
-toward the fretboard, against the strings' pull. It is adjusted at the
-heel, its nut at the heel's end face, turned with the neck off.
+toward the fretboard, against the strings' pull. With
+`truss_rod_adjustment` "heel", as Fender's first, it is adjusted at the
+heel, its nut at the heel's end face, turned with the neck off, and
+anchored at the headstock under the teardrop plug.
 
-`vintage_truss_rod` refuses it with a headstock adjuster
-(`truss_rod_adjustment` must be `"heel"`), a spoke wheel
+With `truss_rod_adjustment` "headstock" it is the 1970s "bullet" rod
+(`VintageTrussRod.adjusted_at` "headstock"): the same channel, anchored at
+the heel's end face, and its bullet nut, `BULLET_NUT_DIAMETER` x
+`BULLET_NUT_LENGTH` (5/16 x 1/2 in), ahead of the channel's start, behind
+the nut, in a trough cut from the top into the headstock's face
+(`TrussRodChannel.adjuster_boundary`: 1 mm clear round the nut, half its
+diameter and 0.5 mm below its axis, `BULLET_KEY_ROOM` (6 mm) on ahead of
+it for the 3/16 in key), so it stands proud of a set-down face as on a
+'70s neck. There is no plug: the walnut strip runs the channel's whole
+length. `Neck_top` cuts the trough into the finished face
+(`Truss-rod bullet trough`), FreeCAD cuts it from the neck and makes no
+plug, and the trough keeps 3 mm from the tuner holes.
+
+`vintage_truss_rod` refuses it with a spoke wheel
 (`truss_rod_spoke_wheel` `"yes"`; `"auto"` fits none), a low-profile rod,
 an angled headstock (it is a Fender's, behind a flat one), a headless neck
-or a neck run through the body. The web app sets the first four for it as
-it is chosen (`VINTAGE_ROD` in `site/app.js`: the adjustment at the heel,
-the spoke wheel to auto, the standard rod, the headstock flat), and goes
-back to the rod routed from the top when one of them is set otherwise:
-the last choice wins. The build checks it against the carved
+or a neck run through the body. The web app sets the first three for it
+as it is chosen, or as a one-piece neck is (`VINTAGE_ROD` in
+`site/app.js`: the spoke wheel to auto, the standard rod, the headstock
+flat), and goes back to the rod routed from the top (and a fretboard of
+the neck's own) when one of them is set otherwise: the last choice wins. The build checks it against the carved
 neck (`_checked_vintage_rod`): at least `VINTAGE_ROD_WALL` (1.5 mm) of
 wood over its anchor end, and at least `VINTAGE_STRIP_MIN` (3 mm) of
 walnut over the rod everywhere, once the back is carved; a thinner neck is

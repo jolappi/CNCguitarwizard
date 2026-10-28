@@ -67,7 +67,8 @@ def render_plan_dxf(geometry: Prototype001Geometry) -> str:
     if geometry.vintage_truss_rod is not None:
         walnut = dxf.layer("TRUSS_ROD_WALNUT", 30)
         dxf.polyline(geometry.vintage_truss_rod.strip_outline, walnut)
-        dxf.polyline(geometry.vintage_truss_rod.plug_outline, walnut)
+        if geometry.vintage_truss_rod.has_plug:
+            dxf.polyline(geometry.vintage_truss_rod.plug_outline, walnut)
     if geometry.carbon_rods is not None:
         rods = dxf.layer("CARBON_RODS", 8)
         for channel in geometry.carbon_rods.channels():

@@ -172,7 +172,10 @@ _CHOICE_LABELS: dict[str, dict[str, str]] = {
     },
     "truss_rod_install": {
         "top": "From the top, under the fretboard",
-        "back": "Vintage: from the back, under a walnut strip and teardrop plug",
+        "back": (
+            "Vintage: from the back, under a walnut strip (adjusted at the "
+            "headstock: a 1970s bullet rod)"
+        ),
     },
     "truss_rod_spoke_wheel": {
         "auto": "Auto (a spoke wheel at the heel, none at the headstock)",

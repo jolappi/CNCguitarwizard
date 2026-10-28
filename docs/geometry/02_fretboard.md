@@ -68,8 +68,8 @@ The neck's top is then its playing surface, so the truss rod always goes
 in from the back, under a walnut strip
 (`Prototype001Parameters.truss_rod_from_back`, whatever `truss_rod_install`
 says; see [Truss rod](08_truss_rod.md#vintage-rod-laid-in-from-the-back)),
-with what that rod asks: a flat headstock, the heel adjustment, a bolt-on
-or set neck. A one-piece neck has no board of its own to bind
+with what that rod asks: a flat headstock and a bolt-on or set neck
+(adjusted at the headstock it is a 1970s bullet rod). A one-piece neck has no board of its own to bind
 (`fretboard_binding_width` must be 0) and no glue face to lay carbon rods
 into (`neck_carbon_rods` off); the web form hides those settings and
 `truss_rod_install` while it is on.

@@ -67,7 +67,7 @@ def test_its_truss_rod_always_goes_in_from_the_back() -> None:
 @pytest.mark.parametrize(
     ("changes", "match"),
     [
-        ({"truss_rod_adjustment": "headstock"}, "one-piece neck's truss rod"),
+        ({"truss_rod_spoke_wheel": "yes"}, "one-piece neck's truss rod"),
         ({"headstock_angle": 8.0}, "flat headstock"),
         ({"fretboard_binding_width": 1.5}, "no fretboard of its own to bind"),
         ({"neck_carbon_rods": True}, "a one-piece neck has none"),

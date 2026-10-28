@@ -210,23 +210,30 @@ def test_choosing_the_vintage_truss_rod_sets_what_it_needs() -> None:
     )
 
     assert given == {
-        "truss_rod_adjustment": "heel",
         "truss_rod_spoke_wheel": "auto",
         "truss_rod_profile": "standard",
         "headstock_angle": "0",
     }
-    # They are what the vintage rod needs: the guitar builds with them.
-    replace(
-        Prototype001Parameters(),
-        truss_rod_install="back",
-        truss_rod_adjustment="heel",
-        truss_rod_spoke_wheel="auto",
-        truss_rod_profile="standard",
-        headstock_angle=0.0,
-    ).build()
+    # They are what the vintage rod needs: the guitar builds with them,
+    # adjusted at the heel or, a 1970s bullet rod, at the headstock; a
+    # one-piece neck's rod is one, chosen or not.
+    for adjustment in ("heel", "headstock"):
+        replace(
+            Prototype001Parameters(),
+            truss_rod_install="back",
+            truss_rod_adjustment=adjustment,
+            truss_rod_spoke_wheel="auto",
+            truss_rod_profile="standard",
+            headstock_angle=0.0,
+        ).build()
+    assert (
+        'const fromBack = install.value === "back" || Boolean(onePiece?.checked);'
+        in script
+    )
     # The last choice wins either way.
-    assert 'if (name === "truss_rod_install" && install.value === "back")' in script
+    assert 'name === "fretboard_one_piece") && fromBack' in script
     assert 'setControlValue(install, "top");' in script
+    assert "setControlValue(onePiece, false);" in script
 
 
 def test_the_neck_page_holds_the_truss_rod_settings() -> None:

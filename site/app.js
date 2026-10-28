@@ -7510,28 +7510,40 @@ form.addEventListener("change", (event) => {
 // otherwise for one of them while it is chosen goes back to a rod routed
 // from the top.
 const VINTAGE_ROD = {
-  truss_rod_adjustment: [(value) => value === "heel", "heel"],
   truss_rod_spoke_wheel: [(value) => value !== "yes", "auto"],
   truss_rod_profile: [(value) => value === "standard", "standard"],
   headstock_angle: [(value) => Number(value) === 0, 0],
 };
+// A rod laid in from the back: chosen, or a one-piece neck's, whose top is
+// its playing surface (adjusted at the heel, or at the headstock as a 1970s
+// bullet rod).
 form.addEventListener("change", (event) => {
   const name = event.target.dataset.name;
   const field = (other) => form.querySelector(`[data-set='prototype'][data-name='${other}']`);
   const install = field("truss_rod_install");
   if (!install) return;
+  const onePiece = field("fretboard_one_piece");
+  const fromBack = install.value === "back" || Boolean(onePiece?.checked);
   const changed = [];
-  if (name === "truss_rod_install" && install.value === "back") {
+  if ((name === "truss_rod_install" || name === "fretboard_one_piece") && fromBack) {
     for (const [other, [fits, value]] of Object.entries(VINTAGE_ROD)) {
       const control = field(other);
       if (!control || fits(control.value)) continue;
       setControlValue(control, value);
       changed.push(`${fieldLabel(other)} ${value}`);
     }
-  } else if (name in VINTAGE_ROD && install.value === "back"
+  } else if (name in VINTAGE_ROD && fromBack
     && !VINTAGE_ROD[name][0](event.target.value)) {
-    setControlValue(install, "top");
-    changed.push(`${fieldLabel("truss_rod_install")} top`);
+    // The last choice wins: the rod goes back to the top, the neck to a
+    // fretboard of its own.
+    if (onePiece?.checked) {
+      setControlValue(onePiece, false);
+      changed.push(`${fieldLabel("fretboard_one_piece")} off`);
+    }
+    if (install.value === "back") {
+      setControlValue(install, "top");
+      changed.push(`${fieldLabel("truss_rod_install")} top`);
+    }
   }
   if (!changed.length) return;
   syncMirrors();

@@ -150,7 +150,9 @@ FIELD_HELP: dict[str, str] = {
     "truss_rod_install": (
         "How the truss rod goes in: from the neck's top under the "
         "fretboard, or the vintage Fender way, laid in from the back under "
-        "a walnut strip and a teardrop plug (adjusted at the heel)."
+        "a walnut strip: adjusted at the heel under a teardrop plug, or at "
+        "the headstock, the 1970s bullet rod, its nut in a trough behind the "
+        "nut."
     ),
     "truss_rod_spoke_wheel": (
         "A spoke-wheel adjuster, turned with a rod through its holes: auto "
@@ -180,7 +182,8 @@ FIELD_HELP: dict[str, str] = {
         "No fretboard of its own: the playing surface, the fret slots and "
         "the markers are cut into the neck's top, a one-piece (maple) neck. "
         "Its truss rod then always goes in from the back, under a walnut "
-        "strip; the headstock is flat and the rod adjusted at the heel."
+        "strip (a 1970s bullet rod when adjusted at the headstock); the "
+        "headstock is flat."
     ),
     "fretboard_binding_width": (
         "Binding strips along the fretboard's long edges, this thick in mm "

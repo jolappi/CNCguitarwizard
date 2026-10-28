@@ -182,6 +182,18 @@
 
 ### Added
 
+- The 1970s Fender "bullet" truss rod: laid in from the back as the
+  vintage one, but adjusted at the headstock (`truss_rod_install` "back"
+  with `truss_rod_adjustment` "headstock", or a one-piece neck so
+  adjusted). It is anchored at the heel's end, its 5/16 in bullet nut
+  behind the nut in a trough cut into the headstock's face, standing
+  proud of a set-down face as on a '70s neck, room ahead of it for the
+  key; no teardrop plug, the walnut strip the channel's whole length. A
+  one-piece Stratocaster neck, adjusted at the headstock, now builds. The
+  web app no longer sends the rod back to the top for the headstock
+  adjustment, and sets what a rod from the back needs as a one-piece neck
+  is chosen too.
+
 - A one-piece neck (`fretboard_one_piece`, *Fretboard one piece*): no
   fretboard of its own, its playing surface, fret slots and markers cut
   into the neck's top, so a maple neck comes from one blank. The board

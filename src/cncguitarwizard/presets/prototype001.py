@@ -469,6 +469,22 @@ VINTAGE_STRIP_MIN = 3.0
 strip's thinnest, once the back is carved."""
 
 STEP_EDGE_SLACK = 3.0
+BULLET_NUT_DIAMETER = 7.9
+"""A 1970s bullet truss rod's nut's diameter, in mm (5/16 in): it sits on
+the rod's axis in a trough behind the nut."""
+
+BULLET_NUT_LENGTH = 12.7
+"""The bullet nut's length along the rod, in mm (1/2 in), ahead of the
+rod's channel."""
+
+BULLET_KEY_ROOM = 6.0
+"""How far the bullet's trough runs on ahead of it, in mm: room for the
+adjusting key (a 3/16 in hex) to go into its end."""
+
+BULLET_SEAT = 1.0
+"""How far the bullet's trough reaches on over the rod's channel, in mm:
+the rod's end goes through into it, the walnut under it there."""
+
 """How near the body's edge drawn step lines may cross, in mm: where they
 converge on the edge (the sliver between them is cut with the outer
 band)."""
@@ -1551,13 +1567,18 @@ class Prototype001Parameters:
     # VINTAGE_ROD_DIAMETER rod laid into a channel truss_rod_width wide
     # routed from the neck's back, curved (its axis VINTAGE_ROD_END_DEPTH
     # below the top at its ends, VINTAGE_ROD_BOW deeper in the middle), from
-    # its anchor at the nut seat's end, where the headstock begins, to the
-    # heel end, where its nut is turned at the heel's end face; a walnut strip
-    # glued in over it (the "skunk stripe") and a walnut teardrop plug over
-    # its anchor (VINTAGE_PLUG_WIDTH x VINTAGE_PLUG_LENGTH), both carved
-    # with the back. It is made to the neck's length, not a stock rod. It
-    # needs the heel adjustment without a spoke wheel, a flat headstock and
-    # a bolt-on or set neck.
+    # the nut seat's end, where the headstock begins, to the heel end; a
+    # walnut strip glued in over it (the "skunk stripe"), carved with the
+    # back. Adjusted at the heel (truss_rod_adjustment), as Fender's
+    # first: anchored at the headstock under a walnut teardrop plug
+    # (VINTAGE_PLUG_WIDTH x VINTAGE_PLUG_LENGTH), its nut turned at the
+    # heel's end face. At the headstock, a 1970s "bullet" rod: anchored at
+    # the heel's end, its BULLET_NUT_DIAMETER x BULLET_NUT_LENGTH bullet
+    # nut behind the nut in a trough in the headstock's face, open to the
+    # top, BULLET_KEY_ROOM on ahead of it for the key; no plug, the strip
+    # the channel's whole length. It is made to the neck's length, not a
+    # stock rod. It needs no spoke wheel, a flat headstock and a bolt-on or
+    # set neck.
     truss_rod_install: Literal["top", "back"] = "top"
     truss_rod_nut_diameter: float = 15.0
     truss_rod_nut_length: float = 6.0
@@ -3441,13 +3462,23 @@ class Prototype001Parameters:
         if self.truss_rod_from_back:
             rod = self.vintage_truss_rod(outline)
             assert rod is not None
-            return TrussRodChannel(
+            bullet = rod.adjusted_at == "headstock"
+            # A bullet rod's trough reaches on over the channel's start,
+            # where the rod goes into the bullet: the channel's plan starts
+            # there, the trough ahead of it.
+            seat = BULLET_SEAT if bullet else 0.0
+            back = TrussRodChannel(
                 outline,
-                rod.start,
-                rod.end - rod.start,
+                rod.start + seat,
+                rod.end - rod.start - seat,
                 rod.width,
                 rod.strip_depth(rod.start),
-                adjustment_side="heel",
+                adjustment_side="nut" if bullet else "heel",
+                # A bullet rod's nut in its trough behind the nut, open to
+                # the top for the key.
+                nut_diameter=BULLET_NUT_DIAMETER if bullet else 0.0,
+                nut_length=BULLET_NUT_LENGTH if bullet else 0.0,
+                access_length=BULLET_NUT_LENGTH + BULLET_KEY_ROOM if bullet else 0.0,
                 rod_axis_depth=rod.end_depth,
                 routed_from="back",
             )
@@ -3460,6 +3491,8 @@ class Prototype001Parameters:
             access = self.truss_rod_nut_length + 2.0
             if not heel and wheel:
                 # The wheel in an open trough behind the nut, room to
+            self._check_trough_clear_of_tuners(back)
+            return back
                 # turn it.
                 access = self.truss_rod_nut_length + 4.0
             elif key_notch:
@@ -3521,18 +3554,32 @@ class Prototype001Parameters:
                     "flat headstock, a thicker headstock_thickness, or no "
                     "spoke wheel (a key's notch)."
                 )
-        if not heel and channel.adjuster_boundary:
-            trough = channel.adjuster_boundary
-            trough_end = min(p.x for p in trough)
-            front = max(p.x for p in trough)
-            half = max(p.y for p in trough)
-            _, tuners = self.headstock_design()
-            for hole in tuners.holes:
-                if _rectangle_gap(trough_end, front, half, hole) < 3.0:
-                    raise NeckGeometryError(
-                        f"The truss-rod trough reaches {-trough_end:.0f} mm into the "
-                        f"headstock, too close to tuner {hole.side} {hole.index}; "
-                        "shorten truss_rod_access_length or move the tuners"
+        if not heel:
+            self._check_trough_clear_of_tuners(channel)
+        return channel
+
+    def _check_trough_clear_of_tuners(self, channel: TrussRodChannel) -> None:
+        """Refuse a headstock adjuster's trough within 3 mm of a tuner hole.
+
+        Raises:
+            NeckGeometryError: Where it comes nearer.
+        """
+        trough = channel.adjuster_boundary
+        if not trough:
+            return
+        trough_end = min(p.x for p in trough)
+        front = max(p.x for p in trough)
+        half = max(p.y for p in trough)
+        _, tuners = self.headstock_design()
+        for hole in tuners.holes:
+            if _rectangle_gap(trough_end, front, half, hole) < 3.0:
+                raise NeckGeometryError(
+                    f"The truss-rod trough reaches {-trough_end:.0f} mm into the "
+                    f"headstock, too close to tuner {hole.side} {hole.index}; "
+                    + (
+                        "move the tuners."
+                        if channel.routed_from == "back"
+                        else "shorten truss_rod_access_length or move the tuners"
                         + (
                             " (or leave the spoke wheel out: a key's notch is "
                             "narrower)."
@@ -3540,21 +3587,23 @@ class Prototype001Parameters:
                             else "."
                         )
                     )
-        return channel
+                )
 
     def vintage_truss_rod(self, outline: NeckOutline) -> VintageTrussRod | None:
         """Return the vintage truss rod laid in from the neck's back, or
         ``None`` for one routed from the top (``truss_rod_from_back``).
 
-        From its anchor at the nut seat's end, where the top starts down
-        onto the headstock's face, to the heel end, ``truss_rod_width``
-        wide.
+        From the nut seat's end, where the top starts down onto the
+        headstock's face, to the heel end, ``truss_rod_width`` wide:
+        anchored there under a teardrop plug and adjusted at the heel, or
+        with ``truss_rod_adjustment`` "headstock" a 1970s bullet rod,
+        anchored at the heel's end, its bullet nut ahead of the channel's
+        start (``truss_rod``'s trough).
 
         Raises:
             NeckGeometryError: For an unknown ``truss_rod_install``, or a
-                vintage rod with the headstock adjustment, a spoke wheel, a
-                low-profile rod, an angled headstock, no headstock or a
-                neck run through the body.
+                vintage rod with a spoke wheel, a low-profile rod, an angled
+                headstock, no headstock or a neck run through the body.
         """
         if self.truss_rod_install not in ("top", "back"):
             raise NeckGeometryError('truss_rod_install must be "top" or "back".')
@@ -3564,10 +3613,6 @@ class Prototype001Parameters:
             (
                 text
                 for wrong, text in (
-                    (
-                        self.truss_rod_adjustment != "heel",
-                        "is adjusted at the heel: set truss_rod_adjustment to heel",
-                    ),
                     (
                         self.truss_rod_spoke_wheel == "yes",
                         "has a plain nut: set truss_rod_spoke_wheel to auto or no",
@@ -3621,6 +3666,7 @@ class Prototype001Parameters:
         headstock: HeadstockSolid,
     ) -> VintageTrussRod | None:
         """Return ``vintage_truss_rod``, checked against the neck: at least
+            "headstock" if self.truss_rod_adjustment == "headstock" else "heel",
         ``VINTAGE_ROD_WALL`` of wood over its anchor, under a top starting
         down onto the headstock's face, and ``VINTAGE_STRIP_MIN`` of walnut
         over it everywhere once the back is carved.

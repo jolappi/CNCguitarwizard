@@ -6,13 +6,17 @@ the rod lies deeper in the middle than at its ends and, tightened, pulls
 straight against the wood toward the fretboard; a walnut strip glued in
 over it (the "skunk stripe"), carved with the back; and at the headstock
 end, where the rod is anchored, a walnut teardrop plug. It is adjusted at
-the heel, its nut at the heel's end face.
+the heel, its nut at the heel's end face. From 1971 the rod was turned
+round, the "bullet" rod: anchored at the heel's end, adjusted at the
+headstock, its bullet-shaped nut behind the nut in a trough in the
+headstock's face, no plug, the strip the channel's whole length.
 """
 
 from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from typing import Literal
 
 from ..exceptions import TrussRodGeometryError
 from ..primitives import Point2D
@@ -40,6 +44,12 @@ class VintageTrussRod:
         plug_width: The teardrop plug's width: its round end, at ``start``.
         plug_length: Its length, from its round end to where it has
             narrowed to the channel.
+        adjusted_at: ``"heel"``, the vintage rod: anchored at ``start``
+            under the plug, its nut at the heel's end face; or
+            ``"headstock"``, a 1970s bullet rod: anchored at the heel's
+            end, its bullet nut ahead of ``start`` in the headstock's face
+            (the channel's trough, ``TrussRodChannel.adjuster_boundary``),
+            and no plug: the strip runs from ``start``.
 
     Raises:
         TrussRodGeometryError: For sizes that are not finite and positive
@@ -57,6 +67,7 @@ class VintageTrussRod:
     bow: float
     plug_width: float
     plug_length: float
+    adjusted_at: Literal["heel", "headstock"] = "heel"
 
     def __post_init__(self) -> None:
         """Reject a rod that cannot be laid in."""
@@ -81,7 +92,11 @@ class VintageTrussRod:
             raise TrussRodGeometryError(
                 "A vintage truss rod must be narrower than its channel."
             )
-        if not self.width < self.plug_width < self.plug_length:
+        if self.adjusted_at not in ("heel", "headstock"):
+            raise TrussRodGeometryError(
+                'A vintage truss rod is adjusted at the "heel" or the "headstock".'
+            )
+        if self.has_plug and not self.width < self.plug_width < self.plug_length:
             raise TrussRodGeometryError(
                 "A vintage truss rod's plug must be wider than its channel and "
                 "longer than it is wide."
@@ -112,9 +127,16 @@ class VintageTrussRod:
         return self.axis_depth(x) + self.rod_diameter / 2.0
 
     @property
+    def has_plug(self) -> bool:
+        """Return whether a teardrop plug covers its anchor at the
+        headstock: a rod adjusted at the heel's."""
+        return self.adjusted_at == "heel"
+
+    @property
     def strip_start(self) -> float:
-        """Return where the walnut strip starts: the plug's narrow end."""
-        return self.start + self.plug_length
+        """Return where the walnut strip starts: the plug's narrow end, or
+        the channel's start without a plug."""
+        return self.start + (self.plug_length if self.has_plug else 0.0)
 
     @property
     def strip_outline(self) -> tuple[Point2D, ...]:
@@ -140,8 +162,10 @@ class VintageTrussRod:
 
         Its round end at ``start``, ``plug_width`` across, narrowing to
         the channel's width ``plug_length`` along: the convex hull of the
-        round end and the channel's width there.
+        round end and the channel's width there. Empty without a plug.
         """
+        if not self.has_plug:
+            return ()
         radius = self.plug_width / 2.0
         centre = self.start + radius
         points = [

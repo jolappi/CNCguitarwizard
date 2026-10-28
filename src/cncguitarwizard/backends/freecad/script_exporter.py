@@ -544,7 +544,7 @@ class FreeCADScriptExporter:
         if vintage_truss_rod is not None:
             export_feature_names += [
                 "truss_rod_strip_feature",
-                "truss_rod_plug_feature",
+                *(("truss_rod_plug_feature",) if vintage_truss_rod.has_plug else ()),
             ]
         if body is not None and neck_through is not None:
             export_feature_names += ["neck_block_feature"]
@@ -3252,10 +3252,13 @@ class FreeCADScriptExporter:
     ) -> str:
         """Return FreeCAD commands that subtract a rectangular rod channel.
 
-        Nothing for a vintage rod laid in from the back: its channel is cut
-        with its walnut (``_render_vintage_truss_rod``).
+        For a vintage rod laid in from the back only a bullet rod's trough
+        behind the nut: its channel is cut with its walnut
+        (``_render_vintage_truss_rod``).
         """
-        if channel is None or channel.routed_from == "back":
+        if channel is None or (
+            channel.routed_from == "back" and not channel.adjuster_boundary
+        ):
             return ""
 
         def pieces(
@@ -3287,6 +3290,13 @@ class FreeCADScriptExporter:
                 ")\n"
             )
 
+        if channel.routed_from == "back":
+            return pieces(
+                channel.adjuster_boundary,
+                channel.adjuster_depth,
+                "truss_rod_nut_shapes",
+                "truss-rod bullet trough cut",
+            )
         # The plain channel (one box reaching 5 mm above the top: over the
         # nut shelf the lofted top only approximates z = 0), then the step
         # and pocket at the adjusting end and a headstock-adjusted rod's
@@ -3420,37 +3430,57 @@ class FreeCADScriptExporter:
             f"App.Vector({point.x!r}, {point.y!r}, {-rod.plug_depth!r})"
             for point in rod.plug_outline
         )
+        # A bullet rod, adjusted at the headstock, has no plug: its strip
+        # runs the channel's whole length.
+        plugged = rod.has_plug
         return (
-            "# The vintage truss rod laid in from the back: its channel and\n"
-            "# teardrop cut, the walnut strip and plug glued in over it.\n"
+            "# The vintage truss rod laid in from the back: its channel"
+            + (" and\n# teardrop" if plugged else "")
+            + " cut, the walnut strip"
+            + (" and plug" if plugged else "")
+            + " glued in over it.\n"
             "def swept_side(points):\n"
             "    return Part.Face(Part.makePolygon(points + points[:1])).extrude(\n"
             f"        App.Vector(0.0, {rod.width!r}, 0.0)\n"
             "    )\n\n"
             f"vintage_channel = swept_side([{side(rod.ceiling_depth, rod.start)}])\n"
             f"vintage_strip = swept_side([{side(rod.strip_depth, rod.strip_start)}])\n"
-            f"vintage_plug_corners = [{plug}]\n"
-            "vintage_plug = Part.Face(\n"
-            "    Part.makePolygon(vintage_plug_corners + vintage_plug_corners[:1])\n"
-            f").extrude(App.Vector(0.0, 0.0, {below + rod.plug_depth!r}))\n"
+            + (
+                f"vintage_plug_corners = [{plug}]\n"
+                "vintage_plug = Part.Face(\n"
+                "    Part.makePolygon(\n"
+                "        vintage_plug_corners + vintage_plug_corners[:1]\n"
+                "    )\n"
+                f").extrude(App.Vector(0.0, 0.0, {below + rod.plug_depth!r}))\n"
+                "vintage_cutters = [vintage_channel, vintage_plug]\n"
+                if plugged
+                else "vintage_cutters = [vintage_channel]\n"
+            )
             # Against the lofted neck a plain boolean can fail quietly (an
             # empty walnut, the neck hardly cut), so a little fuzz is tried,
             # and a cut kept only when the walnut is there and the neck lost
             # more than the walnut: the rod's room too.
-            "uncut_neck = neck_feature.Shape.copy()\n"
+            + "uncut_neck = neck_feature.Shape.copy()\n"
             "vintage_parts = None\n"
             "for vintage_fuzz in (0.0, 0.001, 0.01):\n"
-            "    attempt = uncut_neck.cut([vintage_channel, vintage_plug], "
-            "vintage_fuzz)\n"
+            "    attempt = uncut_neck.cut(vintage_cutters, vintage_fuzz)\n"
             "    strip = uncut_neck.common(vintage_strip, vintage_fuzz)\n"
-            "    plug = uncut_neck.common(vintage_plug, vintage_fuzz)\n"
-            "    if attempt.isNull() or not attempt.isValid():\n"
+            + (
+                "    plug = uncut_neck.common(vintage_plug, vintage_fuzz)\n"
+                if plugged
+                else "    plug = None\n"
+            )
+            + "    if attempt.isNull() or not attempt.isValid():\n"
             "        continue\n"
             "    removed = uncut_neck.Volume - attempt.Volume\n"
-            "    if strip.Solids and plug.Solids and (\n"
-            "        removed > strip.Volume + plug.Volume\n"
-            "    ):\n"
-            "        vintage_parts = (attempt, strip, plug)\n"
+            + (
+                "    if strip.Solids and plug.Solids and (\n"
+                "        removed > strip.Volume + plug.Volume\n"
+                "    ):\n"
+                if plugged
+                else "    if strip.Solids and removed > strip.Volume:\n"
+            )
+            + "        vintage_parts = (attempt, strip, plug)\n"
             "        break\n"
             "if vintage_parts is None:\n"
             '    raise RuntimeError("vintage truss-rod channel cut failed")\n'
@@ -3462,13 +3492,17 @@ class FreeCADScriptExporter:
             "    vintage_parts[1], 'walnut strip'\n"
             ")\n"
             "truss_rod_strip_feature.Label = 'Walnut strip'\n"
-            "truss_rod_plug_feature = document.addObject(\n"
-            '    "Part::Feature", "TrussRodPlug"\n'
-            ")\n"
-            "truss_rod_plug_feature.Shape = require_shape(\n"
-            "    vintage_parts[2], 'walnut teardrop plug'\n"
-            ")\n"
-            "truss_rod_plug_feature.Label = 'Walnut teardrop plug'\n"
+            + (
+                "truss_rod_plug_feature = document.addObject(\n"
+                '    "Part::Feature", "TrussRodPlug"\n'
+                ")\n"
+                "truss_rod_plug_feature.Shape = require_shape(\n"
+                "    vintage_parts[2], 'walnut teardrop plug'\n"
+                ")\n"
+                "truss_rod_plug_feature.Label = 'Walnut teardrop plug'\n"
+                if plugged
+                else ""
+            )
         )
 
     @staticmethod

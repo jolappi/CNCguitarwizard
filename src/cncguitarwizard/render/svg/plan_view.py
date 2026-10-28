@@ -194,7 +194,8 @@ def render_plan_view_svg(
             'fill="none" stroke="#c08850" stroke-width="0.6" stroke-dasharray="3,2"'
         )
         parts.append(path(rod.strip_outline, walnut, "Walnut strip (back)"))
-        parts.append(path(rod.plug_outline, walnut, "Walnut teardrop plug (back)"))
+        if rod.has_plug:
+            parts.append(path(rod.plug_outline, walnut, "Walnut teardrop plug (back)"))
 
     # A carved top's plateau, dashed: the top falls outside it.
     if body.carved_top is not None:
