@@ -248,6 +248,14 @@ def test_the_neck_page_holds_the_truss_rod_settings() -> None:
         "truss_rod_spoke_wheel",
     ):
         assert f'"{name}"' in neck
+    # A one-piece neck's fretboard, which lays the rod in from the back, on
+    # the neck's page and the fretboard's.
+    fretboard = layout[
+        layout.index("    fretboard: [") : layout.index(
+            "  };", layout.index("    fretboard: [")
+        )
+    ]
+    assert '"fretboard_one_piece"' in neck and '"fretboard_one_piece"' in fretboard
     # Where it is adjusted stays on the headstock's page as well.
     assert (
         'SHARED_WITH_PAGES = new Set(["neck_joint", "truss_rod_adjustment", '

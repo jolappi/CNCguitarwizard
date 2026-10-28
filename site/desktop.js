@@ -282,7 +282,9 @@
   // The neck's and the fretboard's own pages: a drawing of the part (see
   // "the neck and the fretboard drawn" below) and its settings, copies of
   // the form's as an editor's Settings hold them. The fretboard's binding
-  // and blind slots come over from the inlay editor's.
+  // and blind slots come over from the inlay editor's. A fretboard in one
+  // piece with the neck is on both: it is the neck's wood, and it lays the
+  // truss rod in from the back.
   const PART_FIELDS = {
     neck: [
       // The neck's type first, as each page has its own (shown on the
@@ -293,12 +295,14 @@
       "heel_thickness", "heel_width", "heel_mounting_length", "heel_root_style", "neck_heel_end",
       "neck_angle", "set_neck_glue_gap", "neck_through_width", "neck_through_heel_ramp",
       "neck_profile_exponent", "headstock_thickness", "neck_carbon_rods", "neck_carbon_rod_size",
-      "truss_rod_install", "truss_rod_profile", "truss_rod_rod_length", "truss_rod_adjustment",
+      "fretboard_one_piece", "truss_rod_install", "truss_rod_profile", "truss_rod_rod_length",
+      "truss_rod_adjustment",
       "truss_rod_spoke_wheel",
     ],
     fretboard: [
       "fret_count", "frets_per_octave", "scale_length", "bass_scale_length", "perpendicular_fret", "fret_slant_angle",
-      "fretboard_radius", "fretboard_thickness", "fretboard_end_extension", "fretboard_end",
+      "fretboard_radius", "fretboard_thickness", "fretboard_one_piece", "fretboard_end_extension",
+      "fretboard_end",
       "fretboard_nut_corner_radius", "fret_slot_width", "fret_slot_depth", "fret_slot_end_inset",
       "fretboard_binding_width", "fretboard_scalloped", "fretboard_scallop_from_fret",
       "fretboard_scallop_depth", "fretboard_scallop_land",

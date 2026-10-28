@@ -4,6 +4,10 @@
 
 ### Changed
 
+- *Fretboard one piece* on the neck's page (*Design › Neck*), beside the
+  truss rod it lays in from the back, and on the fretboard's (*Design ›
+  Fretboard*).
+
 - A Kahler 7300's cutout where Kahler's installation guide places it: its
   front edge 1/16 in ahead of the scale line, so the saddles stand just
   inside it (`KAHLER_CUTOUT_LEAD`), as on the bridge itself. It was centred
