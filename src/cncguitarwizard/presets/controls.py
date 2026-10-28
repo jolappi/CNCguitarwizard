@@ -43,6 +43,7 @@ ControlLayout = Literal[
     "tele",
     "jazz_bass",
     "pickguard",
+    "strat_rear",
     "none",
 ]
 """An electronics layout (see ``CONTROL_LABELS``)."""
@@ -57,17 +58,22 @@ CONTROL_LABELS: dict[str, str] = {
     "tele": "Telecaster style control plate on the top (2 pots + blade switch)",
     "jazz_bass": "Jazz Bass style control plate on the top (3 pots, jack on it)",
     "pickguard": "Stratocaster style, in the pickguard (3 pots + 5-way blade switch)",
+    "strat_rear": (
+        "Stratocaster's controls from the back, no pickguard (3 pots + 5-way "
+        "blade switch in a rear cavity)"
+    ),
     "none": "No control cavities",
 }
 
 GENERATED_REAR_LAYOUTS = frozenset(
-    {"gibson_4", "rear_3", "superstrat", "volume_1", "active_4"}
+    {"gibson_4", "rear_3", "superstrat", "volume_1", "active_4", "strat_rear"}
 )
 """The layouts whose rear cavity is generated (not drawn): they may move
-clear of the top routes."""
+clear of the top routes and the bridge's covers (a Stratocaster's controls
+from the back, off its tremolo's)."""
 
 SWITCHLESS_LAYOUTS = frozenset(
-    {"superstrat", "active_4", "tele", "jazz_bass", "pickguard"}
+    {"superstrat", "active_4", "tele", "jazz_bass", "pickguard", "strat_rear"}
 )
 """The layouts with no round switch cavity of their own: their selector is
 in the cavity or on the plate, or (a bass) there is none."""
@@ -889,53 +895,60 @@ def control_features(
             18.0,
             turn,
         )
-        switch_at = on_axis(-28.0)
-        pocket_length, pocket_width = BLADE_SWITCH_POCKET
-        pocket_depth = thickness - BLADE_SWITCH_TOP_WALL
-        steps = (
-            _box(
-                "Control switch pocket",
-                switch_at,
-                pocket_length,
-                pocket_width,
-                pocket_depth,
-                3.0,
-                turn,
-            ),
+        steps, through, extra_holes = _rear_blade_switch(
+            on_axis(-28.0), turn, thickness
         )
-        slot_length, slot_width = BLADE_SWITCH_SLOT
-        through = (
-            _box(
-                "Control switch slot",
-                switch_at,
-                slot_length,
-                slot_width,
-                thickness - pocket_depth + 1.0,
-                slot_width / 2.0 - 0.01,
-                turn,
-            ),
+    elif layout == "strat_rear":
+        # The Stratocaster's controls where its guard puts them (the
+        # shape's own, as drawn, else three pots in a row and the switch
+        # ahead of them, as _pickguard_controls lays them), routed from the
+        # back instead: no guard needed, only the pot shafts and the
+        # switch's lever and screws through the top.
+        if shape.pickguard_controls:
+            drawn = tuple(Point2D(heel_end + x, y) for x, y in shape.pickguard_controls)
+            drawn_pots = drawn[1:]
+            centre = Point2D(
+                sum(p.x for p in drawn_pots) / len(drawn_pots),
+                sum(p.y for p in drawn_pots) / len(drawn_pots),
+            )
+            switch_at, *guard_pots = _turned(drawn, centre, turn)
+            slot_turn = shape.pickguard_switch_degrees + turn
+        else:
+            centre = Point2D(anchor_x - 17.5, anchor_y)
+
+            def in_row(dx: float) -> Point2D:
+                (point,) = _turned(
+                    (Point2D(centre.x + spread(dx), centre.y),), centre, turn
+                )
+                return point
+
+            switch_at = in_row(-42.5)
+            guard_pots = [in_row(dx + 17.5) for dx in (-30.0, 0.0, 30.0)]
+            slot_turn = turn
+        pots = [(p.x, p.y) for p in guard_pots]
+        axis = Point2D(1.0, 0.0)
+        along = Point2D(
+            math.cos(math.radians(slot_turn)), math.sin(math.radians(slot_turn))
         )
-        half = BLADE_SWITCH_SCREW_SPACING / 2.0
-        extra_holes = [
-            DrilledHole(
-                f"Control switch screw {index}",
-                point.x,
-                point.y,
-                BLADE_SWITCH_SCREW_HOLE,
-                thickness,
-            )
-            for index, point in enumerate(
-                _turned(
-                    (
-                        Point2D(switch_at.x - half, switch_at.y),
-                        Point2D(switch_at.x + half, switch_at.y),
-                    ),
-                    switch_at,
-                    turn,
-                ),
-                start=1,
-            )
+        reach = BLADE_SWITCH_POCKET[0] / 2.0
+        ends = [
+            Point2D(switch_at.x + s * along.x, switch_at.y + s * along.y)
+            for s in (-reach, reach)
         ]
+        # Round the pots and the switch's pocket, its corners clear.
+        rooms = [(p, POT_ROOM) for p in guard_pots] + [
+            (p, BLADE_SWITCH_POCKET[1] / 2.0 + 2.0) for p in ends
+        ]
+        cavity = TracedCavity("Control cavity", _round_hull(rooms), depth)
+        cover = TracedCavity(
+            "Control cavity cover recess",
+            _round_hull([(p, r + COVER_MARGIN) for p, r in rooms]),
+            cover_depth,
+        )
+        screws = 6
+        steps, through, extra_holes = _rear_blade_switch(
+            switch_at, slot_turn, thickness
+        )
     elif layout in ("volume_1", "active_4", "rear_3"):
         # Round-ended cavities with their pots in a row along them: one
         # volume pot; four for an active bass (volume, blend, bass,
@@ -1098,6 +1111,69 @@ def _check_shortening(
             f"control_stretch {stretch:g} mm shortens the {name} too much: "
             f"less than {half_length:.1f} mm shorter, please."
         )
+
+
+def _rear_blade_switch(
+    switch_at: Point2D, turn: float, thickness: float
+) -> tuple[tuple[Cavity, ...], tuple[Cavity, ...], list[DrilledHole]]:
+    """Return a 5-way blade switch mounted from the back, in a rear cavity.
+
+    A deeper pocket (``BLADE_SWITCH_POCKET``) under it, leaving
+    ``BLADE_SWITCH_TOP_WALL`` of top; its lever's slot through that
+    (``BLADE_SWITCH_SLOT``); its two screws' holes through the top into its
+    tabs, ``BLADE_SWITCH_SCREW_SPACING`` apart; all along ``turn``.
+
+    Returns:
+        The pocket (a step in the cavity), the slot (a route through the
+        top) and the screw holes.
+    """
+    pocket_length, pocket_width = BLADE_SWITCH_POCKET
+    pocket_depth = thickness - BLADE_SWITCH_TOP_WALL
+    steps: tuple[Cavity, ...] = (
+        _box(
+            "Control switch pocket",
+            switch_at,
+            pocket_length,
+            pocket_width,
+            pocket_depth,
+            3.0,
+            turn,
+        ),
+    )
+    slot_length, slot_width = BLADE_SWITCH_SLOT
+    through: tuple[Cavity, ...] = (
+        _box(
+            "Control switch slot",
+            switch_at,
+            slot_length,
+            slot_width,
+            thickness - pocket_depth + 1.0,
+            slot_width / 2.0 - 0.01,
+            turn,
+        ),
+    )
+    half = BLADE_SWITCH_SCREW_SPACING / 2.0
+    holes = [
+        DrilledHole(
+            f"Control switch screw {index}",
+            point.x,
+            point.y,
+            BLADE_SWITCH_SCREW_HOLE,
+            thickness,
+        )
+        for index, point in enumerate(
+            _turned(
+                (
+                    Point2D(switch_at.x - half, switch_at.y),
+                    Point2D(switch_at.x + half, switch_at.y),
+                ),
+                switch_at,
+                turn,
+            ),
+            start=1,
+        )
+    ]
+    return steps, through, holes
 
 
 def _pickguard_controls(

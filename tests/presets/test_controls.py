@@ -35,6 +35,7 @@ def test_every_layout_has_a_label() -> None:
         "tele",
         "jazz_bass",
         "pickguard",
+        "strat_rear",
         "none",
     }
 

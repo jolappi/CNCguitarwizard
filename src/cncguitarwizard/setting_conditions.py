@@ -57,6 +57,7 @@ CONTROLS = (
     "tele",
     "jazz_bass",
     "pickguard",
+    "strat_rear",
 )
 """``body_controls`` layouts with any controls at all."""
 

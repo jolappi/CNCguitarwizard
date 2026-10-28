@@ -693,6 +693,7 @@ def test_the_control_layout_is_a_basic_choice_and_shows_in_the_editor() -> None:
         "tele",
         "jazz_bass",
         "pickguard",
+        "strat_rear",
         "none",
     ]
 

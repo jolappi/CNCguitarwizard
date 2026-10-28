@@ -7586,13 +7586,32 @@ form.addEventListener("input", (event) => {
 });
 form.addEventListener("change", (event) => {
   if (event.target.dataset.name === "string_count") applyStringLimits();
-  // Controls mounted in the pickguard bring it with them.
+  // Controls mounted in the pickguard bring it with them; a
+  // Stratocaster's from the back need none, and their jack goes in the
+  // edge, bored into their cavity (an oval plate's is a top's).
   if (event.target.dataset.name === "body_controls" && event.target.value === "pickguard") {
     const guard = form.querySelector('[data-set="prototype"][data-name="body_pickguard"]');
     if (guard && !guard.checked) {
       guard.checked = true;
       markChanged(guard);
       syncMirrors();
+    }
+  }
+  if (event.target.dataset.name === "body_controls" && event.target.value === "strat_rear") {
+    const guard = form.querySelector('[data-set="prototype"][data-name="body_pickguard"]');
+    const jack = form.querySelector('[data-set="prototype"][data-name="body_jack"]');
+    const changed = [];
+    if (guard?.checked) {
+      setControlValue(guard, false);
+      changed.push(`${fieldLabel("body_pickguard")} off`);
+    }
+    if (jack && ["oval", "strat"].includes(jack.value)) {
+      setControlValue(jack, "side");
+      changed.push(`${fieldLabel("body_jack")} side`);
+    }
+    if (changed.length) {
+      syncMirrors();
+      setStatus(`For the controls from the back: ${changed.join(", ")}`, "ok");
     }
   }
   if (event.target.dataset.name !== "control_points") bodyEditor.scheduleRefresh();

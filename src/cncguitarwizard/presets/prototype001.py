@@ -8,6 +8,7 @@ from dataclasses import dataclass, field, replace
 from typing import Any, Literal, cast
 
 from ..cam.planar import (
+    EdgeGrid,
     PolygonIndex,
     distance_to_boundary,
     offset_polygon,
@@ -53,7 +54,7 @@ from ..geometry.body import (
     plateau_round,
     turned_hardware,
 )
-from ..geometry.body.body_solid import NECK_PLATE_EDGE_WALL
+from ..geometry.body.body_solid import EDGE_RIM_TOLERANCE, NECK_PLATE_EDGE_WALL
 from ..geometry.body.chambers import CHAMBER_WALL, plan_chambers
 from ..geometry.body.edges import AROUND_GAP
 from ..geometry.body.neck_through import NeckThrough
@@ -468,7 +469,6 @@ VINTAGE_STRIP_MIN = 3.0
 """Least walnut, in mm, between a vintage rod and the neck's back: the
 strip's thinnest, once the back is carved."""
 
-STEP_EDGE_SLACK = 3.0
 BULLET_NUT_DIAMETER = 7.9
 """A 1970s bullet truss rod's nut's diameter, in mm (5/16 in): it sits on
 the rod's axis in a trough behind the nut."""
@@ -485,6 +485,7 @@ BULLET_SEAT = 1.0
 """How far the bullet's trough reaches on over the rod's channel, in mm:
 the rod's end goes through into it, the walnut under it there."""
 
+STEP_EDGE_SLACK = 3.0
 """How near the body's edge drawn step lines may cross, in mm: where they
 converge on the edge (the sliver between them is cut with the outer
 band)."""
@@ -509,6 +510,14 @@ PICKGUARD_CONTROL_SHIFT = 40.0
 PICKGUARD_CONTROL_TURNS = (0.0, 10.0, -10.0, 20.0, -20.0, 30.0, -30.0)
 """The turns (degrees) tried, in order, for controls that do not fit
 under a guard square."""
+
+SQUARE_JACK_REACH = 60.0
+"""The longest bore, in mm, a jack in the edge is bored square into a rear
+control cavity (``_jack_square_into``)."""
+
+REAR_STRAT_TURNS = (-10.0, 10.0, -20.0, 20.0, -30.0, 30.0)
+"""The turns (degrees) tried for a Stratocaster's controls from the back
+(``body_controls`` "strat_rear") that moving alone does not clear."""
 
 MAX_PICKUP_ANGLE = 45.0
 """How far a pickup may be turned about its centre, either way, in degrees."""
@@ -3482,6 +3491,8 @@ class Prototype001Parameters:
                 rod_axis_depth=rod.end_depth,
                 routed_from="back",
             )
+            self._check_trough_clear_of_tuners(back)
+            return back
         heel = self.truss_rod_adjustment == "heel"
         wheel = self.truss_rod_spoke_wheel_fitted
         key_notch = self._truss_rod_key_notch()
@@ -3491,8 +3502,6 @@ class Prototype001Parameters:
             access = self.truss_rod_nut_length + 2.0
             if not heel and wheel:
                 # The wheel in an open trough behind the nut, room to
-            self._check_trough_clear_of_tuners(back)
-            return back
                 # turn it.
                 access = self.truss_rod_nut_length + 4.0
             elif key_notch:
@@ -3657,6 +3666,7 @@ class Prototype001Parameters:
             VINTAGE_ROD_BOW,
             VINTAGE_PLUG_WIDTH,
             VINTAGE_PLUG_LENGTH,
+            "headstock" if self.truss_rod_adjustment == "headstock" else "heel",
         )
 
     def _checked_vintage_rod(
@@ -3666,7 +3676,6 @@ class Prototype001Parameters:
         headstock: HeadstockSolid,
     ) -> VintageTrussRod | None:
         """Return ``vintage_truss_rod``, checked against the neck: at least
-            "headstock" if self.truss_rod_adjustment == "headstock" else "heel",
         ``VINTAGE_ROD_WALL`` of wood over its anchor, under a top starting
         down onto the headstock's face, and ``VINTAGE_STRIP_MIN`` of walnut
         over it everywhere once the back is carved.
@@ -4549,10 +4558,26 @@ class Prototype001Parameters:
                     covers=strap_guide.covers(),
                 )
             )
+        jack_aim = Point2D(heel_end + shape.jack_offset, shape.jack_y)
+        jack_direction = shape.jack_direction_degrees
+        controls_cavity = controls.control_cavity
+        if (
+            self.body_controls == "strat_rear"
+            and self.body_jack in ("side", "cup")
+            and controls_cavity is not None
+        ):
+            # A Stratocaster's controls from the back: its jack in the edge
+            # as near the shape's own jack (its oval plate's, on the top) as
+            # a bore square to the edge still reaches the cavity.
+            square = _jack_square_into(
+                body_outline.points, controls_cavity.cavity.outline, jack_aim
+            )
+            if square is not None:
+                jack_aim, jack_direction = square
         jack_hole, jack_cavity = self._jack(
             body_outline.points,
-            Point2D(heel_end + shape.jack_offset, shape.jack_y),
-            shape.jack_direction_degrees,
+            jack_aim,
+            jack_direction,
             controls,
             shape.jack_inset,
         )
@@ -6878,8 +6903,10 @@ class Prototype001Parameters:
         between the two floors, the whole layout — cavity, cover and pots —
         moves to the nearest place, out from the centreline and along the
         neck by up to ``CONTROL_CLEARANCE_SHIFT`` in 1 mm steps, that clears
-        them with its cover in the body and off ``other_covers`` (the
-        bridge's spring-cavity cover, the battery box's). The drawn almond
+        them with its cover in the body, off ``other_covers`` (the
+        bridge's spring-cavity cover, the battery box's) and far enough in
+        for the back's roundover not to lower its rim (a Stratocaster's
+        controls from the back, off its tremolo's cover). The drawn almond
         keeps its place;
         if nothing clears, the layout stays put and the body's own check
         reports it.
@@ -6924,17 +6951,38 @@ class Prototype001Parameters:
                 ),
             )
 
+        # How far in from the edge the back's roundover lowers a rim no
+        # more than the body allows (rim_drop's EDGE_RIM_TOLERANCE): a
+        # moved cover keeps that in, the edges near it found on a grid.
+        radius, tolerance = self.body_back_edge_radius, EDGE_RIM_TOLERANCE
+        keep = (
+            radius - math.sqrt(2.0 * radius * tolerance - tolerance**2)
+            if radius > tolerance
+            else 0.0
+        )
+        edges = EdgeGrid(outline, max(2.0 * keep, 1.0))
+
         def clear(controls: ControlFeatures) -> bool:
             rear = controls.control_cavity
             if rear is None:
                 return True
-            return not any(
-                rear.cavity.depth + top.depth >= self.body_thickness
-                and outlines_overlap(rear.cavity.outline, top.outline)
-                for top in top_cavities
-            ) and not any(
-                outlines_overlap(rear.cover_recess.outline, cover)
-                for cover in other_covers
+            # The other covers first: the quickest to ask, and where most
+            # places are refused; the cover on the body, as the body asks.
+            return (
+                not any(
+                    outlines_overlap(rear.cover_recess.outline, cover)
+                    for cover in other_covers
+                )
+                and all(point_in_polygon(p, outline) for p in rear.cover_recess.outline)
+                and not any(
+                    rear.cavity.depth + top.depth >= self.body_thickness
+                    and outlines_overlap(rear.cavity.outline, top.outline)
+                    for top in top_cavities
+                )
+                and not (
+                    keep > 0.0
+                    and any(edges.within(p, keep) for p in rear.cover_recess.outline)
+                )
             )
 
         controls = build(0.0, 0.0)
@@ -6955,8 +7003,24 @@ class Prototype001Parameters:
             ),
             key=lambda shift: (math.hypot(*shift), -shift[1]),
         )
-        for dx, dy in shifts:
-            moved = build(dx, dy)
+        candidates = [(dx, dy, 0.0) for dx, dy in shifts]
+        if self.body_controls == "strat_rear":
+            # A Stratocaster's knobs turned too where moving them is not
+            # enough: from the back they are off its tremolo's cover, in
+            # the band between it and the roundover. The least turn first,
+            # then the least move, in 2 mm steps.
+            candidates += sorted(
+                (
+                    (float(dx), float(dy), float(turn))
+                    for turn in REAR_STRAT_TURNS
+                    for dx in range(-reach, reach + 1, 2)
+                    for dy in range(0, reach + 1, 2)
+                    if math.hypot(dx, dy) <= reach
+                ),
+                key=lambda c: (abs(c[2]), math.hypot(c[0], c[1]), -c[1]),
+            )
+        for dx, dy, turn in candidates:
+            moved = build(dx, dy, turn)
             rear = moved.control_cavity
             if (
                 clear(moved)
@@ -9476,6 +9540,40 @@ def _sides_cross(outline: Sequence[Point2D]) -> bool:
             ) != (turn(c, d, b) > 0.0):
                 return True
     return False
+
+
+def _jack_square_into(
+    outline: tuple[Point2D, ...], cavity: tuple[Point2D, ...], near: Point2D
+) -> tuple[Point2D, float] | None:
+    """Return where a jack in the edge, bored square into it, reaches the
+    cavity, nearest ``near``: the edge point and the bore's direction in
+    degrees, or ``None`` where no square bore from the edge reaches it
+    (within ``SQUARE_JACK_REACH``).
+
+    Every outline vertex is tried, its bore along the edge's inward normal
+    there (the outline counter-clockwise, its inside to the left).
+    """
+    count = len(outline)
+    best: tuple[float, Point2D, float] | None = None
+    for index, point in enumerate(outline):
+        before, after = outline[index - 1], outline[(index + 1) % count]
+        tx, ty = after.x - before.x, after.y - before.y
+        length = math.hypot(tx, ty)
+        if length == 0.0:
+            continue
+        # Inward: to the left of a counter-clockwise outline.
+        ux, uy = -ty / length, tx / length
+        if not point_in_polygon(Point2D(point.x + ux, point.y + uy), outline):
+            ux, uy = -ux, -uy
+        hits = [d for d in _line_crossings(point, ux, uy, cavity) if d > 0.0]
+        if not hits or min(hits) > SQUARE_JACK_REACH:
+            continue
+        distance = math.hypot(point.x - near.x, point.y - near.y)
+        if best is None or distance < best[0]:
+            best = (distance, point, math.degrees(math.atan2(uy, ux)))
+    if best is None:
+        return None
+    return best[1], best[2]
 
 
 def _line_crossings(

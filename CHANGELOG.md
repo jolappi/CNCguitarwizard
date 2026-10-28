@@ -186,6 +186,18 @@
 
 ### Added
 
+- A Stratocaster's controls from the back, no pickguard needed
+  (`body_controls` "strat_rear", *Stratocaster's controls from the
+  back*): its three pots and 5-way blade switch where its guard puts them,
+  in a cavity routed from the back under a six-screw cover, only the
+  shafts, the switch's lever and its screws through the top; its jack in
+  the edge (`body_jack` "side" or "cup"), bored square into the cavity on
+  the lower bout behind the knobs. With the vintage tremolo the guard's
+  places put the volume pot over its cover on the back, so the knobs turn
+  20 degrees off it (a generated rear cavity's move may now turn the
+  Stratocaster's, and keeps clear of the back's roundover). The web app
+  turns the pickguard off and puts the jack in the edge as it is chosen.
+
 - The 1970s Fender "bullet" truss rod: laid in from the back as the
   vintage one, but adjusted at the headstock (`truss_rod_install` "back"
   with `truss_rod_adjustment` "headstock", or a one-piece neck so

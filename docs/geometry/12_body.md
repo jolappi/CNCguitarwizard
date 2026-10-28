@@ -407,6 +407,7 @@ follows the shape and moves with the control group in the body editor.
 | `active_4` | Active bass, 4 pots | A 130 × 44 mm round-ended rear cavity (room for a preamp) in a 142 × 56 mm recess, 4 pots 28 mm apart in a row (volume, blend, bass, treble), a six-screw cover, no switch cavity; the 9 V battery goes in the battery box (`body_battery_box`) |
 | `tele` | Telecaster-style plate | A '52's (`controls.TELE_PLATE`, measured from a photo): a 155 × 32 mm plate recess (cover depth) routed into the **top**, with a 142 × 25.4 mm control cavity from its floor taking 24 mm pots; along the plate from its centre the blade switch's 20 × 7 mm slot at −50 mm, the volume pot at −2 and the tone pot at +57, two screws at ±74.5 |
 | `jazz_bass` | Jazz Bass style plate | A 150 × 36 mm round-ended plate recess in the top (a real Jazz Bass plate is as long, gently curved) over a 112 × 26 mm cavity; 3 pots 32 mm apart (volume, volume, tone), two screws 124.5 mm (4.9 in) apart, and with `body_jack` "plate" the output jack's Ø 9.6 hole behind the pots (no bore from the edge), no switch cavity |
+| `strat_rear` | Stratocaster's controls from the back | The Stratocaster's three pots and 5-way blade switch where its guard puts them (the shape's `pickguard_controls`, the slot along `pickguard_switch_degrees`; else three pots in a row and the switch ahead, as `pickguard` lays them), routed from the **back** instead, so no pickguard is needed: a rear cavity round the pots (`POT_ROOM`) and the switch's pocket, in a cover recess `COVER_MARGIN` (6 mm) wider, a six-screw cover; the switch from the back as the superstrat's (its pocket leaving `BLADE_SWITCH_TOP_WALL`, its lever's slot and two screws through the top). Only the shafts, the lever and the switch's screws show on the top |
 | `none` | No controls | No control or switch cavity, pots or covers |
 
 ### Controls as on the original
@@ -660,13 +661,28 @@ spots (Ø 3 mm, 1 mm into the ledge floor) are in
 its recess and cavity in `control_top_cavities`.
 
 A generated rear cavity (`GENERATED_REAR_LAYOUTS`: `gibson_4`, `rear_3`,
-`superstrat`, `volume_1`, `active_4`) that would rout into a
+`superstrat`, `volume_1`, `active_4`, `strat_rear`) that would rout into a
 deep top route over it — a Floyd Rose's fine-tuner recess or a pickup,
-leaving no wood between the floors — moves with its pots and cover to the
+leaving no wood between the floors — or whose cover would lie on another
+cover or too near the edge, moves with its pots and cover to the
 nearest place, out from the centreline and along the neck by up to
 `CONTROL_CLEARANCE_SHIFT` (20 mm) in 1 mm steps, that clears them with
-its cover in the body and off the spring-cavity and battery covers
+its cover in the body, off the spring-cavity and battery covers and far
+enough in that the back's roundover lowers its rim no more than
+`EDGE_RIM_TOLERANCE` (found on the CAM's `EdgeGrid`)
 (`Prototype001Parameters._placed_controls`). The drawn almond stays put.
+A Stratocaster's controls from the back (`strat_rear`) turn too where
+moving alone does not clear (`REAR_STRAT_TURNS`: 10, 20, 30 degrees
+either way, the least turn first, in 2 mm steps): from the back the
+guard's places put its volume pot over its tremolo's cover, so with the
+vintage tremolo the knobs turn 20 degrees off it, into the band between
+that cover and the 7/16 in roundover; with a hardtail they stay where the
+guard has them. Its jack, `body_jack` "side" or "cup", goes in the edge
+where a bore square to the edge reaches the cavity, as near the shape's
+own jack (its oval plate's) as that allows (`_jack_square_into`, at most
+`SQUARE_JACK_REACH`, 60 mm): on the lower bout, behind the knobs. The web
+app turns the pickguard off and puts an oval or Strat style jack in the
+edge as the layout is chosen; the last choice wins.
 
 The battery box and the controls are placed together, so neither blocks
 the other. Where the box as drawn keeps the controls from the place that

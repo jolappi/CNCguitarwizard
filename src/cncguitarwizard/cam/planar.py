@@ -322,7 +322,7 @@ def offset_polygon(
     # disc_fits for each candidate, the polygon's edges found near it
     # through a bucket grid (thousands of candidates by hundreds of edges
     # took a Stratocaster's build seconds).
-    edges = _EdgeGrid(points, max(distance, 1.0))
+    edges = EdgeGrid(points, max(distance, 1.0))
     kept: list[Point2D] = []
     for candidate in raw:
         if point_in_polygon(candidate, points) != inward or edges.within(
@@ -343,7 +343,7 @@ def offset_polygon(
     return tuple(kept) if len(kept) >= 3 else ()
 
 
-class _EdgeGrid:
+class EdgeGrid:
     """A closed polygon's edges bucketed on a square grid, to find those
     near a point without measuring them all."""
 
