@@ -1800,6 +1800,11 @@
 
 ### Fixed
 
+- The model check measures each part's tight box
+  (`optimalBoundingBox`): FreeCAD's quick one may stand a few hundredths
+  off a curved face, and a side jack bored at a Stratocaster's widest
+  made a correct body 0.03 mm too wide for the 0.01 mm check.
+
 - A vintage truss rod in a neck with a round heel end (the Stratocaster
   style's) failed in FreeCAD: its walnut strip came out empty. The round
   end's trim lay 0.02 mm out past the neck's end, leaving slivers of the

@@ -49,7 +49,10 @@ def render_model_measure() -> str:
         ")\n\n\n"
         "def measured(shape):\n"
         '    """Return whether a shape is valid, its solids and its box."""\n'
-        "    box = shape.BoundBox\n"
+        # The tight box: BoundBox may stand off a curved face by a few
+        # hundredths (a side jack's bore at the body's widest), more than
+        # the checks allow.
+        "    box = shape.optimalBoundingBox()\n"
         "    return {\n"
         '        "valid": shape.isValid(),\n'
         '        "solids": len(shape.Solids),\n'

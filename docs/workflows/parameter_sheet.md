@@ -95,7 +95,7 @@ its output in `freecad_check.log`, and checks what it measured:
 
 | Name | Expected |
 | --- | --- |
-| `model_holds_its_parts` | `NeckBack`, `Fretboard` and, unless the neck runs through the body, `Body` are in the model. |
+| `model_holds_its_parts` | `NeckBack`, `Fretboard` (not for a one-piece neck: its board is the neck's) and, unless the neck runs through the body, `Body` are in the model. |
 | `model_parts_are_valid` | Every solid part is a valid shape. |
 | `step_is_valid` | The STEP, read back, is a valid shape. |
 | `step_holds_the_model_solids` | The STEP holds as many solids as the model's parts. |
@@ -106,6 +106,9 @@ its output in `freecad_check.log`, and checks what it measured:
 
 The three body checks are made for a bolt-on or set neck only: a neck
 run through the body has a block and wings instead of one body solid.
+Every box is a part's tight one (`optimalBoundingBox`): FreeCAD's quick
+`BoundBox` may stand a few hundredths off a curved face, more than the
+checks allow.
 
 The result goes into `build.json` as `model_check`: its status
 (`READY FOR HUMAN REVIEW` when every check passed, else

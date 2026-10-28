@@ -325,7 +325,8 @@ followed by JSON:
 - `parts`: each solid part shown in the model (the parts the STEP and
   the other 3D formats hold), by its FreeCAD name, with `valid`
   (`isValid`), `solids` and `box` (`[xmin, ymin, zmin, xmax, ymax, zmax]`
-  in mm);
+  in mm, its tight `optimalBoundingBox`: the quick `BoundBox` may stand a
+  few hundredths off a curved face);
 - `step`: the same three for the STEP read back;
 - `sheet`: whether the model holds its `Parameters` spreadsheet.
 
