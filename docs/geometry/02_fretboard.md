@@ -196,10 +196,10 @@ Every style but the barbed wires, dots and symbols spans the board between its f
 (`BOARD_STYLES`): one per listed fret, `inlay_block_length_fraction`
 (60 %) of the fret spacing long, `inlay_block_edge_margin` (5 mm) inside
 each board edge with the board's taper, its corners rounded 1 mm. Their
-bass edge is -Y as drawn right-handed and +Y left-handed, mirrored with
-the rest, whatever `headstock_bass_side` says
-(`Prototype001Parameters.marker_bass_sign`): turning the headstock round
-leaves the markers as drawn. With slanted or
+bass edge is the strings' bass side (`Prototype001Parameters.bass_sign`):
+-Y as drawn right-handed and +Y left-handed, mirrored with the rest;
+turning the headstock round (`headstock_bass_side`) leaves the markers
+as drawn. With slanted or
 fanned frets these lean point by point with the frets; barbed wire turns
 to their angle and dots move onto the line between them. Every style but
 dots gets the sheet program for its pieces (`Fretboard_inlay_pieces.nc`).

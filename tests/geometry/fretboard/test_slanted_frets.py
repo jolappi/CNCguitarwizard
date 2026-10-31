@@ -38,7 +38,10 @@ def test_every_fret_and_both_board_ends_share_the_slant(slanted) -> None:  # typ
     treble, bass = sorted((first.start, first.end), key=lambda p: -p.y)
     assert treble.x > bass.x
     assert parameters.fret_slant == pytest.approx(slope)
-    lefty = replace(parameters, headstock_bass_side="+y")
+    # Turning the headstock round leaves it; a left-handed build mirrors it.
+    turned = replace(parameters, headstock_bass_side="+y")
+    assert turned.fret_slant == pytest.approx(slope)
+    lefty = replace(parameters, handedness="left")
     assert lefty.fret_slant == pytest.approx(-slope)
 
 

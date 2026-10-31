@@ -1878,6 +1878,17 @@
 
 ### Fixed
 
+- `headstock_bass_side` turns only the headstock round: its outline and
+  tuners side for side (a six in line on the treble edge, as a reverse
+  one), the strings wound on them the other way round. It turned the
+  whole instrument's bass side, so the strings, the frets' slant and fan,
+  the pickups, the bridge and the body's contours and heel relief went
+  over with it (a Jackson RR style's belly cut onto its short treble wing,
+  its leg contour onto the long bass wing). The strings' bass side
+  (`Prototype001Parameters.bass_sign`) now follows the handedness alone,
+  the headstock's (`headstock_sign`) `headstock_bass_side`;
+  `marker_bass_sign`, the same as the strings' now, is gone.
+
 - A build's time estimates count the Z lift speed for every part's
   programs: a neck's, a fretboard's and an inlay's, cut with tools of
   their own, had their lifts timed as rapids, though the writer feeds

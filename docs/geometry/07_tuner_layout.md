@@ -88,10 +88,18 @@ resolved ends. `TunerLayout` accepts a `sides` tuple naming each station's
 side (an offset may then be negative for a post past the centreline);
 without it every station is mirrored onto both sides.
 
-`headstock_bass_side` says which side of the centreline carries the low E:
-`-y` on the right-handed Prototype001 body as drawn (the long-horn side);
-`handedness = "left"` puts it at `+y`. `HeadstockPlan.bass_sign` and every
-`TunerHole.side` follow it, so "bass" always means the physical bass side.
+The strings' bass side is `-y` on the right-handed Prototype001 as drawn
+(the body's long-horn side); `handedness = "left"` puts it at `+y`
+(`Prototype001Parameters.bass_sign`). `headstock_bass_side` says which
+side of the headstock as drawn takes the bass strings' tuners: `-y`, the
+strings' own bass side, or `+y`, the headstock turned round
+(`Prototype001Parameters.headstock_sign`). Turned round, the headstock is
+the mirror image of the one drawn — its outline, its tuners (a six in line
+on the treble edge, a reverse one) and their sides — and the strings are
+wound on its posts the other way round; the strings, the fretboard, the
+pickups, the bridge and the body stay as they are. `HeadstockPlan.bass_sign`
+and every `TunerHole.side` follow the headstock's side, so a turned
+headstock's "bass" tuners hold the treble strings.
 
 ## 3+3 layout
 

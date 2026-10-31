@@ -1686,9 +1686,12 @@ class Prototype001Parameters:
     # the style's wood reserve (HEADSTOCK_RESERVES): a six-in-line blank
     # keeps room for a Strat outline, a 4+2 blank for a Music Man one.
     # The headstock grows past headstock_length when the last tuner
-    # needs it. headstock_bass_side says where the low E is as drawn: -Y on
-    # the right-handed Prototype001 body (the long-horn side; handedness
-    # "left" mirrors it). The shoulder
+    # needs it. headstock_bass_side says which of the headstock's sides as
+    # drawn takes the bass strings' tuners: -Y, the side the bass strings
+    # are on on the right-handed Prototype001 (the body's long-horn side;
+    # handedness "left" mirrors it). "+y" turns the headstock round, and
+    # only the headstock: the strings, fretboard and body stay as they
+    # are (headstock_sign). The shoulder
     # and tip widths and shifts, when set, override the resolved ends
     # (shifts toward the bass side positive).
     headstock_style: HeadstockStyle = "3+3"
@@ -2027,22 +2030,27 @@ class Prototype001Parameters:
 
     @property
     def bass_sign(self) -> float:
-        """Return +1.0 when the bass side is +Y, -1.0 when it is -Y.
+        """Return +1.0 when the bass strings are on +Y, -1.0 on -Y.
+
+        -Y as drawn right-handed, +Y left-handed (mirrored with the rest).
+        The strings, the fretboard, the pickups, the bridge and the body
+        follow it; ``headstock_bass_side`` turns only the headstock
+        (``headstock_sign``).
+        """
+        return 1.0 if self.left_handed else -1.0
+
+    @property
+    def headstock_sign(self) -> float:
+        """Return the side the headstock's bass edge is on: +1.0 for +Y.
 
         ``headstock_bass_side`` as drawn, the other side when left-handed.
+        On the strings' bass side (``bass_sign``) it is the headstock as
+        drawn; on the treble side it is turned round, its mirror image,
+        the strings wound on its tuners the other way round (a six in line
+        turned round is a reverse one). Nothing else turns with it.
         """
         drawn = -1.0 if self.headstock_bass_side == "-y" else 1.0
         return -drawn if self.left_handed else drawn
-
-    @property
-    def marker_bass_sign(self) -> float:
-        """Return the side the fret markers' bass edge is on: -1.0 for -Y.
-
-        -Y as drawn right-handed, +Y left-handed (mirrored with the rest),
-        whatever ``headstock_bass_side`` says: turning the headstock round
-        leaves the markers as drawn.
-        """
-        return 1.0 if self.left_handed else -1.0
 
     @property
     def built_body_shape(self) -> BodyShapeSpec:
@@ -2187,6 +2195,12 @@ class Prototype001Parameters:
         style's side, and the headstock grows past ``headstock_length``
         when the last hole needs it, as a row's does.
 
+        Sides: the bass side is the headstock's own (``headstock_sign``).
+        Turned round, all of it is the mirror image of the headstock as
+        drawn; the string spacing is the same either way round, so every
+        post still sits on a string's line, the strings taking them the
+        other way round.
+
         Outline: each edge with tuners on it is the straight line fitted
         through those holes ``tuner_edge_offset`` further out, from the
         shoulder to the tip, so every hole sits the same distance from
@@ -2198,7 +2212,7 @@ class Prototype001Parameters:
         resolved ends. The headstock grows past ``headstock_length`` when
         the last tuner needs it.
         """
-        bass_sign = self.bass_sign
+        bass_sign = self.headstock_sign
         bass_count, treble_count = HEADSTOCK_STYLES[self.headstock_style]
         self._check_inline_offsets()
         hole_edge = self.tuner_hole_diameter / 2.0 + self.tuner_edge_clearance
@@ -6289,7 +6303,7 @@ class Prototype001Parameters:
             dot_diameter=self.inlay_dot_diameter,
             block_length_fraction=self.inlay_block_length_fraction,
             block_edge_margin=self.inlay_block_edge_margin,
-            bass_sign=self.marker_bass_sign,
+            bass_sign=self.bass_sign,
             # (Checked by the layout: a pair of numbers each.)
             custom_points=tuple(
                 cast(DrawnPoint, tuple(point)) for point in self.inlay_points

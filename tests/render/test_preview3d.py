@@ -272,3 +272,18 @@ def test_the_web_app_sends_the_parts_and_an_stl_holds_them() -> None:
     assert len(data) == 84 + 50 * count
     assert int.from_bytes(data[80:84], "little") == count
     assert math.isfinite(volume(parts[1]))
+
+
+def test_a_headstock_turned_round_takes_the_strings_the_other_way_round() -> None:
+    # Turned round, a six in line is a reverse one: the high E wound on the
+    # post nearest the nut, the low E on the one at the tip.
+    from cncguitarwizard.render.preview3d import _posts_of_strings
+
+    inline = replace(Prototype001Parameters(), headstock_style="6_inline")
+    turned = replace(inline, headstock_bass_side="+y")
+    for parameters, nearest in ((inline, 0), (turned, -1)):
+        posts = _posts_of_strings(parameters.build(wired=False), parameters)
+        along = [post[0] for post in posts if post is not None]
+        assert len(along) == 6
+        assert along[nearest] == max(along)
+        assert along[-1 - nearest] == min(along)

@@ -101,7 +101,7 @@ whatever the fretting.
 **Slanted frets** — `Prototype001Parameters.fret_slant_angle` (degrees,
 0 by default, at most `MAX_FRET_SLANT_ANGLE` = 10°): a constant lean; a
 positive angle moves each fret's treble end toward the bridge, whichever
-side `headstock_bass_side` puts the bass on (`fret_slant`). The bridge and
+side the handedness puts the bass on (`fret_slant`). The bridge and
 pickups are unchanged, so only the centerline string keeps its exact
 scale; the others are set at the saddles.
 

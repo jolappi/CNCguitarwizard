@@ -1647,7 +1647,7 @@ def inlay_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         "nut_half": surface.nut_width / 2.0,
         "final_half": surface.last_fret_width / 2.0,
         "final_position": round(final, 3),
-        "bass_sign": parameters.marker_bass_sign,
+        "bass_sign": parameters.bass_sign,
         "mirrored": built.left_handed,
         "custom": parameters.inlay_style == "custom",
         "points": points,

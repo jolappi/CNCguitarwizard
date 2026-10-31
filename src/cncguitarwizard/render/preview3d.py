@@ -762,7 +762,11 @@ def _headstock_details(
         back = _along(base, normal, -headstock.thickness)
         # Its gear under the back, its button out past the headstock's side.
         housing = _along(back, normal, -5.0)
-        side = parameters.bass_sign if hole.side == "bass" else -parameters.bass_sign
+        side = (
+            parameters.headstock_sign
+            if hole.side == "bass"
+            else -parameters.headstock_sign
+        )
         away = (0.0, side, 0.0)
         button = _along(_along(housing, away, 26.0), normal, -2.0)
         pieces += [
@@ -898,7 +902,7 @@ def _bridge_details(
     scale = surface.scale_length
     nut_lean, bridge_lean = surface.skew.at(0.0), surface.skew.at(scale)
     frets = parameters.fret_height
-    posts = _posts_of_strings(geometry, count)
+    posts = _posts_of_strings(geometry, parameters)
     tail = _string_anchors(body)
     paths: list[tuple[list[Vector], float]] = []
     for string in range(1, count + 1):
@@ -910,7 +914,7 @@ def _bridge_details(
         nut_z = _board_top(surface, nut_y) + frets + _NUT_OVER_FRETS + radius
         front = (nut_lean * nut_y, nut_y, nut_z)
         back = (front[0] - parameters.nut_thickness, nut_y, nut_z)
-        post = posts[string - 1] if string <= len(posts) else None
+        post = posts[string - 1]
         wound = post if post is not None else (back[0] - 15.0, nut_y, nut_z)
         saddle = (
             scale + bridge_lean * bridge_y,
@@ -1113,19 +1117,28 @@ def _rectangle(x0: float, x1: float, y0: float, y1: float) -> tuple[Point2D, ...
     return (Point2D(x0, y0), Point2D(x1, y0), Point2D(x1, y1), Point2D(x0, y1))
 
 
-def _posts_of_strings(geometry: Prototype001Geometry, count: int) -> list[Vector]:
+def _posts_of_strings(
+    geometry: Prototype001Geometry, parameters: Prototype001Parameters
+) -> list[Vector | None]:
     """Return where each string, bass first, is wound on its tuner's post:
     the bass side's from the nut out to the bass strings from the outside
     in, the treble side's to the treble strings from the outside in (as a
-    Gibson's or a Fender's)."""
+    Gibson's or a Fender's). A headstock turned round
+    (``headstock_bass_side``) is the mirror image, so the strings take its
+    posts the other way round, the high E the one its bass side's would
+    as drawn. ``None`` for a string with no post."""
     headstock = geometry.headstock
     holes = geometry.tuner_layout.holes
     bass = sorted((h for h in holes if h.side == "bass"), key=lambda h: h.index)
     treble = sorted((h for h in holes if h.side == "treble"), key=lambda h: h.index)
-    posts = []
+    count = parameters.string_count
+    posts: list[Vector | None] = []
     for hole in [*bass, *reversed(treble)][:count]:
         base, normal = _tuner_seat(headstock, hole.center)
         posts.append(_along(base, normal, _WIND_HEIGHT))
+    posts += [None] * (count - len(posts))
+    if parameters.headstock_sign != parameters.bass_sign:
+        posts.reverse()
     return posts
 
 

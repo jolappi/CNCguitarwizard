@@ -7,7 +7,7 @@ import pytest
 
 from cncguitarwizard.geometry.body import FloydRoseSpec, TuneOMaticSpec
 from cncguitarwizard.geometry.primitives import Point2D
-from cncguitarwizard.presets import Prototype001Parameters
+from cncguitarwizard.presets import Prototype001Geometry, Prototype001Parameters
 from cncguitarwizard.presets.body_shapes import (
     GUITAR_BODY,
     YOUR_DESIGN_TEMPLATES,
@@ -171,11 +171,47 @@ def test_turning_the_headstock_round_leaves_the_fret_markers_as_drawn() -> None:
             for marker in parameters.inlay_design().markers
         ]
 
-    # The strings' bass side turns with the headstock; the markers, long
-    # on their bass edge, stay as drawn.
-    assert turned.bass_sign == -drawn.bass_sign
+    # Only the headstock turns; the markers, long on their bass edge, stay
+    # as drawn with the strings.
+    assert turned.headstock_sign == -drawn.headstock_sign
+    assert turned.bass_sign == drawn.bass_sign
     assert corners(turned) == corners(drawn)
     # A left-handed build mirrors them with the rest.
     assert corners(left) == [
         sorted((x, round(-y, 6) + 0.0) for x, y in marker) for marker in corners(drawn)
     ]
+
+
+def test_turning_the_headstock_round_turns_only_the_headstock() -> None:
+    # Regression: headstock_bass_side "+y" turned the whole instrument's
+    # bass side, so a Jackson RR style's belly cut went onto its short
+    # treble wing and its leg contour onto the long bass wing, the frets'
+    # slant turning with them.
+    from cncguitarwizard.presets.styles import STYLES
+
+    style = STYLES["jackson_rr"]
+    drawn = replace(
+        Prototype001Parameters(**style.prototype_values("electric_guitar")),
+        headstock_outline="fitted",
+        body_belly_cut_depth=10.0,
+        fret_slant_angle=5.0,
+    )
+    turned = replace(drawn, headstock_bass_side="+y")
+    built, turned_built = drawn.build(wired=False), turned.build(wired=False)
+
+    assert turned_built.body == built.body
+    assert turned_built.fret_layout == built.fret_layout
+
+    # The headstock is the mirror image: its six in line on the treble
+    # edge, as a reverse one is.
+    def holes(geometry: Prototype001Geometry) -> list[tuple[float, float]]:
+        return sorted(
+            (round(hole.center.x, 6), round(hole.center.y, 6))
+            for hole in geometry.tuner_layout.holes
+        )
+
+    assert holes(turned_built) == sorted(
+        (x, round(-y, 6) + 0.0) for x, y in holes(built)
+    )
+    reverse = replace(drawn, headstock_style="6_inline_reverse").build(wired=False)
+    assert holes(turned_built) == holes(reverse)

@@ -196,11 +196,11 @@ def test_a_bass_side_on_plus_y_gets_the_set_back_post() -> None:
 
     from cncguitarwizard.presets import Prototype001Parameters
 
-    for side, bass_y in (("-y", -37.0), ("+y", 37.0)):
+    for hand, bass_y in (("right", -37.0), ("left", 37.0)):
         parameters = replace(
             Prototype001Parameters(),
             body_bridge=TuneOMaticSpec(),
-            headstock_bass_side=side,
+            handedness=hand,
         )
         holes = {hole.name: hole for hole in parameters.body_layout().holes}
         bass, treble = holes["Bridge post bass"], holes["Bridge post treble"]
