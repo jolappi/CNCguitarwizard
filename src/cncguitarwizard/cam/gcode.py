@@ -62,8 +62,10 @@ class Setup:
         """Return a rough run time from path lengths and nominal feeds.
 
         With a Z lift speed, the rapids straight up and down are timed at
-        it, as the writer feeds them.
+        it, as the writer feeds them: the form's (``parameters``), which the
+        writer takes for every program, a part's own tool or not.
         """
+        lift_rate = parameters.z_lift_rate
         parameters = self.tool or parameters
         cutting = 0.0
         lifting = 0.0
@@ -80,14 +82,14 @@ class Setup:
                 elif (
                     previous is not None
                     and move.rapid
-                    and parameters.z_lift_rate > 0.0
+                    and lift_rate > 0.0
                     and (move.x, move.y) == (previous.x, previous.y)
                 ):
                     lifting += abs(move.z - previous.z)
                 previous = move
         rapids = (self.rapid_length() - lifting) / parameters.rapid_rate
         if lifting > 0.0:
-            rapids += lifting / parameters.z_lift_rate
+            rapids += lifting / lift_rate
         return cutting + rapids
 
 

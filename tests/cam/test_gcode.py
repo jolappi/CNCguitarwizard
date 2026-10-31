@@ -308,6 +308,17 @@ def test_the_time_estimate_counts_the_lifts_at_their_speed() -> None:
     assert difference == pytest.approx(22.0 / 600.0 - 22.0 / 3000.0)
 
 
+def test_a_parts_own_tool_has_its_lifts_timed_at_the_forms_speed() -> None:
+    # A neck's or a fretboard's tool is its own, without the form's lift
+    # speed; the writer feeds its lifts at the form's all the same.
+    setup = replace(make_two_pocket_setup(), tool=MachiningParameters())
+    lifts = MachiningParameters(z_lift_rate=600.0)
+
+    assert setup.estimated_minutes(lifts) == pytest.approx(
+        replace(setup, tool=lifts).estimated_minutes(lifts)
+    )
+
+
 def test_a_negative_z_lift_speed_is_rejected() -> None:
     with pytest.raises(ToolpathError, match="z_lift_rate"):
         MachiningParameters(z_lift_rate=-1.0)

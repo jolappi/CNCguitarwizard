@@ -1837,6 +1837,12 @@
 
 ### Fixed
 
+- A build's time estimates count the Z lift speed for every part's
+  programs: a neck's, a fretboard's and an inlay's, cut with tools of
+  their own, had their lifts timed as rapids, though the writer feeds
+  them at the form's lift speed (a Prototype001 neck's back, 63 min with
+  a 300 mm/min lift speed, is 81).
+
 - The model check measures each part's tight box
   (`optimalBoundingBox`): FreeCAD's quick one may stand a few hundredths
   off a curved face, and a side jack bored at a Stratocaster's widest
