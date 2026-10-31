@@ -195,6 +195,21 @@
 
 ### Added
 
+- *Eco mode* (`eco_mode`, off by default) builds the programs to cut as
+  little air as they can. A pocket's passes after its first and a hole's
+  pecks after its first come down as rapids to 1 mm over the floor the
+  cut's own last pass left, not to the stock top, before feeding down; a
+  pocket's raster runs the other way round every other pass and its
+  finishing wall starts nearest where the raster ended, so the tool no
+  longer feeds back across the pocket it has cut (a truss-rod channel's
+  372 mm, twice a pass); a ball nose finishing what an end mill roughed —
+  a neck's back, a carved top — runs only where the end mill left wood,
+  its runs nearest first, hopping to the next within two tool diameters
+  fed 0.5 mm over the wood instead of over at the safe height
+  (`raster_finish`'s `link_distance`). Prototype001's neck back finish:
+  63 → 48 min, 81 → 51 with a 300 mm/min Z lift speed. Each program's
+  header says it; the machining form shows it up front.
+
 - A Stratocaster's controls from the back, no pickguard needed
   (`body_controls` "strat_rear", *Stratocaster's controls from the
   back*): its three pots and 5-way blade switch where its guard puts them,

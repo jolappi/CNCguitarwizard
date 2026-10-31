@@ -15,6 +15,13 @@ REVIEW_REQUIRED_NOTE = (
 """Every program's second header line: generated G-code is never ready to
 cut on its own word; the operator checks it and starts the machine."""
 
+ECO_MODE_NOTE = (
+    "Eco mode: rapids come down to 1 mm over the floor the last pass cut, "
+    "not to the stock top"
+)
+"""A header line in a program planned in eco mode
+(``MachiningParameters.eco_mode``): its rapids go down into the cut."""
+
 
 @dataclass(frozen=True, slots=True)
 class Setup:
@@ -183,6 +190,8 @@ class GCodeWriter:
                 else "Work zero: X/Y at index pin 1, Z at stock top"
             ),
         ]
+        if parameters.eco_mode:
+            lines.append(note(ECO_MODE_NOTE))
         lines.extend(note(text) for text in setup.notes)
         kosy = dialect == "kosy"
         feeds = (parameters.feed_rate, parameters.plunge_rate, self.z_lift_rate)

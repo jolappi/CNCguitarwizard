@@ -61,6 +61,13 @@ def pocket(
     walls are too close for the tool, a finishing contour is left off
     between them (``_contour_runs``).
 
+    In eco mode (``parameters.eco_mode``) the tool comes down fast to
+    just over the floor its last pass left before it plunges (the stock
+    top for the first: that pass alone vouches for the wood it cut), every
+    other pass's raster runs the other way round, from where the last
+    pass ended, and a closed finishing contour starts at its point nearest
+    the tool: no long feed across the pocket already cut.
+
     Raises:
         ToolpathError: If the tool cannot fit anywhere in the polygon.
     """
@@ -88,11 +95,51 @@ def pocket(
             f"{name} is too narrow for a {parameters.tool_diameter} mm tool."
         )
     builder = _builder(name, parameters)
-    for z in depth_levels(start_depth, depth, parameters.step_down):
-        _cut_raster(builder, rows, z, polygon, rough_radius, parameters, islands)
+    eco = parameters.eco_mode
+    cleared = 0.0
+    for level, z in enumerate(depth_levels(start_depth, depth, parameters.step_down)):
+        _cut_raster(
+            builder,
+            rows,
+            z,
+            polygon,
+            rough_radius,
+            parameters,
+            islands,
+            backward=eco and level % 2 == 1,
+            cleared=cleared,
+        )
         for run in runs:
-            _cut_contour(builder, run, z, polygon, radius, parameters, islands)
+            _cut_contour(
+                builder,
+                _from_nearest(run, builder) if eco else run,
+                z,
+                polygon,
+                radius,
+                parameters,
+                islands,
+                cleared=cleared,
+            )
+        if eco:
+            cleared = z
     return builder.build()
+
+
+def _from_nearest(
+    run: tuple[Point2D, ...], builder: PathBuilder
+) -> tuple[Point2D, ...]:
+    """Return a closed run (its first point again at its end) started at
+    its point nearest the tool, the same way round; an open run as it is."""
+    if not builder.positioned or len(run) < 3 or run[0] != run[-1]:
+        return run
+    ring = run[:-1]
+    first = min(
+        range(len(ring)),
+        key=lambda index: math.hypot(
+            ring[index].x - builder.x, ring[index].y - builder.y
+        ),
+    )
+    return (*ring[first:], *ring[:first], ring[first])
 
 
 def _contour_runs(
@@ -153,7 +200,8 @@ def drill(
     A hole the tool's own size is peck-plunged. A larger hole is first
     peck-plunged at its centre (so no pillar survives) and then bored
     with a helix whose pitch is the step-down, ending with one full
-    circle on the floor.
+    circle on the floor. In eco mode each peck after the first comes back
+    down fast to just over the last one's floor.
 
     Raises:
         ToolpathError: If the hole is smaller than the tool.
@@ -248,19 +296,29 @@ def _cut_raster(
     radius: float,
     parameters: MachiningParameters,
     islands: Sequence[Sequence[Point2D]] = (),
+    *,
+    backward: bool = False,
+    cleared: float = 0.0,
 ) -> None:
-    """Zigzag every raster row at one depth."""
+    """Zigzag every raster row at one depth.
+
+    ``backward`` runs the same zigzag the other way round, from its last
+    row's end, so a pass can start where the one before it ended. A
+    plunge comes down fast to just over ``cleared`` (``_approach``).
+    """
+    cuts: list[tuple[Point2D, Point2D]] = []
     forward = True
     for y, intervals in rows:
         ordered = (
             intervals if forward else [(high, low) for low, high in reversed(intervals)]
         )
-        for start_x, end_x in ordered:
-            _approach(
-                builder, Point2D(start_x, y), z, polygon, radius, parameters, islands
-            )
-            builder.cut_to(end_x, y)
+        cuts += [(Point2D(start_x, y), Point2D(end_x, y)) for start_x, end_x in ordered]
         forward = not forward
+    if backward:
+        cuts = [(end, start) for start, end in reversed(cuts)]
+    for start, end in cuts:
+        _approach(builder, start, z, polygon, radius, parameters, islands, cleared)
+        builder.cut_to(end.x, end.y)
 
 
 def _cut_contour(
@@ -271,15 +329,18 @@ def _cut_contour(
     radius: float,
     parameters: MachiningParameters,
     islands: Sequence[Sequence[Point2D]] = (),
+    *,
+    cleared: float = 0.0,
 ) -> None:
     """Run one pass along a finishing contour at one depth, as given.
 
     A closed contour comes with its first point again at its end. The
     approach is checked with the bare tool radius: the contour's own
     points sit exactly one radius from the wall, and the only material
-    the link can meet is the finishing allowance itself.
+    the link can meet is the finishing allowance itself. A plunge comes
+    down fast to just over ``cleared`` (``_approach``).
     """
-    _approach(builder, contour[0], z, polygon, radius, parameters, islands)
+    _approach(builder, contour[0], z, polygon, radius, parameters, islands, cleared)
     for point in contour[1:]:
         builder.cut_to(point.x, point.y)
 
@@ -292,13 +353,15 @@ def _approach(
     radius: float,
     parameters: MachiningParameters,
     islands: Sequence[Sequence[Point2D]] = (),
+    cleared: float = 0.0,
 ) -> None:
     """Get the tool to ``target`` at depth ``z``, staying in the cut if it can.
 
     If the straight link from the current position keeps the tool
     inside the already-cleared region (and off the islands), feed there
-    at the current depth and plunge. Otherwise retract, rapid over, and
-    plunge.
+    at the current depth and plunge. Otherwise retract, rapid over, come
+    down fast to 1 mm over ``cleared`` (the Z the wood there is already
+    cut down to: the stock top, by default), and plunge.
     """
     if builder.positioned and builder.z <= 0.0:
         here = Point2D(builder.x, builder.y)
@@ -311,7 +374,7 @@ def _approach(
             builder.plunge_to(z)
             return
     builder.rapid_to(target.x, target.y)
-    builder.rapid_down_to(0.0)
+    builder.rapid_down_to(cleared)
     builder.plunge_to(z)
 
 
@@ -344,11 +407,15 @@ def _peck(
 ) -> None:
     """Plunge in step-down increments, lifting to clear chips between them.
 
-    Ends with the tool on the hole floor.
+    In eco mode each peck after the first comes back down fast to just
+    over the last one's floor, as a pecking cycle (``G83``) does. Ends
+    with the tool on the hole floor.
     """
     builder.rapid_down_to(-start_depth)
     levels = depth_levels(start_depth, depth, parameters.step_down)
     for index, z in enumerate(levels):
+        if parameters.eco_mode and index > 0:
+            builder.rapid_down_to(levels[index - 1])
         builder.plunge_to(z)
         if index < len(levels) - 1:
             builder.lift_to(-start_depth)

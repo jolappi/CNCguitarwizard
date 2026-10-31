@@ -157,8 +157,9 @@ class FretboardMachiningParameters:
         fret-slot cutter's (``fret_slot_tool_diameter``,
         ``fret_slot_spindle_speed``, ``fret_slot_step_down``) and the
         inlay cutter's (``inlay_tool_diameter``, ``inlay_spindle_speed``,
-        ``inlay_step_down``) sizes, speeds and step-downs; and the blank
-        (``fretboard_blank_*``, ``fretboard_carrier_thickness``).
+        ``inlay_step_down``) sizes, speeds and step-downs, and eco mode for
+        them all (``eco_mode``); and the blank (``fretboard_blank_*``,
+        ``fretboard_carrier_thickness``).
         """
         return replace(
             self,
@@ -173,12 +174,14 @@ class FretboardMachiningParameters:
                 tool_diameter=machining.fret_slot_tool_diameter,
                 spindle_speed=machining.fret_slot_spindle_speed,
                 step_down=machining.fret_slot_step_down,
+                eco_mode=machining.eco_mode,
             ),
             inlay=replace(
                 self.inlay,
                 tool_diameter=machining.inlay_tool_diameter,
                 spindle_speed=machining.inlay_spindle_speed,
                 step_down=machining.inlay_step_down,
+                eco_mode=machining.eco_mode,
             ),
         )
 

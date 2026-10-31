@@ -1374,6 +1374,7 @@ def plan_neck_machining(
                             y_range=carve_y,
                             step_over=parameters.finishing_step_over,
                             top=0.0,
+                            link_distance=ball.eco_link_distance,
                         ),
                     ),
                     (
@@ -1389,13 +1390,14 @@ def plan_neck_machining(
                     fixture=back_fixture,
                 ),
             )
+        flat_tips = offset_sampled_surface(sampled, flat)
         rough = Setup(
             f"{prefix}_back_rough",
             f"{what} back - Z-limited roughing with the flat end mill",
             (
                 raster_rough(
                     f"{what} back roughing",
-                    offset_sampled_surface(sampled, flat),
+                    flat_tips,
                     flat,
                     x_range=cut_x,
                     y_range=carve_y,
@@ -1413,7 +1415,8 @@ def plan_neck_machining(
             (
                 # The heel's and a flat headstock's backs where the blank's
                 # planed back is theirs are left as planed: traced only where
-                # they lie below it (a block deeper than the other).
+                # they lie below it (a block deeper than the other). In eco
+                # mode, only where the end mill left wood too.
                 raster_finish(
                     f"{what} back finishing",
                     offset_sampled_surface(sampled, ball),
@@ -1421,13 +1424,23 @@ def plan_neck_machining(
                     x_range=cut_x,
                     y_range=carve_y,
                     step_over=parameters.finishing_step_over,
+                    rest=flat_tips if ball.eco_mode else None,
                     top=0.0,
+                    link_distance=ball.eco_link_distance,
                 ),
             ),
             (
                 f"Same fixture and X/Y zero as {prefix}_back_rough; change to "
                 "the ball nose and re-touch Z on the same surface.",
                 scallop,
+                *(
+                    (
+                        "Eco mode: it runs only where the end mill left wood, "
+                        "not over the flats it cut true.",
+                    )
+                    if ball.eco_mode
+                    else ()
+                ),
             ),
             reference_points,
             ball,

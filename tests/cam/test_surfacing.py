@@ -10,7 +10,7 @@ from cncguitarwizard.cam import (
     raster_finish,
     raster_rough,
 )
-from cncguitarwizard.cam.surfacing import interpolate_rows
+from cncguitarwizard.cam.surfacing import LINK_CLEARANCE, interpolate_rows
 from cncguitarwizard.cam.toolpath import Move
 
 
@@ -200,3 +200,64 @@ def test_rest_finishing_runs_only_where_it_takes_wood_off() -> None:
     for move in cuts(rest.moves):
         assert move.z >= ball_grid.tip_at(move.x, move.y) - 0.003
     assert rest.cutting_length() < full.cutting_length() / 3.0
+
+
+def test_linked_rest_finishing_hops_to_the_nearest_run_in_the_cut() -> None:
+    # A dome with a flat top on a flat floor: the ball finishes only the
+    # fall between them, every pass split round the top.
+    def dome(x: float, y: float) -> float:
+        return -min(8.0, max(0.0, math.hypot(x, y) - 15.0) * 0.4)
+
+    flat = MachiningParameters()
+    ball = MachiningParameters(tool_tip="ball")
+    span = (-40.0, 40.0)
+    flat_grid = build_offset_grid(dome, span, span, flat)
+    ball_grid = build_offset_grid(dome, span, span, ball)
+
+    def finish(link_distance: float):  # type: ignore[no-untyped-def]
+        return raster_finish(
+            "Finish",
+            ball_grid,
+            ball,
+            x_range=span,
+            y_range=span,
+            step_over=1.0,
+            rest=flat_grid,
+            link_distance=link_distance,
+        )
+
+    plain, linked = finish(0.0), finish(12.0)
+
+    def retracts(path) -> int:  # type: ignore[no-untyped-def]
+        moves = path.moves
+        return sum(1 for a, b in zip(moves, moves[1:]) if b.rapid and b.z > a.z)
+
+    assert retracts(linked) < retracts(plain) / 10
+    assert linked.rapid_length() < plain.rapid_length() / 5
+    # The same runs cut, links aside: every point the plain one cuts.
+    cut_points = {(m.x, m.y, m.z) for m in linked.moves if not m.rapid}
+    assert all(
+        (m.x, m.y, m.z) in cut_points for m in plain.moves if not m.rapid and m.z < 0.0
+    )
+    # Never into the surface, nor along it between runs: a link rides
+    # LINK_CLEARANCE over what is left (the plateau's top at 0).
+    for move in cuts(linked.moves):
+        assert move.z >= ball_grid.tip_at(move.x, move.y) - 0.003
+    assert any(m.z == LINK_CLEARANCE for m in linked.moves if not m.rapid)
+
+    def rubbed(path) -> float:  # type: ignore[no-untyped-def]
+        """Return how far a path feeds along the surface with nothing left."""
+
+        def idle(move: Move) -> bool:
+            tip = ball_grid.tip_at(move.x, move.y)
+            left = flat_grid.tip_at(move.x, move.y)
+            return abs(move.z - tip) < 0.01 and left <= tip + 0.01
+
+        moves = path.moves
+        return sum(
+            math.dist((a.x, a.y), (b.x, b.y))
+            for a, b in zip(moves, moves[1:])
+            if not b.rapid and idle(a) and idle(b)
+        )
+
+    assert rubbed(linked) <= rubbed(plain) + 1e-6

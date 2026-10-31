@@ -216,6 +216,7 @@ def raster_finish(
     tolerance: float = 0.002,
     rest: OffsetGrid | None = None,
     top: float | None = None,
+    link_distance: float = 0.0,
 ) -> Toolpath:
     """Follow the offset surface with parallel passes along X.
 
@@ -231,9 +232,31 @@ def raster_finish(
     ``top``, the blank's own face (its Z), likewise below it: where the
     surface is the planed face (a neck's heel and flat headstock back,
     level with the blank's back), it is left as planed, not traced.
+
+    With a ``rest`` or a ``top`` and a ``link_distance``, the runs are
+    taken nearest first (either way round), and a hop to the next run no
+    longer than that is fed straight across instead of over at the safe
+    height, ``LINK_CLEARANCE`` over the surface, and over the rest where
+    it stands higher (no higher than the face): it never rubs the surface
+    finished, and cuts at most what this tool's own roughing left.
     """
     ys = _steps(y_range[0], y_range[1], step_over)
     builder = _builder(name, tool)
+    leftover = rest is not None or top is not None
+
+    def left_at(x: float, y: float) -> float:
+        """Return how high the wood is left there (the rest, the face)."""
+        left = math.inf if rest is None else rest.tip_at(x, y)
+        return left if top is None else min(left, top)
+
+    def link_height(x: float, y: float) -> float:
+        """Return how high a link to the next run rides there."""
+        tip = grid.tip_at(x, y)
+        if rest is not None:
+            tip = max(tip, left_at(x, y))
+        return tip + LINK_CLEARANCE
+
+    runs: list[list[tuple[float, float, float]]] = []
     forward = True
     for y in ys:
         xs = _steps(x_range[0], x_range[1], sample_spacing)
@@ -241,31 +264,42 @@ def raster_finish(
             xs.reverse()
         forward = not forward
         tips = [(x, grid.tip_at(x, y)) for x in xs]
-        if rest is None and top is None:
-            runs = [tips]
+        if leftover:
+            row = _runs_below(tips, [left_at(x, y) for x in xs])
         else:
-            left = [math.inf if rest is None else rest.tip_at(x, y) for x in xs]
-            if top is not None:
-                left = [min(value, top) for value in left]
-            runs = _runs_below(tips, left)
-        for run in runs:
-            points = _simplify(run, tolerance)
-            start_x, start_z = points[0]
-            if not builder.positioned or rest is not None or top is not None:
-                builder.rapid_to(start_x, y)
-                builder.rapid_down_to(start_z)
-                builder.plunge_to(start_z)
-            else:
-                builder.cut_to(start_x, y, max(builder.z, start_z))
-                builder.cut_to(start_x, y, start_z)
-            for x, z in points[1:]:
-                builder.cut_to(x, y, z)
+            row = [tips]
+        runs += [[(x, y, z) for x, z in _simplify(run, tolerance)] for run in row]
+    linked = leftover and link_distance > 0.0
+    if linked:
+        runs = _nearest_first(runs)
+    for run in runs:
+        start_x, start_y, start_z = run[0]
+        if (
+            linked
+            and builder.positioned
+            and math.hypot(start_x - builder.x, start_y - builder.y) <= link_distance
+        ):
+            _feed_link(builder, link_height, start_x, start_y, sample_spacing)
+            builder.plunge_to(start_z)
+        elif not builder.positioned or leftover:
+            builder.rapid_to(start_x, start_y)
+            builder.rapid_down_to(start_z)
+            builder.plunge_to(start_z)
+        else:
+            builder.cut_to(start_x, start_y, max(builder.z, start_z))
+            builder.cut_to(start_x, start_y, start_z)
+        for x, y, z in run[1:]:
+            builder.cut_to(x, y, z)
     return builder.build()
 
 
 REST_TOLERANCE = 0.01
 """How much deeper than an earlier tool's surface (``rest``) a pass must
 cut to be run there, in mm."""
+
+LINK_CLEARANCE = 0.5
+"""How far over the surface and the wood left a finishing pass's feed link
+to its next run rides (``raster_finish``'s ``link_distance``), in mm."""
 
 
 def _runs_below(
@@ -357,7 +391,13 @@ def raster_rough(
             if link_distance > 0.0 and builder.positioned:
                 hop = math.hypot(start_x - builder.x, start_y - builder.y)
                 if hop <= link_distance:
-                    _feed_link(builder, grid, start_x, start_y, level, sample_spacing)
+                    _feed_link(
+                        builder,
+                        lambda x, y: max(level, grid.tip_at(x, y)),
+                        start_x,
+                        start_y,
+                        sample_spacing,
+                    )
             if not (
                 builder.positioned and (builder.x, builder.y) == (start_x, start_y)
             ):
@@ -393,19 +433,19 @@ def _nearest_first(
 
 def _feed_link(
     builder: PathBuilder,
-    grid: OffsetGrid,
+    height: HeightFunction,
     x: float,
     y: float,
-    level: float,
     sample_spacing: float,
 ) -> None:
-    """Feed straight to ``(x, y)`` at ``level``, riding over higher surface."""
+    """Feed straight to ``(x, y)``, at ``height`` every ``sample_spacing``
+    along the way (a layer's level, riding over higher surface)."""
     start_x, start_y = builder.x, builder.y
     count = max(1, math.ceil(math.hypot(x - start_x, y - start_y) / sample_spacing))
     for index in range(1, count + 1):
         t = index / count
         px, py = start_x + (x - start_x) * t, start_y + (y - start_y) * t
-        builder.cut_to(px, py, max(level, grid.tip_at(px, py)))
+        builder.cut_to(px, py, height(px, py))
 
 
 def _segments(

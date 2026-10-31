@@ -782,9 +782,16 @@ def _steps_setup(
                 f"{parameters.tool_diameter:g} mm tool can cut."
             )
         builder = _steps_builder(f"Stepped top, {depth:g} mm band", parameters)
+        # In eco mode the tool comes down fast to over the floor the band's
+        # last pass left (the stock top for its first).
+        cleared = 0.0
         for z in depth_levels(start, depth, parameters.step_down):
             for run in runs:
-                _cut_step_pass(builder, frame.polygon(run), z, spacing * STEP_LINK)
+                _cut_step_pass(
+                    builder, frame.polygon(run), z, spacing * STEP_LINK, cleared
+                )
+            if parameters.eco_mode:
+                cleared = z
         paths.append(builder.build())
         start = depth
     return Setup(
@@ -843,13 +850,19 @@ def _steps_builder(name: str, parameters: MachiningParameters) -> PathBuilder:
 
 
 def _cut_step_pass(
-    builder: PathBuilder, run: Sequence[Point2D], z: float, link: float
+    builder: PathBuilder,
+    run: Sequence[Point2D],
+    z: float,
+    link: float,
+    cleared: float = 0.0,
 ) -> None:
     """Run one pass at ``z``, from its end nearest the tool.
 
     A closed pass (its ends together) starts from its point nearest the
     tool. A pass no further than ``link`` from where the last one ended is
-    fed straight across at depth; otherwise the tool lifts and plunges.
+    fed straight across at depth; otherwise the tool lifts, comes down fast
+    to 1 mm over ``cleared`` (the Z the wood there is cut down to already:
+    the stock top, by default) and plunges.
     """
     points = list(run)
     if builder.positioned:
@@ -872,7 +885,7 @@ def _cut_step_pass(
         builder.cut_to(points[0].x, points[0].y)
     else:
         builder.rapid_to(points[0].x, points[0].y)
-        builder.rapid_down_to(0.0)
+        builder.rapid_down_to(cleared)
     if builder.z > z:
         builder.plunge_to(z)
     for point in points[1:]:
@@ -1001,7 +1014,9 @@ def _carve_setups(
         y_range=y_range,
         step_over=CARVE_FINISH_STEP,
         sample_spacing=1.0,
-        rest=tips if flats is not None else None,
+        # In eco mode only where the end mill left wood, with flats or not.
+        rest=tips if flats is not None or ball.eco_mode else None,
+        link_distance=ball.eco_link_distance,
     )
     notes.append(
         f"Change to a {ball.tool_diameter:g} mm ball nose for the finishing "
@@ -1010,7 +1025,7 @@ def _carve_setups(
         + (
             " It runs only over the fall: the plateau and the rim are flat as "
             "the end mills left them."
-            if flats is not None
+            if flats is not None or ball.eco_mode
             else ""
         )
     )

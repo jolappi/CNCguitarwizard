@@ -254,6 +254,42 @@ and the time estimate counts the lifts at their feed. Set it to what the
 Z axis lifts the spindle reliably at (500–1000 mm/min on a hobby machine),
 or lower the machine's own Z top speed (GRBL `$112`, `$122`) instead.
 
+## Eco mode
+
+`eco_mode` (off by default) builds the programs to cut as little air as
+they can, every part's — the body's, the neck's, the fretboard's, the
+covers' and the inlay pieces':
+
+* **Fast down to the last floor.** A pocket's passes after its first, and
+  a hole's pecks after its first, come down as rapids to 1 mm over the
+  floor that cut's own last pass left there, not to 1 mm over the stock
+  top, and feed down only from there, as a pecking cycle (`G83`) does. The
+  first pass still starts over the stock top: nothing but the cut itself
+  vouches for the wood being gone (an outline profile's start depth, the
+  neck's skin cut, is only roughly so). With a Z lift speed, these moves
+  down are fed at it too.
+* **Each pass from where the last ended.** A pocket's raster runs the
+  other way round on every other pass, and its finishing wall starts at
+  its point nearest where the raster ended, so the tool never feeds back
+  across the pocket it has just cut: a truss-rod channel's 372 mm back to
+  its start, every pass, and the same again to start the next.
+* **A ball nose only where there is wood.** A ball nose finishing a
+  surface an end mill roughed — a neck's back (`Neck_back_finish`), a
+  carved top's arch — runs only where the end mill left wood
+  (`raster_finish`'s `rest`): not over the waste beside the neck, cut flat
+  to the skin, nor over a carved top's plateau and rim. Its runs are taken
+  nearest first, and a hop to the next within two tool diameters
+  (`ECO_LINK_DIAMETERS`) is fed straight across 0.5 mm over the surface
+  and the wood left (`LINK_CLEARANCE`), not up at the safe height and
+  over; the ball nose alone (`neck_back_cut` "ball") links its finishing
+  runs so too.
+
+On Prototype001 the neck's back finish goes from 63 to 48 minutes (81 to
+51 with a 300 mm/min Z lift speed), a truss-rod channel and every pocket
+and hole a little each. The header of every program planned so says
+`Eco mode: rapids come down to 1 mm over the floor the last pass cut, not
+to the stock top` (`ECO_MODE_NOTE`): air-cut it first like any other.
+
 ## Programs run as one
 
 Each part's setups are written one program each, so any of them can be

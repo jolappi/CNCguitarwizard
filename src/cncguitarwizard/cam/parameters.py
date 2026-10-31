@@ -36,11 +36,17 @@ CUTTER_FIELDS = (
     "safe_height",
     "small_hole_tool_diameter",
     "small_hole_step_down",
+    "eco_mode",
 )
 """What a part's own tool takes from the machining form's cutter
-(``with_cutter``): its size and how it is run, and the small end mill's
-(for what it is too wide to cut); the part's blank and fixturing stay its
-own."""
+(``with_cutter``): its size and how it is run (eco mode too), and the small
+end mill's (for what it is too wide to cut); the part's blank and
+fixturing stay its own."""
+
+ECO_LINK_DIAMETERS = 2.0
+"""How far, in tool diameters, a finishing pass in eco mode hops to its
+next run fed across in the cut rather than lifted over
+(``MachiningParameters.eco_link_distance``)."""
 
 
 def depth_per_pass(step_down: float, diameter: float) -> float:
@@ -125,6 +131,18 @@ class MachiningParameters:
             at the machine's top speed. A heavy spindle's Z motor that
             stalls lifting loses steps, and every later cut goes deeper.
             ``0`` (the default): rapids (``G0``), at the machine's speed.
+        eco_mode: Build the programs to cut as little air as they can.
+            The cutter comes down fast (``G0``) to 1 mm over the floor its
+            last pass left, not to the stock top, before it feeds down: a
+            pocket's passes after its first, a hole's pecks after its
+            first. A pocket's passes run from where the last one ended,
+            every other one the other way round, and its finishing wall
+            starts nearest where the clearing ended: no long feed across
+            the cut pocket between them. A ball nose finishing a surface an
+            end mill roughed (a neck's back, a carved top) runs only where
+            the end mill left wood, its runs taken nearest first, fed
+            across to the next where it is near. Off (the default) keeps
+            the programs as they were.
         combine_programs: Join a part's programs that run one after
             another with the same tool, fixture and work zero into one
             program (``Body_back`` and ``Body_back_controls`` become
@@ -245,6 +263,7 @@ class MachiningParameters:
     post_processor: PostProcessor = "grbl"
     spindle_dwell: float = 0.0
     z_lift_rate: float = 0.0
+    eco_mode: bool = False
     combine_programs: bool = False
     machine_x_travel: float | None = None
     machine_y_travel: float | None = None
@@ -380,6 +399,13 @@ class MachiningParameters:
         return self.tool_diameter * self.step_over
 
     @property
+    def eco_link_distance(self) -> float:
+        """Return how far a finishing pass hops to its next run fed across
+        in the cut: ``ECO_LINK_DIAMETERS`` tool diameters in eco mode,
+        ``0`` (always lifted over) with it off."""
+        return ECO_LINK_DIAMETERS * self.tool_diameter if self.eco_mode else 0.0
+
+    @property
     def small_cutter(self) -> MachiningParameters:
         """Return the small end mill's settings: ``small_hole_tool_diameter``
         at ``small_hole_step_down`` a pass, plunging at most 150 mm/min."""
@@ -450,5 +476,6 @@ def with_cutter(
     tool: MachiningParameters, cutter: MachiningParameters
 ) -> MachiningParameters:
     """Return a part's own ``tool`` cutting as the machining form's
-    ``cutter`` does (``CUTTER_FIELDS``): its size, depth and speeds."""
+    ``cutter`` does (``CUTTER_FIELDS``): its size, depth and speeds, and
+    eco mode."""
     return replace(tool, **{name: getattr(cutter, name) for name in CUTTER_FIELDS})
