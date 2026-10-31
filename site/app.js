@@ -7752,10 +7752,11 @@ document.addEventListener("drop", (event) => {
 });
 // ---------------------------------------------------------------------------
 // The tour: the basic path in a few steps, from an instrument to its NC and
-// 3D files. Each step lights its part of the page up (the rest dimmed) with
-// a card beside it, Next to go on; in the drawings a pointer shows what to
-// do, moving a handle or a pickup now and then and putting it back (shown
-// only: nothing is changed, and a press of the user's own stops it). It
+// 3D files, the 3D model first. Each step lights its part of the page up
+// (the rest dimmed) with a card beside it, Next to go on; in the body's
+// drawing, the one drawing toured, a pointer shows what to do, moving a
+// handle or a pickup now and then and putting it back (shown only:
+// nothing is changed, and a press of the user's own stops it). It
 // ends at Build, asking for it to be pressed. It runs once on the first
 // visit, and again from Tour in the header.
 
@@ -7772,6 +7773,18 @@ const onPages = () => Boolean(window.cncgwLayout);
 
 const TOUR_STEPS = [
   {
+    // Its view, open (a closed fold shows only its title).
+    target: () => {
+      const model = document.getElementById("quick-model");
+      model.open = true;
+      return document.getElementById("quick-model-view");
+    },
+    title: "See it in 3D",
+    text: () => "The instrument you are designing, in 3D, drawn again after each change (the first time takes " +
+      "half a minute or so). Drag to turn it, the wheel to zoom. The frets, the tuners, the bridge and strings " +
+      "each take a little longer to draw: tick them above it" + (onPages() ? ", or under Preview." : "."),
+  },
+  {
     target: () => document.getElementById("instrument-rows"),
     title: "Choose the instrument",
     text: () => "A guitar, a 7- or 8-string or a bass, and its name: the files are named after it. " +
@@ -7783,38 +7796,13 @@ const TOUR_STEPS = [
     target: () => bodyEditor.svg,
     shown: () => !bodyEditor.panel.classList.contains("hidden"),
     title: "Shape the body",
-    text: "Drag a round handle to shape the outline, or a pickup to move it. Start from, above the drawing, " +
-      "gives you another body to begin with; the bridge, the pickups and the controls are in its settings.",
+    text: () => "Drag a round handle to shape the outline, or a pickup to move it. Start from, above the " +
+      "drawing, gives you another body to begin with; the bridge, the pickups, the controls and the contours " +
+      "are in its settings. Drag a feature onto Create NC file to cut it on its own, in a body already made. " +
+      (onPages()
+        ? "The neck, the headstock, the fretboard and the inlays are drawn the same way, under Design."
+        : "The headstock and the inlays below are drawn the same way."),
     demo: (signal) => demoBody(signal),
-  },
-  {
-    // The neck's drawing, not its whole page.
-    target: () => document.querySelector("#desk-neck .desk-part-view"),
-    shown: () => Boolean(document.querySelector("#desk-neck .desk-part-view")),
-    title: "The neck and the fretboard",
-    text: "Design › Neck and Design › Fretboard draw them, their settings beside: the neck's joint and its " +
-      "truss rod (from the top under the board, or from the back under a walnut strip), the board's radius " +
-      "and frets, or a fretboard in one piece with the neck.",
-  },
-  {
-    target: () => headstockEditor.svg,
-    shown: () => !headstockEditor.panel.classList.contains("hidden"),
-    title: "Shape the headstock",
-    text: "The same here: drag its handles, and the tuner holes come along; drag a hole to slide it along the " +
-      "edge. The inlays work the same way.",
-    demo: (signal) => demoHeadstock(signal),
-  },
-  {
-    // Its view, open (a closed fold shows only its title).
-    target: () => {
-      const model = document.getElementById("quick-model");
-      model.open = true;
-      return document.getElementById("quick-model-view");
-    },
-    title: "See it in 3D",
-    text: () => "A quick 3D model of the whole instrument, drawn here in a second or two and again after each " +
-      "change: drag to turn it, the wheel to zoom. The frets, the tuners, the bridge and strings each take a " +
-      "little longer to draw: tick them above it" + (onPages() ? ", or under Preview." : "."),
   },
   {
     target: () => findSetting,
@@ -8039,48 +8027,6 @@ async function demoBody(signal) {
       if (!slid) return;
     }
     if (!(await tourPause(900, signal))) return;
-  }
-}
-
-// The headstock: a handle of one edge pulled out and back.
-async function demoHeadstock(signal) {
-  const editor = headstockEditor;
-  do {
-    if (!(await tourPause(700, signal))) return;
-  } while (!editor.edgeHandles);
-  for (;;) {
-    const side = pickAny(["bass", "treble"]);
-    const edge = editor.edges[side];
-    if (edge.length < 2) return;
-    const index = Math.floor(Math.random() * (edge.length - 1));  // not the tip's corner
-    const [d, h] = edge[index];
-    const sign = editor.sign(side);
-    const edges = { bass: editor.edges.bass.map((p) => [...p]), treble: editor.edges.treble.map((p) => [...p]) };
-    const tip = editor.tip.map((p) => [...p]);
-    const handle = editor.edgeHandles[side][index];
-    const insets = editor.holeInsets();
-    tour.restore = () => {
-      editor.edges.bass = edges.bass.map((p) => [...p]);
-      editor.edges.treble = edges.treble.map((p) => [...p]);
-      editor.tip = tip.map((p) => [...p]);
-      editor.showEdges();
-      editor.layout.holes.forEach((hole, i) => {
-        hole.y = insets[i].y;
-        editor.showHole(i);
-      });
-      handle.setAttribute("cx", -d);
-      handle.setAttribute("cy", -sign * h);
-    };
-    const pulled = await tourDrag(() => centreOf(handle), (t) => {
-      editor.place(side, index, [-d, sign * (h + 6 * t)]);
-      editor.showEdges();
-      editor.followEdges(insets);
-      const [nd, nh] = editor.edges[side][index];
-      handle.setAttribute("cx", -nd);
-      handle.setAttribute("cy", -sign * nh);
-      placeTourCursor(centreOf(handle));
-    }, signal);
-    if (!pulled || !(await tourPause(900, signal))) return;
   }
 }
 

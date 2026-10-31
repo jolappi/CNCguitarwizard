@@ -4,14 +4,15 @@
 
 ### Changed
 
-- The tour goes through the app as it is now: after the body, the neck's
-  and the fretboard's pages (their joint, truss rod and a one-piece
-  board), the quick 3D model (its view opened, its details ticked above
-  it or under Preview), where to find a setting on the part pages and
-  under Settings, the cutters' page (Build › Cutters and depths), and a
-  build's files, the 3D formats made in the browser among them. Each step
-  lights its part, not a whole page; the classic page leaves out the
-  steps for pages it has not.
+- The tour goes through the app as it is now: the quick 3D model first
+  (its view opened, its details ticked above it or under Preview), then
+  the instrument and its style, the body's drawing (the one drawing
+  toured, the others drawn the same way under Design; a feature dragged
+  onto Create NC file to cut it on its own), where to find a setting on
+  the part pages and under Settings, the cutters' page (Build › Cutters
+  and depths), and a build's files, the 3D formats made in the browser
+  among them. Each step lights its part, not a whole page; the classic
+  page leaves out the steps for pages it has not.
 
 - *Fretboard one piece* on the neck's page (*Design › Neck*), beside the
   truss rod it lays in from the back, and on the fretboard's (*Design ›

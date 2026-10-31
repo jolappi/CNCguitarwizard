@@ -794,23 +794,23 @@ def test_the_tour_goes_through_the_app_as_it_is_now() -> None:
     start = script.index("const TOUR_STEPS = [")
     steps = script[start : script.index("const tour = {", start)]
 
+    # The 3D model first; of the drawings only the body's.
     titles = re.findall(r'title: "([^"]+)"', steps)
     assert titles == [
+        "See it in 3D",
         "Choose the instrument",
         "Shape the body",
-        "The neck and the fretboard",
-        "Shape the headstock",
-        "See it in 3D",
         "Fine-tune, if you like",
         "Your cutters",
         "Build it",
     ]
+    assert "headstockEditor" not in steps and "#desk-neck" not in steps
+    assert steps.count("demo: ") == 1 and "demoHeadstock" not in script
     # Every part it lights is on the page, or on a page the app layout
-    # makes (the neck's, the cutters'), its step only there.
+    # makes (the cutters'), its step only there.
     for name in re.findall(r'getElementById\("([\w-]+)"\)', steps):
         assert f'id="{name}"' in page, name
     made = set(re.findall(r'querySelector\("#([\w-]+) ', steps))
-    assert made == {"desk-neck", "desk-cutters"}
-    assert '["neck", "Neck"]' in layout and "page.id = `desk-${id}`;" in layout
+    assert made == {"desk-cutters"}
     assert 'cuttersPage.id = "desk-cutters";' in layout
-    assert steps.count("shown: () => Boolean(document.querySelector(") == 2
+    assert steps.count("shown: () => Boolean(document.querySelector(") == 1
