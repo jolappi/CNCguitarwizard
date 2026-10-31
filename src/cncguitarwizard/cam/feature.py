@@ -16,7 +16,15 @@ from collections.abc import Callable, Sequence
 
 from ..geometry.body import BodySolid, CoverPlate, DrilledHole
 from ..geometry.primitives import Point2D
-from .body import _drill_hole, _drill_rear_hole, _Frame, _rear_pockets, _top_pocket
+from .body import (
+    _drill_hole,
+    _drill_rear_hole,
+    _Frame,
+    _pocket_outline,
+    _rear_pockets,
+    _tool_fits,
+    _top_pocket,
+)
 from .covers import plan_cover_machining
 from .exceptions import ToolpathError
 from .gcode import Setup
@@ -92,29 +100,56 @@ def plan_feature_machining(
 
     top = _Frame(centre.x, centre.y, mirror_y=False)
     big_top = [hole for hole in top_holes if hole.diameter >= small]
+    # A route the main tool fits nowhere in goes to the small end mill, as
+    # in the whole body's programs.
+    wide_top = [
+        cavity
+        for cavity in top_cavities
+        if _tool_fits(_pocket_outline(cavity), parameters)
+    ]
+    narrow_top = [
+        _top_pocket(cavity, body, top, small_tool)
+        for cavity in top_cavities
+        if cavity not in wide_top
+    ]
+    small_top = _small(
+        top_holes, small, lambda h: _drill_hole(h, body, top, small_tool)
+    )
     add(
         f"{stem}_top",
         f"The {title} on its own - top face",
         [
-            *(_top_pocket(cavity, body, top, parameters) for cavity in top_cavities),
+            *(_top_pocket(cavity, body, top, parameters) for cavity in wide_top),
             *(_drill_hole(hole, body, top, parameters) for hole in big_top),
         ],
         ("Body top face up.",),
     )
     add(
         f"{stem}_top_small_holes",
-        f"The {title} on its own - top face, small holes",
-        _small(top_holes, small, lambda h: _drill_hole(h, body, top, small_tool)),
-        ("Same zero as the top program; change to the small drill.",),
+        f"The {title} on its own - top face, {_small_contents(narrow_top, small_top)}",
+        [*narrow_top, *small_top],
+        (
+            "Same zero as the top program; change to the small "
+            f"{'end mill' if narrow_top else 'drill'}.",
+        ),
         small_tool,
     )
     back = _Frame(centre.x, centre.y, mirror_y=True)
     big_back = [hole for hole in rear_holes if hole.diameter >= small]
+    wide_back: list[Toolpath] = []
+    narrow_back: list[Toolpath] = []
+    for rear in rears:
+        wide, narrow = _rear_pockets(rear, back, parameters)
+        wide_back += wide
+        narrow_back += narrow
+    small_back = _small(
+        rear_holes, small, lambda h: _drill_rear_hole(h, body, back, small_tool)
+    )
     add(
         f"{stem}_back",
         f"The {title} on its own - back face",
         [
-            *(path for rear in rears for path in _rear_pockets(rear, back, parameters)),
+            *wide_back,
             *(_drill_rear_hole(hole, body, back, parameters) for hole in big_back),
         ],
         (
@@ -124,11 +159,13 @@ def plan_feature_machining(
     )
     add(
         f"{stem}_back_small_holes",
-        f"The {title} on its own - back face, small holes",
-        _small(
-            rear_holes, small, lambda h: _drill_rear_hole(h, body, back, small_tool)
+        f"The {title} on its own - back face, "
+        f"{_small_contents(narrow_back, small_back)}",
+        [*narrow_back, *small_back],
+        (
+            "Same zero as the back program; change to the small "
+            f"{'end mill' if narrow_back else 'drill'}.",
         ),
-        ("Same zero as the back program; change to the small drill.",),
         small_tool,
     )
     cover_plan = plan_cover_machining(kept_covers, parameters)
@@ -144,3 +181,13 @@ def _small(
 ) -> list[Toolpath]:
     """Return the holes narrower than the main tool, drilled with the small one."""
     return [drill_one(hole) for hole in holes if hole.diameter < small]
+
+
+def _small_contents(routes: Sequence[Toolpath], holes: Sequence[Toolpath]) -> str:
+    """Return what a small-drill program cuts: narrow routes, small holes,
+    or both."""
+    return " and ".join(
+        what
+        for what, there in (("narrow routes", routes), ("small holes", holes))
+        if there
+    )

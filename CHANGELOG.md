@@ -195,6 +195,19 @@
 
 ### Added
 
+- A body route the main tool fits nowhere in is cut with the small end
+  mill (`small_hole_tool_diameter`) in the face's small-drill program,
+  `Body_top_small_holes` or `Body_back_small_holes`, before its holes; a
+  core's under a separate top in a program of its own,
+  `Body_core_small_routes`, before the top is glued on. A wide end mill
+  for quicker roughing stopped the plan before ("Bridge pickup wire
+  channel is too narrow for a 12.0 mm tool"); now a 12 mm one at 6 mm a
+  pass builds every style, the wire channels and the heel's truss-rod
+  access with the 3 mm end mill: Prototype001 475 → 333 min, a Jazz Bass
+  766 → 491 min (the ball nose kept at 6 mm). The face's main program
+  names each route moved. Under the default 6 mm end mill every route
+  fits, as before.
+
 - *Eco mode* (`eco_mode`, off by default) builds the programs to cut as
   little air as they can. A pocket's passes after its first and a hole's
   pecks after its first come down as rapids to 1 mm over the floor the

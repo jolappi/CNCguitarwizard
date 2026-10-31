@@ -104,8 +104,9 @@ class MachiningParameters:
             blank's edge.
         small_hole_tool_diameter: Diameter of the drill or end mill used
             in a separate program for holes smaller than the main tool
-            (string-through and pilot holes), and for the cover plates
-            cut from sheet.
+            (string-through and pilot holes), for the routes the main tool
+            fits nowhere in (a wire channel under a 12 mm end mill), and
+            for the cover plates cut from sheet.
         small_hole_step_down: How deep the small end mill cuts per pass;
             ``0`` (the default) for half its diameter (the cover plates,
             in sheet, at most 1 mm).

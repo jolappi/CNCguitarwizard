@@ -68,7 +68,9 @@ class BodyMachiningPlan:
         top: Top-face setup: pockets, holes, and the upper half of the
             outline.
         top_small_holes: Top-face program with the small drill for holes
-            narrower than the main tool, or ``None`` when there are none.
+            narrower than the main tool, and with the small end mill for
+            routes the main tool fits nowhere in (a wire channel under a
+            12 mm end mill), or ``None`` when there are none.
         top_controls: Top-face program for top-routed electronics (a
             control plate's recess and cavity), or ``None``.
         back_controls: Back-face program for the electronics cavities
@@ -99,6 +101,8 @@ class BodyMachiningPlan:
             ``None`` without routes under it.
         core_top: The core's own routes (wire channels, chambers), cut
             into its top before the top is glued on, or ``None``.
+        core_small_routes: The core's routes too narrow for the main tool,
+            cut with the small end mill after ``core_top``, or ``None``.
         stock_length: Minimum blank length along X.
         stock_width: Minimum blank width along Y.
         stock_thickness: Blank thickness (the body thickness).
@@ -131,6 +135,7 @@ class BodyMachiningPlan:
     back_release: Setup | None = None
     core_index_pins: Setup | None = None
     core_top: Setup | None = None
+    core_small_routes: Setup | None = None
 
     @property
     def setups(self) -> tuple[Setup, ...]:
@@ -143,6 +148,7 @@ class BodyMachiningPlan:
         candidates = (
             self.core_index_pins,
             self.core_top,
+            self.core_small_routes,
             self.index_pins,
             self.top_carve_flats,
             self.top_carve,
@@ -247,10 +253,18 @@ def plan_body_machining(
         ),
         reference_points,
     )
-    core_pins, core_top = _core_setups(body, pins, stock, top_frame, parameters)
+    core_pins, core_top, core_small = _core_setups(
+        body, pins, stock, top_frame, parameters
+    )
 
-    def top_pocket(cavity: Cavity) -> Toolpath:
-        return _top_pocket(cavity, body, top_frame, parameters)
+    # A route the main tool fits nowhere in (a wire channel, the truss
+    # rod's access, under a wide end mill) is cut with the small end mill
+    # instead, in the face's small-drill program after the main ones.
+    small_tool = parameters.small_cutter
+    top_narrow: list[Toolpath] = []
+
+    def top_pocket(cavity: Cavity, tool: MachiningParameters = parameters) -> Toolpath:
+        return _top_pocket(cavity, body, top_frame, tool)
 
     top_paths: list[Toolpath] = []
     # An epoxy tray first, over the whole top, its walls left standing:
@@ -269,9 +283,13 @@ def plan_body_machining(
     for cavity in _top_cavities(body):
         if cavity in body.control_top_cavities:
             continue
-        top_paths.append(top_pocket(cavity))
-        # A tilted floor (an angled neck pocket) steps down after it.
-        top_paths += _floor_terraces(cavity, top_frame, parameters)
+        if _tool_fits(_pocket_outline(cavity), parameters):
+            top_paths.append(top_pocket(cavity))
+            # A tilted floor (an angled neck pocket) steps down after it.
+            top_paths += _floor_terraces(cavity, top_frame, parameters)
+        else:
+            top_narrow.append(top_pocket(cavity, small_tool))
+            top_narrow += _floor_terraces(cavity, top_frame, small_tool)
     small_holes = [
         hole for hole in body.holes if hole.diameter < parameters.tool_diameter - 1e-6
     ] + [
@@ -279,12 +297,22 @@ def plan_body_machining(
         for hole in body.control_top_marks
         if hole.diameter < parameters.tool_diameter - 1e-6
     ]
+    controls = [
+        cavity
+        for cavity in body.control_top_cavities
+        if _tool_fits(_pocket_outline(cavity), parameters)
+    ]
+    top_narrow += [
+        top_pocket(cavity, small_tool)
+        for cavity in body.control_top_cavities
+        if cavity not in controls
+    ]
     top_controls: Setup | None = None
-    if body.control_top_cavities:
+    if controls:
         top_controls = Setup(
             "Body_top_controls",
             "Body top face - control plate recess and cavity",
-            tuple(top_pocket(cavity) for cavity in body.control_top_cavities),
+            tuple(top_pocket(cavity) for cavity in controls),
             (
                 "Same fixture, tool and X/Y zero as Body_top.",
                 "The plate's screw spots are in Body_top_small_holes.",
@@ -348,22 +376,27 @@ def plan_body_machining(
                 else ()
             ),
             *body.wire_notes,
+            *_narrow_notes(top_narrow, parameters, "Body_top_small_holes"),
         ),
         reference_points,
         fixture=TOP_FIXTURE,
     )
 
     top_small_holes: Setup | None = None
-    if small_holes:
-        small_tool = parameters.small_cutter
+    if small_holes or top_narrow:
+        cutter = "end mill" if top_narrow else "drill"
         top_small_holes = Setup(
             "Body_top_small_holes",
-            f"Body top face - holes for the {small_tool.tool_diameter:g} mm drill",
-            tuple(
-                _drill_hole(hole, body, top_frame, small_tool) for hole in small_holes
+            _small_description("Body top face", top_narrow, small_holes, small_tool),
+            (
+                *top_narrow,
+                *(
+                    _drill_hole(hole, body, top_frame, small_tool)
+                    for hole in small_holes
+                ),
             ),
             (
-                "Same fixture and X/Y zero as Body_top; change to the small drill "
+                f"Same fixture and X/Y zero as Body_top; change to the small {cutter} "
                 "and re-touch Z on the stock top.",
             ),
             reference_points,
@@ -371,28 +404,33 @@ def plan_body_machining(
             fixture=TOP_FIXTURE,
         )
 
-    def rear_pockets(rear: RearCavity) -> list[Toolpath]:
-        return _rear_pockets(rear, back_frame, parameters)
-
     electronics = [
         rear
         for rear in (body.control_cavity, body.switch_cavity, body.battery_cavity)
         if rear is not None
     ]
     back_paths: list[Toolpath] = []
+    control_paths: list[Toolpath] = []
+    back_narrow: list[Toolpath] = []
     for rear in body.extra_rear_cavities:
-        back_paths += rear_pockets(rear)
+        wide, narrow = _rear_pockets(rear, back_frame, parameters)
+        back_paths += wide
+        back_narrow += narrow
+    for rear in electronics:
+        wide, narrow = _rear_pockets(rear, back_frame, parameters)
+        control_paths += wide
+        back_narrow += narrow
     back_small = [
         hole
         for hole in (*body.rear_holes, *body.control_back_marks)
         if hole.diameter < parameters.tool_diameter - 1e-6
     ]
     back_controls: Setup | None = None
-    if electronics:
+    if control_paths:
         back_controls = Setup(
             "Body_back_controls",
             "Body back face - electronics cavities and their cover recesses",
-            tuple(path for rear in electronics for path in rear_pockets(rear)),
+            tuple(control_paths),
             (
                 "Same fixture, tool and X/Y zero as Body_back (the outline "
                 "is cut last, in Body_back_outline).",
@@ -445,6 +483,7 @@ def plan_body_machining(
                 if cut_outline
                 else ()
             ),
+            *_narrow_notes(back_narrow, parameters, "Body_back_small_holes"),
         ),
         reference_points,
         fixture=BACK_FIXTURE,
@@ -479,17 +518,20 @@ def plan_body_machining(
         )
 
     back_small_holes: Setup | None = None
-    if back_small:
-        small_tool = parameters.small_cutter
+    if back_small or back_narrow:
+        cutter = "end mill" if back_narrow else "drill"
         back_small_holes = Setup(
             "Body_back_small_holes",
-            f"Body back face - holes for the {small_tool.tool_diameter:g} mm drill",
-            tuple(
-                _drill_rear_hole(hole, body, back_frame, small_tool)
-                for hole in back_small
+            _small_description("Body back face", back_narrow, back_small, small_tool),
+            (
+                *back_narrow,
+                *(
+                    _drill_rear_hole(hole, body, back_frame, small_tool)
+                    for hole in back_small
+                ),
             ),
             (
-                "Same fixture and X/Y zero as Body_back; change to the small drill "
+                f"Same fixture and X/Y zero as Body_back; change to the small {cutter} "
                 "and re-touch Z on the stock top (the back face).",
                 *body.joint_notes,
             ),
@@ -522,7 +564,7 @@ def plan_body_machining(
     top_outline = top_frame.polygon(body.outline.points)
     back_outline = back_frame.polygon(body.outline.points)
     previews = [top_outline, top_outline]
-    for optional in (core_pins, core_top):
+    for optional in (core_pins, core_top, core_small):
         if optional is not None:
             previews.append(top_outline)
     for optional in (top_carve_flats, top_carve, top_steps):
@@ -566,6 +608,7 @@ def plan_body_machining(
         back_release=back_release,
         core_index_pins=core_pins,
         core_top=core_top,
+        core_small_routes=core_small,
     )
     return plan if prefix == "Body" else _renamed(plan, prefix)
 
@@ -592,12 +635,20 @@ def _core_setups(
     stock: StockBounds,
     frame: _Frame,
     parameters: MachiningParameters,
-) -> tuple[Setup | None, Setup | None]:
+) -> tuple[Setup | None, Setup | None, Setup | None]:
     """Return the core's own programs under a separate top, run before the
     top is glued on: its dowel holes, then its routes (the wire channels
-    and chambers hidden under the top); ``None`` without such routes."""
+    and chambers hidden under the top), then the routes too narrow for the
+    main tool, with the small end mill; ``None`` for each one not needed.
+    """
     if not body.core_cavities:
-        return None, None
+        return None, None, None
+    wide = [
+        cavity
+        for cavity in body.core_cavities
+        if _tool_fits(cavity.outline, parameters)
+    ]
+    narrow = [cavity for cavity in body.core_cavities if cavity not in wide]
     origin_x, origin_y = pins[0]
     reference_points = tuple((x - origin_x, y - origin_y) for x, y in pins[1:])
     core = body.core_thickness
@@ -622,35 +673,63 @@ def _core_setups(
             f"Core blank: at least {stock.length:.0f} x {stock.width:.0f} x "
             f"{core:g} mm; the top's blank as large and "
             f"{body.cap_thickness:g} mm thick.",
-            "Insert both dowels after this program before running Body_core_top.",
+            "Insert both dowels after this program before running "
+            f"{'Body_core_top' if wide else 'Body_core_small_routes'}.",
         ),
         reference_points,
     )
-    routes_setup = Setup(
-        "Body_core_top",
-        "Body core top - wire channels and chambers, hidden under the top",
-        tuple(
-            pocket(
-                cavity.name,
-                frame.polygon(cavity.outline),
-                cavity.depth,
-                parameters,
-            )
-            for cavity in body.core_cavities
-        ),
-        (
-            "Core on the two index pins, top face up, same work zero as "
-            "Body_core_index_pins.",
-            f"Then glue the {body.cap_thickness:g} mm top on, the core still on "
-            "its dowels and the glue kept out of the routes and the dowel holes; "
-            "once it has set, Body_index_pins drills on through the top into the "
-            "core's dowel holes, and every other program follows as for a body "
-            "of one piece.",
-        ),
-        reference_points,
-        fixture=CORE_FIXTURE,
+
+    def routes(
+        cavities: list[Cavity], tool: MachiningParameters
+    ) -> tuple[Toolpath, ...]:
+        return tuple(
+            pocket(cavity.name, frame.polygon(cavity.outline), cavity.depth, tool)
+            for cavity in cavities
+        )
+
+    small = parameters.small_cutter
+    narrow_paths = routes(narrow, small)
+    # The top goes on after the last of the core's programs.
+    glue_note = (
+        f"Then glue the {body.cap_thickness:g} mm top on, the core still on "
+        "its dowels and the glue kept out of the routes and the dowel holes; "
+        "once it has set, Body_index_pins drills on through the top into the "
+        "core's dowel holes, and every other program follows as for a body "
+        "of one piece."
     )
-    return pins_setup, routes_setup
+    routes_setup: Setup | None = None
+    if wide:
+        routes_setup = Setup(
+            "Body_core_top",
+            "Body core top - wire channels and chambers, hidden under the top",
+            routes(wide, parameters),
+            (
+                "Core on the two index pins, top face up, same work zero as "
+                "Body_core_index_pins.",
+                *_narrow_notes(narrow_paths, parameters, "Body_core_small_routes"),
+                *(() if narrow else (glue_note,)),
+            ),
+            reference_points,
+            fixture=CORE_FIXTURE,
+        )
+    small_setup: Setup | None = None
+    if narrow:
+        small_setup = Setup(
+            "Body_core_small_routes",
+            "Body core top - the routes too narrow for the main tool, for the "
+            f"{small.tool_diameter:g} mm end mill",
+            narrow_paths,
+            (
+                "Core on the two index pins, top face up, same work zero as "
+                "Body_core_index_pins; change to the small end mill and re-touch "
+                "Z on the core's top.",
+                glue_note,
+            ),
+            reference_points,
+            small,
+            fixture=CORE_FIXTURE,
+        )
+    return pins_setup, routes_setup, small_setup
 
 
 def _renamed(plan: BodyMachiningPlan, prefix: str) -> BodyMachiningPlan:
@@ -1293,6 +1372,50 @@ def _top_pocket(
     )
 
 
+def _pocket_outline(cavity: Cavity) -> tuple[Point2D, ...]:
+    """Return the outline ``_top_pocket`` pockets a top cavity to: of
+    scooped grooves, the part at full depth."""
+    if isinstance(cavity, ScoopedGrooves):
+        return cavity.flat_outline
+    return cavity.outline
+
+
+def _tool_fits(outline: Sequence[Point2D], parameters: MachiningParameters) -> bool:
+    """Return whether the tool fits anywhere in a route's ``outline``: if
+    not, ``pocket`` cannot cut the route with it."""
+    return bool(offset_polygon(outline, parameters.tool_radius, inward=True))
+
+
+def _narrow_notes(
+    routes: Sequence[Toolpath], parameters: MachiningParameters, program: str
+) -> tuple[str, ...]:
+    """Return a note naming the routes too narrow for the main tool, cut
+    in ``program`` with the small end mill; none without such routes."""
+    if not routes:
+        return ()
+    names = ", ".join(route.name for route in routes)
+    return (
+        f"Too narrow for the {parameters.tool_diameter:g} mm end mill, cut in "
+        f"{program} with the {parameters.small_hole_tool_diameter:g} mm one: "
+        f"{names}.",
+    )
+
+
+def _small_description(
+    face: str,
+    routes: Sequence[Toolpath],
+    holes: Sequence[DrilledHole],
+    small: MachiningParameters,
+) -> str:
+    """Return a small-drill program's description: ``face``'s holes for
+    the small drill, or its narrow routes (and holes) for the small end
+    mill."""
+    if not routes:
+        return f"{face} - holes for the {small.tool_diameter:g} mm drill"
+    what = "narrow routes and holes" if holes else "narrow routes"
+    return f"{face} - {what} for the {small.tool_diameter:g} mm end mill"
+
+
 FLOOR_TERRACE_STEP = 0.1
 """Height of each terrace a tilted pocket floor is cut in, in mm."""
 
@@ -1354,42 +1477,34 @@ def _rear_pockets(
     rear: RearCavity,
     frame: _Frame,
     parameters: MachiningParameters,
-) -> list[Toolpath]:
+) -> tuple[list[Toolpath], list[Toolpath]]:
     """Pocket one rear cavity: its cover recess (none for a cover screwed
-    onto the back), the cavity, its steps."""
+    onto the back), the cavity, its steps.
+
+    Returns:
+        The pockets cut with the main tool, and those it fits nowhere in,
+        cut with the small end mill (``small_cutter``) instead.
+    """
     recessed = not rear.cover_on_back
-    paths = [
-        *(
-            (
-                pocket(
-                    rear.cover_recess.name,
-                    frame.polygon(rear.cover_recess.outline),
-                    rear.cover_recess.depth,
-                    parameters,
-                ),
+    parts = [
+        *(((rear.cover_recess, 0.0),) if recessed else ()),
+        (rear.cavity, rear.cover_recess.depth if recessed else 0.0),
+        *((step, rear.cavity.depth) for step in rear.steps),
+    ]
+    wide: list[Toolpath] = []
+    narrow: list[Toolpath] = []
+    for part, start_depth in parts:
+        fits = _tool_fits(part.outline, parameters)
+        (wide if fits else narrow).append(
+            pocket(
+                part.name,
+                frame.polygon(part.outline),
+                part.depth,
+                parameters if fits else parameters.small_cutter,
+                start_depth=start_depth,
             )
-            if recessed
-            else ()
-        ),
-        pocket(
-            rear.cavity.name,
-            frame.polygon(rear.cavity.outline),
-            rear.cavity.depth,
-            parameters,
-            start_depth=rear.cover_recess.depth if recessed else 0.0,
-        ),
-    ]
-    paths += [
-        pocket(
-            step.name,
-            frame.polygon(step.outline),
-            step.depth,
-            parameters,
-            start_depth=rear.cavity.depth,
         )
-        for step in rear.steps
-    ]
-    return paths
+    return wide, narrow
 
 
 def _top_cavities(body: BodySolid) -> tuple[Cavity, ...]:
