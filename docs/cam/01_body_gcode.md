@@ -24,6 +24,7 @@ the Prototype001 manufacturing specification (TwoTrees H40, GRBL):
 | `index_pin_diameter` / `index_pin_positions` | automatic, automatic | Dowels for the flip. The holes are drilled with the main tool, so a dowel is never narrower than it: `None` (empty in the form) is 6 mm, or the tool's diameter where it is wider (an 8 mm end mill takes 8 mm dowels, a 1/4 in one 1/4 in dowels); dowels given narrower than the tool are refused. `None` positions place them in the blank's waste on the centerline |
 | `index_pin_wall` / `stock_margin` / `stock_edge_margin` | 3 / 15 / 8 mm | Wood between a dowel and the nearest cut; waste around the outline; dowel distance from the blank edge |
 | `small_hole_tool_diameter` / `small_hole_step_down` | 3 mm / 0: half, 1.5 mm | Drill for holes narrower than the main tool, in their own program, the end mill for routes the main tool fits nowhere in (*Narrow routes*, below), and the cover plates' cutter |
+| `corner_cleanup` | `"none"` | Which pockets' inside corners the small end mill cuts after the main tool: `"none"`, `"neck_pocket"` or `"all"` (*Pocket corners*, below) |
 | `ball_tool_diameter` / `ball_step_down` | 0: the main tool's / 0: half | The ball nose: the neck's back, the fretboard's radius and scallops, a body's edges |
 | `profile_overlap` | 0.5 mm | How far each side's outline cut passes the mid-plane |
 
@@ -76,14 +77,14 @@ Three programs are written, in running order:
 | `Body_index_pins.nc` | Top up | The two dowel holes, through the blank (a body with no tail notch on the centerline, such as the drawn body's starting shape, gets a blank lengthened so the tail pin sits in waste; likewise a body whose neck pocket runs out past its face, such as the Jackson RR and Les Paul style templates, gets a blank long enough for pin 1 ahead of the pocket — a dowel plus the tool's and `index_pin_wall`'s clearance and `stock_edge_margin`) |
 | `Body_top_steps.nc` | Top up, on the dowels (only with `body_stepped_top`), before `Body_top` | A stepped top's bands, each a step deeper than the band inside it, in passes along the edge, each step's wall cut true by the last (see *Stepped top* in the body docs) |
 | `Body_top.nc` | Top up, on the dowels | An epoxy tray first, over the whole top round the walls it leaves (`body_epoxy_tray_depth`), then the neck pocket (with a `neck_angle`, its floor then stepped down toward the mouth in 0.1 mm terraces), pickup routes, baseplate cutout, screw recesses, pot and switch shaft holes, a superstrat cavity's blade switch slot (through the top into its pocket), the wire channels routed under a pickguard, outline to half depth + overlap; the notes say how to drill each wire hole by hand |
-| `Body_top_small_holes.nc` | Top up, on the dowels (only when needed) | Holes narrower than the main tool — a hardtail's string-through and pilot holes, a superstrat cavity's blade switch screws, the pickguard's and humbucker frames' screw pilots — with the `small_hole_tool_diameter` drill; first, any route the main tool fits nowhere in, with it as an end mill (*Narrow routes*, below) |
+| `Body_top_small_holes.nc` | Top up, on the dowels (only when needed) | Holes narrower than the main tool — a hardtail's string-through and pilot holes, a superstrat cavity's blade switch screws, the pickguard's and humbucker frames' screw pilots — with the `small_hole_tool_diameter` drill; first, any route the main tool fits nowhere in, with it as an end mill (*Narrow routes*, below), then the pockets' corners with `corner_cleanup` (*Pocket corners*) |
 | `Body_top_controls.nc` | Top up, on the dowels (Tele or Jazz Bass plate only) | The control plate recess, then the control cavity from its floor |
 | `Body_back.nc` | Flipped, on the dowels | Any tremolo spring cavity with its cover recess and deeper block clearance pocket, the neck-bolt ferrules (none with a neck plate), a string-through bridge's string ferrules (the outline's lower half is cut last, in `Body_back_outline`) |
 | `Body_back_controls.nc` | Back up, on the dowels (rear control layouts or a battery box) | The control, switch and battery cover recesses and cavities, and a superstrat cavity's deeper blade switch pocket (the battery lead's and the switch's holes are drilled by hand, as `Body_top`'s notes say) |
 | `Body_top_edges.nc` | Top up, on the dowels (only with an arm contour, a top roundover or scooped grooves) | The arm contour (roughed in step-down layers, then finished with 1 mm passes), a Lion's Claw's scoops (where its grooves lift out of the wood past their full-depth part, which `Body_top` pockets: sampled every 0.5 mm, roughed in layers and finished in passes along the neck 1 mm apart) and the top roundover, with a ball nose the main tool's size |
 | `Body_top_relief.nc` | Top up, on the dowels (only with the `camo` engraving) | The camo relief's shapes, each cleared flat to its level (0.5, 1, 1.5 or 2 mm at the default depth) with a flat end mill (`relief_tool_diameter`, 3 mm) in `engraving_step_down` passes, one inside another on from that one's floor; run it before a top roundover |
 | `Body_top_engraving.nc` | Top up, on the dowels (only with `body_engraving`) | The decorative engraving with a V-bit (`engraving_tool_angle`, 60°), each line in `engraving_step_down` (1 mm) passes back and forth to `body_engraving_depth` (2 mm), the nearest line next; run it before a top roundover, while the top is flat |
-| `Body_back_small_holes.nc` | Back up, on the dowels | The neck-bolt holes (narrower than the main tool) with the `small_hole_tool_diameter` drill, from each ferrule's floor (with a neck plate, from the back face) into the neck pocket — with a plate on a heel bevel only a centre mark on the bevel each, the notes saying how to drill them by hand square to it — the cover-screw spots on the recess ledges and a strap guide's screw pilots; first, any rear pocket the main tool fits nowhere in (*Narrow routes*) |
+| `Body_back_small_holes.nc` | Back up, on the dowels | The neck-bolt holes (narrower than the main tool) with the `small_hole_tool_diameter` drill, from each ferrule's floor (with a neck plate, from the back face) into the neck pocket — with a plate on a heel bevel only a centre mark on the bevel each, the notes saying how to drill them by hand square to it — the cover-screw spots on the recess ledges and a strap guide's screw pilots; first, any rear pocket the main tool fits nowhere in (*Narrow routes*), then the rear pockets' corners with `corner_cleanup` `"all"` (*Pocket corners*) |
 | `Body_back_edges.nc` | Back up, on the dowels (only with a belly cut, a heel relief or back roundover) | The belly cut, the heel relief and the back roundover, with the ball nose |
 | `Body_back_outline.nc` | Back up, on the dowels, last of all | The outline's lower half, to half depth + overlap, with its tabs: the cut that frees the body, always after every other program (`back_release`) |
 | `Cover_<name>.nc` | A sheet on a spoilboard | One program per cover plate (below) |
@@ -109,9 +110,45 @@ Too narrow for the 12 mm end mill, cut in Body_top_small_holes with the 3 mm one
 ```
 
 A route the main tool fits in somewhere is still the main tool's, which
-leaves its radius in the inside corners (6 mm under a 12 mm end mill: a
-neck pocket's square corners want squaring by hand). The neck's truss-rod
-route goes the same way (*Neck_top_small_holes*, in the neck's G-code).
+leaves its radius in the inside corners (6 mm under a 12 mm end mill;
+*Pocket corners*, below). The neck's truss-rod route goes the same way
+(*Neck_top_small_holes*, in the neck's G-code).
+
+### Pocket corners
+
+The main tool leaves its own radius in every inside corner: 3 mm under
+the default 6 mm end mill, 6 mm under a 12 mm one. Most routes do not
+mind (a pickup's ring, a cavity's cover or the pickguard hides them), but
+a square heel, or a set neck's tenon, will not sit right down in its
+pocket. `corner_cleanup` has the small end mill cut those corners down to
+its own radius (1.5 mm under the default 3 mm one), in the face's
+small-drill program after the narrow routes and before the holes:
+
+- `"none"` (the default): the corners stay as the main tool leaves them;
+- `"neck_pocket"`: the neck pocket's corners only;
+- `"all"`: every route's: the pickups', the electronics' and their cover
+  recesses', from the top and from the back, and a separate top's core
+  routes (in `Body_core_small_routes`, before the top goes on). Scooped
+  grooves are left out: their ends lift out of the wood.
+
+The small end mill follows its own finishing contour, but only along the
+stretches where it reaches wood the main tool left (more than
+`CORNER_TOLERANCE`, 0.05 mm), each from a point where the wall is already
+clean to the next. It goes back and forth along a stretch, one pass
+deeper each way, so it never lifts in a corner, and comes down at the
+stretch's clean end, in the pocket already cut. On an angled neck's
+tilted floor each stretch goes as deep as the terraces let it all along
+it, never below them. `Body_top`'s (or `Body_back`'s) notes name the
+pockets:
+
+```text
+The 12 mm end mill leaves its radius in the corners; Body_top_small_holes cuts them down to the 3 mm one's: Neck pocket corners.
+```
+
+A neck pocket's four corners under a 12 mm end mill take the 3 mm end mill
+about 640 mm of cutting, a minute and a quarter in the time estimate (under
+the default 6 mm end mill, under a minute); `"all"` adds some 5 to 9
+minutes to a body under a 12 mm end mill, 1 to 4 under a 6 mm one.
 
 ### Edge finishes
 
@@ -190,7 +227,8 @@ programs of its own, run on the core alone before the top is glued on:
 - `Body_core_small_routes` (only when needed) cuts the core's routes the
   main tool fits nowhere in with the small end mill, after
   `Body_core_top` (a Les Paul's wire channels under a 12 mm end mill: then
-  they are all of its routes, and there is no `Body_core_top`).
+  they are all of its routes, and there is no `Body_core_top`), and the
+  corners of the others with `corner_cleanup` `"all"`.
 
 Then the top is glued on with the core still on its dowels, the glue kept
 out of the routes and the dowel holes; once it has set, `Body_index_pins`

@@ -361,6 +361,7 @@ SETTING_PICTURES: dict[str, SettingPicture] = {
         _POCKET,
     ),
     # Machining: the programs of one part.
+    "corner_cleanup": ("plan", (_POCKET, _BODY)),
     **_same(
         "neck",
         "neck_blank neck_back_cut",

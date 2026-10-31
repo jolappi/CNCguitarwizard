@@ -195,6 +195,19 @@
 
 ### Added
 
+- *Corner clean-up* (`corner_cleanup`): the small end mill cuts the
+  inside corners the main tool leaves its radius in (3 mm under the
+  default 6 mm end mill, 6 mm under a 12 mm one) down to its own, in the
+  face's small-drill program after the narrow routes: `"none"` (the
+  default, as before), `"neck_pocket"` (a square heel or a set neck's
+  tenon then sits right down in its pocket), or `"all"` (every route's,
+  the pickups' and the electronics' too, which seldom need it). It runs
+  only along the stretches of its own finishing contour where the main
+  tool left wood, back and forth a pass deeper each way, never lifting in
+  a corner; on an angled neck's tilted floor never below its terraces.
+  The face's main program names the pockets. A neck pocket adds about a
+  minute; `"all"` some 5 to 9 under a 12 mm end mill.
+
 - A body route the main tool fits nowhere in is cut with the small end
   mill (`small_hole_tool_diameter`) in the face's small-drill program,
   `Body_top_small_holes` or `Body_back_small_holes`, before its holes; a

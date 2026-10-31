@@ -20,9 +20,11 @@ from .body import (
     _drill_hole,
     _drill_rear_hole,
     _Frame,
+    _listed,
     _pocket_outline,
     _rear_pockets,
     _tool_fits,
+    _top_corners,
     _top_pocket,
 )
 from .covers import plan_cover_machining
@@ -101,7 +103,8 @@ def plan_feature_machining(
     top = _Frame(centre.x, centre.y, mirror_y=False)
     big_top = [hole for hole in top_holes if hole.diameter >= small]
     # A route the main tool fits nowhere in goes to the small end mill, as
-    # in the whole body's programs.
+    # in the whole body's programs, and so do the corners it leaves
+    # (``corner_cleanup``).
     wide_top = [
         cavity
         for cavity in top_cavities
@@ -111,6 +114,11 @@ def plan_feature_machining(
         _top_pocket(cavity, body, top, small_tool)
         for cavity in top_cavities
         if cavity not in wide_top
+    ]
+    corners_top = [
+        path
+        for cavity in wide_top
+        for path in _top_corners(cavity, body, top, parameters)
     ]
     small_top = _small(
         top_holes, small, lambda h: _drill_hole(h, body, top, small_tool)
@@ -126,11 +134,12 @@ def plan_feature_machining(
     )
     add(
         f"{stem}_top_small_holes",
-        f"The {title} on its own - top face, {_small_contents(narrow_top, small_top)}",
-        [*narrow_top, *small_top],
+        f"The {title} on its own - top face, "
+        f"{_small_contents(narrow_top, corners_top, small_top)}",
+        [*narrow_top, *corners_top, *small_top],
         (
             "Same zero as the top program; change to the small "
-            f"{'end mill' if narrow_top else 'drill'}.",
+            f"{'end mill' if narrow_top or corners_top else 'drill'}.",
         ),
         small_tool,
     )
@@ -138,10 +147,12 @@ def plan_feature_machining(
     big_back = [hole for hole in rear_holes if hole.diameter >= small]
     wide_back: list[Toolpath] = []
     narrow_back: list[Toolpath] = []
+    corners_back: list[Toolpath] = []
     for rear in rears:
-        wide, narrow = _rear_pockets(rear, back, parameters)
+        wide, narrow, corners = _rear_pockets(rear, body, back, parameters)
         wide_back += wide
         narrow_back += narrow
+        corners_back += corners
     small_back = _small(
         rear_holes, small, lambda h: _drill_rear_hole(h, body, back, small_tool)
     )
@@ -160,11 +171,11 @@ def plan_feature_machining(
     add(
         f"{stem}_back_small_holes",
         f"The {title} on its own - back face, "
-        f"{_small_contents(narrow_back, small_back)}",
-        [*narrow_back, *small_back],
+        f"{_small_contents(narrow_back, corners_back, small_back)}",
+        [*narrow_back, *corners_back, *small_back],
         (
             "Same zero as the back program; change to the small "
-            f"{'end mill' if narrow_back else 'drill'}.",
+            f"{'end mill' if narrow_back or corners_back else 'drill'}.",
         ),
         small_tool,
     )
@@ -183,11 +194,21 @@ def _small(
     return [drill_one(hole) for hole in holes if hole.diameter < small]
 
 
-def _small_contents(routes: Sequence[Toolpath], holes: Sequence[Toolpath]) -> str:
-    """Return what a small-drill program cuts: narrow routes, small holes,
-    or both."""
-    return " and ".join(
-        what
-        for what, there in (("narrow routes", routes), ("small holes", holes))
-        if there
+def _small_contents(
+    routes: Sequence[Toolpath],
+    corners: Sequence[Toolpath],
+    holes: Sequence[Toolpath],
+) -> str:
+    """Return what a small-drill program cuts: narrow routes, pockets'
+    corners, small holes, or some of them."""
+    return _listed(
+        [
+            what
+            for what, there in (
+                ("narrow routes", routes),
+                ("pocket corners", corners),
+                ("small holes", holes),
+            )
+            if there
+        ]
     )

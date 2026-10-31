@@ -9,12 +9,13 @@ polygons of ``Point2D``; the operations never see the CAD model.
 from __future__ import annotations
 
 import math
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 
 from ..geometry.primitives import Point2D
 from .exceptions import ToolpathError
 from .parameters import MachiningParameters
 from .planar import (
+    EdgeGrid,
     clear_intervals,
     disc_fits,
     offset_polygon,
@@ -255,6 +256,108 @@ def profile(
                 builder.cut_to(point.x, point.y)
             builder.cut_to(contour[0].x, contour[0].y)
     return builder.build()
+
+
+CORNER_TOLERANCE = 0.05
+"""Wood the main tool may leave on a wall, in mm, before the small end
+mill is sent there (``clean_corners``)."""
+
+
+def clean_corners(
+    name: str,
+    polygon: Sequence[Point2D],
+    depth: float,
+    parameters: MachiningParameters,
+    small: MachiningParameters,
+    *,
+    start_depth: float = 0.0,
+    floor: Callable[[Point2D], float] | None = None,
+) -> Toolpath | None:
+    """Cut the wood a pocket of ``polygon`` left in its corners, with the
+    ``small`` end mill.
+
+    The pocket's tool (``parameters``) leaves its own radius in every
+    inside corner. The small end mill follows its own finishing contour,
+    but only along the stretches where it reaches wood the pocket's tool
+    could not, each from a point where the wall is already clean to the
+    next. It goes back and forth along a stretch, one pass deeper each
+    way, so it never lifts in a corner, and comes down at the stretch's
+    clean end, in the pocket already cut.
+
+    Args:
+        name: The toolpath's name.
+        polygon: The pocket's outline, in the machine frame.
+        depth: The pocket's depth.
+        parameters: The tool the pocket was cut with.
+        small: The end mill cutting the corners.
+        start_depth: Where the pocket starts (a step's enclosing floor).
+        floor: For a floor that is not level (an angled neck pocket's
+            terraces), how deep the small end mill may go centred at a
+            point; each stretch is cut as deep as it may go all along it.
+            ``depth`` everywhere if not given.
+
+    Returns:
+        The toolpath, or ``None`` when the pocket's tool left no corner.
+    """
+    if small.tool_radius >= parameters.tool_radius:
+        return None
+    main = offset_polygon(polygon, parameters.tool_radius, inward=True)
+    contour = oriented(
+        offset_polygon(polygon, small.tool_radius, inward=True), clockwise=True
+    )
+    if not main or not contour:
+        return None
+    runs = _corner_runs(contour, main, parameters.tool_radius - small.tool_radius)
+    if not runs:
+        return None
+    builder = _builder(name, small)
+    for run in runs:
+        bottom = depth if floor is None else min(floor(point) for point in run)
+        builder.rapid_to(run[0].x, run[0].y)
+        builder.rapid_down_to(0.0)
+        path = run
+        for z in depth_levels(start_depth, bottom, small.step_down):
+            builder.plunge_to(z)
+            for point in path[1:]:
+                builder.cut_to(point.x, point.y)
+            # Back the other way on the next pass.
+            path = path[::-1]
+    return builder.build()
+
+
+def _corner_runs(
+    contour: Sequence[Point2D], main: Sequence[Point2D], reach: float
+) -> list[tuple[Point2D, ...]]:
+    """Return the stretches of the small end mill's ``contour`` where it
+    cuts wood the main tool's (``main``) left, a clean point at each end.
+
+    Along a wall the two contours run ``reach`` apart (the difference of
+    the tools' radii); in a corner the main tool's turns short of it, and
+    a point of the small one's further than that from it has wood beside
+    it. A contour with wood all round is one closed stretch.
+    """
+    near = reach + CORNER_TOLERANCE
+    edges = EdgeGrid(main, max(near, 1.0))
+    left = [not edges.within(point, near) for point in contour]
+    if all(left):
+        return [(*contour, contour[0])]
+    count = len(contour)
+    runs: list[tuple[Point2D, ...]] = []
+    current: list[Point2D] = []
+    # Start just past a clean point, so no stretch wraps round the end.
+    start = next(index for index in range(count) if not left[index - 1])
+    for step in range(count):
+        index = (start + step) % count
+        if left[index]:
+            if not current:
+                # From the clean point before it.
+                current.append(contour[index - 1])
+            current.append(contour[index])
+        elif current:
+            current.append(contour[index])
+            runs.append(tuple(current))
+            current = []
+    return runs
 
 
 def _builder(name: str, parameters: MachiningParameters) -> PathBuilder:

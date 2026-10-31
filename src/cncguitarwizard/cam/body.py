@@ -36,7 +36,7 @@ from .engraving import engraving_path, engraving_tool
 from .exceptions import ToolpathError
 from .fixturing import StockBounds, resolve_index_pins
 from .gcode import Setup
-from .operations import depth_levels, drill, pocket, profile
+from .operations import clean_corners, depth_levels, drill, pocket, profile
 from .parameters import MachiningParameters
 from .planar import PolygonIndex, offset_polygon, simplified
 from .surfacing import (
@@ -70,7 +70,8 @@ class BodyMachiningPlan:
         top_small_holes: Top-face program with the small drill for holes
             narrower than the main tool, and with the small end mill for
             routes the main tool fits nowhere in (a wire channel under a
-            12 mm end mill), or ``None`` when there are none.
+            12 mm end mill) and for the pockets' corners
+            (``corner_cleanup``), or ``None`` when there are none.
         top_controls: Top-face program for top-routed electronics (a
             control plate's recess and cavity), or ``None``.
         back_controls: Back-face program for the electronics cavities
@@ -102,7 +103,8 @@ class BodyMachiningPlan:
         core_top: The core's own routes (wire channels, chambers), cut
             into its top before the top is glued on, or ``None``.
         core_small_routes: The core's routes too narrow for the main tool,
-            cut with the small end mill after ``core_top``, or ``None``.
+            and its routes' corners (``corner_cleanup``), cut with the
+            small end mill after ``core_top``, or ``None``.
         stock_length: Minimum blank length along X.
         stock_width: Minimum blank width along Y.
         stock_thickness: Blank thickness (the body thickness).
@@ -262,6 +264,8 @@ def plan_body_machining(
     # instead, in the face's small-drill program after the main ones.
     small_tool = parameters.small_cutter
     top_narrow: list[Toolpath] = []
+    # The corners the main tool leaves its radius in, where asked for.
+    top_corners: list[Toolpath] = []
 
     def top_pocket(cavity: Cavity, tool: MachiningParameters = parameters) -> Toolpath:
         return _top_pocket(cavity, body, top_frame, tool)
@@ -287,6 +291,7 @@ def plan_body_machining(
             top_paths.append(top_pocket(cavity))
             # A tilted floor (an angled neck pocket) steps down after it.
             top_paths += _floor_terraces(cavity, top_frame, parameters)
+            top_corners += _top_corners(cavity, body, top_frame, parameters)
         else:
             top_narrow.append(top_pocket(cavity, small_tool))
             top_narrow += _floor_terraces(cavity, top_frame, small_tool)
@@ -307,6 +312,8 @@ def plan_body_machining(
         for cavity in body.control_top_cavities
         if cavity not in controls
     ]
+    for cavity in controls:
+        top_corners += _top_corners(cavity, body, top_frame, parameters)
     top_controls: Setup | None = None
     if controls:
         top_controls = Setup(
@@ -377,19 +384,23 @@ def plan_body_machining(
             ),
             *body.wire_notes,
             *_narrow_notes(top_narrow, parameters, "Body_top_small_holes"),
+            *_corner_notes(top_corners, parameters, "Body_top_small_holes"),
         ),
         reference_points,
         fixture=TOP_FIXTURE,
     )
 
     top_small_holes: Setup | None = None
-    if small_holes or top_narrow:
-        cutter = "end mill" if top_narrow else "drill"
+    if small_holes or top_narrow or top_corners:
+        cutter = "end mill" if top_narrow or top_corners else "drill"
         top_small_holes = Setup(
             "Body_top_small_holes",
-            _small_description("Body top face", top_narrow, small_holes, small_tool),
+            _small_description(
+                "Body top face", top_narrow, top_corners, small_holes, small_tool
+            ),
             (
                 *top_narrow,
+                *top_corners,
                 *(
                     _drill_hole(hole, body, top_frame, small_tool)
                     for hole in small_holes
@@ -412,14 +423,17 @@ def plan_body_machining(
     back_paths: list[Toolpath] = []
     control_paths: list[Toolpath] = []
     back_narrow: list[Toolpath] = []
+    back_corners: list[Toolpath] = []
     for rear in body.extra_rear_cavities:
-        wide, narrow = _rear_pockets(rear, back_frame, parameters)
+        wide, narrow, corners = _rear_pockets(rear, body, back_frame, parameters)
         back_paths += wide
         back_narrow += narrow
+        back_corners += corners
     for rear in electronics:
-        wide, narrow = _rear_pockets(rear, back_frame, parameters)
+        wide, narrow, corners = _rear_pockets(rear, body, back_frame, parameters)
         control_paths += wide
         back_narrow += narrow
+        back_corners += corners
     back_small = [
         hole
         for hole in (*body.rear_holes, *body.control_back_marks)
@@ -484,6 +498,7 @@ def plan_body_machining(
                 else ()
             ),
             *_narrow_notes(back_narrow, parameters, "Body_back_small_holes"),
+            *_corner_notes(back_corners, parameters, "Body_back_small_holes"),
         ),
         reference_points,
         fixture=BACK_FIXTURE,
@@ -518,13 +533,16 @@ def plan_body_machining(
         )
 
     back_small_holes: Setup | None = None
-    if back_small or back_narrow:
-        cutter = "end mill" if back_narrow else "drill"
+    if back_small or back_narrow or back_corners:
+        cutter = "end mill" if back_narrow or back_corners else "drill"
         back_small_holes = Setup(
             "Body_back_small_holes",
-            _small_description("Body back face", back_narrow, back_small, small_tool),
+            _small_description(
+                "Body back face", back_narrow, back_corners, back_small, small_tool
+            ),
             (
                 *back_narrow,
+                *back_corners,
                 *(
                     _drill_rear_hole(hole, body, back_frame, small_tool)
                     for hole in back_small
@@ -639,7 +657,8 @@ def _core_setups(
     """Return the core's own programs under a separate top, run before the
     top is glued on: its dowel holes, then its routes (the wire channels
     and chambers hidden under the top), then the routes too narrow for the
-    main tool, with the small end mill; ``None`` for each one not needed.
+    main tool and the corners it left (``corner_cleanup``), with the small
+    end mill; ``None`` for each one not needed.
     """
     if not body.core_cavities:
         return None, None, None
@@ -689,6 +708,14 @@ def _core_setups(
 
     small = parameters.small_cutter
     narrow_paths = routes(narrow, small)
+    corner_paths = [
+        path
+        for cavity in wide
+        for path in _corners(
+            cavity, body, frame.polygon(cavity.outline), cavity.depth, parameters
+        )
+    ]
+    small_paths = (*narrow_paths, *corner_paths)
     # The top goes on after the last of the core's programs.
     glue_note = (
         f"Then glue the {body.cap_thickness:g} mm top on, the core still on "
@@ -707,18 +734,18 @@ def _core_setups(
                 "Core on the two index pins, top face up, same work zero as "
                 "Body_core_index_pins.",
                 *_narrow_notes(narrow_paths, parameters, "Body_core_small_routes"),
-                *(() if narrow else (glue_note,)),
+                *_corner_notes(corner_paths, parameters, "Body_core_small_routes"),
+                *(() if small_paths else (glue_note,)),
             ),
             reference_points,
             fixture=CORE_FIXTURE,
         )
     small_setup: Setup | None = None
-    if narrow:
+    if small_paths:
         small_setup = Setup(
             "Body_core_small_routes",
-            "Body core top - the routes too narrow for the main tool, for the "
-            f"{small.tool_diameter:g} mm end mill",
-            narrow_paths,
+            _small_description("Body core top", narrow_paths, corner_paths, (), small),
+            small_paths,
             (
                 "Core on the two index pins, top face up, same work zero as "
                 "Body_core_index_pins; change to the small end mill and re-touch "
@@ -1358,18 +1385,80 @@ def _top_pocket(
     """
     if isinstance(cavity, ScoopedGrooves):
         cavity = TracedCavity(cavity.name, cavity.flat_outline, cavity.depth)
-    depth = cavity.depth
-    if cavity in body.through_cavities and depth >= body.thickness:
-        depth = body.thickness + parameters.through_overshoot
     # A stepped floor (or a through route inside a recess) starts where
     # the enclosing pocket, cut earlier, already ended.
     return pocket(
         cavity.name,
         frame.polygon(cavity.outline),
-        depth,
+        _top_depth(cavity, body, parameters),
         parameters,
         start_depth=body.step_start_depth(cavity),
     )
+
+
+def _top_depth(
+    cavity: Cavity, body: BodySolid, parameters: MachiningParameters
+) -> float:
+    """Return how deep a top cavity is cut: a through route on past the
+    back."""
+    if cavity in body.through_cavities and cavity.depth >= body.thickness:
+        return body.thickness + parameters.through_overshoot
+    return cavity.depth
+
+
+def _top_corners(
+    cavity: Cavity, body: BodySolid, frame: _Frame, parameters: MachiningParameters
+) -> list[Toolpath]:
+    """Return the small end mill's pass round the corners the main tool
+    left in a top cavity (``_corners``); on a tilted floor, never below
+    its terraces."""
+    return _corners(
+        cavity,
+        body,
+        frame.polygon(cavity.outline),
+        _top_depth(cavity, body, parameters),
+        parameters,
+        start_depth=body.step_start_depth(cavity),
+        floor=_terraced_floor(cavity, frame, parameters),
+    )
+
+
+def _corners(
+    cavity: Cavity,
+    body: BodySolid,
+    polygon: tuple[Point2D, ...],
+    depth: float,
+    parameters: MachiningParameters,
+    *,
+    start_depth: float = 0.0,
+    floor: Callable[[Point2D], float] | None = None,
+) -> list[Toolpath]:
+    """Return the small end mill's pass round the corners the main tool
+    left in ``cavity``, pocketed to ``polygon`` (``clean_corners``), when
+    ``corner_cleanup`` asks for them; none otherwise, or without any."""
+    if not _cleans_corners(cavity, body, parameters):
+        return []
+    path = clean_corners(
+        f"{cavity.name} corners",
+        polygon,
+        depth,
+        parameters,
+        parameters.small_cutter,
+        start_depth=start_depth,
+        floor=floor,
+    )
+    return [] if path is None else [path]
+
+
+def _cleans_corners(
+    cavity: Cavity, body: BodySolid, parameters: MachiningParameters
+) -> bool:
+    """Return whether ``corner_cleanup`` asks for a cavity's corners: the
+    neck pocket's, or every route's but scooped grooves' (their ends lift
+    out of the wood)."""
+    if parameters.corner_cleanup == "all":
+        return not isinstance(cavity, ScoopedGrooves)
+    return parameters.corner_cleanup == "neck_pocket" and cavity is body.neck_pocket
 
 
 def _pocket_outline(cavity: Cavity) -> tuple[Point2D, ...]:
@@ -1401,19 +1490,52 @@ def _narrow_notes(
     )
 
 
+def _corner_notes(
+    corners: Sequence[Toolpath], parameters: MachiningParameters, program: str
+) -> tuple[str, ...]:
+    """Return a note naming the pockets whose corners are cut in
+    ``program`` with the small end mill; none without any."""
+    if not corners:
+        return ()
+    names = ", ".join(corner.name for corner in corners)
+    return (
+        f"The {parameters.tool_diameter:g} mm end mill leaves its radius in the "
+        f"corners; {program} cuts them down to the "
+        f"{parameters.small_hole_tool_diameter:g} mm one's: {names}.",
+    )
+
+
 def _small_description(
     face: str,
     routes: Sequence[Toolpath],
+    corners: Sequence[Toolpath],
     holes: Sequence[DrilledHole],
     small: MachiningParameters,
 ) -> str:
     """Return a small-drill program's description: ``face``'s holes for
-    the small drill, or its narrow routes (and holes) for the small end
-    mill."""
-    if not routes:
+    the small drill, or its narrow routes, pockets' corners (and holes)
+    for the small end mill."""
+    if not routes and not corners:
         return f"{face} - holes for the {small.tool_diameter:g} mm drill"
-    what = "narrow routes and holes" if holes else "narrow routes"
+    what = _listed(
+        [
+            name
+            for name, there in (
+                ("narrow routes", routes),
+                ("pocket corners", corners),
+                ("holes", holes),
+            )
+            if there
+        ]
+    )
     return f"{face} - {what} for the {small.tool_diameter:g} mm end mill"
+
+
+def _listed(words: Sequence[str]) -> str:
+    """Return ``words`` joined as a list is written: ``"a, b and c"``."""
+    if len(words) < 2:
+        return "".join(words)
+    return f"{', '.join(words[:-1])} and {words[-1]}"
 
 
 FLOOR_TERRACE_STEP = 0.1
@@ -1430,23 +1552,13 @@ def _floor_terraces(
     the neck rests on their edges. A terrace too short for the tool (at
     the very mouth) is left out.
     """
-    if not isinstance(cavity, TracedCavity) or cavity.floor_slope <= 0.0:
-        return []
-    slope = cavity.floor_slope
-    top, bottom = cavity.depth, cavity.deepest
-    count = math.floor((bottom - top) / FLOOR_TERRACE_STEP + 1e-9)
     paths: list[Toolpath] = []
-    previous = top
-    for index in range(1, count + 1):
-        depth = top + index * FLOOR_TERRACE_STEP
-        reach = cavity.max_x - (depth - top) / slope
-        region = _clip_behind(cavity.outline, reach)
-        if not region or reach - cavity.min_x < parameters.tool_diameter:
-            break
+    previous = cavity.depth
+    for index, (depth, reach) in enumerate(_terrace_steps(cavity, parameters), start=1):
         paths.append(
             pocket(
                 f"{cavity.name} floor, step {index}",
-                frame.polygon(region),
+                frame.polygon(_clip_behind(cavity.outline, reach)),
                 depth,
                 parameters,
                 start_depth=previous,
@@ -1454,6 +1566,47 @@ def _floor_terraces(
         )
         previous = depth
     return paths
+
+
+def _terrace_steps(
+    cavity: Cavity, parameters: MachiningParameters
+) -> list[tuple[float, float]]:
+    """Return each terrace ``_floor_terraces`` cuts: its depth, and the
+    model X it reaches back to; none for a level floor."""
+    if not isinstance(cavity, TracedCavity) or cavity.floor_slope <= 0.0:
+        return []
+    slope = cavity.floor_slope
+    top, bottom = cavity.depth, cavity.deepest
+    count = math.floor((bottom - top) / FLOOR_TERRACE_STEP + 1e-9)
+    steps: list[tuple[float, float]] = []
+    for index in range(1, count + 1):
+        depth = top + index * FLOOR_TERRACE_STEP
+        reach = cavity.max_x - (depth - top) / slope
+        region = _clip_behind(cavity.outline, reach)
+        if not region or reach - cavity.min_x < parameters.tool_diameter:
+            break
+        steps.append((depth, reach))
+    return steps
+
+
+def _terraced_floor(
+    cavity: Cavity, frame: _Frame, parameters: MachiningParameters
+) -> Callable[[Point2D], float] | None:
+    """Return how deep the small end mill may go centred at a point of
+    ``frame`` without cutting below a tilted floor's terraces (the deepest
+    reaching past its whole width there); ``None`` for a level floor."""
+    steps = _terrace_steps(cavity, parameters)
+    if not steps:
+        return None
+    radius = parameters.small_cutter.tool_radius
+
+    def floor(point: Point2D) -> float:
+        x = frame.model(point).x + radius
+        return max(
+            (depth for depth, reach in steps if x <= reach), default=cavity.depth
+        )
+
+    return floor
 
 
 def _clip_behind(polygon: tuple[Point2D, ...], limit: float) -> tuple[Point2D, ...]:
@@ -1475,15 +1628,18 @@ def _clip_behind(polygon: tuple[Point2D, ...], limit: float) -> tuple[Point2D, .
 
 def _rear_pockets(
     rear: RearCavity,
+    body: BodySolid,
     frame: _Frame,
     parameters: MachiningParameters,
-) -> tuple[list[Toolpath], list[Toolpath]]:
+) -> tuple[list[Toolpath], list[Toolpath], list[Toolpath]]:
     """Pocket one rear cavity: its cover recess (none for a cover screwed
     onto the back), the cavity, its steps.
 
     Returns:
-        The pockets cut with the main tool, and those it fits nowhere in,
-        cut with the small end mill (``small_cutter``) instead.
+        The pockets cut with the main tool; those it fits nowhere in, cut
+        with the small end mill (``small_cutter``) instead; and the small
+        end mill's passes round the corners the main tool left
+        (``corner_cleanup``).
     """
     recessed = not rear.cover_on_back
     parts = [
@@ -1493,18 +1649,24 @@ def _rear_pockets(
     ]
     wide: list[Toolpath] = []
     narrow: list[Toolpath] = []
+    corners: list[Toolpath] = []
     for part, start_depth in parts:
         fits = _tool_fits(part.outline, parameters)
+        polygon = frame.polygon(part.outline)
         (wide if fits else narrow).append(
             pocket(
                 part.name,
-                frame.polygon(part.outline),
+                polygon,
                 part.depth,
                 parameters if fits else parameters.small_cutter,
                 start_depth=start_depth,
             )
         )
-    return wide, narrow
+        if fits:
+            corners += _corners(
+                part, body, polygon, part.depth, parameters, start_depth=start_depth
+            )
+    return wide, narrow, corners
 
 
 def _top_cavities(body: BodySolid) -> tuple[Cavity, ...]:

@@ -158,6 +158,13 @@ _CHOICE_LABELS: dict[str, dict[str, str]] = {
     },
     "body_controls": CONTROL_LABELS,
     "post_processor": POST_PROCESSOR_LABELS,
+    "corner_cleanup": {
+        "none": "None: the main tool's radius stays in the corners",
+        "neck_pocket": (
+            "The neck pocket's, for a square heel or a set neck's tenon to sit right in"
+        ),
+        "all": "Every route's, the pickups' and the electronics' too",
+    },
     "neck_back_cut": {
         "rough_and_finish": "Flat end mill roughs, ball nose finishes (two programs)",
         "ball": "Ball nose alone, roughing then finishing (one program)",
@@ -386,6 +393,7 @@ _BASIC_FIELDS: frozenset[str] = frozenset(
         "spindle_dwell",
         "z_lift_rate",
         "eco_mode",
+        "corner_cleanup",
         "combine_programs",
         "machine_x_travel",
         "machine_y_travel",

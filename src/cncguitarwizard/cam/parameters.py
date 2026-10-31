@@ -110,6 +110,14 @@ class MachiningParameters:
         small_hole_step_down: How deep the small end mill cuts per pass;
             ``0`` (the default) for half its diameter (the cover plates,
             in sheet, at most 1 mm).
+        corner_cleanup: Which pockets' inside corners the small end mill
+            cuts after the main tool, which leaves its own radius in each:
+            ``"none"`` (the default); ``"neck_pocket"``, for a square heel
+            or a set neck's tenon to sit right into its corners; or
+            ``"all"``, every route (a pickup's or the electronics' seldom
+            needs it: a ring, a cover or the pickguard hides the corners).
+            They are cut in the face's small-drill program, down to the
+            small end mill's own radius.
         ball_tool_diameter: The ball nose's diameter: the neck's back,
             the fretboard's radius and scallops, a body's edges; ``0``
             (the default) for the main tool's.
@@ -257,6 +265,7 @@ class MachiningParameters:
     stock_edge_margin: float = 8.0
     small_hole_tool_diameter: float = 3.0
     small_hole_step_down: float = 0.0
+    corner_cleanup: Literal["none", "neck_pocket", "all"] = "none"
     ball_tool_diameter: float = 0.0
     ball_step_down: float = 0.0
     profile_overlap: float = 0.5
@@ -365,6 +374,10 @@ class MachiningParameters:
         if self.neck_back_cut not in ("rough_and_finish", "ball"):
             raise ToolpathError(
                 'neck_back_cut must be "rough_and_finish" or "ball".'
+            )
+        if self.corner_cleanup not in ("none", "neck_pocket", "all"):
+            raise ToolpathError(
+                'corner_cleanup must be "none", "neck_pocket" or "all".'
             )
         if self.tool_tip not in ("flat", "ball", "vee"):
             raise ToolpathError('tool_tip must be "flat", "ball" or "vee".')
