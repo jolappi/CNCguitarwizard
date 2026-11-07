@@ -196,8 +196,8 @@
 
 ### Added
 
-- The bonus dust shoe for a 6 mm brush, the hose forward
-  (`site/bonus/*_hose_forward_6mm_brush.stl`): its sleeve's groove 6.2 mm
+- The bonus dust shoe for a 6 mm brush, the hose forward or to the side
+  (`site/bonus/*_6mm_brush.stl`): its sleeve's groove 6.2 mm
   wide and its lip 3 mm wider all round, so its collar and housing are
   3 mm shorter at the back, the sleeve's back as far from the machine's
   frame as the 3 mm brush's. The OpenSCAD source cuts the clamp ring

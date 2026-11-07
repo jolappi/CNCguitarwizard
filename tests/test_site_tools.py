@@ -469,9 +469,14 @@ def test_the_bonus_offers_its_files_with_english_names() -> None:
     files = sorted(path.name for path in bonus.iterdir())
     assert sorted(links) == files
     # The dust shoe's three parts, the hose leaving forward or sideways,
-    # and forward for a 6 mm brush.
+    # for a 3 mm brush or a 6 mm one.
     for part in ("collar", "housing", "brush_sleeve"):
-        for way in ("hose_forward", "hose_sideways", "hose_forward_6mm_brush"):
+        for way in (
+            "hose_forward",
+            "hose_sideways",
+            "hose_forward_6mm_brush",
+            "hose_sideways_6mm_brush",
+        ):
             stl = bonus / f"dust_shoe_{part}_{way}.stl"
             assert stl_triangles(stl.read_bytes()) > 1000
     # The source in English too: its parts and messages.
@@ -485,13 +490,16 @@ def test_the_bonus_offers_its_files_with_english_names() -> None:
     assert '<a href="#bonus">Bonus</a>' in page
 
 
-def test_the_dust_shoe_for_a_6mm_brush_leaves_the_frame_its_room() -> None:
+@pytest.mark.parametrize("narrow", ["hose_forward", "hose_sideways"])
+def test_the_dust_shoe_for_a_6mm_brush_leaves_the_frame_its_room(
+    narrow: str,
+) -> None:
     bonus = ROOT / "site" / "bonus"
 
     def extent(part: str, way: str) -> list[tuple[float, float]]:
         return stl_extent((bonus / f"dust_shoe_{part}_{way}.stl").read_bytes())
 
-    narrow, wide = "hose_forward", "hose_forward_6mm_brush"
+    wide = f"{narrow}_6mm_brush"
     # The sleeve's lip 3 mm wider all round for the wider groove, but its
     # back (-Y, toward the machine's frame) where the 3 mm brush's is...
     sleeve, wide_sleeve = extent("brush_sleeve", narrow), extent("brush_sleeve", wide)

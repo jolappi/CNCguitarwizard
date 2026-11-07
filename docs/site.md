@@ -1076,12 +1076,15 @@ supports as it lies in its file:
 
 Each comes in two sets: the hose leaving forward (`*_hose_forward.stl`,
 out of the gantry's way along X) or to one side
-(`*_hose_sideways.stl`). A third set, the hose forward
-(`*_hose_forward_6mm_brush.stl`), takes a brush strip with a 6 mm back:
-its sleeve's groove 6.2 mm wide, its lip 3 mm wider all round, and so
-its collar and housing 3 mm shorter at the back (36.8 mm from the
-router's centre rather than 39.8 mm), the sleeve's back staying 2 mm
-from the frame; the clamp ring, cut flat there, keeps a 3.9 mm wall.
+(`*_hose_sideways.stl`). Two more, the hose forward or to the side
+(`*_6mm_brush.stl`), take a brush strip with a 6 mm back: the sleeve's
+groove 6.2 mm wide, its lip 3 mm wider all round, and so the collar and
+the housing 3 mm shorter at the back (36.8 mm from the router's centre
+rather than 39.8 mm), the sleeve's back staying 2 mm from the frame;
+the clamp ring, cut flat there, keeps a 3.9 mm wall. With the hose to
+the side, the nuts on the two back bolts sit 3.8 mm from the housing's
+back wall inside: a flat against it, the wall holds them as the bolts
+are tightened.
 `dust_shoe_makita_rt0702c_ttc_h40.scad` is their OpenSCAD source, every
 size a setting at its top (the router's diameter, the hose and how it
 fits the port, the room to the frame, the hose's direction as
