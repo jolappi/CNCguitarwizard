@@ -40,7 +40,7 @@ flange_t    = 4;
 travel      = 50;   // how far it slides
 sleeve_wall = 3.5;
 sleeve_clear= 0.5;
-brush_w     = 3.2;  // the brush strip's back (its U channel) thickness + 0.2 mm
+brush_w     = 3.2;  // the brush strip's back (its U channel) thickness + 0.2 mm: 6.2 for a 6 mm one
 hook        = 0.4;  // the hook's inset per side at the groove's mouth
 hook_h      = 1.6;  // the hook's height (its chamfer included)
 brush_depth = 8;   // the brush strip's back height (the hook snaps in under its lower edge)
@@ -71,7 +71,8 @@ bolts = port_angle == 90 ? [ [32, 45], [-32, 45], [40, -25], [-40, -25] ]
 lip_out  = sleeve_clear + brush_w + 3;           // the sleeve's lip width past the housing's outside
 back_lim = router_d/2 + frame_gap - frame_margin - lip_out; // the housing's back edge (-Y = the frame)
 echo(str("The housing's back edge ", back_lim, " mm, the sleeve's back edge ", back_lim+lip_out, " mm from the router's centre"));
-assert(back_lim > R_in + clamp_wall, "The clamp ring does not fit on the frame's side");
+// a wide brush takes the back wall closer in: the clamp ring is cut flat there, at least a wall thick
+assert(back_lim >= R_in + wall, "The clamp ring does not fit on the frame's side");
 
 module footprint() intersection() {
     hull() { circle(hood_r); translate(port_c) circle(port_r); }
@@ -95,6 +96,7 @@ module collar() translate([0,0,hood_h]) difference() {
         translate([0,0,clamp_gap/2+10-3.5]) cylinder(d=8.1, h=10, $fn=6);
     }
     for (b=bolts) translate([b[0],b[1],-1]) cylinder(d=bolt_d, h=flange_t+2);
+    translate([-150, -back_lim-100, -1]) cube([300, 100, 100]);   // the clamp ring flat at the back wall
 }
 
 // ---------- HOUSING ----------

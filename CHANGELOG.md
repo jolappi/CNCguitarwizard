@@ -196,6 +196,14 @@
 
 ### Added
 
+- The bonus dust shoe for a 6 mm brush, the hose forward
+  (`site/bonus/*_hose_forward_6mm_brush.stl`): its sleeve's groove 6.2 mm
+  wide and its lip 3 mm wider all round, so its collar and housing are
+  3 mm shorter at the back, the sleeve's back as far from the machine's
+  frame as the 3 mm brush's. The OpenSCAD source cuts the clamp ring
+  flat at the back wall where a wide brush takes it closer in (`brush_w`
+  = 6.2); the 3 mm sets are as they were.
+
 - *Corner clean-up* (`corner_cleanup`): the small end mill cuts the
   inside corners the main tool leaves its radius in (3 mm under the
   default 6 mm end mill, 6 mm under a 12 mm one) down to its own, in the

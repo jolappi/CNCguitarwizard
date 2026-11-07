@@ -1076,12 +1076,23 @@ supports as it lies in its file:
 
 Each comes in two sets: the hose leaving forward (`*_hose_forward.stl`,
 out of the gantry's way along X) or to one side
-(`*_hose_sideways.stl`). `dust_shoe_makita_rt0702c_ttc_h40.scad` is
-their OpenSCAD source, every size a setting at its top (the router's
-diameter, the hose and how it fits the port, the room to the frame, the
-hose's direction as `port_angle`: 90 forward, 0 to the side, the
-travel): choose the `part` (`collar`, `housing` or `sleeve`; `assembly`
-shows them together), render it and export it as STL.
+(`*_hose_sideways.stl`). A third set, the hose forward
+(`*_hose_forward_6mm_brush.stl`), takes a brush strip with a 6 mm back:
+its sleeve's groove 6.2 mm wide, its lip 3 mm wider all round, and so
+its collar and housing 3 mm shorter at the back (36.8 mm from the
+router's centre rather than 39.8 mm), the sleeve's back staying 2 mm
+from the frame; the clamp ring, cut flat there, keeps a 3.9 mm wall.
+`dust_shoe_makita_rt0702c_ttc_h40.scad` is their OpenSCAD source, every
+size a setting at its top (the router's diameter, the hose and how it
+fits the port, the room to the frame, the hose's direction as
+`port_angle`: 90 forward, 0 to the side, the brush strip's back as
+`brush_w`: 3.2, or 6.2 for the 6 mm one, the travel): choose the `part`
+(`collar`, `housing` or `sleeve`; `assembly` shows them together),
+render it and export it as STL, as
+
+```bash
+openscad -o dust_shoe_brush_sleeve_hose_forward_6mm_brush.stl --export-format binstl -D 'part="sleeve"' -D brush_w=6.2 dust_shoe_makita_rt0702c_ttc_h40.scad
+```
 
 ## Building and previewing locally
 

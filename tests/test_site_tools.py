@@ -3,10 +3,12 @@ build must reach the browser, not a cached copy of the last."""
 
 import importlib.util
 import re
+import struct
 import threading
 import urllib.request
 from functools import partial
 from http.server import ThreadingHTTPServer
+from itertools import batched
 from pathlib import Path
 from types import ModuleType
 
@@ -440,6 +442,23 @@ def stl_triangles(data: bytes) -> int:
     return count
 
 
+def stl_extent(data: bytes) -> list[tuple[float, float]]:
+    """Return a binary STL's extent along X, Y and Z, each (lowest, highest)."""
+    corners = [
+        corner
+        for triangle in range(stl_triangles(data))
+        # Each triangle: its normal, its three corners, two spare bytes.
+        for corner in batched(struct.unpack_from("<9f", data, 96 + 50 * triangle), 3)
+    ]
+    return [
+        (
+            min(corner[axis] for corner in corners),
+            max(corner[axis] for corner in corners),
+        )
+        for axis in range(3)
+    ]
+
+
 def test_the_bonus_offers_its_files_with_english_names() -> None:
     page = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
     layout = (ROOT / "site" / "desktop.js").read_text(encoding="utf-8")
@@ -449,9 +468,10 @@ def test_the_bonus_offers_its_files_with_english_names() -> None:
     links = re.findall(r'href="bonus/([^"]+)"', page)
     files = sorted(path.name for path in bonus.iterdir())
     assert sorted(links) == files
-    # The dust shoe's three parts, the hose leaving forward or sideways.
+    # The dust shoe's three parts, the hose leaving forward or sideways,
+    # and forward for a 6 mm brush.
     for part in ("collar", "housing", "brush_sleeve"):
-        for way in ("hose_forward", "hose_sideways"):
+        for way in ("hose_forward", "hose_sideways", "hose_forward_6mm_brush"):
             stl = bonus / f"dust_shoe_{part}_{way}.stl"
             assert stl_triangles(stl.read_bytes()) > 1000
     # The source in English too: its parts and messages.
@@ -463,6 +483,26 @@ def test_the_bonus_offers_its_files_with_english_names() -> None:
     assert '{ id: "bonus", title: "Bonus", parts: ["#bonus"] }' in layout
     assert '["Bonus", () => [' in layout
     assert '<a href="#bonus">Bonus</a>' in page
+
+
+def test_the_dust_shoe_for_a_6mm_brush_leaves_the_frame_its_room() -> None:
+    bonus = ROOT / "site" / "bonus"
+
+    def extent(part: str, way: str) -> list[tuple[float, float]]:
+        return stl_extent((bonus / f"dust_shoe_{part}_{way}.stl").read_bytes())
+
+    narrow, wide = "hose_forward", "hose_forward_6mm_brush"
+    # The sleeve's lip 3 mm wider all round for the wider groove, but its
+    # back (-Y, toward the machine's frame) where the 3 mm brush's is...
+    sleeve, wide_sleeve = extent("brush_sleeve", narrow), extent("brush_sleeve", wide)
+    assert wide_sleeve[0][1] - sleeve[0][1] == pytest.approx(3.0, abs=0.05)
+    assert wide_sleeve[1][0] == pytest.approx(sleeve[1][0], abs=0.01)
+    # ... the collar's and the housing's back 3 mm closer in (the housing
+    # printed upside down, its back at +Y).
+    collar, wide_collar = extent("collar", narrow), extent("collar", wide)
+    assert wide_collar[1][0] == pytest.approx(collar[1][0] + 3.0, abs=0.01)
+    housing, wide_housing = extent("housing", narrow), extent("housing", wide)
+    assert wide_housing[1][1] == pytest.approx(housing[1][1] - 3.0, abs=0.01)
 
 
 def test_dark_mode_is_the_default_set_before_the_page_paints_never_printed() -> None:
