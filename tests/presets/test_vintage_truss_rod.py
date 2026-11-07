@@ -13,6 +13,7 @@ from cncguitarwizard.cam.neck import NeckMachiningParameters, plan_neck_machinin
 from cncguitarwizard.geometry.exceptions import NeckGeometryError
 from cncguitarwizard.presets import Prototype001Geometry, Prototype001Parameters
 from cncguitarwizard.presets.prototype001 import (
+    BULLET_HEEL_WOOD,
     BULLET_KEY_ROOM,
     BULLET_NUT_DIAMETER,
     BULLET_NUT_LENGTH,
@@ -183,8 +184,8 @@ def test_a_bullet_rod_is_adjusted_at_the_headstock() -> None:
     rod = geometry.vintage_truss_rod
     assert rod is not None
     assert rod.adjusted_at == "headstock"
-    # Anchored at the heel's end; no plug at the headstock, the walnut
-    # the channel's whole length.
+    # Anchored in the channel's closed end by the heel; no plug at the
+    # headstock, the walnut the channel's whole length.
     assert rod.start == pytest.approx(-BULLET.nut_seat_length())
     assert not rod.has_plug and rod.plug_outline == ()
     assert rod.strip_start == rod.start
@@ -201,6 +202,36 @@ def test_a_bullet_rod_is_adjusted_at_the_headstock() -> None:
     assert channel.adjuster_depth == pytest.approx(
         rod.end_depth + BULLET_NUT_DIAMETER / 2.0 + 0.5
     )
+
+
+def test_a_bullet_rods_channel_stops_short_of_the_heel() -> None:
+    # Regression: it was routed from the back out through the heel's end,
+    # the rod anchored at its end face; it is closed in the wood there, the
+    # rod anchored in it under the walnut, and adjusted from the headstock.
+    geometry = bullet()
+    rod = geometry.vintage_truss_rod
+    outline = geometry.neck_outline
+    assert rod is not None and not rod.open_at_heel
+    heel_end = outline.last_fret_position + outline.heel_length
+    assert rod.end == pytest.approx(heel_end - BULLET_HEEL_WOOD)
+    assert max(point.x for point in rod.strip_outline) == pytest.approx(rod.end)
+    # The rod made to the channel's length.
+    assert BULLET.truss_rod_fit(outline).route_length == pytest.approx(
+        rod.end - rod.start
+    )
+    # The cutter's round end at the channel's end, its centre a radius
+    # short of it.
+    plan = plan_neck_machining(geometry, NeckMachiningParameters())
+    setup = plan.back_truss_rod
+    assert setup is not None and setup.tool is not None
+    (channel,) = setup.toolpaths
+    assert max(move.x for move in channel.moves) == pytest.approx(
+        rod.end - setup.tool.tool_radius - plan.origin_x
+    )
+    assert any("closed short of the heel's end" in note for note in setup.notes)
+    # A vintage rod adjusted at the heel still runs out through its end.
+    heel_rod = vintage().vintage_truss_rod
+    assert heel_rod is not None and heel_rod.open_at_heel
 
 
 def test_a_bullet_rods_trough_is_cut_into_the_finished_face() -> None:

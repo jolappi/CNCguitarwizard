@@ -213,7 +213,7 @@ holds it:
 | Part | Size |
 | --- | --- |
 | Rod (`VINTAGE_ROD_DIAMETER`) | Ø 4.76 mm (3/16 in), made to the neck's length |
-| Channel | `truss_rod_width` (6 mm) wide, from the nut seat's end (`nut_seat_length` behind the nut, where the top starts down onto the headstock's face) out through the heel's end |
+| Channel | `truss_rod_width` (6 mm) wide, from the nut seat's end (`nut_seat_length` behind the nut, where the top starts down onto the headstock's face) out through the heel's end; a bullet rod's stops `BULLET_HEEL_WOOD` (12 mm) short of it |
 | Rod's axis | `VINTAGE_ROD_END_DEPTH` (4 mm) below the glue face at both ends, `VINTAGE_ROD_BOW` (2.5 mm) deeper in the middle, a parabola between |
 | Walnut strip | the channel's width, from the rod's back side to the carved back, from the plug's narrow end to the heel's end |
 | Teardrop plug | `VINTAGE_PLUG_WIDTH` × `VINTAGE_PLUG_LENGTH` (11 × 30 mm): round over the anchor, narrowing to the channel; its floor flat at the rod's back side where that lies deepest under it |
@@ -226,8 +226,10 @@ heel, its nut at the heel's end face, turned with the neck off, and
 anchored at the headstock under the teardrop plug.
 
 With `truss_rod_adjustment` "headstock" it is the 1970s "bullet" rod
-(`VintageTrussRod.adjusted_at` "headstock"): the same channel, anchored at
-the heel's end face, and its bullet nut, `BULLET_NUT_DIAMETER` x
+(`VintageTrussRod.adjusted_at` "headstock"): the same channel, but
+stopping `BULLET_HEEL_WOOD` (12 mm) short of the heel's end, not routed
+out through it (`VintageTrussRod.open_at_heel`), the rod anchored in its
+closed end under the walnut; and its bullet nut, `BULLET_NUT_DIAMETER` x
 `BULLET_NUT_LENGTH` (5/16 x 1/2 in), ahead of the channel's start, behind
 the nut, in a trough cut from the top into the headstock's face
 (`TrussRodChannel.adjuster_boundary`: 1 mm clear round the nut, half its

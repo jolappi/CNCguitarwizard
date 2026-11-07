@@ -152,7 +152,7 @@ FIELD_HELP: dict[str, str] = {
         "fretboard, or the vintage Fender way, laid in from the back under "
         "a walnut strip: adjusted at the heel under a teardrop plug, or at "
         "the headstock, the 1970s bullet rod, its nut in a trough behind the "
-        "nut."
+        "nut, its channel closed short of the heel's end."
     ),
     "truss_rod_spoke_wheel": (
         "A spoke-wheel adjuster, turned with a rod through its holes: auto "

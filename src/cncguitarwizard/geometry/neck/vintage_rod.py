@@ -7,9 +7,10 @@ straight against the wood toward the fretboard; a walnut strip glued in
 over it (the "skunk stripe"), carved with the back; and at the headstock
 end, where the rod is anchored, a walnut teardrop plug. It is adjusted at
 the heel, its nut at the heel's end face. From 1971 the rod was turned
-round, the "bullet" rod: anchored at the heel's end, adjusted at the
-headstock, its bullet-shaped nut behind the nut in a trough in the
-headstock's face, no plug, the strip the channel's whole length.
+round, the "bullet" rod: adjusted at the headstock, its bullet-shaped nut
+behind the nut in a trough in the headstock's face, and anchored in the
+channel's end, which stops short of the heel's end, closed in the wood;
+no plug, the strip the channel's whole length.
 """
 
 from __future__ import annotations
@@ -35,7 +36,10 @@ class VintageTrussRod:
     Args:
         start: Where the rod's anchor end lies, from the nut toward the
             heel (negative: in the headstock).
-        end: Where its adjusting end lies: the heel end.
+        end: Where the channel's heel end lies: the heel's end face for
+            a rod adjusted there, the channel running out through it;
+            short of it for a bullet rod, its anchor in the channel's
+            closed end.
         width: The channel's width, and the walnut strip's.
         rod_diameter: The rod's diameter.
         end_depth: The rod's axis below the top at both ends.
@@ -46,8 +50,9 @@ class VintageTrussRod:
             narrowed to the channel.
         adjusted_at: ``"heel"``, the vintage rod: anchored at ``start``
             under the plug, its nut at the heel's end face; or
-            ``"headstock"``, a 1970s bullet rod: anchored at the heel's
-            end, its bullet nut ahead of ``start`` in the headstock's face
+            ``"headstock"``, a 1970s bullet rod: anchored in the
+            channel's closed end at ``end``, its bullet nut ahead of
+            ``start`` in the headstock's face
             (the channel's trough, ``TrussRodChannel.adjuster_boundary``),
             and no plug: the strip runs from ``start``.
 
@@ -125,6 +130,13 @@ class VintageTrussRod:
         """Return where the walnut over the rod starts at ``x``, below the
         top: the rod's side nearest the back."""
         return self.axis_depth(x) + self.rod_diameter / 2.0
+
+    @property
+    def open_at_heel(self) -> bool:
+        """Return whether the channel runs out through the heel's end: a
+        rod adjusted there, its nut turned at the end face. A bullet rod's
+        ends short of it, closed in the wood over its anchor."""
+        return self.adjusted_at == "heel"
 
     @property
     def has_plug(self) -> bool:

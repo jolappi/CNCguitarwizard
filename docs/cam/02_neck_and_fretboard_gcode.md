@@ -119,7 +119,9 @@ the rod, glue in the walnut strip and plug (their sizes given, a
 millimetre proud), let them cure and plane them flush with the blank's
 back; the back's programs carve them with it, the blank back on the same
 dowels. A 1970s bullet rod, adjusted at the headstock, has no teardrop:
-the channel alone from the back, the strip its whole length, and
+the channel alone from the back, stopping 12 mm short of the heel's end
+(the cutter's round end there, the rod anchored in it), the strip its
+whole length, its ends rounded to the channel's, and
 `Neck_top` cuts the bullet's trough behind the nut into the finished
 headstock face (`Truss-rod bullet trough`, after the face), where the
 bullet nut is threaded onto the rod once the walnut is in.

@@ -3398,9 +3398,10 @@ class FreeCADScriptExporter:
 
         The channel is a side profile — its ceiling, the rod's side nearest
         the fretboard, curving along the rod — swept across its width, on
-        out past the heel's end; the teardrop a prism from the plug's floor
-        down. The strip and the plug are the uncut neck's wood from the
-        rod's back side (the plug's floor) down to the carved back.
+        out past the heel's end, or to a bullet rod's closed end short of
+        it; the teardrop a prism from the plug's floor down. The strip and
+        the plug are the uncut neck's wood from the rod's back side (the
+        plug's floor) down to the carved back.
         """
         if rod is None:
             return ""
@@ -3410,15 +3411,16 @@ class FreeCADScriptExporter:
             rod.start + (rod.end - rod.start) * index / steps
             for index in range(steps + 1)
         ]
-        past = rod.end + 1.0
+        # Out through the heel's end, or closed at a bullet rod's end.
+        past = rod.end + 1.0 if rod.open_at_heel else rod.end
 
         def side(depth: Callable[[float], float], start: float) -> str:
-            # The curve at -depth from start to the heel's end, on past it,
-            # and back along a floor well below any back.
+            # The curve at -depth from start to the channel's end, on past
+            # the heel's, and back along a floor well below any back.
             xs = [start, *(x for x in stations if x > start + 1e-6)]
             points = [
                 *((x, -depth(x)) for x in xs),
-                (past, -depth(rod.end)),
+                *(((past, -depth(rod.end)),) if rod.open_at_heel else ()),
                 (past, below),
                 (start, below),
             ]

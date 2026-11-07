@@ -485,6 +485,11 @@ BULLET_SEAT = 1.0
 """How far the bullet's trough reaches on over the rod's channel, in mm:
 the rod's end goes through into it, the walnut under it there."""
 
+BULLET_HEEL_WOOD = 12.0
+"""How far a bullet rod's channel stops short of the heel's end, in mm:
+its anchor end closed in the wood under the walnut, not routed out
+through the heel (as a top-routed rod adjusted at the headstock ends)."""
+
 STEP_EDGE_SLACK = 3.0
 """How near the body's edge drawn step lines may cross, in mm: where they
 converge on the edge (the sliver between them is cut with the outer
@@ -1581,8 +1586,9 @@ class Prototype001Parameters:
     # back. Adjusted at the heel (truss_rod_adjustment), as Fender's
     # first: anchored at the headstock under a walnut teardrop plug
     # (VINTAGE_PLUG_WIDTH x VINTAGE_PLUG_LENGTH), its nut turned at the
-    # heel's end face. At the headstock, a 1970s "bullet" rod: anchored at
-    # the heel's end, its BULLET_NUT_DIAMETER x BULLET_NUT_LENGTH bullet
+    # heel's end face. At the headstock, a 1970s "bullet" rod: its channel
+    # stops BULLET_HEEL_WOOD short of the heel's end, the rod anchored in
+    # its closed end, and its BULLET_NUT_DIAMETER x BULLET_NUT_LENGTH bullet
     # nut behind the nut in a trough in the headstock's face, open to the
     # top, BULLET_KEY_ROOM on ahead of it for the key; no plug, the strip
     # the channel's whole length. It is made to the neck's length, not a
@@ -3619,8 +3625,9 @@ class Prototype001Parameters:
         From the nut seat's end, where the top starts down onto the
         headstock's face, to the heel end, ``truss_rod_width`` wide:
         anchored there under a teardrop plug and adjusted at the heel, or
-        with ``truss_rod_adjustment`` "headstock" a 1970s bullet rod,
-        anchored at the heel's end, its bullet nut ahead of the channel's
+        with ``truss_rod_adjustment`` "headstock" a 1970s bullet rod, its
+        channel stopping ``BULLET_HEEL_WOOD`` short of the heel's end,
+        anchored in its closed end, its bullet nut ahead of the channel's
         start (``truss_rod``'s trough).
 
         Raises:
@@ -3671,16 +3678,17 @@ class Prototype001Parameters:
             )
             raise NeckGeometryError(f"{rod} {problem}.")
         heel_end = outline.last_fret_position + outline.heel_length
+        bullet = self.truss_rod_adjustment == "headstock"
         return VintageTrussRod(
             -self.nut_seat_length(),
-            heel_end,
+            heel_end - BULLET_HEEL_WOOD if bullet else heel_end,
             self.truss_rod_width,
             VINTAGE_ROD_DIAMETER,
             VINTAGE_ROD_END_DEPTH,
             VINTAGE_ROD_BOW,
             VINTAGE_PLUG_WIDTH,
             VINTAGE_PLUG_LENGTH,
-            "headstock" if self.truss_rod_adjustment == "headstock" else "heel",
+            "headstock" if bullet else "heel",
         )
 
     def _checked_vintage_rod(
@@ -3783,7 +3791,8 @@ class Prototype001Parameters:
         """
         vintage = self.vintage_truss_rod(outline)
         if vintage is not None:
-            # Made to the neck's length, its nut at the heel's end face.
+            # Made to its channel's length: to the heel's end face, its nut
+            # there, or a bullet rod's to the channel's closed end.
             length = vintage.end - vintage.start
             return TrussRodFit(length, None, length, length, 0.0)
         heel = self.truss_rod_adjustment == "heel"

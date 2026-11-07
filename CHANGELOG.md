@@ -4,6 +4,17 @@
 
 ### Changed
 
+- A truss rod laid in from the back and adjusted at the headstock (the
+  1970s bullet rod, a one-piece neck's among them) is no longer routed
+  out through the heel: its channel stops `BULLET_HEEL_WOOD` (12 mm)
+  short of the heel's end, the rod anchored in its closed end under the
+  walnut, and it is reached from the headstock, the bullet's trough
+  behind the nut going into the channel. `Neck_back_truss_rod` stops the
+  cutter's round end there, its notes asking for a strip the channel's
+  length, its ends rounded to it; FreeCAD's channel and strip end there
+  too (`VintageTrussRod.open_at_heel`). A rod adjusted at the heel still
+  runs out through the heel's end, its nut turned there.
+
 - The tour goes through the app as it is now: the quick 3D model first
   (its view opened, its details ticked above it or under Preview), then
   the instrument and its style, the body's drawing (the one drawing

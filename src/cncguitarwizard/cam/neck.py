@@ -562,14 +562,20 @@ def _vintage_rod_setup(
     else:
         laid_in = (
             f"Lay in the {rod.rod_diameter:g} mm bullet rod, "
-            f"{rod.end - rod.start:.0f} mm long, its anchor at the heel's end "
-            "face and its threaded end into the bullet's trough behind the "
-            "nut (Neck_top), where the bullet nut goes on.",
+            f"{rod.end - rod.start:.0f} mm long, its anchor in the channel's "
+            "closed end by the heel and its threaded end into the bullet's "
+            "trough behind the nut (Neck_top), where the bullet nut goes on.",
             f"Glue in a walnut strip {rod.width:g} mm wide, at least "
             f"{strip_height + 1.0:.0f} mm tall and "
-            f"{rod.end - rod.strip_start + 1.0:.0f} mm long, the channel's "
-            "whole length, pressed down onto the rod (no plug).",
+            f"{rod.end - rod.strip_start:.0f} mm long, the channel's whole "
+            "length, its ends rounded to the channel's, pressed down onto "
+            "the rod and over its anchor (no plug).",
         )
+    reach = (
+        "out through the heel's end"
+        if rod.open_at_heel
+        else f"to {rod.end:.0f} mm from it, closed short of the heel's end"
+    )
     return Setup(
         "Neck_back_truss_rod",
         "Neck back - the vintage truss rod's channel"
@@ -578,8 +584,8 @@ def _vintage_rod_setup(
         (
             *fixture_notes,
             f"The truss rod's channel, {rod.width:g} mm wide on the "
-            f"centreline from {-rod.start:g} mm behind the nut out through "
-            "the heel's end, curves with the rod: "
+            f"centreline from {-rod.start:g} mm behind the nut {reach}, "
+            "curves with the rod: "
             f"{thickness - rod.ceiling_depth(rod.end):.1f} mm deep at its "
             f"ends and {thickness - rod.ceiling_depth(middle):.1f} mm in the "
             f"middle. The cutter must reach {-channel.deepest_z():.1f} mm "
@@ -600,9 +606,11 @@ def _vintage_channel(
 
     The cutter runs along the channel, back and forth one depth level at
     a time, from its start (the cutter's round end there) on out past
-    the heel's end; each pass no deeper than the channel's ceiling — the
-    rod's side nearest the fretboard, curving with it — so the last
-    follows it. A cutter narrower than the channel runs it in lanes.
+    the heel's end, or to a bullet rod's closed end short of it (the
+    cutter's round end there too); each pass no deeper than the
+    channel's ceiling — the rod's side nearest the fretboard, curving
+    with it — so the last follows it. A cutter narrower than the channel
+    runs it in lanes.
 
     Raises:
         ToolpathError: If the cutter is wider than the channel.
@@ -619,7 +627,7 @@ def _vintage_channel(
         for index in range(lane_count)
     ]
     start = rod.start + tool.tool_radius
-    end = rod.end + tool.tool_radius + 0.5
+    end = rod.end + (tool.tool_radius + 0.5 if rod.open_at_heel else -tool.tool_radius)
     steps = max(2, math.ceil((end - start) / VINTAGE_CHANNEL_STEP))
     stations = [start + (end - start) * index / steps for index in range(steps + 1)]
 
