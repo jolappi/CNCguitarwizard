@@ -118,13 +118,23 @@ narrower than the channel runs it in lanes. The notes then say to lay in
 the rod, glue in the walnut strip and plug (their sizes given, a
 millimetre proud), let them cure and plane them flush with the blank's
 back; the back's programs carve them with it, the blank back on the same
-dowels. A 1970s bullet rod, adjusted at the headstock, has no teardrop:
-the channel alone from the back, stopping 12 mm short of the heel's end
-(the cutter's round end there, the rod anchored in it), the strip its
-whole length, its ends rounded to the channel's, and
-`Neck_top` cuts the bullet's trough behind the nut into the finished
-headstock face (`Truss-rod bullet trough`, after the face), where the
-bullet nut is threaded onto the rod once the walnut is in.
+dowels. A 1970s bullet rod, adjusted at the headstock, has no teardrop,
+and its channel lies along the neck's straight back alone, so
+`Neck_back_truss_rod.nc` comes after `Neck_back_rough`, before
+`Neck_back_finish` (`NeckMachiningPlan.back_truss_rod_after_rough`; with
+`back_cut` "ball" first, as above): the same fixture and Z zero, its
+layers below the roughed back, following it down, so the cutter makes
+fewer passes than from the blank's flat back. The channel is closed at
+both ends, short of the headstock's root and the heel's rounding (the
+cutter's round end at each, the rod anchored in the heel end). The notes
+say to drill the 5 mm bore from the headstock, out of the bullet's
+trough along the rod's axis into the channel's end, to lay in the rod
+through it, to glue in the strip its whole length, its ends rounded to
+the channel's, and to trim it flush with the roughed back:
+`Neck_back_finish` carves it with the back. `Neck_top` cuts the bullet's
+trough behind the nut into the finished headstock face (`Truss-rod
+bullet trough`, after the face), where the bullet nut is threaded onto
+the rod once the walnut is in.
 
 ### One-piece neck
 

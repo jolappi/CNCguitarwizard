@@ -13,7 +13,7 @@ from cncguitarwizard.cam.neck import NeckMachiningParameters, plan_neck_machinin
 from cncguitarwizard.geometry.exceptions import NeckGeometryError
 from cncguitarwizard.presets import Prototype001Geometry, Prototype001Parameters
 from cncguitarwizard.presets.prototype001 import (
-    BULLET_HEEL_WOOD,
+    BULLET_BORE_DIAMETER,
     BULLET_KEY_ROOM,
     BULLET_NUT_DIAMETER,
     BULLET_NUT_LENGTH,
@@ -188,7 +188,7 @@ def test_a_bullet_rod_is_adjusted_at_the_headstock() -> None:
     # headstock, the walnut the channel's whole length.
     assert rod.start == pytest.approx(-BULLET.nut_seat_length())
     assert not rod.has_plug and rod.plug_outline == ()
-    assert rod.strip_start == rod.start
+    assert rod.strip_start == rod.channel_start
     # Its bullet nut ahead of the channel, behind the nut, in a trough open
     # to the top: room for it and for the key in its end.
     channel = geometry.truss_rod_channel
@@ -204,34 +204,83 @@ def test_a_bullet_rod_is_adjusted_at_the_headstock() -> None:
     )
 
 
-def test_a_bullet_rods_channel_stops_short_of_the_heel() -> None:
-    # Regression: it was routed from the back out through the heel's end,
-    # the rod anchored at its end face; it is closed in the wood there, the
-    # rod anchored in it under the walnut, and adjusted from the headstock.
-    geometry = bullet()
+@pytest.mark.parametrize("drawn", [False, True])
+def test_a_bullet_rods_channel_lies_on_the_straight_back_alone(drawn: bool) -> None:
+    # Regression: it was routed into the headstock's root and on toward the
+    # heel's end; it lies where the back is the neck's own profile right
+    # across, closed short of both roundings, the rod's end reaching the
+    # bullet's trough through a bore drilled from the headstock.
+    style = "drawn" if drawn else "smooth"
+    parameters = replace(BULLET, headstock_root_style=style, heel_root_style=style)
+    geometry = parameters.build() if drawn else bullet()
     rod = geometry.vintage_truss_rod
-    outline = geometry.neck_outline
+    surface = geometry.neck_surface
     assert rod is not None and not rod.open_at_heel
-    heel_end = outline.last_fret_position + outline.heel_length
-    assert rod.end == pytest.approx(heel_end - BULLET_HEEL_WOOD)
+    rows = surface.mesh.rows
+    middle = (parameters.profile_sample_count - 1) // 2
+
+    def deeper_than_plain(x: float) -> float:
+        return surface.plain_profile_row(x)[middle].z - _back_z(rows, x, 0.0)
+
+    for step in range(11):
+        x = rod.channel_start + (rod.end - rod.channel_start) * step / 10
+        assert deeper_than_plain(x) == pytest.approx(0.0, abs=0.02)
+
+    # A little further on, into the roundings, the back falls away.
+    def depth(x: float) -> float:
+        return -_back_z(rows, x, 0.0)
+
+    assert depth(rod.channel_start - 6.0) > depth(rod.channel_start) + 0.1
+    assert depth(rod.end + 20.0) > depth(rod.end) + 0.2
+    assert rod.bore_length == pytest.approx(rod.channel_start - rod.start)
+    assert rod.bore_diameter == BULLET_BORE_DIAMETER
     assert max(point.x for point in rod.strip_outline) == pytest.approx(rod.end)
-    # The rod made to the channel's length.
-    assert BULLET.truss_rod_fit(outline).route_length == pytest.approx(
-        rod.end - rod.start
+    # The rod made to its length, from the trough to its anchor.
+    assert parameters.truss_rod_fit(geometry.neck_outline).route_length == (
+        pytest.approx(rod.end - rod.start)
     )
-    # The cutter's round end at the channel's end, its centre a radius
-    # short of it.
-    plan = plan_neck_machining(geometry, NeckMachiningParameters())
-    setup = plan.back_truss_rod
-    assert setup is not None and setup.tool is not None
-    (channel,) = setup.toolpaths
-    assert max(move.x for move in channel.moves) == pytest.approx(
-        rod.end - setup.tool.tool_radius - plan.origin_x
-    )
-    assert any("closed short of the heel's end" in note for note in setup.notes)
     # A vintage rod adjusted at the heel still runs out through its end.
     heel_rod = vintage().vintage_truss_rod
     assert heel_rod is not None and heel_rod.open_at_heel
+    assert heel_rod.channel_start == heel_rod.start
+
+
+def test_a_bullet_rods_channel_is_routed_down_from_the_roughed_back() -> None:
+    geometry = bullet()
+    rod = geometry.vintage_truss_rod
+    assert rod is not None
+    plan = plan_neck_machining(geometry, NeckMachiningParameters())
+
+    assert plan.back_truss_rod_after_rough
+    names = [setup.name for setup in plan.setups]
+    assert names.index("Neck_back_truss_rod") == names.index("Neck_back_rough") + 1
+    assert names.index("Neck_back_finish") == names.index("Neck_back_truss_rod") + 1
+    assert len(plan.preview_outlines) == len(plan.setups)
+    setup = plan.back_truss_rod
+    assert setup is not None and setup.tool is not None
+    (channel,) = setup.toolpaths
+    # The cutter's round ends at the channel's closed ends.
+    radius = setup.tool.tool_radius
+    xs = [move.x + plan.origin_x for move in channel.moves]
+    assert min(xs) == pytest.approx(rod.channel_start + radius)
+    assert max(xs) == pytest.approx(rod.end - radius)
+    # Down from the roughed back, not the blank's: fewer passes to the same
+    # floor than from the flat back, as with the ball nose alone.
+    flat_back = plan_neck_machining(
+        geometry, replace(NeckMachiningParameters(), back_cut="ball")
+    )
+    assert not flat_back.back_truss_rod_after_rough
+    first = [setup.name for setup in flat_back.setups]
+    assert first.index("Neck_back_truss_rod") == first.index("Neck_back") - 1
+    assert flat_back.back_truss_rod is not None
+    (from_flat,) = flat_back.back_truss_rod.toolpaths
+    assert len(channel.moves) < len(from_flat.moves)
+    assert channel.deepest_z() == pytest.approx(from_flat.deepest_z())
+    notes = " ".join(setup.notes)
+    assert "Same fixture and X/Y zero as Neck_back_rough" in notes
+    assert f"Drill a {BULLET_BORE_DIAMETER:g} mm hole from the headstock" in notes
+    assert "trim the walnut flush with the roughed back: Neck_back_finish" in notes
+    assert "closed short of the headstock's root and the heel's rounding" in notes
 
 
 def test_a_bullet_rods_trough_is_cut_into_the_finished_face() -> None:
@@ -262,6 +311,9 @@ def test_freecad_cuts_a_bullet_rods_trough_and_no_plug(tmp_path: Path) -> None:
     ast.parse(source)
     assert '"TrussRodStrip"' in source and '"TrussRodPlug"' not in source
     assert "truss-rod bullet trough cut" in source
+    # The bore from the trough into the channel cut with it.
+    assert "vintage_bore = Part.makeCylinder(" in source
+    assert "vintage_cutters = [vintage_channel, vintage_bore]" in source
     assert "if strip.Solids and removed > strip.Volume:" in source
     svg = render_plan_view_svg(bullet())
     assert "Walnut strip (back)" in svg and "teardrop" not in svg

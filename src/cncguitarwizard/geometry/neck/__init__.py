@@ -1,6 +1,6 @@
 """Geometry models specific to guitar neck construction."""
 
-from .back_surface import NeckBackSurface
+from .back_surface import NeckBackSurface, straight_span
 from .back_transition import (
     DEFAULT_HEEL_LINES,
     DEFAULT_ROOT_LINES,
@@ -63,4 +63,5 @@ __all__ = [
     "drawn_whole",
     "mirrored_line",
     "side_share",
+    "straight_span",
 ]

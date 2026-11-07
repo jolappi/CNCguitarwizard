@@ -213,9 +213,9 @@ holds it:
 | Part | Size |
 | --- | --- |
 | Rod (`VINTAGE_ROD_DIAMETER`) | Ø 4.76 mm (3/16 in), made to the neck's length |
-| Channel | `truss_rod_width` (6 mm) wide, from the nut seat's end (`nut_seat_length` behind the nut, where the top starts down onto the headstock's face) out through the heel's end; a bullet rod's stops `BULLET_HEEL_WOOD` (12 mm) short of it |
+| Channel | `truss_rod_width` (6 mm) wide, from the nut seat's end (`nut_seat_length` behind the nut, where the top starts down onto the headstock's face) out through the heel's end; a bullet rod's along the neck's straight back alone (`VintageTrussRod.channel_start` to `end`), a `BULLET_BORE_DIAMETER` (5 mm) bore from its trough on into it |
 | Rod's axis | `VINTAGE_ROD_END_DEPTH` (4 mm) below the glue face at both ends, `VINTAGE_ROD_BOW` (2.5 mm) deeper in the middle, a parabola between |
-| Walnut strip | the channel's width, from the rod's back side to the carved back, from the plug's narrow end to the heel's end |
+| Walnut strip | the channel's width, from the rod's back side to the carved back, from the plug's narrow end to the heel's end; a bullet rod's the channel's length |
 | Teardrop plug | `VINTAGE_PLUG_WIDTH` × `VINTAGE_PLUG_LENGTH` (11 × 30 mm): round over the anchor, narrowing to the channel; its floor flat at the rod's back side where that lies deepest under it |
 
 The channel is curved like Fender's: the rod lies deeper toward the
@@ -226,10 +226,16 @@ heel, its nut at the heel's end face, turned with the neck off, and
 anchored at the headstock under the teardrop plug.
 
 With `truss_rod_adjustment` "headstock" it is the 1970s "bullet" rod
-(`VintageTrussRod.adjusted_at` "headstock"): the same channel, but
-stopping `BULLET_HEEL_WOOD` (12 mm) short of the heel's end, not routed
-out through it (`VintageTrussRod.open_at_heel`), the rod anchored in its
-closed end under the walnut; and its bullet nut, `BULLET_NUT_DIAMETER` x
+(`VintageTrussRod.adjusted_at` "headstock"): its channel along the neck's
+straight back alone, where the back is the neck's own profile right
+across (`geometry.neck.straight_span`: past the headstock's root, its
+volute or its drawn neck line, and short of the heel's lead-in or its
+drawn neck line), closed at both ends, not routed into the roundings nor
+out through the heel (`VintageTrussRod.open_at_heel`); the rod anchored
+in its heel end under the walnut, its threaded end reaching the trough
+through a `BULLET_BORE_DIAMETER` (5 mm) bore drilled from the headstock,
+out of the trough along the rod's axis into the channel's end
+(`VintageTrussRod.bore_length`); and its bullet nut, `BULLET_NUT_DIAMETER` x
 `BULLET_NUT_LENGTH` (5/16 x 1/2 in), ahead of the channel's start, behind
 the nut, in a trough cut from the top into the headstock's face
 (`TrussRodChannel.adjuster_boundary`: 1 mm clear round the nut, half its
@@ -237,8 +243,9 @@ diameter and 0.5 mm below its axis, `BULLET_KEY_ROOM` (6 mm) on ahead of
 it for the 3/16 in key), so it stands proud of a set-down face as on a
 '70s neck. There is no plug: the walnut strip runs the channel's whole
 length. `Neck_top` cuts the trough into the finished face
-(`Truss-rod bullet trough`), FreeCAD cuts it from the neck and makes no
-plug, and the trough keeps 3 mm from the tuner holes.
+(`Truss-rod bullet trough`), FreeCAD cuts it and the bore from the neck
+and makes no plug, and the trough keeps 3 mm from the tuner holes. The
+build checks the bore keeps `VINTAGE_ROD_WALL` under the top too.
 
 `vintage_truss_rod` refuses it with a spoke wheel
 (`truss_rod_spoke_wheel` `"yes"`; `"auto"` fits none), a low-profile rod,

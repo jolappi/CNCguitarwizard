@@ -5,15 +5,20 @@
 ### Changed
 
 - A truss rod laid in from the back and adjusted at the headstock (the
-  1970s bullet rod, a one-piece neck's among them) is no longer routed
-  out through the heel: its channel stops `BULLET_HEEL_WOOD` (12 mm)
-  short of the heel's end, the rod anchored in its closed end under the
-  walnut, and it is reached from the headstock, the bullet's trough
-  behind the nut going into the channel. `Neck_back_truss_rod` stops the
-  cutter's round end there, its notes asking for a strip the channel's
-  length, its ends rounded to it; FreeCAD's channel and strip end there
-  too (`VintageTrussRod.open_at_heel`). A rod adjusted at the heel still
-  runs out through the heel's end, its nut turned there.
+  1970s bullet rod, a one-piece neck's among them) has its channel along
+  the neck's straight back alone (`geometry.neck.straight_span`), closed
+  short of the headstock's root and the heel's rounding, no longer
+  routed into them nor out through the heel: the rod anchored in its
+  heel end under the walnut, its threaded end reaching the bullet's
+  trough through a `BULLET_BORE_DIAMETER` (5 mm) bore drilled from the
+  headstock (`VintageTrussRod.bore_length`, `channel_start`).
+  `Neck_back_truss_rod` comes after `Neck_back_rough` for it
+  (`NeckMachiningPlan.back_truss_rod_after_rough`), its layers below the
+  roughed back, so fewer passes; its notes say to drill the bore, lay in
+  the rod, glue in a strip the channel's length and trim it flush with
+  the roughed back for `Neck_back_finish`. FreeCAD cuts the shorter
+  channel and the bore. A rod adjusted at the heel still runs out
+  through the heel's end, routed before the back is carved.
 
 - The tour goes through the app as it is now: the quick 3D model first
   (its view opened, its details ticked above it or under Preview), then

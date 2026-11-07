@@ -99,6 +99,7 @@ from ..geometry.neck import (
     default_volute_lines,
     drawn_back_line,
     mirrored_line,
+    straight_span,
 )
 from ..geometry.neck.nut_jig import (
     NutSlotJig,
@@ -485,10 +486,10 @@ BULLET_SEAT = 1.0
 """How far the bullet's trough reaches on over the rod's channel, in mm:
 the rod's end goes through into it, the walnut under it there."""
 
-BULLET_HEEL_WOOD = 12.0
-"""How far a bullet rod's channel stops short of the heel's end, in mm:
-its anchor end closed in the wood under the walnut, not routed out
-through the heel (as a top-routed rod adjusted at the headstock ends)."""
+BULLET_BORE_DIAMETER = 5.0
+"""The bore a bullet rod's threaded end goes through from its trough to
+its channel, in mm: drilled from the headstock along the rod, a hair
+wider than the 3/16 in rod."""
 
 STEP_EDGE_SLACK = 3.0
 """How near the body's edge drawn step lines may cross, in mm: where they
@@ -1587,13 +1588,15 @@ class Prototype001Parameters:
     # first: anchored at the headstock under a walnut teardrop plug
     # (VINTAGE_PLUG_WIDTH x VINTAGE_PLUG_LENGTH), its nut turned at the
     # heel's end face. At the headstock, a 1970s "bullet" rod: its channel
-    # stops BULLET_HEEL_WOOD short of the heel's end, the rod anchored in
-    # its closed end, and its BULLET_NUT_DIAMETER x BULLET_NUT_LENGTH bullet
-    # nut behind the nut in a trough in the headstock's face, open to the
-    # top, BULLET_KEY_ROOM on ahead of it for the key; no plug, the strip
-    # the channel's whole length. It is made to the neck's length, not a
-    # stock rod. It needs no spoke wheel, a flat headstock and a bolt-on or
-    # set neck.
+    # only along the neck's straight back, routed once the back is roughed,
+    # closed short of the headstock's root and the heel's rounding, the rod
+    # anchored in its heel end; its BULLET_NUT_DIAMETER x BULLET_NUT_LENGTH
+    # bullet nut behind the nut in a trough in the headstock's face, open
+    # to the top, BULLET_KEY_ROOM on ahead of it for the key, the rod's
+    # threaded end reaching it through a BULLET_BORE_DIAMETER bore drilled
+    # from the trough; no plug, the strip the channel's whole length. It is
+    # made to the neck's length, not a stock rod. It needs no spoke wheel, a
+    # flat headstock and a bolt-on or set neck.
     truss_rod_install: Literal["top", "back"] = "top"
     truss_rod_nut_diameter: float = 15.0
     truss_rod_nut_length: float = 6.0
@@ -3625,10 +3628,12 @@ class Prototype001Parameters:
         From the nut seat's end, where the top starts down onto the
         headstock's face, to the heel end, ``truss_rod_width`` wide:
         anchored there under a teardrop plug and adjusted at the heel, or
-        with ``truss_rod_adjustment`` "headstock" a 1970s bullet rod, its
-        channel stopping ``BULLET_HEEL_WOOD`` short of the heel's end,
-        anchored in its closed end, its bullet nut ahead of the channel's
-        start (``truss_rod``'s trough).
+        with ``truss_rod_adjustment`` "headstock" a 1970s bullet rod: its
+        channel on the neck's straight back alone, closed short of the
+        headstock's root and the heel's rounding, the rod anchored in its
+        heel end and its threaded end in a ``BULLET_BORE_DIAMETER`` bore
+        on to the bullet nut ahead of the rod's start (``truss_rod``'s
+        trough).
 
         Raises:
             NeckGeometryError: For an unknown ``truss_rod_install``, or a
@@ -3677,11 +3682,27 @@ class Prototype001Parameters:
                 else "A vintage truss rod (truss_rod_install back)"
             )
             raise NeckGeometryError(f"{rod} {problem}.")
-        heel_end = outline.last_fret_position + outline.heel_length
+        start = -self.nut_seat_length()
+        end = outline.last_fret_position + outline.heel_length
+        channel_start = start
         bullet = self.truss_rod_adjustment == "headstock"
+        if bullet:
+            # The channel along the neck's straight back, as the built back
+            # has it (a vintage rod's neck is bolted on or set).
+            channel_start, end = straight_span(
+                self.headstock_volute_length,
+                max(self.headstock_volute_depth, self.headstock_root_swell),
+                self.root_drawn(outline, self.headstock_plan()),
+                outline.last_fret_position - self.heel_flat_start_offset,
+                self.heel_root_length,
+                self.heel_root_center_extension,
+                self.heel_drawn(
+                    outline, self.heel_flat_start_offset, self.heel_thickness
+                ),
+            )
         return VintageTrussRod(
-            -self.nut_seat_length(),
-            heel_end - BULLET_HEEL_WOOD if bullet else heel_end,
+            start,
+            end,
             self.truss_rod_width,
             VINTAGE_ROD_DIAMETER,
             VINTAGE_ROD_END_DEPTH,
@@ -3689,6 +3710,8 @@ class Prototype001Parameters:
             VINTAGE_PLUG_WIDTH,
             VINTAGE_PLUG_LENGTH,
             "headstock" if bullet else "heel",
+            channel_start - start,
+            BULLET_BORE_DIAMETER if bullet else 0.0,
         )
 
     def _checked_vintage_rod(
@@ -3698,9 +3721,10 @@ class Prototype001Parameters:
         headstock: HeadstockSolid,
     ) -> VintageTrussRod | None:
         """Return ``vintage_truss_rod``, checked against the neck: at least
-        ``VINTAGE_ROD_WALL`` of wood over its anchor, under a top starting
-        down onto the headstock's face, and ``VINTAGE_STRIP_MIN`` of walnut
-        over it everywhere once the back is carved.
+        ``VINTAGE_ROD_WALL`` of wood over its headstock end (a bullet rod's
+        bore), under a top starting down onto the headstock's face, and
+        ``VINTAGE_STRIP_MIN`` of walnut over it everywhere once the back is
+        carved.
 
         Raises:
             NeckGeometryError: Where the top or the back comes nearer.
@@ -3709,13 +3733,14 @@ class Prototype001Parameters:
         if rod is None:
             return None
         half = rod.width / 2.0
+        reach = max(rod.rod_diameter, rod.bore_diameter) / 2.0
         if any(
-            rod.ceiling_depth(rod.start) + headstock.top_z(rod.start, y)
+            rod.axis_depth(rod.start) - reach + headstock.top_z(rod.start, y)
             < VINTAGE_ROD_WALL - 1e-9
             for y in (-half, 0.0, half)
         ):
             raise NeckGeometryError(
-                "A vintage truss rod's anchor would come within "
+                "A vintage truss rod's headstock end would come within "
                 f"{VINTAGE_ROD_WALL:g} mm of the neck's top."
             )
         rows = neck_surface.mesh.rows
@@ -3791,8 +3816,8 @@ class Prototype001Parameters:
         """
         vintage = self.vintage_truss_rod(outline)
         if vintage is not None:
-            # Made to its channel's length: to the heel's end face, its nut
-            # there, or a bullet rod's to the channel's closed end.
+            # Made to its length: to the heel's end face, its nut there, or
+            # a bullet rod's from its bore on to the channel's closed end.
             length = vintage.end - vintage.start
             return TrussRodFit(length, None, length, length, 0.0)
         heel = self.truss_rod_adjustment == "heel"

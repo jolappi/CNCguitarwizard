@@ -8,9 +8,11 @@ over it (the "skunk stripe"), carved with the back; and at the headstock
 end, where the rod is anchored, a walnut teardrop plug. It is adjusted at
 the heel, its nut at the heel's end face. From 1971 the rod was turned
 round, the "bullet" rod: adjusted at the headstock, its bullet-shaped nut
-behind the nut in a trough in the headstock's face, and anchored in the
-channel's end, which stops short of the heel's end, closed in the wood;
-no plug, the strip the channel's whole length.
+behind the nut in a trough in the headstock's face. Its channel runs
+along the neck's straight back alone, closed short of the headstock's
+root and the heel's rounding: the rod anchored in its heel end, its
+threaded end reaching the trough through a bore drilled from it; no plug,
+the strip the channel's whole length.
 """
 
 from __future__ import annotations
@@ -34,12 +36,12 @@ class VintageTrussRod:
     top-routed channel's are; the channel is open toward the back.
 
     Args:
-        start: Where the rod's anchor end lies, from the nut toward the
+        start: Where the rod's headstock end lies, from the nut toward the
             heel (negative: in the headstock).
         end: Where the channel's heel end lies: the heel's end face for
             a rod adjusted there, the channel running out through it;
-            short of it for a bullet rod, its anchor in the channel's
-            closed end.
+            short of the heel's rounding for a bullet rod, its anchor in
+            the channel's closed end.
         width: The channel's width, and the walnut strip's.
         rod_diameter: The rod's diameter.
         end_depth: The rod's axis below the top at both ends.
@@ -54,14 +56,19 @@ class VintageTrussRod:
             channel's closed end at ``end``, its bullet nut ahead of
             ``start`` in the headstock's face
             (the channel's trough, ``TrussRodChannel.adjuster_boundary``),
-            and no plug: the strip runs from ``start``.
+            and no plug: the strip runs the channel's length.
+        bore_length: How far from ``start`` a bullet rod lies in a bore
+            drilled from its trough before its channel starts
+            (``channel_start``); nil for a rod adjusted at the heel.
+        bore_diameter: The bore's diameter, wider than the rod.
 
     Raises:
         TrussRodGeometryError: For sizes that are not finite and positive
             (the bow may be nil), an end not past the start, a rod not
             narrower than its channel, a plug not wider than the channel,
-            not longer than it is wide or not shorter than the rod, or a rod
-            breaking out of the top.
+            not longer than it is wide or not shorter than the rod, a bore
+            on a rod adjusted at the heel or not wider than the rod, or a
+            rod breaking out of the top.
     """
 
     start: float
@@ -73,6 +80,8 @@ class VintageTrussRod:
     plug_width: float
     plug_length: float
     adjusted_at: Literal["heel", "headstock"] = "heel"
+    bore_length: float = 0.0
+    bore_diameter: float = 0.0
 
     def __post_init__(self) -> None:
         """Reject a rod that cannot be laid in."""
@@ -101,6 +110,17 @@ class VintageTrussRod:
             raise TrussRodGeometryError(
                 'A vintage truss rod is adjusted at the "heel" or the "headstock".'
             )
+        bore = (self.bore_length, self.bore_diameter)
+        if not all(math.isfinite(value) and value >= 0.0 for value in bore):
+            raise TrussRodGeometryError(
+                "A vintage truss rod's bore must be finite and not negative."
+            )
+        if self.bore_length > 0.0 and (
+            self.has_plug or self.bore_diameter <= self.rod_diameter
+        ):
+            raise TrussRodGeometryError(
+                "A vintage truss rod's bore is a bullet rod's, wider than the rod."
+            )
         if self.has_plug and not self.width < self.plug_width < self.plug_length:
             raise TrussRodGeometryError(
                 "A vintage truss rod's plug must be wider than its channel and "
@@ -108,7 +128,7 @@ class VintageTrussRod:
             )
         if self.strip_start >= self.end:
             raise TrussRodGeometryError(
-                "A vintage truss rod's plug must be shorter than the rod."
+                "A vintage truss rod's plug, or bore, must be shorter than the rod."
             )
         if self.end_depth <= self.rod_diameter / 2.0:
             raise TrussRodGeometryError(
@@ -135,7 +155,8 @@ class VintageTrussRod:
     def open_at_heel(self) -> bool:
         """Return whether the channel runs out through the heel's end: a
         rod adjusted there, its nut turned at the end face. A bullet rod's
-        ends short of it, closed in the wood over its anchor."""
+        ends short of the heel's rounding, closed in the wood over its
+        anchor."""
         return self.adjusted_at == "heel"
 
     @property
@@ -145,10 +166,16 @@ class VintageTrussRod:
         return self.adjusted_at == "heel"
 
     @property
+    def channel_start(self) -> float:
+        """Return where the channel routed from the back starts: past
+        ``start`` by a bullet rod's bore."""
+        return self.start + self.bore_length
+
+    @property
     def strip_start(self) -> float:
         """Return where the walnut strip starts: the plug's narrow end, or
         the channel's start without a plug."""
-        return self.start + (self.plug_length if self.has_plug else 0.0)
+        return self.channel_start + (self.plug_length if self.has_plug else 0.0)
 
     @property
     def strip_outline(self) -> tuple[Point2D, ...]:

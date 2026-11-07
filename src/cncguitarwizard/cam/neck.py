@@ -199,7 +199,9 @@ class NeckMachiningPlan:
     program, ``back_rough``, and ``back_finish`` is ``None``. A vintage
     truss rod's channel and teardrop are routed from the back first
     (``back_truss_rod``), the rod and its walnut glued in before the back
-    is carved. A one-piece neck's board is cut into its top first
+    is carved; a bullet rod's channel, on the straight back alone, once
+    the back is roughed (``back_truss_rod_after_rough``), before it is
+    finished. A one-piece neck's board is cut into its top first
     (``fretboard_setups``: its radius, markers, fret slots, scallops).
     """
 
@@ -224,6 +226,7 @@ class NeckMachiningPlan:
     carbon_rods: Setup | None = None
     small_holes: Setup | None = None
     back_truss_rod: Setup | None = None
+    back_truss_rod_after_rough: bool = False
     fretboard_setups: tuple[Setup, ...] = ()
 
     @property
@@ -236,6 +239,8 @@ class NeckMachiningPlan:
         share of a carve) is cut with the neck's top face, and its back
         after the neck's back.
         """
+        rod = () if self.back_truss_rod is None else (self.back_truss_rod,)
+        after = self.back_truss_rod_after_rough
         return (
             self.index_pins,
             # A one-piece neck's board first, on the blank's untouched top.
@@ -245,8 +250,9 @@ class NeckMachiningPlan:
             *((self.small_holes,) if self.small_holes is not None else ()),
             *self.block_top_setups,
             *((self.top_engraving,) if self.top_engraving is not None else ()),
-            *((self.back_truss_rod,) if self.back_truss_rod is not None else ()),
+            *(() if after else rod),
             self.back_rough,
+            *(rod if after else ()),
             *((self.back_finish,) if self.back_finish is not None else ()),
             *self.headstock_setups,
             *self.block_back_setups,
@@ -520,14 +526,17 @@ def _vintage_rod_setup(
     fixture_notes: tuple[str, ...],
     next_back: str,
     reference_points: tuple[tuple[float, float], ...],
+    back: Callable[[float], float] | None = None,
 ) -> Setup:
     """Return the vintage truss rod's routes from the blank's back.
 
     The teardrop for the walnut plug over the rod's anchor (a rod
     adjusted at the heel's), then the curved channel
     (``_vintage_channel``), in a blank ``thickness`` thick with Z zero on
-    its back; the notes say how the rod, the strip and the plug go in
-    before ``next_back`` carves them with the back.
+    its back: cut down from that flat back, or with ``back`` (the
+    roughed back's depth below the glue face along the centreline) from
+    the roughed back, a bullet rod's. The notes say how the rod, the strip
+    and the plug go in before ``next_back`` carves them with the back.
     """
     teardrop = (
         (
@@ -541,11 +550,21 @@ def _vintage_rod_setup(
         if rod.has_plug
         else ()
     )
-    channel = _vintage_channel(rod, frame, thickness, tool)
+    channel = _vintage_channel(rod, frame, thickness, tool, back)
     middle = (rod.start + rod.end) / 2.0
-    strip_height = thickness - min(
-        rod.strip_depth(rod.strip_start), rod.strip_depth(rod.end)
-    )
+    steps = max(2, math.ceil((rod.end - rod.channel_start) / VINTAGE_CHANNEL_STEP))
+    along = [
+        rod.channel_start + (rod.end - rod.channel_start) * index / steps
+        for index in range(steps + 1)
+    ]
+
+    def surface(x: float) -> float:
+        # The depth the channel is cut from: the blank's back, or the
+        # roughed back.
+        return thickness if back is None else back(x)
+
+    strip_height = max(surface(x) - rod.strip_depth(x) for x in along)
+    laid_in: tuple[str, ...]
     if rod.has_plug:
         laid_in = (
             f"Lay in the {rod.rod_diameter:g} mm rod, "
@@ -561,21 +580,46 @@ def _vintage_rod_setup(
         )
     else:
         laid_in = (
+            f"Drill a {rod.bore_diameter:g} mm hole from the headstock, out of "
+            "the bullet's trough behind the nut (Neck_top) along the rod's "
+            f"axis, {rod.end_depth:g} mm under the glue face, into the "
+            f"channel's end {rod.channel_start:.0f} mm from the nut.",
             f"Lay in the {rod.rod_diameter:g} mm bullet rod, "
-            f"{rod.end - rod.start:.0f} mm long, its anchor in the channel's "
-            "closed end by the heel and its threaded end into the bullet's "
-            "trough behind the nut (Neck_top), where the bullet nut goes on.",
+            f"{rod.end - rod.start:.0f} mm long: its threaded end through the "
+            "hole into the bullet's trough, where the bullet nut goes on, its "
+            "anchor in the channel's closed end by the heel.",
             f"Glue in a walnut strip {rod.width:g} mm wide, at least "
             f"{strip_height + 1.0:.0f} mm tall and "
             f"{rod.end - rod.strip_start:.0f} mm long, the channel's whole "
             "length, its ends rounded to the channel's, pressed down onto "
             "the rod and over its anchor (no plug).",
         )
-    reach = (
-        "out through the heel's end"
-        if rod.open_at_heel
-        else f"to {rod.end:.0f} mm from it, closed short of the heel's end"
-    )
+
+    def depth(x: float) -> str:
+        return f"{thickness - rod.ceiling_depth(x):.1f}"
+
+    if rod.open_at_heel:
+        where = (
+            f"from {-rod.start:g} mm behind the nut out through the heel's "
+            f"end, curves with the rod: {depth(rod.end)} mm deep at its ends "
+            f"and {depth(middle)} mm in the middle."
+        )
+    else:
+        cut = max(surface(x) - rod.ceiling_depth(x) for x in along)
+        where = (
+            f"from {rod.channel_start:.0f} to {rod.end:.0f} mm from the nut, "
+            "along the neck's straight back alone (closed short of the "
+            "headstock's root and the heel's rounding), curves with the rod: "
+            f"{depth(rod.channel_start)} mm below Z zero at its headstock end, "
+            f"{depth(rod.end)} mm at its heel end and {depth(middle)} mm in "
+            "the middle"
+            + (
+                "."
+                if back is None
+                else f", cut down from the roughed back, at most {cut:.1f} mm into it."
+            )
+        )
+    flush = "the blank's back" if back is None else "the roughed back"
     return Setup(
         "Neck_back_truss_rod",
         "Neck back - the vintage truss rod's channel"
@@ -584,15 +628,11 @@ def _vintage_rod_setup(
         (
             *fixture_notes,
             f"The truss rod's channel, {rod.width:g} mm wide on the "
-            f"centreline from {-rod.start:g} mm behind the nut {reach}, "
-            "curves with the rod: "
-            f"{thickness - rod.ceiling_depth(rod.end):.1f} mm deep at its "
-            f"ends and {thickness - rod.ceiling_depth(middle):.1f} mm in the "
-            f"middle. The cutter must reach {-channel.deepest_z():.1f} mm "
-            "deep.",
+            f"centreline {where} The cutter must reach "
+            f"{-channel.deepest_z():.1f} mm below Z zero.",
             *laid_in,
-            f"Let the glue cure, then plane the walnut flush with the blank's "
-            f"back: {next_back} carves it with the back.",
+            f"Let the glue cure, then trim the walnut flush with {flush}: "
+            f"{next_back} carves it with the back.",
         ),
         reference_points,
         tool,
@@ -600,16 +640,22 @@ def _vintage_rod_setup(
 
 
 def _vintage_channel(
-    rod: VintageTrussRod, frame: _Frame, thickness: float, tool: MachiningParameters
+    rod: VintageTrussRod,
+    frame: _Frame,
+    thickness: float,
+    tool: MachiningParameters,
+    back: Callable[[float], float] | None = None,
 ) -> Toolpath:
     """Return a vintage truss rod's channel, routed from the blank's back.
 
     The cutter runs along the channel, back and forth one depth level at
     a time, from its start (the cutter's round end there) on out past
-    the heel's end, or to a bullet rod's closed end short of it (the
-    cutter's round end there too); each pass no deeper than the
-    channel's ceiling — the rod's side nearest the fretboard, curving
-    with it — so the last follows it. A cutter narrower than the channel
+    the heel's end, or to a bullet rod's closed end (the cutter's round
+    end there too); each pass no deeper than the channel's ceiling — the
+    rod's side nearest the fretboard, curving with it — so the last
+    follows it. The levels are below the blank's flat back, or with
+    ``back`` (the roughed back's depth below the glue face) below the
+    roughed back, following it down. A cutter narrower than the channel
     runs it in lanes.
 
     Raises:
@@ -626,15 +672,18 @@ def _vintage_channel(
         0.0 if lane_count == 1 else -spare / 2.0 + spare * index / (lane_count - 1)
         for index in range(lane_count)
     ]
-    start = rod.start + tool.tool_radius
+    start = rod.channel_start + tool.tool_radius
     end = rod.end + (tool.tool_radius + 0.5 if rod.open_at_heel else -tool.tool_radius)
     steps = max(2, math.ceil((end - start) / VINTAGE_CHANNEL_STEP))
     stations = [start + (end - start) * index / steps for index in range(steps + 1)]
 
+    def top(x: float) -> float:
+        return 0.0 if back is None else -(thickness - back(x))
+
     def floor(x: float) -> float:
         return -(thickness - rod.ceiling_depth(x))
 
-    deepest = -min(floor(x) for x in stations)
+    deepest = max(top(x) - floor(x) for x in stations)
     builder = PathBuilder(
         "Truss-rod channel from the back",
         safe_height=tool.safe_height,
@@ -651,10 +700,10 @@ def _vintage_channel(
             else:
                 # Across to the next lane in the cut, at the depth reached.
                 builder.cut_to(first.x, first.y)
-            builder.plunge_to(max(level, floor(run[0])))
+            builder.plunge_to(max(top(run[0]) + level, floor(run[0])))
             for x in run[1:]:
                 point = frame.point(Point2D(x, lane))
-                builder.cut_to(point.x, point.y, max(level, floor(x)))
+                builder.cut_to(point.x, point.y, max(top(x) + level, floor(x)))
             forward = not forward
     return builder.build()
 
@@ -1459,21 +1508,44 @@ def plan_neck_machining(
     flip = "Flip the blank about the neck centerline onto the same two index pins."
     back_truss_rod: Setup | None = None
     rod = geometry.vintage_truss_rod
+    # A bullet rod's channel lies on the straight back alone: it is routed
+    # once the back is roughed, down from the roughed back, and its walnut
+    # finished with the back.
+    after_rough = (
+        rod is not None
+        and rod.adjusted_at == "headstock"
+        and parameters.back_cut != "ball"
+    )
     if rod is not None:
-        flipped = (
-            flip,
-            "Keep X/Y zero at index pin 1; set Z zero on the (new) blank top.",
-        )
+        blank = plank if laminated else thickness
+        roughed = _BackSurface(geometry, blank, parameters.skin, back_frame)
 
         def vintage(tool: MachiningParameters) -> Setup:
+            fixture = (
+                (
+                    f"Same fixture and X/Y zero as {first_back}"
+                    + (
+                        ", the same end mill and Z zero."
+                        if tool.tool_diameter == flat.tool_diameter
+                        else f"; change to the {tool.tool_diameter:g} mm end "
+                        "mill and re-touch Z on the same surface."
+                    ),
+                )
+                if after_rough
+                else (
+                    flip,
+                    "Keep X/Y zero at index pin 1; set Z zero on the (new) blank top.",
+                )
+            )
             return _vintage_rod_setup(
                 rod,
                 back_frame,
-                plank if laminated else thickness,
+                blank,
                 tool,
-                flipped,
-                first_back,
+                fixture,
+                last_back if after_rough else first_back,
                 reference_points,
+                (lambda x: -roughed.model_z(x, 0.0)) if after_rough else None,
             )
 
         # With the small end mill where the flat one is too wide for it.
@@ -1481,11 +1553,12 @@ def plan_neck_machining(
             back_truss_rod = vintage(flat)
         except ToolpathError:
             back_truss_rod = vintage(small)
-        # The blank is face down already, the walnut flush with its back.
-        flip = (
-            "Back on the same two index pins, glue face down, the walnut "
-            "planed flush with the blank's back."
-        )
+        if not after_rough:
+            # The blank is face down already, the walnut flush with its back.
+            flip = (
+                "Back on the same two index pins, glue face down, the walnut "
+                "planed flush with the blank's back."
+            )
     # The back is carved across the neck and headstock: a neck-through
     # block's waste beside the neck goes with its full-depth outline cut.
     _, carve_low, _, carve_high = (
@@ -1712,6 +1785,7 @@ def plan_neck_machining(
         carbon_rods=carbon_rods,
         small_holes=small_holes,
         back_truss_rod=back_truss_rod,
+        back_truss_rod_after_rough=after_rough,
         fretboard_setups=board_setups,
         preview_outlines=(
             top_outline,

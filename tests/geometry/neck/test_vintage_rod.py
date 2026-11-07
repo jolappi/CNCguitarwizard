@@ -82,6 +82,49 @@ def test_a_rod_that_cannot_be_laid_in_is_refused(
         VintageTrussRod(**values)
 
 
+def test_a_bullet_rods_channel_starts_past_its_bore() -> None:
+    rod = VintageTrussRod(
+        -9.5, 356.0, 6.0, 4.76, 4.0, 2.5, 11.0, 30.0, "headstock", 21.5, 5.0
+    )
+
+    assert rod.channel_start == pytest.approx(12.0)
+    # No plug: the walnut over the channel alone.
+    assert rod.strip_start == pytest.approx(12.0)
+    assert rod.strip_outline[0].x == pytest.approx(12.0)
+    # The rod still curves between its own ends.
+    assert rod.axis_depth(rod.start) == pytest.approx(4.0)
+
+
+@pytest.mark.parametrize(
+    ("adjusted_at", "bore_length", "bore_diameter", "message"),
+    [
+        ("headstock", -1.0, 5.0, "finite and not negative"),
+        ("headstock", 21.5, math.inf, "finite and not negative"),
+        # A rod adjusted at the heel is anchored under its plug.
+        ("heel", 21.5, 5.0, "bullet rod's"),
+        ("headstock", 21.5, 4.76, "wider than the rod"),
+        ("headstock", 400.0, 5.0, "or bore, must be shorter"),
+    ],
+)
+def test_a_bore_that_cannot_be_drilled_is_refused(
+    adjusted_at: str, bore_length: float, bore_diameter: float, message: str
+) -> None:
+    with pytest.raises(TrussRodGeometryError, match=message):
+        VintageTrussRod(
+            -9.5,
+            356.0,
+            6.0,
+            4.76,
+            4.0,
+            2.5,
+            11.0,
+            30.0,
+            adjusted_at,  # type: ignore[arg-type]
+            bore_length,
+            bore_diameter,
+        )
+
+
 def test_a_channel_laid_in_from_the_back_may_start_in_the_headstock() -> None:
     outline = NeckOutline(647.7, 22, 42.0, 56.0, 56.0, 4.0)
 

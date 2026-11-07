@@ -699,3 +699,47 @@ class NeckBackSurface:
         """Linearly interpolate a value between longitudinal references."""
         fraction = (position - start_position) / (end_position - start_position)
         return start_value + (end_value - start_value) * fraction
+
+
+def straight_span(
+    nut_transition_length: float,
+    nut_volute_depth: float,
+    root_drawn: BackTransition | None,
+    heel_flat_start: float,
+    heel_transition_length: float,
+    heel_root_center_extension: float,
+    heel_drawn: BackTransition | None,
+) -> tuple[float, float]:
+    """Return where a neck's back is its own rounded profile right across.
+
+    The neck's straight part, as ``NeckBackSurface`` shapes it from the
+    same values, between the headstock's root and the heel's lead-in.
+
+    Args:
+        nut_transition_length: How far onto the neck the smooth root's
+            depth, and any volute, run out.
+        nut_volute_depth: The volute's depth: under a drawn root it runs
+            out ``nut_transition_length`` onto the neck too.
+        root_drawn: The headstock's root drawn, or ``None``.
+        heel_flat_start: Where the heel's flat block begins.
+        heel_transition_length: The smooth lead-in's length before it.
+        heel_root_center_extension: How much further toward the nut the
+            smooth lead-in starts down the middle.
+        heel_drawn: The heel's transition drawn, or ``None``.
+
+    Returns:
+        ``(start, end)`` from the nut toward the heel: where the root's
+        rounding ends (a drawn root's neck line where it reaches furthest
+        onto the neck) and where the heel's begins (a drawn heel's where
+        it reaches furthest toward the nut).
+    """
+    start = nut_transition_length
+    if root_drawn is not None:
+        reach = max(point.x for point in root_drawn.neck)
+        start = max(reach, nut_transition_length) if nut_volute_depth else reach
+    end = (
+        heel_flat_start - heel_transition_length - heel_root_center_extension
+        if heel_drawn is None
+        else min(point.x for point in heel_drawn.neck)
+    )
+    return start, end

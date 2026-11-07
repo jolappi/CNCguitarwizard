@@ -3398,10 +3398,11 @@ class FreeCADScriptExporter:
 
         The channel is a side profile — its ceiling, the rod's side nearest
         the fretboard, curving along the rod — swept across its width, on
-        out past the heel's end, or to a bullet rod's closed end short of
-        it; the teardrop a prism from the plug's floor down. The strip and
-        the plug are the uncut neck's wood from the rod's back side (the
-        plug's floor) down to the carved back.
+        out past the heel's end, or to a bullet rod's closed end, along the
+        straight back alone, a bore drilled from its trough on into it; the
+        teardrop a prism from the plug's floor down. The strip and the plug
+        are the uncut neck's wood from the rod's back side (the plug's
+        floor) down to the carved back.
         """
         if rod is None:
             return ""
@@ -3435,9 +3436,32 @@ class FreeCADScriptExporter:
         # A bullet rod, adjusted at the headstock, has no plug: its strip
         # runs the channel's whole length.
         plugged = rod.has_plug
+        bore = ""
+        if rod.bore_length > 0.0:
+            # A bullet rod's bore along the rod, from inside its trough a
+            # little into the channel, so the cuts overlap.
+            x0, x1 = rod.start, rod.channel_start + 0.5
+            z0, z1 = -rod.axis_depth(x0), -rod.axis_depth(x1)
+            bore = (
+                "vintage_bore = Part.makeCylinder(\n"
+                f"    {rod.bore_diameter / 2.0!r},\n"
+                f"    {math.hypot(x1 - x0, z1 - z0)!r},\n"
+                f"    App.Vector({x0!r}, 0.0, {z0!r}),\n"
+                f"    App.Vector({x1 - x0!r}, 0.0, {z1 - z0!r}),\n"
+                ")\n"
+            )
+        channel = side(rod.ceiling_depth, rod.channel_start)
+        cutters = ", ".join(
+            (
+                "vintage_channel",
+                *(("vintage_plug",) if plugged else ()),
+                *(("vintage_bore",) if bore else ()),
+            )
+        )
         return (
             "# The vintage truss rod laid in from the back: its channel"
             + (" and\n# teardrop" if plugged else "")
+            + (" and\n# bore" if bore else "")
             + " cut, the walnut strip"
             + (" and plug" if plugged else "")
             + " glued in over it.\n"
@@ -3445,7 +3469,7 @@ class FreeCADScriptExporter:
             "    return Part.Face(Part.makePolygon(points + points[:1])).extrude(\n"
             f"        App.Vector(0.0, {rod.width!r}, 0.0)\n"
             "    )\n\n"
-            f"vintage_channel = swept_side([{side(rod.ceiling_depth, rod.start)}])\n"
+            f"vintage_channel = swept_side([{channel}])\n"
             f"vintage_strip = swept_side([{side(rod.strip_depth, rod.strip_start)}])\n"
             + (
                 f"vintage_plug_corners = [{plug}]\n"
@@ -3454,10 +3478,11 @@ class FreeCADScriptExporter:
                 "        vintage_plug_corners + vintage_plug_corners[:1]\n"
                 "    )\n"
                 f").extrude(App.Vector(0.0, 0.0, {below + rod.plug_depth!r}))\n"
-                "vintage_cutters = [vintage_channel, vintage_plug]\n"
                 if plugged
-                else "vintage_cutters = [vintage_channel]\n"
+                else ""
             )
+            + bore
+            + f"vintage_cutters = [{cutters}]\n"
             # Against the lofted neck a plain boolean can fail quietly (an
             # empty walnut, the neck hardly cut), so a little fuzz is tried,
             # and a cut kept only when the walnut is there and the neck lost
