@@ -2,6 +2,7 @@
 under a walnut strip and a teardrop plug (``truss_rod_install`` "back")."""
 
 import ast
+import math
 from dataclasses import replace
 from functools import cache
 from pathlib import Path
@@ -378,11 +379,31 @@ def test_a_drilled_bullets_start_is_cut_and_its_hole_drilled_on() -> None:
     names = [path.name for path in plan.top.toolpaths]
     assert names[-1] == "Truss-rod bullet hole start"
     (start,) = [path for path in plan.top.toolpaths if path.name == names[-1]]
-    assert start.deepest_z() == pytest.approx(
-        -geometry.truss_rod_channel.adjuster_depth
-    )
+    channel = geometry.truss_rod_channel
+    # The flat end mill to the rod's axis, the ball nose the hole's round
+    # floor under it, the Fender way.
+    assert start.deepest_z() == pytest.approx(-channel.axis_depth)
+    floor = plan.bullet_floor
+    assert floor is not None and floor.tool is not None
+    assert floor.tool.tool_tip == "ball"
+    order = [setup.name for setup in plan.setups]
+    assert order.index("Neck_top_bullet") == order.index("Neck_top") + 1
+    assert len(plan.preview_outlines) == len(plan.setups)
+    (round_floor,) = floor.toolpaths
+    assert round_floor.deepest_z() == pytest.approx(-channel.adjuster_depth, abs=0.01)
+    hole = channel.bore
+    assert hole is not None
+    radius = floor.tool.tool_radius
+    xs = [point.x for point in channel.adjuster_boundary]
+    for move in round_floor.moves:
+        x, y = move.x + plan.origin_x, move.y + plan.origin_y
+        assert min(xs) + radius - 1e-6 <= x <= max(xs) - radius + 1e-6
+        # The ball inside the hole's round, never past it.
+        below = min(0.0, move.z + radius + hole.axis_depth)
+        assert math.hypot(y, below) <= hole.diameter / 2.0 - radius + 1e-6
     top = " ".join(plan.top.notes)
     assert "Only the start of the bullet rod's nut's hole is cut" in top
+    assert "with the ball nose in Neck_top_bullet" in top
     # Not a key's notch nor an adjuster sleeve's bore of a rod from the top.
     assert "the open start of its hole" not in top and "sleeve" not in top
     setup = plan.back_truss_rod
@@ -393,6 +414,22 @@ def test_a_drilled_bullets_start_is_cut_and_its_hole_drilled_on() -> None:
         f"then a {BULLET_BORE_DIAMETER:g} mm hole on from it into the channel's end"
     ) in notes
     assert "where the bullet nut, put in through its start, goes on" in notes
+
+
+def test_a_ball_nose_too_wide_leaves_the_start_flat() -> None:
+    geometry = drilled()
+    wide = replace(NeckMachiningParameters().ball, tool_diameter=BULLET_HOLE_DIAMETER)
+    plan = plan_neck_machining(geometry, NeckMachiningParameters(ball=wide))
+    assert plan.bullet_floor is None
+    assert "Neck_top_bullet" not in [setup.name for setup in plan.setups]
+    (start,) = [
+        path
+        for path in plan.top.toolpaths
+        if path.name == "Truss-rod bullet hole start"
+    ]
+    assert start.deepest_z() == pytest.approx(
+        -geometry.truss_rod_channel.adjuster_depth
+    )
 
 
 def test_freecad_cuts_a_drilled_bullets_hole_and_its_start(tmp_path: Path) -> None:

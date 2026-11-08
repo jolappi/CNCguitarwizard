@@ -1612,8 +1612,8 @@ class Prototype001Parameters:
     # in a BULLET_HOLE_DIAMETER hole drilled by hand along the rod under the
     # fretboard (the rod set down to keep BULLET_HOLE_WALL of wood over it),
     # on from the hole's start routed behind the nut, the bullet's length
-    # and 1 mm long and open to the top: the bullet goes in through it, the
-    # key after.
+    # and 1 mm long, open to the top and its floor the hole's round: the
+    # bullet goes in through it, the key after.
     truss_rod_bullet_drilled: bool = False
     truss_rod_nut_diameter: float = 15.0
     truss_rod_nut_length: float = 6.0

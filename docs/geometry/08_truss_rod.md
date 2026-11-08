@@ -260,8 +260,10 @@ walnut below `VINTAGE_STRIP_MIN`). Only the hole's start is routed behind
 the nut, open to the top: the hole's width and `BULLET_NUT_LENGTH` + 1 mm
 long, down to its floor (a key's notch, `access_diameter`, which need not
 hold the head), so the bullet goes in through it and is slid home, and
-the key after. `Neck_top` cuts it (`Truss-rod bullet hole start`), and
-FreeCAD cuts it and the hole from the neck.
+the key after; its floor is the hole's round, as on a '70s Fender.
+`Neck_top` cuts it to the rod's axis (`Truss-rod bullet hole start`) and
+`Neck_top_bullet` its round floor with the ball nose; FreeCAD cuts it to
+the axis and the hole on from its far end, the round floor with it.
 
 `vintage_truss_rod` refuses it with a spoke wheel
 (`truss_rod_spoke_wheel` `"yes"`; `"auto"` fits none), a low-profile rod,

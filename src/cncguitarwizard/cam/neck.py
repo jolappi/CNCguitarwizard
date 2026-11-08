@@ -48,6 +48,7 @@ from .operations import depth_levels, drill, pocket, profile
 from .parameters import MachiningParameters, with_cutter
 from .planar import offset_polygon, polygon_bounds
 from .surfacing import (
+    OffsetGrid,
     build_offset_grid,
     interpolate_rows,
     offset_sampled_surface,
@@ -202,8 +203,10 @@ class NeckMachiningPlan:
     (``back_truss_rod``), the rod and its walnut glued in before the back
     is carved; a bullet rod's channel, on the straight back alone, once
     the back is roughed (``back_truss_rod_after_rough``), before it is
-    finished. A one-piece neck's board is cut into its top first
-    (``fretboard_setups``: its radius, markers, fret slots, scallops).
+    finished. A drilled bullet's hole start gets its round floor with the
+    ball nose after the top (``bullet_floor``). A one-piece neck's board
+    is cut into its top first (``fretboard_setups``: its radius, markers,
+    fret slots, scallops).
     """
 
     index_pins: Setup
@@ -226,6 +229,7 @@ class NeckMachiningPlan:
     block_back_setups: tuple[Setup, ...] = ()
     carbon_rods: Setup | None = None
     small_holes: Setup | None = None
+    bullet_floor: Setup | None = None
     back_truss_rod: Setup | None = None
     back_truss_rod_after_rough: bool = False
     fretboard_setups: tuple[Setup, ...] = ()
@@ -249,6 +253,7 @@ class NeckMachiningPlan:
             self.top,
             *((self.carbon_rods,) if self.carbon_rods is not None else ()),
             *((self.small_holes,) if self.small_holes is not None else ()),
+            *((self.bullet_floor,) if self.bullet_floor is not None else ()),
             *self.block_top_setups,
             *((self.top_engraving,) if self.top_engraving is not None else ()),
             *(() if after else rod),
@@ -943,8 +948,13 @@ def plan_neck_machining(
     # of it is cut from the top.
     from_top = truss.routed_from == "top"
     # A bullet rod's nut in a hole drilled by hand under the nut, only the
-    # hole's start cut here.
-    drilled = not from_top and truss.bore is not None
+    # hole's start cut here: down to the rod's axis, its floor rounded like
+    # the hole's with the ball nose (Neck_top_bullet), where it fits.
+    bullet_hole = None if from_top else truss.bore
+    drilled = bullet_hole is not None
+    round_floor = (
+        bullet_hole is not None and ball.tool_radius < bullet_hole.diameter / 2.0
+    )
     # The small end mill, for what the flat end mill is too wide to cut.
     small = replace(flat.small_cutter, finishing_allowance=0.0)
 
@@ -990,7 +1000,7 @@ def plan_neck_machining(
                     if drilled
                     else "Truss-rod bullet trough",
                     top_frame.polygon(truss.adjuster_boundary),
-                    board + truss.adjuster_depth,
+                    board + (truss.axis_depth if round_floor else truss.adjuster_depth),
                     tool,
                 )
             )
@@ -1165,9 +1175,16 @@ def plan_neck_machining(
             (
                 "Only the start of the bullet rod's nut's hole is cut behind "
                 f"the nut, {max(p.y for p in truss.adjuster_boundary) * 2.0:g} "
-                f"mm wide, {truss.access_length:g} mm long and "
-                f"{truss.adjuster_depth:g} mm below the glue face, open to the "
-                "top: the hole on under the nut is drilled by hand, the bullet "
+                f"mm wide and {truss.access_length:g} mm long, open to the top, "
+                + (
+                    f"down to the rod's axis {truss.axis_depth:g} mm below the "
+                    "glue face, its round floor, "
+                    f"{truss.adjuster_depth:g} mm deep, with the ball nose in "
+                    "Neck_top_bullet"
+                    if round_floor
+                    else f"{truss.adjuster_depth:g} mm below the glue face"
+                )
+                + ": the hole on under the nut is drilled by hand, the bullet "
                 "put in through its start and the key after "
                 "(Neck_back_truss_rod).",
             )
@@ -1312,6 +1329,74 @@ def plan_neck_machining(
             ),
             reference_points,
             small,
+            fixture=NECK_TOP_FIXTURE,
+        )
+
+    # ---- top face: a drilled bullet's hole start, its floor round ----------
+    bullet_floor: Setup | None = None
+    if round_floor:
+        assert bullet_hole is not None
+        hole_radius = bullet_hole.diameter / 2.0
+        xs = [point.x for point in truss.adjuster_boundary]
+        front, back = min(xs), max(xs)
+
+        def start_floor(point: Point2D, rounded: bool) -> float:
+            # The start as Neck_top leaves it, cut flat to the axis, or with
+            # the hole's round floor (its sides' samples in it, so the ball
+            # is not kept off them); the face and the wood round it
+            # elsewhere.
+            if front <= point.x <= back and abs(point.y) <= hole_radius:
+                below = math.sqrt(hole_radius**2 - point.y**2) if rounded else 0.0
+                return -(board + bullet_hole.axis_depth + below)
+            return face_depth(point.x, point.y)
+
+        reach = ball.tool_radius
+
+        def start_grid(rounded: bool) -> OffsetGrid:
+            return build_offset_grid(
+                lambda xm, ym: start_floor(
+                    top_frame.model_point(Point2D(xm, ym)), rounded
+                ),
+                top_frame.x_range((front - reach, back + reach)),
+                top_frame.y_range((-hole_radius - reach, hole_radius + reach)),
+                ball,
+                spacing_x=parameters.grid_spacing_x,
+                spacing_y=parameters.grid_spacing_y,
+            )
+
+        bullet_floor = Setup(
+            "Neck_top_bullet",
+            "Neck glue face - the bullet hole start's round floor",
+            (
+                # The ball inside the start, its round ends there.
+                raster_finish(
+                    "Truss-rod bullet hole start, round floor",
+                    start_grid(True),
+                    ball,
+                    x_range=top_frame.x_range((front + reach, back - reach)),
+                    y_range=top_frame.y_range(
+                        (reach - hole_radius, hole_radius - reach)
+                    ),
+                    # A row on every grid row: the floor steepens toward
+                    # the axis at its sides.
+                    step_over=parameters.grid_spacing_y,
+                    # Down to Neck_top's flat floor at the safe height.
+                    rest=start_grid(False),
+                ),
+            ),
+            (
+                "Same fixture and X/Y zero as Neck_top; change to the "
+                f"{ball.tool_diameter:g} mm ball nose and re-touch Z on the same "
+                "surface.",
+                f"The bullet hole's start, cut to the rod's axis in Neck_top, "
+                f"gets the {bullet_hole.diameter:g} mm hole's round floor, "
+                f"{truss.adjuster_depth:g} mm below the glue face, the "
+                "Fender way, its ends round where the ball runs out: the hole "
+                "drilled by hand runs on from it, taking the nut end's round "
+                "with it.",
+            ),
+            reference_points,
+            ball,
             fixture=NECK_TOP_FIXTURE,
         )
 
@@ -1831,6 +1916,7 @@ def plan_neck_machining(
         block_back_setups=block_back,
         carbon_rods=carbon_rods,
         small_holes=small_holes,
+        bullet_floor=bullet_floor,
         back_truss_rod=back_truss_rod,
         back_truss_rod_after_rough=after_rough,
         fretboard_setups=board_setups,
@@ -1840,6 +1926,7 @@ def plan_neck_machining(
             top_outline,
             *((top_outline,) if carbon_rods is not None else ()),
             *((top_outline,) if small_holes is not None else ()),
+            *((top_outline,) if bullet_floor is not None else ()),
             *block_top_previews,
             *((top_outline,) if top_engraving is not None else ()),
             *((back_outline_polygon,) if back_truss_rod is not None else ()),

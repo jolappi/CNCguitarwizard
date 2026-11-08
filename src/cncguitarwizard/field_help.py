@@ -157,9 +157,10 @@ FIELD_HELP: dict[str, str] = {
     ),
     "truss_rod_bullet_drilled": (
         "A bullet rod's nut drilled in under the nut instead of its trough: "
-        "only the start of its hole is routed behind the nut, open to the top "
-        "and as long as the bullet so it goes in, and you drill the rest by "
-        "hand along the rod (8.5 mm under the nut, then 5 mm on into the "
+        "only the start of its hole is routed behind the nut, open to the top, "
+        "as long as the bullet so it goes in and its floor round as the "
+        "hole's (with the ball nose, the Fender way), and you drill the rest "
+        "by hand along the rod (8.5 mm under the nut, then 5 mm on into the "
         "channel)."
     ),
     "truss_rod_spoke_wheel": (

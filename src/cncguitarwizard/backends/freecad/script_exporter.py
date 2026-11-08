@@ -3309,20 +3309,25 @@ class FreeCADScriptExporter:
 
         if channel.routed_from == "back":
             hole = channel.bore
-            trough = pieces(
-                channel.adjuster_boundary,
-                channel.adjuster_depth,
-                "truss_rod_nut_shapes",
-                "truss-rod bullet trough cut"
-                if hole is None
-                else "truss-rod bullet hole start cut",
-            )
             if hole is None:
-                return trough
-            # The bullet's hole drilled on from a little inside its start, so
-            # the cuts overlap.
-            return trough + drilled(
-                hole, hole.start - 0.5, hole.end, "truss-rod bullet hole"
+                return pieces(
+                    channel.adjuster_boundary,
+                    channel.adjuster_depth,
+                    "truss_rod_nut_shapes",
+                    "truss-rod bullet trough cut",
+                )
+            # A drilled bullet's hole start down to the rod's axis, the
+            # hole's round floor under it and the hole on under the nut.
+            return pieces(
+                channel.adjuster_boundary,
+                channel.axis_depth,
+                "truss_rod_nut_shapes",
+                "truss-rod bullet hole start cut",
+            ) + drilled(
+                hole,
+                min(point.x for point in channel.adjuster_boundary),
+                hole.end,
+                "truss-rod bullet hole",
             )
         # The plain channel (one box reaching 5 mm above the top: over the
         # nut shelf the lofted top only approximates z = 0), then the step

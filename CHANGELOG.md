@@ -215,14 +215,18 @@
 - `truss_rod_bullet_drilled`: a 1970s bullet rod's nut drilled in under
   the nut instead of its trough. `Neck_top` routs only the start of its
   hole behind the nut (`Truss-rod bullet hole start`, 8.5 x 13.7 mm, open
-  to the top: the bullet goes in through it, the key after), and
+  to the top: the bullet goes in through it, the key after), down to the
+  rod's axis, and `Neck_top_bullet` its round floor with the ball nose,
+  the Fender way (`NeckMachiningPlan.bullet_floor`; flat, cut by the end
+  mill, with a ball nose as wide as the hole), and
   `Neck_back_truss_rod`'s notes say to drill the `BULLET_HOLE_DIAMETER`
   (8.5 mm) hole by hand from it along the rod, the bullet's length, then
   the 5 mm bore on into the channel. The hole is the plan's bore
   (`TrussRodChannel.bore`, a sleeve's bore at the nut now); the rod
   starts the bullet's length later and lies 0.5 mm deeper, keeping
   `BULLET_HOLE_WALL` (0.25 mm) of wood over the hole under the glue face.
-  FreeCAD cuts the start and the hole. A key's notch at the headstock
+  FreeCAD cuts the start and the hole, its round floor under the start
+  too. A key's notch at the headstock
   need no longer be as long as the adjuster's head.
 
 - The bonus dust shoe for a 6 mm brush, the hose forward or to the side

@@ -136,10 +136,18 @@ trough behind the nut into the finished headstock face (`Truss-rod
 bullet trough`, after the face), where the bullet nut is threaded onto
 the rod once the walnut is in. With `truss_rod_bullet_drilled` it cuts
 only the start of the bullet's hole there (`Truss-rod bullet hole
-start`, 8.5 mm wide and 13.7 mm long), and `Neck_back_truss_rod`'s notes
-say to drill the 8.5 mm hole by hand out of it along the rod's axis under
-the nut, the bullet's length, then the 5 mm bore on from it into the
-channel, the bullet put in through the start.
+start`, 8.5 mm wide and 13.7 mm long), down to the rod's axis, and
+`Neck_top_bullet.nc` follows on the same fixture with the ball nose
+(`NeckMachiningPlan.bullet_floor`): the hole's round floor under the
+start, the Fender way, in rows along the neck on every grid row (the
+floor steepens toward the axis at its sides), each run only where it
+cuts below `Neck_top`'s flat floor (its `rest`), the ball's round ends in
+the start's ends; the hand drill takes the nut end's round on with the
+hole. A ball nose as wide as the hole cannot go down into it:
+then the flat end mill cuts the start to its floor, flat.
+`Neck_back_truss_rod`'s notes say to drill the 8.5 mm hole by hand out of
+it along the rod's axis under the nut, the bullet's length, then the 5 mm
+bore on from it into the channel, the bullet put in through the start.
 
 ### One-piece neck
 

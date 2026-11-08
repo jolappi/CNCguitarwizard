@@ -82,7 +82,8 @@ class TrussRodChannel:
       adjusting key rather than room for the head. With a
       ``sleeve_length`` the adjuster's sleeve (a bullet rod's nut) lies
       in a bore that long behind the route's start, drilled by hand from
-      the trough, which lies behind the bore.
+      the trough, which lies behind the bore: the bore's start, its floor
+      the bore's round.
 
     With all the step, pocket, sleeve and nut sizes at 0 the route is a
     plain rectangular channel.
