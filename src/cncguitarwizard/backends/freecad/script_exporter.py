@@ -40,6 +40,7 @@ from ...geometry.neck import (
 )
 from ...geometry.neck.back_transition import BackTransition
 from ...geometry.neck.outline import heel_end_curve
+from ...geometry.neck.truss_rod import TrussRodBore
 from ...geometry.primitives import Point2D, Point3D, point_in_polygon
 from ...presets import Prototype001Geometry
 from .exceptions import FreeCADBackendError
@@ -3253,7 +3254,8 @@ class FreeCADScriptExporter:
         """Return FreeCAD commands that subtract a rectangular rod channel.
 
         For a vintage rod laid in from the back only a bullet rod's trough
-        behind the nut: its channel is cut with its walnut
+        behind the nut, or its hole's start and the hole drilled on from it
+        under the nut: its channel is cut with its walnut
         (``_render_vintage_truss_rod``).
         """
         if channel is None or (
@@ -3290,12 +3292,37 @@ class FreeCADScriptExporter:
                 ")\n"
             )
 
+        def drilled(bore: TrussRodBore, start: float, end: float, label: str) -> str:
+            # A bore drilled by hand along the rod's axis, shown for the fit.
+            return (
+                "truss_rod_bore = Part.makeCylinder(\n"
+                f"    {bore.diameter / 2.0!r},\n"
+                f"    {end - start!r},\n"
+                f"    App.Vector({start!r}, 0.0, {-bore.axis_depth!r}),\n"
+                "    App.Vector(1.0, 0.0, 0.0),\n"
+                ")\n"
+                "neck_shape = require_shape(\n"
+                "    neck_shape.cut(truss_rod_bore),\n"
+                f"    {label!r},\n"
+                ")\n"
+            )
+
         if channel.routed_from == "back":
-            return pieces(
+            hole = channel.bore
+            trough = pieces(
                 channel.adjuster_boundary,
                 channel.adjuster_depth,
                 "truss_rod_nut_shapes",
-                "truss-rod bullet trough cut",
+                "truss-rod bullet trough cut"
+                if hole is None
+                else "truss-rod bullet hole start cut",
+            )
+            if hole is None:
+                return trough
+            # The bullet's hole drilled on from a little inside its start, so
+            # the cuts overlap.
+            return trough + drilled(
+                hole, hole.start - 0.5, hole.end, "truss-rod bullet hole"
             )
         # The plain channel (one box reaching 5 mm above the top: over the
         # nut shelf the lofted top only approximates z = 0), then the step
@@ -3343,21 +3370,9 @@ class FreeCADScriptExporter:
                 "truss-rod sleeve slot",
             )
         elif channel.bore is not None:
-            # The adjuster sleeve's bore through the heel end: drilled by
-            # hand, shown here for the fit.
+            # The adjuster sleeve's bore, on out through the heel end.
             bore = channel.bore
-            source += (
-                "truss_rod_bore = Part.makeCylinder(\n"
-                f"    {bore.diameter / 2.0!r},\n"
-                f"    {bore.end - bore.start + 1.0!r},\n"
-                f"    App.Vector({bore.start!r}, 0.0, {-bore.axis_depth!r}),\n"
-                "    App.Vector(1.0, 0.0, 0.0),\n"
-                ")\n"
-                "neck_shape = require_shape(\n"
-                "    neck_shape.cut(truss_rod_bore),\n"
-                '    "truss-rod sleeve bore",\n'
-                ")\n"
-            )
+            source += drilled(bore, bore.start, bore.end + 1.0, "truss-rod sleeve bore")
         return source
 
     @staticmethod

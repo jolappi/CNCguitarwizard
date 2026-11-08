@@ -14,6 +14,8 @@ from cncguitarwizard.geometry.exceptions import NeckGeometryError
 from cncguitarwizard.presets import Prototype001Geometry, Prototype001Parameters
 from cncguitarwizard.presets.prototype001 import (
     BULLET_BORE_DIAMETER,
+    BULLET_HOLE_DIAMETER,
+    BULLET_HOLE_WALL,
     BULLET_KEY_ROOM,
     BULLET_NUT_DIAMETER,
     BULLET_NUT_LENGTH,
@@ -318,3 +320,87 @@ def test_freecad_cuts_a_bullet_rods_trough_and_no_plug(tmp_path: Path) -> None:
     svg = render_plan_view_svg(bullet())
     assert "Walnut strip (back)" in svg and "teardrop" not in svg
     assert "Truss rod adjuster trough" in svg
+
+
+DRILLED = replace(BULLET, truss_rod_bullet_drilled=True)
+
+
+@cache
+def drilled() -> Prototype001Geometry:
+    """Return the bullet rod's neck, its nut drilled in under the nut."""
+    return DRILLED.build()
+
+
+def test_a_drilled_bullet_lies_in_a_hole_under_the_nut() -> None:
+    geometry = drilled()
+    rod = geometry.vintage_truss_rod
+    channel = geometry.truss_rod_channel
+    hole = channel.bore
+    assert rod is not None and hole is not None and not hole.routed
+    # From the nut seat's end on under it, the bullet's length, the rod
+    # going into the bullet as into its trough.
+    seat_end = -DRILLED.nut_seat_length()
+    assert (hole.start, hole.end) == pytest.approx(
+        (seat_end, seat_end + BULLET_NUT_LENGTH)
+    )
+    assert hole.diameter == BULLET_HOLE_DIAMETER
+    assert rod.start == pytest.approx(hole.end - BULLET_SEAT)
+    # The rod set down to keep a skin of wood over the hole under the
+    # glue face.
+    assert hole.axis_depth == rod.end_depth
+    for step in range(5):
+        x = hole.start + (hole.end - hole.start) * step / 4
+        skin = hole.axis_depth - hole.diameter / 2.0 + geometry.headstock.top_z(x, 0.0)
+        assert skin == pytest.approx(BULLET_HOLE_WALL)
+    # Only the hole's start routed behind it, open to the top: as long as
+    # the bullet and 1 mm, so it goes in, and smaller than the trough.
+    xs = [point.x for point in channel.adjuster_boundary]
+    assert max(xs) == pytest.approx(hole.start)
+    assert max(xs) - min(xs) == pytest.approx(BULLET_NUT_LENGTH + 1.0)
+    assert 2.0 * max(point.y for point in channel.adjuster_boundary) == (
+        pytest.approx(BULLET_HOLE_DIAMETER)
+    )
+    assert channel.adjuster_depth == pytest.approx(hole.floor_depth)
+    trough = bullet().truss_rod_channel.adjuster_boundary
+    assert max(xs) - min(xs) < max(p.x for p in trough) - min(p.x for p in trough)
+    assert max(p.y for p in channel.adjuster_boundary) < max(p.y for p in trough)
+    # The bore on into the channel; the rod made to its length.
+    assert rod.bore_length == pytest.approx(rod.channel_start - rod.start)
+    assert rod.bore_length > 0.0
+    assert DRILLED.truss_rod_fit(geometry.neck_outline).route_length == (
+        pytest.approx(rod.end - rod.start)
+    )
+
+
+def test_a_drilled_bullets_start_is_cut_and_its_hole_drilled_on() -> None:
+    geometry = drilled()
+    plan = plan_neck_machining(geometry, NeckMachiningParameters())
+    names = [path.name for path in plan.top.toolpaths]
+    assert names[-1] == "Truss-rod bullet hole start"
+    (start,) = [path for path in plan.top.toolpaths if path.name == names[-1]]
+    assert start.deepest_z() == pytest.approx(
+        -geometry.truss_rod_channel.adjuster_depth
+    )
+    top = " ".join(plan.top.notes)
+    assert "Only the start of the bullet rod's nut's hole is cut" in top
+    # Not a key's notch nor an adjuster sleeve's bore of a rod from the top.
+    assert "the open start of its hole" not in top and "sleeve" not in top
+    setup = plan.back_truss_rod
+    assert setup is not None
+    notes = " ".join(setup.notes)
+    assert f"Drill the bullet's {BULLET_HOLE_DIAMETER:g} mm hole by hand" in notes
+    assert (
+        f"then a {BULLET_BORE_DIAMETER:g} mm hole on from it into the channel's end"
+    ) in notes
+    assert "where the bullet nut, put in through its start, goes on" in notes
+
+
+def test_freecad_cuts_a_drilled_bullets_hole_and_its_start(tmp_path: Path) -> None:
+    source = FreeCADScriptExporter().render_prototype001(
+        drilled(), step_path=tmp_path / "neck.step"
+    )
+    ast.parse(source)
+    assert "truss-rod bullet hole start cut" in source
+    assert "'truss-rod bullet hole'," in source
+    assert "truss-rod bullet trough cut" not in source
+    assert "vintage_cutters = [vintage_channel, vintage_bore]" in source

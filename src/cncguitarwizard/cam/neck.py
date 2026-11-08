@@ -59,6 +59,7 @@ from .toolpath import PathBuilder, Toolpath
 
 if TYPE_CHECKING:
     from ..geometry.neck import HeadstockSolid, TrussRodChannel, VintageTrussRod
+    from ..geometry.neck.truss_rod import TrussRodBore
     from ..presets import Prototype001Geometry
 
 
@@ -407,7 +408,11 @@ def _adjuster_notes(geometry: Prototype001Geometry) -> tuple[str, ...]:
             "The route runs out through the heel's end: the rod's adjuster nut "
             "sits at the heel's end face, turned with the neck off.",
         )
-    if truss.adjustment_side == "nut" and truss.access_diameter > 0.0:
+    if (
+        truss.adjustment_side == "nut"
+        and truss.access_diameter > 0.0
+        and truss.routed_from == "top"
+    ):
         return (
             f"The truss rod's key reaches the adjuster through a "
             f"{truss.access_diameter:g} mm notch behind the nut, the open start "
@@ -527,6 +532,7 @@ def _vintage_rod_setup(
     next_back: str,
     reference_points: tuple[tuple[float, float], ...],
     back: Callable[[float], float] | None = None,
+    bullet_hole: TrussRodBore | None = None,
 ) -> Setup:
     """Return the vintage truss rod's routes from the blank's back.
 
@@ -536,7 +542,9 @@ def _vintage_rod_setup(
     its back: cut down from that flat back, or with ``back`` (the
     roughed back's depth below the glue face along the centreline) from
     the roughed back, a bullet rod's. The notes say how the rod, the strip
-    and the plug go in before ``next_back`` carves them with the back.
+    and the plug go in before ``next_back`` carves them with the back, and
+    how the bore is drilled on from the bullet's trough, or from its hole
+    (``bullet_hole``) drilled by hand under the nut.
     """
     teardrop = (
         (
@@ -579,15 +587,37 @@ def _vintage_rod_setup(
             f"{thickness - rod.plug_depth + 1.0:.0f} mm tall) over its anchor.",
         )
     else:
+        drill = (
+            (
+                f"Drill a {rod.bore_diameter:g} mm hole from the headstock, out "
+                "of the bullet's trough behind the nut (Neck_top) along the "
+                f"rod's axis, {rod.end_depth:g} mm under the glue face, into the "
+                f"channel's end {rod.channel_start:.0f} mm from the nut.",
+            )
+            if bullet_hole is None
+            else (
+                f"Drill the bullet's {bullet_hole.diameter:g} mm hole by hand, "
+                "out of its start behind the nut (Neck_top) along the rod's "
+                f"axis, {bullet_hole.axis_depth:g} mm under the glue face (a "
+                f"{bullet_hole.axis_depth - bullet_hole.diameter / 2.0:g} mm skin "
+                "of wood over it, which the board covers should it break), "
+                f"{bullet_hole.end - bullet_hole.start:.1f} mm on to "
+                f"{bullet_hole.end:.1f} mm from the nut; then a "
+                f"{rod.bore_diameter:g} mm hole on from it into the channel's "
+                f"end {rod.channel_start:.0f} mm from the nut.",
+            )
+        )
         laid_in = (
-            f"Drill a {rod.bore_diameter:g} mm hole from the headstock, out of "
-            "the bullet's trough behind the nut (Neck_top) along the rod's "
-            f"axis, {rod.end_depth:g} mm under the glue face, into the "
-            f"channel's end {rod.channel_start:.0f} mm from the nut.",
+            *drill,
             f"Lay in the {rod.rod_diameter:g} mm bullet rod, "
             f"{rod.end - rod.start:.0f} mm long: its threaded end through the "
-            "hole into the bullet's trough, where the bullet nut goes on, its "
-            "anchor in the channel's closed end by the heel.",
+            + (
+                "hole into the bullet's trough, where the bullet nut goes on"
+                if bullet_hole is None
+                else f"{rod.bore_diameter:g} mm hole into the bullet's, where the "
+                "bullet nut, put in through its start, goes on"
+            )
+            + ", its anchor in the channel's closed end by the heel.",
             f"Glue in a walnut strip {rod.width:g} mm wide, at least "
             f"{strip_height + 1.0:.0f} mm tall and "
             f"{rod.end - rod.strip_start:.0f} mm long, the channel's whole "
@@ -912,6 +942,9 @@ def plan_neck_machining(
     # A vintage rod is laid in from the back (Neck_back_truss_rod): nothing
     # of it is cut from the top.
     from_top = truss.routed_from == "top"
+    # A bullet rod's nut in a hole drilled by hand under the nut, only the
+    # hole's start cut here.
+    drilled = not from_top and truss.bore is not None
     # The small end mill, for what the flat end mill is too wide to cut.
     small = replace(flat.small_cutter, finishing_allowance=0.0)
 
@@ -950,9 +983,11 @@ def plan_neck_machining(
         if truss.adjuster_boundary:
             paths.append(
                 pocket(
-                    # A bullet rod's nut sits in it.
+                    # A bullet rod's nut sits in it, or goes in through it.
                     "Truss-rod access trough"
                     if from_top
+                    else "Truss-rod bullet hole start"
+                    if drilled
                     else "Truss-rod bullet trough",
                     top_frame.polygon(truss.adjuster_boundary),
                     board + truss.adjuster_depth,
@@ -1114,7 +1149,7 @@ def plan_neck_machining(
                 f"{truss.bore.axis_depth:g} mm below the glue face): the "
                 "fretboard closes it over, so no bore is drilled.",
             )
-            if truss.bore is not None and truss.bore.routed
+            if from_top and truss.bore is not None and truss.bore.routed
             else (
                 f"Drill the truss-rod adjuster's sleeve bore by hand: "
                 f"{truss.bore.diameter:g} mm, "
@@ -1122,12 +1157,22 @@ def plan_neck_machining(
                 "end along the rod's axis, "
                 f"{truss.bore.axis_depth:g} mm below the glue face.",
             )
-            if truss.bore is not None
+            if from_top and truss.bore is not None
             else ()
         ),
         *_adjuster_notes(geometry),
         *(
             (
+                "Only the start of the bullet rod's nut's hole is cut behind "
+                f"the nut, {max(p.y for p in truss.adjuster_boundary) * 2.0:g} "
+                f"mm wide, {truss.access_length:g} mm long and "
+                f"{truss.adjuster_depth:g} mm below the glue face, open to the "
+                "top: the hole on under the nut is drilled by hand, the bullet "
+                "put in through its start and the key after "
+                "(Neck_back_truss_rod).",
+            )
+            if drilled and truss.adjuster_boundary
+            else (
                 "The bullet rod's nut sits in a "
                 f"{max(p.y for p in truss.adjuster_boundary) * 2.0:g} mm wide "
                 "trough behind the nut, "
@@ -1546,6 +1591,8 @@ def plan_neck_machining(
                 last_back if after_rough else first_back,
                 reference_points,
                 (lambda x: -roughed.model_z(x, 0.0)) if after_rough else None,
+                # A bullet rod's nut drilled in: the plan's bore.
+                geometry.truss_rod_channel.bore,
             )
 
         # With the small end mill where the flat one is too wide for it.

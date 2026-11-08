@@ -257,6 +257,13 @@ APPLIES_WHEN: dict[str, tuple[Condition, ...]] = {
         "truss_rod_cover_points truss_rod_cover_screws",
         {"truss_rod_adjustment": ("headstock",)},
     ),
+    # A bullet rod's nut: a vintage rod laid in from the back, adjusted at
+    # the headstock.
+    **_when(
+        "truss_rod_bullet_drilled",
+        {"truss_rod_adjustment": ("headstock",), "truss_rod_install": ("back",)},
+        {"truss_rod_adjustment": ("headstock",), "fretboard_one_piece": (True,)},
+    ),
     # The body: pickups by layout, their frames.
     **_when(
         "body_neck_pickup body_middle_pickup body_bridge_pickup",

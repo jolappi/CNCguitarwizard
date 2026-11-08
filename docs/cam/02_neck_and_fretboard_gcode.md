@@ -134,7 +134,12 @@ the channel's, and to trim it flush with the roughed back:
 `Neck_back_finish` carves it with the back. `Neck_top` cuts the bullet's
 trough behind the nut into the finished headstock face (`Truss-rod
 bullet trough`, after the face), where the bullet nut is threaded onto
-the rod once the walnut is in.
+the rod once the walnut is in. With `truss_rod_bullet_drilled` it cuts
+only the start of the bullet's hole there (`Truss-rod bullet hole
+start`, 8.5 mm wide and 13.7 mm long), and `Neck_back_truss_rod`'s notes
+say to drill the 8.5 mm hole by hand out of it along the rod's axis under
+the nut, the bullet's length, then the 5 mm bore on from it into the
+channel, the bullet put in through the start.
 
 ### One-piece neck
 

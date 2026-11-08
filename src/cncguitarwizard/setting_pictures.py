@@ -128,7 +128,8 @@ SETTING_PICTURES: dict[str, SettingPicture] = {
     **_same(
         "plan",
         "truss_rod_adjustment truss_rod_nut_diameter truss_rod_nut_length "
-        "truss_rod_access_length truss_rod_spoke_wheel truss_rod_key_hole_diameter",
+        "truss_rod_access_length truss_rod_spoke_wheel truss_rod_key_hole_diameter "
+        "truss_rod_bullet_drilled",
         _TRUSS_ROD_ENDS,
         _TRUSS_ROD,
     ),

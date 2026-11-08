@@ -79,7 +79,10 @@ class TrussRodChannel:
       (``adjuster_boundary``) ``access_length`` long in the headstock face
       behind the route's start, under a truss-rod cover; with
       ``access_diameter`` the trough is only that wide, a notch for the
-      adjusting key rather than room for the head.
+      adjusting key rather than room for the head. With a
+      ``sleeve_length`` the adjuster's sleeve (a bullet rod's nut) lies
+      in a bore that long behind the route's start, drilled by hand from
+      the trough, which lies behind the bore.
 
     With all the step, pocket, sleeve and nut sizes at 0 the route is a
     plain rectangular channel.
@@ -98,7 +101,8 @@ class TrussRodChannel:
         pocket_length: Length of the wider pocket at the very end.
         pocket_width: Its width.
         pocket_depth: Its depth.
-        sleeve_length: At the heel, the adjuster sleeve's bore length.
+        sleeve_length: The adjuster sleeve's bore length: at the heel past
+            the route's end, at the nut behind its start.
         sleeve_diameter: The bore's diameter.
         sleeve_routed: Cut the bore from the top as a slot (see
             ``TrussRodBore``) rather than leave it to be drilled by hand.
@@ -247,14 +251,25 @@ class TrussRodChannel:
                     )
                 if self.access_length > 0.0:
                     access = _rectangle(heel_end, heel_end + self.access_length, half)
-            elif self.access_length > 0.0:
-                if self.access_diameter > 0.0:
-                    # Only a notch for the key, down to the rod's axis
-                    # and the key's half below it.
-                    half = self.access_diameter / 2.0
-                    adjuster_depth = axis_depth + half
-                behind = self.start_position
-                adjuster = _rectangle(behind - self.access_length, behind, half)
+            else:
+                # The sleeve's bore behind the route's start, the trough
+                # behind that.
+                behind = self.start_position - self.sleeve_length
+                if self.sleeve_length > 0.0 and self.sleeve_diameter > 0.0:
+                    bore = TrussRodBore(
+                        behind,
+                        self.start_position,
+                        axis_depth,
+                        self.sleeve_diameter,
+                        self.sleeve_routed,
+                    )
+                if self.access_length > 0.0:
+                    if self.access_diameter > 0.0:
+                        # Only a notch for the key, down to the rod's axis
+                        # and the key's half below it.
+                        half = self.access_diameter / 2.0
+                        adjuster_depth = axis_depth + half
+                    adjuster = _rectangle(behind - self.access_length, behind, half)
 
         object.__setattr__(self, "end_position", end_position)
         object.__setattr__(
@@ -355,9 +370,11 @@ class TrussRodChannel:
                 raise TrussRodGeometryError(
                     f"The truss rod's {name} needs a width and a depth."
                 )
+        # A key's notch need not hold the head.
         if (
             self.adjustment_side == "nut"
             and self.nut_diameter > 0.0
+            and self.access_diameter == 0.0
             and 0.0 < self.access_length < self.nut_length
         ):
             raise TrussRodGeometryError(

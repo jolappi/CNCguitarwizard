@@ -155,6 +155,13 @@ FIELD_HELP: dict[str, str] = {
         "nut, its channel on the neck's straight back alone, a hole drilled "
         "from the headstock into it."
     ),
+    "truss_rod_bullet_drilled": (
+        "A bullet rod's nut drilled in under the nut instead of its trough: "
+        "only the start of its hole is routed behind the nut, open to the top "
+        "and as long as the bullet so it goes in, and you drill the rest by "
+        "hand along the rod (8.5 mm under the nut, then 5 mm on into the "
+        "channel)."
+    ),
     "truss_rod_spoke_wheel": (
         "A spoke-wheel adjuster, turned with a rod through its holes: auto "
         "fits one at the heel and none at the headstock."

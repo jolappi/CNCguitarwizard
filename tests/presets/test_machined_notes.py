@@ -28,7 +28,7 @@ def test_the_sleeve_slot_is_routed_and_modelled_under_the_fretboard() -> None:
     source = FreeCADScriptExporter().render_prototype001(geometry)
     assert "'truss-rod sleeve slot'" in source
     by_hand = replace(Prototype001Parameters(), truss_rod_sleeve_routed=False).build()
-    assert '"truss-rod sleeve bore"' in FreeCADScriptExporter().render_prototype001(
+    assert "'truss-rod sleeve bore'" in FreeCADScriptExporter().render_prototype001(
         by_hand
     )
 

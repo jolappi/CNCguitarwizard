@@ -213,7 +213,7 @@ holds it:
 | Part | Size |
 | --- | --- |
 | Rod (`VINTAGE_ROD_DIAMETER`) | Ø 4.76 mm (3/16 in), made to the neck's length |
-| Channel | `truss_rod_width` (6 mm) wide, from the nut seat's end (`nut_seat_length` behind the nut, where the top starts down onto the headstock's face) out through the heel's end; a bullet rod's along the neck's straight back alone (`VintageTrussRod.channel_start` to `end`), a `BULLET_BORE_DIAMETER` (5 mm) bore from its trough on into it |
+| Channel | `truss_rod_width` (6 mm) wide, from the nut seat's end (`nut_seat_length` behind the nut, where the top starts down onto the headstock's face) out through the heel's end; a bullet rod's along the neck's straight back alone (`VintageTrussRod.channel_start` to `end`), a `BULLET_BORE_DIAMETER` (5 mm) bore from its trough, or its hole drilled under the nut, on into it |
 | Rod's axis | `VINTAGE_ROD_END_DEPTH` (4 mm) below the glue face at both ends, `VINTAGE_ROD_BOW` (2.5 mm) deeper in the middle, a parabola between |
 | Walnut strip | the channel's width, from the rod's back side to the carved back, from the plug's narrow end to the heel's end; a bullet rod's the channel's length |
 | Teardrop plug | `VINTAGE_PLUG_WIDTH` × `VINTAGE_PLUG_LENGTH` (11 × 30 mm): round over the anchor, narrowing to the channel; its floor flat at the rod's back side where that lies deepest under it |
@@ -246,6 +246,22 @@ length. `Neck_top` cuts the trough into the finished face
 (`Truss-rod bullet trough`), FreeCAD cuts it and the bore from the neck
 and makes no plug, and the trough keeps 3 mm from the tuner holes. The
 build checks the bore keeps `VINTAGE_ROD_WALL` under the top too.
+
+With `truss_rod_bullet_drilled` the bullet nut lies under the nut instead,
+in a `BULLET_HOLE_DIAMETER` (8.5 mm) hole drilled by hand along the rod's
+axis from the nut seat's end on for the bullet's length
+(`TrussRodChannel.bore`: a sleeve's bore at the nut, `sleeve_length`
+behind the route's start); the rod starts that much later, still 1 mm
+into the bullet (`BULLET_SEAT`), and lies `BULLET_HOLE_WALL` (0.25 mm)
+deeper than the hole's half, 4.5 mm at its ends, so a skin of wood stays
+over the hole under the glue face (the fretboard, or the nut, covers it
+should it break; lowering the rod further would thin a slim neck's
+walnut below `VINTAGE_STRIP_MIN`). Only the hole's start is routed behind
+the nut, open to the top: the hole's width and `BULLET_NUT_LENGTH` + 1 mm
+long, down to its floor (a key's notch, `access_diameter`, which need not
+hold the head), so the bullet goes in through it and is slid home, and
+the key after. `Neck_top` cuts it (`Truss-rod bullet hole start`), and
+FreeCAD cuts it and the hole from the neck.
 
 `vintage_truss_rod` refuses it with a spoke wheel
 (`truss_rod_spoke_wheel` `"yes"`; `"auto"` fits none), a low-profile rod,

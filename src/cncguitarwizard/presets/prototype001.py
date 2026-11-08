@@ -491,6 +491,16 @@ BULLET_BORE_DIAMETER = 5.0
 its channel, in mm: drilled from the headstock along the rod, a hair
 wider than the 3/16 in rod."""
 
+BULLET_HOLE_DIAMETER = 8.5
+"""The hole a bullet nut lies in under the nut when it is drilled by hand
+(``truss_rod_bullet_drilled``), in mm: a hair wider than the 5/16 in nut,
+so it turns."""
+
+BULLET_HOLE_WALL = 0.25
+"""Wood left over a drilled bullet's hole, under the glue face, in mm: the
+rod's axis is set down to keep it, a skin the fretboard (or the nut)
+covers should it break (a deeper rod would thin a slim neck's walnut)."""
+
 STEP_EDGE_SLACK = 3.0
 """How near the body's edge drawn step lines may cross, in mm: where they
 converge on the edge (the sliver between them is cut with the outer
@@ -1598,6 +1608,13 @@ class Prototype001Parameters:
     # made to the neck's length, not a stock rod. It needs no spoke wheel, a
     # flat headstock and a bolt-on or set neck.
     truss_rod_install: Literal["top", "back"] = "top"
+    # truss_rod_bullet_drilled: the bullet nut lies under the nut instead,
+    # in a BULLET_HOLE_DIAMETER hole drilled by hand along the rod under the
+    # fretboard (the rod set down to keep BULLET_HOLE_WALL of wood over it),
+    # on from the hole's start routed behind the nut, the bullet's length
+    # and 1 mm long and open to the top: the bullet goes in through it, the
+    # key after.
+    truss_rod_bullet_drilled: bool = False
     truss_rod_nut_diameter: float = 15.0
     truss_rod_nut_length: float = 6.0
     truss_rod_access_length: float | None = None
@@ -3495,10 +3512,19 @@ class Prototype001Parameters:
             rod = self.vintage_truss_rod(outline)
             assert rod is not None
             bullet = rod.adjusted_at == "headstock"
-            # A bullet rod's trough reaches on over the channel's start,
-            # where the rod goes into the bullet: the channel's plan starts
-            # there, the trough ahead of it.
+            drilled = bullet and self.truss_rod_bullet_drilled
+            # A bullet rod's trough, or its hole, reaches on over the
+            # channel's start, where the rod goes into the bullet: the
+            # channel's plan starts there, the trough ahead of it.
             seat = BULLET_SEAT if bullet else 0.0
+            # A bullet rod's nut in its trough behind the nut, open to the
+            # top for the key; or drilled in, the hole's start routed
+            # behind it, room to put the bullet in and then the key.
+            trough = 0.0
+            if drilled:
+                trough = BULLET_NUT_LENGTH + 1.0
+            elif bullet:
+                trough = BULLET_NUT_LENGTH + BULLET_KEY_ROOM
             back = TrussRodChannel(
                 outline,
                 rod.start + seat,
@@ -3506,11 +3532,12 @@ class Prototype001Parameters:
                 rod.width,
                 rod.strip_depth(rod.start),
                 adjustment_side="nut" if bullet else "heel",
-                # A bullet rod's nut in its trough behind the nut, open to
-                # the top for the key.
+                sleeve_length=BULLET_NUT_LENGTH if drilled else 0.0,
+                sleeve_diameter=BULLET_HOLE_DIAMETER if drilled else 0.0,
                 nut_diameter=BULLET_NUT_DIAMETER if bullet else 0.0,
                 nut_length=BULLET_NUT_LENGTH if bullet else 0.0,
-                access_length=BULLET_NUT_LENGTH + BULLET_KEY_ROOM if bullet else 0.0,
+                access_length=trough,
+                access_diameter=BULLET_HOLE_DIAMETER if drilled else 0.0,
                 rod_axis_depth=rod.end_depth,
                 routed_from="back",
             )
@@ -3633,7 +3660,9 @@ class Prototype001Parameters:
         headstock's root and the heel's rounding, the rod anchored in its
         heel end and its threaded end in a ``BULLET_BORE_DIAMETER`` bore
         on to the bullet nut ahead of the rod's start (``truss_rod``'s
-        trough).
+        trough). With ``truss_rod_bullet_drilled`` the bullet's hole lies
+        under the nut seat, the rod's start the bullet's length on and its
+        axis set down to keep ``BULLET_HOLE_WALL`` over the hole.
 
         Raises:
             NeckGeometryError: For an unknown ``truss_rod_install``, or a
@@ -3685,6 +3714,7 @@ class Prototype001Parameters:
         start = -self.nut_seat_length()
         end = outline.last_fret_position + outline.heel_length
         channel_start = start
+        end_depth = VINTAGE_ROD_END_DEPTH
         bullet = self.truss_rod_adjustment == "headstock"
         if bullet:
             # The channel along the neck's straight back, as the built back
@@ -3700,12 +3730,19 @@ class Prototype001Parameters:
                     outline, self.heel_flat_start_offset, self.heel_thickness
                 ),
             )
+            if self.truss_rod_bullet_drilled:
+                # The bullet's hole from the nut seat's end on under it, the
+                # rod going into the bullet as into its trough, set down to
+                # keep the wall over the hole.
+                start += BULLET_NUT_LENGTH - BULLET_SEAT
+                end_depth = BULLET_HOLE_DIAMETER / 2.0 + BULLET_HOLE_WALL
+                channel_start = max(channel_start, start)
         return VintageTrussRod(
             start,
             end,
             self.truss_rod_width,
             VINTAGE_ROD_DIAMETER,
-            VINTAGE_ROD_END_DEPTH,
+            end_depth,
             VINTAGE_ROD_BOW,
             VINTAGE_PLUG_WIDTH,
             VINTAGE_PLUG_LENGTH,

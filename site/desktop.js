@@ -296,7 +296,7 @@
       "neck_angle", "set_neck_glue_gap", "neck_through_width", "neck_through_heel_ramp",
       "neck_profile_exponent", "headstock_thickness", "neck_carbon_rods", "neck_carbon_rod_size",
       "fretboard_one_piece", "truss_rod_install", "truss_rod_profile", "truss_rod_rod_length",
-      "truss_rod_adjustment",
+      "truss_rod_adjustment", "truss_rod_bullet_drilled",
       "truss_rod_spoke_wheel",
     ],
     fretboard: [
