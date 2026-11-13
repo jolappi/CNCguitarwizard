@@ -195,6 +195,32 @@ def offset_sampled_surface(
     )
 
 
+def face_tips(
+    sampled: SampledSurface,
+    tool: MachiningParameters,
+    top: float,
+) -> OffsetGrid:
+    """Return the tool's tips over the blank's planed face alone.
+
+    The samples at ``top`` (within ``REST_TOLERANCE``) are kept and every
+    lower one sunk out of reach, so where these tips are the tool's own
+    the face holds the tool up: a ball nose beside a heel's planed back,
+    resting on its edge (``raster_finish``'s ``face``).
+    """
+    out_of_reach = -1e9
+    face = SampledSurface(
+        sampled.x0,
+        sampled.y0,
+        sampled.spacing_x,
+        sampled.spacing_y,
+        tuple(
+            tuple(z if z >= top - REST_TOLERANCE else out_of_reach for z in row)
+            for row in sampled.heights
+        ),
+    )
+    return offset_sampled_surface(face, tool)
+
+
 def _cell_offsets(spacing: float, samples: int) -> list[float]:
     """Return sample offsets spanning one grid cell, centred on the node."""
     if samples <= 1:
@@ -216,6 +242,7 @@ def raster_finish(
     tolerance: float = 0.002,
     rest: OffsetGrid | None = None,
     top: float | None = None,
+    face: OffsetGrid | None = None,
     link_distance: float = 0.0,
 ) -> Toolpath:
     """Follow the offset surface with parallel passes along X.
@@ -231,7 +258,11 @@ def raster_finish(
     (the rest may stand higher than either end: a plateau). With a
     ``top``, the blank's own face (its Z), likewise below it: where the
     surface is the planed face (a neck's heel and flat headstock back,
-    level with the blank's back), it is left as planed, not traced.
+    level with the blank's back), it is left as planed, not traced. With
+    a ``face`` too (``face_tips``), so is its edge: where the face alone
+    holds the tool up, a ball nose beside the heel rests on its edge and
+    would only round off the wood the roughing left there, so the edge
+    stays sharp, as roughed.
 
     With a ``rest`` or a ``top`` and a ``link_distance``, the runs are
     taken nearest first (either way round), and a hop to the next run no
@@ -242,10 +273,14 @@ def raster_finish(
     """
     ys = _steps(y_range[0], y_range[1], step_over)
     builder = _builder(name, tool)
-    leftover = rest is not None or top is not None
+    leftover = rest is not None or top is not None or face is not None
 
     def left_at(x: float, y: float) -> float:
         """Return how high the wood is left there (the rest, the face)."""
+        if face is not None:
+            tip = grid.tip_at(x, y)
+            if tip <= face.tip_at(x, y) + REST_TOLERANCE:
+                return tip  # resting on the face's edge: nothing to cut
         left = math.inf if rest is None else rest.tip_at(x, y)
         return left if top is None else min(left, top)
 

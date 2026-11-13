@@ -432,3 +432,39 @@ def test_a_heel_and_headstock_on_the_planed_back_are_left_as_planed() -> None:
     finish = plan.back_finish.toolpaths[0]
     headstock = [m for m in finish.moves if not m.rapid and m.z < -3.0]
     assert headstock and _traced_on_the_face(finish) < 10.0
+
+
+def test_the_ball_leaves_the_planed_heels_edge_as_roughed() -> None:
+    # Regression: beside a heel whose back is the blank's planed back, the
+    # ball rested on the heel's edge, its tip below the face, and ran a ring
+    # round the heel rounding off the wood the roughing left beside it.
+    from cncguitarwizard.presets.styles import STYLES
+
+    style = STYLES["stratocaster"]
+    strat = Prototype001Parameters(**style.prototype_values(style.instruments[0]))
+    parameters = NeckMachiningParameters()
+    plan = plan_neck_machining(strat.build(wired=False), parameters)
+    assert plan.back_finish is not None
+    outline = plan.preview_outlines[plan.setups.index(plan.back_finish)]
+    heel_end = max(point.x for point in outline)
+    radius = parameters.ball.tool_radius
+
+    def on_the_edge(move) -> bool:  # type: ignore[no-untyped-def]
+        """Return whether the ball rests on the heel's edge from outside."""
+        return (
+            move.x > heel_end - 60.0
+            and -radius < move.z < -0.01
+            and not point_in_polygon(Point2D(move.x, move.y), outline)
+        )
+
+    moves = plan.back_finish.toolpaths[0].moves
+    ridden = sum(
+        math.hypot(b.x - a.x, b.y - a.y)
+        for a, b in zip(moves, moves[1:], strict=False)
+        if not b.rapid and on_the_edge(a) and on_the_edge(b)
+    )
+    assert ridden < 1.0
+    # Every pass on a drop-cutter grid row, none interpolated across the
+    # heel's wall (it dipped into the heel's side).
+    rows = {(m.y - moves[0].y) / parameters.grid_spacing_y for m in moves}
+    assert all(row == pytest.approx(round(row), abs=1e-6) for row in rows)

@@ -7,10 +7,12 @@ import pytest
 from cncguitarwizard.cam import (
     MachiningParameters,
     build_offset_grid,
+    offset_sampled_surface,
     raster_finish,
     raster_rough,
+    sample_surface,
 )
-from cncguitarwizard.cam.surfacing import LINK_CLEARANCE, interpolate_rows
+from cncguitarwizard.cam.surfacing import LINK_CLEARANCE, face_tips, interpolate_rows
 from cncguitarwizard.cam.toolpath import Move
 
 
@@ -200,6 +202,54 @@ def test_rest_finishing_runs_only_where_it_takes_wood_off() -> None:
     for move in cuts(rest.moves):
         assert move.z >= ball_grid.tip_at(move.x, move.y) - 0.003
     assert rest.cutting_length() < full.cutting_length() / 3.0
+
+
+def test_finishing_leaves_the_planed_faces_edge_as_roughed() -> None:
+    # Regression: beside a neck's heel, its back the blank's planed face,
+    # the ball rested on the face's edge, its tip below the face, and ran a
+    # ring round the heel rounding off the wood the roughing left there.
+    def heel(x: float, y: float) -> float:
+        return 0.0 if x < 20.0 and abs(y) < 10.0 else -10.0
+
+    ball = MachiningParameters(tool_tip="ball")
+    # Every pass on a grid row: 0.75 mm steps over 0.25 mm rows.
+    span, across = (-10.0, 40.0), (-21.0, 21.0)
+    sampled = sample_surface(heel, span, across, spacing_y=0.25)
+    grid = offset_sampled_surface(sampled, ball)
+
+    def finish(face):  # type: ignore[no-untyped-def]
+        return raster_finish(
+            "Finish",
+            grid,
+            ball,
+            x_range=span,
+            y_range=across,
+            step_over=0.75,
+            top=0.0,
+            face=face,
+        )
+
+    def on_the_edge(path) -> float:  # type: ignore[no-untyped-def]
+        """Return how far a path feeds with the ball resting on the edge."""
+
+        def resting(move: Move) -> bool:
+            return -ball.tool_radius < move.z < -0.01
+
+        moves = path.moves
+        return sum(
+            math.dist((a.x, a.y), (b.x, b.y))
+            for a, b in zip(moves, moves[1:])
+            if not b.rapid and resting(a) and resting(b)
+        )
+
+    ringed, left = finish(None), finish(face_tips(sampled, ball, 0.0))
+    assert on_the_edge(ringed) > 100.0
+    assert on_the_edge(left) == 0.0
+    # The floor beside the heel is still finished.
+    assert any(
+        m.z == pytest.approx(-10.0) and 10.0 < abs(m.y) < 14.0 and m.x < 20.0
+        for m in cuts(left.moves)
+    )
 
 
 def test_linked_rest_finishing_hops_to_the_nearest_run_in_the_cut() -> None:

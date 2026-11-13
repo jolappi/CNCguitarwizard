@@ -1920,6 +1920,17 @@
 
 ### Fixed
 
+- `Neck_back_finish` leaves a heel whose back is the blank's planed back
+  sharp-cornered, as `Neck_back_rough` left it. The ball nose rested on
+  the heel's edge, its tip below the plane, and ran a ring round the
+  heel (in eco mode on its own, rounding off the wood the roughing left
+  beside it); where the plane alone holds the ball up
+  (`surfacing.face_tips`, `raster_finish`'s `face`), it now finishes
+  nothing. The passes, spread evenly across the carve, also fell between
+  the drop-cutter grid's rows, so one beside the heel, interpolated
+  across its wall, dipped up to 0.4 mm into its side; the carve is now
+  a whole number of finishing steps across, every pass on a grid row.
+
 - `headstock_bass_side` turns only the headstock round: its outline and
   tuners side for side (a six in line on the treble edge, as a reverse
   one), the strings wound on them the other way round. It turned the

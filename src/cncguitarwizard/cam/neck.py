@@ -50,6 +50,7 @@ from .planar import offset_polygon, polygon_bounds
 from .surfacing import (
     OffsetGrid,
     build_offset_grid,
+    face_tips,
     interpolate_rows,
     offset_sampled_surface,
     raster_finish,
@@ -1519,7 +1520,12 @@ def plan_neck_machining(
         margin = 3.0 * max(flat.tool_diameter, ball.tool_diameter)
         cut_x = back_frame.x_range((x_from, x_to))
         sample_x = back_frame.x_range((x_from - margin, x_to + margin))
-        carve_y = back_frame.y_range((carve_low - radius, carve_high + radius))
+        low, high = back_frame.y_range((carve_low - radius, carve_high + radius))
+        # A whole number of finishing steps across, so every pass runs on
+        # a grid row: one between rows, beside the heel's wall, would dip
+        # into it.
+        steps = math.ceil((high - low) / parameters.finishing_step_over - 1e-9)
+        carve_y = (low, low + steps * parameters.finishing_step_over)
         sampled = sample_surface(
             surface.machine_z,
             sample_x,
@@ -1527,6 +1533,9 @@ def plan_neck_machining(
             spacing_x=parameters.grid_spacing_x,
             spacing_y=parameters.grid_spacing_y,
         )
+        # Where the planed back's edge alone holds the ball up (beside the
+        # heel), it finishes nothing: the edge is left as roughed.
+        face = face_tips(sampled, ball, 0.0)
         skin_note = (
             f"Roughing stops {parameters.skin:g} mm short of the glue plane "
             "everywhere, so the neck stays attached to its waste frame."
@@ -1561,6 +1570,7 @@ def plan_neck_machining(
                             y_range=carve_y,
                             step_over=parameters.finishing_step_over,
                             top=0.0,
+                            face=face,
                             link_distance=ball.eco_link_distance,
                         ),
                     ),
@@ -1613,6 +1623,7 @@ def plan_neck_machining(
                     step_over=parameters.finishing_step_over,
                     rest=flat_tips if ball.eco_mode else None,
                     top=0.0,
+                    face=face,
                     link_distance=ball.eco_link_distance,
                 ),
             ),
