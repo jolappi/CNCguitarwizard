@@ -70,7 +70,14 @@ class MachiningParameters:
             nose of the same diameter (only surfacing cares), ``"vee"`` for
             the engraving V-bit (its diameter the groove's width).
         spindle_speed: Spindle speed in rpm, emitted with ``M3``.
-        feed_rate: Cutting feed for XY moves.
+        feed_rate: Cutting feed for XY moves: the body's, and every
+            part's without one of its own.
+        neck_feed_rate: The neck's cutting feed, for its end mills and
+            ball nose (a maple neck wants slower than a soft body); ``0``
+            (the default) for ``feed_rate``.
+        fretboard_feed_rate: The fretboard's cutting feed, for its end
+            mill and ball nose (the fret-slot and inlay cutters keep their
+            own); ``0`` (the default) for ``feed_rate``.
         plunge_rate: Feed for straight plunges and helical descents.
         rapid_rate: Nominal rapid speed, used only for time estimates.
         step_down: Maximum axial depth of cut per pass; ``0`` (the
@@ -248,6 +255,8 @@ class MachiningParameters:
     tool_tip: str = "flat"
     spindle_speed: float = 10000.0
     feed_rate: float = 1000.0
+    neck_feed_rate: float = 0.0
+    fretboard_feed_rate: float = 0.0
     plunge_rate: float = 300.0
     rapid_rate: float = 3000.0
     step_down: float = 0.0
@@ -352,6 +361,8 @@ class MachiningParameters:
             "index_pin_wall": self.index_pin_wall,
             "spindle_dwell": self.spindle_dwell,
             "z_lift_rate": self.z_lift_rate,
+            "neck_feed_rate": self.neck_feed_rate,
+            "fretboard_feed_rate": self.fretboard_feed_rate,
             "carve_tool_diameter": self.carve_tool_diameter,
             "carve_flat_tool_diameter": self.carve_flat_tool_diameter,
             "small_hole_step_down": self.small_hole_step_down,

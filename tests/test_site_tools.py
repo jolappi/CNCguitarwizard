@@ -286,6 +286,9 @@ def test_every_cutter_has_its_size_and_depth_on_a_page() -> None:
         "inlay_tool_diameter",
         "carve_flat_step_down",
         "relief_step_down",
+        "feed_rate",
+        "neck_feed_rate",
+        "fretboard_feed_rate",
     ):
         assert f'"{name}=' in cutters or f"`{name}=" in cutters, name
     assert (

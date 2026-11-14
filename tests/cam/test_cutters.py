@@ -6,6 +6,7 @@ import pytest
 from cncguitarwizard.cam import (
     FretboardMachiningParameters,
     MachiningParameters,
+    ToolpathError,
     plan_body_machining,
     plan_neck_machining,
 )
@@ -71,6 +72,41 @@ def test_the_neck_and_fretboard_cut_with_the_forms_cutters() -> None:
         assert ball.spindle_speed == 16000.0
     assert board.slot.tool_diameter == 0.5 and board.slot.step_down == 0.2
     assert board.inlay.tool_diameter == 0.8 and board.inlay.step_down == 0.2
+
+
+def test_the_neck_and_fretboard_are_fed_at_their_own_feed_rates() -> None:
+    # A soft body wood takes a faster feed than a maple neck.
+    form = MachiningParameters(
+        feed_rate=1500.0, neck_feed_rate=800.0, fretboard_feed_rate=700.0
+    )
+    neck = NeckMachiningParameters().with_form_settings(form)
+    board = FretboardMachiningParameters().with_form_settings(form)
+
+    assert (neck.flat.feed_rate, neck.ball.feed_rate) == (800, 800)
+    assert (board.flat.feed_rate, board.ball.feed_rate) == (700, 700)
+    # The fret-slot and inlay cutters keep their own.
+    assert (board.slot.feed_rate, board.inlay.feed_rate) == (300, 300)
+    # The neck's programs are cut at it.
+    plan = plan_neck_machining(Prototype001Parameters().build(), neck, form)
+    cuts = {
+        move.feed
+        for setup in (plan.top, plan.back_rough)
+        for path in setup.toolpaths
+        for move in path.moves
+        if not move.rapid
+    }
+    assert 800 in cuts and 1500 not in cuts
+    # 0 (the default): the body's.
+    plain = MachiningParameters(feed_rate=1500.0)
+    neck = NeckMachiningParameters().with_form_settings(plain)
+    board = FretboardMachiningParameters().with_form_settings(plain)
+    assert (neck.flat.feed_rate, board.ball.feed_rate) == (1500, 1500)
+
+
+@pytest.mark.parametrize("name", ["neck_feed_rate", "fretboard_feed_rate"])
+def test_a_negative_feed_rate_of_a_part_is_rejected(name: str) -> None:
+    with pytest.raises(ToolpathError, match=name):
+        MachiningParameters(**{name: -1.0})
 
 
 def test_a_flat_end_mill_too_wide_for_the_truss_rod_leaves_it_to_the_small() -> None:

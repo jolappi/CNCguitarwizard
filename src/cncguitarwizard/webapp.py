@@ -401,6 +401,8 @@ _BASIC_FIELDS: frozenset[str] = frozenset(
         "neck_back_cut",
         "spindle_speed",
         "feed_rate",
+        "neck_feed_rate",
+        "fretboard_feed_rate",
         "plunge_rate",
         "step_down",
         "step_over",

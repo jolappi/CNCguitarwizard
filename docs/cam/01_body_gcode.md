@@ -18,6 +18,7 @@ the Prototype001 manufacturing specification (TwoTrees H40, GRBL):
 | `step_over` | 0.4 | Raster spacing as a fraction of the diameter |
 | `finishing_allowance` | 0.30 mm | Wall stock left by roughing, removed by the contour pass |
 | `feed_rate` / `plunge_rate` | 1000 / 300 mm/min | Starting values — tune to the wood |
+| `neck_feed_rate` / `fretboard_feed_rate` | 0: `feed_rate` | The neck's and the fretboard's own cutting feed for their end mills and ball nose, a maple neck slower than a soft body (the fret-slot, inlay and engraving cutters keep their own) |
 | `spindle_speed` | 10 000 rpm | Emitted with `M3` |
 | `safe_height` | 5 mm | Rapid traverse height above the stock top |
 | `tab_count` / `tab_length` / `tab_height` | 6 / 8 mm / 4 mm | Holding tabs on the final profile passes |

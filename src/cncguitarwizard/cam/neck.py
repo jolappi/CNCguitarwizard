@@ -154,11 +154,15 @@ class NeckMachiningParameters:
     ) -> NeckMachiningParameters:
         """Return these with the machining form's cutters: the flat end
         mill and the ball nose (``ball_cutter``), their sizes, depths and
-        speeds (``with_cutter``)."""
+        speeds (``with_cutter``), fed at the neck's own feed
+        (``neck_feed_rate``) where it has one."""
+        cutter = replace(
+            machining, feed_rate=machining.neck_feed_rate or machining.feed_rate
+        )
         return replace(
             self,
-            flat=with_cutter(self.flat, machining),
-            ball=with_cutter(self.ball, machining.ball_cutter),
+            flat=with_cutter(self.flat, cutter),
+            ball=with_cutter(self.ball, cutter.ball_cutter),
         )
 
 

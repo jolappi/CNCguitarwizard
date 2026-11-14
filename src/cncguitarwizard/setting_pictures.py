@@ -409,6 +409,8 @@ NO_PICTURE = frozenset(
         "tool_tip",
         "spindle_speed",
         "feed_rate",
+        "neck_feed_rate",
+        "fretboard_feed_rate",
         "plunge_rate",
         "rapid_rate",
         "step_down",
