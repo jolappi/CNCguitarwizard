@@ -1920,6 +1920,11 @@
 
 ### Fixed
 
+- A tuner hole too near its drawn headstock edge goes in to
+  `tuner_edge_offset` when dragged. A hole slides along its edge kept as
+  far in from it as it was, so one already too near (a design's bass 3,
+  13.9 mm in) stayed too near wherever it was slid, the editor and the
+  build refusing it; Shift-drag still puts a hole anywhere.
 - `Neck_back_finish` leaves a heel whose back is the blank's planed back
   sharp-cornered, as `Neck_back_rough` left it. The ball nose rested on
   the heel's edge, its tip below the plane, and ran a ring round the

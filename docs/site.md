@@ -355,7 +355,8 @@ Python.
    chosen style with a keep-out circle `tuner_edge_offset` round each; the
    panel names any hole the edge comes too close to, or two holes with
    less than `tuner_hole_clearance` of wood between them. A dragged hole
-   slides along its edge, kept as far in from it as it was, so the
+   slides along its edge, kept as far in from it as it was (but never
+   nearer than `tuner_edge_offset`: one too near goes in to it), so the
    tuner's key stays out past the edge (Shift-drag puts it anywhere
    across), and along the neck between its side's neighbours
    (`startHoleDrag`); a dragged edge takes its holes along, each kept as

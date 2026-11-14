@@ -459,6 +459,19 @@ def test_headstock_editor_layout_gives_fitted_edges_and_the_holes(
     json.dumps(layout)
 
 
+def test_a_dragged_tuner_hole_too_near_its_edge_goes_in_to_it() -> None:
+    # Regression: a hole dragged along its edge kept the inset it had, so
+    # one already too near the edge (a design's bass 3, 13.9 mm in) stayed
+    # too near wherever it was slid; it now keeps min_edge_distance at least.
+    script = (Path(__file__).resolve().parent.parent / "site" / "app.js").read_text(
+        encoding="utf-8"
+    )
+    assert (
+        "const inset = Math.max(edge(-hole.x) - hole.y / sign, "
+        "this.layout.min_edge_distance);"
+    ) in script
+
+
 @pytest.mark.parametrize("style", ["3+3", "6_inline", "4+2"])
 def test_an_older_designs_fitted_headstock_loads_as_drawn(style: str) -> None:
     from cncguitarwizard.presets import Prototype001Parameters

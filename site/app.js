@@ -6500,8 +6500,9 @@ const headstockEditor = {
     }
   },
 
-  // Drag a tuner hole along its edge, kept as far in from it as it was,
-  // so the tuner's key stays out past the edge; Shift-drag puts it
+  // Drag a tuner hole along its edge, kept as far in from it as it was
+  // (but never nearer than min_edge_distance, so one too close goes in to
+  // it), so the tuner's key stays out past the edge; Shift-drag puts it
   // anywhere across. Along the neck it stays between its side's
   // neighbours (each side's holes run from the nut to the tip).
   startHoleDrag(event, index, node) {
@@ -6515,7 +6516,7 @@ const headstockEditor = {
     const further = at < same.length - 1 ? -same[at + 1].x - 1 : Infinity;
     const sign = this.sign(hole.side);
     const edge = this.curve(hole.side);
-    const inset = edge(-hole.x) - hole.y / sign;
+    const inset = Math.max(edge(-hole.x) - hole.y / sign, this.layout.min_edge_distance);
     const move = (moveEvent) => {
       const [x, y] = this.toModel(moveEvent);
       const distance = Math.min(Math.max(-x, nearer), further);

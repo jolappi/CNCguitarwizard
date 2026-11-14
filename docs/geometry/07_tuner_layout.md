@@ -59,8 +59,8 @@ other, and the headstock grows past `headstock_length` when the last
 one needs it; a fitted outline is fitted round them as round the
 style's (the edges below), a drawn one checked against them. The web
 app's headstock editor writes them when a hole is dragged — along its
-edge, as far in from it as it was, so the tuner's key stays out past
-the edge (Shift-drag: anywhere) — or when a dragged edge takes its holes
+edge, as far in from it as it was but at least `tuner_edge_offset`, so
+the tuner's key stays out past the edge (Shift-drag: anywhere) — or when a dragged edge takes its holes
 along (each as far in from its edge as it was); changing the style or its tuner settings there empties them, as
 loading a neck template does (`NECK_TEMPLATE_RESETS`). Points that do
 not fit the style — another count, not finite, a side out of order —
