@@ -1680,7 +1680,8 @@ def headstock_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         shoulder, at seven points along the taper and at the tip (ten
         handles a side); ``holes`` is a list of ``{"side", "x", "y", "r"}``
         in the order ``tuner_hole_points`` takes them, the least wood
-        between two of them ``hole_clearance``; ``lettering``
+        between two of them ``hole_clearance``; ``strings`` the strings
+        to draw over them (see ``_string_lines``); ``lettering``
         the headstock's lettering (see ``_headstock_lettering``), or ``None``;
         ``engraving`` the lines drawn on its face (see
         ``_headstock_drawn_engraving``), or ``None``; ``volute`` the volute
@@ -1703,6 +1704,7 @@ def headstock_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
             if not fitted.is_drawn:
                 raise
         centres = parameters.tuner_centres()
+        strings = _string_lines(parameters)
         # A locking nut wider than the neck is refused here too.
         nut = _nut_drawing(parameters)
         lettering = _headstock_lettering(built)
@@ -1746,7 +1748,37 @@ def headstock_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
             }
             for side, x, y in centres
         ],
+        "strings": strings,
     }
+
+
+def _string_lines(parameters: Prototype001Parameters) -> list[dict[str, Any]]:
+    """Return the strings for the headstock editor (model frame).
+
+    One ``{"nut", "bridge", "tuner"}`` per string, bass first: where it
+    leaves the nut and where it meets its saddle, ``[x, y]``, and the
+    tuner it is wound on, an index in ``holes`` (``string_tuners``), or
+    ``None``.
+    """
+    skew = parameters.fret_skew
+    scale = parameters.centre_scale
+    middle = (parameters.string_count + 1) / 2.0
+    lines: list[dict[str, Any]] = []
+    for string, tuner in enumerate(parameters.string_tuners(), start=1):
+        side = parameters.bass_sign * (middle - string)
+        nut_y = side * parameters.nut_string_spacing
+        bridge_y = side * parameters.bridge_string_spacing
+        lines.append(
+            {
+                "nut": [round(skew.at(0.0) * nut_y, 2), round(nut_y, 2)],
+                "bridge": [
+                    round(scale + skew.at(scale) * bridge_y, 2),
+                    round(bridge_y, 2),
+                ],
+                "tuner": tuner,
+            }
+        )
+    return lines
 
 
 VOLUTE_LINE_FIELDS = {

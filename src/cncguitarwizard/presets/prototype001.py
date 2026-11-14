@@ -2701,6 +2701,27 @@ class Prototype001Parameters:
                 centres.append((side, -distance, sign * offset))
         return tuple(centres)
 
+    def string_tuners(self) -> tuple[int | None, ...]:
+        """Return which tuner each string, bass first, is wound on.
+
+        Indices into ``tuner_centres``: the bass side's tuners from the nut
+        out take the bass strings from the outside in, the treble side's
+        the treble strings from the outside in (as a Gibson's or a
+        Fender's). A headstock turned round (``headstock_bass_side``) is
+        the mirror image, so the strings take its tuners the other way
+        round, the high E the one its bass side's would as drawn. ``None``
+        for a string with no tuner.
+        """
+        sides = [side for side, _, _ in self.tuner_centres()]
+        bass = [index for index, side in enumerate(sides) if side == "bass"]
+        treble = [index for index, side in enumerate(sides) if side == "treble"]
+        count = self.string_count
+        wound = [*bass, *reversed(treble)][:count]
+        tuners: list[int | None] = [*wound, *[None] * (count - len(wound))]
+        if self.headstock_sign != self.bass_sign:
+            tuners.reverse()
+        return tuple(tuners)
+
     def _roundover_square(
         self,
         outline: Sequence[Point2D],

@@ -212,6 +212,12 @@
 
 ### Added
 
+- The headstock editor draws the strings: each along its line on the
+  neck, over the nut and on to the post it is wound on (as the 3D
+  preview winds them, `Prototype001Parameters.string_tuners`, now
+  shared), thick to thin from the bass, following a dragged hole, so
+  the string pull past the nut can be seen while the holes are placed
+  (`webapp.headstock_editor_layout`'s `strings`).
 - `truss_rod_bullet_drilled`: a 1970s bullet rod's nut drilled in under
   the nut instead of its trough. `Neck_top` routs only the start of its
   hole behind the nut (`Truss-rod bullet hole start`, 8.5 x 13.7 mm, open

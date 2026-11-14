@@ -354,7 +354,11 @@ Python.
    can be drawn — Alt-click or right-click one to remove it), drawn over the tuner holes of the
    chosen style with a keep-out circle `tuner_edge_offset` round each; the
    panel names any hole the edge comes too close to, or two holes with
-   less than `tuner_hole_clearance` of wood between them. A dragged hole
+   less than `tuner_hole_clearance` of wood between them. The strings
+   are drawn over them, thick to thin from the bass: each along its line
+   on the neck, over the nut and on to the post it is wound on
+   (`strings` in the layout, `Prototype001Parameters.string_tuners`, as
+   the 3D preview winds them), following a dragged hole. A dragged hole
    slides along its edge, kept as far in from it as it was (but never
    nearer than `tuner_edge_offset`: one too near goes in to it), so the
    tuner's key stays out past the edge (Shift-drag puts it anywhere

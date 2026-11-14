@@ -459,6 +459,32 @@ def test_headstock_editor_layout_gives_fitted_edges_and_the_holes(
     json.dumps(layout)
 
 
+@pytest.mark.parametrize("bass_side", ["-y", "+y"])
+def test_the_headstock_editor_draws_each_string_to_its_tuner(bass_side: str) -> None:
+    layout = headstock_editor_layout({"prototype": {"headstock_bass_side": bass_side}})
+    strings, holes = layout["strings"], layout["holes"]
+
+    # Bass first, over the nut at its string spacing, on to the saddles.
+    nut = [string["nut"][1] for string in strings]
+    assert nut == [-17.5, -10.5, -3.5, 3.5, 10.5, 17.5]
+    assert all(string["bridge"][0] > 600.0 for string in strings)
+    # Each on its own tuner, on its own side of the headstock: the low E
+    # and the high E on the ones nearest the nut (as a Gibson's), turned
+    # round or not.
+    tuners = [holes[string["tuner"]] for string in strings]
+    assert sorted(string["tuner"] for string in strings) == list(range(6))
+    assert all(tuner["y"] * y > 0 for tuner, y in zip(tuners, nut, strict=True))
+    along = [-tuner["x"] for tuner in tuners]
+    assert along[:3] == sorted(along[:3])
+    assert along[3:] == sorted(along[3:], reverse=True)
+    # The editor draws them under the holes, following a dragged one.
+    script = (Path(__file__).resolve().parent.parent / "site" / "app.js").read_text(
+        encoding="utf-8"
+    )
+    assert "this.strings = layout.strings.map(" in script
+    assert "    this.showStrings();\n  },\n" in script
+
+
 def test_a_dragged_tuner_hole_too_near_its_edge_goes_in_to_it() -> None:
     # Regression: a hole dragged along its edge kept the inset it had, so
     # one already too near the edge (a design's bass 3, 13.9 mm in) stayed

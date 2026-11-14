@@ -1120,25 +1120,18 @@ def _rectangle(x0: float, x1: float, y0: float, y1: float) -> tuple[Point2D, ...
 def _posts_of_strings(
     geometry: Prototype001Geometry, parameters: Prototype001Parameters
 ) -> list[Vector | None]:
-    """Return where each string, bass first, is wound on its tuner's post:
-    the bass side's from the nut out to the bass strings from the outside
-    in, the treble side's to the treble strings from the outside in (as a
-    Gibson's or a Fender's). A headstock turned round
-    (``headstock_bass_side``) is the mirror image, so the strings take its
-    posts the other way round, the high E the one its bass side's would
-    as drawn. ``None`` for a string with no post."""
-    headstock = geometry.headstock
-    holes = geometry.tuner_layout.holes
-    bass = sorted((h for h in holes if h.side == "bass"), key=lambda h: h.index)
-    treble = sorted((h for h in holes if h.side == "treble"), key=lambda h: h.index)
-    count = parameters.string_count
+    """Return where each string, bass first, is wound on its tuner's post
+    (the tuner ``string_tuners`` gives it), or ``None`` for a string with
+    no post."""
+    centres = parameters.tuner_centres()
     posts: list[Vector | None] = []
-    for hole in [*bass, *reversed(treble)][:count]:
-        base, normal = _tuner_seat(headstock, hole.center)
+    for tuner in parameters.string_tuners():
+        if tuner is None:
+            posts.append(None)
+            continue
+        _, x, y = centres[tuner]
+        base, normal = _tuner_seat(geometry.headstock, Point2D(x, y))
         posts.append(_along(base, normal, _WIND_HEIGHT))
-    posts += [None] * (count - len(posts))
-    if parameters.headstock_sign != parameters.bass_sign:
-        posts.reverse()
     return posts
 
 

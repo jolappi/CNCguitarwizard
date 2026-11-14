@@ -6065,6 +6065,17 @@ const headstockEditor = {
     });
     this.element("title", {}, this.tipHit).textContent =
       "Click the tip to add a handle, Shift-click it to make the span straight (or curved again)";
+    // The strings, thick to thin from the bass: along their lines on the
+    // neck, over the nut and on to the posts they are wound on (as the 3D
+    // preview winds them), under the holes and following a dragged one.
+    this.strings = layout.strings.map((string, index) => {
+      const [nx, ny] = string.nut, [bx, by] = string.bridge;
+      const neck = [maxX, ny + ((by - ny) * (maxX - nx)) / (bx - nx)];
+      const width = 1.2 - (0.6 * index) / Math.max(1, layout.strings.length - 1);
+      const line = this.element("polyline", { class: "string", "stroke-width": width });
+      return { line, fixed: [neck, string.nut], tuner: string.tuner };
+    });
+    this.showStrings();
     // The tuner holes, each with the edge's clearance round it (dashed):
     // drag one to move it.
     this.holeNodes = layout.holes.map((hole, index) => {
@@ -6497,6 +6508,16 @@ const headstockEditor = {
     for (const node of Object.values(this.holeNodes[index])) {
       node.setAttribute("cx", hole.x);
       node.setAttribute("cy", -hole.y);
+    }
+    this.showStrings();
+  },
+
+  // Each string on to its tuner's post, where the hole is now.
+  showStrings() {
+    for (const { line, fixed, tuner } of this.strings) {
+      const hole = tuner === null ? null : this.layout.holes[tuner];
+      const points = hole ? [...fixed, [hole.x, hole.y]] : fixed;
+      line.setAttribute("points", points.map(([x, y]) => `${x},${-y}`).join(" "));
     }
   },
 
