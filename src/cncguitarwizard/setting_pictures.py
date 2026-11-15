@@ -412,6 +412,8 @@ NO_PICTURE = frozenset(
         "neck_feed_rate",
         "fretboard_feed_rate",
         "plunge_rate",
+        "neck_plunge_rate",
+        "fretboard_plunge_rate",
         "rapid_rate",
         "step_down",
         "step_over",

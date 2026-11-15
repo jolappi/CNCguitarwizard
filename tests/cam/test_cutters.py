@@ -103,8 +103,44 @@ def test_the_neck_and_fretboard_are_fed_at_their_own_feed_rates() -> None:
     assert (neck.flat.feed_rate, board.ball.feed_rate) == (1500, 1500)
 
 
-@pytest.mark.parametrize("name", ["neck_feed_rate", "fretboard_feed_rate"])
-def test_a_negative_feed_rate_of_a_part_is_rejected(name: str) -> None:
+def test_the_neck_and_fretboard_are_plunged_into_at_their_own_rates() -> None:
+    form = MachiningParameters(
+        plunge_rate=400.0, neck_plunge_rate=200.0, fretboard_plunge_rate=150.0
+    )
+    neck = NeckMachiningParameters().with_form_settings(form)
+    board = FretboardMachiningParameters().with_form_settings(form)
+
+    assert (neck.flat.plunge_rate, neck.ball.plunge_rate) == (200, 200)
+    assert (board.flat.plunge_rate, board.ball.plunge_rate) == (150, 150)
+    # The fret-slot and inlay cutters keep their own.
+    assert (board.slot.plunge_rate, board.inlay.plunge_rate) == (100, 100)
+    # The neck's programs plunge at it.
+    plan = plan_neck_machining(Prototype001Parameters().build(), neck, form)
+    cuts = {
+        move.feed
+        for setup in (plan.top, plan.back_rough)
+        for path in setup.toolpaths
+        for move in path.moves
+        if not move.rapid
+    }
+    assert 200 in cuts and 400 not in cuts
+    # 0 (the default): the body's.
+    plain = MachiningParameters(plunge_rate=400.0)
+    neck = NeckMachiningParameters().with_form_settings(plain)
+    board = FretboardMachiningParameters().with_form_settings(plain)
+    assert (neck.flat.plunge_rate, board.ball.plunge_rate) == (400, 400)
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "neck_feed_rate",
+        "fretboard_feed_rate",
+        "neck_plunge_rate",
+        "fretboard_plunge_rate",
+    ],
+)
+def test_a_negative_feed_or_plunge_rate_of_a_part_is_rejected(name: str) -> None:
     with pytest.raises(ToolpathError, match=name):
         MachiningParameters(**{name: -1.0})
 

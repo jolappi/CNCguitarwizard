@@ -983,10 +983,12 @@ Each says what it cuts and holds copies of its size and its depth per pass
 (`EDITOR_FIELDS`' `machining.<name>` entries, with labels of their own
 after a `=`), 0 for half the diameter, and under them what that comes to
 ("Cuts 3 mm wide, 1.5 mm a pass."). Last come the *Feed rates*: the
-body's (`feed_rate`, every other part's too), the neck's and the
-fretboard's (`neck_feed_rate`, `fretboard_feed_rate`, 0 for the body's),
-and what they come to ("Cuts the body at 1500, the neck at 800 and the
-fretboard at 1500 mm/min."). A cutter the design has no use for
+body's feed and plunge (`feed_rate`, `plunge_rate`, every other part's
+too), the neck's and the fretboard's (`neck_feed_rate`,
+`neck_plunge_rate`, `fretboard_feed_rate`, `fretboard_plunge_rate`, 0
+for the body's), and what they come to ("Cuts the body at 1500,
+plunging at 300; the neck at 800, plunging at 200; and the fretboard at
+1500, plunging at 300 mm/min."). A cutter the design has no use for
 (its settings do not apply: a nut jig's without one) is not shown
 (`hides-when-empty`). The settings stay in *Settings › Machining* too.
 

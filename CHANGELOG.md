@@ -218,6 +218,11 @@
   0 (the default) keeps `feed_rate`, the body's and every other part's.
   On *Build › Cutters and depths* under *Feed rates*, which says what
   each part comes to, and in *Settings › Machining*.
+- `neck_plunge_rate` and `fretboard_plunge_rate`: the neck and the
+  fretboard each plunged into at a rate of their own too; 0 (the
+  default) keeps `plunge_rate`, the body's. Beside the feeds under
+  *Feed rates* (with the body's `plunge_rate`) and in *Settings ›
+  Machining*.
 - The headstock editor draws the strings: each along its line on the
   neck, over the nut and on to the post it is wound on (as the 3D
   preview winds them, `Prototype001Parameters.string_tuners`, now

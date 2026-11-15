@@ -361,7 +361,7 @@
   // Every NC program's cutters on a page of their own (Build › Cutters
   // and depths): each cutter's size and how deep it cuts a pass (0 for
   // half its diameter), what it cuts and what that comes to, and each
-  // part's feed rate. A cutter the
+  // part's feed and plunge rates. A cutter the
   // design has no use for is not shown (its settings do not apply).
   const DIAMETER = "Diameter, mm";
   const DEPTH = "Depth per pass, mm (0: half the diameter)";
@@ -387,11 +387,13 @@
       [`relief_tool_diameter=${DIAMETER}`, `relief_step_down=${DEPTH}`]],
     ["vbit", "Engraving V-bit", "The engraved lines: the body's pattern and the headstock's lettering.",
       ["engraving_tool_angle=Angle, degrees", "engraving_step_down=Depth per pass, mm"]],
-    ["feeds", "Feed rates", "How fast the end mills and the ball nose cut each part: a soft body wood (alder, "
-      + "basswood) takes a faster feed than a maple neck. The body's is every other part's too; the fret-slot, "
-      + "inlay and engraving cutters keep their own.",
-      ["feed_rate=Body, mm/min", "neck_feed_rate=Neck, mm/min (0: the body's)",
-        "fretboard_feed_rate=Fretboard, mm/min (0: the body's)"]],
+    ["feeds", "Feed rates", "How fast the end mills and the ball nose cut and plunge into each part: a soft body "
+      + "wood (alder, basswood) takes faster feeds than a maple neck. The body's are every other part's too; the "
+      + "fret-slot, inlay and engraving cutters keep their own.",
+      ["feed_rate=Body feed, mm/min", "plunge_rate=Body plunge, mm/min",
+        "neck_feed_rate=Neck feed, mm/min (0: the body's)", "neck_plunge_rate=Neck plunge, mm/min (0: the body's)",
+        "fretboard_feed_rate=Fretboard feed, mm/min (0: the body's)",
+        "fretboard_plunge_rate=Fretboard plunge, mm/min (0: the body's)"]],
   ];
   const cuttersPage = document.createElement("div");
   cuttersPage.id = "desk-cutters";
@@ -399,7 +401,8 @@
   cuttersPage.innerHTML = `
     <h2>Cutters</h2>
     <p class="note">The cutters every NC program is cut with: each one's size and how deep it cuts a pass,
-      0 for half its diameter, and how fast each part is fed. Build again for the programs to follow.</p>`;
+      0 for half its diameter, and how fast each part is fed and plunged into. Build again for the programs to
+      follow.</p>`;
   for (const [key, title, note, names] of CUTTERS) {
     const section = document.createElement("section");
     section.className = "cutter hides-when-empty";
@@ -441,9 +444,12 @@
       pass(machining("relief_step_down"), machining("relief_tool_diameter"))),
     vbit: () => `a ${machining("engraving_tool_angle")}° V, ${mm(machining("engraving_step_down"))} a pass`,
     feeds: () => {
-      const body = machining("feed_rate");
-      return `the body at ${body}, the neck at ${machining("neck_feed_rate") || body} `
-        + `and the fretboard at ${machining("fretboard_feed_rate") || body} mm/min`;
+      const feed = machining("feed_rate");
+      const plunge = machining("plunge_rate");
+      const rates = (part) => `${machining(`${part}_feed_rate`) || feed}, plunging at `
+        + `${machining(`${part}_plunge_rate`) || plunge}`;
+      return `the body at ${feed}, plunging at ${plunge}; the neck at ${rates("neck")}; `
+        + `and the fretboard at ${rates("fretboard")} mm/min`;
     },
   };
   function showCutterSizes() {

@@ -153,9 +153,10 @@ class FretboardMachiningParameters:
         """Return these with the form's cutters and blank set.
 
         From the machining form: the flat end mill and the ball nose, their
-        sizes, depths and speeds (``with_cutter``, ``ball_cutter``), fed at
-        the fretboard's own feed (``fretboard_feed_rate``) where it has one;
-        the fret-slot cutter's (``fret_slot_tool_diameter``,
+        sizes, depths and speeds (``with_cutter``, ``ball_cutter``), fed and
+        plunged at the fretboard's own rates (``fretboard_feed_rate``,
+        ``fretboard_plunge_rate``) where it has them; the fret-slot
+        cutter's (``fret_slot_tool_diameter``,
         ``fret_slot_spindle_speed``, ``fret_slot_step_down``) and the
         inlay cutter's (``inlay_tool_diameter``, ``inlay_spindle_speed``,
         ``inlay_step_down``) sizes, speeds and step-downs, and eco mode for
@@ -165,6 +166,7 @@ class FretboardMachiningParameters:
         cutter = replace(
             machining,
             feed_rate=machining.fretboard_feed_rate or machining.feed_rate,
+            plunge_rate=machining.fretboard_plunge_rate or machining.plunge_rate,
         )
         return replace(
             self,

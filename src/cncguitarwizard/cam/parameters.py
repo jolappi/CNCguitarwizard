@@ -78,7 +78,12 @@ class MachiningParameters:
         fretboard_feed_rate: The fretboard's cutting feed, for its end
             mill and ball nose (the fret-slot and inlay cutters keep their
             own); ``0`` (the default) for ``feed_rate``.
-        plunge_rate: Feed for straight plunges and helical descents.
+        plunge_rate: Feed for straight plunges and helical descents: the
+            body's, and every part's without one of its own.
+        neck_plunge_rate: The neck's plunge feed, for its end mills and
+            ball nose; ``0`` (the default) for ``plunge_rate``.
+        fretboard_plunge_rate: The fretboard's plunge feed, for its end
+            mill and ball nose; ``0`` (the default) for ``plunge_rate``.
         rapid_rate: Nominal rapid speed, used only for time estimates.
         step_down: Maximum axial depth of cut per pass; ``0`` (the
             default) for half the tool's diameter.
@@ -258,6 +263,8 @@ class MachiningParameters:
     neck_feed_rate: float = 0.0
     fretboard_feed_rate: float = 0.0
     plunge_rate: float = 300.0
+    neck_plunge_rate: float = 0.0
+    fretboard_plunge_rate: float = 0.0
     rapid_rate: float = 3000.0
     step_down: float = 0.0
     step_over: float = 0.4
@@ -363,6 +370,8 @@ class MachiningParameters:
             "z_lift_rate": self.z_lift_rate,
             "neck_feed_rate": self.neck_feed_rate,
             "fretboard_feed_rate": self.fretboard_feed_rate,
+            "neck_plunge_rate": self.neck_plunge_rate,
+            "fretboard_plunge_rate": self.fretboard_plunge_rate,
             "carve_tool_diameter": self.carve_tool_diameter,
             "carve_flat_tool_diameter": self.carve_flat_tool_diameter,
             "small_hole_step_down": self.small_hole_step_down,
