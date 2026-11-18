@@ -212,6 +212,20 @@
 
 ### Added
 
+- The headstock editor shows each tuner: its post in the hole and its
+  key out past the edge (sideways toward its own side, as the 3D
+  preview places it; under the face, so only what reaches past the edge
+  shows), and the strings come off the posts' inner sides. *Straighten
+  strings* moves each hole across the neck, no further than needed, so
+  its string runs on straight past the nut to its post (half the post
+  outboard of the string's line, as the row styles place theirs); a hole
+  that then crowds one nearer the nut (a 3+3's paired middle posts)
+  moves on along its string's line until `tuner_hole_clearance` is left.
+  It then widens the headstock wherever a hole has come nearer its edge than
+  `tuner_edge_offset`: the edge lifted in a smooth swell round the hole,
+  its shape kept, the tip corners kept (a pointed tip stays pointed),
+  the tip moved on for a hole too near it
+  (`headstock_editor_layout`'s `post_radius`).
 - `neck_feed_rate` and `fretboard_feed_rate`: the neck and the fretboard
   each cut at a feed of their own (their end mills' and ball nose's), so
   a soft body wood (alder, basswood) can be fed faster than a maple neck;

@@ -354,11 +354,33 @@ Python.
    can be drawn — Alt-click or right-click one to remove it), drawn over the tuner holes of the
    chosen style with a keep-out circle `tuner_edge_offset` round each; the
    panel names any hole the edge comes too close to, or two holes with
-   less than `tuner_hole_clearance` of wood between them. The strings
+   less than `tuner_hole_clearance` of wood between them. Each hole
+   shows its tuner: the post standing in it (`post_radius` in the layout,
+   half `tuner_post_diameter`) and the key `TUNER_KEY_REACH` (26 mm)
+   sideways toward its own edge, as the 3D preview places it, drawn under
+   the face so only what reaches past the edge shows. The strings
    are drawn over them, thick to thin from the bass: each along its line
-   on the neck, over the nut and on to the post it is wound on
+   on the neck, over the nut and on to the post it is wound on, to the
+   post's side toward the middle where it comes off it
    (`strings` in the layout, `Prototype001Parameters.string_tuners`, as
-   the 3D preview winds them), following a dragged hole. A dragged hole
+   the 3D preview winds them), following a dragged hole. *Straighten
+   strings* moves each string's hole across the neck, its distance from
+   the nut kept, no further than it takes for the string to run on
+   straight past the nut: the post on the string's line, half its width
+   outboard, as the row styles place theirs (`straightenStrings`). Taken
+   from the nut outward, a hole that then crowds one already placed (a
+   3+3 whose middle strings' posts pair up across the centreline) moves
+   on along its string's line, so it stays straight, until
+   `tuner_hole_clearance` of wood is left between them. The
+   headstock then makes room for them (`makeRoom`): wherever a hole has
+   come nearer an edge than `tuner_edge_offset` (measured as the panel
+   and Python measure it, across at the hole), that edge is lifted in a
+   smooth swell round the hole, its handles raised by the shortfall
+   fading out a keep-out circle's width (twice `tuner_edge_offset`)
+   either side, so the outline keeps its shape (a handle is added on it
+   at the hole only where none is that near); the tip corners stay put,
+   a pointed tip pointed, and the tip moves on for a hole too near it.
+   It goes over the holes again until none is too near. A dragged hole
    slides along its edge, kept as far in from it as it was (but never
    nearer than `tuner_edge_offset`: one too near goes in to it), so the
    tuner's key stays out past the edge (Shift-drag puts it anywhere

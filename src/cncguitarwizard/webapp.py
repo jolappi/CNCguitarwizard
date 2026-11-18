@@ -1684,7 +1684,8 @@ def headstock_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         shoulder, at seven points along the taper and at the tip (ten
         handles a side); ``holes`` is a list of ``{"side", "x", "y", "r"}``
         in the order ``tuner_hole_points`` takes them, the least wood
-        between two of them ``hole_clearance``; ``strings`` the strings
+        between two of them ``hole_clearance``, the tuners' posts in them
+        ``post_radius``; ``strings`` the strings
         to draw over them (see ``_string_lines``); ``lettering``
         the headstock's lettering (see ``_headstock_lettering``), or ``None``;
         ``engraving`` the lines drawn on its face (see
@@ -1741,6 +1742,7 @@ def headstock_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         "bass_sign": fitted.bass_sign,
         "min_edge_distance": parameters.tuner_edge_offset,
         "hole_clearance": parameters.tuner_hole_clearance,
+        "post_radius": parameters.tuner_post_diameter / 2.0,
         "sample_step": 2.5,
         "start_edges": start_edges,
         "holes": [

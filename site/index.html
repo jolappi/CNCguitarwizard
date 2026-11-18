@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache">
 <!-- This page's stamp, set by tools/build_site.py (see the loader below). -->
-<meta name="cgw-page" content="4a1baa4e1e8c">
+<meta name="cgw-page" content="0f3a10e1477c">
 <title>CNCguitarwizard</title>
 <!-- three.js for the quick 3D model's viewer (quick3d.js), loaded only
      when it is first shown. -->
@@ -288,6 +288,9 @@
   .body-editor .handle:hover, .body-editor .handle.dragging { fill: var(--accent); }
   .body-editor .tuner-hole { fill: #fff; stroke: #222; stroke-width: 0.4; cursor: grab; }
   .body-editor .string { fill: none; stroke: #8f8f8f; stroke-linejoin: round; stroke-linecap: round; pointer-events: none; }
+  .body-editor .tuner-post { fill: #a8a8a8; stroke: #555; stroke-width: 0.3; pointer-events: none; }
+  .body-editor .tuner-shaft { stroke: #9a9a9a; stroke-width: 3.2; pointer-events: none; }
+  .body-editor .tuner-key { fill: #c8c8c8; stroke: #6e6e6e; stroke-width: 0.4; pointer-events: none; }
   .body-editor .tuner-hole:hover, .body-editor .tuner-hole.dragging { fill: #f3e2cf; stroke: var(--accent); stroke-width: 0.8; }
   /* A handle picked for the arrow keys (see pickHandle). */
   .body-editor .handle.picked { fill: var(--accent); stroke: #1f1a14; }
@@ -869,6 +872,7 @@
         <select id="headstock-editor-template"></select>
         <button id="headstock-editor-load" class="secondary" type="button">Load</button>
         <button id="headstock-editor-reset" class="secondary" type="button">Start over</button>
+        <button id="headstock-editor-straighten" class="secondary" type="button" title="Move each tuner hole across the neck, no further than needed, so its string runs straight past the nut to its post">Straighten strings</button>
         <button id="headstock-editor-reset-root" class="secondary" type="button" hidden title="Put the neck's joint with the headstock back to the smooth one, its lines where drawing them starts">Reset joint</button>
         <button id="headstock-editor-alike" class="secondary" type="button" hidden title="Both sides of each line behind the nut (the volute's or the joint's) shaped as its treble side is">Sides alike</button>
         <details class="menu">

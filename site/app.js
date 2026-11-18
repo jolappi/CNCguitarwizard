@@ -3012,6 +3012,9 @@ function headstockLegend(layout) {
   add(layout.holes.length > 0, "Tuner holes, drilled through", { fill: "#fff", stroke: "#222" }, "dot");
   add(layout.holes.length > 0, "How close a tuner hole may come to the edge (dashed)",
     { fill: "none", stroke: "#8a4b1e", "stroke-dasharray": "2,1.5" }, "dot");
+  add(layout.holes.length > 0, "The tuners' posts, in their holes", { fill: "#a8a8a8", stroke: "#555" }, "dot");
+  add(layout.holes.length > 0, "The tuners' keys, out past the edge", { fill: "#c8c8c8", stroke: "#6e6e6e" });
+  add(layout.strings.length > 0, "The strings, on to the posts they are wound on", { stroke: "#8f8f8f" }, "line");
   add(Boolean(layout.truss_cover), "The truss-rod cover, over its trough (dashed)",
     { fill: "#2b2b2b", "fill-opacity": 0.55, stroke: "#111" });
   add(Boolean(layout.lettering || layout.engraving), "Lettering and lines engraved into the face",
@@ -5452,6 +5455,12 @@ function smoothCurve(points) {
 const HEADSTOCK_TIP_POINT = 1.0;
 const HEADSTOCK_POINT_SNAP = 3.0;
 
+// A tuner's key as the headstock editor shows it, as the 3D preview
+// places it: how far it lies sideways from its post toward its own edge,
+// and its size along the neck and across, in mm.
+const TUNER_KEY_REACH = 26;
+const TUNER_KEY_SIZE = [13, 16];
+
 // The back as it is lofted, seen from behind and above (webapp.back_view,
 // "nut" or "heel"), drawn into an editor's view box; only the latest
 // asked for is shown.
@@ -5988,7 +5997,8 @@ const headstockEditor = {
     const layout = this.layout;
     const bass = this.samples("bass"), treble = this.samples("treble");
     const tip = this.tipSamples();
-    const all = [...bass, ...treble, ...tip, ...layout.holes.map((h) => [h.x, h.y])];
+    const keyTips = layout.holes.map((h) => [h.x, h.y + this.sign(h.side) * (TUNER_KEY_REACH + TUNER_KEY_SIZE[1] / 2)]);
+    const all = [...bass, ...treble, ...tip, ...layout.holes.map((h) => [h.x, h.y]), ...keyTips];
     const xs = all.map((p) => p[0]), ys = all.map((p) => p[1]);
     const margin = 25;
     const minX = Math.min(...xs) - margin, maxX = 70;
@@ -6011,6 +6021,13 @@ const headstockEditor = {
       });
       label.textContent = `${side} side`;
     }
+    // The tuners' keys, out past the edge toward their own side (as the
+    // 3D preview places them), under the face: only what reaches past the
+    // edge shows. They follow a dragged hole.
+    this.keys = layout.holes.map(() => ({
+      shaft: this.element("line", { class: "tuner-shaft" }),
+      key: this.element("ellipse", { class: "tuner-key", rx: TUNER_KEY_SIZE[0] / 2, ry: TUNER_KEY_SIZE[1] / 2 }),
+    }));
     this.element("path", {
       d: this.pathData([...bass, ...tip.slice(1, -1), ...[...treble].reverse()]) + " Z",
       fill: "#f1e4c8", stroke: "none",
@@ -6069,8 +6086,7 @@ const headstockEditor = {
     // neck, over the nut and on to the posts they are wound on (as the 3D
     // preview winds them), under the holes and following a dragged one.
     this.strings = layout.strings.map((string, index) => {
-      const [nx, ny] = string.nut, [bx, by] = string.bridge;
-      const neck = [maxX, ny + ((by - ny) * (maxX - nx)) / (bx - nx)];
+      const neck = [maxX, this.stringY(string, maxX)];
       const width = 1.2 - (0.6 * index) / Math.max(1, layout.strings.length - 1);
       const line = this.element("polyline", { class: "string", "stroke-width": width });
       return { line, fixed: [neck, string.nut], tuner: string.tuner };
@@ -6084,8 +6100,11 @@ const headstockEditor = {
       node.addEventListener("pointerdown", (event) => this.startHoleDrag(event, index, node));
       this.element("title", {}, node).textContent =
         `Tuner hole (${hole.side}) — drag to slide it along its edge, Shift-drag to move it anywhere`;
-      return { node, ring };
+      // The tuner's post standing in it.
+      const post = this.element("circle", { class: "tuner-post", cx: hole.x, cy: -hole.y, r: layout.post_radius });
+      return { node, ring, post };
     });
+    this.holeNodes.forEach((_, index) => this.showKey(index));
     // The truss-rod cover over the adjuster's trough (an adjuster at the
     // headstock), with its handles.
     if (layout.truss_cover) this.drawCover(layout.truss_cover);
@@ -6509,15 +6528,119 @@ const headstockEditor = {
       node.setAttribute("cx", hole.x);
       node.setAttribute("cy", -hole.y);
     }
+    this.showKey(index);
     this.showStrings();
   },
 
-  // Each string on to its tuner's post, where the hole is now.
+  // A tuner's key beside its hole, sideways toward its own edge.
+  showKey(index) {
+    const hole = this.layout.holes[index];
+    const { shaft, key } = this.keys[index];
+    const y = hole.y + this.sign(hole.side) * TUNER_KEY_REACH;
+    for (const [name, value] of [["x1", hole.x], ["y1", -hole.y], ["x2", hole.x], ["y2", -y]]) shaft.setAttribute(name, value);
+    key.setAttribute("cx", hole.x);
+    key.setAttribute("cy", -y);
+  },
+
+  // Where a string's line, bridge to nut, runs on past the nut: its Y at X.
+  stringY({ nut: [nx, ny], bridge: [bx, by] }, x) {
+    return ny + ((by - ny) * (x - nx)) / (bx - nx);
+  },
+
+  // Each string on to its tuner's post, where the hole is now: to the
+  // post's side toward the middle, where it comes off it.
   showStrings() {
     for (const { line, fixed, tuner } of this.strings) {
       const hole = tuner === null ? null : this.layout.holes[tuner];
-      const points = hole ? [...fixed, [hole.x, hole.y]] : fixed;
+      const post = hole && [hole.x, hole.y - this.sign(hole.side) * this.layout.post_radius];
+      const points = post ? [...fixed, post] : fixed;
       line.setAttribute("points", points.map(([x, y]) => `${x},${-y}`).join(" "));
+    }
+  },
+
+  // Each string's tuner hole moved across the neck, its distance from the
+  // nut kept, just far enough for the string to run on straight past the
+  // nut to its post: the post standing on the string's line, half its
+  // width outboard (as Python's row styles place them). Taken from the nut
+  // outward, a hole that then crowds one already placed moves on along
+  // its string's line (so it stays straight) until hole_clearance of wood
+  // is left between them; the headstock is then widened (or lengthened)
+  // wherever a hole came too near its edge.
+  straightenStrings() {
+    if (!this.layout) return;
+    const { holes, hole_clearance: clearance, post_radius: post } = this.layout;
+    const onLine = (string, hole, distance) => {
+      hole.x = -distance;
+      hole.y = this.stringY(string, hole.x) + this.sign(hole.side) * post;
+    };
+    const strings = this.layout.strings.filter((string) => string.tuner !== null);
+    strings.sort((a, b) => holes[b.tuner].x - holes[a.tuner].x);
+    const placed = [];
+    for (const string of strings) {
+      const hole = holes[string.tuner];
+      onLine(string, hole, -hole.x);
+      for (let step = 0; step < 20; step++) {
+        const crowded = placed.find((other) => Math.hypot(hole.x - other.x, hole.y - other.y) < hole.r + other.r + clearance);
+        if (!crowded) break;
+        const gap = hole.r + crowded.r + clearance + 0.1;
+        onLine(string, hole, -crowded.x + Math.sqrt(Math.max(gap * gap - (hole.y - crowded.y) ** 2, 0)));
+      }
+      placed.push(hole);
+    }
+    this.makeRoom();
+    this.commit();
+    this.commitHoles();
+    this.draw();
+  },
+
+  // The edges moved out wherever a hole is nearer one than
+  // min_edge_distance, measured as check measures it (across the neck at
+  // the hole, along it to the tip). The edge is lifted in a smooth swell
+  // round the hole, its handles raised by the shortfall fading to nothing
+  // a keep-out circle's width (twice min_edge_distance) away, so it keeps
+  // its shape (a handle added on it at the hole where none is that near);
+  // the tip corners stay, a pointed tip pointed, and the tip moves on for
+  // a hole too near it. The edges bent for one hole can come nearer
+  // another, so they are gone over again until none is too near.
+  makeRoom() {
+    const room = this.layout.min_edge_distance + 0.1;
+    const reach = 2 * this.layout.min_edge_distance;
+    const swell = (offset) => (Math.abs(offset) < reach ? (1 + Math.cos((Math.PI * offset) / reach)) / 2 : 0);
+    for (let round = 0; round < 30; round++) {
+      let moved = false;
+      for (const side of ["bass", "treble"]) {
+        const edge = this.edges[side];
+        const lifts = new Map();
+        for (const hole of this.layout.holes) {
+          const distance = -hole.x;
+          const short = hole.y / this.sign(side) + room - this.curve(side)(distance);
+          if (short <= 0.01) continue;
+          const handles = edge.slice(0, -1);
+          if (!handles.some(([d]) => Math.abs(d - distance) < reach)) {
+            const after = edge.findIndex(([d]) => d > distance);
+            if (after < 0) continue;
+            edge.splice(after, 0, [Math.round(distance * 10) / 10, Math.round(this.curve(side)(distance) * 10) / 10]);
+          }
+          edge.slice(0, -1).forEach((point, index) => {
+            lifts.set(index, Math.max(lifts.get(index) ?? 0, short * swell(point[0] - distance)));
+          });
+          moved = true;
+        }
+        for (const [index, lift] of lifts) {
+          const [d, h] = edge[index];
+          if (lift > 0) edge[index] = movedPoint(edge[index], [d, Math.ceil((h + lift) * 10) / 10]);
+        }
+      }
+      for (const hole of this.layout.holes) {
+        const short = room - this.tipClearance(hole.x, hole.y);
+        if (short <= 0.01) continue;
+        for (const edge of Object.values(this.edges)) {
+          const last = edge[edge.length - 1];
+          edge[edge.length - 1] = movedPoint(last, [Math.ceil((last[0] + short) * 10) / 10, last[1]]);
+        }
+        moved = true;
+      }
+      if (!moved) return;
     }
   },
 
@@ -7496,6 +7619,7 @@ document.getElementById("quick-model-frame").addEventListener("click", () => qui
 document.getElementById("quick-model-stl").addEventListener("click", () => quickModel.saveStl());
 
 document.getElementById("headstock-editor-reset").addEventListener("click", () => headstockEditor.reset());
+document.getElementById("headstock-editor-straighten").addEventListener("click", () => headstockEditor.straightenStrings());
 document.getElementById("headstock-editor-alike").addEventListener("click", () => {
   if (headstockEditor.backKind) backLines.sidesAlike.call(headstockEditor, headstockEditor.backKind);
 });

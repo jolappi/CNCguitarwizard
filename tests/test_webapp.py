@@ -485,6 +485,57 @@ def test_the_headstock_editor_draws_each_string_to_its_tuner(bass_side: str) -> 
     assert "    this.showStrings();\n  },\n" in script
 
 
+def test_the_headstock_editor_shows_each_tuners_post_and_key() -> None:
+    layout = headstock_editor_layout({"prototype": {}})
+    assert layout["post_radius"] == 3.0  # tuner_post_diameter's half
+    script = (Path(__file__).resolve().parent.parent / "site" / "app.js").read_text(
+        encoding="utf-8"
+    )
+    # The post in its hole; the key drawn before the face, so only what
+    # reaches past the edge shows; both following a dragged hole.
+    assert 'class: "tuner-post"' in script
+    keys = script.index("this.keys = layout.holes.map(")
+    assert keys < script.index('fill: "#f1e4c8", stroke: "none"')
+    assert "    this.showKey(index);\n    this.showStrings();" in script
+
+
+@pytest.mark.parametrize("style", ["6_inline", "6_inline_reverse", "4+2"])
+def test_straightened_strings_stand_each_post_where_a_row_style_does(
+    style: str,
+) -> None:
+    # Straighten strings stands each post on its string's line past the
+    # nut, half the post outboard of it, as the row styles lay their posts
+    # out: no string bends at the nut. The headstock is then widened where
+    # a hole came too near its edge (makeRoom), the outline saved with the
+    # holes.
+    layout = headstock_editor_layout({"prototype": {"headstock_style": style}})
+    radius = layout["post_radius"]
+    for string in layout["strings"]:
+        hole = layout["holes"][string["tuner"]]
+        (nx, ny), (bx, by) = string["nut"], string["bridge"]
+        line = ny + (by - ny) * (hole["x"] - nx) / (bx - nx)
+        sign = (1 if hole["side"] == "bass" else -1) * layout["bass_sign"]
+        assert hole["y"] == pytest.approx(line + sign * radius, abs=0.02)
+    script = (Path(__file__).resolve().parent.parent / "site" / "app.js").read_text(
+        encoding="utf-8"
+    )
+    assert (
+        "hole.y = this.stringY(string, hole.x) + this.sign(hole.side) * post;"
+    ) in script
+    assert (
+        'getElementById("headstock-editor-straighten").addEventListener('
+        '"click", () => headstockEditor.straightenStrings());'
+    ) in script
+    assert (
+        "    this.makeRoom();\n    this.commit();\n    this.commitHoles();\n"
+    ) in script
+    # A hole crowding one nearer the nut moved on along its own line.
+    assert "onLine(string, hole, -crowded.x + Math.sqrt(" in script
+    # Lifted in a swell round the hole, the tip corners kept.
+    assert "const short = hole.y / this.sign(side) + room - " in script
+    assert "edge.slice(0, -1).forEach((point, index) => {" in script
+
+
 def test_a_dragged_tuner_hole_too_near_its_edge_goes_in_to_it() -> None:
     # Regression: a hole dragged along its edge kept the inset it had, so
     # one already too near the edge (a design's bass 3, 13.9 mm in) stayed
