@@ -68,6 +68,10 @@ NECK_PLATE_EDGE_WALL = 1.0
 """Least flat back, in mm, between a neck plate and the back edge's
 roundover or binding (or the edge itself, when square)."""
 
+COVER_EDGE_WALL = 2.0
+"""Flat back, in mm, the back edge's roundover eases to leave before a rear
+cavity's cover too near the edge for it."""
+
 
 @dataclass(frozen=True, slots=True)
 class BodySolid:
@@ -562,18 +566,23 @@ class BodySolid:
             if edge.radius <= 0.0 and not edge.has_binding:
                 continue
             for cavity in cavities:
-                gap = min(_distance_to_outline(p, outline) for p in cavity.outline)
+                nearest = min(
+                    cavity.outline, key=lambda p: _distance_to_outline(p, outline)
+                )
+                gap = _distance_to_outline(nearest, outline)
                 if edge.has_binding and gap < edge.binding_width + 1.0:
                     raise BodyGeometryError(
                         f"{cavity.name} is {gap:.1f} mm from the edge; the {face} "
                         f"binding channel ({edge.binding_width:g} mm) needs "
                         f"{edge.binding_width + 1.0:g} mm."
                     )
-                drop = rim_drop(edge.radius, gap)
+                # Where the roundover eases round it (a cover), its radius there.
+                radius = edge.radius_at(nearest)
+                drop = rim_drop(radius, gap)
                 if drop > EDGE_RIM_TOLERANCE:
                     raise BodyGeometryError(
                         f"{cavity.name} is {gap:.1f} mm from the edge, so the "
-                        f"{edge.radius:g} mm {face} roundover would lower its rim "
+                        f"{radius:g} mm {face} roundover would lower its rim "
                         f"by {drop:.1f} mm; use a radius under "
                         f"{max_radius_for(gap):.1f} mm or move the cavity."
                     )

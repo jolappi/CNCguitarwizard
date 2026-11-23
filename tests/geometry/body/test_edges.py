@@ -1,12 +1,15 @@
 """Tests for edge finishes and contours."""
 
+import math
 from collections.abc import Callable
 from dataclasses import replace
 
 import pytest
 
+from cncguitarwizard.cam.planar import distance_to_boundary
 from cncguitarwizard.geometry.body import ContourCut, EdgeProfile
 from cncguitarwizard.geometry.body.body_solid import (
+    COVER_EDGE_WALL,
     EDGE_RIM_TOLERANCE,
     max_radius_for,
     rim_drop,
@@ -15,6 +18,9 @@ from cncguitarwizard.geometry.body.edges import (
     AROUND_FADE,
     AROUND_ROUND_FADE,
     AROUND_TAPER,
+    EASE_TAPER,
+    EasedRoundover,
+    eased_roundovers,
 )
 from cncguitarwizard.geometry.exceptions import BodyGeometryError
 from cncguitarwizard.geometry.primitives import Point2D, point_in_polygon
@@ -154,6 +160,71 @@ def test_a_roundover_may_lower_a_nearby_rim_a_little() -> None:
     # The Design by Jone neck pickup sits 8.3 mm from the edge: a 12 mm
     # roundover lowers its rim by 0.6 mm, under the pickup ring.
     replace(Prototype001Parameters(), body_top_edge_radius=12.0).build()
+
+
+def test_a_roundover_eases_round_a_cover_too_near_the_edge() -> None:
+    # A cover 5 mm in from the bottom edge: a 10 mm roundover would run on
+    # under it, so it eases to leave 1 mm of flat face before the cover.
+    cover = (
+        Point2D(-30.0, -95.0),
+        Point2D(30.0, -95.0),
+        Point2D(30.0, -60.0),
+        Point2D(-30.0, -60.0),
+    )
+    (stretch,) = eased_roundovers(square(), 10.0, [cover], 1.0)
+
+    assert min(stretch.radii) == pytest.approx(4.0, abs=0.01)
+    # Full again at either end, eased in and out no faster than the taper,
+    # along the bottom edge only.
+    assert stretch.radii[0] == stretch.radii[-1] == 10.0
+    for a, b, p, q in zip(
+        stretch.radii, stretch.radii[1:], stretch.edge, stretch.edge[1:], strict=False
+    ):
+        assert abs(b - a) <= EASE_TAPER * math.dist((p.x, p.y), (q.x, q.y)) + 1e-9
+    assert all(p.y == pytest.approx(-100.0) for p in stretch.edge)
+    assert -60.0 < min(p.x for p in stretch.edge) < -54.0
+    edge = EdgeProfile(radius=10.0, eased=(stretch,))
+    assert edge.radius_at(Point2D(0.0, -96.0)) == pytest.approx(4.0, abs=0.01)
+    assert edge.radius_at(Point2D(0.0, 96.0)) == 10.0
+    # 5 mm down, the 4 mm fillet beside the cover cuts nothing; the full
+    # one at the stretch's ends 1.34 mm in.
+    inner = stretch.band(5.0)[: len(stretch.edge)]
+    middle = stretch.radii.index(min(stretch.radii))
+    assert inner[middle] == stretch.edge[middle]
+    assert inner[0].y == pytest.approx(-100.0 + 1.34, abs=0.01)
+    # Clear of every cover, or with no roundover, it does not ease.
+    assert eased_roundovers(square(), 3.0, [cover], 1.0) == ()
+    assert eased_roundovers(square(), 0.0, [cover], 1.0) == ()
+
+
+def test_an_eased_roundover_needs_a_radius_at_every_sample() -> None:
+    a, b, up = Point2D(0.0, 0.0), Point2D(2.0, 0.0), Point2D(0.0, 1.0)
+    with pytest.raises(BodyGeometryError, match="matching"):
+        EasedRoundover((a, b), (up, up), (1.0,))
+    with pytest.raises(BodyGeometryError, match="zero or more"):
+        EasedRoundover((a, b), (up, up), (1.0, -1.0))
+
+
+def test_the_backs_roundover_eases_round_a_control_cover_near_the_edge() -> None:
+    # An 8 mm roundover on an SG's back would run on under its control
+    # cover, 5.5 mm in from the edge (an 11 mm one under a drawn
+    # Stratocaster's rear control cover lowered the cover's rim by nearly
+    # 1 mm): it eases there to leave 2 mm of flat back before the cover.
+    body = sg_style(body_back_edge_radius=8.0).build().body
+    outline = body.outline.points
+    assert body.control_cavity is not None
+    cover = body.control_cavity.cover_recess.outline
+    nearest = min(cover, key=lambda p: distance_to_boundary(p, outline))
+    gap = distance_to_boundary(nearest, outline)
+
+    radius = body.back_edge.radius_at(nearest)
+    assert radius == pytest.approx(gap - COVER_EDGE_WALL, abs=0.1)
+    assert rim_drop(radius, gap) == 0.0
+    # Full again either side of it (and of its switch cover, eased less).
+    assert body.back_edge.eased
+    assert all(s.radii[0] == s.radii[-1] == 8.0 for s in body.back_edge.eased)
+    # The top's roundover runs on full round it.
+    assert body.top_edge.eased == ()
 
 
 def test_a_contour_and_roundover_together_stay_within_half_the_body() -> None:

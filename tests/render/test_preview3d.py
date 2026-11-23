@@ -107,6 +107,29 @@ def test_the_body_shows_its_roundover_contours_and_routes() -> None:
     assert max(p[2] for p in back if p[0] > tail - 0.5) > -body_solid.thickness + 10.0
 
 
+def test_the_back_is_rounded_less_where_its_roundover_eases() -> None:
+    # An SG's 8 mm back roundover eases round its control cover, near the
+    # edge: the back's edge there rises only its smaller radius.
+    sg = STYLES["sg"]
+    parameters = Prototype001Parameters(
+        **{**sg.prototype_values("electric_guitar"), "body_back_edge_radius": 8.0}
+    )
+    body_solid = parameters.build(wired=False).body
+    stretch = min(body_solid.back_edge.eased, key=lambda s: min(s.radii))
+    eased = min(stretch.radii)
+    at = stretch.edge[stretch.radii.index(eased)]
+    back = [
+        p
+        for p in points(parts_of(parameters)[0])
+        if p[2] <= -body_solid.thickness / 2.0
+        and math.dist((p[0], p[1]), (at.x, at.y)) < 1.5
+    ]
+
+    edge_height = max(p[2] for p in back) + body_solid.thickness
+    assert edge_height == pytest.approx(eased, abs=0.4)
+    assert eased < 8.0 - 3.0
+
+
 def closed_and_outward(part: PreviewPart) -> bool:
     edges: Counter[tuple[int, int]] = Counter()
     tri = part.triangles

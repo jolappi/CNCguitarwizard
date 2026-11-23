@@ -386,6 +386,16 @@ wall (a Stratocaster's is 3 mm in), the roundover stops short of it
 `ROUNDOVER_PLATE_CLEARANCE`, 6 mm), the edge beside it left square, to
 blend by hand, as builders stop the router short of the plate; the model's
 rings and the roundover's passes break off there.
+A rear cavity's cover too near the edge for the back's roundover (a drawn
+Stratocaster's rear control cover 6.5 mm in, under an 11 mm roundover)
+has the roundover eased round it instead (`EdgeProfile.eased`,
+`eased_roundovers`): at every edge sample, `EASE_SPACING` (2 mm) apart,
+the radius is at most what leaves `COVER_EDGE_WALL` (2 mm) of flat back
+before the cover, changing by at most `EASE_TAPER`
+(0.25 mm per mm) along the edge, so it eases into a waist, not a notch,
+and is full again either side (an `EasedRoundover` stretch for each run
+of it). The ball nose sweeps each sample's own radius; the model cuts the
+stretch band by band (`EasedRoundover.band`) where the full rings skip it.
 A body whose cutaway runs close to the neck (the Design by Jone body)
 has no room for a plate; the Stratocaster style template has. A
 neck-through, set or one-piece neck has no plate. On a heel bevel the
@@ -946,7 +956,7 @@ Optional, and off by default (`geometry.body.edges`):
 
 | Parameter | Effect |
 | --- | --- |
-| `body_top_edge_radius`, `body_back_edge_radius` | Roundover radius of each edge (`EdgeProfile.radius`); the back's stops short of a neck plate too near the edge for it (`EdgeProfile.square`) |
+| `body_top_edge_radius`, `body_back_edge_radius` | Roundover radius of each edge (`EdgeProfile.radius`); the back's stops short of a neck plate too near the edge for it (`EdgeProfile.square`) and eases round a rear cavity's cover too near it (`EdgeProfile.eased`) |
 | `body_top_binding_width` / `_depth`, `body_back_binding_width` / `_depth` | A binding channel (rabbet) instead of a roundover; the default depth is 6 mm |
 | `body_arm_contour_depth`, `_width`, `_length`, `_position` | A Strat-style arm contour on the top of the bass-side rear bout |
 | `body_belly_cut_depth`, `_width`, `_length`, `_position` | A belly cut on the back of the bass-side upper bout |

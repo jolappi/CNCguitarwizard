@@ -269,7 +269,9 @@ sits in the neck-pocket cavity. The script then cuts, in order:
    its outermost band, all the steps down). FreeCAD's own fillet
    fails on outlines with pointed horns and tight cutaways, so a roundover
    is modelled as 1 mm rings, each trimmed back to the fillet's inset at
-   that depth with FreeCAD's 2D offset; a binding channel is one ring; an
+   that depth with FreeCAD's 2D offset (but where it eases round a cover,
+   `EdgeProfile.eased`: the rings skip that stretch, cut instead band by
+   band to each edge sample's own inset); a binding channel is one ring; an
    arm contour or belly cut is terraced in 1 mm steps from its depth map.
    All the layers go in one boolean cut. The model is therefore stepped;
    the G-code cuts the true surfaces.

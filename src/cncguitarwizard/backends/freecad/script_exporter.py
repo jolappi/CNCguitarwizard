@@ -4334,7 +4334,7 @@ def _body_edge_lines(
         "def edge_ring(inset, z_top, z_bottom, square=()):\n",
         "    # Everything outside the outline inset by `inset`, between two\n",
         "    # heights, but in the `square` regions (the roundover stopped\n",
-        "    # short of a neck plate).\n",
+        "    # short of a neck plate, or eased round a cover).\n",
         "    inner = body_outline_face.makeOffset2D(-inset, join=0) if inset > 1e-3 "
         "else body_outline_face\n",
         "    ring = slab_outside(inner, body_box, z_bottom, z_top - z_bottom)\n",
@@ -4365,10 +4365,13 @@ def _body_edge_lines(
             return -(depth + rim) if face == "top" else -body.thickness + depth
 
         if edge.radius > 0.0:
-            # The regions the roundover stops short of (a neck plate's).
+            # The regions the full roundover stops short of: a neck
+            # plate's, and every stretch it eases along (round a cover),
+            # cut there on its own, band by band.
+            skipped = (*edge.square, *(stretch.region() for stretch in edge.eased))
             square = (
-                ", [" + ", ".join(outline_literal(r) for r in edge.square) + "]"
-                if edge.square
+                ", [" + ", ".join(outline_literal(r) for r in skipped) + "]"
+                if skipped
                 else ""
             )
             layers = max(4, math.ceil(edge.radius / EDGE_LAYER))
@@ -4386,6 +4389,11 @@ def _body_edge_lines(
                         (high + 0.6, low) if face == "top" else (high, low - 0.6)
                     )
                 lines.append(f"edge_ring({inset!r}, {high!r}, {low!r}{square})\n")
+                for stretch in edge.eased:
+                    lines.append(
+                        f"terrace({outline_literal(stretch.band(middle))}, "
+                        f"{high!r}, {low!r})\n"
+                    )
         if edge.has_binding:
             high, low = sorted((z_of(0.0), z_of(edge.binding_depth)), reverse=True)
             high, low = (high + 0.6, low) if face == "top" else (high, low - 0.6)

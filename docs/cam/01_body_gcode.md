@@ -163,6 +163,9 @@ All optional and off by default (`cam.body_edges`):
   every 1.5 mm and pushed along smoothed normals; where a sample would come
   too close to a pointed horn or a tight cutaway the pass lifts over it.
   Inside an arm contour or belly cut the passes follow the bevel down.
+  Where the back's roundover eases round a rear cavity's cover
+  (`EdgeProfile.eased`) each sample's ball sweeps its own radius's
+  quarter circle.
 - **Arm contour / belly cut / heel relief**: the bevel's depth map is
   sampled on a 1 mm grid over its area plus the outline's slot, offset for
   the ball (drop-cutter), roughed in step-down layers and finished with

@@ -54,9 +54,13 @@ from ..geometry.body import (
     plateau_round,
     turned_hardware,
 )
-from ..geometry.body.body_solid import EDGE_RIM_TOLERANCE, NECK_PLATE_EDGE_WALL
+from ..geometry.body.body_solid import (
+    COVER_EDGE_WALL,
+    EDGE_RIM_TOLERANCE,
+    NECK_PLATE_EDGE_WALL,
+)
 from ..geometry.body.chambers import CHAMBER_WALL, plan_chambers
-from ..geometry.body.edges import AROUND_GAP
+from ..geometry.body.edges import AROUND_GAP, eased_roundovers
 from ..geometry.body.neck_through import NeckThrough
 from ..geometry.body.wiring import WireSpace, Wiring, plan_wiring
 from ..geometry.exceptions import (
@@ -5058,6 +5062,23 @@ class Prototype001Parameters:
                 self.body_back_binding_width,
                 self.body_back_binding_depth if self.body_back_binding_width else 0.0,
                 self._roundover_square(body_outline.points, neck_plate),
+                # Eased round every rear cavity's cover too near the edge
+                # for it, so the cover keeps to the flat back.
+                eased_roundovers(
+                    body_outline.points,
+                    self.body_back_edge_radius,
+                    [
+                        rear.cover_recess.outline
+                        for rear in (
+                            controls.control_cavity,
+                            controls.switch_cavity,
+                            controls.battery_cavity,
+                            *bridge.rear_cavities,
+                        )
+                        if rear is not None
+                    ],
+                    COVER_EDGE_WALL,
+                ),
             ),
             contours,
             truss_rod_access,

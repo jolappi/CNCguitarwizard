@@ -1320,6 +1320,9 @@ def _edge_setup(
                 (lambda point: edge.rounds_at(frame.model(point)))
                 if edge.square
                 else None,
+                (lambda point: edge.radius_at(frame.model(point)))
+                if edge.eased
+                else None,
             )
         )
     other = "Body_top" if face == "top" else "Body_back"

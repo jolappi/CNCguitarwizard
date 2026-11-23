@@ -1,6 +1,7 @@
 """Tests for the body's edge-finish programs."""
 
 import ast
+import json
 from dataclasses import replace
 
 import pytest
@@ -11,6 +12,7 @@ from cncguitarwizard.cam.body_edges import roundover_path
 from cncguitarwizard.geometry.primitives import Point2D
 from cncguitarwizard.presets import Prototype001Parameters
 from cncguitarwizard.presets.body_shapes import YOUR_DESIGN_TEMPLATES
+from cncguitarwizard.presets.styles import STYLES
 
 STRAT = YOUR_DESIGN_TEMPLATES["stratocaster"][1]
 
@@ -108,6 +110,57 @@ def test_a_roundover_breaks_off_where_the_edge_is_left_square() -> None:
     assert cuts and min(move.x for move in cuts) > 30.0
     # Still all round the rest: along the far side too.
     assert max(move.x for move in cuts) > 100.0
+
+
+def test_a_roundover_eases_where_its_radius_does() -> None:
+    # Eased to 3 mm along the bottom's left half (round a cover there),
+    # the ball sweeps the smaller quarter circle; the full 6 mm elsewhere.
+    square = (
+        Point2D(0.0, 0.0),
+        Point2D(100.0, 0.0),
+        Point2D(100.0, 100.0),
+        Point2D(0.0, 100.0),
+    )
+    ball = replace(MachiningParameters(), tool_tip="ball")
+    path = roundover_path(
+        "Round",
+        square,
+        6.0,
+        ball,
+        lambda point: 0.0,
+        radius_at=lambda p: 3.0 if p.x < 50.0 and p.y < 1.0 else 6.0,
+    )
+    cuts = [move for move in path.moves if not move.rapid]
+
+    # Along the bottom, clear of the corners.
+    eased = [m for m in cuts if 10.0 < m.x < 50.0 and m.y < 10.0]
+    full = [m for m in cuts if 50.0 < m.x < 90.0 and m.y < 10.0]
+    assert min(m.z for m in eased) == pytest.approx(-6.0)
+    assert min(m.z for m in full) == pytest.approx(-9.0)
+    # Its first pass touches the face nearer the edge.
+    assert max(m.y for m in eased) < max(m.y for m in full)
+
+
+def test_the_freecad_script_models_an_eased_roundover() -> None:
+    # The full roundover's rings skip the stretch it eases along, which is
+    # cut band by band with the smaller radius.
+    geometry = replace(
+        Prototype001Parameters.for_instrument("electric_guitar"),
+        **{
+            **STYLES["sg"].prototype_values("electric_guitar"),
+            "body_back_edge_radius": 8.0,
+        },
+    ).build()
+    eased = geometry.body.back_edge.eased
+    source = FreeCADScriptExporter().render_prototype001(geometry)
+
+    ast.parse(source)
+    assert eased
+    for stretch in eased:
+        band = [[p.x, p.y] for p in stretch.band(0.5)]
+        assert f"terrace({json.dumps(band, separators=(',', ':'))}, " in source
+        region = [[p.x, p.y] for p in stretch.region()]
+        assert source.count(json.dumps(region, separators=(",", ":"))) == 8
 
 
 def test_a_binding_channel_is_cut_with_the_main_tool() -> None:

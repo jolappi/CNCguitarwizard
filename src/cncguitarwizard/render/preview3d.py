@@ -381,10 +381,10 @@ def _body_pieces(body: BodySolid, spacing: float) -> list[_Piece]:
         """The top's depth below Z 0 and the back's height above its face."""
         top = body.top_drop_at(at.x, at.y) + contour_depth("top", at)
         if edge_distance < top_edge.radius and top_edge.rounds_at(at):
-            top += _round_drop(top_edge.radius, edge_distance)
+            top += _round_drop(top_edge.radius_at(at), edge_distance)
         back = contour_depth("back", at)
         if edge_distance < back_edge.radius and back_edge.rounds_at(at):
-            back += _round_drop(back_edge.radius, edge_distance)
+            back += _round_drop(back_edge.radius_at(at), edge_distance)
         return top, back
 
     core_routes = _route_depths(

@@ -4,6 +4,16 @@
 
 ### Changed
 
+- The back's roundover eases round a rear cavity's cover too near the
+  edge for it (`EdgeProfile.eased`, `eased_roundovers`): it ran on under
+  it, an 11 mm one on a drawn Stratocaster lowering its rear control
+  cover's rim by nearly 1 mm and leaving 2 mm of wood beside its recess.
+  Its radius there leaves `COVER_EDGE_WALL` (2 mm) of flat back before
+  the cover and changes by at most `EASE_TAPER` (0.25 mm per mm) along
+  the edge, full again either side; the ball nose sweeps each edge
+  sample's own radius, the FreeCAD model cuts the stretch band by band
+  and the 3D preview rounds it so. An SG's back eases round its control
+  cover (5 mm to 3.6 mm).
 - A truss rod laid in from the back and adjusted at the headstock (the
   1970s bullet rod, a one-piece neck's among them) has its channel along
   the neck's straight back alone (`geometry.neck.straight_span`), closed

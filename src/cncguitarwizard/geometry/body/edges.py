@@ -31,6 +31,10 @@ class EdgeProfile:
             neck's plate on the back where it sits too near the edge for
             the roundover (a Stratocaster's, 3 mm in), as builders stop
             the router short of it.
+        eased: Stretches of the edge where the roundover eases to a
+            smaller radius (``EasedRoundover``): round a cavity's cover on
+            the back too near the edge for the full one, so the cover
+            keeps to the flat face.
 
     Raises:
         BodyGeometryError: For a negative or non-finite value, or a
@@ -41,6 +45,7 @@ class EdgeProfile:
     binding_width: float = 0.0
     binding_depth: float = 0.0
     square: tuple[tuple[Point2D, ...], ...] = ()
+    eased: tuple[EasedRoundover, ...] = ()
 
     def __post_init__(self) -> None:
         """Reject a finish that cannot be cut."""
@@ -65,10 +70,178 @@ class EdgeProfile:
         in a ``square`` region."""
         return not any(point_in_polygon(point, region) for region in self.square)
 
+    def radius_at(self, point: Point2D) -> float:
+        """Return the roundover's radius at the edge beside ``point``.
+
+        ``radius``, but beside an eased stretch (``point`` within the
+        roundover's reach of one of its samples) the nearest sample's.
+        """
+        reach = self.radius + EASE_SPACING
+        for stretch in self.eased:
+            distance, radius = min(
+                (math.dist(_xy(sample), _xy(point)), radius)
+                for sample, radius in zip(stretch.edge, stretch.radii, strict=True)
+            )
+            if distance <= reach:
+                return radius
+        return self.radius
+
     @property
     def reach(self) -> float:
         """Return how far the finish reaches into the face, in mm."""
         return max(self.radius, self.binding_depth if self.has_binding else 0.0)
+
+
+EASE_SPACING = 2.0
+"""Spacing of the edge samples an eased roundover is described by, in mm."""
+
+EASE_TAPER = 0.25
+"""How fast an eased roundover narrows toward what it keeps clear of and
+widens again past it: its radius changes by at most this many millimetres
+per millimetre along the edge, so it eases into a waist, not a notch."""
+
+
+@dataclass(frozen=True, slots=True)
+class EasedRoundover:
+    """A stretch of an edge where its roundover eases to a smaller radius.
+
+    The radius eases down toward what it keeps clear of and back up past
+    it, to the full radius at either end of the stretch (see
+    ``eased_roundovers``).
+
+    Args:
+        edge: The stretch's samples along the outline, in order.
+        normals: The inward unit normal at each.
+        radii: The roundover's radius at each.
+
+    Raises:
+        BodyGeometryError: For mismatched samples or a negative radius.
+    """
+
+    edge: tuple[Point2D, ...]
+    normals: tuple[Point2D, ...]
+    radii: tuple[float, ...]
+
+    def __post_init__(self) -> None:
+        """Reject a stretch that cannot be cut."""
+        if not len(self.edge) == len(self.normals) == len(self.radii) >= 2:
+            raise BodyGeometryError("An eased roundover needs matching edge samples.")
+        if not all(math.isfinite(r) and r >= 0.0 for r in self.radii):
+            raise BodyGeometryError("An eased roundover's radii must be zero or more.")
+
+    def region(self) -> tuple[Point2D, ...]:
+        """Return the stretch's area: from ``CONTOUR_WASTE`` past the edge
+        in to ``EASE_SPACING`` past the most the roundover reaches in."""
+        return self._area([max(self.radii) + EASE_SPACING] * len(self.edge))
+
+    def band(self, depth: float) -> tuple[Point2D, ...]:
+        """Return what the roundover cuts along the stretch at ``depth``
+        below the face: from ``CONTOUR_WASTE`` past the edge in to where the
+        fillet is that deep (the edge itself where it is not as deep)."""
+        return self._area(
+            [
+                radius - math.sqrt(radius**2 - (radius - depth) ** 2)
+                if depth < radius
+                else 0.0
+                for radius in self.radii
+            ]
+        )
+
+    def _area(self, insets: Sequence[float]) -> tuple[Point2D, ...]:
+        """Return the area from ``CONTOUR_WASTE`` past the edge in to each
+        sample's inset."""
+        inner = [
+            Point2D(p.x + n.x * inset, p.y + n.y * inset)
+            for p, n, inset in zip(self.edge, self.normals, insets, strict=True)
+        ]
+        outer = [
+            Point2D(p.x - n.x * CONTOUR_WASTE, p.y - n.y * CONTOUR_WASTE)
+            for p, n in zip(self.edge, self.normals, strict=True)
+        ]
+        return (*inner, *reversed(outer))
+
+
+def eased_roundovers(
+    outline: Sequence[Point2D],
+    radius: float,
+    keep_clear: Sequence[Sequence[Point2D]],
+    gap: float,
+) -> tuple[EasedRoundover, ...]:
+    """Return where a roundover of ``radius`` round ``outline`` eases to keep clear.
+
+    At every sample of the edge (``EASE_SPACING`` apart) the radius is at
+    most what leaves ``gap`` between the roundover and the nearest of
+    ``keep_clear`` (outlines in the face: a cavity's cover), none where
+    not even that is left, eased by ``EASE_TAPER`` either way along the
+    edge. Each run of samples narrower than ``radius`` is one stretch,
+    from the full-radius sample before it to the one after it.
+
+    Raises:
+        BodyGeometryError: When the roundover would ease all round.
+    """
+    if radius <= 0.0 or not keep_clear:
+        return ()
+    points = _densified(outline, EASE_SPACING)
+    count = len(points)
+    radii = [radius] * count
+    near = radius + gap
+    for polygon in keep_clear:
+        closed = [*polygon, polygon[0]]
+        xs, ys = [p.x for p in polygon], [p.y for p in polygon]
+        for index, point in enumerate(points):
+            # Only the edge within reach of its box can come too near it.
+            if (
+                min(xs) - near <= point.x <= max(xs) + near
+                and min(ys) - near <= point.y <= max(ys) + near
+            ):
+                cap = max(0.0, _distance_to(closed, point) - gap)
+                radii[index] = min(radii[index], cap)
+    if min(radii) >= radius:
+        return ()
+    # Eased both ways round the loop, twice so it carries on past the seam.
+    for _ in range(2):
+        for index in range(count):
+            step = EASE_TAPER * math.dist(_xy(points[index - 1]), _xy(points[index]))
+            radii[index] = min(radii[index], radii[index - 1] + step)
+        for index in range(count - 1, -1, -1):
+            after = (index + 1) % count
+            step = EASE_TAPER * math.dist(_xy(points[index]), _xy(points[after]))
+            radii[index] = min(radii[index], radii[after] + step)
+    eased = [r < radius - 1e-6 for r in radii]
+    if all(eased):
+        raise BodyGeometryError("The roundover would have to ease all round.")
+    area = sum(
+        a.x * b.y - b.x * a.y
+        for a, b in zip(points, (*points[1:], points[0]), strict=True)
+    )
+
+    def normal(index: int) -> Point2D:
+        a, b = points[index - 1], points[(index + 1) % count]
+        tx, ty = b.x - a.x, b.y - a.y
+        size = math.hypot(tx, ty) or 1.0
+        tx, ty = tx / size, ty / size
+        return Point2D(-ty, tx) if area > 0.0 else Point2D(ty, -tx)
+
+    # Each run of eased samples, from a full-radius one round to the next.
+    stretches: list[EasedRoundover] = []
+    run: list[int] = []
+    start = eased.index(False)
+    for step in range(1, count + 1):
+        index = (start + step) % count
+        if eased[index]:
+            run = run or [(index - 1) % count]
+            run.append(index)
+        elif run:
+            run.append(index)
+            stretches.append(
+                EasedRoundover(
+                    tuple(points[k] for k in run),
+                    tuple(normal(k) for k in run),
+                    tuple(radii[k] for k in run),
+                )
+            )
+            run = []
+    return tuple(stretches)
 
 
 CONTOUR_SAMPLE_SPACING = 4.0

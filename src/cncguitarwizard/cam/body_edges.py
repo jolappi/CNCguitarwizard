@@ -168,6 +168,7 @@ def roundover_path(
     face_depth: Callable[[Point2D], float],
     floor: float = math.inf,
     cut_at: Callable[[Point2D], bool] | None = None,
+    radius_at: Callable[[Point2D], float] | None = None,
 ) -> Toolpath:
     """Return passes that round the outline's edge over with a ball nose.
 
@@ -178,7 +179,9 @@ def roundover_path(
     already cut there, so the roundover follows an arm contour. No pass
     goes deeper than ``floor``. ``cut_at`` says where the roundover is
     cut: a pass breaks off where it is not (the edge left square beside a
-    neck plate, to blend by hand).
+    neck plate, to blend by hand). ``radius_at`` gives the radius at each
+    point of the outline where it eases below ``radius`` (round a cover on
+    the back): there the ball sweeps that radius's quarter circle.
     """
     ball = tool.tool_radius
     reach = radius + ball
@@ -186,13 +189,17 @@ def roundover_path(
     count = max(2, math.ceil((math.pi / 2.0) / step))
     builder = _builder(name, tool)
     offsetter = _Offsetter(oriented(outline, clockwise=False))
+    radii = [
+        radius if radius_at is None else radius_at(point)
+        for point, _, _ in offsetter.samples
+    ]
     for index in range(1, count + 1):
         angle = (math.pi / 2.0) * index / count
-        offset = -radius + reach * math.sin(angle)
-        tip = reach * math.cos(angle) - radius - ball
-        for whole in offsetter.runs(offset):
+        offsets = [-r + (r + ball) * math.sin(angle) for r in radii]
+        tips = [(r + ball) * math.cos(angle) - r - ball for r in radii]
+        for whole in offsetter.runs(offsets):
             for run in _kept_runs(whole, cut_at):
-                points = [(p, max(tip - face_depth(p), -floor)) for p in run]
+                points = [(p, max(tips[k] - face_depth(p), -floor)) for p, k in run]
                 builder.rapid_to(points[0][0].x, points[0][0].y)
                 builder.rapid_down_to(points[0][1])
                 builder.plunge_to(points[0][1])
@@ -202,15 +209,16 @@ def roundover_path(
 
 
 def _kept_runs(
-    run: Sequence[Point2D], keep: Callable[[Point2D], bool] | None
-) -> list[Sequence[Point2D]]:
-    """Return ``run`` split where ``keep`` is false, each piece two points
-    or more; the whole of it without a ``keep``."""
+    run: Sequence[tuple[Point2D, int]], keep: Callable[[Point2D], bool] | None
+) -> list[Sequence[tuple[Point2D, int]]]:
+    """Return ``run`` (points with their samples' indices) split where
+    ``keep`` is false, each piece two points or more; the whole of it
+    without a ``keep``."""
     if keep is None:
         return [run]
-    pieces: list[list[Point2D]] = [[]]
+    pieces: list[list[tuple[Point2D, int]]] = [[]]
     for point in run:
-        if keep(point):
+        if keep(point[0]):
             pieces[-1].append(point)
         elif pieces[-1]:
             pieces.append([])
@@ -292,8 +300,9 @@ class _Offsetter:
                     return True
         return False
 
-    def runs(self, offset: float) -> list[list[Point2D]]:
-        """Return the outline offset outward by ``offset`` (inward if negative).
+    def runs(self, offsets: Sequence[float]) -> list[list[tuple[Point2D, int]]]:
+        """Return the outline with each sample moved outward by its offset
+        (inward if negative), each point with its sample's index.
 
         One closed loop (its first point repeated at the end) where every
         sample keeps its distance; otherwise the open runs between the
@@ -301,20 +310,23 @@ class _Offsetter:
         those spots instead of cutting a chord across them.
         """
         moved = [
-            Point2D(point.x + nx * offset, point.y + ny * offset)
-            for point, nx, ny in self.samples
+            (Point2D(point.x + nx * offset, point.y + ny * offset), index)
+            for index, ((point, nx, ny), offset) in enumerate(
+                zip(self.samples, offsets, strict=True)
+            )
         ]
-        if abs(offset) < 1e-6:
-            return [[*moved, moved[0]]]
-        kept = [not self._nearer_than(p, abs(offset)) for p in moved]
+        kept = [
+            abs(offset) < 1e-6 or not self._nearer_than(point, abs(offset))
+            for (point, _), offset in zip(moved, offsets, strict=True)
+        ]
         if all(kept):
             return [[*moved, moved[0]]]
         if not any(kept):
             return []
         # Start just after a dropped sample so no run wraps round.
         start = kept.index(False)
-        runs: list[list[Point2D]] = []
-        current: list[Point2D] = []
+        runs: list[list[tuple[Point2D, int]]] = []
+        current: list[tuple[Point2D, int]] = []
         for step in range(1, len(moved) + 1):
             index = (start + step) % len(moved)
             if kept[index]:
