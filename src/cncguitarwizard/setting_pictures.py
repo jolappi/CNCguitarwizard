@@ -437,6 +437,7 @@ NO_PICTURE = frozenset(
         "post_processor",
         "spindle_dwell",
         "z_lift_rate",
+        "air_feed_rate",
         "eco_mode",
         "combine_programs",
         "machine_x_travel",

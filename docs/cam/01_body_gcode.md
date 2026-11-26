@@ -20,6 +20,7 @@ the Prototype001 manufacturing specification (TwoTrees H40, GRBL):
 | `feed_rate` / `plunge_rate` | 1000 / 300 mm/min | Starting values — tune to the wood |
 | `neck_feed_rate` / `fretboard_feed_rate` | 0: `feed_rate` | The neck's and the fretboard's own cutting feed for their end mills and ball nose, a maple neck slower than a soft body (the fret-slot, inlay and engraving cutters keep their own) |
 | `neck_plunge_rate` / `fretboard_plunge_rate` | 0: `plunge_rate` | The neck's and the fretboard's own plunge feed for the same cutters |
+| `air_feed_rate` | 0: off | The feed through wood a program has already cut away, every program's (*Air feed*, below) |
 | `spindle_speed` | 10 000 rpm | Emitted with `M3` |
 | `safe_height` | 5 mm | Rapid traverse height above the stock top |
 | `tab_count` / `tab_length` / `tab_height` | 6 / 8 mm / 4 mm | Holding tabs on the final profile passes |
@@ -321,6 +322,40 @@ word, and every cut after it goes that much deeper: a pocket routed
 and the time estimate counts the lifts at their feed. Set it to what the
 Z axis lifts the spindle reliably at (500–1000 mm/min on a hobby machine),
 or lower the machine's own Z top speed (GRBL `$112`, `$122`) instead.
+
+## Air feed
+
+`air_feed_rate` (mm/min, 0 by default) feeds the cutter faster where a
+program goes back through wood it has already cut away: a peck back down
+its hole, a link across a pocket's cleared floor, a ball nose's pass over
+a stretch already finished. `cam.air_fed` follows the cutter down each
+program's moves over a grid of heights (a sixth of the cutter's diameter
+a cell, at most 1 mm), the wood under it lowered to it wherever it
+passes. A stretch of a feed move runs at the air feed where the cutter
+meets no wood along it, nor within 1 mm either way along its path
+(`AIR_CLEARANCE`, the same 1 mm eco mode's rapids stop over a floor), so
+it is back at the cutting or plunge feed before it meets wood again;
+wood no thicker than 0.05 mm (`AIR_TOLERANCE`) counts as air. Straight up
+or down it goes no faster than `z_lift_rate`, when that is set.
+
+The wood is unknown until the program cuts it: the stock top is not
+assumed anywhere, so what an earlier program cut, or a blank thicker than
+planned, is wood all the same, and so is the air over the stock top. The
+grid sees the wood to within about half a cell: on Prototype001 a 6 mm
+cutter at the air feed skims at most a 0.5 mm sliver off a wall it runs
+beside, and a ball nose crossing its own finished rows at most 0.4 mm
+off a scallop's crest. The path itself is unchanged — a move only partly
+through air is split where its feed changes — the time estimate counts
+the air at its feed, and the header of every program says `Air feed F…:
+through wood this program has already cut away`. KOSY caps it at nccad's
+fastest feed like any other, its header saying so.
+
+On Prototype001 at 3000 mm/min the programs take 480 minutes instead of
+510: the dowel holes 2.6 → 0.8, the back's small holes 4.4 → 1.7, the
+fretboard's inlay pockets 50 → 39. Eco mode, which already comes down
+fast to the last floor, leaves less to gain. Following the cutter takes
+some seconds a build (about 15 on the web page), so it is done only with
+an air feed set. Air-cut a program first like any other.
 
 ## Eco mode
 

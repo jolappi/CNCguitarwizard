@@ -1,5 +1,6 @@
 """Dependency-free 2.5D/3D CAM: toolpaths and GRBL G-code from the geometry."""
 
+from .air import air_fed
 from .body import BodyMachiningPlan, plan_body_machining
 from .combined import combined_setup, combined_setups, setup_runs
 from .covers import (
@@ -68,6 +69,7 @@ __all__ = [
     "StockBounds",
     "Toolpath",
     "ToolpathError",
+    "air_fed",
     "automatic_index_pins",
     "build_offset_grid",
     "clear_intervals",

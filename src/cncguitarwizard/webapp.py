@@ -40,6 +40,7 @@ from .cam import (
     FretboardMachiningParameters,
     GCodeWriter,
     MachiningParameters,
+    air_fed,
     plan_feature_machining,
     plan_fretboard_radius,
     program_stem,
@@ -392,6 +393,7 @@ _BASIC_FIELDS: frozenset[str] = frozenset(
         "post_processor",
         "spindle_dwell",
         "z_lift_rate",
+        "air_feed_rate",
         "eco_mode",
         "corner_cleanup",
         "combine_programs",
@@ -3296,7 +3298,7 @@ def fretboard_radius_program(payload: dict[str, Any]) -> dict[str, Any]:
         parameters = Prototype001Parameters(**_coerce(payload.get("prototype", {})))
         machining = MachiningParameters(**_coerce(payload.get("machining", {})))
         fretboard = FretboardMachiningParameters().with_form_settings(machining)
-        setup = plan_fretboard_radius(parameters.build(), fretboard)
+        setup = air_fed(plan_fretboard_radius(parameters.build(), fretboard), machining)
     except (CNCGuitarWizardError, TypeError, ValueError) as error:
         return {"error": f"{type(error).__name__}: {error}"}
     writer = GCodeWriter.for_parameters(machining)
@@ -3329,13 +3331,16 @@ def feature_programs(payload: dict[str, Any], group: str) -> dict[str, Any]:
         machining = MachiningParameters(**_coerce(payload.get("machining", {})))
         geometry = parameters.build()
         title = _group_title(group)
-        setups = plan_feature_machining(
-            geometry.body,
-            geometry.covers,
-            lambda name: _editor_group(name) == group,
-            title,
-            machining,
-        )
+        setups = [
+            air_fed(setup, machining)
+            for setup in plan_feature_machining(
+                geometry.body,
+                geometry.covers,
+                lambda name: _editor_group(name) == group,
+                title,
+                machining,
+            )
+        ]
     except (CNCGuitarWizardError, TypeError, ValueError) as error:
         return {"error": f"{type(error).__name__}: {error}"}
     writer = GCodeWriter.for_parameters(machining)

@@ -152,6 +152,14 @@ class MachiningParameters:
             at the machine's top speed. A heavy spindle's Z motor that
             stalls lifting loses steps, and every later cut goes deeper.
             ``0`` (the default): rapids (``G0``), at the machine's speed.
+        air_feed_rate: The feed, in mm/min, where a program goes back
+            through wood it has already cut away: a peck back down its
+            hole, a link across a pocket's cleared floor, a pass over a
+            stretch already finished. The cutter slows to the cutting or
+            plunge feed 1 mm before it meets wood again, and goes straight
+            up or down no faster than ``z_lift_rate`` when that is set
+            (``cam.air_fed``). ``0`` (the default): those stretches keep
+            the cutting and plunge feeds.
         eco_mode: Build the programs to cut as little air as they can.
             The cutter comes down fast (``G0``) to 1 mm over the floor its
             last pass left, not to the stock top, before it feeds down: a
@@ -289,6 +297,7 @@ class MachiningParameters:
     post_processor: PostProcessor = "grbl"
     spindle_dwell: float = 0.0
     z_lift_rate: float = 0.0
+    air_feed_rate: float = 0.0
     eco_mode: bool = False
     combine_programs: bool = False
     machine_x_travel: float | None = None
@@ -368,6 +377,7 @@ class MachiningParameters:
             "index_pin_wall": self.index_pin_wall,
             "spindle_dwell": self.spindle_dwell,
             "z_lift_rate": self.z_lift_rate,
+            "air_feed_rate": self.air_feed_rate,
             "neck_feed_rate": self.neck_feed_rate,
             "fretboard_feed_rate": self.fretboard_feed_rate,
             "neck_plunge_rate": self.neck_plunge_rate,

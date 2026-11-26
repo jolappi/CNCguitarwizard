@@ -31,6 +31,7 @@ from ..cam import (
     NeckMachiningParameters,
     NeckMachiningPlan,
     NutJigMachiningPlan,
+    air_fed,
     combined_setup,
     fitted_to_machine,
     nut_jig_tool,
@@ -302,7 +303,9 @@ class Prototype001Build:
                     )
                     for run in setup_runs(fit.setups, self.machining)
                 ]
-            for step, (setup, outline) in enumerate(programs, start=1):
+            for step, (planned, outline) in enumerate(programs, start=1):
+                # Its stretches through air at the air feed, if one is set.
+                setup = air_fed(planned, self.machining)
                 # Each file named for its program and its tool
                 # (Body_top_6mm_flathead.nc), its plot the same.
                 stem = program_stem(setup, self.machining)

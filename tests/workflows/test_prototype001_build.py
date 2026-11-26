@@ -310,6 +310,24 @@ def test_build_writes_every_program_in_the_chosen_dialect(tmp_path: Path) -> Non
         assert "G4 X2.000" in lines, path.name
 
 
+def test_build_feeds_every_programs_air_at_the_air_feed(tmp_path: Path) -> None:
+    result = build_prototype001(
+        tmp_path / "output",
+        run_freecad=False,
+        machining=MachiningParameters(air_feed_rate=3000.0),
+    )
+    report = json.loads(result.report_path.read_text(encoding="utf-8"))
+    texts = {path.name: path.read_text(encoding="utf-8") for path in result.gcode_paths}
+
+    assert texts
+    for name, text in texts.items():
+        assert "(Air feed F3000: through wood" in text, name
+    # The dowel holes' pecks go back down them fast, and the estimate
+    # counts it (2.6 minutes without).
+    assert "F3000" in texts["Body_index_pins_6mm_flathead.nc"].split("M3 S")[1]
+    assert report["gcode"]["Body_index_pins"]["estimated_minutes"] < 1.0
+
+
 def test_build_writes_kosy_programs_as_knc_files(tmp_path: Path) -> None:
     result = build_prototype001(
         tmp_path / "output",

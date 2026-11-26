@@ -222,6 +222,16 @@
 
 ### Added
 
+- `air_feed_rate` (*Air feed rate*, mm/min, in *Settings › Machining*):
+  where a program goes back through wood it has already cut away (a peck
+  back down its hole, a link across a cleared pocket floor, a pass over
+  a stretch already finished), the cutter is fed at it, and back at the
+  cutting or plunge feed 1 mm before it meets wood again
+  (`cam.air_fed`, which follows the cutter over a grid of heights). The
+  stock top is not assumed: only what the program itself cut is air.
+  Straight up or down no faster than `z_lift_rate` when that is set; the
+  header says so and the time estimate counts it. 0 (the default) keeps
+  the programs as they were.
 - The headstock editor shows each tuner: its post in the hole and its
   key out past the edge (sideways toward its own side, as the 3D
   preview places it; under the face, so only what reaches past the edge

@@ -194,7 +194,13 @@ class GCodeWriter:
             lines.append(note(ECO_MODE_NOTE))
         lines.extend(note(text) for text in setup.notes)
         kosy = dialect == "kosy"
-        feeds = (parameters.feed_rate, parameters.plunge_rate, self.z_lift_rate)
+        # The tool's feeds, and every move's own (the air feed's too).
+        feeds = (
+            parameters.feed_rate,
+            parameters.plunge_rate,
+            self.z_lift_rate,
+            *(move.feed or 0.0 for path in setup.toolpaths for move in path.moves),
+        )
         if kosy and max(feeds) > KOSY_MAX_FEED:
             lines.append(
                 note(f"Feeds over {KOSY_MAX_FEED:g} mm/min are cut at nccad's F200")
