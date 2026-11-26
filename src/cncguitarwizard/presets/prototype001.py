@@ -862,8 +862,9 @@ class TrussRodFit:
             else ``recommended``; ``None`` when ``truss_rod_length`` sets
             the route directly.
         route_length: The routed channel, step and pocket together.
-        outside: How much of the rod lies outside the route: the adjuster's
-            head, and at the heel its sleeve in the hand-drilled bore.
+        outside: How much of the rod lies outside the route: a spoke
+            wheel's head, and at the heel its sleeve in the bore; nothing
+            without a wheel, the whole rod in the route.
     """
 
     longest: float
@@ -1574,7 +1575,9 @@ class Prototype001Parameters:
     # truss_rod_stock_lengths that fits between truss_rod_start (at the
     # headstock, the nut shelf) and the adjusting end: at the heel the
     # route ends where the sleeve's bore starts, from the headstock 12 mm
-    # before the heel end. truss_rod_length sets the route itself instead.
+    # before the heel end. Only a spoke wheel (and its sleeve) lies outside
+    # the route: without one the whole rod lies in it. truss_rod_length
+    # sets the route itself instead.
     truss_rod_start: float = 12.0
     truss_rod_rod_length: float | None = None
     truss_rod_stock_lengths: tuple[float, ...] = TRUSS_ROD_STOCK_LENGTHS
@@ -3891,6 +3894,11 @@ class Prototype001Parameters:
             # The adjuster nut ends at the heel's end face: the whole rod
             # lies in the route.
             end, outside = heel_end, 0.0
+        elif not wheel:
+            # The key reaches the adjuster through its notch behind the
+            # nut, which has no room for a head: the whole rod lies in the
+            # route.
+            end, outside = heel_end - 12.0, 0.0
         else:
             end = heel_end - (self.truss_rod_sleeve_length if heel else 12.0)
             outside = self.truss_rod_nut_length + (

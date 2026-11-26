@@ -93,9 +93,10 @@ def test_a_headstock_adjusted_rod_runs_under_the_nut_into_a_trough() -> None:
     heel_end = (
         geometry.neck_outline.last_fret_position + geometry.neck_outline.heel_length
     )
-    # A 460 mm stock rod: its head in the trough, its anchor end just short
-    # of the longest route, 12 mm before the heel end.
-    assert truss.end_position == pytest.approx(-5.0 + 460.0 - 6.0)
+    # A 440 mm stock rod, whole in the route (the notch has no room for its
+    # head), its anchor end short of the longest route, 12 mm before the
+    # heel end.
+    assert truss.end_position == pytest.approx(-5.0 + 440.0)
     assert truss.end_position <= heel_end - 12.0
     # No access notch in the body.
     assert geometry.body.truss_rod_access is None

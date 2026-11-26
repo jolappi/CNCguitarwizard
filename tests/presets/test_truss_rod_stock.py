@@ -63,6 +63,20 @@ def test_a_shorter_rod_adjusted_at_the_headstock_ends_sooner() -> None:
     assert rod.end_position == pytest.approx(long_rod.end_position - (stock - 420.0))
 
 
+def test_a_rod_turned_with_a_key_at_the_headstock_lies_whole_in_its_route() -> None:
+    # Regression: its 6 mm head was counted outside the route, in the key's
+    # notch, which has no room for it, so the rod did not fit by as much.
+    parameters = replace(GUITAR, truss_rod_adjustment="headstock")
+    fit = parameters.truss_rod_fit(parameters.neck_outline())
+
+    assert fit.outside == 0.0
+    assert fit.route_length == fit.rod_length == 440.0
+    assert parameters.truss_rod(parameters.neck_outline()).length == 440.0
+    # A spoke wheel turns in its own trough, outside the route.
+    wheel = replace(parameters, truss_rod_spoke_wheel="yes")
+    assert wheel.truss_rod_fit(wheel.neck_outline()).outside == 6.0
+
+
 def test_a_rod_too_long_for_the_neck_is_rejected_with_advice() -> None:
     parameters = replace(GUITAR, truss_rod_rod_length=460.0)
 

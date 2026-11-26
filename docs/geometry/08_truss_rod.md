@@ -19,7 +19,7 @@ Rods are sold by overall length, adjuster head included, in 20 mm steps
 
 | Field | Meaning |
 | --- | --- |
-| `longest` | The longest rod the neck takes: the route from `truss_rod_start` (12 mm from the nut; at the headstock, the nut shelf) to the adjusting end, plus what lies outside it (`outside`: the head, and at the heel the 12 mm sleeve) |
+| `longest` | The longest rod the neck takes: the route from `truss_rod_start` (12 mm from the nut; at the headstock, the nut shelf) to the adjusting end, plus what lies outside it (`outside`: a spoke wheel's head, and at the heel its 12 mm sleeve; 0 without a wheel) |
 | `recommended` | The longest of `truss_rod_stock_lengths` (300–600 mm every 20 mm, `TRUSS_ROD_STOCK_LENGTHS`) that fits |
 | `rod_length` | The rod routed for: `truss_rod_rod_length`, or else `recommended` |
 | `route_length` | The channel, step and pocket: `rod_length - outside` |
@@ -163,9 +163,10 @@ headstock, on a standard rod only (`Prototype001Parameters.truss_rod_spoke_wheel
   `truss_rod_key_hole_diameter` (8 mm) wide, the head's length + 2 mm
   long, down to the axis plus the key's radius (11.5 mm; `access_diameter`,
   `TrussRodChannel.adjuster_boundary`) — a trough for the head would
-  break through an angled headstock's root. It is covered behind a shelf
-  nut and open behind a slotted one; `Neck_top.nc`'s notes say to drill
-  any longer hole on by hand.
+  break through an angled headstock's root. The adjuster lies in the
+  route, its end at the route's start, so the whole rod does (`outside`
+  0). It is covered behind a shelf nut and open behind a slotted one;
+  `Neck_top.nc`'s notes say to drill any longer hole on by hand.
 
 ### Low-profile rod
 

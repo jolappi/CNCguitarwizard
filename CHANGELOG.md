@@ -1971,6 +1971,13 @@
 
 ### Fixed
 
+- A truss rod adjusted at the headstock without a spoke wheel lies whole
+  in its route (`TrussRodFit.outside` 0): its 6 mm head
+  (`truss_rod_nut_length`) was counted outside the route, in the key's
+  notch behind the nut, which has no room for it, so the channel was cut
+  that much short at the rod's thin end and a stock rod did not go in. A
+  neck may now take the next shorter stock rod: the default six-string
+  one adjusted at the headstock a 440 mm rod, not 460.
 - A tuner hole too near its drawn headstock edge goes in to
   `tuner_edge_offset` when dragged. A hole slides along its edge kept as
   far in from it as it was, so one already too near (a design's bass 3,
