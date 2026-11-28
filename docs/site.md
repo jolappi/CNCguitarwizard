@@ -357,8 +357,14 @@ Python.
    less than `tuner_hole_clearance` of wood between them. Each hole
    shows its tuner: the post standing in it (`post_radius` in the layout,
    half `tuner_post_diameter`) and the key `TUNER_KEY_REACH` (26 mm)
-   sideways toward its own edge, as the 3D preview places it, drawn under
-   the face so only what reaches past the edge shows. The strings
+   sideways toward its own edge, turned by its angle (`key` in the
+   layout, `Prototype001Parameters.key_angles`), as the 3D preview places
+   it, drawn under the face so only what reaches past the edge shows.
+   Drag a key round its post to turn it (the arrow keys turn a picked
+   one): in whole degrees, at most 90 either way from straight out,
+   written to `tuner_key_angles` (emptied while every key points
+   straight out). *Start over*, and changing the style or its tuner
+   settings by hand, put every key straight out again. The strings
    are drawn over them, thick to thin from the bass: each along its line
    on the neck, over the nut and on to the post it is wound on, to the
    post's side toward the middle where it comes off it

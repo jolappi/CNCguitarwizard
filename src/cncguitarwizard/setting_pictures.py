@@ -166,8 +166,9 @@ SETTING_PICTURES: dict[str, SettingPicture] = {
         "plan",
         "tuner_hole_diameter tuner_station_distances tuner_side_offsets "
         "tuner_inline_first_distance tuner_inline_spacing tuner_inline_offsets "
-        "tuner_hole_points tuner_edge_offset tuner_tip_margin tuner_post_diameter "
-        "tuner_edge_clearance tuner_hole_clearance tuner_chamfer_depth",
+        "tuner_hole_points tuner_key_angles tuner_edge_offset tuner_tip_margin "
+        "tuner_post_diameter tuner_edge_clearance tuner_hole_clearance "
+        "tuner_chamfer_depth",
         _TUNERS,
     ),
     **_same(

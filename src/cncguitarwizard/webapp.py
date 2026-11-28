@@ -1684,8 +1684,9 @@ def headstock_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
         "holes"}`` or ``{"error": message}``. ``start_edges`` are the
         fitted outline's edges, sampled halfway to the shoulder, at the
         shoulder, at seven points along the taper and at the tip (ten
-        handles a side); ``holes`` is a list of ``{"side", "x", "y", "r"}``
-        in the order ``tuner_hole_points`` takes them, the least wood
+        handles a side); ``holes`` is a list of ``{"side", "x", "y", "r",
+        "key"}`` in the order ``tuner_hole_points`` takes them, ``key``
+        the tuner's key's angle (``key_angles``), the least wood
         between two of them ``hole_clearance``, the tuners' posts in them
         ``post_radius``; ``strings`` the strings
         to draw over them (see ``_string_lines``); ``lettering``
@@ -1711,6 +1712,7 @@ def headstock_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
             if not fitted.is_drawn:
                 raise
         centres = parameters.tuner_centres()
+        keys = parameters.key_angles()
         strings = _string_lines(parameters)
         # A locking nut wider than the neck is refused here too.
         nut = _nut_drawing(parameters)
@@ -1753,8 +1755,9 @@ def headstock_editor_layout(payload: dict[str, Any]) -> dict[str, Any]:
                 "x": round(x, 2),
                 "y": round(y, 2),
                 "r": parameters.tuner_hole_diameter / 2.0,
+                "key": key,
             }
-            for side, x, y in centres
+            for (side, x, y), key in zip(centres, keys, strict=True)
         ],
         "strings": strings,
     }

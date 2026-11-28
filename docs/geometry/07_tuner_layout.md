@@ -67,6 +67,14 @@ not fit the style — another count, not finite, a side out of order —
 are refused, naming the field. Empty: every hole where the style puts
 it.
 
+**Keys turned.** `tuner_key_angles` turns each tuner's key in its hole:
+degrees from straight out across the neck (toward the hole's own edge),
+positive toward the tip, one per hole in `tuner_hole_points`' order and
+at most 90 either way (`Prototype001Parameters.key_angles`, which gives 0
+for each when none is given). Only the 3D preview and the headstock
+editor show the keys; the holes are drilled the same either way. Another
+count, or an angle not finite or past 90, is refused.
+
 **Edges follow the holes, outside a wood reserve.** Each headstock edge
 that carries tuners is the straight line fitted through those holes
 `tuner_edge_offset` (15 mm) further out, from the shoulder to the tip, so

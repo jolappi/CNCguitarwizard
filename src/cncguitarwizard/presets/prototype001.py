@@ -1818,6 +1818,13 @@ class Prototype001Parameters:
     # along; a fitted outline is fitted round them as round the style's.
     # Empty: every hole where the style puts it.
     tuner_hole_points: tuple[tuple[float, float], ...] = ()
+    # tuner_key_angles turns each tuner's key in its hole: degrees from
+    # straight out across the neck toward the hole's own edge, positive
+    # toward the tip, one per hole in tuner_hole_points' order (at most 90
+    # either way). The headstock editor writes them when a key is dragged
+    # round its post; the 3D preview shows them. Empty: every key straight
+    # out.
+    tuner_key_angles: tuple[float, ...] = ()
     tuner_edge_offset: float = 15.0
     tuner_tip_margin: float = 5.0
     tuner_post_diameter: float = 6.0
@@ -2707,6 +2714,37 @@ class Prototype001Parameters:
                 sign = layout.bass_sign * (1.0 if side == "bass" else -1.0)
                 centres.append((side, -distance, sign * offset))
         return tuple(centres)
+
+    def key_angles(self) -> tuple[float, ...]:
+        """Return how far each tuner's key is turned, in ``tuner_centres``' order.
+
+        Degrees from straight out across the neck, positive toward the
+        tip: ``tuner_key_angles``, or every key straight out (0) when none
+        is given. A headless neck has no tuners.
+
+        Returns:
+            One angle per tuner hole.
+
+        Raises:
+            NeckGeometryError: If the angles are not one per tuner hole,
+                each finite and at most 90 degrees from straight out.
+        """
+        if self.headless:
+            return ()
+        holes = sum(HEADSTOCK_STYLES[self.headstock_style])
+        angles = self.tuner_key_angles or (0.0,) * holes
+        if len(angles) != holes:
+            raise NeckGeometryError(
+                f"A {self.headstock_style} headstock has {holes} tuners; "
+                f"tuner_key_angles gives {len(angles)}: one angle per tuner, "
+                "or none for every key straight out."
+            )
+        if not all(math.isfinite(angle) and abs(angle) <= 90.0 for angle in angles):
+            raise NeckGeometryError(
+                "tuner_key_angles must be finite, each at most 90 degrees "
+                "from straight out."
+            )
+        return angles
 
     def string_tuners(self) -> tuple[int | None, ...]:
         """Return which tuner each string, bass first, is wound on.
@@ -7936,6 +7974,7 @@ class Prototype001Parameters:
             )
         if not self.headless:
             self._check_inline_offsets()
+            self.key_angles()
         inline_values = (
             self.tuner_inline_first_distance,
             self.tuner_inline_spacing,
@@ -9280,6 +9319,7 @@ NECK_TEMPLATE_RESETS: frozenset[str] = frozenset(
         "headstock_tip_points",
         "tuner_inline_offsets",
         "tuner_hole_points",
+        "tuner_key_angles",
         "tuner_inline_first_distance",
         "tuner_inline_spacing",
         "tuner_station_distances",

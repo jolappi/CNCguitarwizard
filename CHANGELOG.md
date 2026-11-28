@@ -222,6 +222,14 @@
 
 ### Added
 
+- The headstock editor turns the tuners' keys: drag one round its post
+  (or turn a picked one with the arrow keys), in whole degrees, at most
+  90 either way from straight out. The angles are written to
+  `tuner_key_angles` (*Tuner key angles*, one per hole, positive toward
+  the tip; empty while every key points straight out) and the 3D
+  preview turns each button so. *Start over*, a neck template or a
+  change of the style or its tuner settings by hand puts them straight
+  out again.
 - `air_feed_rate` (*Air feed rate*, mm/min, in *Settings › Machining*):
   where a program goes back through wood it has already cut away (a peck
   back down its hole, a link across a cleared pocket floor, a pass over

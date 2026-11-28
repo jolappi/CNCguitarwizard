@@ -468,6 +468,13 @@ FIELD_HELP: dict[str, str] = {
         "a hole is dragged, or when a dragged edge takes its holes along; "
         "empty: every hole where the style puts it."
     ),
+    "tuner_key_angles": (
+        "How far each tuner's key is turned in its hole, in degrees from "
+        "straight out across the neck, toward the tip positive (at most 90 "
+        "either way), one per hole in the order of tuner_hole_points. The "
+        "headstock editor writes them when a key is dragged round its post; "
+        "empty: every key straight out."
+    ),
     "tuner_tip_margin": (
         "Wood kept between the last tuner hole and the headstock's tip, in "
         "mm; the headstock grows when it needs it."

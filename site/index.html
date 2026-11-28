@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache">
 <!-- This page's stamp, set by tools/build_site.py (see the loader below). -->
-<meta name="cgw-page" content="0f3a10e1477c">
+<meta name="cgw-page" content="1af4d1b11bee">
 <title>CNCguitarwizard</title>
 <!-- three.js for the quick 3D model's viewer (quick3d.js), loaded only
      when it is first shown. -->
@@ -290,7 +290,8 @@
   .body-editor .string { fill: none; stroke: #8f8f8f; stroke-linejoin: round; stroke-linecap: round; pointer-events: none; }
   .body-editor .tuner-post { fill: #a8a8a8; stroke: #555; stroke-width: 0.3; pointer-events: none; }
   .body-editor .tuner-shaft { stroke: #9a9a9a; stroke-width: 3.2; pointer-events: none; }
-  .body-editor .tuner-key { fill: #c8c8c8; stroke: #6e6e6e; stroke-width: 0.4; pointer-events: none; }
+  .body-editor .tuner-key { fill: #c8c8c8; stroke: #6e6e6e; stroke-width: 0.4; cursor: grab; }
+  .body-editor .tuner-key:hover, .body-editor .tuner-key.dragging, .body-editor .tuner-key.picked { stroke: var(--accent); stroke-width: 0.8; }
   .body-editor .tuner-hole:hover, .body-editor .tuner-hole.dragging { fill: #f3e2cf; stroke: var(--accent); stroke-width: 0.8; }
   /* A handle picked for the arrow keys (see pickHandle). */
   .body-editor .handle.picked { fill: var(--accent); stroke: #1f1a14; }
@@ -855,7 +856,8 @@
           it. For a sharp point (Jackson style) drag one tip corner onto the other: within 3 mm they
           meet, and the point then moves as one (Shift-drag a corner to part them again). The tuner holes come from the headstock style; drag one to slide it
           along its edge, kept as far from it as it was so the tuner's key stays outside (Shift-drag moves it anywhere),
-          and an edge you drag takes its holes along, each keeping its distance from the edge. Every hole must keep
+          and an edge you drag takes its holes along, each keeping its distance from the edge. Drag a tuner's key round
+          its post to turn it, up to 90° either way. Every hole must keep
           that distance from the edge, and the wood between holes. Changing the style or its tuner settings lays the holes
           out by the style again. Until you move a handle the outline follows the fitted one (a changed
           style redraws it); <em>Start over</em> goes back to it; <em>Undo</em> steps back a change, <em>Redo</em> forward again. A neck chosen in <em>Start from</em> is loaded whole (<em>Load</em> loads it again), its tuners' places with it: the
@@ -1127,7 +1129,8 @@
       <dt><kbd>Shift</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd>, <kbd>Alt/Option</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd></dt><dd>Step a number field by 10, by 0.1</dd>
       <dt><kbd>/</kbd></dt><dd>Go to <em>Find a setting</em></dd>
       <dt><kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd> (a handle pressed)</dt><dd>Move the body's or headstock's handle,
-        a body feature (a pickup along the neck) or a tuner hole 0.5 mm (with <kbd>Shift</kbd> 5 mm); <kbd>Esc</kbd> lets it go</dd>
+        a body feature (a pickup along the neck) or a tuner hole 0.5 mm (with <kbd>Shift</kbd> 5 mm), or turn a tuner's key
+        about a degree (with <kbd>Shift</kbd> about ten); <kbd>Esc</kbd> lets it go</dd>
       <dt><kbd>Enter</kbd> in <em>Find a setting</em></dt><dd>Go to the first setting found</dd>
       <dt><kbd>Esc</kbd></dt><dd>Close a menu, this list or a drawing's <em>Full window</em>; clear <em>Find a setting</em></dd>
       <dt><kbd>?</kbd></dt><dd>This list</dd>

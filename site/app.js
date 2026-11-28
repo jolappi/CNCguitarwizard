@@ -5772,6 +5772,7 @@ const headstockEditor = {
       tip: form.querySelector("[data-set='prototype'][data-name='headstock_tip_points']"),
       outline: form.querySelector("[data-set='prototype'][data-name='headstock_outline']"),
       holes: form.querySelector("[data-set='prototype'][data-name='tuner_hole_points']"),
+      keys: form.querySelector("[data-set='prototype'][data-name='tuner_key_angles']"),
     };
   },
 
@@ -5997,7 +5998,7 @@ const headstockEditor = {
     const layout = this.layout;
     const bass = this.samples("bass"), treble = this.samples("treble");
     const tip = this.tipSamples();
-    const keyTips = layout.holes.map((h) => [h.x, h.y + this.sign(h.side) * (TUNER_KEY_REACH + TUNER_KEY_SIZE[1] / 2)]);
+    const keyTips = layout.holes.map((h) => this.alongKey(h, TUNER_KEY_REACH + TUNER_KEY_SIZE[1] / 2));
     const all = [...bass, ...treble, ...tip, ...layout.holes.map((h) => [h.x, h.y]), ...keyTips];
     const xs = all.map((p) => p[0]), ys = all.map((p) => p[1]);
     const margin = 25;
@@ -6021,13 +6022,17 @@ const headstockEditor = {
       });
       label.textContent = `${side} side`;
     }
-    // The tuners' keys, out past the edge toward their own side (as the
-    // 3D preview places them), under the face: only what reaches past the
-    // edge shows. They follow a dragged hole.
-    this.keys = layout.holes.map(() => ({
-      shaft: this.element("line", { class: "tuner-shaft" }),
-      key: this.element("ellipse", { class: "tuner-key", rx: TUNER_KEY_SIZE[0] / 2, ry: TUNER_KEY_SIZE[1] / 2 }),
-    }));
+    // The tuners' keys, out past the edge toward their own side, each
+    // turned by its angle (as the 3D preview places them), under the
+    // face: only what reaches past the edge shows. They follow a dragged
+    // hole; drag one to turn it round its post.
+    this.keys = layout.holes.map((hole, index) => {
+      const shaft = this.element("line", { class: "tuner-shaft" });
+      const key = this.element("ellipse", { class: "tuner-key", rx: TUNER_KEY_SIZE[0] / 2, ry: TUNER_KEY_SIZE[1] / 2 });
+      key.addEventListener("pointerdown", (event) => this.startKeyTurn(event, index, key));
+      this.element("title", {}, key).textContent = `Tuner key (${hole.side}) — drag to turn it round its post`;
+      return { shaft, key };
+    });
     this.element("path", {
       d: this.pathData([...bass, ...tip.slice(1, -1), ...[...treble].reverse()]) + " Z",
       fill: "#f1e4c8", stroke: "none",
@@ -6532,14 +6537,72 @@ const headstockEditor = {
     this.showStrings();
   },
 
-  // A tuner's key beside its hole, sideways toward its own edge.
+  // A tuner's key beside its hole, sideways toward its own edge, turned
+  // by its angle.
   showKey(index) {
     const hole = this.layout.holes[index];
     const { shaft, key } = this.keys[index];
-    const y = hole.y + this.sign(hole.side) * TUNER_KEY_REACH;
-    for (const [name, value] of [["x1", hole.x], ["y1", -hole.y], ["x2", hole.x], ["y2", -y]]) shaft.setAttribute(name, value);
-    key.setAttribute("cx", hole.x);
+    const [x, y] = this.alongKey(hole, TUNER_KEY_REACH);
+    for (const [name, value] of [["x1", hole.x], ["y1", -hole.y], ["x2", x], ["y2", -y]]) shaft.setAttribute(name, value);
+    key.setAttribute("cx", x);
     key.setAttribute("cy", -y);
+    // Its length along the shaft (the SVG's Y runs down).
+    key.setAttribute("transform", `rotate(${-this.sign(hole.side) * hole.key} ${x} ${-y})`);
+  },
+
+  // The point `reach` out from a hole along its tuner's key: straight
+  // out toward its own edge, turned hole.key degrees toward the tip.
+  alongKey(hole, reach) {
+    const turn = (hole.key * Math.PI) / 180;
+    return [hole.x - reach * Math.sin(turn), hole.y + this.sign(hole.side) * reach * Math.cos(turn)];
+  },
+
+  // Drag a tuner's key round its post to turn it (as tuner_key_angles
+  // takes it); a picked one turns with the arrow keys.
+  startKeyTurn(event, index, node) {
+    event.preventDefault();
+    node.classList.add("dragging");
+    pickHandle(this, () => this.keys?.[index]?.key, (dx, dy) => this.nudgeKey(index, dx, dy));
+    const move = (moveEvent) => showReadout(moveEvent, this.turnKey(index, this.toModel(moveEvent)));
+    const end = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", end);
+      window.removeEventListener("pointercancel", end);
+      node.classList.remove("dragging");
+      this.commitKeys();
+      this.draw();
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", end);
+    window.addEventListener("pointercancel", end);
+  },
+
+  // A picked key turned by the arrow keys, as if its end were dragged by
+  // (dx, dy).
+  nudgeKey(index, dx, dy) {
+    const [x, y] = this.alongKey(this.layout.holes[index], TUNER_KEY_REACH);
+    const text = this.turnKey(index, [x + dx, y + dy]);
+    this.commitKeys();
+    this.draw();
+    return text;
+  },
+
+  // A key turned toward the point (x, y), in whole degrees, at most 90
+  // from straight out either way; what the readout says of it.
+  turnKey(index, [x, y]) {
+    const hole = this.layout.holes[index];
+    const degrees = (Math.atan2(hole.x - x, (y - hole.y) * this.sign(hole.side)) * 180) / Math.PI;
+    hole.key = Math.min(Math.max(Math.round(degrees), -90), 90);
+    this.showKey(index);
+    if (hole.key === 0) return "Straight out";
+    return `${Math.abs(hole.key)}° toward the ${hole.key > 0 ? "tip" : "nut"}`;
+  },
+
+  // Every key's angle as tuner_key_angles takes it, in the layout's
+  // order; none while all point straight out.
+  commitKeys() {
+    const angles = this.layout.holes.map((hole) => hole.key);
+    bodyEditor.setField(this.inputs().keys, angles.some((angle) => angle !== 0) ? angles : []);
   },
 
   // Where a string's line, bridge to nut, runs on past the nut: its Y at X.
@@ -6900,11 +6963,12 @@ const headstockEditor = {
   // the headstock out afresh.
   async reset() {
     if (!(await askConfirm("Replace the drawn headstock with the fitted outline?"))) return;
-    const { bass, treble, tip, holes } = this.inputs();
+    const { bass, treble, tip, holes, keys } = this.inputs();
     bodyEditor.setField(bass, []);
     bodyEditor.setField(treble, []);
     bodyEditor.setField(tip, []);
     bodyEditor.setField(holes, []);
+    bodyEditor.setField(keys, []);
     this.tip = [];
     if (this.layout) {
       this.edges = structuredClone(this.layout.start_edges);
@@ -7817,10 +7881,11 @@ loadDesignFile.addEventListener("change", () => {
   if (file) openDesign(file);
 });
 
-// The tuner holes go back to where the style lays them out when the style
-// or its tuner settings are changed by hand (in the form or an editor's
-// Settings), as they may then number or sit otherwise; a loaded design,
-// an undo or a neck template keeps what it sets.
+// The tuner holes go back to where the style lays them out, and their
+// keys straight out, when the style or its tuner settings are changed by
+// hand (in the form or an editor's Settings), as they may then number or
+// sit otherwise; a loaded design, an undo or a neck template keeps what
+// it sets.
 const TUNER_LAYOUT_FIELDS = new Set([
   "headstock_style", "string_count", "tuner_station_distances", "tuner_side_offsets",
   "tuner_inline_first_distance", "tuner_inline_spacing", "tuner_inline_offsets",
@@ -7840,9 +7905,10 @@ document.addEventListener("change", (event) => {
     return;
   }
   if (original.dataset?.set !== "prototype" || !TUNER_LAYOUT_FIELDS.has(original.dataset.name)) return;
-  const { holes } = headstockEditor.inputs();
-  if (!holes || (!valueProblem(holes) && readValue(holes).length === 0)) return;
-  bodyEditor.setField(holes, []);
+  const { holes, keys } = headstockEditor.inputs();
+  const set = [holes, keys].filter((input) => input && (valueProblem(input) || readValue(input).length > 0));
+  if (!set.length) return;
+  for (const input of set) bodyEditor.setField(input, []);
   headstockEditor.scheduleRefresh();
 });
 

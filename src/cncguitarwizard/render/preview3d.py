@@ -755,19 +755,23 @@ def _headstock_details(
     headstock = geometry.headstock
     tilt = _Tilt(*geometry.neck_tilt)
     post = parameters.tuner_post_diameter / 2.0
+    bushing = parameters.tuner_hole_diameter / 2.0 + 1.5
     pieces = []
-    for hole in geometry.tuner_layout.holes:
-        base, normal = _tuner_seat(headstock, hole.center)
-        bushing = hole.diameter / 2.0 + 1.5
+    for (hole_side, x, y), angle in zip(
+        parameters.tuner_centres(), parameters.key_angles(), strict=True
+    ):
+        base, normal = _tuner_seat(headstock, Point2D(x, y))
         back = _along(base, normal, -headstock.thickness)
-        # Its gear under the back, its button out past the headstock's side.
+        # Its gear under the back, its button out past the headstock's
+        # side, turned toward the tip by its key's angle.
         housing = _along(back, normal, -5.0)
         side = (
             parameters.headstock_sign
-            if hole.side == "bass"
+            if hole_side == "bass"
             else -parameters.headstock_sign
         )
-        away = (0.0, side, 0.0)
+        turn = math.radians(angle)
+        away = (-math.sin(turn), side * math.cos(turn), 0.0)
         button = _along(_along(housing, away, 26.0), normal, -2.0)
         pieces += [
             _cylinder_piece(_along(base, normal, -0.5), normal, bushing, bushing, 3.0),
